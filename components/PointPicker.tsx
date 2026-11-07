@@ -42,7 +42,8 @@ export default function PointPicker({ value, radius, onChange }: {
     const [drawn, setDrawn] = useState(0)
 
     const box = useRef<HTMLDivElement>(null)
-    const leaflet = useRef<{ L: typeof Leaflet; map: Leaflet.Map } | null>(null)
+    // `still`: the device asks for reduced motion, so the map moves at once (DESIGN.md §8).
+    const leaflet = useRef<{ L: typeof Leaflet; map: Leaflet.Map; still: boolean } | null>(null)
     const pin = useRef<Leaflet.Marker | null>(null)
     // The radius ring, over a wider white one as the pin has a white border,
     // so it shows on satellite imagery as well as the street map, whatever the
@@ -98,8 +99,14 @@ export default function PointPicker({ value, radius, onChange }: {
             const L = (mod as unknown as { default?: typeof Leaflet }).default ?? (mod as typeof Leaflet)
             if (cancelled || !box.current) return
             const start = parsePoint(latest.current.value)
-            // Its own buttons are named in the page's language (DESIGN.md §5.3).
-            map = L.map(box.current, { center: start ? [start.latitude, start.longitude] : CAIRO, zoom: start ? 17 : 11, zoomControl: false })
+            const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            map = L.map(box.current, {
+                center: start ? [start.latitude, start.longitude] : CAIRO, zoom: start ? 17 : 11,
+                // Its own buttons are named in the page's language (DESIGN.md §5.3), below.
+                zoomControl: false,
+                // With "reduce motion", it zooms, shows its tiles and stops at once (§8).
+                zoomAnimation: !still, fadeAnimation: !still, markerZoomAnimation: !still, inertia: !still,
+            })
             L.control.zoom({ zoomInTitle: t('map_zoom_in'), zoomOutTitle: t('map_zoom_out') }).addTo(map)
             const layer = (style: HereStyle) => L.tileLayer(hereTileUrl(style, locale, hereKey!, { sharp: L.Browser.retina }), { maxZoom: 20 })
             const street = layer('map').addTo(map)
@@ -131,7 +138,7 @@ export default function PointPicker({ value, radius, onChange }: {
             map.on('moveend zoomend baselayerchange', credit)
             credit()
             map.on('click', e => put(e.latlng.lat, e.latlng.lng))
-            leaflet.current = { L, map }
+            leaflet.current = { L, map, still }
             setDrawn(n => n + 1)
         })
         return () => {
@@ -176,7 +183,7 @@ export default function PointPicker({ value, radius, onChange }: {
             ]
         } else { rings.current.forEach(r => r.remove()); rings.current = [] }
         // Typed or found somewhere off screen: bring it into view.
-        if (!lf.map.getBounds().contains(at)) lf.map.setView(at, Math.max(lf.map.getZoom(), 16))
+        if (!lf.map.getBounds().contains(at)) lf.map.setView(at, Math.max(lf.map.getZoom(), 16), { animate: !lf.still })
     }, [value, radius, drawn, t])
 
     const pinCentre = () => {

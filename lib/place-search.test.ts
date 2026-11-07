@@ -93,6 +93,8 @@ describe("the field", () => {
         expect(html).toMatch(/^<div class="ui-place-search"><span class="ui-control"><input id="f1" class="ui-input" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="[^"]+"/)
         // Its own suggestions open here; the browser's would cover them. What's typed keeps its own direction.
         expect(html).toMatch(/<input[^>]* autoComplete="off"[^>]* dir="auto"/)
+        // A name of its own (the web interface audit on PR 215).
+        expect(html).toMatch(/<input[^>]* name="placeSearch"/)
         expect(html).toMatch(/<ul id="[^"]+" role="listbox" aria-label="place_search_list" class="ui-suggestions" hidden="">/)
         // The line under it, and how many it suggests, for screen readers.
         expect(html).toContain('<p class="ui-hint ui-place-search-note" role="status"></p>')

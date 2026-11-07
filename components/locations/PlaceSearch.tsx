@@ -85,6 +85,7 @@ export default function PlaceSearch({ onPick, placeholder, id, ...field }: {
                     {...field}
                     className="ui-input"
                     type="text"
+                    name="placeSearch"
                     role="combobox"
                     aria-autocomplete="list"
                     aria-expanded={shown}

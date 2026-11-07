@@ -69,7 +69,7 @@ describe("the map", () => {
     })
 
     it("names its own buttons in the page's language", () => {
-        expect(SRC).toMatch(/L\.map\(box\.current, \{ center: [^}]*, zoomControl: false \}\)/)
+        expect(SRC).toMatch(/L\.map\(box\.current, \{[^}]*zoomControl: false,/)
         expect(SRC).toContain("L.control.zoom({ zoomInTitle: t('map_zoom_in'), zoomOutTitle: t('map_zoom_out') }).addTo(map)")
         // Leaflet names the layers' button "Layers", with no option to change it.
         expect(SRC).toContain("toggle?.setAttribute('title', t('att_loc_layers'))")
@@ -80,6 +80,15 @@ describe("the map", () => {
     // keys can't move, ringed in the older pages' colour.
     it("leaves the pin out of the keyboard's way: the arrows and \"Pin the centre\" place it", () => {
         expect(SRC).toMatch(/lf\.L\.marker\(at, \{\s*draggable: true,(\s*\/\/[^\n]*)*\s*keyboard: false,\s*title:/)
+    })
+
+    // The web interface audit on PR 215: its zoom, its tiles' fade and its
+    // glide after a drag moved with "reduce motion" too (DESIGN.md §8).
+    it("moves at once with reduce motion", () => {
+        expect(SRC).toContain("const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches")
+        expect(SRC).toMatch(/zoomControl: false,[^}]*zoomAnimation: !still, fadeAnimation: !still, markerZoomAnimation: !still, inertia: !still,/)
+        expect(SRC).toContain("leaflet.current = { L, map, still }")
+        expect(SRC).toContain("lf.map.setView(at, Math.max(lf.map.getZoom(), 16), { animate: !lf.still })")
     })
 
     it("draws its pin and radius with the building blocks' classes", () => {
