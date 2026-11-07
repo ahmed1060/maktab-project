@@ -32,6 +32,7 @@ export default function PlaceSearch({ onPick, placeholder, id, ...field }: {
     const [open, setOpen] = useState(false)
     const [under, setUnder] = useState({ for: '', index: -1 })
     const asked = useRef(0)
+    const list = useRef<HTMLUListElement>(null)
     const text = typed.trim()
     const asking = searchable(text) && text !== picked
 
@@ -62,6 +63,14 @@ export default function PlaceSearch({ onPick, placeholder, id, ...field }: {
     const active = shown && under.for === text ? under.index : -1
     const note = !answered ? '' : last.failed ? t('place_search_failed') : last.places.length === 0 ? t('place_search_none') : ''
     const optionId = (i: number) => `${listId}-${i}`
+
+    // The place under the keys kept in sight: eight with their addresses run
+    // past the list's height, and the field pointing at one doesn't scroll to
+    // it (Codex on PR 215).
+    useEffect(() => {
+        if (active < 0) return
+        list.current?.children[active]?.scrollIntoView({ block: 'nearest' })
+    }, [active])
 
     const pick = (p: FoundPlace) => {
         setTyped(p.name)
@@ -104,7 +113,7 @@ export default function PlaceSearch({ onPick, placeholder, id, ...field }: {
                     onKeyDown={keys}
                 />
             </span>
-            <ul id={listId} role="listbox" aria-label={t('place_search_list')} className="ui-suggestions" hidden={!shown}>
+            <ul ref={list} id={listId} role="listbox" aria-label={t('place_search_list')} className="ui-suggestions" hidden={!shown}>
                 {places.map((p, i) => (
                     <li key={p.id} id={optionId(i)} role="option" aria-selected={active === i} className="ui-suggestion"
                         // Kept from taking the focus, so the field doesn't close the list first.

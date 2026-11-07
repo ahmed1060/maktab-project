@@ -4720,3 +4720,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - from the web interface audit: the map's zoom, its tiles' fade and its
     glide after a drag moved with "reduce motion" too, and the place
     search's field had no name.
+- **2026-11-07:** From Codex's review of #215: the place under the keys is
+  kept in sight. Eight places with their addresses run past the
+  suggestions' 320px, and the arrow keys could reach one out of sight,
+  which Enter then picked unseen.

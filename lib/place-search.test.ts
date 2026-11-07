@@ -111,6 +111,14 @@ describe("the field", () => {
         expect(SRC).toContain("countOf(t, locale, places.length, 'places')")
     })
 
+    // Codex on PR 215: eight places with their addresses run past the
+    // list's 320px, and the arrows could reach one out of sight, which the
+    // field pointing at it doesn't scroll to.
+    it("keeps the place under the keys in sight in a list that scrolls", () => {
+        expect(SRC).toContain('<ul ref={list} id={listId} role="listbox"')
+        expect(SRC).toMatch(/useEffect\(\(\) => \{\s*if \(active < 0\) return\s*list\.current\?\.children\[active\]\?\.scrollIntoView\(\{ block: 'nearest' \}\)\s*\}, \[active\]\)/)
+    })
+
     it("draws nothing itself: no styles typed in, no spinner of its own, nothing logged", () => {
         for (const gone of ["style=", "style jsx", "@keyframes", "console.", "left", "right", "onMouseEnter"]) expect(SRC, gone).not.toContain(gone)
         expect(existsSync("components/LocationSearchInput.tsx")).toBe(false)
