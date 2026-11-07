@@ -991,6 +991,17 @@ These are built once, in the building-blocks PR, and every page uses them
   - The photo is saved without the form's own button. While it's sent,
     the picker is off, and a line under it says so, which a screen reader
     hears.
+- **Face photos,** such as a flagged check-in's last frame beside the
+  person's approved photo, to see whether it's the same person: in a
+  dialog, side by side, on a phone too, each 3 by 4 with its name under
+  it in `--muted`.
+  - The viewer's name and the time the photos opened are written across
+    each, three times: a screenshot can't be prevented, so it says who
+    took it. A photo can't be dragged out or picked, and a right click
+    offers nothing on it.
+  - The dialog has Close, as a phone has no Escape key. Where something
+    is decided on them, as a face check's review is, its buttons are
+    beside Close.
 - **Expiry:** an item with an expiry date, such as a record, shows the date
   with a badge beside it:
   - "Expired" (Problem, with the warning icon) once the day has passed;
@@ -1144,6 +1155,38 @@ These are built once, in the building-blocks PR, and every page uses them
     in its own words, for the Super Admin, who has no attendance, and
     where the company's package hasn't the app. One whose phone details
     didn't load says so, with Try again.
+- **The face check's camera,** which face verification opens on the
+  check-in screen (above): the front camera's picture fills the screen,
+  mirrored as a mirror is, with nothing of the app around it. It's dark
+  in both themes, as every camera's view is, with its guidance light over
+  it (`--cam-*`).
+  - An oval to fit the face in, the picture dimmed outside it, and a ring
+    around it in `--cam-ink` that fills as the check takes its looks.
+    Done, the ring is whole in `--cam-done`, with a tick in a circle at
+    the oval's middle, the tick in `--cam-ground`. A step half or wholly
+    done flashes the ring in `--cam-done`, and a step started again in
+    `--cam-warn`, as the phone beeps and vibrates.
+  - One line at the bottom says what to do, and screen readers hear it.
+    The first time, while the face check downloads, it says how far, in
+    the page's digits.
+  - A step, such as turning the head, shows only when the check has
+    doubts: a card above the line with the step's icon beside its name,
+    arrows both ways for a turn and a closed eye for closing the eyes,
+    and the time left as a bar, in `--cam-warn` for its last quarter. A
+    turn adds how far the head is turned: a dot between two marks in
+    `--cam-done`, which moves as the head does in the mirrored picture,
+    so it isn't mirrored in Arabic.
+  - Close, an X named for what it does, 44px across, is at the top on
+    the start side. The test version says so in a pill on the end side.
+  - The line, the card, the pill and Close are on the picture dimmed to
+    55% `--cam-ground`, so their words hold 4.5:1 over the lightest
+    picture. They keep clear of a phone's notch and home bar.
+  - It's a dialog, named "Face check": it takes the focus as it opens,
+    Tab stays in it, and Close or Escape ends the check, the focus going
+    back to what opened it. The ring the keyboard shows is 2px in
+    `--cam-ink`.
+  - With "reduce motion", the ring fills, the bar empties and the dot
+    moves at once, and the tick is just there.
 - **Sign-in:** the one screen before the app, so it has no side bar and
   no top bar. It's in the default brand colour (§2.1).
   - On `--page`, a card in the middle of the screen, at most 400px wide,
@@ -1667,3 +1710,12 @@ changed:
   check-in places, the map's buttons were the older pages'. Its zoom
   buttons were named in English whatever the page's language, and were
   30px under a finger.
+- **2026-11-07:** The face check's camera (§5.5) and face photos (§5.5).
+  The camera's step, its Close and its tick were characters (↔, ◡, ✕
+  and ✓), and the step's name was never shown. The test version's words
+  could fall to 2.7:1 over a light picture, and the tick was white on
+  green, 2.3:1. It took no focus as it opened, so Tab walked the page
+  behind it, and Escape did nothing. The first download's share was in
+  Western digits in Arabic. A flagged check-in's photos were in the
+  older pages' window, with an X of its own making and their line in
+  `--text-soft`.
