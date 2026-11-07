@@ -486,7 +486,7 @@ describe("flagged check-ins on it (UI_PLAN.md §2.3, part 4c)", () => {
     it("has the map of where the phone was, and a failed face check's photos for whoever may see them, as the Attendance page did", () => {
         expect(client).toContain("googleMapsLink(")
         expect(client).toContain("...(r.flagged?.mayViewFace ? [{ key: 'face'")
-        expect(client).toContain("<FlaggedFaceModal")
+        expect(client).toContain("<FlaggedFaceDialog")
     })
 
     it("once decided, says so, and why it was rejected", async () => {

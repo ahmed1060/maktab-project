@@ -18,7 +18,7 @@ import { REQUEST_KINDS, WAITING_FOR_REVIEW_KEY, type FeedRow, type RequestKind, 
 import SafeDate from '@/components/SafeDate'
 import DateRangePicker from '@/components/DateRangePicker'
 import { DayOffCreditDonut } from '@/components/DayOffCreditDonut'
-import { FlaggedFaceModal } from '@/components/FacePhoto'
+import { FlaggedFaceDialog } from '@/components/FacePhoto'
 import { googleMapsLink } from '@/lib/attendance/geo'
 import { withChanges } from '@/components/filters/address'
 import { useListAddress, useSearchField } from '@/components/filters/useListAddress'
@@ -580,7 +580,7 @@ export default function RequestsClient({
                     onClose={() => setWithdrawing(null)} onWithdrawn={() => { setWithdrawing(null); setViewing(null); refreshed() }} />
             )}
 
-            {faceOf && <FlaggedFaceModal punchId={faceOf.id} name={faceOf.who.name} onClose={() => setFaceOf(null)} />}
+            {faceOf && <FlaggedFaceDialog punchId={faceOf.id} name={faceOf.who.name} onClose={() => setFaceOf(null)} />}
             {revoking && (
                 <RevokePhone key={revoking.id} request={revoking}
                     onClose={() => setRevoking(null)} onRevoked={() => { setRevoking(null); setViewing(null); refreshed() }} />

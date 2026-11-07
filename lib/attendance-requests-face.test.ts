@@ -370,7 +370,7 @@ describe("face verification", () => {
 describe("a face photo", () => {
     it("has the building blocks' look, with the watermark over it", async () => {
         const { FacePhoto } = await import("@/components/FacePhoto")
-        const html = renderToStaticMarkup(h(FacePhoto, { src: "/x", label: "New photo", mark: "Hana · 2026-11-01 01:00" }))
+        const html = renderToStaticMarkup(h(FacePhoto, { src: "/x", label: "New photo", mark: { who: "Hana", when: "1 Nov 2026, 1:00 am" } }))
         expect(html).toContain('<figure class="ui-face-photo"><div class="ui-face-photo-frame">')
         expect(html).toContain('<img src="/x" alt="New photo" draggable="false"/>')
         expect(html).toContain('<div aria-hidden="true" class="ui-face-photo-marks">')
@@ -395,7 +395,8 @@ describe("found in the interface audit (PR 153)", () => {
     it("puts the two photos side by side in the dialog, each its size before it loads", () => {
         const css = readFileSync("components/ui/ui.css", "utf8")
         const rule = (name: string) => css.slice(css.indexOf(`${name} {`), css.indexOf("}", css.indexOf(`${name} {`)))
-        expect(rule(".ui-face-photos")).toContain("grid-template-columns: repeat(auto-fit, minmax(144px, 1fr));")
+        // 120px each, so two fit a dialog on a 320px phone (PR 216; lib/face-camera-blocks.test.ts).
+        expect(rule(".ui-face-photos")).toContain("grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));")
         expect(rule(".ui-face-photo-frame")).toContain("aspect-ratio: 3 / 4;")
         expect(rule(".ui-face-photo-frame > img")).toContain("height: 100%;")
     })
