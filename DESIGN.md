@@ -1106,6 +1106,25 @@ These are built once, in the building-blocks PR, and every page uses them
     and stays, screen readers hear it at once, and Escape does nothing,
     as there's nothing to go back to. It draws no focus ring, as nothing
     on it can be used.
+- **A page that broke:** when a page fails in a way nothing on it could
+  handle, its place says so, in the page's language. The side bar and the
+  top bar stay, and going to another page from them leaves it behind.
+  - In its middle, in a panel, as an empty state: the warning icon, "This
+    page stopped working", and what to do. Reloading the page usually puts
+    it right. If it keeps happening, Start again clears what this browser
+    keeps for the app, such as the company a Super Admin last picked, and
+    reloads it, still signed in, in the same language and theme.
+  - Reload page is the main button, and Start again is beside it. Neither
+    is red, as neither deletes anything.
+  - Once the failure is logged, its reference is under them, for the
+    person to share with their Admin: as it was made, in Western letters
+    and digits, which a browser's translation leaves as it is.
+  - The focus moves to its title, where the page was, and screen readers
+    hear it at once.
+- **When the app itself broke,** before even the side bar could be drawn,
+  the whole screen says the same, in the page's colour, with the same
+  buttons and reference, in the language and theme the person chose and
+  in the app's own fonts, and at a phone's own width, as every page is.
 - **A note above the page,** for something true on every page for now: a
   company's free trial or its grace, or a role a Super Admin is
   previewing. It's a level-1 panel at the page's width, above the page
@@ -1781,3 +1800,13 @@ changed:
   right to left; its line breaks were lost; and its spaces were margins
   set by the language, not the text's own. Found in the browser flows: its
   button went as it was opened, so closing it left the focus on nothing.
+- **2026-11-07:** A page that broke, and the app itself (§5.5). A page
+  that broke was a card of its own making, in English only, under a
+  warning emoji: it told of "a client-side exception", offered Reload
+  Page and a red Reset Settings & Reload, which also switched the app to
+  English, and screen readers weren't told. It stayed when the person
+  went to another page, until the page was reloaded. When the app itself
+  broke, its screen was in English only, its Try Again in Title Case,
+  and the app's styles, fonts and the theme the person chose didn't reach
+  it. Found in the browser flows: it didn't say how wide to be, so a phone
+  could draw it at a computer's width, its words too small to read.

@@ -2,7 +2,6 @@ import './globals.css'
 import '@/components/ui/ui.css'
 import { Providers } from './providers'
 import { cookies, headers } from 'next/headers'
-import { Outfit, Inter, Noto_Sans_Arabic } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { resolveLocale } from '@/lib/locale'
@@ -14,19 +13,9 @@ import { defaultBrandColour } from '@/lib/page-brand-colour'
 import NavigationProgress from '@/components/NavigationProgress'
 import { Suspense } from 'react'
 
-// The two typefaces, downloaded at build time and served from this site.
-// Before, globals.css @imported them from Google Fonts: a stylesheet
-// that blocked the first paint of every page (about 0.8 s on a phone) before
-// the fonts themselves could even be asked for, and that the CSP's style-src
-// didn't allow. next/font also sizes the fallback to match, so text doesn't
-// jump when the font arrives.
-const outfit = Outfit({ subsets: ['latin'], weight: ['300', '400', '500', '600', '700'], display: 'swap', variable: '--font-outfit' })
-const inter = Inter({ subsets: ['latin'], weight: ['300', '400', '500', '600'], display: 'swap', variable: '--font-inter' })
-// Arabic for the building blocks (DESIGN.md §3.1); before it the app loaded
-// none, so Arabic took whatever each device had. Not preloaded: only the
-// building blocks use it so far, and an English page would fetch it for
-// nothing. The browser asks for it the first time Arabic text needs it.
-const notoArabic = Noto_Sans_Arabic({ subsets: ['arabic'], weight: ['400', '500', '600'], display: 'swap', preload: false, variable: '--font-noto-arabic' })
+// The typefaces, defined once for every page that draws its own <html>
+// (app/fonts.ts).
+import { fontVariables } from './fonts'
 
 export const metadata = {
   title: 'Nizmo',
@@ -70,7 +59,7 @@ export default async function RootLayout({
   const brand = await defaultBrandColour()
 
   return (
-    <html lang={initialLocale} dir={dir} data-theme={themeAttr} className={`${outfit.variable} ${inter.variable} ${notoArabic.variable}`}>
+    <html lang={initialLocale} dir={dir} data-theme={themeAttr} className={fontVariables}>
       <head>
         {/* The default brand colour's shades (DESIGN.md §2.1), in the page
             before it's sent so it never opens in another colour first. */}

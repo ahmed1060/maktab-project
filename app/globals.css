@@ -76,7 +76,6 @@
   --ok-fg: #166534;
 
   --danger-bg: #fee2e2;
-  --danger-border: #fecaca;
   --danger-fg: #991b1b;
   --danger-solid: #ef4444;
 
@@ -203,9 +202,7 @@
                dark surface, not a faint white, or the content behind it reads
                straight through. */
   --veil-20: rgba(255, 255, 255, 0.2);
-  --veil-40: rgba(255, 255, 255, 0.4);
   --veil-50: rgba(255, 255, 255, 0.5);
-  --veil-60: rgba(255, 255, 255, 0.6);
 
   --panel-80: rgba(255, 255, 255, 0.8);
   --panel-85: rgba(255, 255, 255, 0.85);
@@ -1032,7 +1029,6 @@ input::-webkit-credentials-auto-fill-button {
     --ok-border: #1c5c3a;
 
     --danger-bg: #3a161a;
-    --danger-border: #6b2328;
     --danger-border-firm: #8a2d33;
     --danger-fg: #ff9d9d;
     --danger-solid: #f2565a;
@@ -1087,9 +1083,7 @@ input::-webkit-credentials-auto-fill-button {
     --chip-solid-bg: #2b3340;
     --chip-solid-fg: #f0f6fc;
     --veil-20: rgba(255, 255, 255, 0.06);
-    --veil-40: rgba(255, 255, 255, 0.09);
     --veil-50: rgba(255, 255, 255, 0.11);
-    --veil-60: rgba(255, 255, 255, 0.14);
 
     --panel-80: rgba(22, 27, 34, 0.88);
     --panel-85: rgba(22, 27, 34, 0.91);

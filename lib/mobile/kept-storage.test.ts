@@ -27,10 +27,12 @@ describe("clearing the site's storage", () => {
         expect(s.m.size).toBe(0)
     })
 
-    it("is how the error screen starts again", () => {
-        const src = readFileSync("components/DashboardErrorBoundary.tsx", "utf8")
-        expect(src).toMatch(/clearStorageKeepingPhone\(localStorage\)/)
-        expect(src).not.toMatch(/localStorage\.clear\(\)/)
+    it("is how the error screens start again", () => {
+        // Start again, on a page that broke and when the app itself broke (PR 219).
+        const src = readFileSync("lib/error-screen.ts", "utf8")
+        expect(src).toMatch(/clearStorageKeepingPhone\(storage \?\? globalThis\.localStorage\)/)
+        expect(src).not.toMatch(/\.clear\(\)/)
+        expect(readFileSync("components/ErrorScreen.tsx", "utf8")).toContain("startAgain()")
         // The key the face record is kept under is the one kept.
         expect(readFileSync("lib/mobile/face.ts", "utf8")).toMatch(/const SENT_KEY: \(typeof PHONE_KEYS\)\[number\] = "nizmo-face-sent-review"/)
     })

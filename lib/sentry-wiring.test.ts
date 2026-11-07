@@ -46,8 +46,10 @@ describe("errors the app catches itself still reach Sentry", () => {
         expect(report).toContain("Sentry.captureException(error")
     })
 
-    it("the root error page", () => {
-        expect(code("app/global-error.tsx")).toContain("Sentry.captureException(error)")
+    it("the root error page, through the same helper, as the error screen it shares with a page that broke (PR 219)", () => {
+        expect(code("app/global-error.tsx")).toContain("<ErrorScreen error={error}")
+        expect(code("components/DashboardErrorBoundary.tsx")).toContain("<ErrorScreen error={error}")
+        expect(code("components/ErrorScreen.tsx")).toContain("report = reportClientError(error)")
     })
 })
 

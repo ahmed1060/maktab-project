@@ -567,7 +567,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      check-in's face photos, merged in #216 on 2026-11-07; then the code a
      high-risk action asks for and the screen over a page the app has to
      leave, merged in #217 on 2026-11-07; then what an edit changed on a
-     task's page, in #218;
+     task's page, merged in #218 on 2026-11-07; then a page that broke
+     and the app itself, in #219;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4840,3 +4841,39 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     opened, so closing the dialog left the focus on nothing. They stay now
     until the change is seen, so it can be opened again, and closing it
     gives the focus back to its button.
+- **2026-11-07:** A page that broke, and the app itself, on the building
+  blocks (#219; `DESIGN.md` §5.5, "A page that broke" and "When the app
+  itself broke"):
+  - a page that broke says so in its place, in the page's language, in a
+    panel as an empty state (`components/ErrorScreen.tsx`): the warning
+    icon, "This page stopped working" as a heading the focus moves to,
+    what to do, Reload page and Start again, neither red, and the logged
+    failure's reference under them, as made, which a browser's translation
+    leaves alone. It was a card of its own making, in English only, under
+    a warning emoji, telling of "a client-side exception";
+  - in the dashboard the side bar and top bar stay around it; on a page
+    with no side bar, such as signing in, it has the whole screen;
+  - `components/DashboardErrorBoundary.tsx` is Next's own boundary now
+    (`catchError`, from `next/error`, as its docs advise): going to another
+    page leaves it behind, where it stayed until the page was reloaded, and
+    a redirect or Not found passes through it;
+  - Start again (`lib/error-screen.ts`) clears what the browser keeps for
+    the app, the phone's own records apart, and forgets the company a
+    Super Admin picked, cookie and all, where only its storage went. It no
+    longer switches the app to English;
+  - when the app itself broke, `app/global-error.tsx` says the same over
+    the whole screen. It brings the app's styles and fonts itself, which
+    Next leaves out of it, from a font definitions file the root layout
+    shares (`app/fonts.ts`), and the language and theme from the person's
+    cookies, with its own copy of the words, held to the translations by a
+    test, as the dictionaries are too big for every page's code. It was in
+    English only, its Try Again in Title Case, with none of the app's
+    styles, fonts or theme;
+  - both report through the app's one report (`lib/client-error-report.ts`),
+    once for each failure;
+  - `--danger-border`, `--veil-40` and `--veil-60`, which only the old
+    card used, are gone from `app/globals.css`, in both themes;
+  - found in the browser flows: the page drawn when the app itself broke
+    said nothing of how wide to be, as Next gives the root layout's pages
+    their viewport and not it, so a phone could draw it at a computer's
+    width. It says so itself now, as every page does.

@@ -1,86 +1,52 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import * as Sentry from '@sentry/nextjs'
+import './globals.css'
+import '@/components/ui/ui.css'
+import { useSyncExternalStore } from 'react'
+import { fontVariables } from './fonts'
+import { ErrorScreen } from '@/components/ErrorScreen'
+import { ERROR_SCREEN_WORDS, errorScreenLook } from '@/lib/error-screen'
 
-// The last-resort net: fires only for a crash Next.js can't recover from
-// inside the normal tree — e.g. RootLayout itself throwing — which is
-// exactly the case DashboardErrorBoundary and the (auth) layout's boundary
-// can't catch, since neither has mounted yet. Without this file, that case
-// fell straight through to Next's own default, unbranded error page. Can't
-// rely on any app context here (Providers/translations haven't mounted
-// either) — deliberately plain, self-contained markup only.
-export default function GlobalError({
-    error,
-    reset,
-}: {
-    error: Error & { digest?: string }
-    reset: () => void
-}) {
-    const [ref, setRef] = useState<string | null>(null)
+/**
+ * When the app itself broke (DESIGN.md §5.5): the last net, for a failure
+ * Next can't recover from inside the app, such as the root layout throwing,
+ * before even the side bar could be drawn and below any of the app's own
+ * boundaries (components/DashboardErrorBoundary.tsx). The whole screen says
+ * what a page that broke says (components/ErrorScreen.tsx), in the page's
+ * colour, with the same buttons and reference.
+ *
+ * Next draws this page in place of the root layout, so nothing of the app is
+ * there: it brings the app's styles and fonts itself, as Next's docs say it
+ * must, and the language and theme the person chose from their cookies. Its
+ * words are its own copy (lib/error-screen.ts): the dictionaries are the size
+ * of all the app's words, and this page is in every page's code.
+ *
+ * On the building blocks (UI_PLAN.md §5 step 5, PR 219): it was in English
+ * only, its Try Again in Title Case, and the app's styles, fonts and the
+ * theme the person chose didn't reach it.
+ */
 
-    useEffect(() => {
-        console.error('[GlobalError]', error)
-        // The root layout itself failed; nothing below it could report this.
-        Sentry.captureException(error)
-        fetch('/api/system/log-client-error', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                message: error?.message,
-                stack: error?.stack,
-                route: typeof window !== 'undefined' ? window.location.pathname : undefined,
-            }),
-        })
-            .then(res => res.json())
-            .then(data => { if (data?.data?.ref) setRef(data.data.ref) })
-            .catch(() => { })
-    }, [error])
+// The cookies don't change while this page is up. Read only in the browser:
+// the server, drawing this page, has the defaults, which the browser then
+// corrects (lib/error-screen.ts).
+const unchanging = () => () => { }
+const browserCookies = () => document.cookie
+const browserLanguage = () => navigator.language
+const none = () => null
 
+export default function GlobalError({ error }: { error: Error & { digest?: string } }) {
+    const look = errorScreenLook(useSyncExternalStore(unchanging, browserCookies, () => ''), useSyncExternalStore(unchanging, browserLanguage, none))
+    const words = ERROR_SCREEN_WORDS[look.locale]
     return (
-        <html>
-            <body style={{ margin: 0, fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', background: 'var(--surface-subtle)' }}>
-                <div style={{
-                    minHeight: '100vh',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '2rem',
-                }}>
-                    <div style={{
-                        maxWidth: '420px',
-                        textAlign: 'center',
-                        background: 'var(--surface)',
-                        borderRadius: '1.5rem',
-                        padding: '2.5rem 2rem',
-                        boxShadow: '0 20px 25px -5px var(--shadow-weak)',
-                    }}>
-                        <div aria-hidden="true" style={{ fontSize: '3rem', marginBottom: '1.5rem' }}>⚠️</div>
-                        <h2 style={{ color: 'var(--text-main)', marginBottom: '1rem', fontWeight: 800 }}>Something went wrong</h2>
-                        <p style={{ color: 'var(--text-soft)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-                            The app hit an unexpected error and couldn&apos;t recover on its own.
-                        </p>
-                        {ref && (
-                            <p style={{ color: 'var(--text-faint)', marginBottom: '1.5rem', fontSize: '0.85rem' }}>
-                                If this keeps happening, share this reference with your admin: <b>{ref}</b>
-                            </p>
-                        )}
-                        <button
-                            onClick={() => reset()}
-                            style={{
-                                padding: '0.75rem 1.5rem',
-                                fontWeight: 'bold',
-                                borderRadius: '0.5rem',
-                                border: 'none',
-                                background: 'var(--info-fill)',
-                                color: 'var(--text-on-accent)',
-                                cursor: 'pointer',
-                            }}
-                        >
-                            Try Again
-                        </button>
-                    </div>
-                </div>
+        <html lang={look.locale} dir={look.dir} data-theme={look.theme} className={fontVariables}>
+            <body>
+                <title>{words.error_screen_title}</title>
+                {/* Next gives the root layout's pages their viewport, not this one: without it a
+                    phone could draw it at a computer's width (found in the browser flows). */}
+                <meta name="viewport" content="width=device-width, initial-scale=1" />
+                <main className="ui-error-page">
+                    <ErrorScreen error={error} words={words} />
+                </main>
             </body>
         </html>
     )
