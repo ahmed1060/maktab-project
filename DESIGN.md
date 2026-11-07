@@ -1292,6 +1292,40 @@ These are built once, in the building-blocks PR, and every page uses them
     policy, the terms, and the language and theme switches, in a row that
     wraps on phones. The switches are the top bar's language switch and
     the account menu's theme switch (§5.1).
+- **The privacy policy and the terms of service:** two documents anyone
+  can open, signed in or not, as Google does before it lets Nizmo use
+  Drive. As with sign-in, there's no side bar and no top bar, and they're
+  in the default brand colour (§2.1).
+  - They're in English only, the language that governs them, as the note
+    at the foot of each says. So the whole page is, its frame too: left to
+    right, and marked as English, so a screen reader reads it as English
+    and the Arabic text rules (§3.2) leave it alone, whatever language the
+    app is in.
+  - A browser may translate them, as that note allows, but leaves a
+    service's name that's also an English word, such as HERE, the mapping
+    provider, as it is.
+  - On `--page`, flat, in a column at reading width (736px), with the
+    page's edge around it (32px, 16px on phones).
+  - At its top, Nizmo's mark and name, as the side bar's head shows a
+    company's without a logo (§5.1): a link to sign in, which takes
+    someone signed in back to the app.
+  - The document is a level-1 panel with 32px inside (16px on phones), as
+    a document's sheet is (§5.5, Document):
+    - its title as a page title is (§5.5, Page header), with when it was
+      last updated under it in `--muted`, then its first paragraph, on
+      what it covers, at `--text-xl`;
+    - its text at `--text-lg`, as it's read through rather than scanned,
+      in `--ink-2`. Its headings, at `--text-xl`, the terms it explains
+      and the words it stresses are at weight 500, in `--ink`;
+    - its links in `--brand-text`, underlined, as they sit in its
+      sentences;
+    - a note, such as the one saying English governs, has a 3px bar in the
+      neutral colour on its start edge, as a document's note has.
+  - Under it: the privacy policy, the terms and Sign in, as links at
+    `--text-sm` in `--brand-text`, in a row that wraps on phones, each
+    44px tall there (§9).
+  - Printed, the document is all there is: black on white, without the
+    page around it, from dark mode too.
 
 ---
 
@@ -1810,3 +1844,12 @@ changed:
   and the app's styles, fonts and the theme the person chose didn't reach
   it. Found in the browser flows: it didn't say how wide to be, so a phone
   could draw it at a computer's width, its words too small to read.
+- **2026-11-07:** The privacy policy and the terms of service (§5.5). They
+  were a column of their own making on the older pages' grey, in sizes
+  and colours of their own: Nizmo's name above in spaced capitals, their
+  titles and the links under them in Title Case, and words in bold
+  heavier than the app's. In Arabic, their frame was set left to right but
+  not marked as English, so a screen reader read the English as Arabic.
+  Printed, either one came out as blank pages. Found in the web interface
+  audit: a browser's translation could turn HERE, the mapping provider,
+  into the word for "here".

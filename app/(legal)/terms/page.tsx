@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
+import { buildTitle } from '@/lib/page-title'
 
 export const metadata: Metadata = {
-    title: 'Terms of Service — Nizmo',
+    title: buildTitle('Terms of service'),
     description: 'The terms under which companies and their staff use Nizmo.',
 }
 
@@ -19,10 +20,10 @@ export const metadata: Metadata = {
 export default function TermsOfService() {
     return (
         <>
-            <h1>Terms of Service</h1>
-            <p className="legal-updated">Last updated 17 September 2026</p>
+            <h1 className="ui-page-title">Terms of service</h1>
+            <p className="ui-page-subtitle">Last updated 17 September 2026</p>
 
-            <p className="legal-lede">
+            <p className="ui-legal-lede">
                 These terms cover the use of Nizmo. They apply both to the company that subscribes and
                 to the people it gives accounts to.
             </p>
@@ -72,7 +73,7 @@ export default function TermsOfService() {
                 The records a company puts into Nizmo remain that company&rsquo;s. We do not claim
                 ownership of them and we do not use them for anything except operating the service for
                 that company. How they are handled is set out in the{' '}
-                <a href="/privacy">Privacy Policy</a>.
+                <a href="/privacy">privacy policy</a>.
             </p>
             <p>
                 A company can ask for an export of its data while its account is active.
@@ -119,7 +120,7 @@ export default function TermsOfService() {
             </p>
             <p>
                 After an account is closed, data is handled as described in the{' '}
-                <a href="/privacy">Privacy Policy</a> — removed from the live system on request, with
+                <a href="/privacy">privacy policy</a> — removed from the live system on request, with
                 encrypted backups ageing out on their normal schedule.
             </p>
 
@@ -157,7 +158,7 @@ export default function TermsOfService() {
                 <a href="mailto:maktab.system@gmail.com">maktab.system@gmail.com</a>.
             </p>
 
-            <div className="legal-note">
+            <div className="ui-legal-note">
                 <p>
                     This document is published in English, and the English version governs. Any
                     translation is provided for convenience.
