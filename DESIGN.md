@@ -996,9 +996,12 @@ These are built once, in the building-blocks PR, and every page uses them
   dialog, side by side, on a phone too, each 3 by 4 with its name under
   it in `--muted`.
   - The viewer's name and the time the photos opened are written across
-    each, three times: a screenshot can't be prevented, so it says who
-    took it. A photo can't be dragged out or picked, and a right click
-    offers nothing on it.
+    each, three times, the time under the name: a screenshot can't be
+    prevented, so it says who took it, and when. The time is on the
+    viewer's own clock and in the page's digits, as a date and a time are
+    written ("7 Nov 2026, 12:23 pm", «٧ نوفمبر ٢٠٢٦، ١٢:٢٣ م»). A photo
+    can't be dragged out or picked, and a right click offers nothing on
+    it.
   - The dialog has Close, as a phone has no Escape key. Where something
     is decided on them, as a face check's review is, its buttons are
     beside Close.
@@ -1718,4 +1721,5 @@ changed:
   behind it, and Escape did nothing. The first download's share was in
   Western digits in Arabic. A flagged check-in's photos were in the
   older pages' window, with an X of its own making and their line in
-  `--text-soft`.
+  `--text-soft`. The watermark over them gave the time in UTC, unlabelled
+  and in Western digits in Arabic, after the name and a dot.
