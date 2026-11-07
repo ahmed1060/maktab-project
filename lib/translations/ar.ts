@@ -909,6 +909,9 @@ export const ar = {
         i_understand_button: "أفهم ذلك",
         title_changes_title: "تغييرات العنوان",
         description_changes_title: "تغييرات الوصف",
+        // What an edit changed (DESIGN.md §5.5): the key's words, and what screen readers hear before each mark.
+        diff_removed: "محذوف",
+        diff_added: "مضاف",
         points_label_plural: "نقاط",
         paid_status: "✓ مدفوع",
         pending_payment_status: "⏳ قيد الدفع",

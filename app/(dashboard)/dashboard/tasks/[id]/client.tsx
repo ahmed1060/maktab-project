@@ -1036,10 +1036,9 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
                 title={diffField === 'title' ? t('title_changes_title') : t('description_changes_title')}
                 actions={<Button onClick={() => setDiffField(null)}>{t('close')}</Button>}
             >
+                {/* The text keeps its own direction, which DiffViewer sets (DESIGN.md §5.5, "What an edit changed"). */}
                 {diffField && latestChanges && latestChanges[diffField] && (
-                    <div dir="auto">
-                        <DiffViewer oldText={latestChanges[diffField].from} newText={latestChanges[diffField].to} />
-                    </div>
+                    <DiffViewer oldText={latestChanges[diffField].from} newText={latestChanges[diffField].to} />
                 )}
             </Dialog>
 

@@ -976,6 +976,9 @@ export const en = {
         i_understand_button: "I understand",
         title_changes_title: "Title changes",
         description_changes_title: "Description changes",
+        // What an edit changed (DESIGN.md §5.5): the key's words, and what screen readers hear before each mark.
+        diff_removed: "Removed",
+        diff_added: "Added",
         points_label_plural: "Points",
         paid_status: "✓ PAID",
         pending_payment_status: "⏳ PENDING PAYMENT",
