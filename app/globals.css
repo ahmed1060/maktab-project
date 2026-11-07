@@ -368,12 +368,45 @@ body::before {
    (DESIGN.md §5.1): floating in the corner on a desktop, at the end of the
    page on a phone. In CSS, not decided by script after the page has run, so
    the first paint is already right. Where the side bar sits is
-   components/ui/ui.css (.ui-side-bar). */
+   components/ui/ui.css (.ui-side-bar).
+
+   Its look too, as the product owner kept it on 2026-11-05: written here as
+   it was drawn inline until PR 221, outside the building blocks' tokens. It
+   takes no pointer, so nothing under it is ever out of reach. */
 .floating-attribution {
   position: fixed;
   bottom: 1rem;
   inset-inline-end: 1.5rem;
   z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  text-align: center;
+}
+.floating-attribution-by {
+  font-size: 0.45rem;
+  color: var(--text-soft);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: var(--font-inter), sans-serif;
+}
+/* Faded, the large name only: it is large text (3:1 is enough). "Powered by"
+   is tiny and was 3.0:1 faded. */
+.floating-attribution-name {
+  opacity: 0.7;
+  font-size: 1.35rem;
+  color: var(--text-main);
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  margin-top: 0.05rem;
+  text-transform: uppercase;
+  font-family: var(--font-inter), sans-serif;
+  background: linear-gradient(135deg, var(--text-main) 0%, var(--text-muted) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 @media (max-width: 1023px) {
   .floating-attribution {

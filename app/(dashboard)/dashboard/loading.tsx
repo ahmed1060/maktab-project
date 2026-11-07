@@ -1,8 +1,6 @@
 'use client'
 
-import { HourglassIcon } from '@phosphor-icons/react/ssr'
-import { useLanguage } from '@/context/LanguageContext'
-import { EmptyState, Page } from '@/components/ui'
+import { PageLoading } from '@/components/PageLoading'
 
 // Next.js shows this automatically the instant a navigation to any
 // /dashboard/* route starts, while that route's server component does its
@@ -14,12 +12,8 @@ import { EmptyState, Page } from '@/components/ui'
 //
 // It says so as every page does while it loads (DESIGN.md §5.5): the panel
 // with the hourglass, where the page will be, which a screen reader hears.
-// It was the old spinner, of its own making (PR 190).
+// It was the old spinner, of its own making (PR 190). The frame around the
+// page says the same while it waits (components/PageLoading.tsx, PR 221).
 export default function DashboardLoading() {
-    const { t } = useLanguage()
-    return (
-        <Page>
-            <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
-        </Page>
-    )
+    return <PageLoading />
 }

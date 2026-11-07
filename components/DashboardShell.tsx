@@ -58,7 +58,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     // side bar sits is CSS; this is only whether it's a dialog, and open.
     const isPhone = useSyncExternalStore(subscribePhone, isPhoneNow, () => false)
     const [drawerOpen, setDrawerOpen] = useState(false)
-    const { t, locale } = useLanguage()
+    const { t } = useLanguage()
     // The company's package, from the account the layout passed until the
     // session has loaded (useFeatures), so what it leaves out never shows.
     const features = useFeatures()
@@ -112,7 +112,6 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     // that company's module names.
     const scopedBranding = useCompanyBranding()
     const logoUrl = scopedBranding ? scopedBranding.logoUrl : (user?.logoUrl ?? null)
-    const isRtl = locale === 'ar'
 
     // Closed on another page, and when the window grows past a phone's.
     useAdjustOnChange([pathname, isPhone], () => setDrawerOpen(false))
@@ -137,8 +136,10 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     return (
         // The side bar beside the page on a computer, in its flow, and a
         // drawer over it on a phone: CSS (.ui-side-bar), so the first paint is
-        // already right, with no margin kept in step with its width.
-        <div style={{ display: 'flex', minHeight: '100vh', background: 'transparent' }}>
+        // already right, with no margin kept in step with its width. The
+        // page's direction is the page's own, set with its language
+        // (context/LanguageContext.tsx), for the whole frame at once.
+        <div className="ui-shell">
             {/* Inside the Nizmo app: pushes on, and a tapped notice opens its page. */}
             {inApp && <AppPush />}
             {/* Renders nothing; sets the browser tab title for the current route.
@@ -167,19 +168,9 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                 waiting={waiting?.data?.count}
             />
 
-            {/* Main Content Wrapper */}
-            <main className="shell-main" style={{
-                flex: 1,
-                // A flex item is never narrower than its content by default,
-                // and a header subtitle that cuts off with an ellipsis still
-                // counts at full length: a long one widened the whole page.
-                minWidth: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                minHeight: '100vh',
-                background: 'transparent',
-                direction: isRtl ? 'rtl' : 'ltr',
-            }}>
+            {/* The page, beside the side bar: as tall as the screen, and never
+                wider than its column (.ui-shell-main in components/ui/ui.css). */}
+            <main className="ui-shell-main">
                 {/* The top bar (DESIGN.md §5.1), at the top as the page scrolls.
                     Past 10px it floats as glass, drawn on the bar inside this
                     frame, which keeps its height: the page under it never moves. */}
@@ -203,66 +194,20 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     <SubscriptionNote />
                     {children}
                 </div>
-                {/* Floating Attribution - Minimalist CYSHIELD style.
+                {/* The "Powered by" signature, kept as it is (DESIGN.md §5.1):
+                    floating in the corner on a computer, at the end of the page
+                    on a phone, its look in app/globals.css (.floating-attribution).
                     Hidden entirely when switched off in System Settings, not
                     merely made transparent: an invisible element still takes a
-                    corner of the screen and still reads out to a screen reader. */}
+                    corner of the screen and still reads out to a screen reader.
+                    The name is left as it is by a browser's translation, as its
+                    preview on System settings leaves it. */}
                 {showPoweredBy && (
-                <div style={{
-                    // In the page on a phone, floating in the corner on a
-                    // desktop.
-                    //
-                    // Fixed, it sat in the viewport's bottom corner at z-index
-                    // 100 — above the mobile sidebar (50) and its scrim (49) —
-                    // so opening the drawer painted the signature straight
-                    // across the navigation behind it. A phone has no spare
-                    // corner to float something in, and this is decoration: it
-                    // belongs at the end of the page there, not over whatever
-                    // happens to be underneath.
-                    // Its placement (in the page on a phone, in the corner on a
-                    // desktop) is CSS: .floating-attribution in globals.css.
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center', // Centered relative to each other
-                    pointerEvents: 'none',
-                    transition: 'all 0.3s ease',
-                    textAlign: 'center'
-                }} className="floating-attribution">
-                    <span style={{
-                        fontSize: '0.45rem',
-                        color: 'var(--text-soft)',
-                        fontWeight: '600',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.1em',
-                        fontFamily: 'var(--font-inter), sans-serif'
-                    }}>
-                        {t('powered_by') || 'Powered by'}
-                    </span>
-                    {/* Faded, the large name only: it is large text (3:1 is
-                        enough). "Powered by" is tiny and was 3.0:1 faded. */}
-                    <span style={{
-                        opacity: 0.7,
-                        fontSize: '1.35rem',
-                        color: 'var(--text-main)',
-                        fontWeight: '900',
-                        letterSpacing: '0.15em',
-                        marginTop: '0.05rem',
-                        textTransform: 'uppercase',
-                        fontFamily: 'var(--font-inter), sans-serif',
-                        background: 'linear-gradient(135deg, var(--text-main) 0%, var(--text-muted) 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                    }}>
-                        {poweredByName?.trim() || DEFAULT_POWERED_BY_NAME}
-                    </span>
-                </div>
+                    <div className="floating-attribution">
+                        <span className="floating-attribution-by">{t('powered_by')}</span>
+                        <span className="floating-attribution-name" translate="no">{poweredByName?.trim() || DEFAULT_POWERED_BY_NAME}</span>
+                    </div>
                 )}
-
-                <style jsx>{`
-                    .floating-attribution:hover {
-                        opacity: 1;
-                    }
-                `}</style>
             </main>
         </div>
     )

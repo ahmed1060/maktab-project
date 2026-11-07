@@ -17,6 +17,7 @@ import { cashAdvancesInUse } from "@/lib/cash-advances"
 
 import { Suspense } from "react"
 import DashboardErrorBoundary from "@/components/DashboardErrorBoundary"
+import { PageLoading } from "@/components/PageLoading"
 
 export const dynamic = 'force-dynamic'
 
@@ -92,7 +93,9 @@ export default async function DashboardLayout({
         <DashboardShell user={user} showPoweredBy={showPoweredBy} poweredByName={poweredByName} showCompanySettings={showCompanySettings} cashAdvances={cashAdvances}>
             <UserHeartbeat />
             <DashboardErrorBoundary>
-                <Suspense fallback={<div className="p-8 text-center opacity-50">Loading section...</div>}>
+                {/* While the frame waits, the page says it's loading as every
+                    page does, in its language (DESIGN.md §5.5, Loading). */}
+                <Suspense fallback={<PageLoading />}>
                     {children}
                 </Suspense>
             </DashboardErrorBoundary>

@@ -5281,6 +5281,23 @@ a.ui-notice:focus-visible {
 }
 /* end of the bell's panel */
 
+/* The shell (§5.1, components/DashboardShell.tsx): the side bar beside the
+   page, in its flow, and the page as tall as the screen. A flex item is never
+   narrower than its content by default, and a header subtitle that cuts off
+   with an ellipsis still counts at full length: a long one widened the whole
+   page, so the page's column may be narrower than what's in it. */
+.ui-shell {
+  display: flex;
+  min-block-size: 100vh;
+}
+.ui-shell-main {
+  flex: 1;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100vh;
+}
+
 /* The page area (§5.1): the page-edge spacing (§4.1), and 8px under the top
    bar, as the approved mock-up has it. */
 .ui-page-area {

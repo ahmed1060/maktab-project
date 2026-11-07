@@ -73,10 +73,13 @@ describe("text contrast, light theme", () => {
         // The audit log's filter faded its labels to half; it's the building
         // blocks' filter bar now (lib/super-admin-audit-logs.test.ts).
 
-        // "Powered by": the fade moved from the whole signature to the large name.
-        const shell = readFileSync("components/DashboardShell.tsx", "utf8")
-        const signature = shell.slice(shell.indexOf('className="floating-attribution"') - 900, shell.indexOf("DEFAULT_POWERED_BY_NAME}"))
-        expect(signature).not.toMatch(/pointerEvents: 'none',\s*opacity: 0\.7/)
-        expect(signature).toMatch(/opacity: 0\.7,\s*fontSize: '1\.35rem'/)
+        // "Powered by": the fade moved from the whole signature to the large
+        // name, in the app's CSS since the shell's inline styles went (PR 221).
+        const css = readFileSync("app/globals.css", "utf8")
+        const ruleOf = (selector: string) => css.slice(css.indexOf(`\n${selector} {`), css.indexOf("}", css.indexOf(`\n${selector} {`)))
+        expect(css).toContain("\n.floating-attribution {")
+        expect(ruleOf(".floating-attribution")).not.toContain("opacity")
+        expect(ruleOf(".floating-attribution-by")).not.toContain("opacity")
+        expect(ruleOf(".floating-attribution-name")).toMatch(/opacity: 0\.7;[\s\S]*font-size: 1\.35rem;/)
     })
 })
