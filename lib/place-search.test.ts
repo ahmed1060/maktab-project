@@ -131,6 +131,13 @@ describe("the field", () => {
         expect(existsSync("components/LocationSearchInput.tsx")).toBe(false)
     })
 
+    it("isn't named by the file it replaced where the app is set up (found in PR 216)", () => {
+        // next.config.mjs says who may ask for the device's position; .env.example, what the search's key is for.
+        for (const file of ["next.config.mjs", ".env.example"]) expect(readFileSync(file, "utf8"), file).not.toContain("LocationSearchInput")
+        expect(readFileSync("next.config.mjs", "utf8")).toContain("// geolocation=(self): components/PointPicker.tsx (\"Use my current location\") and the")
+        expect(readFileSync(".env.example", "utf8")).toContain("# ---- Optional: the place search (components/locations/PlaceSearch.tsx) ----")
+    })
+
     it("drops the pin in the place fields, and names a place that has no name yet", () => {
         expect(FIELDS).toContain("import PlaceSearch from './PlaceSearch'")
         expect(FIELDS).toMatch(/<Field label=\{t\('location_search'\)\}>\{p => <PlaceSearch \{\.\.\.p\} placeholder=\{t\('location_search_placeholder'\)\} onPick=\{place => set\(\{ point: place\.point, name: draft\.name\.trim\(\) \? draft\.name : place\.name \}\)\} \/>\}<\/Field>/)
