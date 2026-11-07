@@ -562,7 +562,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      review of tasks, in two parts: its window, merged in #212 on
      2026-11-06, then reading the file's rows, merged in #213 on
      2026-11-06, which finished it; then the toasts, merged in #214 on
-     2026-11-07; then the map pin picker and the place search, in #215;
+     2026-11-07; then the map pin picker and the place search, merged in
+     #215 on 2026-11-07; then the face check's camera and a flagged
+     check-in's face photos, in #216;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4728,3 +4730,40 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   then typed again asks the search again, as for another branch of the
   same business. Only the pick filling the field in isn't asked about;
   the name retyped brought no suggestions at all.
+- **2026-11-07:** The face check's camera and a flagged check-in's face
+  photos on the building blocks (#216; `DESIGN.md` §5.5, "The face
+  check's camera" and "Face photos"):
+  - the camera is drawn by `components/ui/ui.css`, where its look was
+    typed into `components/FaceCamera.tsx`. Its step, Close and tick are
+    Phosphor icons, where they were the characters ↔, ◡, ✕ and ✓, and each
+    step shows its name, which was never shown;
+  - its turn gauge is left to right in Arabic too, with logical
+    properties, where it was placed with left and right;
+  - its words, its step's card, the test version's pill and Close are on
+    the picture dimmed to 55%, which holds 4.5:1 over the lightest
+    picture; the pill's words could fall to 2.7:1. The tick is black on
+    the done colour, 9:1, where white on it was 2.3:1;
+  - it's a dialog by `useDialog`: it takes the focus as it opens, keeps
+    Tab in and ends the check on Escape, the focus going back to what
+    opened it. The focus stayed on the page behind it, so Tab walked that
+    page, and Escape did nothing;
+  - the first download's share is in the page's digits, and with "reduce
+    motion" the ring, the time left and the dot move at once;
+  - its Arabic no longer speaks to one person in the masculine:
+    «يُرجى النظر مباشرة إلى الكاميرا», «يُرجى إغماض العينين لحظة ثم فتحهما»
+    and the rest. "Let's try that step again" no longer speaks as "we":
+    "This step starts again.";
+  - a flagged check-in's photos, on the Requests page and Check-ins, are
+    in the building blocks' dialog, with Close (`FlaggedFaceDialog`, which
+    was `FlaggedFaceModal`), where they were in the older pages' window,
+    their line in `--text-soft`. Only the code a high-risk action asks for
+    (`components/StepUpInterceptor.tsx`) is still in that window;
+  - from the browser flows: on a 360px phone, the two photos fell one
+    under the other, in a face check's review too. And `next.config.mjs`
+    and `.env.example` still named `components/LocationSearchInput.tsx`,
+    which #215 replaced;
+  - from the web interface audit: the live picture was read out as a
+    video with no name; the time left and the turn's dot moved by layout;
+    Close had no hover, and wasn't in the shared rule for taps; the test
+    version's pill left "only." alone on its second line, and the
+    download's share changed width with its digits.
