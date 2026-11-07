@@ -189,6 +189,22 @@ describe("a page the app has to leave", () => {
         expect(WrenchIcon).toBeTruthy()
     })
 
+    it("scrolls a why longer than the screen from its top, breaks a long link in it, and draws no ring", () => {
+        const cover = rule(".ui-cover")
+        const panel = rule(".ui-cover-panel")
+        // In the middle by its own margins: centred by the cover instead, one taller than the
+        // screen, as a long maintenance message on a phone on its side, starts above its top,
+        // out of the scroll's reach.
+        for (const decl of ["align-items:", "justify-content:"]) expect(cover, decl).not.toContain(decl)
+        expect(panel).toContain("margin: auto;")
+        expect(cover).toContain("overscroll-behavior: contain;")
+        // A link with no space in it breaks where it must, rather than run off the side.
+        expect(panel).toContain("overflow-wrap: anywhere;")
+        // Nothing on it can be used: no ring, the keyboard's included.
+        expect(rule(".ui-cover-panel:focus")).toContain("outline: none;")
+        expect(UI).not.toContain(".ui-cover-panel:focus:not(:focus-visible)")
+    })
+
     it("says what happened in sentence case, and what's next as it happens", () => {
         expect([en.account_suspended, en.account_archived, en.company_banned, en.maintenance_detected_title])
             .toEqual(["Account suspended", "Account closed", "Company banned", "The system is under maintenance"])

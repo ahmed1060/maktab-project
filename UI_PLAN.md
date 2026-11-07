@@ -4810,4 +4810,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     Failed to fetch", which every browser flow had to leave out;
   - the four colours only the old screen used (`--warn-solid`,
     `--warn-fg-mid`, `--veil-30`, `--scrim-deep`) are gone from
-    `app/globals.css`, in both themes.
+    `app/globals.css`, in both themes;
+  - found in the web interface audit, before review: a long maintenance
+    message on a phone on its side started above the screen's top, out of
+    the scroll's reach, a link in it ran off the side, and a focus ring was
+    drawn round its message. It's in the middle by its own margins now, a
+    link in it breaks where it must, and it draws no ring, as nothing on it
+    can be used.

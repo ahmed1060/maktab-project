@@ -556,18 +556,24 @@
   inset: 0;
   z-index: 99998;
   display: flex;
-  align-items: center;
-  justify-content: center;
   padding: var(--space-4);
   overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--page);
 }
+/* In the middle by its own margins: centred by the cover instead, a why
+   longer than the screen, as a long maintenance message on a phone on its
+   side, would start above its top, out of the scroll's reach. A link in it
+   with no space breaks where it must, rather than run off the side. */
 .ui-cover-panel {
   max-inline-size: 480px;
+  margin: auto;
+  overflow-wrap: anywhere;
 }
-/* It takes the focus as it opens, to be heard: no ring round it for that,
-   as a dialog has none, but the keyboard's ring stays. */
-.ui-cover-panel:focus:not(:focus-visible) {
+/* It takes the focus to be heard, and keeps it. Nothing on it can be used,
+   so it draws no ring, for the keyboard either (found in the interface
+   audit: one was drawn round its message). */
+.ui-cover-panel:focus {
   outline: none;
 }
 
