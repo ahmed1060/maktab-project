@@ -568,7 +568,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      high-risk action asks for and the screen over a page the app has to
      leave, merged in #217 on 2026-11-07; then what an edit changed on a
      task's page, merged in #218 on 2026-11-07; then a page that broke
-     and the app itself, in #219;
+     and the app itself, merged in #219 on 2026-11-07; then the privacy
+     policy and the terms of service, in #220;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4877,3 +4878,34 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     said nothing of how wide to be, as Next gives the root layout's pages
     their viewport and not it, so a phone could draw it at a computer's
     width. It says so itself now, as every page does.
+- **2026-11-07:** The privacy policy and the terms of service on the
+  building blocks (#220; `DESIGN.md` §5.5, "The privacy policy and the
+  terms of service"):
+  - `app/(legal)/layout.tsx` draws them in one column at reading width on
+    `--page`: Nizmo's mark and name at the top, as the side bar's head
+    shows a company without a logo, a link to sign in; the document on a
+    sheet, as a document's is; and under it the privacy policy, the terms
+    and Sign in, in the app's words. It was a column of its own making in
+    seven inline styles on the older pages' grey, under Nizmo's name in
+    spaced capitals, with the links under it in Title Case;
+  - the whole page is marked as English, its frame too, where only its
+    direction was set: in Arabic, a screen reader read the English as
+    Arabic. The Arabic text rules in `components/ui/ui.css` follow the
+    text's language now, not the page's, so they leave the English title
+    its spacing;
+  - each document's title is a page title, "Privacy policy" and "Terms of
+    service", with when it was last updated under it, and its browser tab
+    says "Nizmo — Privacy policy", as the app's pages say theirs. The terms
+    name the privacy policy in sentence case too, and the privacy policy
+    names Check in as the app's button says it. Their words are otherwise
+    as they were;
+  - their text is at `--text-lg` in `--ink-2`, and their headings, at
+    `--text-xl`, and words in bold are at weight 500, where they were 700
+    and 600; their notes have the neutral bar on their start edge, as a
+    document's note has. The `.legal` block in `app/globals.css` is gone;
+  - printed, the document is all there is, black on white from dark mode
+    too. The app's print styles hide all but a paper it issues, so either
+    page printed blank;
+  - found in the web interface audit: a browser's translation, which the
+    documents allow, could turn HERE, the mapping provider, into the word
+    for "here". Its name is kept from translation (`translate="no"`).
