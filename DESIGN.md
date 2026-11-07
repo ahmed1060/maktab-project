@@ -1853,3 +1853,8 @@ changed:
   Printed, either one came out as blank pages. Found in the web interface
   audit: a browser's translation could turn HERE, the mapping provider,
   into the word for "here".
+- **2026-11-07:** What was left of the dashboard's frame (§5.1; §5.5,
+  Loading). While the frame waited, the page said "Loading section..." in
+  English, in classes no stylesheet had, where every page says it's
+  loading as the building blocks do. The "Powered by" signature keeps its
+  look, as decided on 2026-11-05.
