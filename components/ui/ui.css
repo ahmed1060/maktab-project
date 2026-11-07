@@ -2129,6 +2129,9 @@ a.ui-file-open:focus-visible,
   pointer-events: none;
 }
 .ui-face-photo-marks > span {
+  /* The time under the name (§5.5, Face photos; PR 216). */
+  display: grid;
+  justify-items: center;
   padding: 0 var(--space-1);
   border-radius: var(--radius-field);
   background: var(--chip-solid-bg);

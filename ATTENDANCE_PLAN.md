@@ -797,7 +797,9 @@ profile, not in any list, and has no page of its own. It is shown only:
   long-lived URL, with `no-store` so it is not cached in the browser.
 - **Viewer watermark.** Displayed with the viewer's name and the time overlaid, so
   a screenshot identifies who took it. Screenshots cannot be prevented on the web;
-  this makes them traceable.
+  this makes them traceable. The time is the one the photos opened at, on the
+  viewer's own clock and in the page's digits (`DESIGN.md` §5.5, Face photos;
+  PR 216).
 - **Every view audited** — who, when, for which review.
 
 This combines with phone approval (§9.3): a new phone means a new enrolment, a new

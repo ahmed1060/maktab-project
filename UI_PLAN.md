@@ -4758,6 +4758,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     was `FlaggedFaceModal`), where they were in the older pages' window,
     their line in `--text-soft`. Only the code a high-risk action asks for
     (`components/StepUpInterceptor.tsx`) is still in that window;
+  - the watermark over face photos, in a face check's review too, has the
+    time under the viewer's name, on the viewer's own clock and in the
+    page's digits, as a date and a time are written
+    (`lib/calendar-text.ts`). It was UTC, unlabelled and in Western
+    digits in Arabic, after the name and a dot (asked on #216);
   - from the browser flows: on a 360px phone, the two photos fell one
     under the other, in a face check's review too. And `next.config.mjs`
     and `.env.example` still named `components/LocationSearchInput.tsx`,

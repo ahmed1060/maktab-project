@@ -370,7 +370,7 @@ describe("face verification", () => {
 describe("a face photo", () => {
     it("has the building blocks' look, with the watermark over it", async () => {
         const { FacePhoto } = await import("@/components/FacePhoto")
-        const html = renderToStaticMarkup(h(FacePhoto, { src: "/x", label: "New photo", mark: "Hana · 2026-11-01 01:00" }))
+        const html = renderToStaticMarkup(h(FacePhoto, { src: "/x", label: "New photo", mark: { who: "Hana", when: "1 Nov 2026, 1:00 am" } }))
         expect(html).toContain('<figure class="ui-face-photo"><div class="ui-face-photo-frame">')
         expect(html).toContain('<img src="/x" alt="New photo" draggable="false"/>')
         expect(html).toContain('<div aria-hidden="true" class="ui-face-photo-marks">')
