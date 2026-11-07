@@ -3888,17 +3888,17 @@ html[lang="ar"] .ui-empty-title {
   .ui-row-caret,
   .ui-donut-row,
   .ui-donut-arc,
-  .ui-toast-close,
   .ui-camera-ring,
   .ui-camera-time > span,
   .ui-camera-turn-dot,
-  .ui-camera-close {
+  .ui-camera-close,
+  .ui-toast-close {
     transition: none;
   }
   .ui-control[data-busy]::after,
   .ui-btn[aria-busy="true"]::after,
-  .ui-toast,
-  .ui-camera-tick {
+  .ui-camera-tick,
+  .ui-toast {
     animation: none;
   }
 }
