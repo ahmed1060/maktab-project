@@ -999,7 +999,9 @@ These are built once, in the building-blocks PR, and every page uses them
     each, three times, the time under the name: a screenshot can't be
     prevented, so it says who took it, and when. The time is on the
     viewer's own clock and in the page's digits, as a date and a time are
-    written ("7 Nov 2026, 12:23 pm", «٧ نوفمبر ٢٠٢٦، ١٢:٢٣ م»). A photo
+    written ("7 Nov 2026, 12:23 pm", «٧ نوفمبر ٢٠٢٦، ١٢:٢٣ م»). On a
+    photo too narrow for them, as on a small phone, the time goes under
+    its date, never past the photo's edge or with "pm" alone. A photo
     can't be dragged out or picked, and a right click offers nothing on
     it.
   - The dialog has Close, as a phone has no Escape key. Where something
