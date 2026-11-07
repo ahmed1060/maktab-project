@@ -148,9 +148,11 @@ describe("its rules (components/ui/ui.css)", () => {
         expect(shared).toMatch(/\.ui-control\[data-busy\]::after,\n\s*\.ui-btn\[aria-busy="true"\]::after,/)
     })
 
-    it("give the line under it room only when it says something", () => {
-        expect(rule(".ui-place-search-note")).toMatch(/margin: var\(--space-1\) 0 0;/)
-        expect(rule(".ui-place-search-note:empty")).toMatch(/margin: 0;/)
+    it("give the line under it room only when it says something, in a dialog too", () => {
+        // Over .ui-dialog-body p, which takes every paragraph's margin away.
+        expect(rule(".ui-place-search > .ui-place-search-note")).toMatch(/margin: var\(--space-1\) 0 0;/)
+        expect(rule(".ui-place-search > .ui-place-search-note:empty")).toMatch(/margin: 0;/)
+        expect(UI).toMatch(/\n\.ui-dialog-body p \{\s*margin: 0;/)
     })
 })
 

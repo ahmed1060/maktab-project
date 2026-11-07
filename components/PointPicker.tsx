@@ -159,6 +159,9 @@ export default function PointPicker({ value, radius, onChange }: {
         else {
             pin.current = lf.L.marker(at, {
                 draggable: true,
+                // No stop for the keyboard, which can't move it: the arrows
+                // move the map, and "Pin the centre" places it.
+                keyboard: false,
                 title: t('att_loc_pin'),
                 alt: t('att_loc_pin'),
                 icon: lf.L.divIcon({ className: 'ui-map-pin', iconSize: [22, 22], iconAnchor: [11, 11] }),

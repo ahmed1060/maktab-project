@@ -76,6 +76,12 @@ describe("the map", () => {
         expect(SRC).toContain("toggle?.setAttribute('aria-label', t('att_loc_layers'))")
     })
 
+    // The probe on PR 215: Tab from the map stopped on the pin, which the
+    // keys can't move, ringed in the older pages' colour.
+    it("leaves the pin out of the keyboard's way: the arrows and \"Pin the centre\" place it", () => {
+        expect(SRC).toMatch(/lf\.L\.marker\(at, \{\s*draggable: true,(\s*\/\/[^\n]*)*\s*keyboard: false,\s*title:/)
+    })
+
     it("draws its pin and radius with the building blocks' classes", () => {
         expect(SRC).toContain("icon: lf.L.divIcon({ className: 'ui-map-pin', iconSize: [22, 22], iconAnchor: [11, 11] })")
         expect(SRC).toContain("className: 'ui-map-ring-halo'")
@@ -93,7 +99,8 @@ describe("its rules (components/ui/ui.css)", () => {
     it("put the buttons right below the pin, and the line under them only when it says something", () => {
         const buttons = rule(".ui-point-picker-buttons")
         for (const want of [/display: flex;/, /flex-wrap: wrap;/, /gap: var\(--space-2\);/]) expect(buttons).toMatch(want)
-        expect(rule(".ui-point-picker > * + *")).toMatch(/margin-block-start: var\(--space-2\);/)
+        // Over .ui-dialog-body p, which takes every paragraph's margin away, as the line is one.
+        expect(rule(".ui-point-picker > :not(:first-child)")).toMatch(/margin-block-start: var\(--space-2\);/)
         expect(rule(".ui-point-picker > .ui-point-picker-status:empty")).toMatch(/margin-block-start: 0;/)
         expect(rule(".ui-point-picker-status")).toMatch(/margin: 0;/)
     })

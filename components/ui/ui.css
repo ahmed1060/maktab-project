@@ -2083,11 +2083,12 @@ a.ui-file-open:focus-visible,
   line-height: var(--leading-sm);
 }
 /* What it says when nothing matches, or it isn't answering: room only
-   then, though it's always there, so a screen reader hears it come. */
-.ui-place-search-note {
+   then, though it's always there, so a screen reader hears it come. Over
+   .ui-dialog-body p, which takes every paragraph's margin away. */
+.ui-place-search > .ui-place-search-note {
   margin: var(--space-1) 0 0;
 }
-.ui-place-search-note:empty {
+.ui-place-search > .ui-place-search-note:empty {
   margin: 0;
 }
 /* A field waiting on an answer: a small spinner at its end, as a busy
@@ -2117,7 +2118,8 @@ a.ui-file-open:focus-visible,
 .ui-point-picker-status {
   margin: 0;
 }
-.ui-point-picker > * + * {
+/* Over .ui-dialog-body p, as the line is a paragraph. */
+.ui-point-picker > :not(:first-child) {
   margin-block-start: var(--space-2);
 }
 .ui-point-picker > .ui-point-picker-status:empty {
