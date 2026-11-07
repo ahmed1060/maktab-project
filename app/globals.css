@@ -84,7 +84,6 @@
   --warn-bg: #fef3c7;
   --warn-border: #fcd34d;
   --warn-fg: #92400e;
-  --warn-solid: #f59e0b;
 
   --info-bg: #e0f2fe;
   --info-bg-subtle: #eff6ff;
@@ -109,8 +108,6 @@
   --warn-border-warm: #fed7aa;
   --warn-fg-warm: #9a3412;
   --warn-solid-warm: #fb923c;
-
-  --warn-fg-mid: #b45309;
 
   --info-bg-indigo: #dbeafe;
   --info-border-indigo: #a5b4fc;
@@ -207,7 +204,6 @@
                dark surface, not a faint white, or the content behind it reads
                straight through. */
   --veil-20: rgba(255, 255, 255, 0.2);
-  --veil-30: rgba(255, 255, 255, 0.3);
   --veil-40: rgba(255, 255, 255, 0.4);
   --veil-50: rgba(255, 255, 255, 0.5);
   --veil-60: rgba(255, 255, 255, 0.6);
@@ -222,7 +218,7 @@
      --shadow-*  a drop shadow. Black at 5-10% is simply invisible against a
                  dark page, so cards lose the separation that shadow was
                  carrying. Dark needs a far heavier one to read at all.
-     --scrim-*   the dimming layer behind a modal. Stays dark in both themes —
+     --scrim     the dimming layer behind a modal. Stays dark in both themes —
                  its job is to push the page back — but goes deeper on dark,
                  where a 50% scrim over an already-dark page barely registers.
      --hairline  a faint dark rule. On dark it has to invert to a faint light
@@ -232,7 +228,6 @@
   --shadow-mid: rgba(0, 0, 0, 0.25);
 
   --scrim: rgba(0, 0, 0, 0.5);
-  --scrim-deep: rgba(0, 0, 0, 0.85);
 
   /* Paper, for documents that get printed.
      Deliberately not theme-aware and deliberately not redefined below: paper is
@@ -1047,13 +1042,11 @@ input::-webkit-credentials-auto-fill-button {
     --warn-bg: #3a2c0d;
     --warn-border: #6b5117;
     --warn-fg: #f0c96b;
-    --warn-solid: #e0a52e;
     --warn-bg-warm: #3a2110;
     --warn-bg-warm-subtle: #2a1809;
     --warn-border-warm: #6b3d1c;
     --warn-fg-warm: #f5b183;
     --warn-solid-warm: #e08a4e;
-    --warn-fg-mid: #f0c96b;
 
     --info-bg: #0d2b3d;
     --info-bg-subtle: #0a1f2e;
@@ -1096,7 +1089,6 @@ input::-webkit-credentials-auto-fill-button {
     --chip-solid-bg: #2b3340;
     --chip-solid-fg: #f0f6fc;
     --veil-20: rgba(255, 255, 255, 0.06);
-    --veil-30: rgba(255, 255, 255, 0.07);
     --veil-40: rgba(255, 255, 255, 0.09);
     --veil-50: rgba(255, 255, 255, 0.11);
     --veil-60: rgba(255, 255, 255, 0.14);
@@ -1110,7 +1102,6 @@ input::-webkit-credentials-auto-fill-button {
     --shadow-mid: rgba(0, 0, 0, 0.6);
 
     --scrim: rgba(0, 0, 0, 0.7);
-    --scrim-deep: rgba(0, 0, 0, 0.9);
 
     --hairline: rgba(255, 255, 255, 0.06);
 

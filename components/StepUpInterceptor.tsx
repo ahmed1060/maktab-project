@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
+import { useEffect, useRef, useState, type FormEvent, type Ref } from 'react'
 import { useSession } from 'next-auth/react'
-import Modal from '@/components/Modal'
+import { Button, ButtonLink, Dialog, DialogActions, Field, TextInput } from '@/components/ui'
 import { stepUpWaiting } from '@/lib/step-up-waiting'
-import { LAYER } from '@/lib/layers'
+import { stepUpCheck } from '@/lib/step-up-check'
+import { codeDigits, isCode } from '@/lib/security-forms'
+import { countOf } from '@/lib/plural'
 import { useLanguage } from '@/context/LanguageContext'
 
 /**
@@ -19,19 +20,27 @@ import { useLanguage } from '@/context/LanguageContext'
  * original request again; the screen that asked gets that second answer and
  * never knows. Cancelling hands it the refusal. `MFA_ENROL_REQUIRED` says to
  * set up two-factor authentication first.
+ *
+ * On the building blocks' dialog, above every other one (DESIGN.md §5.5,
+ * Dialog; PR 217): it was the last of the older pages' windows.
  */
 
 type Ask = { kind: 'code' | 'enrol'; minutes: number }
+/** What's said under the code: not six digits, not right, or not checked. */
+export type CodeError = 'invalid' | 'wrong' | 'unchecked'
+
+const ERROR_TEXT = { invalid: 'security_mfa_code_invalid', wrong: 'security_mfa_code_wrong', unchecked: 'step_up_unchecked' } as const
 
 export default function StepUpInterceptor() {
-    const { t } = useLanguage()
     const { data: current, update } = useSession()
     const [ask, setAsk] = useState<Ask | null>(null)
     // Every request waiting on the prompt, settled together by its answer.
     const [waiting] = useState(stepUpWaiting)
     const [code, setCode] = useState('')
-    const [wrong, setWrong] = useState(false)
+    const [error, setError] = useState<CodeError | null>(null)
     const [checking, setChecking] = useState(false)
+    // The code's field, to go back to with what's wrong under it.
+    const field = useRef<HTMLInputElement>(null)
     // The latest update() for the patched fetch, which is installed once.
     const updateRef = useRef(update)
     useEffect(() => { updateRef.current = update }, [update])
@@ -61,62 +70,90 @@ export default function StepUpInterceptor() {
         return () => { window.fetch = inner }
     }, [waiting])
 
+    // What was typed is never kept: each time it opens, the field is empty.
     const close = (confirmed: boolean) => {
         waiting.settle(confirmed)
         setAsk(null)
         setCode('')
-        setWrong(false)
+        setError(null)
+    }
+    // Not while the code is checked: its answer decides.
+    const cancel = () => { if (!checking) close(false) }
+    const wrongly = (problem: CodeError) => {
+        setError(problem)
+        field.current?.focus()
     }
 
-    const confirm = async (e: React.FormEvent) => {
+    const confirm = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
+        if (checking) return
+        // Said under the code before anything is sent, as signing in's is.
+        if (!isCode(code)) return wrongly('invalid')
         setChecking(true)
-        setWrong(false)
+        setError(null)
         try {
             const session = await updateRef.current({ stepUpCode: code.trim() })
-            const at = (session?.user as { stepUpAt?: number | null } | undefined)?.stepUpAt
-            if (at && at !== previousRef.current) close(true)
-            else setWrong(true)
+            const check = stepUpCheck(session, previousRef.current)
+            if (check === 'confirmed') close(true)
+            else wrongly(check)
         } finally {
             setChecking(false)
         }
     }
 
     if (!ask) return null
-    if (ask.kind === 'enrol') {
-        return (
-            <Modal isOpen onClose={() => close(false)} title={t('step_up_enrol_title')} zIndex={LAYER.codePrompt}>
-                <p style={{ marginTop: 0 }}>{t('step_up_enrol_hint')}</p>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                    <button type="button" className="btn" style={{ background: 'var(--border)', color: 'var(--text-strong)' }} onClick={() => close(false)}>{t('roles_cancel')}</button>
-                    <Link className="btn btn-primary" href="/dashboard/security-settings" onClick={() => close(false)} style={{ textDecoration: 'none' }}>{t('step_up_enrol_go')}</Link>
-                </div>
-            </Modal>
-        )
-    }
+    if (ask.kind === 'enrol') return <StepUpEnrolDialog onClose={() => close(false)} />
     return (
-        // Over the confirmation that sent the action, which waits, open, for this answer.
-        <Modal isOpen onClose={() => close(false)} title={t('step_up_title')} zIndex={LAYER.codePrompt}>
-            <form onSubmit={confirm}>
-                <p style={{ marginTop: 0 }}>{t('step_up_hint').replace('{minutes}', String(ask.minutes))}</p>
-                <label htmlFor="step-up-code" style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.85rem' }}>{t('step_up_code')}</label>
-                <input
-                    id="step-up-code"
-                    className="input"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    autoFocus
-                    maxLength={8}
-                    value={code}
-                    onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
-                    style={{ letterSpacing: '0.3em', maxWidth: '12rem' }}
-                />
-                {wrong && <p style={{ color: 'var(--danger-fg)', fontSize: '0.85rem', margin: '0.5rem 0 0' }}>{t('step_up_wrong')}</p>}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
-                    <button type="button" className="btn" style={{ background: 'var(--border)', color: 'var(--text-strong)' }} onClick={() => close(false)}>{t('roles_cancel')}</button>
-                    <button type="submit" className="btn btn-primary" disabled={checking || code.trim().length < 6}>{t('step_up_confirm')}</button>
-                </div>
+        <StepUpCodeDialog minutes={ask.minutes} code={code} error={error} checking={checking} field={field}
+            onCode={value => setCode(codeDigits(value))} onSubmit={confirm} onCancel={cancel} />
+    )
+}
+
+/**
+ * The code (DESIGN.md §5.5, Dialog): a form over the confirmation that sent
+ * the action, which waits, open, for its answer. Why, and for how long it
+ * won't be asked again, in the page's digits; the code's six digits left to
+ * right, what's wrong said under them; then Cancel and Confirm, in the form.
+ */
+export function StepUpCodeDialog({ minutes, code, error, checking, field, onCode, onSubmit, onCancel }: {
+    minutes: number
+    code: string
+    error: CodeError | null
+    checking: boolean
+    field?: Ref<HTMLInputElement>
+    onCode: (value: string) => void
+    onSubmit: (e: FormEvent<HTMLFormElement>) => void
+    onCancel: () => void
+}) {
+    const { t, locale } = useLanguage()
+    return (
+        <Dialog open onClose={onCancel} title={t('step_up_title')} aboveAll>
+            <form className="ui-form" noValidate onSubmit={onSubmit}>
+                <p>{t('step_up_hint').replace('{minutes}', countOf(t, locale, minutes, 'minutes'))}</p>
+                <Field label={t('step_up_code')} error={error ? t(ERROR_TEXT[error]) : undefined}>{p => (
+                    // The one thing it asks for, so it takes the focus as it opens. Six digits at most by
+                    // what's kept (codeDigits), not by the field: cut at six, "123 456" pasted lost its 6.
+                    <TextInput {...p} ref={field} name="code" inputMode="numeric" autoComplete="one-time-code" spellCheck={false} dir="ltr" autoFocus
+                        value={code} onChange={e => onCode(e.target.value)} />
+                )}</Field>
+                <DialogActions>
+                    <Button onClick={onCancel} disabled={checking}>{t('cancel')}</Button>
+                    <Button type="submit" variant="primary" busy={checking}>{t('step_up_confirm')}</Button>
+                </DialogActions>
             </form>
-        </Modal>
+        </Dialog>
+    )
+}
+
+/** For an account without two-factor sign-in: the action needs it, with Cancel and the way to set it up. */
+export function StepUpEnrolDialog({ onClose }: { onClose: () => void }) {
+    const { t } = useLanguage()
+    return (
+        <Dialog open onClose={onClose} title={t('step_up_enrol_title')} aboveAll actions={<>
+            <Button onClick={onClose}>{t('cancel')}</Button>
+            <ButtonLink variant="primary" href="/dashboard/security-settings" onClick={onClose}>{t('step_up_enrol_go')}</ButtonLink>
+        </>}>
+            <p>{t('step_up_enrol_hint')}</p>
+        </Dialog>
     )
 }

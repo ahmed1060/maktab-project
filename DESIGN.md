@@ -802,8 +802,18 @@ These are built once, in the building-blocks PR, and every page uses them
   - One that opens from an older page's modal, as "+ New location" from a
     task's edit window, sits above that modal, and under the toasts.
   - The code a high-risk action asks for (two-factor sign-in) sits above
-    every other dialog: the confirmation that sent the action, such as
-    "Pay 7 costs, 3,450 EGP", stays open until the code is answered.
+    every other dialog, under the toasts: the confirmation that sent the
+    action, such as "Pay 7 costs, 3,450 EGP", stays open until the code
+    is answered. It's a form: a line on why, and for how long it won't be
+    asked again on this device, in the page's digits; the code's field,
+    its six digits left to right; then Cancel and Confirm.
+  - A code that isn't six digits is said under its field before anything
+    is sent, and one that isn't right once it's checked; a check that
+    couldn't be made says so, to try again, never that the code is wrong.
+    While it's checked, Cancel is off and Confirm is busy. Cancel, or
+    Escape, gives the action its refusal, and what was typed isn't kept.
+  - For an account without two-factor sign-in, the same place says the
+    action needs it, with Cancel and a link to set it up.
   - One that asks for the viewer's own password before an action, such as
     resetting someone else's, is a form: the password field, with what's
     wrong said under it, such as a password that doesn't match, then
@@ -1067,6 +1077,19 @@ These are built once, in the building-blocks PR, and every page uses them
   - Under the header, a card says first that nothing was deleted, with a
     check in the Good colour (§2.3): someone who thinks their records are
     gone doesn't renew.
+- **A page the app has to leave:** when the account can't go on, as when
+  it's suspended, closed or its company banned while it's open, or when
+  maintenance starts. The whole screen, in the page's colour, covers the
+  page while the work open on it is saved, as the language switch's does.
+  - In its middle, as an empty state: its icon, what happened, why, and
+    what happens next: signing out, or the maintenance page. Nothing
+    turns (§8). A why longer than the screen, as the Super Admins'
+    maintenance message can be, scrolls from its top, and a link in it
+    breaks where it must.
+  - It's a dialog with no buttons, above everything: the focus goes to it
+    and stays, screen readers hear it at once, and Escape does nothing,
+    as there's nothing to go back to. It draws no focus ring, as nothing
+    on it can be used.
 - **A note above the page,** for something true on every page for now: a
   company's free trial or its grace, or a role a Super Admin is
   previewing. It's a level-1 panel at the page's width, above the page
@@ -1725,3 +1748,14 @@ changed:
   older pages' window, with an X of its own making and their line in
   `--text-soft`. The watermark over them gave the time in UTC, unlabelled
   and in Western digits in Arabic, after the name and a dot.
+- **2026-11-07:** The code a high-risk action asks for (§5.5, Dialog) and
+  a page the app has to leave (§5.5). The code was the older pages'
+  window, its Cancel grey, of its own making. A code under six digits kept
+  Confirm off without saying why, a check that failed said the code was
+  wrong, and its minutes were in Western digits in Arabic. When an account
+  was suspended or maintenance started, a dark screen with a turning ring
+  covered the page, titled in Title Case, and screen readers weren't told.
+  Found in the web interface audit, before review: a long maintenance
+  message on a phone on its side started above the screen's top, out of
+  the scroll's reach, a link in it ran off the side, and a focus ring was
+  drawn round its message.

@@ -96,7 +96,8 @@ describe("the pages", () => {
     // Refused, the heartbeat read an answer it didn't have, and the console
     // said "Heartbeat failed: TypeError" as the page signed out (browser flows).
     it("say nothing of a heartbeat refused, which signs them out", () => {
-        expect(source("components/UserHeartbeat.tsx")).toMatch(/const res = await fetch\('\/api\/user\/activity', \{ method: 'POST' \}\)\s*(\/\/[^\n]*\n\s*)*if \(!res\.ok\) return\s*const result = await res\.json\(\)/)
+        // Not reached at all, as when the page is left mid-request, it says nothing either (PR 217).
+        expect(source("components/UserHeartbeat.tsx")).toMatch(/const res = await fetch\('\/api\/user\/activity', \{ method: 'POST' \}\)\.catch\(\(\) => null\)\s*(\/\/[^\n]*\n\s*)*if \(!res\?\.ok\) return\s*(\/\/[^\n]*\n\s*)*const data = \(await res\.json\(\)\.catch\(\(\) => null\)\)\?\.data/)
     })
 })
 
