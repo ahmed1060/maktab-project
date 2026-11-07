@@ -1,8 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
+import { ArrowsHorizontalIcon, CheckIcon, EyeClosedIcon, XIcon } from '@phosphor-icons/react/ssr'
+import { Icon, type PhosphorIcon } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
+import { useDialog } from '@/lib/useDialog'
 import type { TranslationKey } from '@/lib/translations'
 import { ringShare, startCapture, type Camera, type OpenCamera } from '@/lib/mobile/face-check/camera'
 import type { Cue, Progress } from '@/lib/mobile/face-check/liveness'
@@ -21,6 +24,11 @@ import { chime, pageAudio } from '@/lib/mobile/face-check/chime'
  *
  * The first time, the face check's models download (about 200 MB, kept on
  * the phone after): the line says how far.
+ *
+ * On the building blocks (DESIGN.md §5.5, "The face check's camera"; PR
+ * 216): drawn by components/ui/ui.css, its icons Phosphor's, and a dialog by
+ * useDialog, which takes the focus as it opens, keeps Tab inside and ends
+ * the check on Escape.
  */
 
 type Said = Parameters<Camera['say']>[0]
@@ -31,12 +39,103 @@ const PROMPTS: Record<Said, TranslationKey> = {
     CENTER: 'face_cam_center', CLOSER: 'face_cam_closer', FARTHER: 'face_cam_farther', UPRIGHT: 'face_cam_upright', EXTRA: 'face_cam_extra', DONE: 'face_cam_done',
 }
 
-const STEP_ICON: Record<Progress['steps'][number]['challenge'], string> = { TURN: '↔', BLINK: '◡' }
+const STEP_ICON: Record<Progress['steps'][number]['challenge'], PhosphorIcon> = { TURN: ArrowsHorizontalIcon, BLINK: EyeClosedIcon }
 
 /** The oval, in a 100 × 133 box (3:4, as the picture), centred a little above the middle. */
 const OVAL = { cx: 50, cy: 58, rx: 31, ry: 41 }
 /** The oval as a path from its top, clockwise, for the ring that fills. */
 const RING = `M ${OVAL.cx} ${OVAL.cy - OVAL.ry} A ${OVAL.rx} ${OVAL.ry} 0 1 1 ${OVAL.cx} ${OVAL.cy + OVAL.ry} A ${OVAL.rx} ${OVAL.ry} 0 1 1 ${OVAL.cx} ${OVAL.cy - OVAL.ry}`
+
+/** The picture's cut-out for the oval: one camera shows at a time. */
+const CUTOUT = 'ui-camera-cutout'
+
+/**
+ * The line at the bottom: a step started again, the first download's share
+ * in the page's digits, or what the check asks.
+ */
+export function cameraLine(t: (key: TranslationKey) => string, locale: string, { prompt, download, retry }: { prompt: Said; download: number | null; retry: boolean }): string {
+    if (retry) return t('face_cam_slow')
+    if (download !== null && prompt === 'LOADING') {
+        const share = new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-GB', { style: 'percent', maximumFractionDigits: 0 }).format(Math.floor(download * 100) / 100)
+        return t('face_cam_download').replace('{pct}', share)
+    }
+    return t(PROMPTS[prompt])
+}
+
+/**
+ * What the camera shows, from where the capture has got (DESIGN.md §5.5):
+ * the picture with its oval and ring, Close, the step the check asks for
+ * when it has doubts, and the line saying what to do.
+ */
+export function CameraScreen({ video, line, progress, ring, tone, done, onClose }: {
+    video: RefObject<HTMLVideoElement | null>
+    line: string
+    progress: Progress | null
+    /** How much of the ring shows, 0 to 1 (ringShare). */
+    ring: number
+    /** The ring's colour: the ink, done or a step started again. */
+    tone: 'ink' | 'done' | 'warn'
+    done: boolean
+    onClose: () => void
+}) {
+    const { t } = useLanguage()
+    // Drawn only while a capture is open: the focus comes in, and goes back to what opened it.
+    const dialog = useDialog(true, onClose, { label: t('face_cam_title') })
+    const step = progress?.steps.find(s => s.current)?.challenge
+    return (
+        <div {...dialog.panelProps} className="ui-camera">
+            {/* The live picture says nothing to a screen reader: the line below speaks to it. */}
+            <video ref={video} className="ui-camera-video" aria-hidden="true" playsInline muted />
+            {/* The picture dimmed outside the oval, the oval's edge, and the share of the capture done around it. */}
+            <svg aria-hidden="true" className="ui-camera-guide" viewBox="0 0 100 133" preserveAspectRatio="xMidYMid slice">
+                <defs>
+                    <mask id={CUTOUT}>
+                        <rect className="ui-camera-mask-show" x="-50" y="-50" width="200" height="233" />
+                        <ellipse className="ui-camera-mask-hide" {...OVAL} />
+                    </mask>
+                </defs>
+                <rect className="ui-camera-dim" x="-50" y="-50" width="200" height="233" mask={`url(#${CUTOUT})`} />
+                <ellipse className="ui-camera-oval" {...OVAL} />
+                {/* Drawn from the top, clockwise: the share done grows around the oval. */}
+                <path className="ui-camera-ring" data-tone={tone} d={RING} pathLength={100}
+                    strokeDasharray="100 100" strokeDashoffset={100 - Math.round(ring * 100)} opacity={ring > 0 ? 1 : 0} />
+            </svg>
+            {done && <div aria-hidden="true" className="ui-camera-tick"><Icon icon={CheckIcon} size={40} /></div>}
+
+            <div className="ui-camera-top">
+                <button type="button" className="ui-camera-close" onClick={onClose} aria-label={t('close')}><Icon icon={XIcon} size={22} /></button>
+                <p className="ui-camera-note">{t('face_cam_prototype')}</p>
+            </div>
+
+            <div className="ui-camera-bottom">
+                {progress && step && (
+                    // The step, only when the check asked for one: what it is, the time left, and for a turn how far.
+                    <div className="ui-camera-step">
+                        <div className="ui-camera-step-head">
+                            <Icon icon={STEP_ICON[step]} size={20} />
+                            <span>{t(`face_cam_step_${step}`)}</span>
+                            <span aria-hidden="true" className="ui-camera-time" data-late={progress.timeLeft < 0.25 || undefined}
+                                style={{ ['--left' as string]: progress.timeLeft } as CSSProperties}><span /></span>
+                        </div>
+                        {step === 'TURN' && (
+                            // How far the head is turned, as the person sees it in the mirrored picture: a direction on
+                            // the screen, not in the words, so it isn't mirrored in Arabic. The marks at each end are enough.
+                            <div aria-hidden="true" className="ui-camera-turn" dir="ltr">
+                                <span className="ui-camera-turn-mark" />
+                                <span className="ui-camera-turn-mark" />
+                                {progress.turnAmount !== null && (
+                                    <span className="ui-camera-turn-dot" data-enough={Math.abs(progress.turnAmount) >= 1 || undefined}
+                                        style={{ ['--turn' as string]: progress.turnAmount } as CSSProperties} />
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+                <p role="status" className="ui-camera-line">{line}</p>
+            </div>
+        </div>
+    )
+}
 
 function vibrate(pattern: number | number[]) {
     try { navigator.vibrate?.(pattern) } catch { /* no vibration is fine */ }
@@ -157,84 +256,14 @@ export function useFaceCamera(): { open: OpenCamera; element: React.ReactNode } 
         reset()
     }
 
-    const current = progress?.steps.find(s => s.current)?.challenge
     const done = prompt === 'DONE'
-    const ringColour = done || flash === 'ok' ? 'var(--cam-done)' : flash === 'retry' ? 'var(--cam-warn)' : 'var(--cam-ink)'
+    const tone = done || flash === 'ok' ? 'done' : flash === 'retry' ? 'warn' : 'ink'
     // Whole while a cue flashes it, so a step's cues show on the ring too (review on #48).
     const ring = ringShare(fill, done, flash !== null)
-    const words = flash === 'retry' ? t('face_cam_slow')
-        : download !== null && prompt === 'LOADING' ? t('face_cam_download').replace('{pct}', String(Math.floor(download * 100)))
-        : prompt ? t(PROMPTS[prompt]) : ''
 
     const element = prompt && typeof document !== 'undefined' ? createPortal(
-        <div role="dialog" aria-modal="true" aria-label={t('face_cam_title')} className="face-cam" style={{
-            position: 'fixed', inset: 0, zIndex: 10000, background: 'var(--cam-ground)', color: 'var(--cam-ink)', overflow: 'hidden',
-            direction: locale === 'ar' ? 'rtl' : 'ltr',
-        }}>
-            <video ref={video} playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
-            {/* The picture dimmed outside the oval, the oval's ring, and the share of the capture done around it. */}
-            <svg aria-hidden viewBox="0 0 100 133" preserveAspectRatio="xMidYMid slice" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
-                <defs>
-                    <mask id="oval-cutout">
-                        <rect x="-50" y="-50" width="200" height="233" style={{ fill: 'var(--cam-ink)' }} />
-                        <ellipse {...OVAL} style={{ fill: 'var(--cam-ground)' }} />
-                    </mask>
-                </defs>
-                <rect x="-50" y="-50" width="200" height="233" mask="url(#oval-cutout)" style={{ fill: 'color-mix(in srgb, var(--cam-ground) 72%, transparent)' }} />
-                <ellipse {...OVAL} fill="none" strokeWidth="1.2" style={{ stroke: 'color-mix(in srgb, var(--cam-ink) 28%, transparent)' }} />
-                {/* Drawn from the top, clockwise: the share done grows around the oval. */}
-                <path d={RING} fill="none" strokeWidth="1.6" strokeLinecap="round" pathLength={100}
-                    opacity={ring > 0 ? 1 : 0}
-                    strokeDasharray="100 100" strokeDashoffset={100 - Math.round(ring * 100)}
-                    style={{ stroke: ringColour, transition: 'stroke-dashoffset 0.25s ease-out, stroke 0.2s' }} />
-            </svg>
-            {done && (
-                <div aria-hidden className="face-cam-tick" style={{
-                    position: 'absolute', left: '50%', top: '44%', width: '4.5rem', height: '4.5rem', marginLeft: '-2.25rem', marginTop: '-2.25rem',
-                    borderRadius: '50%', background: 'var(--cam-done)', display: 'grid', placeItems: 'center', fontSize: '2.4rem', fontWeight: 700,
-                }}>✓</div>
-            )}
-
-            <div style={{ position: 'absolute', insetInline: 0, top: 0, padding: 'max(env(safe-area-inset-top), 0.75rem) 1rem 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-                <button onClick={close} aria-label={t('close')} style={{
-                    width: '2.75rem', height: '2.75rem', borderRadius: '50%', border: 'none', background: 'color-mix(in srgb, var(--cam-ground) 45%, transparent)', color: 'var(--cam-ink)',
-                    fontSize: '1.4rem', lineHeight: 1, cursor: 'pointer',
-                }}>✕</button>
-                <span style={{ fontSize: '0.75rem', padding: '0.3rem 0.65rem', borderRadius: '999px', background: 'color-mix(in srgb, var(--cam-ground) 45%, transparent)', color: 'color-mix(in srgb, var(--cam-ink) 80%, transparent)' }}>{t('face_cam_prototype')}</span>
-            </div>
-
-            <div style={{ position: 'absolute', insetInline: 0, bottom: 0, padding: '0 1rem max(env(safe-area-inset-bottom), 1.5rem)', display: 'grid', justifyItems: 'center', gap: '0.75rem' }}>
-                {progress && current && (
-                    // The step, only when the check asked for one: what to do, the time left, and for a turn how far.
-                    <div style={{ width: 'min(100%, 360px)', padding: '0.75rem 1rem', borderRadius: '1rem', background: 'color-mix(in srgb, var(--cam-ground) 55%, transparent)', backdropFilter: 'blur(8px)', display: 'grid', gap: '0.6rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <span aria-hidden style={{ fontSize: '1.6rem', width: '2rem', textAlign: 'center' }}>{STEP_ICON[current]}</span>
-                            <div aria-hidden style={{ flex: 1, height: '4px', borderRadius: '2px', background: 'color-mix(in srgb, var(--cam-ink) 25%, transparent)', overflow: 'hidden' }}>
-                                <div style={{ width: `${Math.round(progress.timeLeft * 100)}%`, height: '100%', background: progress.timeLeft < 0.25 ? 'var(--cam-warn)' : 'var(--cam-ink)', transition: 'width 0.2s linear' }} />
-                            </div>
-                        </div>
-                        {current === 'TURN' && (
-                            // How far the head is turned, as the person sees it in the mirrored picture; the marks at each end are enough.
-                            <div aria-hidden style={{ position: 'relative', height: '10px', borderRadius: '5px', background: 'color-mix(in srgb, var(--cam-ink) 20%, transparent)' }}>
-                                <span style={{ position: 'absolute', left: '10%', top: 0, bottom: 0, width: '3px', background: 'var(--cam-done)' }} />
-                                <span style={{ position: 'absolute', right: '10%', top: 0, bottom: 0, width: '3px', background: 'var(--cam-done)' }} />
-                                {progress.turnAmount !== null && (
-                                    <span style={{
-                                        position: 'absolute', top: '-4px', width: '18px', height: '18px', borderRadius: '50%', marginLeft: '-9px',
-                                        left: `${50 - progress.turnAmount * 40}%`, background: Math.abs(progress.turnAmount) >= 1 ? 'var(--cam-done)' : 'var(--cam-ink)',
-                                        transition: 'left 0.1s linear',
-                                    }} />
-                                )}
-                            </div>
-                        )}
-                    </div>
-                )}
-                <p role="status" aria-live="polite" style={{
-                    margin: 0, padding: '0.7rem 1.1rem', borderRadius: '999px', background: 'color-mix(in srgb, var(--cam-ground) 55%, transparent)', backdropFilter: 'blur(8px)',
-                    fontSize: '1.1rem', fontWeight: 600, textAlign: 'center', maxWidth: '360px',
-                }}>{words}</p>
-            </div>
-        </div>,
+        <CameraScreen video={video} line={cameraLine(t, locale, { prompt, download, retry: flash === 'retry' })}
+            progress={progress} ring={ring} tone={tone} done={done} onClose={close} />,
         document.body,
     ) : null
 

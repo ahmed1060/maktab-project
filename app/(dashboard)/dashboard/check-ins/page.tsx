@@ -7,7 +7,7 @@ import {
     UserFocusIcon, WarningCircleIcon, WarningIcon, XIcon,
 } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
-import { FlaggedFaceModal } from '@/components/FacePhoto'
+import { FlaggedFaceDialog } from '@/components/FacePhoto'
 import {
     Button, DataList, EmptyState, ItemTitle, ListCard, Page, PageHeader, RowMenu, Section, StatusBadge, type Column,
 } from '@/components/ui'
@@ -229,7 +229,7 @@ export default function CheckInReviewPage() {
                     onDecided={() => { setRejecting(null); void mutate() }}
                 />
             )}
-            {faceOf && <FlaggedFaceModal punchId={faceOf.id} name={faceOf.name} onClose={() => setFaceOf(null)} />}
+            {faceOf && <FlaggedFaceDialog punchId={faceOf.id} name={faceOf.name} onClose={() => setFaceOf(null)} />}
         </Page>
     )
 }

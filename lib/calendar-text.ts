@@ -12,6 +12,7 @@ export type Lang = "en" | "ar"
 
 const intl = (locale: Lang) => (locale === "ar" ? "ar-EG" : "en-GB")
 const dayFormat = (locale: Lang) => new Intl.DateTimeFormat(intl(locale), { day: "numeric", month: "short", year: "numeric" })
+const dateTimeFormat = (locale: Lang) => new Intl.DateTimeFormat(intl(locale), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })
 
 /**
  * The day a value names, "2026-11-02": a day, or the day of a time given in
@@ -62,7 +63,22 @@ export function rangeText(from: string, to: string, locale: Lang, words: { from:
 export function dateTimeText(value: string, locale: Lang): string | null {
     const date = value ? new Date(value) : null
     if (!date || Number.isNaN(date.getTime())) return null
-    return new Intl.DateTimeFormat(intl(locale), { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }).format(date)
+    return dateTimeFormat(locale).format(date)
+}
+
+/**
+ * The same words, able to break only between the date and the time: where a
+ * line hasn't room for both, "7 Nov 2026," goes over "12:48 pm", never "pm"
+ * alone, as a face photo's watermark does on a small phone (DESIGN.md §5.5,
+ * Face photos; PR 216). Every other space doesn't break.
+ */
+export function dateTimeBreakable(value: string, locale: Lang): string | null {
+    const date = value ? new Date(value) : null
+    if (!date || Number.isNaN(date.getTime())) return null
+    const parts = dateTimeFormat(locale).formatToParts(date)
+    // What Intl puts between the date and the time: ", ", «، ».
+    const between = parts.findIndex(part => part.type === "hour") - 1
+    return parts.map((part, i) => (i === between ? part.value : part.value.replace(/ /g, "\u00a0"))).join("")
 }
 
 /** "November 2026", for the top of the calendar. */

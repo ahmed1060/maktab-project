@@ -46,6 +46,7 @@
 .ui-company-picker-button,
 .ui-notice,
 .ui-toast-close,
+.ui-camera-close,
 .ui-side-legal a {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
@@ -1826,13 +1827,272 @@ a.ui-file-open:focus-visible,
   }
 }
 
+/* ── The face check's camera (§5.5) ── */
+/* The front camera's picture, the whole screen, mirrored as a mirror is,
+   with nothing of the app around it (components/FaceCamera.tsx). Dark in
+   both themes, as every camera's view is: --cam-* don't change with the
+   theme. Above the page and its dialogs, under the toasts (10001). */
+.ui-camera {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  overflow: hidden;
+  background: var(--cam-ground);
+  color: var(--cam-ink);
+  font-family: var(--font-ui);
+}
+/* Focused itself only when Close can't be: no ring around the screen for a
+   tap, as a dialog has none for a click (found in the interface audit). */
+.ui-camera:focus:not(:focus-visible) {
+  outline: none;
+}
+.ui-camera-video,
+.ui-camera-guide {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+}
+.ui-camera-video {
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+/* The oval's cut-out: what the mask keeps, and what it lets through. */
+.ui-camera-mask-show {
+  fill: var(--cam-ink);
+}
+.ui-camera-mask-hide {
+  fill: var(--cam-ground);
+}
+.ui-camera-dim {
+  fill: color-mix(in srgb, var(--cam-ground) 72%, transparent);
+}
+.ui-camera-oval {
+  fill: none;
+  stroke: color-mix(in srgb, var(--cam-ink) 28%, transparent);
+  stroke-width: 1.2;
+}
+/* The share of the capture done, around the oval: the ink, then done, or a
+   step started again, as the phone beeps and vibrates. */
+.ui-camera-ring {
+  fill: none;
+  stroke: var(--cam-ink);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 250ms ease-out, stroke 200ms ease-out;
+}
+.ui-camera-ring[data-tone="done"] {
+  stroke: var(--cam-done);
+}
+.ui-camera-ring[data-tone="warn"] {
+  stroke: var(--cam-warn);
+}
+/* Done: a tick in a circle at the oval's middle, which pops in. The tick is
+   the ground's colour, 9:1 on the done colour; white on it was 2.3:1. */
+.ui-camera-tick {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 44%;
+  display: grid;
+  place-items: center;
+  inline-size: 72px;
+  block-size: 72px;
+  margin-block-start: -36px;
+  margin-inline: auto;
+  border-radius: var(--radius-pill);
+  background: var(--cam-done);
+  color: var(--cam-ground);
+  animation: ui-camera-pop 350ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+@keyframes ui-camera-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+/* Close on the start side at the top, the test version's pill on the end
+   side, clear of the notch. Like the line and the step's card, they're on
+   the picture dimmed to 55%: white words hold 4.5:1 over the lightest
+   picture there is. */
+.ui-camera-top {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block-start: max(env(safe-area-inset-top), var(--space-3));
+  padding-inline: var(--space-4);
+}
+.ui-camera-close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 44px;
+  block-size: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--cam-ground) 55%, transparent);
+  color: var(--cam-ink);
+  cursor: pointer;
+  transition: background-color 150ms ease-out;
+}
+/* Darker under a pointer, so its X stands out more; not on a phone, where a
+   tap would leave it so (found in the interface audit). */
+@media (hover: hover) {
+  .ui-camera-close:hover {
+    background: color-mix(in srgb, var(--cam-ground) 72%, transparent);
+  }
+}
+.ui-camera-close:focus-visible {
+  outline: 2px solid var(--cam-ink);
+  outline-offset: 2px;
+}
+.ui-camera-note {
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--cam-ground) 55%, transparent);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  text-align: center;
+  /* Its two lines even: "only." stood alone on the second (found in the interface audit). */
+  text-wrap: balance;
+}
+/* The step's card and the line, at the bottom, clear of the home bar. */
+.ui-camera-bottom {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding-inline: var(--space-4);
+  padding-block-end: max(env(safe-area-inset-bottom), var(--space-6));
+}
+.ui-camera-step {
+  display: grid;
+  gap: var(--space-3);
+  inline-size: min(100%, 360px);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-panel);
+  background: color-mix(in srgb, var(--cam-ground) 55%, transparent);
+  backdrop-filter: blur(8px);
+}
+/* The step's icon beside its name, then the time left on it. */
+.ui-camera-step-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  font-weight: 500;
+}
+.ui-camera-step-head > .ui-icon {
+  flex: none;
+}
+.ui-camera-time {
+  flex: 1;
+  min-inline-size: var(--space-12);
+  block-size: 4px;
+  margin-inline-start: var(--space-2);
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--cam-ink) 25%, transparent);
+}
+.ui-camera-time > span {
+  display: block;
+  block-size: 100%;
+  background: var(--cam-ink);
+  /* By transform, so it moves without the page's layout (found in the
+     interface audit): its share of the bar, from its start. */
+  transform: scaleX(var(--left));
+  transform-origin: 0 50%;
+  transition: transform 200ms linear;
+}
+[dir="rtl"] .ui-camera-time > span {
+  transform-origin: 100% 50%;
+}
+/* Its last quarter. */
+.ui-camera-time[data-late] > span {
+  background: var(--cam-warn);
+}
+/* How far the head is turned, as it shows in the mirrored picture: the dot
+   from the middle, a mark at each end for far enough. A direction on the
+   screen, not in the words, so the gauge is left to right in Arabic too. */
+.ui-camera-turn {
+  position: relative;
+  block-size: 10px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--cam-ink) 20%, transparent);
+}
+.ui-camera-turn-mark {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(10% - 1.5px);
+  inline-size: 3px;
+  background: var(--cam-done);
+}
+.ui-camera-turn-mark + .ui-camera-turn-mark {
+  inset-inline-start: calc(90% - 1.5px);
+}
+/* The dot's way: as wide as the gauge, so its share of the gauge's width
+   moves the dot in its middle, by transform, without the page's layout
+   (found in the interface audit). */
+.ui-camera-turn-dot {
+  position: absolute;
+  inset: 0;
+  transform: translateX(calc(var(--turn) * -40%));
+  transition: transform 100ms linear;
+}
+.ui-camera-turn-dot::before {
+  content: "";
+  position: absolute;
+  inset-block-start: -4px;
+  inset-inline-start: 50%;
+  inline-size: 18px;
+  block-size: 18px;
+  margin-inline-start: -9px;
+  border-radius: var(--radius-pill);
+  background: var(--cam-ink);
+}
+.ui-camera-turn-dot[data-enough]::before {
+  background: var(--cam-done);
+}
+/* What to do, heard by screen readers. */
+.ui-camera-line {
+  max-inline-size: 360px;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-panel);
+  background: color-mix(in srgb, var(--cam-ground) 55%, transparent);
+  backdrop-filter: blur(8px);
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+  font-weight: 600;
+  text-align: center;
+  /* Its lines even, and the download's share one width as its digits
+     change (found in the interface audit). */
+  text-wrap: balance;
+  font-variant-numeric: tabular-nums;
+}
+/* ── end of the face check's camera ── */
+
 /* ── Face photos (Attendance, ATTENDANCE_PLAN.md §9.5) ── */
 /* The new photo beside the approved one, to compare: side by side in a
    dialog, on a phone too. One under the other, comparing them meant
-   scrolling between them (found in the interface audit, PR 153). */
+   scrolling between them (found in the interface audit, PR 153). Two at
+   120px and the gap fit a dialog on a 320px phone; at 144px they fell one
+   under the other on a 360px one (found in the browser flows, PR 216). */
 .ui-face-photos {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(144px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: var(--space-3);
 }
 .ui-face-photo {
@@ -1869,6 +2129,13 @@ a.ui-file-open:focus-visible,
   pointer-events: none;
 }
 .ui-face-photo-marks > span {
+  /* The time under the name, and no wider than the photo: on a narrow one,
+     the time goes under its date, where alone it can break (§5.5, Face
+     photos; PR 216). */
+  display: grid;
+  justify-items: center;
+  max-inline-size: 100%;
+  text-align: center;
   padding: 0 var(--space-1);
   border-radius: var(--radius-field);
   background: var(--chip-solid-bg);
@@ -1877,7 +2144,6 @@ a.ui-file-open:focus-visible,
   font-size: var(--text-xs);
   line-height: var(--leading-xs);
   font-weight: 600;
-  white-space: nowrap;
   transform: rotate(-24deg);
 }
 .ui-face-photo > figcaption {
@@ -3628,11 +3894,16 @@ html[lang="ar"] .ui-empty-title {
   .ui-row-caret,
   .ui-donut-row,
   .ui-donut-arc,
+  .ui-camera-ring,
+  .ui-camera-time > span,
+  .ui-camera-turn-dot,
+  .ui-camera-close,
   .ui-toast-close {
     transition: none;
   }
   .ui-control[data-busy]::after,
   .ui-btn[aria-busy="true"]::after,
+  .ui-camera-tick,
   .ui-toast {
     animation: none;
   }
