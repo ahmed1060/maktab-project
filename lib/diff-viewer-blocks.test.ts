@@ -224,4 +224,15 @@ describe("on a task's page (app/(dashboard)/dashboard/tasks/[id]/client.tsx)", (
         expect(dialog).not.toContain('dir="auto"')
         expect([en.title_changes_title, en.description_changes_title]).toEqual(["Title changes", "Description changes"])
     })
+
+    it("keeps the buttons that open it until the change is seen, so closing it gives the focus back to its button", () => {
+        // Found in the browser flows: each button went as it was opened, so closing the dialog left
+        // the focus on nothing, the page's body.
+        const src = source("app/(dashboard)/dashboard/tasks/[id]/client.tsx")
+        for (const gone of ["viewedTitleChange", "viewedDescriptionChange"]) expect(src, gone).not.toContain(gone)
+        expect(src).toContain("{seesChanges && latestChanges?.title && (")
+        expect(src).toContain("{seesChanges && latestChanges?.description && (")
+        expect(src).toContain("<Button onClick={() => setDiffField('title')}>{t('task_see_title_changes')}</Button>")
+        expect(src).toContain("<Button onClick={() => setDiffField('description')}>{t('task_see_description_changes')}</Button>")
+    })
 })

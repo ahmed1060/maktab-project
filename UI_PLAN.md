@@ -4835,4 +4835,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     in Arabic ran right to left; its line breaks are kept, what was taken
     out sitting where it was, where they were lost; and its spaces are the
     text's, where they were margins set by the language;
-  - `--danger-fg-strong`, which only it used, is gone in both themes.
+  - `--danger-fg-strong`, which only it used, is gone in both themes;
+  - found in the browser flows: each button that opens it went as it was
+    opened, so closing the dialog left the focus on nothing. They stay now
+    until the change is seen, so it can be opened again, and closing it
+    gives the focus back to its button.
