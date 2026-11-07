@@ -1612,6 +1612,47 @@ a.ui-file-open:focus-visible,
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* ── What an edit changed (§5.5; components/DiffViewer.tsx) ── */
+.ui-diff {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+/* For the eye: screen readers hear each mark's word in the text itself. */
+.ui-diff-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+/* The text as it is now, its line breaks kept; a word with no space in it
+   breaks where it must, rather than run past the dialog. */
+.ui-diff-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* Taken out: struck through, in the Problem colours (§2.3). */
+.ui-diff-removed {
+  background: var(--status-problem-bg);
+  color: var(--status-problem-fg);
+  text-decoration: line-through;
+}
+/* Put in: underlined, in the Done or good colours (§2.3). */
+.ui-diff-added {
+  background: var(--status-good-bg);
+  color: var(--status-good-fg);
+  text-decoration: underline;
+}
+/* A mark that runs onto a second line is drawn whole on each, its corners
+   as a focus ring's. */
+.ui-diff-removed,
+.ui-diff-added {
+  border-radius: 2px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+/* end of what an edit changed */
+
 /* ── Document (§5.5) ── */
 /* A paper the app issues, such as a payslip: a sheet at reading width. The
    print styles (app/globals.css) make it all that prints, in black on white. */

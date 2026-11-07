@@ -58,8 +58,10 @@ describe("text contrast, light theme", () => {
         const offenders = [...tsx("app"), ...tsx("components")].filter(f =>
             /background: 'var\(--danger-bg(-subtle)?\)',\s*color: 'var\(--danger-solid-hover\)'/.test(readFileSync(f, "utf8")))
         expect(offenders).toEqual([])
-        // The subtler red went with the last thing on it, the old calendar's Reset (PR 208).
-        expect(ratio(token("danger-fg-strong"), token("danger-bg"))).toBeGreaterThanOrEqual(4.5)
+        // The subtler red, --danger-fg-strong, went with the last thing written in it,
+        // what an edit took out of a task's text, struck through in the old change
+        // viewer; it's in the Problem colours now (lib/diff-viewer-blocks.test.ts, PR 218).
+        expect(readFileSync("app/globals.css", "utf8")).not.toContain("--danger-fg-strong")
     })
 
     it("small text isn't faded below 4.5:1", () => {

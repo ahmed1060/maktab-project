@@ -1,96 +1,40 @@
 'use client'
-import React from 'react'
+
 import { useLanguage } from '@/context/LanguageContext'
+import { wordDiff } from '@/lib/word-diff'
 
-interface DiffViewerProps {
-    oldText: string
-    newText: string
-}
-
-export default function DiffViewer({ oldText, newText }: DiffViewerProps) {
-    const { locale } = useLanguage()
-    if (!oldText && !newText) return null
-    if (!oldText) return <span style={{ backgroundColor: 'var(--ok-bg)', color: 'var(--ok-fg)' }}>{newText}</span>
-    if (!newText) return <span style={{ textDecoration: 'line-through', color: 'var(--danger-fg-strong)' }}>{oldText}</span>
-
-    const diffWords = (oldString: string, newString: string) => {
-        const oldWords = oldString.split(/\s+/)
-        const newWords = newString.split(/\s+/)
-        const result: { type: 'same' | 'added' | 'removed', text: string }[] = []
-
-        let i = 0
-        let j = 0
-
-        while (i < oldWords.length || j < newWords.length) {
-            if (i < oldWords.length && j < newWords.length && oldWords[i] === newWords[j]) {
-                result.push({ type: 'same', text: oldWords[i] })
-                i++
-                j++
-            } else {
-                // Look ahead for match in new strings (Insertion)
-                let k = 1
-                let foundInNew = false
-                while (j + k < newWords.length && k < 10) {
-                    if (i < oldWords.length && newWords[j + k] === oldWords[i]) {
-                        foundInNew = true
-                        for (let m = 0; m < k; m++) {
-                            result.push({ type: 'added', text: newWords[j + m] })
-                        }
-                        j += k
-                        break
-                    }
-                    k++
-                }
-                if (foundInNew) continue
-
-                // Look ahead for match in old strings (Deletion)
-                k = 1
-                let foundInOld = false
-                while (i + k < oldWords.length && k < 10) {
-                    if (j < newWords.length && oldWords[i + k] === newWords[j]) {
-                        foundInOld = true
-                        for (let m = 0; m < k; m++) {
-                            result.push({ type: 'removed', text: oldWords[i + m] })
-                        }
-                        i += k
-                        break
-                    }
-                    k++
-                }
-                if (foundInOld) continue
-
-                // Verify bound before pushing
-                if (i < oldWords.length) {
-                    result.push({ type: 'removed', text: oldWords[i] })
-                    i++
-                }
-                if (j < newWords.length) {
-                    result.push({ type: 'added', text: newWords[j] })
-                    j++
-                }
-            }
-        }
-        return result
-    }
-
-    const diff = diffWords(oldText, newText)
-
+/**
+ * What an edit changed (DESIGN.md §5.5, "What an edit changed"; PR 218): the
+ * text as it is now, word by word (lib/word-diff.ts), taken out struck
+ * through and put in underlined, each in its meaning's colours. A key above
+ * names each mark the text has, and screen readers hear "Removed:" or
+ * "Added:" before each.
+ *
+ * The text keeps its own direction (DESIGN.md §7). The marks' words are the
+ * page's, with the page's direction, so they never decide the text's.
+ */
+export default function DiffViewer({ oldText, newText }: { oldText: string | null; newText: string | null }) {
+    const { t, locale } = useLanguage()
+    const parts = wordDiff(oldText, newText)
+    if (!parts.length) return null
+    const dir = locale === 'ar' ? 'rtl' : 'ltr'
+    const removed = parts.some(part => part.kind === 'removed')
+    const added = parts.some(part => part.kind === 'added')
     return (
-        <div style={{ lineHeight: '1.6', direction: locale === 'ar' ? 'rtl' : 'ltr' }}>
-            {diff.map((part, index) => (
-                <span
-                    key={index}
-                    style={{
-                        backgroundColor: part.type === 'added' ? 'var(--ok-bg)' : part.type === 'removed' ? 'var(--danger-bg)' : 'transparent',
-                        color: part.type === 'added' ? 'var(--ok-fg)' : part.type === 'removed' ? 'var(--danger-fg)' : 'inherit',
-                        textDecoration: part.type === 'removed' ? 'line-through' : 'none',
-                        marginRight: locale === 'ar' ? '0' : '4px',
-                        marginLeft: locale === 'ar' ? '4px' : '0'
-                    }}
-                >
-                    {part.text}
-                </span>
-            ))}
+        <div className="ui-diff">
+            {(removed || added) && (
+                // For the eye: screen readers hear each mark's word in the text.
+                <div className="ui-diff-key" aria-hidden="true">
+                    {removed && <span className="ui-diff-removed">{t('diff_removed')}</span>}
+                    {added && <span className="ui-diff-added">{t('diff_added')}</span>}
+                </div>
+            )}
+            <div className="ui-diff-text" dir="auto">
+                {parts.map((part, i) => part.kind === 'same' ? part.text
+                    : part.kind === 'removed'
+                        ? <del key={i} className="ui-diff-removed"><span className="ui-visually-hidden" dir={dir}>{`${t('diff_removed')}: `}</span>{part.text}</del>
+                        : <ins key={i} className="ui-diff-added"><span className="ui-visually-hidden" dir={dir}>{`${t('diff_added')}: `}</span>{part.text}</ins>)}
+            </div>
         </div>
     )
 }

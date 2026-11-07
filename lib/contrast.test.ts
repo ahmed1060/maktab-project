@@ -55,7 +55,6 @@ function ratio(a: string, b: string): number {
 const TEXT_PAIRS: [string, string][] = [
     ["--ok-fg", "--ok-bg"],
     ["--danger-fg", "--danger-bg"],
-    ["--danger-fg-strong", "--danger-bg"],
     ["--warn-fg", "--warn-bg"],
     ["--warn-fg-warm", "--warn-bg-warm"],
     ["--info-fg", "--info-bg"],

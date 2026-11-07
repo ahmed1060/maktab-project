@@ -1029,6 +1029,22 @@ These are built once, in the building-blocks PR, and every page uses them
   such as a record's text cut to 2 lines, the item's title opens it in a
   dialog. The dialog shows all of it, with the actions the person may take
   on it.
+- **What an edit changed:** when a task's title or description changes
+  after it was given, whoever does it can see how, in a dialog named for
+  the field ("Title changes"). It shows the text as it is now, word by
+  word, with what was taken out and what was put in:
+  - taken out is struck through, in the Problem colours; put in is
+    underlined, in the Done or good colours (§2.3). Words next to each
+    other that changed together are marked as one;
+  - colour is never the only signal: a key above the text names each
+    mark, and screen readers hear "Removed:" or "Added:" before each;
+  - only what changed is marked, never a word that stayed, shown taken
+    out and put back;
+  - the text keeps its own direction (§7) and its line breaks, and a word
+    with no space in it breaks where it must;
+  - the buttons that open it stay until the person says they've seen the
+    change, so it can be opened again, and closing it gives the focus back
+    to its button.
 - **Empty state:** a 40px icon in `--muted`, one line saying what's
   missing, and the button to add one. When why it's empty isn't plain, a
   second line says why, and who can change it: a Team Leader with no one
@@ -1759,3 +1775,9 @@ changed:
   message on a phone on its side started above the screen's top, out of
   the scroll's reach, a link in it ran off the side, and a focus ring was
   drawn round its message.
+- **2026-11-07:** What an edit changed (§5.5). Its marks were colour
+  alone to a screen reader, an added word only a green background; the
+  text took the page's direction, not its own, so English in Arabic ran
+  right to left; its line breaks were lost; and its spaces were margins
+  set by the language, not the text's own. Found in the browser flows: its
+  button went as it was opened, so closing it left the focus on nothing.

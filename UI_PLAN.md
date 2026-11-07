@@ -566,7 +566,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      #215 on 2026-11-07; then the face check's camera and a flagged
      check-in's face photos, merged in #216 on 2026-11-07; then the code a
      high-risk action asks for and the screen over a page the app has to
-     leave, in #217;
+     leave, merged in #217 on 2026-11-07; then what an edit changed on a
+     task's page, in #218;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4817,3 +4818,25 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     drawn round its message. It's in the middle by its own margins now, a
     link in it breaks where it must, and it draws no ring, as nothing on it
     can be used.
+- **2026-11-07:** What an edit changed on a task's page on the building
+  blocks (#218; `DESIGN.md` §5.5, "What an edit changed"):
+  - the title or description changed after the task was given shows in
+    its dialog as the text is now, word by word (`components/DiffViewer.tsx`):
+    taken out struck through in the Problem colours, put in underlined in
+    the Done or good colours, words that changed together one mark. Its
+    colours were inline, `--ok-*` and `--danger-*`;
+  - colour is never the only signal: a key above names each mark the text
+    has, and screen readers hear "Removed:" or "Added:" before each, where
+    an added word was only a green background;
+  - the diff is `lib/word-diff.ts`: the longest run of words both share
+    stays, so a word that stayed is never marked taken out and put back,
+    as the old one did with more than ten words put in before it;
+  - the text keeps its own direction, where it took the page's, so English
+    in Arabic ran right to left; its line breaks are kept, what was taken
+    out sitting where it was, where they were lost; and its spaces are the
+    text's, where they were margins set by the language;
+  - `--danger-fg-strong`, which only it used, is gone in both themes;
+  - found in the browser flows: each button that opens it went as it was
+    opened, so closing the dialog left the focus on nothing. They stay now
+    until the change is seen, so it can be opened again, and closing it
+    gives the focus back to its button.

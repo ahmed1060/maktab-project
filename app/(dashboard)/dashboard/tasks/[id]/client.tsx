@@ -145,8 +145,6 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
     const [reviewAction, setReviewAction] = useState<'APPROVED' | 'REJECTED' | null>(null)
     const [reviewDifficulty, setReviewDifficulty] = useState(initialTask.difficulty)
     const [submittingReview, setSubmittingReview] = useState(false)
-    const [viewedTitleChange, setViewedTitleChange] = useState(false)
-    const [viewedDescriptionChange, setViewedDescriptionChange] = useState(false)
     const [diffField, setDiffField] = useState<'title' | 'description' | null>(null)
     const [isEditedPersistent, setIsEditedPersistent] = useState(initialTask.isEdited)
     const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
@@ -914,11 +912,13 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
                     <p>{t('task_updated_msg').replace('{author}', editedBy)}</p>
                     <div className="ui-form-actions">
                         <Button variant="primary" onClick={() => action.run('dismiss', handleDismiss)} disabled={action.running} busy={action.is('dismiss')}>{t('i_understand_button')}</Button>
-                        {seesChanges && latestChanges?.title && !viewedTitleChange && (
-                            <Button onClick={() => { setDiffField('title'); setViewedTitleChange(true) }}>{t('task_see_title_changes')}</Button>
+                        {/* They stay until the change is seen, so it can be opened again and closing it
+                            gives the focus back to its button (DESIGN.md §5.5, "What an edit changed"). */}
+                        {seesChanges && latestChanges?.title && (
+                            <Button onClick={() => setDiffField('title')}>{t('task_see_title_changes')}</Button>
                         )}
-                        {seesChanges && latestChanges?.description && !viewedDescriptionChange && (
-                            <Button onClick={() => { setDiffField('description'); setViewedDescriptionChange(true) }}>{t('task_see_description_changes')}</Button>
+                        {seesChanges && latestChanges?.description && (
+                            <Button onClick={() => setDiffField('description')}>{t('task_see_description_changes')}</Button>
                         )}
                     </div>
                 </Card>
@@ -1036,10 +1036,9 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
                 title={diffField === 'title' ? t('title_changes_title') : t('description_changes_title')}
                 actions={<Button onClick={() => setDiffField(null)}>{t('close')}</Button>}
             >
+                {/* The text keeps its own direction, which DiffViewer sets (DESIGN.md §5.5, "What an edit changed"). */}
                 {diffField && latestChanges && latestChanges[diffField] && (
-                    <div dir="auto">
-                        <DiffViewer oldText={latestChanges[diffField].from} newText={latestChanges[diffField].to} />
-                    </div>
+                    <DiffViewer oldText={latestChanges[diffField].from} newText={latestChanges[diffField].to} />
                 )}
             </Dialog>
 
