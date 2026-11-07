@@ -777,6 +777,12 @@ list the code checks.
   enrol at sign-in: the first time someone without it uses one, the action is
   refused with `MFA_ENROL_REQUIRED` and the screen takes them to set it up
   (decided in the build).
+- **What the prompt says** (`UI_PLAN.md`, #217): what's wrong with the code is
+  said under it, and a check that couldn't be made says so, never that the code
+  is wrong. Not yet: five codes in fifteen minutes stop the server checking them
+  for the rest of that time (`step-up:` in `RateLimit`), and the prompt can't
+  tell that from a wrong code, so a right one is called wrong until then
+  (backlog).
 
 ---
 

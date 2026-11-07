@@ -564,7 +564,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      2026-11-06, which finished it; then the toasts, merged in #214 on
      2026-11-07; then the map pin picker and the place search, merged in
      #215 on 2026-11-07; then the face check's camera and a flagged
-     check-in's face photos, in #216;
+     check-in's face photos, merged in #216 on 2026-11-07; then the code a
+     high-risk action asks for and the screen over a page the app has to
+     leave, in #217;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4774,3 +4776,38 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     Close had no hover, and wasn't in the shared rule for taps; the test
     version's pill left "only." alone on its second line, and the
     download's share changed width with its digits.
+- **2026-11-07:** The code a high-risk action asks for and the screen over a
+  page the app has to leave on the building blocks (#217; `DESIGN.md` §5.5,
+  Dialog and "A page the app has to leave"):
+  - the code (`components/StepUpInterceptor.tsx`) is the building blocks'
+    dialog, above every other one (`aboveAll`, 10001) and under the toasts,
+    which move to 10002, over every dialog as `DESIGN.md` has them. It was
+    the last of the older pages' windows, `components/Modal`, which nothing
+    uses now; its Cancel was grey, of its own making;
+  - it's a form: why and for how long, in the page's digits (`countOf`),
+    where the minutes were in Western digits in Arabic; the six digits left
+    to right; Cancel and Confirm, Cancel off and Confirm busy while it's
+    checked. A code that isn't six digits is said under the field before
+    anything is sent, where Confirm stayed off without saying why. A check
+    that couldn't be made, as when the session update gives nothing back,
+    says so (`lib/step-up-check.ts`), where it said the code was wrong;
+  - Arabic digits and a space, as typed on a phone or pasted, are taken
+    (`codeDigits` in `lib/security-forms.ts`): a code pasted as "123 456"
+    lost its last digit to the field's length, and Arabic digits weren't
+    taken at all;
+  - the Arabic no longer asks one man: «يُرجى إدخال الرمز…» for «أدخل», and
+    «يُرجى تفعيلها…» for «فعّلها… ثم حاول»;
+  - the screen over a page the app has to leave (`components/UserHeartbeat.tsx`,
+    `LeavingCover`), when an account is suspended, closed or its company
+    banned, or maintenance starts: the whole screen in the page's colour
+    with an empty state, nothing turning, an alert dialog screen readers
+    hear at once, its focus kept and Escape doing nothing. It was a dark
+    screen with a turning ring and a 🔧, titled in Title Case, and screen
+    readers weren't told. Its lines say what's next in sentence case:
+    "Saving your work, then signing you out…";
+  - a heartbeat that couldn't reach the server, as when the page is left
+    mid-request, is no longer logged as "Heartbeat failed: TypeError:
+    Failed to fetch", which every browser flow had to leave out;
+  - the four colours only the old screen used (`--warn-solid`,
+    `--warn-fg-mid`, `--veil-30`, `--scrim-deep`) are gone from
+    `app/globals.css`, in both themes.
