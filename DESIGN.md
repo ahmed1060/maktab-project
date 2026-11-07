@@ -818,6 +818,27 @@ These are built once, in the building-blocks PR, and every page uses them
     them, with no one among the choices. Answered, it stays open until the
     change is sent, as a confirmation does, and why the one picked can't
     take them is said under the choice.
+- **Toast:** a few words on what an action did, such as "Saved", or why it
+  couldn't be done, at the top of the screen on its end side, over every
+  dialog. It's a level-2 panel (§4.3) on `--panel-raised`, with 8px
+  corners, up to 400px wide, or the screen's width less 16px each side on
+  a phone, the newest under the others.
+  - Its meaning's colour (§2.3) is a 3px bar on its start edge, as a note
+    above the page's is, with an icon in the same colour before the words:
+    Done or good for something done (a tick), Problem for an error (a
+    warning circle), Waiting on someone for a warning (a warning sign), and
+    Neutral for the rest (an "i"). The words say it, so the colour is never
+    the only signal.
+  - Close, an X named for what it does, is on its end side.
+  - It slides in from the end side in 200ms. With "reduce motion" it's just
+    there.
+  - An error stays until the person moves on: a tap anywhere but on it, or
+    another page. The rest go after five seconds, their clock stopped
+    while the pointer, a finger or focus is on them. The same message again
+    counts on the one showing, and no more than five show at once; a stack
+    taller than the screen scrolls.
+  - Screen readers hear each as it comes: an error at once, the rest in
+    their turn.
 - **Selection bar:** when items in a list are picked with their
   checkboxes, a panel above the list says how many are picked and holds
   what can be done to all of them, with a quiet "Clear selection" on the
@@ -1612,3 +1633,7 @@ changed:
   nothing. A date cell was read as the day before west of UTC, a time that
   wasn't one as midnight, a difficulty in words as 0, and a typed "1" as
   1 January 2001; a row with no title was left out with nothing said.
+- **2026-11-06:** Toast (§5.5). The toasts were white whatever the theme,
+  so a dark page had a white box on it; their bar of colour was on the
+  left in Arabic too, the end side there, and they slid in from the right.
+  Their colours weren't the meanings' (§2.3), and their ✕ was a letter.

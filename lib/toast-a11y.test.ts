@@ -74,7 +74,8 @@ describe("toasts", () => {
         for (let i = 0; i < MAX_TOASTS + 3; i++) list = withToast(list, err(`e${i}`, `m${i}`))
         expect(list.length).toBe(MAX_TOASTS)
         expect(list[0].id).toBe("e3")
-        expect(SRC).toContain("maxHeight: 'calc(100vh - 40px)'")
+        // A stack taller than the screen scrolls (DESIGN.md §5.5, "Toast").
+        expect(readFileSync("components/ui/ui.css", "utf8")).toMatch(/\n\.ui-toasts \{[^}]*max-block-size: calc\(100dvh - 2 \* var\(--space-4\)\);[^}]*overflow-y: auto;/)
     })
 
     it("keep a repeated toast where it is, under its own key, so focus on its ✕ stays (review on #37)", () => {
@@ -88,7 +89,7 @@ describe("toasts", () => {
         expect(withToast(again, err("d"))[0].repeat).toBe(2)
         // Its text is put up again, keyed by the repeat, so it is read out again,
         // and its clock starts again.
-        expect(SRC).toContain("<div key={repeat} style={{ color: '#1e293b'")
+        expect(SRC).toContain('<p key={repeat} className="ui-toast-text">')
         expect(SRC).toContain("if (counted.current !== repeat) { counted.current = repeat; remaining.current = lifetime }")
     })
 

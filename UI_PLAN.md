@@ -560,7 +560,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      two windows Create task opens: the Super Admin's templates for the
      bulk upload of tasks, merged in #211 on 2026-11-06, then the bulk
      review of tasks, in two parts: its window, merged in #212 on
-     2026-11-06, then reading the file's rows, in #213;
+     2026-11-06, then reading the file's rows, merged in #213 on
+     2026-11-06, which finished it; then the toasts, in #214;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4661,3 +4662,25 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-11-06:** From Codex's review of #213: a time given as a fraction
   of a day drops its seconds, as a typed one does. Rounded to the minute,
   17:45:30 was 17:46, and 23:59:45 was midnight and so not a time at all.
+- **2026-11-06:** The bulk review's second part was merged in #213, which
+  finished Create task's two windows. The toasts move onto the building
+  blocks in #214 (`DESIGN.md` §5.5, "Toast"):
+  - each is a level-2 panel on `--panel-raised`, with 8px corners, at the
+    screen's top end corner, or the screen's width less 16px each side on a
+    phone. They were white whatever the theme, so a dark page had a white
+    box on it;
+  - its meaning's colour (`DESIGN.md` §2.3) is a 3px bar on its start
+    edge, with an icon before the words: a tick, a warning circle, a
+    warning sign or an "i". The bar was on the left in Arabic too, the end
+    side there, and its colours weren't the meanings';
+  - Close is an X named for what it does, a 44px target under a finger,
+    with a ring when the keyboard reaches it. It was a letter;
+  - it slides in from the end side in 200ms, the other way in Arabic, and
+    with "reduce motion" it's just there. It slid in from the right
+    whatever the language and the setting;
+  - how long each stays, and what screen readers hear, are as they were;
+  - gone: the old slide's keyframes, in two places, and the toast's own
+    `<style jsx>`;
+  - from the web interface audit: Close takes a tap at once, with no grey
+    flash, as every other control does, and a scroll past the end of a tall
+    stack no longer goes on to the page under it.

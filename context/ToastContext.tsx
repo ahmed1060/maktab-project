@@ -3,8 +3,10 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import { usePathname, useSearchParams } from 'next/navigation'
+import { CheckCircleIcon, InfoIcon, WarningCircleIcon, WarningIcon, XIcon } from '@phosphor-icons/react/ssr'
 import { useHydrated } from '@/lib/useHydrated'
 import { useLanguage } from '@/context/LanguageContext'
+import { Icon, type PhosphorIcon } from '@/components/ui/Icon'
 
 type ToastType = 'success' | 'error' | 'info' | 'warning'
 
@@ -92,8 +94,25 @@ function PageChanges({ onMove }: { onMove: () => void }) {
     return null
 }
 
-/** One toast: its own clock, paused while hovered or focused. */
-function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) {
+/**
+ * Each kind's meaning (DESIGN.md §2.3), its colour a bar on the toast's
+ * start edge, and its icon before the words, so the colour is never the
+ * only signal.
+ */
+const LOOKS: Record<ToastType, { tone: 'good' | 'problem' | 'waiting' | 'neutral'; icon: PhosphorIcon }> = {
+    success: { tone: 'good', icon: CheckCircleIcon },
+    error: { tone: 'problem', icon: WarningCircleIcon },
+    warning: { tone: 'waiting', icon: WarningIcon },
+    info: { tone: 'neutral', icon: InfoIcon },
+}
+
+/**
+ * One toast (DESIGN.md §5.5, "Toast"): its own clock, paused while hovered
+ * or focused. Its look is the building blocks' (components/ui/ui.css): it
+ * was white whatever the theme, its bar on the left in Arabic too, and its
+ * ✕ a letter.
+ */
+export function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) {
     const { t } = useLanguage()
     const lifetime = toastLifetime(toast.type)
     // Pointer and focus each hold the clock; it runs again only when neither
@@ -121,54 +140,25 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
     const box = useRef<HTMLDivElement>(null)
     useEffect(() => { box.current?.scrollIntoView({ block: 'nearest' }) }, [repeat])
 
+    const look = LOOKS[toast.type]
     return (
         <div
             ref={box}
+            className="ui-toast"
+            data-tone={look.tone}
             // Pointer events: a finger on a phone holds the clock as a mouse does.
             onPointerEnter={() => setHovered(true)}
             onPointerLeave={() => setHovered(false)}
             onFocus={() => setFocused(true)}
             // Only when focus leaves the toast, not when it moves within it.
             onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false) }}
-            style={{
-                background: 'white',
-                borderRadius: '8px',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                padding: '16px',
-                borderLeft: `4px solid ${toast.type === 'success' ? '#22c55e' :
-                    toast.type === 'error' ? '#ef4444' :
-                        toast.type === 'warning' ? '#f59e0b' : '#3b82f6'
-                    }`,
-                minWidth: '300px',
-                maxWidth: '400px',
-                pointerEvents: 'auto', // Re-enable clicks
-                animation: 'slideInRight 0.3s ease-out',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'start',
-                gap: '12px'
-            }}
         >
+            <Icon icon={look.icon} size={20} className="ui-toast-icon" />
             {/* Keyed by the repeat: only the text is put up again, so a screen reader reads it again while
-                focus on the ✕ stays where it is. */}
-            <div key={repeat} style={{ color: '#1e293b', fontSize: '0.9rem', lineHeight: '1.5' }}>
-                {toast.message}
-            </div>
-            <button
-                type="button"
-                aria-label={t('close')}
-                onClick={() => onDismiss(toast.id)}
-                style={{
-                    border: 'none',
-                    background: 'transparent',
-                    color: '#64748b',
-                    cursor: 'pointer',
-                    fontSize: '1.2rem',
-                    lineHeight: '1',
-                    padding: '0'
-                }}
-            >
-                <span aria-hidden="true">&times;</span>
+                focus on Close stays where it is. */}
+            <p key={repeat} className="ui-toast-text">{toast.message}</p>
+            <button type="button" className="ui-toast-close" aria-label={t('close')} onClick={() => onDismiss(toast.id)}>
+                <Icon icon={XIcon} size={16} />
             </button>
         </div>
     )
@@ -208,36 +198,21 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             <Suspense fallback={null}><PageChanges onMove={movedOn} /></Suspense>
             {children}
             {mounted && createPortal(
-                <div ref={region} style={{
-                    position: 'fixed',
-                    top: '20px',
-                    right: '20px', // or left, or center
-                    zIndex: 10001,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px',
-                    // Never taller than the screen: a long stack scrolls rather than running off it.
-                    maxHeight: 'calc(100vh - 40px)',
-                    overflowY: 'auto',
-                    pointerEvents: 'none' // Allow clicking through the container
-                }}>
+                // At the screen's top end corner, over every dialog; never taller than the screen, a long
+                // stack scrolls rather than running off it, and clicks go through where there's no toast
+                // (components/ui/ui.css).
+                <div ref={region} className="ui-toasts">
                     {/* Announced as they arrive (WCAG 4.1.3): the regions are always in the
                         page, so a screen reader is already listening when a toast is added.
                         Errors interrupt; the rest wait their turn. Not atomic (alert and
                         status are by default): only the toast just added is read, not every
                         one still showing (Codex review on #37). */}
-                    <div role="alert" aria-atomic="false" style={{ display: 'contents' }}>
+                    <div role="alert" aria-atomic="false" className="ui-toasts-group">
                         {toasts.filter(t => t.type === 'error').map(toast => <ToastItem key={toast.id} toast={toast} onDismiss={removeToast} />)}
                     </div>
-                    <div role="status" aria-atomic="false" style={{ display: 'contents' }}>
+                    <div role="status" aria-atomic="false" className="ui-toasts-group">
                         {toasts.filter(t => t.type !== 'error').map(toast => <ToastItem key={toast.id} toast={toast} onDismiss={removeToast} />)}
                     </div>
-                    <style jsx global>{`
-                        @keyframes slideInRight {
-                            from { transform: translateX(100%); opacity: 0; }
-                            to { transform: translateX(0); opacity: 1; }
-                        }
-                    `}</style>
                 </div>,
                 document.body
             )}

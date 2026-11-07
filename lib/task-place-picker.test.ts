@@ -111,7 +111,7 @@ describe("adding a location from a task's form", () => {
         const layer = (file: string, pattern: RegExp) => Number(readFileSync(file, "utf8").match(pattern)?.[1])
         const over = layer("components/ui/ui.css", /\.ui-dialog-backdrop\.is-over-modal\s*\{[^}]*z-index:\s*(\d+)/)
         expect(over).toBeGreaterThan(LAYER.modal)
-        expect(over).toBeLessThan(layer("context/ToastContext.tsx", /zIndex:\s*(\d+)/))
+        expect(over).toBeLessThan(layer("components/ui/ui.css", /\n\.ui-toasts\s*\{[^}]*z-index:\s*(\d+)/))
     })
 
     it("keeps its save to itself: the task's form around it isn't submitted too", () => {
