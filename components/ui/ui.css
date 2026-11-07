@@ -2060,6 +2060,153 @@ a.ui-file-open:focus-visible,
     inline-size: auto;
   }
 }
+
+/* ── A place on the map (§5.3): the place search, the pin's buttons and
+   the map ── */
+/* The place search: a name picker's suggestions (.ui-suggestions) hang
+   under it. */
+.ui-place-search {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+/* A place's name, with the rest of its address under it. */
+.ui-suggestion-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ui-suggestion-detail {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+/* What it says when nothing matches, or it isn't answering: room only
+   then, though it's always there, so a screen reader hears it come. Over
+   .ui-dialog-body p, which takes every paragraph's margin away. */
+.ui-place-search > .ui-place-search-note {
+  margin: var(--space-1) 0 0;
+}
+.ui-place-search > .ui-place-search-note:empty {
+  margin: 0;
+}
+/* A field waiting on an answer: a small spinner at its end, as a busy
+   button has. */
+.ui-control[data-busy]::after {
+  content: "";
+  position: absolute;
+  inset-inline-end: var(--space-3);
+  inline-size: 14px;
+  block-size: 14px;
+  border: 2px solid var(--muted);
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  pointer-events: none;
+}
+.ui-control[data-busy] > .ui-input {
+  padding-inline-end: 36px;
+}
+/* The pin's buttons, right below it, and the line under them that says how
+   close a position is: room for that line only when it says something. */
+.ui-point-picker {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ui-point-picker-status {
+  margin: 0;
+}
+/* Over .ui-dialog-body p, as the line is a paragraph. */
+.ui-point-picker > :not(:first-child) {
+  margin-block-start: var(--space-2);
+}
+.ui-point-picker > .ui-point-picker-status:empty {
+  margin-block-start: 0;
+}
+.ui-point-picker-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+/* The map: a field's corners and edge, never mirrored. Leaflet draws into
+   .ui-map, and adds its own classes to it. */
+.ui-map-frame {
+  position: relative;
+  isolation: isolate;
+}
+.ui-map {
+  block-size: 288px;
+  border: 1px solid var(--field-line);
+  border-radius: var(--radius-field);
+}
+.ui-map:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+}
+/* Its own buttons are white, as the map is light, in both themes: the
+   pin's colour holds 3:1 on them, where --brand-text in dark mode doesn't.
+   Inside the bar, the ring is drawn within the button, clear of the next. */
+.ui-map .leaflet-control a:focus-visible {
+  outline: 2px solid var(--map-pin);
+  outline-offset: 2px;
+}
+.ui-map .leaflet-bar a:focus-visible,
+.ui-map .leaflet-control-layers-toggle:focus-visible {
+  outline-offset: -2px;
+}
+/* The centre of the map, where "Pin the centre" drops the pin. */
+.ui-map-cross {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  inline-size: 18px;
+  block-size: 18px;
+  margin-block-start: -9px;
+  margin-inline-start: -9px;
+  pointer-events: none;
+  /* Over Leaflet's panes and under its controls. */
+  z-index: 1000;
+  background:
+    linear-gradient(var(--map-ink), var(--map-ink)) center / 2px 100% no-repeat,
+    linear-gradient(var(--map-ink), var(--map-ink)) center / 100% 2px no-repeat;
+  filter: drop-shadow(0 0 1px var(--map-halo));
+}
+/* The pin, a dot in the brand colour with a white edge, and the radius
+   ring over a wider white one, as the pin has a white edge, so it shows
+   on satellite imagery too, whatever the brand colour (§2.1). The ring is
+   SVG, coloured here rather than in Leaflet's options. */
+.ui-map-pin {
+  background: var(--map-pin);
+  border: 3px solid var(--map-halo);
+  border-radius: 50%;
+  box-shadow: 0 1px 4px var(--map-shadow);
+}
+.ui-map-ring {
+  stroke: var(--map-pin);
+  fill: var(--map-pin);
+}
+.ui-map-ring-halo {
+  stroke: var(--map-halo);
+  fill: none;
+}
+/* "Pin the centre", with how to place the pin beside it. */
+.ui-map-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+/* Leaflet's zoom buttons are 30px under a finger; a finger needs 44. */
+@media (pointer: coarse) {
+  .ui-map.leaflet-container .leaflet-bar a {
+    width: 44px;
+    height: 44px;
+    line-height: 44px;
+  }
+}
+
 /* ── Page layout and sections (§5.5) ── */
 .ui-page {
   display: flex;
@@ -3484,6 +3631,7 @@ html[lang="ar"] .ui-empty-title {
   .ui-toast-close {
     transition: none;
   }
+  .ui-control[data-busy]::after,
   .ui-btn[aria-busy="true"]::after,
   .ui-toast {
     animation: none;

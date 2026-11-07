@@ -17,7 +17,7 @@ const SKIPPED = [/^app\/api\//, /^lib\/services\//, /^lib\/swr-fetcher\.ts$/, /\
 /** Loads left as they are, each with why. */
 const ALLOWED: { file: string; mark: string; why: string }[] = [
     { file: "app/(dashboard)/dashboard/tasks/[id]/client.tsx", mark: "revgeocode.search.hereapi.com", why: "the map service's name for a pin, best-effort: the pin is kept without it" },
-    { file: "components/LocationSearchInput.tsx", mark: "autosuggest.search.hereapi.com", why: "suggestions while typing: the next key asks again" },
+    { file: "components/locations/PlaceSearch.tsx", mark: "placeSearchUrl(", why: "suggestions while typing: the next key asks again" },
     { file: "lib/here-tiles.ts", mark: "hereCopyrightUrl", why: "the map's copyright line, best-effort" },
     // Helpers that pass on what they're given: every caller gives a method.
     { file: "app/(dashboard)/dashboard/attendance/send.ts", mark: "fetch(url, init)", why: "writes only" },

@@ -219,8 +219,8 @@ export function PlaceDialog({ draft: start, busy, onClose, onSubmit }: {
                         <TextInput {...p} name="point" dir="ltr" autoComplete="off" value={draft.point} onChange={e => edit({ point: e.target.value }, 'point')} />
                     )}</Field>
                     {point && <a className="ui-field-link" href={mapLink(point)} target="_blank" rel="noopener noreferrer">{t('att_loc_map')}</a>}
+                    <PointPicker value={draft.point} radius={Number(draft.radius) || 0} onChange={text => edit({ point: text }, 'point')} />
                 </div>
-                <PointPicker value={draft.point} radius={Number(draft.radius) || 0} onChange={text => edit({ point: text }, 'point')} />
                 <Field label={t('att_loc_radius')} hint={t('att_loc_radius_hint')} error={errors.radius && t(errors.radius)}>{p => (
                     <TextInput {...p} name="radius" type="number" inputMode="numeric" autoComplete="off" min={20} max={5000} step={10} value={draft.radius} onChange={e => edit({ radius: e.target.value }, 'radius')} />
                 )}</Field>

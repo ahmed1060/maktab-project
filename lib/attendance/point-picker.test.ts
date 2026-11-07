@@ -105,10 +105,13 @@ describe("a slow position", () => {
 })
 
 describe("the picker on the building blocks (DESIGN.md §10)", () => {
-    it("sizes its hints and rounds its map with the design's tokens, the older pages keeping their own", () => {
+    // Its sizes, corners and colours were typed in, one set for the older
+    // pages and one for the building blocks'; they're ui.css's alone now
+    // (lib/point-picker-blocks.test.ts).
+    it("sizes and rounds nothing itself", () => {
         const picker = readFileSync("components/PointPicker.tsx", "utf8")
-        expect(picker).toContain("blocks ? 'var(--radius-field)' : '0.75rem'")
-        expect(picker).toContain("const small = blocks ? 'var(--text-xs)' : '0.75rem'")
-        expect(picker).not.toContain("blocks ? '6px'")
+        expect(picker).not.toContain("style=")
+        expect(picker).not.toContain("'0.75rem'")
+        expect(readFileSync("components/ui/ui.css", "utf8")).toMatch(/\n\.ui-map \{[^}]*border-radius: var\(--radius-field\);/)
     })
 })
