@@ -546,6 +546,31 @@
   background: var(--page);
 }
 
+/* A page the app has to leave (§5.5; components/UserHeartbeat.tsx): the
+   account can't go on, or maintenance started, and the work open on the
+   page is being saved. The whole screen in the page's colour, as the
+   language switch's, over every dialog and toast; under that one only.
+   Nothing turns (§8). */
+.ui-cover {
+  position: fixed;
+  inset: 0;
+  z-index: 99998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  overflow-y: auto;
+  background: var(--page);
+}
+.ui-cover-panel {
+  max-inline-size: 480px;
+}
+/* It takes the focus as it opens, to be heard: no ring round it for that,
+   as a dialog has none, but the keyboard's ring stays. */
+.ui-cover-panel:focus:not(:focus-visible) {
+  outline: none;
+}
+
 /* ── Dialog (§5.5) ── */
 .ui-dialog-backdrop {
   position: fixed;
@@ -558,9 +583,15 @@
   background: var(--scrim);
 }
 /* Opened from an older page's modal (components/Modal, 9999): above it, and
-   under the toasts (10001). */
+   under the toasts (10002). */
 .ui-dialog-backdrop.is-over-modal {
   z-index: 10000;
+}
+/* The code a high-risk action asks for (components/StepUpInterceptor.tsx):
+   above every other dialog, the confirmation that sent the action among
+   them, which waits open for the answer, and under the toasts (PR 217). */
+.ui-dialog-backdrop.is-above-all {
+  z-index: 10001;
 }
 .ui-dialog {
   display: flex;
@@ -2205,15 +2236,16 @@ a.ui-file-open:focus-visible,
 
 /* ── Toast (§5.5) ── */
 /* A few words on what an action did, at the screen's top end corner: over
-   every dialog, one opened from an older page's modal (10000) included,
-   and under the screen shown while the language changes (99999). The
-   newest under the others; a stack taller than the screen scrolls, and
-   clicks go through where there's no toast. */
+   every dialog, the code a high-risk action asks for (10001) included,
+   and under the screen over a page the app has to leave (99998) and the
+   one shown while the language changes (99999). The newest under the
+   others; a stack taller than the screen scrolls, and clicks go through
+   where there's no toast. */
 .ui-toasts {
   position: fixed;
   inset-block-start: var(--space-4);
   inset-inline-end: var(--space-4);
-  z-index: 10001;
+  z-index: 10002;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);

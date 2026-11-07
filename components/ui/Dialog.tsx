@@ -7,6 +7,7 @@ import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useDialog } from '@/lib/useDialog'
 import { useHydrated } from '@/lib/useHydrated'
 import { Button } from './Button'
+import { cx } from './cx'
 
 /**
  * A dialog (DESIGN.md §5.5): a level-2 panel over the dimmed page, with its
@@ -18,21 +19,25 @@ import { Button } from './Button'
  * so Enter and the submit button are the form's.
  *
  * One that can open from an older page's modal (components/Modal), which sits
- * above the building blocks, says so, to sit above it in turn.
+ * above the building blocks, says so, to sit above it in turn. The code a
+ * high-risk action asks for is above every other dialog, under the toasts
+ * (components/StepUpInterceptor.tsx; PR 217).
  */
-export function Dialog({ open, onClose, title, children, actions, overModal = false }: {
+export function Dialog({ open, onClose, title, children, actions, overModal = false, aboveAll = false }: {
     open: boolean
     onClose: () => void
     title: ReactNode
     children: ReactNode
     actions?: ReactNode
     overModal?: boolean
+    /** The code a high-risk action asks for: over the confirmation that sent the action, which waits open. */
+    aboveAll?: boolean
 }) {
     const dialog = useDialog(open, onClose)
     const mounted = useHydrated()
     if (!open || !mounted) return null
     return createPortal(
-        <div className={overModal ? 'ui-dialog-backdrop is-over-modal' : 'ui-dialog-backdrop'}>
+        <div className={cx('ui-dialog-backdrop', overModal && 'is-over-modal', aboveAll && 'is-above-all')}>
             <div {...dialog.panelProps} className="ui-dialog">
                 <h2 id={dialog.titleId} className="ui-dialog-title">{title}</h2>
                 <div className="ui-dialog-body">{children}</div>

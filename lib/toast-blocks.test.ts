@@ -69,9 +69,10 @@ describe("its rules (components/ui/ui.css)", () => {
         expect(region).toMatch(/position: fixed;/)
         expect(region).toMatch(/inset-block-start: var\(--space-4\);/)
         expect(region).toMatch(/inset-inline-end: var\(--space-4\);/)
-        // Over a dialog opened from an older page's modal (10000), under the
-        // screen shown while the language changes (99999).
-        expect(region).toMatch(/z-index: 10001;/)
+        // Over every dialog, the code a high-risk action asks for (10001)
+        // included (PR 217), under the screen over a page the app has to
+        // leave (99998) and the one shown while the language changes (99999).
+        expect(region).toMatch(/z-index: 10002;/)
         expect(region).toMatch(/flex-direction: column;/)
         expect(region).toMatch(/max-block-size: calc\(100dvh - 2 \* var\(--space-4\)\);/)
         expect(region).toMatch(/overflow-y: auto;/)

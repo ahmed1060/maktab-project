@@ -29,6 +29,19 @@ export function isCode(typed: string): boolean {
     return CODE.test(typed.trim())
 }
 
+/**
+ * A code as it's typed or pasted, to its digits, six at most: Arabic ones, as
+ * a phone's Arabic keyboard types them, are the same digits, and a space, as
+ * an app shows "123 456", isn't part of it (the step-up code, PR 217).
+ */
+export function codeDigits(typed: string): string {
+    return typed
+        .replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0) - 0x0660))
+        .replace(/[\u06f0-\u06f9]/g, d => String(d.charCodeAt(0) - 0x06f0))
+        .replace(/\D/g, '')
+        .slice(0, CODE_LENGTH)
+}
+
 /** The form a refusal answered: sending a code, verifying it, a two-factor code, the password to turn it off. */
 export type RefusedForm = 'send' | 'verify' | 'mfaCode' | 'password'
 

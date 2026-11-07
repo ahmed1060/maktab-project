@@ -2,8 +2,12 @@
 
 import { useSession, signOut } from "next-auth/react"
 import { useRouter, usePathname } from "next/navigation"
-import { useEffect, useRef, useState, useCallback } from "react"
+import { useEffect, useId, useRef, useState, useCallback } from "react"
+import { createPortal } from "react-dom"
+import { SignOutIcon, WrenchIcon } from "@phosphor-icons/react/ssr"
+import { EmptyState, type PhosphorIcon } from "@/components/ui"
 import { useLanguage } from "@/context/LanguageContext"
+import { useDialog } from "@/lib/useDialog"
 
 // How long to give tasks/[id]/client.tsx or obligations/[id]/client.tsx to
 // finish an in-flight emergency save (upload + PUT) before giving up and
@@ -152,14 +156,17 @@ export default function UserHeartbeat() {
         if (!session?.user) return
 
         const checkStatus = async () => {
+            // Offline, or the page left mid-request, as on a page change: no
+            // answer, so nothing to say, and the next beat asks again. It was
+            // logged as "Heartbeat failed: TypeError: Failed to fetch" (PR 217).
+            const res = await fetch('/api/user/activity', { method: 'POST' }).catch(() => null)
+            // Refused, it has no answer to read: a 401 signs the page out
+            // (AuthInterceptor), as a session the server ended gets.
+            if (!res?.ok) return
+            // Its answer cut off as the page is left: the same, nothing to say.
+            const data = (await res.json().catch(() => null))?.data
+            if (!data) return
             try {
-                const res = await fetch('/api/user/activity', { method: 'POST' })
-                // Refused, it has no answer to read: a 401 signs the page out
-                // (AuthInterceptor), as a session the server ended gets.
-                if (!res.ok) return
-                const result = await res.json()
-                const data = result.data
-
                 if (data.status === 'SUSPENDED') {
                     window.dispatchEvent(new CustomEvent('app:suspend-detected'))
                     setIsSuspended(true)
@@ -211,80 +218,42 @@ export default function UserHeartbeat() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [session])
 
+    // The screen over a page the app has to leave (DESIGN.md §5.5), over
+    // everything, while the emergency save above runs. It was a dark screen
+    // with a turning ring, titled in Title Case, that screen readers weren't
+    // told of (PR 217).
     if (isSuspended || isCompanyBanned || isArchived) {
-        return (
-            <div style={{
-                position: 'fixed',
-                top: 0, left: 0, right: 0, bottom: 0,
-                background: 'var(--scrim-deep)',
-                zIndex: 9999,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--text-on-accent)',
-                flexDirection: 'column',
-                gap: '1rem',
-                textAlign: 'center',
-                padding: '2rem'
-            }}>
-                <h1 style={{ color: 'var(--danger-fg-strong)', fontSize: '2rem', margin: 0 }}>
-                    {isArchived ? t('account_archived') : isSuspended ? t('account_suspended') : t('company_banned')}
-                </h1>
-                <p style={{ fontSize: '1.1rem', maxWidth: '500px' }}>
-                    {isArchived
-                        ? t('archived_msg')
-                        : isSuspended
-                            ? t('suspension_msg')
-                            : t('banned_msg')}
-                </p>
-                <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>{t('logging_out_msg')}</p>
-                <div style={{
-                    width: '30px',
-                    height: '30px',
-                    border: '3px solid var(--veil-30)',
-                    borderTopColor: 'var(--danger-solid)',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite'
-                }}></div>
-            </div>
-        )
+        const [title, why] = isArchived ? [t('account_archived'), t('archived_msg')]
+            : isSuspended ? [t('account_suspended'), t('suspension_msg')]
+                : [t('company_banned'), t('banned_msg')]
+        return createPortal(<LeavingCover icon={SignOutIcon} title={title} why={why} next={t('logging_out_msg')} />, document.body)
     }
 
     if (showMaintenanceOverlay) {
-        return (
-            <div style={{
-                position: 'fixed',
-                top: 0, left: 0, right: 0, bottom: 0,
-                background: 'var(--scrim-deep)',
-                zIndex: 9999,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--text-on-accent)',
-                flexDirection: 'column',
-                gap: '1rem',
-                textAlign: 'center',
-                padding: '2rem'
-            }}>
-                <span aria-hidden="true" style={{ fontSize: '3rem' }}>🔧</span>
-                <h1 style={{ color: 'var(--warn-fg-mid)', fontSize: '2rem', margin: 0 }}>
-                    {t('maintenance_detected_title')}
-                </h1>
-                <p style={{ fontSize: '1.1rem', maxWidth: '500px' }}>
-                    {maintenanceMessage || t('maintenance_detected_msg')}
-                </p>
-                <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>{t('maintenance_saving_msg')}</p>
-                <div style={{
-                    width: '30px',
-                    height: '30px',
-                    border: '3px solid var(--veil-30)',
-                    borderTopColor: 'var(--warn-solid)',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite'
-                }}></div>
-            </div>
-        )
+        // The Super Admins' message, when they wrote one, says why.
+        return createPortal(<LeavingCover icon={WrenchIcon} title={t('maintenance_detected_title')} why={maintenanceMessage} next={t('maintenance_saving_msg')} />, document.body)
     }
 
     return null
+}
+
+/**
+ * The screen over a page the app has to leave (DESIGN.md §5.5): the whole
+ * screen in the page's colour, as the language switch's, with an empty state
+ * in its middle: its icon, what happened, why, and what happens next. A
+ * dialog with no buttons: the focus goes to it and stays, screen readers hear
+ * it at once, and Escape does nothing, as there's nothing to go back to.
+ */
+export function LeavingCover({ icon, title, why, next }: { icon: PhosphorIcon; title: string; why?: string | null; next: string }) {
+    // No onClose: Escape does nothing.
+    const dialog = useDialog(true, undefined, { label: title })
+    const detailId = useId()
+    return (
+        <div className="ui-cover">
+            <div {...dialog.panelProps} role="alertdialog" aria-describedby={detailId} className="ui-cover-panel">
+                {/* Why as it was written, in either language, as a maintenance message is (DESIGN.md §7). */}
+                <EmptyState icon={icon} title={title} detail={<span id={detailId}>{why && <><span dir="auto">{why}</span><br /></>}{next}</span>} />
+            </div>
+        </div>
+    )
 }

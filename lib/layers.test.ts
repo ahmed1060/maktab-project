@@ -15,14 +15,21 @@ describe("the code prompt", () => {
     })
 
     it("is drawn on its layer, and each confirmation and dialog on theirs", () => {
+        // Both of its dialogs, the code and "set up two-factor sign-in first", are the building
+        // blocks', above every other one (PR 217): they were the older pages' windows on this layer.
         const prompt = readFileSync("components/StepUpInterceptor.tsx", "utf8")
-        // Both of its windows: the code, and "set up two-factor sign-in first".
-        expect(prompt.match(/<Modal\b.*zIndex=\{LAYER\.codePrompt\}/g)).toHaveLength(2)
+        expect(prompt.match(/<Dialog open\b[^>]*\baboveAll\b/g)).toHaveLength(2)
         expect(readFileSync("components/Modal.tsx", "utf8")).toMatch(/zIndex = LAYER\.modal\b/)
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        const layer = (selector: string) => {
+            const start = css.indexOf(`\n${selector} {`)
+            return Number(css.slice(start, css.indexOf("}", start)).match(/z-index: (\d+);/)?.[1])
+        }
         // A building-block dialog over an older page's modal sits on the confirmations' layer, under
         // the code: the old confirmation window that held it went in PR 189.
-        const over = readFileSync("components/ui/ui.css", "utf8").match(/\.ui-dialog-backdrop\.is-over-modal \{\s*z-index: (\d+);/)
-        expect(Number(over?.[1])).toBe(LAYER.confirm)
-        expect(Number(over?.[1])).toBeLessThan(LAYER.codePrompt)
+        expect(layer(".ui-dialog-backdrop.is-over-modal")).toBe(LAYER.confirm)
+        expect(layer(".ui-dialog-backdrop.is-above-all")).toBe(LAYER.codePrompt)
+        // And the toasts over them all (DESIGN.md §5.5, Toast).
+        expect(layer(".ui-toasts")).toBeGreaterThan(LAYER.codePrompt)
     })
 })
