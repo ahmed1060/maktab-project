@@ -4724,3 +4724,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   kept in sight. Eight places with their addresses run past the
   suggestions' 320px, and the arrow keys could reach one out of sight,
   which Enter then picked unseen.
+- **2026-11-07:** From Codex's review of #215: a place's name picked and
+  then typed again asks the search again, as for another branch of the
+  same business. Only the pick filling the field in isn't asked about;
+  the name retyped brought no suggestions at all.

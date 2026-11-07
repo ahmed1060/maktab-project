@@ -26,7 +26,9 @@ export default function PlaceSearch({ onPick, placeholder, id, ...field }: {
     const hereKey = process.env.NEXT_PUBLIC_HERE_API_KEY
     const listId = useId()
     const [typed, setTyped] = useState('')
-    // The name of the place picked, which isn't asked about again.
+    // The name of the place picked, which the pick fills the field with and
+    // isn't asked about. Anything typed asks again, the same name included,
+    // as for another branch of the same business (Codex on PR 215).
     const [picked, setPicked] = useState<string | null>(null)
     const [last, setLast] = useState<Answer>({ for: '', places: [], failed: false })
     const [open, setOpen] = useState(false)
@@ -107,7 +109,7 @@ export default function PlaceSearch({ onPick, placeholder, id, ...field }: {
                     dir="auto"
                     value={typed}
                     placeholder={placeholder}
-                    onChange={e => { setTyped(e.target.value); setOpen(true) }}
+                    onChange={e => { setTyped(e.target.value); setPicked(null); setOpen(true) }}
                     onFocus={() => setOpen(true)}
                     onBlur={() => setOpen(false)}
                     onKeyDown={keys}

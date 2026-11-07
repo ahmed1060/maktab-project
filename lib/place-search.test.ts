@@ -119,6 +119,13 @@ describe("the field", () => {
         expect(SRC).toMatch(/useEffect\(\(\) => \{\s*if \(active < 0\) return\s*list\.current\?\.children\[active\]\?\.scrollIntoView\(\{ block: 'nearest' \}\)\s*\}, \[active\]\)/)
     })
 
+    // Codex on PR 215: after a pick, retyping the place's name, as for
+    // another branch of the same business, asked nothing.
+    it("asks about a name picked again once it's typed, not when the pick fills it in", () => {
+        expect(SRC).toContain("onChange={e => { setTyped(e.target.value); setPicked(null); setOpen(true) }}")
+        expect(SRC).toMatch(/const pick = \(p: FoundPlace\) => \{\s*setTyped\(p\.name\)\s*setPicked\(p\.name\)/)
+    })
+
     it("draws nothing itself: no styles typed in, no spinner of its own, nothing logged", () => {
         for (const gone of ["style=", "style jsx", "@keyframes", "console.", "left", "right", "onMouseEnter"]) expect(SRC, gone).not.toContain(gone)
         expect(existsSync("components/LocationSearchInput.tsx")).toBe(false)
