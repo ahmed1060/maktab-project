@@ -1301,11 +1301,6 @@ input::-webkit-credentials-auto-fill-button {
   }
 }
 
-/* The face check's tick when it's done (components/FaceCamera.tsx): it pops in. */
-.face-cam-tick { animation: face-cam-pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
-@keyframes face-cam-pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .face-cam-tick { animation: none; } }
-
 /* ── Design tokens (DESIGN.md) ─────────────────────────────────────────────
    The values for the building blocks in components/ui, from DESIGN.md §2–§4.
    Only the building blocks use these; the variables above stay for the pages

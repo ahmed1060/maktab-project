@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
-import Modal from '@/components/Modal'
+import { Button, Dialog } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 
 /**
@@ -33,19 +33,23 @@ export function useWatermark() {
     return `${session?.user?.name ?? session?.user?.email ?? ''} · ${openedAt}`
 }
 
-/** A flagged check-in's failed face frame beside the person's approved photo (§13.8). */
-export function FlaggedFaceModal({ punchId, name, onClose }: { punchId: string; name: string; onClose: () => void }) {
+/**
+ * A flagged check-in's failed face frame beside the person's approved photo
+ * (§13.8), in the building blocks' dialog (DESIGN.md §5.5, Face photos; PR
+ * 216). It was the older pages' window.
+ */
+export function FlaggedFaceDialog({ punchId, name, onClose }: { punchId: string; name: string; onClose: () => void }) {
     const { t } = useLanguage()
     const mark = useWatermark()
     return (
-        <Modal isOpen onClose={onClose} title={t('face_review_title').replace('{name}', name)}>
-            <div style={{ display: 'grid', gap: '0.75rem' }}>
-                <p style={{ margin: 0, color: 'var(--text-soft)', fontSize: '0.8rem' }}>{t('face_flag_compare')}</p>
-                <div className="ui-face-photos">
-                    <FacePhoto src={`/api/attendance/flagged/${punchId}/face?which=frame`} label={t('face_flag_frame')} mark={mark} />
-                    <FacePhoto src={`/api/attendance/flagged/${punchId}/face?which=reference`} label={t('face_photo_reference')} mark={mark} />
-                </div>
+        <Dialog open onClose={onClose} title={t('face_review_title').replace('{name}', name)}
+            // Close, to look and come back later: on a phone there's no Escape key.
+            actions={<Button onClick={onClose}>{t('close')}</Button>}>
+            <p>{t('face_flag_compare')}</p>
+            <div className="ui-face-photos">
+                <FacePhoto src={`/api/attendance/flagged/${punchId}/face?which=frame`} label={t('face_flag_frame')} mark={mark} />
+                <FacePhoto src={`/api/attendance/flagged/${punchId}/face?which=reference`} label={t('face_photo_reference')} mark={mark} />
             </div>
-        </Modal>
+        </Dialog>
     )
 }
