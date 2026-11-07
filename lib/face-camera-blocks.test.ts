@@ -256,6 +256,14 @@ describe("a flagged check-in's face photos", () => {
         for (const gone of ["@/components/Modal", "<Modal", "FlaggedFaceModal", "--text-soft", "style="]) expect(PHOTO, gone).not.toContain(gone)
     })
 
+    it("fit side by side in a dialog on a 320px phone; at 144px each they fell one under the other at 360px (found in the browser flows)", () => {
+        const min = Number(rule(".ui-face-photos").match(/minmax\((\d+)px, 1fr\)/)?.[1])
+        expect(rule(".ui-face-photos")).toContain("gap: var(--space-3);")
+        // A dialog's inside on a phone: the screen less 16px around the dialog, 16px inside it, and its 1px edges.
+        const inside = (screen: number) => screen - 2 * 16 - 2 * 16 - 2
+        expect(2 * min + 12).toBeLessThanOrEqual(inside(320))
+    })
+
     it("open from the Requests page and Check-ins as the dialog", () => {
         for (const page of ["app/(dashboard)/dashboard/requests/RequestsClient.tsx", "app/(dashboard)/dashboard/check-ins/page.tsx"]) {
             const s = readFileSync(page, "utf8")

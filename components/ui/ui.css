@@ -2056,10 +2056,12 @@ a.ui-file-open:focus-visible,
 /* ── Face photos (Attendance, ATTENDANCE_PLAN.md §9.5) ── */
 /* The new photo beside the approved one, to compare: side by side in a
    dialog, on a phone too. One under the other, comparing them meant
-   scrolling between them (found in the interface audit, PR 153). */
+   scrolling between them (found in the interface audit, PR 153). Two at
+   120px and the gap fit a dialog on a 320px phone; at 144px they fell one
+   under the other on a 360px one (found in the browser flows, PR 216). */
 .ui-face-photos {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(144px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: var(--space-3);
 }
 .ui-face-photo {

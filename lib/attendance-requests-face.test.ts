@@ -395,7 +395,8 @@ describe("found in the interface audit (PR 153)", () => {
     it("puts the two photos side by side in the dialog, each its size before it loads", () => {
         const css = readFileSync("components/ui/ui.css", "utf8")
         const rule = (name: string) => css.slice(css.indexOf(`${name} {`), css.indexOf("}", css.indexOf(`${name} {`)))
-        expect(rule(".ui-face-photos")).toContain("grid-template-columns: repeat(auto-fit, minmax(144px, 1fr));")
+        // 120px each, so two fit a dialog on a 320px phone (PR 216; lib/face-camera-blocks.test.ts).
+        expect(rule(".ui-face-photos")).toContain("grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));")
         expect(rule(".ui-face-photo-frame")).toContain("aspect-ratio: 3 / 4;")
         expect(rule(".ui-face-photo-frame > img")).toContain("height: 100%;")
     })
