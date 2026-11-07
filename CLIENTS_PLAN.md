@@ -2306,3 +2306,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   picked as Create task opened was read before them, so every client it
   named was one that wasn't found. A client is found by its name, case and
   the spaces around it aside.
+- **2026-11-07:** A place picked from the search names a new location by
+  the place's name, such as "Cairo Tower", where it was its whole address,
+  and only places with a point on the map are suggested, so a pick always
+  drops the pin (§2.4; #215 in `UI_PLAN.md`).

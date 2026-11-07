@@ -561,7 +561,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      bulk upload of tasks, merged in #211 on 2026-11-06, then the bulk
      review of tasks, in two parts: its window, merged in #212 on
      2026-11-06, then reading the file's rows, merged in #213 on
-     2026-11-06, which finished it; then the toasts, in #214;
+     2026-11-06, which finished it; then the toasts, merged in #214 on
+     2026-11-07; then the map pin picker and the place search, in #215;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4684,3 +4685,38 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - from the web interface audit: Close takes a tap at once, with no grey
     flash, as every other control does, and a scroll past the end of a tall
     stack no longer goes on to the page under it.
+- **2026-11-07:** The toasts were merged in #214. The map pin picker and
+  the place search move onto the building blocks in #215 (`DESIGN.md`
+  §5.3, "A place on the map"):
+  - the place search suggests places in the list a name from a saved list
+    has, with its keys: the arrows, Enter and Escape. Its suggestions were
+    a list of its own making, reached only with a mouse;
+  - it suggests up to eight places in Egypt, each by its name with the
+    rest of its address under it, and only places with a point on the map,
+    so a pick always drops the pin. A search for a kind of place, such as
+    "Pharmacy", could be picked, and dropped no pin. A place picked names
+    a new location by its name, where it was its whole address;
+  - when nothing matches, or the search isn't answering, the line under
+    the field says so, and that the pin can still be pasted or picked on
+    the map. It said nothing. An answer to an older question than the last
+    is dropped, where a slow one could take a newer one's place;
+  - "Use my current location" and "Pick on the map" are the building
+    blocks' secondary buttons, right below the pin, in the place fields and
+    in the check-in places, where they were the older pages'. In Arabic,
+    the metres a position is within show in Arabic-Indic digits;
+  - the map has a field's frame and the app's ring. Its zoom buttons and
+    its switch to satellite are named in Arabic too, 44px under a finger,
+    and ringed in the pin's colour, which holds on their white in both
+    themes. Its pin, radius and centre cross are drawn in
+    `components/ui/ui.css`, the cross with logical properties;
+  - `components/LocationSearchInput.tsx` is gone, for
+    `components/locations/PlaceSearch.tsx`;
+  - the Arabic of both no longer speaks to one person in the masculine:
+    «البحث عن المكان», «استخدام موقعي الحالي», «تحديد المكان على الخريطة»,
+    and يُرجى in their hints and messages;
+  - from the browser flows: in a dialog, the lines under the place search
+    and under the pin's buttons had no room above them, and Tab from the
+    map stopped on the pin, which the keys can't move;
+  - from the web interface audit: the map's zoom, its tiles' fade and its
+    glide after a drag moved with "reduce motion" too, and the place
+    search's field had no name.
