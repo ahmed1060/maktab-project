@@ -41,6 +41,9 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
         <html lang={look.locale} dir={look.dir} data-theme={look.theme} className={fontVariables}>
             <body>
                 <title>{words.error_screen_title}</title>
+                {/* Next gives the root layout's pages their viewport, not this one: without it a
+                    phone could draw it at a computer's width (found in the browser flows). */}
+                <meta name="viewport" content="width=device-width, initial-scale=1" />
                 <main className="ui-error-page">
                     <ErrorScreen error={error} words={words} />
                 </main>

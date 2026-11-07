@@ -194,6 +194,13 @@ describe("when the app itself broke (app/global-error.tsx)", () => {
         expect(html).toContain('<button type="button" class="ui-btn ui-btn-primary">Reload page</button><button type="button" class="ui-btn ui-btn-secondary">Start again</button>')
         expect(html).not.toMatch(/style=|⚠|Try Again/)
     })
+
+    it("at a phone's own width, as every page is: Next gives the root layout's pages their viewport, not this one", async () => {
+        // Found in the browser flows: with no viewport, a phone could draw it at a computer's width.
+        const { default: GlobalError } = await import("@/app/global-error")
+        const html = renderToStaticMarkup(h(GlobalError, { error: new Error("boom") }))
+        expect(html).toContain('<meta name="viewport" content="width=device-width, initial-scale=1"/>')
+    })
 })
 
 describe("its look (components/ui/ui.css)", () => {
