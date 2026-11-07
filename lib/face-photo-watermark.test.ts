@@ -60,10 +60,23 @@ describe("the watermark over face photos", () => {
         const mark = await markAt("Africa/Cairo", "ar")
         expect(mark.who).toBe("Tarek Nabil")
         process.env.TZ = "Africa/Cairo"
-        expect(mark.when).toBe(dateTimeText(OPENED, "ar"))
+        // What dateTimeText writes, but for which of its spaces may break (below).
+        expect(spaced(mark.when)).toBe(spaced(dateTimeText(OPENED, "ar")!))
         expect(spaced(mark.when).startsWith("٧ نوفمبر ٢٠٢٦")).toBe(true)
         expect(spaced(mark.when).endsWith("١٢:٢٣ م")).toBe(true)
         expect(mark.when).not.toMatch(/[0-9]/)
+    })
+
+    it("can break only between the date and the time, never before pm", async () => {
+        // On a photo too narrow for both, "7 Nov 2026," goes over "12:23 pm": in English on a 320px
+        // phone, the time ran past the photo's edges, and "pm" was cut off (the browser flows, PR 216).
+        for (const [locale, date] of [["en", "7 Nov 2026,"], ["ar", "٧ نوفمبر ٢٠٢٦،"]] as const) {
+            const { when } = await markAt("Africa/Cairo", locale)
+            expect(when.match(/ /g), locale).toHaveLength(1)
+            expect(spaced(when.split(" ")[0]), locale).toBe(date)
+        }
+        const { dateTimeBreakable } = await import("@/lib/calendar-text")
+        expect(dateTimeBreakable("", "en")).toBeNull()
     })
 
     it("puts the time under the name, three times, with no dot between them", async () => {
@@ -79,11 +92,16 @@ describe("the watermark over face photos", () => {
         const marks = css.slice(start, css.indexOf("}", start))
         expect(marks).toContain("display: grid;")
         expect(marks).toContain("justify-items: center;")
+        // No wider than its photo: the time wraps under its date instead of running past the edge.
+        expect(marks).toContain("max-inline-size: 100%;")
+        expect(marks).toContain("text-align: center;")
+        expect(marks).not.toContain("white-space: nowrap;")
     })
 
-    it("is said by lib/calendar-text.ts, not put together by hand, for every face photo", () => {
+    it("is said by lib/calendar-text.ts, through Intl, for every face photo", () => {
         const photo = readFileSync("components/FacePhoto.tsx", "utf8")
-        expect(photo).toContain("dateTimeText(openedAt, locale)")
+        expect(photo).toContain("dateTimeBreakable(openedAt, locale)")
+        expect(readFileSync("lib/calendar-text.ts", "utf8")).toContain("dateTimeFormat(locale).formatToParts(date)")
         expect(photo).not.toContain("toISOString().slice")
         expect(photo).not.toContain(" · ")
         // A flagged check-in's photos, and a face check's review.

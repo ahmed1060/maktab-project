@@ -4766,7 +4766,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - from the browser flows: on a 360px phone, the two photos fell one
     under the other, in a face check's review too. And `next.config.mjs`
     and `.env.example` still named `components/LocationSearchInput.tsx`,
-    which #215 replaced;
+    which #215 replaced. And in English on a 320px phone, the watermark's
+    time ran past the photo's edges, cutting off "pm": on a narrow photo
+    it goes under its date (`dateTimeBreakable` in `lib/calendar-text.ts`);
   - from the web interface audit: the live picture was read out as a
     video with no name; the time left and the turn's dot moved by layout;
     Close had no hover, and wasn't in the shared rule for taps; the test

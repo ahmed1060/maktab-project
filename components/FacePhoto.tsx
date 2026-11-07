@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { Button, Dialog } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
-import { dateTimeText } from '@/lib/calendar-text'
+import { dateTimeBreakable } from '@/lib/calendar-text'
 
 /** Who opened the photos, and when: the watermark across them. */
 export interface Watermark { who: string; when: string }
@@ -34,15 +34,16 @@ export function FacePhoto({ src, label, mark }: { src: string; label: string; ma
 /**
  * The viewer's name and the moment the photos opened, for the watermark: on
  * the viewer's own clock and in the page's digits, as a date and a time are
- * written (DESIGN.md §5.5, Face photos). It was UTC, unlabelled and in
- * Western digits in Arabic, after the name and a dot (PR 216).
+ * written, the time going under its date on a narrow photo (DESIGN.md §5.5,
+ * Face photos). It was UTC, unlabelled and in Western digits in Arabic,
+ * after the name and a dot (PR 216).
  */
 export function useWatermark(): Watermark {
     const { data: session } = useSession()
     const { locale } = useLanguage()
     // Fixed when the photos open, said in the page's language as it is now.
     const [openedAt] = useState(() => new Date().toISOString())
-    return { who: session?.user?.name ?? session?.user?.email ?? '', when: dateTimeText(openedAt, locale) ?? openedAt }
+    return { who: session?.user?.name ?? session?.user?.email ?? '', when: dateTimeBreakable(openedAt, locale) ?? openedAt }
 }
 
 /**

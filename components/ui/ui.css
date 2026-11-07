@@ -2129,9 +2129,13 @@ a.ui-file-open:focus-visible,
   pointer-events: none;
 }
 .ui-face-photo-marks > span {
-  /* The time under the name (§5.5, Face photos; PR 216). */
+  /* The time under the name, and no wider than the photo: on a narrow one,
+     the time goes under its date, where alone it can break (§5.5, Face
+     photos; PR 216). */
   display: grid;
   justify-items: center;
+  max-inline-size: 100%;
+  text-align: center;
   padding: 0 var(--space-1);
   border-radius: var(--radius-field);
   background: var(--chip-solid-bg);
@@ -2140,7 +2144,6 @@ a.ui-file-open:focus-visible,
   font-size: var(--text-xs);
   line-height: var(--leading-xs);
   font-weight: 600;
-  white-space: nowrap;
   transform: rotate(-24deg);
 }
 .ui-face-photo > figcaption {
