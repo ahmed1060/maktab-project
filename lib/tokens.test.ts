@@ -152,11 +152,13 @@ describe("D1 left no raw colour behind", () => {
 
 describe("a token is used in the role it was defined for", () => {
     // Two dark-mode bugs, one cause: a token whose job is to be a *surface*
-    // was read as a *foreground*. --panel-* is documented in globals.css as
-    // "a surface whose job is to hide what is behind it"; on light it is white
-    // at 80%, so painting text with it looked correct, and on dark it is the
+    // was read as a *foreground*. --panel-* was documented in globals.css as
+    // "a surface whose job is to hide what is behind it"; on light it was white
+    // at 80%, so painting text with it looked correct, and on dark it was the
     // panel colour itself — which painted the sidebar's labels the colour of
-    // the sidebar. Nothing could catch that but a rule about roles.
+    // the sidebar. Nothing could catch that but a rule about roles. The old
+    // panels and veils went with the old styles (PR 223); --panel-raised, the
+    // building blocks' raised surface, is held to the same.
     //
     // Comments stripped: the prose above and in globals.css names every token
     // these checks forbid.

@@ -88,8 +88,15 @@ describe('the "Powered by" signature, kept as it is (DESIGN.md §5.1)', () => {
     it("has no transition of everything, and no hover nothing can reach", () => {
         expect(SHELL).not.toMatch(/transition: 'all/)
         expect(SHELL).not.toContain(":hover")
-        const own = GLOBALS.slice(GLOBALS.indexOf("/* The \"Powered by\" signature"), GLOBALS.indexOf("/* Responsive Utilities */"))
-        expect(own.length).toBeGreaterThan(0)
+        // Its own rules, phones' included: from its comment to the focus
+        // ring's, which follows them since the old styles between went (PR 223).
+        const start = GLOBALS.indexOf("/* The \"Powered by\" signature")
+        const end = GLOBALS.indexOf("/* Keyboard focus, on everything")
+        expect(start).toBeGreaterThan(-1)
+        expect(end).toBeGreaterThan(start)
+        const own = GLOBALS.slice(start, end)
+        expect(own).toContain(".floating-attribution-name {")
+        expect(own).toContain("@media (max-width: 600px) {")
         expect(own).not.toContain("transition")
         expect(own).not.toContain(":hover")
     })
