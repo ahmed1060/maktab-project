@@ -181,7 +181,10 @@ describe("the two themes are actually different", () => {
         // payslip printed white on black: unreadable, and expensive in a way
         // whoever pressed Print finds out about afterwards. The same goes for
         // --neutral-on-paper and the rest, a document's notes' bars on paper
-        // (PR 155): dark mode's pale ones all but vanished on it.
+        // (PR 155): dark mode's pale ones all but vanished on it. And for
+        // --rule-on-paper, a document's table's rules (PR 227): dark mode's
+        // --rule is near black, light mode's near white, and neither is a
+        // grey that prints.
         //
         // --map-* are invariant because they are drawn on map tiles, which
         // are light in both themes: a dark-mode ink would vanish into them.
@@ -193,7 +196,7 @@ describe("the two themes are actually different", () => {
             "--primary",
             "--logo-plate",
             "--paper", "--ink-on-paper",
-            "--neutral-on-paper", "--waiting-on-paper", "--good-on-paper", "--problem-on-paper",
+            "--neutral-on-paper", "--waiting-on-paper", "--good-on-paper", "--problem-on-paper", "--rule-on-paper",
             "--button-from", "--button-to",
             "--map-pin", "--map-ink", "--map-halo", "--map-shadow",
             "--cam-ground", "--cam-ink", "--cam-done", "--cam-warn",
