@@ -367,7 +367,9 @@ These are built once, in the building-blocks PR, and every page uses them
 - **The "Powered by" signature** stays as it is (decided by the product
   owner on 2026-11-05): on a computer in the page's bottom corner on the
   end side, on a phone at the end of the page, and with the same look. It
-  isn't in the side bar.
+  isn't in the side bar. The sign-in page has it too, in the same places
+  (decided on 2026-11-08). Switched off in System settings, it's on
+  neither, and the name it shows is the one set there.
 - **Top bar:** 60px tall (56px on phones), as the approved mock-up of the
   app's frame draws it. It has no title: every page names itself in its
   page header (§5.5). On the end side it has the language switch, the bell
@@ -1354,6 +1356,9 @@ These are built once, in the building-blocks PR, and every page uses them
     policy, the terms, and the language and theme switches, in a row that
     wraps on phones. The switches are the top bar's language switch and
     the account menu's theme switch (§5.1).
+  - The "Powered by" signature, as the dashboard has it (§5.1): in the
+    bottom corner on the end side on a computer, and on a phone at the
+    end of the page, under the row of links and switches.
 - **The privacy policy and the terms of service:** two documents anyone
   can open, signed in or not, as Google does before it lets Nizmo use
   Drive. As with sign-in, there's no side bar and no top bar, and they're
@@ -2011,3 +2016,6 @@ changed:
   whose session ended, as a new password or a role changed with "Apply
   now" ends it, came back to the sign-in page with nothing said: it read
   as though the app had forgotten them.
+- **2026-11-08:** The "Powered by" signature on the sign-in page (§5.1;
+  §5.5, Sign-in), as the product owner asked. It was only in the
+  dashboard, so the first page anyone sees didn't have it.
