@@ -363,7 +363,7 @@ These are built once, in the building-blocks PR, and every page uses them
   - closed, it isn't drawn, so neither Tab nor a screen reader goes
     through its links. The old drawer only slid out of sight, and Tab went
     through every one of them;
-  - it slides in and out over 200ms (§8);
+  - it slides in over 200ms and out over 150ms (§8);
   - Check in sits at the top, beside Dashboard.
 - **The "Powered by" signature** stays as it is (decided by the product
   owner on 2026-11-05): on a computer in the page's bottom corner on the
@@ -1385,16 +1385,46 @@ These are built once, in the building-blocks PR, and every page uses them
 
 ## 8. Motion
 
-- **Things move only when someone acts:** a menu opening, a sheet sliding
-  in, a row being removed. Nothing animates on page load, and cards don't
-  lift on hover.
+- **Things move only when someone acts:** a menu or a dialog opening, the
+  side bar sliding in, a toast saying what an action did. Nothing animates
+  on page load, and cards don't lift on hover.
+- **How each comes in** (with Emil Design Engineering, `UI_PLAN.md` §7.1):
+  - **a menu or a panel opened from its button** (a row's menu, the
+    account menu, the bell's panel, the company picker, and a date field's
+    calendar on a computer) fades in as it grows to its size from 96%,
+    from the corner nearest its button, so it seems to come out of it.
+    Nothing grows from nothing, and none from its middle;
+  - **a dialog** fades in with the dimmed page and grows from 96% from its
+    middle, as it's tied to no button. On a phone, a date field's calendar
+    is in the middle of the screen, and opens the same way;
+  - **a toast** fades in as it slides 16px in from the end side;
+  - **the side bar on a phone** slides in as the page beside it dims, and
+    slides out faster than it came in.
+- **Going is at once** for a menu, a panel, a dialog or a toast: what was
+  asked for is done, and nothing waits for it to leave. Only the side bar,
+  which stays in the page, slides out.
+- **The curves:**
+  - what comes in starts fast and settles, on `--ease-out`
+    (`cubic-bezier(0.23, 1, 0.32, 1)`), stronger than the browser's own
+    ease-out;
+  - the side bar moves on `--ease-drawer` (`cubic-bezier(0.32, 0.72, 0,
+    1)`), as a phone's own sheets do;
+  - nothing uses ease-in, which starts slow just when someone is watching.
+- **Coming in, only opacity and transforms move,** so nothing else on the
+  page shifts, and the browser draws each frame without laying the page
+  out again.
 - **Timings:**
   - 150ms ease-out for colour changes on hover and press;
-  - 200ms for menus, sheets and dialogs opening.
+  - 150ms for a menu or a panel opening, as they open many times a day;
+  - 200ms for a dialog, a toast, and the side bar coming in;
+  - 150ms for the side bar going.
+- **Not animated:** what comes as someone types, such as a saved name's
+  suggestions or the place search's results, and tabs. They change many
+  times a minute, and a move would only slow them down.
 - **The device's "reduce motion" setting is respected:** movement becomes an
-  instant change.
-- **Motion polish** comes later, with Emil Design Engineering
-  (`UI_PLAN.md` §7.1).
+  instant change, and so do fades (`app/globals.css`), as none says
+  anything the still screen doesn't. Emil Design Engineering keeps fades;
+  here, this rule wins (`UI_PLAN.md` §7.3).
 
 ---
 
@@ -1866,3 +1896,8 @@ changed:
   classes that hid or showed a part by screen width. `--hairline` was one
   of those colours; the line colour keeps the name `--rule`. Nothing on
   screen changed.
+- **2026-11-08:** Motion (§8; §5.1, the side bar), with Emil Design
+  Engineering. Menus, panels, dialogs and the calendar appeared at once,
+  in full. The side bar and the toasts moved on the browser's own
+  ease-out, and the side bar went as slowly as it came. The page beside
+  the side bar went dim at once.
