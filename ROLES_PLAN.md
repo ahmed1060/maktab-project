@@ -522,6 +522,14 @@ on, so two saves at once from the same browser keep it. Set from two
 browsers at once, the first password ends the other browser's session, and
 neither is kept (Codex on #228).
 
+A new password of one's own needs the current one, checked by the server
+(#229), but on the forced change after a temporary password, from a session
+signed in with it: the version the temporary password moved the account to
+is that session's, and no session's from before it. Wrong tries at one's own
+password are counted per account wherever the server asks for it, the
+profile's check, the save and an Admin's own confirming a temporary
+password: five in fifteen minutes (`lib/own-password.ts`).
+
 ---
 
 ## 5. Data model
