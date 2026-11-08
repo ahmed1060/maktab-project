@@ -23,12 +23,20 @@ import { notifyTeamMoves } from "./team-notify.service"
 import { TeamHandOff, type Rehome } from "./team-handoff.service"
 import { assertStepUp, assertRecentStepUp } from "@/lib/step-up"
 import { sessionHasModule } from "@/lib/features/require"
+import { keepAfterChange } from "@/lib/session-kept"
 
 /**
  * The account statuses a status write may set. ARCHIVED and DELETED come only
  * from ending a contract and deleting, which carry their own permissions.
  */
 const SETTABLE_STATUSES = ["ACTIVE", "OFFLINE", "SUSPENDED"] as const
+
+/**
+ * What an edit writes that the audit log doesn't say changed: a password, and
+ * what goes with a new one (the forced change it satisfies, and the sessions
+ * it ends and keeps).
+ */
+const UNLOGGED = new Set(['password', 'mustChangePassword', 'sessionVersion', 'keptSession'])
 
 export class UserService {
     static async create(input: CreateUserInput, session: any) {
@@ -234,7 +242,11 @@ export class UserService {
         return user
     }
 
-    static async update(input: UpdateUserInput, session: any) {
+    /**
+     * `from` is the session asking, as its cookie names it (lib/session-kept.ts):
+     * a new password of the account's own keeps it, where every other is ended.
+     */
+    static async update(input: UpdateUserInput, session: any, from?: { sid?: unknown; sessionVersion?: unknown } | null) {
         const userRole = session.user.role
         const { id, firstName, lastName, email, password, role, roleId, actingUntil, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username, status, teamLeaderId, reassignReportsTo } = input
 
@@ -323,6 +335,13 @@ export class UserService {
             // Any password change — self-service or admin-forced — satisfies
             // a pending forced reset.
             updateData.mustChangePassword = false
+            // And ends the account's sessions, each at its next check, but
+            // for the one a person sets their own from (PR 228). Signed in
+            // elsewhere with the old password, such as by someone who had
+            // learned it, the account stayed signed in there.
+            updateData.sessionVersion = { increment: 1 }
+            const kept = isSelf ? keepAfterChange((regularUser ?? superAdminUser)!, from) : null
+            if (kept) updateData.keptSession = kept
         }
         if (gender) updateData.gender = gender
 
@@ -605,7 +624,7 @@ export class UserService {
             const normalize = (v: any) => (v && typeof v === 'object' && typeof v.toNumber === 'function') ? v.toNumber() : v
             const diffs: any = {}
             for (const key in updateData) {
-                if (key === 'password' || key === 'mustChangePassword') continue
+                if (UNLOGGED.has(key)) continue
                 const oldVal = normalize(regularUser[key as keyof typeof regularUser])
                 const newVal = normalize(updateData[key])
                 if (newVal !== oldVal) {
@@ -899,9 +918,11 @@ export class UserService {
         const tempPassword = generateTempPassword()
         const hashedPassword = await bcrypt.hash(tempPassword, 10)
 
+        // Its sessions end, each at its next check: whoever holds the old
+        // password is signed out, as the new one is handed over (PR 228).
         await prisma.user.update({
             where: { id: targetUserId },
-            data: { password: hashedPassword, mustChangePassword: true }
+            data: { password: hashedPassword, mustChangePassword: true, sessionVersion: { increment: 1 } }
         })
 
         return { targetUserId, password: tempPassword }

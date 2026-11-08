@@ -153,5 +153,7 @@ declare module "next-auth/jwt" {
         // ran against the database, so it can be throttled instead of
         // running on every single request.
         checkedAt?: number
+        /** This browser's session, by name, from sign-in: a new password of the account's own keeps it (lib/session-kept.ts). */
+        sid?: string
     }
 }
