@@ -21,7 +21,7 @@ vi.mock("@/context/LanguageContext", () => ({
 }))
 vi.mock("@/context/ThemeContext", () => ({ useTheme: () => ({ theme: "light", setTheme: () => {} }) }))
 vi.mock("next-auth/react", () => ({ signIn: async () => ({ ok: true }) }))
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }) }))
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {}, refresh: () => {} }), useSearchParams: () => new URLSearchParams() }))
 vi.mock("@/lib/client-error-report", () => ({ reportClientError: async () => null }))
 beforeEach(() => { state.locale = "en" })
 // Loaded once, first: compiled cold, the page takes longer than a test may.

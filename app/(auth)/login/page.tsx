@@ -40,6 +40,9 @@ export default function LoginPage() {
     // said that it's over (lib/sign-in-lock.ts, decided 2026-11-03).
     const [hold, setHold] = useState<Hold | null>(null)
     const [notice, setNotice] = useState('')
+    // Anything sent yet: until then, a browser the server signed out is told
+    // so (DESIGN.md §5.5, Sign-in).
+    const [sent, setSent] = useState(false)
     /** Whether the server held sign-in back; if so, the count down is shown in place of an error. */
     const held = (serverError: string | undefined | null) => {
         const wait = waitOf(serverError)
@@ -52,6 +55,7 @@ export default function LoginPage() {
         setError('')
         setHold(null)
         setNotice('')
+        setSent(true)
     }
 
     // F-27: 'credentials', then, if MFA is on and this browser isn't a
@@ -274,7 +278,7 @@ export default function LoginPage() {
     }
 
     const message = (
-        <SignInMessage hold={hold} error={error} notice={notice} onHoldOver={() => { setHold(null); setNotice(t('sign_in_wait_over')) }} />
+        <SignInMessage hold={hold} error={error} notice={notice} untouched={!sent} onHoldOver={() => { setHold(null); setNotice(t('sign_in_wait_over')) }} />
     )
 
     if (mode === 'forgot') return <ResetPassword email={forgotEmail} onBack={resetBack} onDone={resetDone} />

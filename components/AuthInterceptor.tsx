@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { signOut } from 'next-auth/react'
+import { SESSION_ENDED_SIGN_IN } from '@/lib/session-ended'
 
 /**
  * AuthInterceptor
@@ -27,7 +28,8 @@ export default function AuthInterceptor() {
                 // otherwise we create an infinite redirect loop.
                 if (targetUrl && !targetUrl.includes('/api/auth/')) {
                     console.warn('[AuthInterceptor] 401 detected on:', targetUrl)
-                    signOut({ callbackUrl: '/login' })
+                    // On to sign in, told its session ended (DESIGN.md §5.5, Sign-in).
+                    signOut({ callbackUrl: SESSION_ENDED_SIGN_IN })
                 }
             }
 
