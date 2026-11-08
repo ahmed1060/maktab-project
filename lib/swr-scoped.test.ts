@@ -56,7 +56,6 @@ describe("a list's rows, kept within one company", () => {
         // Loading, and only that, where nothing has come and nothing failed (PR 190).
         expect(employees).toMatch(/!result && !failed\s+\? <div className="ui-panel" role="status"><EmptyState icon=\{HourglassIcon\}/)
         expect(employees).toContain("<EmptyState icon={WarningCircleIcon} title={t('employees_load_failed')} action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />")
-        expect(readFileSync("components/EmployeeFilter.tsx", "utf8")).toContain("{totalCount !== undefined && <div style={{")
     })
 
     // Day off's list is the Requests page's since UI_PLAN.md §2.3, part 2d, read on the server below.

@@ -11,7 +11,7 @@ import { NO_CLIENT, locationFilterChoices, type FilterPlace } from '@/lib/place-
 
 type Option = { value: string; label: string }
 
-/** A select in the filter bar's panel (components/EmployeeFilter.tsx). */
+/** A select in the filter bar's panel (components/filters/ExtraFilterSelects.tsx). */
 export type ExtraFilter = {
     key: string
     label: string

@@ -39,10 +39,12 @@ describe("form fields", () => {
 })
 
 describe("icon-only buttons", () => {
+    // The building blocks' pager, under every list. The old one,
+    // components/Pagination.tsx, went in PR 222, with its "go to page" box.
     it("the page arrows say which way they go", () => {
-        const pager = readFileSync("components/Pagination.tsx", "utf8")
-        expect(pager).toContain("aria-label={t('previous_page' as any)}")
-        expect(pager).toContain("aria-label={t('next_page' as any)}")
+        const pager = readFileSync("components/ui/Pager.tsx", "utf8")
+        expect(pager).toContain("aria-label={t('previous_page')}")
+        expect(pager).toContain("aria-label={t('next_page')}")
     })
 
     it("every show/hide password button says which it does", () => {
@@ -146,9 +148,5 @@ describe("dropdowns and file pickers", () => {
             }
         }
         expect(unnamed).toEqual([])
-    })
-
-    it("the page box under every list says what it's for", () => {
-        expect(readFileSync("components/Pagination.tsx", "utf8")).toContain("aria-label={t('go_to_page' as any)}")
     })
 })

@@ -7,10 +7,11 @@ import { useEffect, useState } from "react"
  * state and a timer that cleared it. Copying a prop into state inside an effect
  * means a render with the stale value, then a second render with the new one;
  * it is the pattern the React Compiler's set-state-in-effect rule exists to
- * catch. This does the same job the way useTemporaryHighlight already does
- * for single cards: when the id changes, adjust state during render, so the
- * very first render already agrees with the URL, and let the effect own only
- * the timer — whose setState runs later, from a timeout, not synchronously.
+ * catch. This does the same job the way the old cards' own hook did (gone
+ * with the last of them in PR 222): when the id changes, adjust state during
+ * render, so the very first render already agrees with the URL, and let the
+ * effect own only the timer — whose setState runs later, from a timeout, not
+ * synchronously.
  *
  * The duration is the caller's. Three screens faded at 6s. The two request
  * views held it for 10s, because their cards scroll themselves into view when

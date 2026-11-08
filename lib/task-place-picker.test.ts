@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { createElement as h } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { readFileSync } from "node:fs"
-import { LAYER } from "@/lib/layers"
 
 /**
  * A task's client and location pickers (CLIENTS_PLAN.md §2.3, §2.4;
@@ -100,7 +99,7 @@ describe("adding a location from a task's form", () => {
     // Its dialog is portalled out of the task's form, but React still passes
     // a submit up the components to it: saving the location would save the
     // task too, with the location picked before. (No DOM here to submit in.)
-    it("opens over the task's edit window, one of the older pages' modals, and under the toasts", async () => {
+    it("opens over the task's edit window, a dialog of its own, and under the toasts", async () => {
         const { default: LocationForm } = await import("@/components/locations/LocationForm")
         vi.stubGlobal("document", { body: {} })
         const fromTask = renderToStaticMarkup(h(LocationForm, { open: true, onClose: () => {}, onSaved: () => {}, forTask: { clientId: "k1", clientName: "Acme" } }))
@@ -110,7 +109,7 @@ describe("adding a location from a task's form", () => {
         expect(onPage).toContain('class="ui-dialog-backdrop"')
         const layer = (file: string, pattern: RegExp) => Number(readFileSync(file, "utf8").match(pattern)?.[1])
         const over = layer("components/ui/ui.css", /\.ui-dialog-backdrop\.is-over-modal\s*\{[^}]*z-index:\s*(\d+)/)
-        expect(over).toBeGreaterThan(LAYER.modal)
+        expect(over).toBeGreaterThan(layer("components/ui/ui.css", /\n\.ui-dialog-backdrop\s*\{[^}]*z-index:\s*(\d+)/))
         expect(over).toBeLessThan(layer("components/ui/ui.css", /\n\.ui-toasts\s*\{[^}]*z-index:\s*(\d+)/))
     })
 

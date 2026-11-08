@@ -123,12 +123,6 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     // components/filters/useEmployeeOptions.ts
     ["components/filters/useEmployeeOptions.ts", "...people.filter(p => p.role !== 'ADMIN' && p.role !== 'SUPER_ADMIN').map(p => ({ value: p.id, label: `${p.firstName} ${p.lastName}`.trim() })),", THE_PERSON],
 
-    // components/EmployeeFilter.tsx
-    ["components/EmployeeFilter.tsx", ".filter(emp => emp.role !== 'ADMIN' && emp.role !== 'SUPER_ADMIN')", THE_PERSON],
-    ["components/EmployeeFilter.tsx", "case 'EMPLOYEE': return 'role_employee'", LABEL],
-    ["components/EmployeeFilter.tsx", "case 'TEAM_LEADER': return 'role_team_leader'", LABEL],
-    ["components/EmployeeFilter.tsx", "case 'ADMIN': return 'role_admin'", LABEL],
-
     // components/DashboardHeader.tsx
     ["components/DashboardHeader.tsx", "case 'EMPLOYEE': return 'role_employee'", LABEL],
     ["components/DashboardHeader.tsx", "case 'TEAM_LEADER': return 'role_team_leader'", LABEL],

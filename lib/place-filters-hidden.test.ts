@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { createElement as h } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
+import { readFileSync } from "node:fs"
 
 /**
  * A link to the Tasks or Costs page can carry `clientId` or `locationId`,
@@ -43,13 +44,14 @@ describe("a client or location in the address its viewer can't pick", () => {
         expect(await filtersFor({ clientId: "", locationId: "" })).toEqual([])
     })
 
-    it("is counted on the Filters badge", async () => {
-        const { default: EmployeeFilter } = await import("@/components/EmployeeFilter")
-        const filters = await filtersFor({ clientId: "k1", locationId: "loc-1" })
-        const html = renderToStaticMarkup(h(EmployeeFilter, {
-            onFilterChange: () => {}, selectedEmployeeId: "", dateFrom: "", dateTo: "",
-            hideEmployeeFilter: true, extraFilters: filters,
-        }))
-        expect(html).toMatch(/>2<\/span>/)
+    // The filter bar's count (components/ui/FilterBar.tsx) on the Tasks and
+    // Costs pages, where the old filter panel's badge was until PR 222: every
+    // one with a value is counted, hidden or not.
+    it("is counted on the Filters badge", () => {
+        for (const page of ["app/(dashboard)/dashboard/tasks/TasksClient.tsx", "app/(dashboard)/dashboard/costs/CostsClient.tsx"]) {
+            const src = readFileSync(page, "utf8")
+            expect(src, page).toMatch(/const filtersOn = [^\n]*\+ extraFilters\.filter\(f => f\.value\)\.length\n/)
+            expect(src, page).toContain("activeCount={filtersOn}")
+        }
     })
 })

@@ -336,34 +336,6 @@ body::before {
   }
 }
 
-@keyframes highlight-pulse-animation {
-  0% {
-    box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4);
-    border-color: rgba(168, 85, 247, 0.5);
-    transform: scale(1.02);
-  }
-
-  70% {
-    box-shadow: 0 0 20px 10px rgba(168, 85, 247, 0);
-    border-color: rgba(168, 85, 247, 0.3);
-    transform: scale(1.02);
-  }
-
-  100% {
-    box-shadow: 0 0 0 0 rgba(168, 85, 247, 0);
-    border-color: rgba(168, 85, 247, 0.5);
-    transform: scale(1.02);
-  }
-}
-
-.highlight-pulse {
-  animation: highlight-pulse-animation 2s 3 !important;
-  position: relative;
-  z-index: 10;
-  border: 2px solid rgba(168, 85, 247, 0.5) !important;
-  transition: all 0.3s ease;
-}
-
 /* The "Powered by" signature (components/DashboardShell.tsx), kept as it is
    (DESIGN.md §5.1): floating in the corner on a desktop, at the end of the
    page on a phone. In CSS, not decided by script after the page has run, so
@@ -532,20 +504,6 @@ body::before {
     position: static !important;
     opacity: 0.5 !important;
     padding: 1.5rem 0 0.5rem;
-  }
-
-  /* On a phone the toolbar's rows each get the full width. The action button
-     was pushed right by an auto margin, which is correct beside other controls
-     and leaves a wide empty gap once it wraps onto a line of its own. */
-  .toolbar-action {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    width: 100%;
-  }
-
-  .toolbar-action > * {
-    width: 100%;
-    justify-content: center;
   }
 }
 
