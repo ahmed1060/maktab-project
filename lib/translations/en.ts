@@ -896,6 +896,7 @@ export const en = {
         profile_verify_password: "Your password",
         profile_verify_empty: "Enter your password.",
         profile_verify_failed: "Your password couldn't be checked. Try again.",
+        own_password_tries: "Too many wrong tries for this account. You can try again within 15 minutes.",
         profile_first_name_invalid: "Enter a first name of up to 15 characters.",
         profile_last_name_invalid: "Enter a last name of up to 15 characters.",
         profile_name_by_request: "A change to your name is sent for approval first, and made once it's approved.",

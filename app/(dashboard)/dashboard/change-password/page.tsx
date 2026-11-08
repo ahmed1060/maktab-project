@@ -8,6 +8,7 @@ import { useToast } from '@/context/ToastContext'
 import { apiErrorText } from '@/lib/api-error-text'
 import { firstError } from '@/lib/form-errors'
 import { NEW_PASSWORD_FIELDS, PASSWORD_MAX, newPasswordErrors, type NewPasswordField } from '@/lib/new-password-form'
+import { ownPasswordRefusal } from '@/lib/profile-password'
 import { useViewer } from '@/lib/useCan'
 
 /**
@@ -64,7 +65,13 @@ export default function ChangePasswordPage() {
                 body: JSON.stringify({ id: viewer?.id, password: newPassword }),
             })
             if (!res.ok) {
-                setError(apiErrorText(await res.text(), t('change_password_failed')))
+                // A session the temporary password ended is asked for it by
+                // the server (PR 229), whose answer is in English.
+                const text = await res.text()
+                let answer: { code?: string } | null = null
+                try { answer = JSON.parse(text) } catch { /* not JSON: said as it came */ }
+                const refused = ownPasswordRefusal(answer)
+                setError(refused ? t(refused) : apiErrorText(text, t('change_password_failed')))
                 setSaving(false)
                 return
             }

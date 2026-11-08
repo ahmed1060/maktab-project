@@ -11,3 +11,15 @@ export function resetRefusal(error: unknown): TranslationKey {
     if (error === "Only the Super Admin resets an Admin's password") return 'profile_reset_admin_only'
     return 'profile_reset_failed'
 }
+
+/**
+ * What the server answers about one's own password, by its code, in the
+ * page's language (PR 229): too many wrong tries, from the profile's check
+ * or the save, and a wrong current password, from a save that came after a
+ * right one was checked. Null for anything else.
+ */
+export function ownPasswordRefusal(body: { code?: unknown } | null): TranslationKey | null {
+    if (body?.code === 'OWN_PASSWORD_TRIES') return 'own_password_tries'
+    if (body?.code === 'CURRENT_PASSWORD_WRONG') return 'incorrect_password'
+    return null
+}

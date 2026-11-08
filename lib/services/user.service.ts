@@ -24,6 +24,7 @@ import { TeamHandOff, type Rehome } from "./team-handoff.service"
 import { assertStepUp, assertRecentStepUp } from "@/lib/step-up"
 import { sessionHasModule } from "@/lib/features/require"
 import { keepAfterChange } from "@/lib/session-kept"
+import { ownPasswordMatches } from "@/lib/own-password"
 
 /**
  * The account statuses a status write may set. ARCHIVED and DELETED come only
@@ -264,7 +265,7 @@ export class UserService {
      */
     static async update(input: UpdateUserInput, session: any, from?: { sid?: unknown; sessionVersion?: unknown } | null) {
         const userRole = session.user.role
-        const { id, firstName, lastName, email, password, role, roleId, actingUntil, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username, status, teamLeaderId, reassignReportsTo } = input
+        const { id, firstName, lastName, email, password, currentPassword, role, roleId, actingUntil, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username, status, teamLeaderId, reassignReportsTo } = input
 
         const regularUser = await prisma.user.findUnique({ where: { id } })
         const superAdminUser = !regularUser ? await prisma.superAdmin.findUnique({ where: { id } }) : null
@@ -345,6 +346,20 @@ export class UserService {
                 // A recent authenticator code (lib/step-up.ts), in place of a
                 // passcode written into the code that no screen ever sent.
                 await assertRecentStepUp(session)
+            }
+            // One's own needs the current one, checked here (PR 229): the
+            // profile asked for it, but only in the browser, so a session
+            // someone else held could set a new password without knowing the
+            // old one. Not asked again on the forced change after a temporary
+            // password, from a session signed in with it: its version is the
+            // one the temporary password moved the account to, which a
+            // session from before it doesn't have.
+            if (isSelf) {
+                const account = (regularUser ?? superAdminUser)!
+                const forced = account.mustChangePassword && from?.sessionVersion === account.sessionVersion
+                if (!forced && !(currentPassword && await ownPasswordMatches(id, account.password, currentPassword))) {
+                    throw new Error("CURRENT_PASSWORD_WRONG")
+                }
             }
 
             updateData.password = await bcrypt.hash(password, 10)
@@ -889,19 +904,15 @@ export class UserService {
     }
 
     static async verifyPassword(userId: string, password: string) {
+        // Its wrong tries are counted with a new password's (lib/own-password.ts):
+        // it said whether a guess was right as often as it was asked.
         // 1. Try finding in regular User table
         const user = await prisma.user.findUnique({ where: { id: userId } })
-        if (user) {
-            const isValid = await bcrypt.compare(password, user.password)
-            return { valid: isValid }
-        }
+        if (user) return { valid: await ownPasswordMatches(userId, user.password, password) }
 
         // 2. Try SuperAdmin table
         const superAdmin = await prisma.superAdmin.findUnique({ where: { id: userId } })
-        if (superAdmin) {
-            const isValid = await bcrypt.compare(password, superAdmin.password)
-            return { valid: isValid }
-        }
+        if (superAdmin) return { valid: await ownPasswordMatches(userId, superAdmin.password, password) }
 
         throw new Error("USER_NOT_FOUND")
     }
@@ -924,7 +935,8 @@ export class UserService {
 
         if (!actingAccount) throw new Error("ADMIN_NOT_FOUND")
 
-        const isPasswordValid = await bcrypt.compare(confirmPassword, actingAccount.password)
+        // Its wrong tries are counted with the rest of one's own (lib/own-password.ts).
+        const isPasswordValid = await ownPasswordMatches(actingUser.id, actingAccount.password, confirmPassword)
         if (!isPasswordValid) throw new Error("INVALID_ADMIN_PASSWORD")
 
         // 2. Locate the target

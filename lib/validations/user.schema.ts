@@ -53,6 +53,10 @@ export const updateUserSchema = partialWithoutDefaults(createUserSchema).extend(
     // return to the one they had (ROLES_PLAN.md §6.13). Null keeps a cover
     // role for good — nothing returns them; absent leaves it alone.
     actingUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A date, YYYY-MM-DD").nullable().optional(),
+    // With a new password of one's own, the one it replaces (PR 229). Up to
+    // bcrypt's 72 bytes and then some: one set before today's limits is
+    // checked as typed, not refused for its length.
+    currentPassword: z.string().max(256).optional(),
 })
 
 export type CreateUserInput = z.infer<typeof createUserSchema>

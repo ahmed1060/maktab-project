@@ -3,6 +3,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { UserService } from "@/lib/services/user.service"
 import { verifyResourceAccess } from "@/lib/security"
 import { can } from "@/lib/permissions/can"
+import { OWN_PASSWORD_TRIES } from "@/lib/own-password"
 
 // Replaces the old /api/users/reveal (F-02). An admin can no longer see a
 // user's actual password — they issue a fresh one-time temporary password
@@ -30,6 +31,8 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     } catch (error: any) {
         if (error.message === 'ADMIN_NOT_FOUND') return ApiResponse.notFound("Admin not found")
         if (error.message === 'INVALID_ADMIN_PASSWORD') return ApiResponse.forbidden("Invalid admin password")
+        // Counted with the rest of one's own password's wrong tries (lib/own-password.ts).
+        if (error.message === 'OWN_PASSWORD_TRIES') return ApiResponse.refused(429, OWN_PASSWORD_TRIES, 'OWN_PASSWORD_TRIES')
         if (error.message === 'TARGET_USER_NOT_FOUND') return ApiResponse.notFound("Target user not found")
         if (error.message === 'ADMIN_IS_SUPER_ADMINS') return ApiResponse.forbidden("Only the Super Admin resets an Admin's password")
         if (error.message === 'TARGET_EXCEEDS_YOURS') return ApiResponse.forbidden("This person's role holds access yours doesn't")
