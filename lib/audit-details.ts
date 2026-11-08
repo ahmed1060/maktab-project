@@ -18,7 +18,18 @@ import { MODULES, MODULE_KEYS, isModuleKey } from "@/lib/modules"
  * one section at a time.
  */
 
-export type DetailLine = { label: string; value?: string; lines?: DetailLine[] }
+/**
+ * A change keeps its two sides apart as well as its text, for the page to
+ * draw each in its own direction: "Vendors ← Customers" in an Arabic line
+ * drew as one run left to right, the arrow pointing at the name it was, and
+ * two Arabic names in an English line the same (PR 233).
+ */
+export type DetailLine = { label: string; value?: string; change?: { before: string; after: string }; lines?: DetailLine[] }
+
+/** Between a change's two sides, pointing the way the language reads. */
+export const changeArrow = (locale: string) => locale === "ar" ? " ← " : " → "
+const changeLine = (label: string, before: string, after: string, locale: string): DetailLine =>
+    ({ label, value: before + changeArrow(locale) + after, change: { before, after } })
 
 type T = (key: TranslationKey) => string
 type Reader = { t: T; locale: string }
@@ -95,21 +106,16 @@ function sectionLines(field: string, before: unknown, after: unknown, { t, local
     const map = (v: unknown) => v === null || v === undefined ? {} : isObject(v) ? v : null
     const was = map(before), is = map(after)
     if (!spec || !was || !is) return null
-    const arrow = locale === "ar" ? " ← " : " → "
     const order = (key: string) => isModuleKey(key) ? MODULE_KEYS.indexOf(key) : MODULE_KEYS.length
     const shown = (v: unknown) => typeof v === "string" && v ? spec.value(v, t) : t("audit_value_default")
     return [...new Set([...Object.keys(was), ...Object.keys(is)])]
         .filter(key => was[key] !== is[key])
         .sort((a, b) => order(a) - order(b))
-        .map(key => ({
-            label: t(spec.label).replace("{name}", isModuleKey(key) ? t(MODULES[key].labelKey) : humanize(key)),
-            value: shown(was[key]) + arrow + shown(is[key]),
-        }))
+        .map(key => changeLine(t(spec.label).replace("{name}", isModuleKey(key) ? t(MODULES[key].labelKey) : humanize(key)), shown(was[key]), shown(is[key]), locale))
 }
 
 export function describeDetails(details: unknown, reader: Reader): DetailLine[] {
     if (!isObject(details)) return details === null || details === undefined ? [] : [{ label: "", value: describeValue(details, "", reader) }]
-    const arrow = reader.locale === "ar" ? " ← " : " → "
     return Object.entries(details)
         .filter(([, v]) => v !== undefined)
         .flatMap(([key, v]): DetailLine | DetailLine[] => {
@@ -117,7 +123,7 @@ export function describeDetails(details: unknown, reader: Reader): DetailLine[] 
             const pair = change(v)
             const sections = pair && sectionLines(key, pair[0], pair[1], reader)
             if (sections) return sections
-            if (pair) return { label, value: describeValue(pair[0], key, reader) + arrow + describeValue(pair[1], key, reader) }
+            if (pair) return changeLine(label, describeValue(pair[0], key, reader), describeValue(pair[1], key, reader), reader.locale)
             if (isObject(v)) return { label, lines: describeDetails(v, reader) }
             if (Array.isArray(v) && v.some(item => isObject(item) && !isGrant(item))) {
                 return { label, lines: v.map((item, i) => isObject(item) ? { label: String(i + 1), lines: describeDetails(item, reader) } : { label: String(i + 1), value: describeValue(item, key, reader) }) }

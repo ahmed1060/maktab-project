@@ -7,6 +7,10 @@ import type { TranslationKey } from "./translations"
 const reader = (dict: Record<string, string>, locale: string) => ({ t: (k: TranslationKey) => dict[k] ?? "", locale })
 const EN = reader(en as Record<string, string>, "en")
 const AR = reader(ar as Record<string, string>, "ar")
+// A change reads "before → after" ("before ← after" in Arabic), and keeps
+// its two sides apart for the page to draw each in its own direction.
+const changed = (label: string, before: string, after: string, locale = "en") =>
+    ({ label, value: before + (locale === "ar" ? " ← " : " → ") + after, change: { before, after } })
 
 describe("an audit entry's details, as the reader reads them", () => {
     it("names each field and labels coded values, in either language", () => {
@@ -22,8 +26,17 @@ describe("an audit entry's details, as the reader reads them", () => {
     })
 
     it("reads a change as before and after, the arrow pointing the way the language reads", () => {
-        expect(describeDetails({ status: { old: "ACTIVE", new: "SUSPENDED" } }, EN)).toEqual([{ label: "Status", value: "Active → Suspended" }])
-        expect(describeDetails({ hasHR: { from: false, to: true } }, AR)).toEqual([{ label: "الموارد البشرية", value: "لا ← نعم" }])
+        expect(describeDetails({ status: { old: "ACTIVE", new: "SUSPENDED" } }, EN)).toEqual([changed("Status", "Active", "Suspended")])
+        expect(describeDetails({ hasHR: { from: false, to: true } }, AR)).toEqual([changed("الموارد البشرية", "لا", "نعم", "ar")])
+    })
+
+    // "Vendors ← Customers" in an Arabic line drew as one run left to right,
+    // the arrow pointing at the name it was: it read the wrong way round, as
+    // did two Arabic names in an English line (found in the browser, PR 233).
+    // The page draws each side in its own <bdi>.
+    it("keeps a change's two sides apart, whatever their script", () => {
+        expect(describeDetails({ name: { old: "Delta", new: "Delta Sites" } }, AR)).toEqual([changed(ar.audit_field_name, "Delta", "Delta Sites", "ar")])
+        expect(describeDetails({ name: { old: "دلتا", new: "دلتا للمواقع" } }, EN)).toEqual([changed("Name", "دلتا", "دلتا للمواقع")])
     })
 
     it("shows what somebody typed as typed, and a hidden secret as hidden", () => {
@@ -88,22 +101,22 @@ describe("an audit entry's details, as the reader reads them", () => {
             moduleIcons: { old: {}, new: { tasks: "hard-hat" } },
         }
         expect(describeDetails(details, EN)).toEqual([
-            { label: "Name for Tasks", value: "Jobs → Work orders" },
-            { label: "Name for Clients", value: "Default → Customers" },
-            { label: "Icon for Tasks", value: "Default → Hard hat" },
+            changed("Name for Tasks", "Jobs", "Work orders"),
+            changed("Name for Clients", "Default", "Customers"),
+            changed("Icon for Tasks", "Default", "Hard hat"),
         ])
         expect(describeDetails(details, AR)).toEqual([
-            { label: `اسم قسم ${ar.tasks}`, value: "Jobs ← Work orders" },
-            { label: `اسم قسم ${ar.clients}`, value: "الافتراضي ← Customers" },
-            { label: `أيقونة قسم ${ar.tasks}`, value: `الافتراضي ← ${ar.icon_name_hard_hat}` },
+            changed(`اسم قسم ${ar.tasks}`, "Jobs", "Work orders", "ar"),
+            changed(`اسم قسم ${ar.clients}`, "الافتراضي", "Customers", "ar"),
+            changed(`أيقونة قسم ${ar.tasks}`, "الافتراضي", ar.icon_name_hard_hat, "ar"),
         ])
     })
 
     it("reads a section given back its default, one it no longer has, and an icon from before the palette", () => {
-        expect(describeDetails({ moduleLabels: { old: { tasks: "Jobs" }, new: {} } }, EN)).toEqual([{ label: "Name for Tasks", value: "Jobs → Default" }])
-        expect(describeDetails({ moduleLabels: { old: { vendors: "Suppliers" }, new: {} } }, EN)).toEqual([{ label: "Name for Vendors", value: "Suppliers → Default" }])
-        expect(describeDetails({ moduleIcons: { old: { tasks: "🔧" }, new: { tasks: "wrench" } } }, EN)).toEqual([{ label: "Icon for Tasks", value: "🔧 → Wrench" }])
-        expect(describeDetails({ moduleIcons: { old: null, new: { tasks: "wrench" } } }, EN)).toEqual([{ label: "Icon for Tasks", value: "Default → Wrench" }])
+        expect(describeDetails({ moduleLabels: { old: { tasks: "Jobs" }, new: {} } }, EN)).toEqual([changed("Name for Tasks", "Jobs", "Default")])
+        expect(describeDetails({ moduleLabels: { old: { vendors: "Suppliers" }, new: {} } }, EN)).toEqual([changed("Name for Vendors", "Suppliers", "Default")])
+        expect(describeDetails({ moduleIcons: { old: { tasks: "🔧" }, new: { tasks: "wrench" } } }, EN)).toEqual([changed("Icon for Tasks", "🔧", "Wrench")])
+        expect(describeDetails({ moduleIcons: { old: null, new: { tasks: "wrench" } } }, EN)).toEqual([changed("Icon for Tasks", "Default", "Wrench")])
     })
 
     it("says nothing when there is nothing", () => {

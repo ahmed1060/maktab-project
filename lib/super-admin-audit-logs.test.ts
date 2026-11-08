@@ -160,8 +160,20 @@ describe("the Audit logs page", () => {
         // What changed, in the reader's words.
         expect(html).toContain(`<ul class="ui-report">`)
         expect(html).toContain(`${en.audit_field_status}: </span>`)
-        expect(html).toContain(`${en.audit_value_PENDING} → ${en.audit_value_IN_PROGRESS}`)
+        // Each side in its own direction, so a change reads the right way
+        // round whatever its script (PR 233).
+        expect(html).toContain(`<span class="ui-report-value"><bdi>${en.audit_value_PENDING}</bdi> → <bdi>${en.audit_value_IN_PROGRESS}</bdi></span>`)
         expect(html).toContain(`${en.audit_field_route}: </span><span class="ui-report-value">/api/tasks</span>`)
+    })
+
+    // "Vendors ← Customers" drew as one run left to right in an Arabic line,
+    // the arrow pointing at the name it was (found in the browser, PR 233).
+    it("draws each side of a change in its own direction, the arrow the page's way", async () => {
+        const details = { moduleLabels: { old: { clients: "Vendors" }, new: { clients: "Customers" } } }
+        const ar_ = await render({ ...people, [LIST]: listed([entry({ details })]) }, { locale: "ar" })
+        expect(ar_).toContain(`<span class="ui-report-value"><bdi>Vendors</bdi> ← <bdi>Customers</bdi></span>`)
+        const en_ = await render({ ...people, [LIST]: listed([entry({ details: { name: { old: "دلتا", new: "دلتا للمواقع" } } })]) })
+        expect(en_).toContain(`<span class="ui-report-value"><bdi>دلتا</bdi> → <bdi>دلتا للمواقع</bdi></span>`)
     })
 
     it("shows an entry's first three short details, and the rest, such as a stack trace, behind a Show more", async () => {

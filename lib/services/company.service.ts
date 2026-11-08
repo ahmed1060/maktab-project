@@ -339,9 +339,9 @@ export class CompanyService {
         if (autoVerifyLocation !== undefined && autoVerifyLocation !== existing.autoVerifyLocation) {
             changes.autoVerifyLocation = { old: existing.autoVerifyLocation, new: autoVerifyLocation }
         }
-        // Logged as whole maps, because that is how they are written. A diff
-        // per module would read better but would be inventing a granularity the
-        // write does not have.
+        // Logged as whole maps, because that is how they are written. The
+        // audit log reads them one section at a time (lib/audit-details.ts,
+        // PR 233); what's stored isn't invented per section.
         if (nextLabels !== undefined && !sameOverrides(parseModuleOverrides(existing.moduleLabels), nextLabels)) {
             changes.moduleLabels = { old: parseModuleOverrides(existing.moduleLabels), new: nextLabels }
         }
