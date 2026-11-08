@@ -43,40 +43,23 @@
      The scale is the one the codebase already used by hand: Tailwind slate for
      surfaces and text, and its status families for the badge pairs. */
 
-  /* Surfaces, lightest to most recessed */
+  /* The surface. The two more recessed ones, the borders, and the colours
+     below that only the old components drew with went with them (PR 222). */
   --surface: #ffffff;
-  --surface-subtle: #f8fafc;
-  --surface-sunk: #f1f5f9;
 
-  /* Borders, by weight */
-  --border: #e2e8f0;
-  --border-firm: #cbd5e1;
-
-  /* Text, strongest to faintest. --text-main and --text-muted already existed
+  /* Text, strongest to softest. --text-main and --text-muted already existed
      and keep their values; the rest fill in the scale that was being written
      out by hand. */
   --text-strong: #0f172a;
-  --text-body: #334155;
   /* --text-main: #1e293b and --text-muted: #475569 are declared above */
-  /* Raised from #64748b (4.34:1 on the sunk surface). --text-faint has to clear
-     AA as well and must stay lighter than this, so the two moved together. */
+  /* Raised from #64748b, which was 4.34:1 on the old pages' sunk surface. */
   --text-soft: #5b6878;
-  /* Raised from #94a3b8, which was 2.56:1 on white — below even AA Large, and
-     this is the colour of every timestamp and placeholder hint in the app.
-     #65707e is the lightest slate that clears AA 4.5:1 on both the white card
-     surface (5.03:1) and the sunk one (4.59:1), while staying a visible step
-     lighter than --text-soft rather than collapsing into it. */
-  --text-faint: #65707e;
-  --text-on-accent: #ffffff;
 
   /* Status pairs. Each is a background and a foreground chosen together — in
      D2 the dark equivalents are re-derived as pairs, never inverted, because
      flipping a light pair produces a colour nobody chose. */
   --ok-bg: #dcfce7;
-  --ok-fg: #166534;
 
-  --danger-bg: #fee2e2;
-  --danger-fg: #991b1b;
   --danger-solid: #ef4444;
 
   --warn-bg: #fef3c7;
@@ -84,10 +67,7 @@
   --warn-fg: #92400e;
 
   --info-bg: #e0f2fe;
-  --info-bg-subtle: #eff6ff;
   --info-fg: #0369a1;
-  --info-solid: #3b82f6;
-  --info-solid-hover: #2563eb;
 
 
   /* Second wave: the long tail the first pass left. Same families, more
@@ -97,33 +77,7 @@
   --ok-fg-deep: #065f46;
   --ok-border: #86efac;
 
-  --danger-border-firm: #fca5a5;
-
-  /* Orange and yellow both read as "warning" here but were never the same
-     pair, so they keep separate scales rather than being merged. */
-  --warn-bg-warm: #ffedd5;
-  --warn-bg-warm-subtle: #fff7ed;
-  --warn-border-warm: #fed7aa;
-  --warn-fg-warm: #9a3412;
-  --warn-solid-warm: #fb923c;
-
-  --info-bg-indigo: #dbeafe;
   --info-border-indigo: #a5b4fc;
-
-  --accent-solid: #a855f7;
-
-  /* Fills: a status colour as the ground under white text (a badge, a filled
-     button). The -solid colours are also used as text and strokes on the
-     page, so they can't darken without dimming those; white on them was
-     2.1 to 3.8:1. Each fill is the same hue darkened until white on it is at
-     least 4.5:1 (lib/contrast.test.ts). */
-  --info-fill: #0b61ef;
-  --warn-fill-warm: #ae5104;
-  --accent-fill: #942ff5;
-
-  /* Plain greys written as shorthand or as the odd one-off. */
-  --grey-100: #eee;
-  --grey-600: #666;
 
   /* The brand marks. Aliases rather than new values, so there is still exactly
      one place each brand colour is defined. */
@@ -204,7 +158,6 @@
   --veil-20: rgba(255, 255, 255, 0.2);
   --veil-50: rgba(255, 255, 255, 0.5);
 
-  --panel-80: rgba(255, 255, 255, 0.8);
   --panel-85: rgba(255, 255, 255, 0.85);
   --panel-90: rgba(255, 255, 255, 0.9);
 
@@ -219,7 +172,6 @@
                  where a 50% scrim over an already-dark page barely registers.
      --hairline  a faint dark rule. On dark it has to invert to a faint light
                  one, like the veils above. */
-  --shadow-faint: rgba(0, 0, 0, 0.05);
   --shadow-weak: rgba(0, 0, 0, 0.1);
   --shadow-mid: rgba(0, 0, 0, 0.25);
 
@@ -1001,60 +953,29 @@ input::-webkit-credentials-auto-fill-button {
     color-scheme: dark;
 
     --surface: #161b22;
-    --surface-subtle: #1c2128;
-    --surface-sunk: #21262d;
-
-    --border: #30363d;
-    --border-firm: #474e57;
 
     --text-strong: #f0f6fc;
     --text-main: #e6edf3;
-    --text-body: #c9d1d9;
     --text-muted: #b9c2cc;
     --text-soft: #9aa4af;
-    --text-faint: #8f97a2;
 
     --ok-bg: #0b2b1a;
-    --ok-fg: #6fdc9b;
     --ok-fg-deep: #9beec0;
     --ok-border: #1c5c3a;
 
-    --danger-bg: #3a161a;
-    --danger-border-firm: #8a2d33;
-    --danger-fg: #ff9d9d;
     --danger-solid: #f2565a;
 
     --warn-bg: #3a2c0d;
     --warn-border: #6b5117;
     --warn-fg: #f0c96b;
-    --warn-bg-warm: #3a2110;
-    --warn-bg-warm-subtle: #2a1809;
-    --warn-border-warm: #6b3d1c;
-    --warn-fg-warm: #f5b183;
-    --warn-solid-warm: #e08a4e;
 
     --info-bg: #0d2b3d;
-    --info-bg-subtle: #0a1f2e;
     --info-fg: #7cc9f0;
-    --info-solid: #4aa3e0;
-    --info-solid-hover: #3d8cc4;
-    --info-bg-indigo: #16243f;
     --info-border-indigo: #3d4b7a;
 
-    --accent-solid: #a86ef0;
     --brand-primary-text: #a5b4fc;
     --focus-ring: #a5b4fc;
     --field-border: #6e7681;
-
-    /* The fills again: white on them at least 4.5:1, and the shape itself
-       at least 3:1 against the dark surfaces, so a badge doesn't sink into
-       the card it sits on. */
-    --info-fill: #1f76b2;
-    --warn-fill-warm: #ae5a1f;
-    --accent-fill: #9047ec;
-
-    --grey-100: #21262d;
-    --grey-600: #9aa4af;
 
     /* Dark glass: its own tint, at a lower alpha. White tint on a dark ground
        reads as fog rather than as glass. */
@@ -1076,11 +997,9 @@ input::-webkit-credentials-auto-fill-button {
     --veil-20: rgba(255, 255, 255, 0.06);
     --veil-50: rgba(255, 255, 255, 0.11);
 
-    --panel-80: rgba(22, 27, 34, 0.88);
     --panel-85: rgba(22, 27, 34, 0.91);
     --panel-90: rgba(22, 27, 34, 0.94);
 
-    --shadow-faint: rgba(0, 0, 0, 0.3);
     --shadow-weak: rgba(0, 0, 0, 0.45);
     --shadow-mid: rgba(0, 0, 0, 0.6);
 

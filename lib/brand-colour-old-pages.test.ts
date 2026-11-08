@@ -20,9 +20,12 @@ const valueIn = (block: string, token: string) => block.match(new RegExp(`^\\s*$
 // ones (too light for white text, near white, black, grey, a pale tint).
 const COLOURS = [...BRAND_PRESETS.map(p => p.hex), "#facc15", "#fef08a", "#ffffff", "#000000", "#808080", "#e0e7ff", "#ff00ff"]
 
-// What the shades sit on, from app/globals.css.
-const LIGHT_GROUNDS = ["--surface", "--surface-subtle", "--surface-sunk"].map(t => valueIn(lightRoot, t)!)
-const DARK_GROUNDS = ["--surface", "--surface-subtle", "--surface-sunk", "--page-bg"].map(t => valueIn(darkRoot, t)!)
+// What the shades sit on: the surface and the page, from app/globals.css, and
+// the two paler grounds the older pages' panels were drawn on, which the
+// shades are still held on, though their tokens went with the last of those
+// panels (PR 222).
+const LIGHT_GROUNDS = [valueIn(lightRoot, "--surface")!, "#f8fafc", "#f1f5f9"]
+const DARK_GROUNDS = [valueIn(darkRoot, "--surface")!, "#1c2128", "#21262d", valueIn(darkRoot, "--page-bg")!]
 
 /** Colourfulness and hue as the eye sees them (OKLCH): indigo to violet is 255° to 330°. */
 function oklch(value: string) {
@@ -169,21 +172,13 @@ describe("the older pages' shades", () => {
         expect(OLD_PAGE_SHADES.some(s => "behind" in s && (s.behind as string) === "sidebar")).toBe(false)
     })
 
-    // Codex on #81: --accent-solid is a highlight bar but was also the
-    // settlement links' colour on an employee's history, so 3:1 wasn't
-    // enough: navy's was about 3.5:1 on the dark surface, Nizmo's indigo 5:1.
-    // The links are the building blocks' rows now (PR 157); the shade keeps
-    // the floor it was given, for the older pages still using it.
-    it("hold the highlight colour as text, since it was a link's colour too", () => {
-        const history = readFileSync("app/(dashboard)/dashboard/employees/[id]/history/SalaryTab.tsx", "utf8")
-        expect(history).toContain("<Row key={s.id} href={`/dashboard/documents/settlement/${s.id}`}")
-        const shade = OLD_PAGE_SHADES.find(s => s.token === "--accent-solid")!
-        for (const picked of ["#1e3a8a", "#475569", "#000000"]) {
-            const now = oldPageShades(picked).dark["--accent-solid"]!
-            for (const g of DARK_GROUNDS) {
-                expect(contrast(now, g), `${picked} on ${g}`).toBeGreaterThanOrEqual(Math.min(4.5, contrast(shade.dark, g)))
-            }
-        }
+    // Codex on #81: the highlight colour, --accent-solid, was held as text,
+    // as it was the settlement links' colour too. The links are the building
+    // blocks' rows now (PR 157), and the colour went with the obligation's
+    // card, the last thing drawn in it (PR 222).
+    it("follow no highlight colour, as nothing is drawn in one", () => {
+        expect(OLD_PAGE_SHADES.map(s => s.token as string)).not.toContain("--accent-solid")
+        expect(brandStyleSheet("#1e3a8a")).not.toContain("--accent-solid")
     })
 
     // Codex on #81: the payments history link is --brand-primary-text on a

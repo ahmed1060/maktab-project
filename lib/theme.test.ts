@@ -115,7 +115,8 @@ describe("the CSS answers both states", () => {
         const at = CSS.indexOf(':root[data-theme="dark"]')
         const body = CSS.slice(at, CSS.indexOf("\n}", at))
         const tokens = [...body.matchAll(/(--[a-z0-9-]+)\s*:/g)]
-        expect(tokens.length).toBeGreaterThan(50)
+        // 71 until the colours only the old components used went with them (PR 222).
+        expect(tokens.length).toBeGreaterThan(40)
     })
 })
 
