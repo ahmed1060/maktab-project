@@ -14,7 +14,8 @@ const rule = (selector: string) => {
 
 describe("button states, for every button", () => {
     it("a disabled button looks disabled, inline styles or not", () => {
-        // Plain `button`, not only .btn: half the buttons are styled inline.
+        // Plain `button`, whatever draws it: the building blocks' and any
+        // styled inline (the old .btn went with the old styles, PR 223).
         const r = rule("button:disabled")
         expect(r).not.toBeNull()
         expect(r).toMatch(/cursor: not-allowed !important/)

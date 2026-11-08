@@ -68,15 +68,11 @@ describe("every referenced token is defined", () => {
 
 describe("every defined token is used", () => {
     it("has no orphans D2 would have to give a dark value for nothing", () => {
-        // Tokens that exist for the stylesheet's own use rather than for a
-        // component to reference.
-        const CSS_ONLY = new Set([
-            "--glass-border", "--glass-bg", "--glass-shadow", "--radius",
-            "--primary", "--primary-hover", "--secondary", "--accent",
-        ])
-
+        // None is exempt. The ones kept for the stylesheet's own use went
+        // with the old styles that drew with them, or with nothing (PR 223);
+        // --primary, the one left, is drawn with in globals.css.
         const orphans = [...DEFINED]
-            .filter(token => !REFERENCED.has(token) && !CSS_ONLY.has(token))
+            .filter(token => !REFERENCED.has(token))
             // A token referenced by another token's definition still counts.
             .filter(token => !new RegExp(`var\\(\\s*${token}\\s*[,)]`).test(CSS))
 
@@ -156,11 +152,13 @@ describe("D1 left no raw colour behind", () => {
 
 describe("a token is used in the role it was defined for", () => {
     // Two dark-mode bugs, one cause: a token whose job is to be a *surface*
-    // was read as a *foreground*. --panel-* is documented in globals.css as
-    // "a surface whose job is to hide what is behind it"; on light it is white
-    // at 80%, so painting text with it looked correct, and on dark it is the
+    // was read as a *foreground*. --panel-* was documented in globals.css as
+    // "a surface whose job is to hide what is behind it"; on light it was white
+    // at 80%, so painting text with it looked correct, and on dark it was the
     // panel colour itself — which painted the sidebar's labels the colour of
-    // the sidebar. Nothing could catch that but a rule about roles.
+    // the sidebar. Nothing could catch that but a rule about roles. The old
+    // panels and veils went with the old styles (PR 223); --panel-raised, the
+    // building blocks' raised surface, is held to the same.
     //
     // Comments stripped: the prose above and in globals.css names every token
     // these checks forbid.
@@ -275,28 +273,27 @@ describe("globals.css tokenises its own rules, not just its token block", () => 
      */
     const DECLARATION = /^\s*--[a-z0-9-]+\s*:/
 
-    // Accent and brand colours that are deliberately the same on both grounds:
-    // an indigo focus ring, the purple attention pulse, white on a filled
-    // gradient button, the chevron baked into a data: URI.
-    const INVARIANT = /rgba\(99, 102, 241|rgba\(168, 85, 247|data:image|color:\s*white|2px solid #fff|rgba\(255, 255, 255, 0\.3\)/
-
     it("leaves no raw colour in any rule", () => {
+        // None is exempt: the last colours kept the same on both grounds,
+        // white on the old filled button and on its small turning ring, went
+        // with the old styles (PR 223).
         const offenders = stripComments(CSS)
             .split("\n")
             .map((line, i) => ({ line: line.trim(), n: i + 1 }))
             .filter(({ line }) => /#[0-9a-fA-F]{3,8}\b|\brgba?\(|\b(?:white|black)\b/.test(line))
             .filter(({ line }) => !DECLARATION.test(line))
-            .filter(({ line }) => !INVARIANT.test(line))
             .map(({ line, n }) => `globals.css:${n}  ${line.slice(0, 90)}`)
 
         expect(offenders, `raw colour in a rule:\n${offenders.join("\n")}`).toEqual([])
     })
 
-    it("gives every input a themed ground rather than a white one", () => {
-        // The specific regression, named: .input sets a themed foreground, so
-        // its background must be themed too or the two meet in the middle.
-        const rule = stripComments(CSS).match(/\.input\s*\{[^}]*\}/)?.[0] ?? ""
-        expect(rule).toContain("color: var(--text-main)")
-        expect(rule).toMatch(/background:\s*var\(--/)
+    it("gives every field a themed ground under its themed text", () => {
+        // The specific regression, named: .input set a themed foreground over
+        // a white ground. It went with the old styles (PR 223); the building
+        // blocks' fields theme both.
+        const ui = stripComments(readFileSync("components/ui/ui.css", "utf8"))
+        const rule = ui.match(/\.ui-input,\n\.ui-select \{[^}]*\}/)?.[0] ?? ""
+        expect(rule).toContain("background: var(--panel);")
+        expect(rule).toContain("color: var(--ink);")
     })
 })

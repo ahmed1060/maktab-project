@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
+import { stripComments } from "./strip-comments"
 
 /**
  * WCAG contrast for every foreground/background pair the palette declares, in
@@ -48,15 +49,13 @@ function ratio(a: string, b: string): number {
     return (hi + 0.05) / (lo + 0.05)
 }
 
-/**
- * Text pairs, held to AA 4.5:1. The indigo text went with the last thing
- * written in it, a range's days in the old calendar (PR 208), and the green,
- * red and orange pairs with the old components no page used, theirs (PR 222).
+/*
+ * The status pairs went with the last things drawn in them: the indigo text
+ * with a range's days in the old calendar (PR 208), the green, red and
+ * orange pairs with the old components no page used (PR 222), and the amber
+ * and blue ones with the old styles (PR 223). The building blocks' pairs are
+ * held to AA 4.5:1 in lib/design-tokens.test.ts.
  */
-const TEXT_PAIRS: [string, string][] = [
-    ["--warn-fg", "--warn-bg"],
-    ["--info-fg", "--info-bg"],
-]
 
 /**
  * Body text against the surfaces it actually sits on. The body text colour,
@@ -70,18 +69,6 @@ const BODY_PAIRS: [string, string][] = [
 ]
 
 for (const [themeName, tokens] of [["light", LIGHT], ["dark", DARK]] as const) {
-    describe(`${themeName}: status pairs meet AA 4.5:1`, () => {
-        for (const [fg, bg] of TEXT_PAIRS) {
-            it(`${fg} on ${bg}`, () => {
-                const f = tokens[fg], b = tokens[bg]
-                expect(f, `${fg} undefined in ${themeName}`).toBeDefined()
-                expect(b, `${bg} undefined in ${themeName}`).toBeDefined()
-                const r = ratio(f, b)
-                expect(r, `${fg} ${f} on ${bg} ${b} is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
-            })
-        }
-    })
-
     describe(`${themeName}: body text meets AA 4.5:1 on its surfaces`, () => {
         for (const [fg, bg] of BODY_PAIRS) {
             it(`${fg} on ${bg}`, () => {
@@ -115,7 +102,10 @@ describe("the keyboard focus ring stands out (WCAG 1.4.11, 3:1)", () => {
 
     it("is shown for keyboard focus, and nothing turns it off", () => {
         expect(CSS).toMatch(/:focus-visible \{\s*outline: 2px solid var\(--focus-ring\);/)
-        expect(CSS).not.toMatch(/\.input:focus \{[^}]*outline: none/)
+        // The only ring turned off is the page's own, which the skip link
+        // reaches. The old fields', which hid it, went with them (PR 223).
+        const ringsOff = [...stripComments(CSS).matchAll(/([^{}]*)\{[^}]*outline: none/g)].map(m => m[1].trim())
+        expect(ringsOff).toEqual(["#main-content:focus"])
         const screens = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
             e.isDirectory() ? screens(join(dir, e.name)) : e.name.endsWith(".tsx") ? [join(dir, e.name)] : [])
         const off = [...screens("app"), ...screens("components")].filter(f => /outline: *'none'/.test(readFileSync(f, "utf8")))
@@ -128,23 +118,13 @@ describe("text and controls the audit measured below AA (4 October 2026, H2)", (
         e.isDirectory() ? screens(join(dir, e.name)) : e.name.endsWith(".tsx") ? [join(dir, e.name)] : [])
     const SCREENS = [...screens("app"), ...screens("components")]
 
-    it("white on a filled button is 4.5:1 across its whole gradient (was 4.47 and 4.23:1)", () => {
-        expect(CSS).toMatch(/\.btn-primary \{\s*background: linear-gradient\(135deg, var\(--button-from\) 0%, var\(--button-to\) 100%\)/)
-        for (const t of ["--button-from", "--button-to"]) expect(ratio("#ffffff", LIGHT[t])).toBeGreaterThanOrEqual(4.5)
-    })
-
-    // The brand-coloured link's token went with the old sign-in page, its
-    // last user (the sign-in page's part 1); the building blocks' links are
-    // --brand-text, held to 4.5:1 with the brand colour (lib/brand-colour.ts).
-    for (const [themeName, tokens] of [["light", LIGHT], ["dark", DARK]] as const) {
-        it(`${themeName}: a field's outline is 3:1 on the surface and the page (was 1.4:1)`, () => {
-            for (const bg of ["--surface", "--page-bg"]) expect(ratio(tokens["--field-border"], tokens[bg])).toBeGreaterThanOrEqual(3)
-        })
-    }
-
-    it("fields draw their outline in --field-border", () => {
-        expect(CSS).toMatch(/\.input \{[^}]*border: 1px solid var\(--field-border\);/)
-    })
+    // White on the old filled button (was 4.47 and 4.23:1) and the old
+    // fields' outline (was 1.4:1) went with them (PR 223). The building
+    // blocks' filled buttons are --on-brand on --brand, held to 4.5:1 with
+    // the brand colour (lib/brand-colour.ts), and their fields' edge is
+    // --field-line, 3:1 (lib/design-tokens.test.ts). The brand-coloured
+    // link's token went with the old sign-in page, its last user (the
+    // sign-in page's part 1); the building blocks' links are --brand-text.
 
     it("no text is coloured with a status colour's fill (-solid), only its text colour (-fg)", () => {
         // Red for errors, late dates and delete links, and green, amber and
@@ -182,9 +162,9 @@ describe("the two themes are actually different", () => {
         // A token with no dark value keeps its light one — a white card on a
         // dark page, which is the exact half-dark result the plan warns about.
         // Deliberately theme-invariant: the brand marks read correctly on both
-        // grounds, text on a filled accent button stays white wherever the page
-        // ground goes, and the login hero gradient is a decorative statement
-        // that does not follow the theme.
+        // grounds, and the bar along the top while a page changes keeps the
+        // gradient it had as the old filled buttons', on which text stayed
+        // white wherever the page ground went.
         //
         // --logo-plate is invariant for a different and stronger reason: a
         // customer's logo is drawn on it, in the side bar and wherever the
@@ -210,7 +190,7 @@ describe("the two themes are actually different", () => {
         // dark in both themes, as every camera's view is: the picture fills
         // it, and its guidance is light over it whatever the page around is.
         const INVARIANT = new Set([
-            "--primary", "--primary-hover", "--secondary", "--accent",
+            "--primary",
             "--logo-plate",
             "--paper", "--ink-on-paper",
             "--neutral-on-paper", "--waiting-on-paper", "--good-on-paper", "--problem-on-paper",
@@ -236,19 +216,11 @@ describe("dark: brand-coloured text meets AA 4.5:1 on its surfaces", () => {
     // Found by measuring every page's text in the dark theme. The brand indigo
     // (--primary, #6366f1) was used as text there unchanged, 2.8:1 on the dark
     // surfaces, and the audit log's action names (--accent-deepest, gone with
-    // the old page in PR 175) 2.85:1. --primary itself can't lighten in the
-    // dark theme, because white text sits on it in buttons, so text uses
-    // --brand-primary-text.
-    for (const fg of ["--brand-primary-text"]) {
-        for (const bg of ["--surface"]) {
-            it(`${fg} on ${bg}`, () => {
-                const r = ratio(DARK[fg], DARK[bg])
-                expect(r, `${fg} ${DARK[fg]} on ${bg} ${DARK[bg]} is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
-            })
-        }
-    }
-
-    it("and screens colour brand text with it, not with the button colour", () => {
+    // the old page in PR 175) 2.85:1. Text took --brand-primary-text, which
+    // went with the old window's close button, its last user (PR 223); the
+    // building blocks' brand text is --brand-text, held to 4.5:1 with the
+    // brand colour (lib/brand-colour.ts).
+    it("screens colour brand text with --brand-text, not with the button colour", () => {
         const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
             e.isDirectory() ? files(join(dir, e.name)) : e.name.endsWith(".tsx") ? [join(dir, e.name)] : [])
         const offenders = [...files("app"), ...files("components")].filter(f =>

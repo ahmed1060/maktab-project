@@ -16,11 +16,6 @@ function ratio(a: string, b: string): number {
     const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p)
     return (x + 0.05) / (y + 0.05)
 }
-// a over white at p (what color-mix(in srgb, a p%, transparent) shows on white)
-function tint(a: string, p: number): string {
-    return '#' + [1, 3, 5].map(i => Math.round(parseInt(a.slice(i, i + 2), 16) * p + 255 * (1 - p)).toString(16).padStart(2, '0')).join('')
-}
-
 const css = readFileSync("app/globals.css", "utf8")
 const light = css.slice(css.indexOf(":root {"))
 function token(name: string): string {
@@ -37,11 +32,9 @@ function tsx(dir: string): string[] {
 }
 
 describe("text contrast, light theme", () => {
-    it("brand-coloured text reads on white and on the brand's 10% tint", () => {
-        const fg = token("brand-primary-text")
-        expect(ratio(fg, "#ffffff")).toBeGreaterThanOrEqual(4.5)
-        expect(ratio(fg, tint(token("primary"), 0.1))).toBeGreaterThanOrEqual(4.5)
-    })
+    // The brand colour as text went with the old window's close button, its
+    // last user (PR 223); the building blocks' is --brand-text, held to 4.5:1
+    // with the brand colour (lib/brand-colour.ts).
 
     it("a selected status pill is white on a colour dark enough for it", () => {
         // The Role requests page's own list is on the Requests page's building blocks now (UI_PLAN.md §2.3, part 5b),

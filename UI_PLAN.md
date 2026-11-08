@@ -571,7 +571,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      and the app itself, merged in #219 on 2026-11-07; then the privacy
      policy and the terms of service, merged in #220 on 2026-11-07; then
      what was left of the dashboard's frame, merged in #221 on 2026-11-07;
-     then the six old components no page used any more, removed in #222;
+     then the six old components no page used any more, removed in #222,
+     merged on 2026-11-08; then the old pages' shared styles nothing used
+     any more, removed in #223;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4964,3 +4966,37 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - the old pages' shared styles that lose their last users here (`.btn`
     and `.glass`) are left for a PR of their own, with the other old styles
     nothing uses, as tests still pin some of them.
+- **2026-11-08:** The old pages' shared styles nothing used any more are
+  gone (#223), with the animations only they ran and the values only they
+  used (`app/globals.css`, DESIGN.md §10):
+  - the old buttons (`.btn`, `.btn-primary`), cards (`.card`,
+    `.glass-card`), fields (`.input`) and badges (`.badge`), the glass
+    panels (`.glass` and its three tints), and the older pages' window
+    (the eight `.modal-*` classes) with its small turning ring
+    (`.spinner-small`);
+  - the 14 classes that hid or showed a part by the screen's width, or
+    laid out the old dashboard's grids (`.lg-hidden`, `.mobile-padding`,
+    `.dashboard-stats-block` and the rest);
+  - the three animations nothing ran any more (`pulse`, `fadeIn`,
+    `modalScaleUp`), and a second copy of `spin`;
+  - 30 values, in both themes: the glass's, the green, amber and blue
+    status colours, the old field's outline, the translucent veils and
+    panels, a shadow, the old faint rule (`--hairline`), the old corner
+    size, the brand colour as text, the hover indigo, the pink and the
+    violet. Three of them followed a company's brand colour, which no
+    longer gives them a shade (`lib/brand-colour.ts`); the other shades
+    are worked out as before, so no company's colours moved;
+  - every class `app/globals.css` styles is now one some code puts on the
+    page, and every animation in it one something runs
+    (`lib/old-styles-gone.test.ts`);
+  - the tests that held those styles now hold what does their job: a
+    field's themed ground and text, a dialog's backdrop and the Super
+    Admin's figures are checked on the building blocks, the focus ring is
+    turned off only on the page's own, and nothing lifts on hover. The
+    contrast checks on the colours that went, went with them;
+  - in the browser, 25 pages, signed out and in, are the same, pixel for
+    pixel, in English on a computer in both themes and in Arabic on a
+    phone. Four first shots differed for reasons of their own and matched
+    when taken again in both states: two were taken while the dev server
+    restarted, and two with the pointer resting on the profile's first
+    radio.
