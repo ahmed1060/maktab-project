@@ -5059,3 +5059,16 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - the API takes only icons from the list. The words for the emoji field
     went, and the Arabic name and tooltip of each module's icon button are
     verbal nouns now, where they told the reader what to do.
+  - in the browser, against the scratch database: Delta Sites' 📊 for
+    Records, 🚚 for Clients and 🔧 for Tasks became Dashboard's icon for
+    Records, and nothing for the other two, once the migration ran. In
+    English on a computer and in Arabic on a phone, the side bar and the
+    Modules tab draw them, and the dialog's 48 are 44px, 8 to a row on a
+    computer and 6 on a phone, each named, the one in use filled, marked
+    and focused (65 checks). The truck picked for Clients and saved shows
+    in the side bar, filled on its page. Records' own, with Use the default
+    icon, and Clients' own, picked from the list, keep nothing. The emoji
+    were 35px wide on a computer;
+  - the web interface audit found the dialog's buttons missing from the
+    list of controls that take a tap at once, with no grey flash, as the
+    emoji were. They're in it now.
