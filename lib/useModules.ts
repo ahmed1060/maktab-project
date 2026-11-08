@@ -7,7 +7,7 @@ import { modulesFrom, type ResolvedModules } from "@/lib/modules"
 import { useCompanyBranding } from "@/context/CompanyBrandingContext"
 
 /**
- * What this company calls each module, and which emoji it uses for it.
+ * What this company calls each module, and which icon it uses for it.
  *
  * Read from the session rather than fetched, for the same reason featureAccess
  * is: every screen in the app needs it, on first paint, and a fetch per screen

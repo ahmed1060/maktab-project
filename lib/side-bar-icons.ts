@@ -37,8 +37,8 @@ import type { SideBarItemKey } from './side-bar'
  *
  * Apart from lib/side-bar.ts and lib/modules.ts, which the server reads too
  * and which say nothing about drawing. A module's icon here is the one a
- * company sees unless it chose its own, an emoji (lib/modules.ts), until
- * companies choose theirs from these.
+ * company sees unless it chose its own from lib/module-icons.ts's 48, which
+ * hold these nine too (DESIGN.md §6).
  */
 export const ITEM_ICONS: Record<SideBarItemKey, PhosphorIcon> = {
     // A company's.

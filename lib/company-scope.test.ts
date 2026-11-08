@@ -53,12 +53,12 @@ describe("what a scoped render actually shows", () => {
         // is exactly why rule 1 needed a second source in the first place.
         const scoped: CompanyBranding = {
             moduleLabels: { clients: "Clinics" },
-            moduleIcons: { clients: "🏥" },
+            moduleIcons: { clients: "storefront" },
             logoUrl: null,
         }
         const modules = modulesFrom(scoped, t)
         expect(modules.label("clients")).toBe("Clinics")
-        expect(modules.icon("clients")).toBe("🏥")
+        expect(modules.icon("clients")).toBe("storefront")
     })
 
     it("is the same shape the session is, so one resolver serves both", () => {

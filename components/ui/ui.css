@@ -1032,39 +1032,40 @@
   flex: 1 1 0;
   min-width: 0;
 }
-.ui-emoji-button {
+.ui-module-icon-button {
   flex: none;
   inline-size: 44px;
   padding-inline: 0;
-  font-size: var(--text-xl);
-  line-height: 1;
 }
-/* The icon dialog's palette: ten to a row, each a button. */
-.ui-emoji-grid {
+/* The icon dialog's 48 (DESIGN.md §6): buttons 44px square, as many to a
+   row as fit, the one in use filled on a tint with the brand's edge. */
+.ui-icon-grid {
   display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, 44px);
   gap: var(--space-1);
 }
-.ui-emoji {
-  min-block-size: 36px;
+.ui-icon-choice {
+  display: grid;
+  place-items: center;
+  inline-size: 44px;
+  block-size: 44px;
   padding: 0;
   border: 1px solid transparent;
   border-radius: var(--radius-menu);
   background: transparent;
-  font-size: var(--text-xl);
-  line-height: 1;
+  color: var(--ink);
   cursor: pointer;
 }
-.ui-emoji:hover {
+.ui-icon-choice:hover {
   background: var(--brand-tint);
 }
-.ui-emoji[aria-pressed="true"] {
+.ui-icon-choice[aria-pressed="true"] {
   border-color: var(--brand-primary);
   background: var(--highlight-tint);
 }
-.ui-emoji:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 1px;
+.ui-icon-choice:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
 }
 /* The side bar as a company's names and icons would make it, in its own
    look (DESIGN.md §5.1), as the logo's preview is. */
@@ -4494,14 +4495,6 @@ a.ui-donut-row:focus-visible {
   min-inline-size: 0;
   overflow-wrap: anywhere;
 }
-/* A company's own icon for a module, an emoji, in the icon's room. */
-.ui-side-emoji {
-  flex: none;
-  inline-size: 18px;
-  text-align: center;
-  font-size: var(--text-lg);
-  line-height: 1;
-}
 
 /* How many wait on this person under To review, at the end of Requests in
    the side bar (DESIGN.md §5.1). Its digits are heard with the item's name
@@ -4620,9 +4613,6 @@ a.ui-donut-row:focus-visible {
   .ui-side-item > .ui-icon {
     inline-size: 20px;
     block-size: 20px;
-  }
-  .ui-side-emoji {
-    inline-size: 20px;
   }
   .ui-side-legal {
     font-size: var(--text-sm);

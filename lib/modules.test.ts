@@ -3,8 +3,8 @@ import {
     MODULE_KEYS,
     MODULES,
     emptyToNull,
+    isModuleIconName,
     isModuleKey,
-    isValidModuleIcon,
     moduleForTitleKey,
     modulesFrom,
     parseModuleIcons,
@@ -43,15 +43,15 @@ describe("the module registry", () => {
         }
     })
 
-    it("defines a label key and an href for every module, and no icon of its own", () => {
-        // Each module's icon is the side bar's (lib/side-bar-icons.ts, DESIGN.md §6),
-        // which the server, reading this registry, has no use for.
+    it("defines a label key, an href and its own icon for every module", () => {
+        // Its icon by name, one of those a company may choose (DESIGN.md §6);
+        // what that draws is lib/module-icons.ts, which the server has no use for.
         for (const key of MODULE_KEYS) {
             const def = MODULES[key]
             expect(def, key).toBeDefined()
             expect(def.labelKey, key).toBeTruthy()
             expect(def.href.startsWith("/dashboard"), key).toBe(true)
-            expect(def, key).not.toHaveProperty("icon")
+            expect(isModuleIconName(def.icon), key).toBe(true)
         }
     })
 
@@ -141,21 +141,21 @@ describe("resolving a module's name and icon", () => {
     it("falls back to the translated default when nothing is overridden", () => {
         expect(resolveModuleLabel("clients", {}, t)).toBe(en.clients)
         expect(resolveModuleLabel("clients", null, t)).toBe(en.clients)
-        // No icon of the company's own: the side bar draws the module's (lib/side-bar-icons.ts).
-        expect(resolveModuleIcon("clients", null)).toBeNull()
-        expect(resolveModuleIcon("clients", {})).toBeNull()
+        // No icon of the company's own: the module's own (DESIGN.md §6).
+        expect(resolveModuleIcon("clients", null)).toBe("handshake")
+        expect(resolveModuleIcon("clients", {})).toBe("handshake")
     })
 
     it("prefers the company's own name and icon", () => {
         expect(resolveModuleLabel("clients", { clients: "Suppliers" }, t)).toBe("Suppliers")
-        expect(resolveModuleIcon("clients", { clients: "🏥" })).toBe("🏥")
+        expect(resolveModuleIcon("clients", { clients: "truck" })).toBe("truck")
     })
 
     it("treats an empty override as no override, not as a blank name", () => {
         // parseModuleOverrides already drops these, but the resolvers are also
         // called with maps straight off a form, which has not.
         expect(resolveModuleLabel("records", { records: "" }, t)).toBe(en.records)
-        expect(resolveModuleIcon("records", { records: "" })).toBeNull()
+        expect(resolveModuleIcon("records", { records: "" })).toBe("folders")
     })
 
     it("renames a module in every locale, because a name is not a translation", () => {
@@ -170,20 +170,20 @@ describe("resolving a module's name and icon", () => {
 describe("modulesFrom", () => {
     it("reads both maps off a session user and answers for any module", () => {
         const modules = modulesFrom(
-            { moduleLabels: { clients: "Suppliers" }, moduleIcons: { clients: "🏥" } },
+            { moduleLabels: { clients: "Suppliers" }, moduleIcons: { clients: "truck" } },
             t
         )
         expect(modules.entry("clients")).toEqual({
             key: "clients",
             href: "/dashboard/clients",
             label: "Suppliers",
-            icon: "🏥",
+            icon: "truck",
         })
         expect(modules.entry("tasks")).toEqual({
             key: "tasks",
             href: "/dashboard/tasks",
             label: en.tasks,
-            icon: null,
+            icon: "check-square",
         })
     })
 
@@ -191,54 +191,28 @@ describe("modulesFrom", () => {
         const modules = modulesFrom(undefined, t)
         for (const key of MODULE_KEYS) {
             expect(modules.label(key)).toBe((en as Record<string, string>)[MODULES[key].labelKey])
-            expect(modules.icon(key)).toBeNull()
+            expect(modules.icon(key)).toBe(MODULES[key].icon)
         }
     })
 
-    it("ignores an icon override that is not an emoji", () => {
-        // The write path rejects these, but a row predating that validation —
-        // or written by anything other than this app — must not put the word
-        // "Clients" where a 1.4rem glyph belongs.
-        const modules = modulesFrom({ moduleIcons: { clients: "VEND" } }, t)
-        expect(modules.icon("clients")).toBeNull()
-    })
-})
-
-describe("validating an icon", () => {
-    it("accepts a plain emoji", () => {
-        for (const emoji of ["🚚", "🤝", "📊", "🌴"]) {
-            expect(isValidModuleIcon(emoji), emoji).toBe(true)
-        }
-    })
-
-    it("accepts emoji built out of several code points", () => {
-        // A variation selector, a flag, a ZWJ sequence and a skin tone are all
-        // longer than one UTF-16 unit; rejecting them would rule out most of
-        // what an admin would actually paste.
-        for (const emoji of ["🛡️", "🇪🇬", "🧑‍💼", "👍🏽", "👨‍👩‍👧‍👦"]) {
-            expect(isValidModuleIcon(emoji), emoji).toBe(true)
-        }
-    })
-
-    it("rejects text, punctuation and whitespace", () => {
-        for (const bad of ["", "V", "Clients", "...", "→", "🚚 trucks", " ", "🚚 "]) {
-            expect(isValidModuleIcon(bad), JSON.stringify(bad)).toBe(false)
-        }
-    })
-
-    it("rejects a pasted essay even if it starts with an emoji", () => {
-        expect(isValidModuleIcon("🚚".repeat(9))).toBe(false)
+    it("ignores an icon that isn't on the list, an emoji among them", () => {
+        // The write path rejects these, but a row written by anything other
+        // than this app, or an emoji from before PR 225 the migration didn't
+        // map, shows the module's own icon rather than nothing.
+        const modules = modulesFrom({ moduleIcons: { clients: "VEND", records: "🗂️" } }, t)
+        expect(modules.icon("clients")).toBe("handshake")
+        expect(modules.icon("records")).toBe("folders")
     })
 })
 
 describe("parsing icon overrides", () => {
-    it("keeps valid emoji and drops everything else", () => {
-        expect(parseModuleIcons({ clients: "🏥", records: "Patients", tasks: "" }))
-            .toEqual({ clients: "🏥" })
+    it("keeps icons on the list and drops everything else, emoji too", () => {
+        expect(parseModuleIcons({ clients: "truck", records: "Patients", tasks: "", costs: "🏦" }))
+            .toEqual({ clients: "truck" })
     })
 
     it("drops unknown modules the same way labels do", () => {
-        expect(parseModuleIcons({ superAdmins: "🛡️", costs: "🏦" })).toEqual({ costs: "🏦" })
+        expect(parseModuleIcons({ superAdmins: "shield-check", costs: "bank" })).toEqual({ costs: "bank" })
     })
 })
 
@@ -313,23 +287,23 @@ describe("deciding what a company update stores", () => {
         // that never renamed anything.
         expect(planOverrideWrite({}, "labels")).toBeNull()
         expect(planOverrideWrite({ clients: "" }, "labels")).toBeNull()
-        expect(planOverrideWrite({ clients: "not an emoji" }, "icons")).toBeNull()
+        expect(planOverrideWrite({ clients: "not an icon" }, "icons")).toBeNull()
     })
 
     it("narrows labels and icons differently, which is what the kind selects", () => {
         // The only difference left between the two now that vendorsLabel is
-        // gone: a label is kept as typed, an icon that is not an emoji is not
-        // an icon.
-        const incoming = { clients: "Suppliers", records: "🏥" }
-        expect(planOverrideWrite(incoming, "labels")).toEqual({ clients: "Suppliers", records: "🏥" })
-        expect(planOverrideWrite(incoming, "icons")).toEqual({ records: "🏥" })
+        // gone: a label is kept as typed, an icon that isn't on the list is
+        // not an icon.
+        const incoming = { clients: "Suppliers", records: "truck" }
+        expect(planOverrideWrite(incoming, "labels")).toEqual({ clients: "Suppliers", records: "truck" })
+        expect(planOverrideWrite(incoming, "icons")).toEqual({ records: "truck" })
     })
 
     it("drops unknown module keys whichever kind it is asked for", () => {
         expect(planOverrideWrite({ superAdmins: "Owners", costs: "Spend" }, "labels"))
             .toEqual({ costs: "Spend" })
-        expect(planOverrideWrite({ superAdmins: "🛡️", costs: "🏦" }, "icons"))
-            .toEqual({ costs: "🏦" })
+        expect(planOverrideWrite({ superAdmins: "shield-check", costs: "bank" }, "icons"))
+            .toEqual({ costs: "bank" })
     })
 })
 

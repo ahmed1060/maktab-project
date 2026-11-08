@@ -19,6 +19,8 @@ const MIGRATIONS = readdirSync("prisma/migrations").filter(m => m !== "migration
 const RECORDS = "20261104000000_records_on_clients"
 const CLIENT_NAMES = "20261107000000_client_names_stored"
 const DATABASE_NAMES = "20261108000000_client_names_in_database"
+// Module icons by their names, where they were emoji (PR 225, lib/module-icons.db.test.ts).
+const ICON_NAMES = "20261202000000_module_icon_names"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 const BUCKET = "https://abc.supabase.co/storage/v1/object/public/app-assets"
@@ -91,6 +93,9 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
     let Records: typeof import("@/lib/services/record.service").RecordService
     let Clients: typeof import("@/lib/services/client.service").ClientService
     let CLIENTS_SHOWN: number
+    // Each company's names and icons for its modules as the migrations here
+    // left them, before the icons became names.
+    let named: Record<string, { moduleLabels: unknown; moduleIcons: unknown }> = {}
 
     beforeAll(async () => {
         const a = new Client({ connectionString: ADMIN_URL })
@@ -105,6 +110,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             if (m === RECORDS) await db.query(OLD_SECTION)
             if (m === CLIENT_NAMES) await db.query(AS_0B_WROTE)
             if (m === DATABASE_NAMES) await db.query(AS_0B_WROTE_LATER)
+            if (m === ICON_NAMES) named = Object.fromEntries((await db.query(`SELECT id, "moduleLabels", "moduleIcons" FROM "Company"`)).rows.map(r => [r.id, { moduleLabels: r.moduleLabels, moduleIcons: r.moduleIcons }]))
             await db.query(sql(m))
             if (m === "20260920000000_team_leader") await db.query(PEOPLE)
         }
@@ -152,8 +158,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
 
         it("moves a company's own name and icon for the section to Records", async () => {
-            const { rows: [company] } = await db.query(`SELECT "moduleLabels", "moduleIcons" FROM "Company" WHERE id = 'c1'`)
-            expect(company).toEqual({ moduleLabels: { records: "Files", tasks: "Jobs" }, moduleIcons: { records: "📁" } })
+            expect(named.c1).toEqual({ moduleLabels: { records: "Files", tasks: "Jobs" }, moduleIcons: { records: "📁" } })
         })
 
         it("rewrites the stored names of Clients' permissions, keeping one of a role's held under both (0c)", async () => {
@@ -169,8 +174,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
         })
 
         it("moves a company's own name and icon for Clients to the module's new key, as 0c found them and 0b saved them since (0c, 0d)", async () => {
-            const { rows: [company] } = await db.query(`SELECT "moduleLabels", "moduleIcons" FROM "Company" WHERE id = 'c2'`)
-            expect(company).toEqual({ moduleLabels: { clients: "Partners" }, moduleIcons: { clients: "🚛" } })
+            expect(named.c2).toEqual({ moduleLabels: { clients: "Partners" }, moduleIcons: { clients: "🚛" } })
         })
 
         it("renames vendors to clients in the database, with what 0b wrote while 0c waited for review (0d)", async () => {
@@ -254,9 +258,9 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
 
         it("keep a company's name and icon for Clients under the module's new key", async () => {
             const { CompanyService } = await import("@/lib/services/company.service")
-            await CompanyService.update({ id: "c2", moduleLabels: { clients: "Customers", tasks: "Jobs" }, moduleIcons: { clients: "🏥" } } as any, superAdmin)
+            await CompanyService.update({ id: "c2", moduleLabels: { clients: "Customers", tasks: "Jobs" }, moduleIcons: { clients: "storefront" } } as any, superAdmin)
             const { rows: [company] } = await db.query(`SELECT "moduleLabels", "moduleIcons" FROM "Company" WHERE id = 'c2'`)
-            expect(company).toEqual({ moduleLabels: { clients: "Customers", tasks: "Jobs" }, moduleIcons: { clients: "🏥" } })
+            expect(company).toEqual({ moduleLabels: { clients: "Customers", tasks: "Jobs" }, moduleIcons: { clients: "storefront" } })
             await db.query(`UPDATE "Company" SET "moduleLabels" = NULL, "moduleIcons" = NULL WHERE id = 'c2'`)
         })
     })

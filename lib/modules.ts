@@ -1,5 +1,5 @@
 /**
- * The nine company-facing modules and their default labels, and what a
+ * The nine company-facing modules, their default labels and icons, and what a
  * company calls each and the icon it chose for it.
  *
  * One registry, so that the sidebar, the settings screen that overrides these,
@@ -35,6 +35,30 @@ export function isModuleKey(value: unknown): value is ModuleKey {
     return typeof value === 'string' && (MODULE_KEYS as readonly string[]).includes(value)
 }
 
+/**
+ * The icons a company may choose for a module (DESIGN.md §6, UI_PLAN.md
+ * §4.4), by their Phosphor names, in the order the icon dialog lists them:
+ * each module's own, and others a renamed module might want. Names only, as
+ * the server reads this file and draws nothing; lib/module-icons.ts draws them.
+ */
+export const MODULE_ICON_NAMES = [
+    'squares-four', 'chart-bar', 'chart-line-up', 'chart-pie-slice',
+    'check-square', 'list-checks', 'clipboard-text', 'kanban', 'briefcase', 'wrench', 'toolbox', 'broom',
+    'push-pin', 'calendar-check', 'calendar-blank', 'clock', 'bell', 'certificate',
+    'tray', 'envelope-simple', 'chat-circle-text', 'seal-check',
+    'folders', 'folder-simple', 'file-text', 'archive',
+    'coins', 'money', 'wallet', 'credit-card', 'receipt', 'bank',
+    'users', 'users-three', 'identification-card', 'hard-hat', 'shield-check',
+    'handshake', 'storefront', 'buildings', 'factory', 'shopping-cart', 'package', 'truck',
+    'map-trifold', 'map-pin', 'house', 'warehouse',
+] as const
+
+export type ModuleIconName = (typeof MODULE_ICON_NAMES)[number]
+
+export function isModuleIconName(value: unknown): value is ModuleIconName {
+    return typeof value === 'string' && (MODULE_ICON_NAMES as readonly string[]).includes(value)
+}
+
 type ModuleDefinition = {
     /**
      * Translation key for the built-in name, in both locales. Typed as
@@ -43,6 +67,8 @@ type ModuleDefinition = {
      * sidebar entry.
      */
     labelKey: TranslationKey
+    /** Its own icon, the side bar's (lib/side-bar-icons.ts, DESIGN.md §6), by name. */
+    icon: ModuleIconName
     /** Where the sidebar entry points, and the prefix its pages live under. */
     href: string
 }
@@ -51,9 +77,10 @@ type ModuleDefinition = {
  * Defaults, read off the sidebar as it stood, so an uncustomised company was
  * byte-identical to before this existed.
  *
- * No icon: each module's is the side bar's (lib/side-bar-icons.ts, DESIGN.md
- * §6), which this registry, read by the server too, has no use for. They
- * were emoji until the side bar moved onto the building blocks.
+ * Each module's icon is the side bar's (lib/side-bar-icons.ts, DESIGN.md §6),
+ * by its name here: the server needs it to tell a company's choice from the
+ * module's own, which isn't one. They were emoji until the side bar moved
+ * onto the building blocks.
  *
  * Day off was one, until it became a kind of request on the Requests page
  * (UI_PLAN.md §2.3, part 5c): with no entry of its own, there was nothing left
@@ -65,16 +92,16 @@ type ModuleDefinition = {
  * icon for it moved to the new key in the same migration.
  */
 export const MODULES: Record<ModuleKey, ModuleDefinition> = {
-    dashboard: { labelKey: 'dashboard', href: '/dashboard' },
-    tasks: { labelKey: 'tasks', href: '/dashboard/tasks' },
-    obligations: { labelKey: 'obligations', href: '/dashboard/obligations' },
-    requests: { labelKey: 'requests', href: '/dashboard/requests' },
-    records: { labelKey: 'records', href: '/dashboard/records' },
-    costs: { labelKey: 'costs', href: '/dashboard/costs' },
-    employees: { labelKey: 'employees', href: '/dashboard/employees' },
-    clients: { labelKey: 'clients', href: '/dashboard/clients' },
+    dashboard: { labelKey: 'dashboard', icon: 'squares-four', href: '/dashboard' },
+    tasks: { labelKey: 'tasks', icon: 'check-square', href: '/dashboard/tasks' },
+    obligations: { labelKey: 'obligations', icon: 'push-pin', href: '/dashboard/obligations' },
+    requests: { labelKey: 'requests', icon: 'tray', href: '/dashboard/requests' },
+    records: { labelKey: 'records', icon: 'folders', href: '/dashboard/records' },
+    costs: { labelKey: 'costs', icon: 'coins', href: '/dashboard/costs' },
+    employees: { labelKey: 'employees', icon: 'users', href: '/dashboard/employees' },
+    clients: { labelKey: 'clients', icon: 'handshake', href: '/dashboard/clients' },
     // The places tasks happen at (CLIENTS_PLAN.md §2).
-    locations: { labelKey: 'locations', href: '/dashboard/locations' },
+    locations: { labelKey: 'locations', icon: 'map-trifold', href: '/dashboard/locations' },
 }
 
 /** A company's overrides, by module. A missing key falls through to the default. */
@@ -112,41 +139,19 @@ export function parseModuleOverrides(value: unknown): ModuleOverrides {
  */
 export const MAX_MODULE_LABEL_LENGTH = 50
 
-/**
- * Whether a string is usable as a company's own icon for a module, an emoji
- * the side bar shows in place of the module's (DESIGN.md §5.1), until
- * companies choose theirs from the side bar's own icons.
- *
- * The icon is rendered at the size of an icon in a side bar row, so it has
- * to be one glyph-ish thing rather than a word. Three
- * conditions, each guarding a different way the picker can be bypassed (the
- * API accepts JSON, not only what the UI sends):
- *
- *   - an upper bound in code units, because a ZWJ sequence like 👨‍👩‍👧‍👦 is
- *     eleven of them and a pasted paragraph is thousands;
- *   - no whitespace, which is what stops "🚚 trucks" and "a b";
- *   - at least one pictographic character, which is what stops "AB" and "…".
- *
- * Regional indicators are allowed alongside pictographs because a flag is two
- * of them and neither is Extended_Pictographic — 🇪🇬 would otherwise be
- * rejected, which for this app's customers is the wrong emoji to refuse.
- *
- * Deliberately not "exactly one grapheme": Intl.Segmenter is the only correct
- * way to count those, it is not available in every runtime this code runs in,
- * and the failure it would additionally catch (two emoji in one slot) is
- * cosmetic and self-evident to whoever typed it.
- */
-export function isValidModuleIcon(value: string): boolean {
-    if (value.length === 0 || value.length > 16) return false
-    if (/\s/u.test(value)) return false
-    return /[\p{Extended_Pictographic}\p{Regional_Indicator}]/u.test(value)
-}
+/** A company's own icons, by module. */
+export type ModuleIcons = Partial<Record<ModuleKey, ModuleIconName>>
 
-/** Narrows a Json icon map, dropping anything that is not a usable icon. */
-export function parseModuleIcons(value: unknown): ModuleOverrides {
-    const out = parseModuleOverrides(value)
-    for (const key of Object.keys(out) as ModuleKey[]) {
-        if (!isValidModuleIcon(out[key] as string)) delete out[key]
+/**
+ * Narrows a Json icon map: a module keeps an icon from the list, other than
+ * its own, which is no choice of the company's. Anything else is dropped, so
+ * the module shows its own: an icon that isn't on the list, or an emoji, as
+ * companies chose until PR 225 and its migration mapped what it could.
+ */
+export function parseModuleIcons(value: unknown): ModuleIcons {
+    const out: ModuleIcons = {}
+    for (const [key, icon] of Object.entries(parseModuleOverrides(value)) as [ModuleKey, string][]) {
+        if (isModuleIconName(icon) && icon !== MODULES[key].icon) out[key] = icon
     }
     return out
 }
@@ -170,11 +175,13 @@ export function resolveModuleLabel(
 }
 
 /**
- * This company's own icon for a module, an emoji, or null for the module's
- * own, the side bar's (lib/side-bar-icons.ts), which this file doesn't draw.
+ * This company's icon for a module, or the module's own, by name: what draws
+ * it is lib/module-icons.ts. A map straight off the form, not yet narrowed,
+ * is read the same way.
  */
-export function resolveModuleIcon(key: ModuleKey, overrides: ModuleOverrides | null | undefined): string | null {
-    return overrides?.[key] || null
+export function resolveModuleIcon(key: ModuleKey, overrides: ModuleOverrides | null | undefined): ModuleIconName {
+    const chosen = overrides?.[key]
+    return isModuleIconName(chosen) ? chosen : MODULES[key].icon
 }
 
 // labelKey → module, built once. Every labelKey is distinct, which the test
@@ -220,7 +227,7 @@ export function modulesFrom(
     return {
         /** The display name for a module, translated or overridden. */
         label: (key: ModuleKey) => resolveModuleLabel(key, labels, t),
-        /** The company's own emoji for a module, or null for the side bar's icon. */
+        /** The company's icon for a module, or the module's own, by name. */
         icon: (key: ModuleKey) => resolveModuleIcon(key, icons),
         /** Both at once plus the href, for a nav row. */
         entry: (key: ModuleKey) => ({
@@ -274,7 +281,8 @@ export function sameOverrides(
  *     payload was cleared, not left alone.
  *
  * Labels and icons differ only in how they are narrowed, which is what `kind`
- * selects: an icon that is not an emoji is dropped, a label is kept as typed.
+ * selects: an icon that isn't on the list, or is the module's own, is dropped;
+ * a label is kept as typed.
  * They were asymmetric until the contract step, because labels also had to keep
  * the old `vendorsLabel` column in step with `moduleLabels.vendors`. That column
  * is gone, and with it the only merge this ever did.

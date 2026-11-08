@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest"
 import { createElement as h } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { readFileSync } from "node:fs"
-import { CheckSquareIcon, GearSixIcon, HandshakeIcon, SquaresFourIcon, TrayIcon } from "@phosphor-icons/react/ssr"
+import { CheckSquareIcon, GearSixIcon, HandshakeIcon, SquaresFourIcon, TrayIcon, TruckIcon } from "@phosphor-icons/react/ssr"
 import { Icon } from "@/components/ui"
 import { ar } from "./translations/ar"
 import { en } from "./translations/en"
@@ -91,12 +91,20 @@ describe("the side bar's items", () => {
         expect(link(await sideBar({ pathname: "/dashboard" }), "/dashboard")).toContain(icon(SquaresFourIcon, "fill"))
     })
 
-    it("show a company's own icon, an emoji, in place of the module's, and its own name", async () => {
-        const html = await sideBar({ user: { moduleLabels: { clients: "Vendors" }, moduleIcons: { clients: "🏥" } } })
-        const clients = link(html, "/dashboard/clients")
-        expect(clients).toContain('<span class="ui-side-emoji" aria-hidden="true">🏥</span>')
+    it("show a company's own icon in place of the module's, drawn as the others are, and its own name", async () => {
+        const user = { moduleLabels: { clients: "Vendors" }, moduleIcons: { clients: "truck" } }
+        const clients = link(await sideBar({ user }), "/dashboard/clients")
+        expect(clients).toContain(icon(TruckIcon))
         expect(clients).toContain("<bdi>Vendors</bdi>")
         expect(clients).not.toContain(icon(HandshakeIcon))
+        // Filled on its page, as the module's own is (DESIGN.md §5.1).
+        expect(link(await sideBar({ user, pathname: "/dashboard/clients" }), "/dashboard/clients")).toContain(icon(TruckIcon, "fill"))
+    })
+
+    it("show the module's own icon for one a company kept from before, an emoji", async () => {
+        const clients = link(await sideBar({ user: { moduleIcons: { clients: "🏥" } } }), "/dashboard/clients")
+        expect(clients).toContain(icon(HandshakeIcon))
+        expect(clients).not.toContain("🏥")
     })
 
     it("have no emoji of the old side bar's", async () => {
@@ -268,7 +276,7 @@ describe("the side bar's look (components/ui/ui.css)", () => {
 describe("the icons", () => {
     it("are the ones DESIGN.md §6 names, for every item either side bar has", () => {
         const design = readFileSync("DESIGN.md", "utf8")
-        const section = design.slice(design.indexOf("**The side bar's icons**"), design.indexOf("**Icons that point a direction"))
+        const section = design.slice(design.indexOf("**The side bar's icons**"), design.indexOf("**A module's icon, chosen by its company**"))
         for (const key of [...COMPANY_GROUPS, ...SUPER_ADMIN_GROUPS].flatMap(g => g.items)) {
             const glyph = ITEM_ICONS[key]
             expect(glyph, key).toBeDefined()
