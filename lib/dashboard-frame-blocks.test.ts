@@ -63,12 +63,14 @@ describe("the shell (components/DashboardShell.tsx)", () => {
 })
 
 describe('the "Powered by" signature, kept as it is (DESIGN.md §5.1)', () => {
-    const signature = SHELL.slice(SHELL.indexOf("{showPoweredBy && ("), SHELL.indexOf("DEFAULT_POWERED_BY_NAME}") + 40)
+    // Its own component, which the sign-in page draws too (PR 232).
+    const signature = stripComments(source("components/PoweredBy.tsx"))
 
     it("is drawn by the app's CSS, not inline", () => {
+        expect(SHELL).toContain("{showPoweredBy && <PoweredBy name={poweredByName} />}")
         expect(signature).toContain('<div className="floating-attribution">')
         expect(signature).toContain(`<span className="floating-attribution-by">{t('powered_by')}</span>`)
-        expect(signature).toContain('<span className="floating-attribution-name" translate="no">{poweredByName?.trim() || DEFAULT_POWERED_BY_NAME}</span>')
+        expect(signature).toContain('<span className="floating-attribution-name" translate="no">{name?.trim() || DEFAULT_POWERED_BY_NAME}</span>')
     })
 
     it("keeps the name from a browser's translation, as its preview on System settings does", () => {

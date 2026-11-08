@@ -21,6 +21,9 @@ import { readFileSync } from "node:fs"
 
 const SHELL = "components/DashboardShell.tsx"
 const lines = readFileSync(SHELL, "utf8").split("\n")
+// Its markup, which the shell and the sign-in page both draw (PR 232).
+const SIGNATURE = "components/PoweredBy.tsx"
+const signatureLines = readFileSync(SIGNATURE, "utf8").split("\n")
 const CSS = readFileSync("app/globals.css", "utf8")
 // The side bar's layers, the drawer and its scrim on a phone, in the building
 // blocks' CSS since it moved onto them (DESIGN.md §5.1).
@@ -31,8 +34,8 @@ const topBarCss = UI.slice(UI.indexOf(".ui-topbar-frame {"), UI.indexOf("/* end 
 const floating = CSS.match(/\n\.floating-attribution \{([^}]*)\}/)?.[1] ?? ""
 const phone = CSS.match(/@media \(max-width: 1023px\) \{[\s\S]*?\.floating-attribution \{([^}]*)\}/)?.[1] ?? ""
 
-const start = lines.findIndex(l => l.includes("{showPoweredBy && ("))
-const end = lines.findIndex(l => l.includes('className="floating-attribution"'))
+const start = lines.findIndex(l => l.includes("{showPoweredBy && <PoweredBy name={poweredByName} />}"))
+const markup = signatureLines.findIndex(l => l.includes('className="floating-attribution"'))
 
 function zIndexesIn(source: string[]): number[] {
     return source.flatMap(l => [...l.matchAll(/zIndex:\s*(\d+)/g)].map(m => Number(m[1])))
@@ -42,11 +45,11 @@ describe("the attribution never covers the navigation", () => {
     it("finds the attribution block at all", () => {
         // Renaming either marker would otherwise make every assertion below
         // pass against an empty slice.
-        expect(start, `no "{showPoweredBy && (" in ${SHELL}`).toBeGreaterThan(-1)
-        expect(end, `no floating-attribution class in ${SHELL}`).toBeGreaterThan(start)
+        expect(start, `no "{showPoweredBy && <PoweredBy" in ${SHELL}`).toBeGreaterThan(-1)
+        expect(markup, `no floating-attribution class in ${SIGNATURE}`).toBeGreaterThan(-1)
     })
 
-    const block = lines.slice(start + 1, end + 1)
+    const block = signatureLines
     const blockText = block.join("\n")
 
     it("puts the attribution in the page on a phone", () => {
@@ -59,7 +62,7 @@ describe("the attribution never covers the navigation", () => {
         const mine = [...floating.matchAll(/z-index:\s*(\d+)/g)].map(m => Number(m[1]))
         expect(zIndexesIn(block), "the layer is set in CSS, not inline").toEqual([])
         const others = [
-            ...zIndexesIn([...lines.slice(0, start), ...lines.slice(end + 1)]),
+            ...zIndexesIn(lines),
             ...[...sideBarCss.matchAll(/z-index:\s*(\d+)/g)].map(m => Number(m[1])),
             ...[...topBarCss.matchAll(/z-index:\s*(\d+)/g)].map(m => Number(m[1])),
         ]

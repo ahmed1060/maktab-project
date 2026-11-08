@@ -17,6 +17,7 @@ export const en = {
         sign_in_paused_wait: "Too many wrong tries for this account. You can try again in {time}.",
         sign_in_locked_wait: "Too many wrong tries for this account. It unlocks on its own in {time}, or your company's Admin can unlock it now.",
         sign_in_wait_over: "You can try signing in again.",
+        sign_in_session_ended: "You were signed out because your session ended, as it does when your password or your role changes. Please sign in again.",
         error_sign_in_paused: "Too many wrong tries for this account. You can try again in 30 seconds.",
         error_too_many_attempts: "Too many wrong tries for this account. It unlocks on its own within 15 minutes, or your company's Admin can unlock it now.",
         error_subscription_expired: "This company's subscription has expired. Please contact your administrator.",

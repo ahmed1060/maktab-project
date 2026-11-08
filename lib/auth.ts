@@ -574,7 +574,7 @@ export const authOptions: NextAuthOptions = {
                         if (userRole === 'SUPER_ADMIN') {
                             const sa = await prisma.superAdmin.findUnique({
                                 where: { id: userId },
-                                select: { sessionVersion: true, keptSession: true, isProtected: true, emailVerifiedAt: true, mfaEnabled: true }
+                                select: { sessionVersion: true, keptSession: true, isProtected: true, emailVerifiedAt: true, mfaEnabled: true, mustChangePassword: true }
                             })
                             dbVersion = sa?.sessionVersion || 0
                             keptSession = sa?.keptSession ?? null
@@ -589,6 +589,7 @@ export const authOptions: NextAuthOptions = {
                             token.isProtected = sa?.isProtected || false
                             token.emailVerified = !!sa?.emailVerifiedAt
                             token.mfaEnabled = sa?.mfaEnabled || false
+                            token.mustChangePassword = sa?.mustChangePassword || false
                         } else {
                             // Maintenance mode fetched alongside, in parallel — same
                             // 60s throttle as everything else here, no extra round trip.
@@ -597,6 +598,10 @@ export const authOptions: NextAuthOptions = {
                                     where: { id: userId },
                                     select: {
                                         sessionVersion: true, keptSession: true, status: true, emailVerifiedAt: true, mfaEnabled: true,
+                                        // Caught up here too, should the page that
+                                        // changed it not have written the session
+                                        // again (lib/refresh-session.ts).
+                                        mustChangePassword: true,
                                         role: true, roleId: true, assignedRole: { select: { version: true } },
                                         actingUntil: true,
                                         company: {
@@ -638,6 +643,7 @@ export const authOptions: NextAuthOptions = {
                             token.companyBanned = u?.company?.isBanned || false
                             token.emailVerified = !!u?.emailVerifiedAt
                             token.mfaEnabled = u?.mfaEnabled || false
+                            token.mustChangePassword = u?.mustChangePassword || false
                             token.maintenanceMode = settings?.maintenanceMode || false
                             token.maintenanceMessage = settings?.maintenanceMessage || null
                             // Clients feature: deliberately refreshed here rather than

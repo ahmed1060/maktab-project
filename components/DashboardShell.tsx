@@ -12,7 +12,7 @@ import { sideBarFor } from '@/lib/side-bar'
 import { useModules } from '@/lib/useModules'
 import { useCompanyBranding } from '@/context/CompanyBrandingContext'
 import { useCompany } from '@/context/CompanyContext'
-import { DEFAULT_POWERED_BY_NAME } from '@/lib/branding-defaults'
+import { PoweredBy } from '@/components/PoweredBy'
 import { usePathname, useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import { fetcher } from '@/lib/swr-fetcher'
@@ -194,20 +194,9 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
                     <SubscriptionNote />
                     {children}
                 </div>
-                {/* The "Powered by" signature, kept as it is (DESIGN.md §5.1):
-                    floating in the corner on a computer, at the end of the page
-                    on a phone, its look in app/globals.css (.floating-attribution).
-                    Hidden entirely when switched off in System Settings, not
-                    merely made transparent: an invisible element still takes a
-                    corner of the screen and still reads out to a screen reader.
-                    The name is left as it is by a browser's translation, as its
-                    preview on System settings leaves it. */}
-                {showPoweredBy && (
-                    <div className="floating-attribution">
-                        <span className="floating-attribution-by">{t('powered_by')}</span>
-                        <span className="floating-attribution-name" translate="no">{poweredByName?.trim() || DEFAULT_POWERED_BY_NAME}</span>
-                    </div>
-                )}
+                {/* The "Powered by" signature, kept as it is (DESIGN.md §5.1;
+                    components/PoweredBy.tsx), as System settings has it. */}
+                {showPoweredBy && <PoweredBy name={poweredByName} />}
             </main>
         </div>
     )

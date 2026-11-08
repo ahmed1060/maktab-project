@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
-import { useSession } from 'next-auth/react'
 import { Button, Card, Field, Page, PageHeader, PasswordInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -9,6 +8,7 @@ import { apiErrorText } from '@/lib/api-error-text'
 import { firstError } from '@/lib/form-errors'
 import { NEW_PASSWORD_FIELDS, PASSWORD_MAX, newPasswordErrors, type NewPasswordField } from '@/lib/new-password-form'
 import { ownPasswordRefusal } from '@/lib/profile-password'
+import { refreshSession } from '@/lib/refresh-session'
 import { useViewer } from '@/lib/useCan'
 
 /**
@@ -28,7 +28,6 @@ export default function ChangePasswordPage() {
     // Whose password it is, from the layout on the first paint: the session
     // hook's own copy is still loading then, and a quick Save sent no id.
     const viewer = useViewer()
-    const { update } = useSession()
     const { showToast } = useToast()
 
     const [newPassword, setNewPassword] = useState('')
@@ -75,8 +74,12 @@ export default function ChangePasswordPage() {
                 setSaving(false)
                 return
             }
-            // Clear the flag on the live JWT so middleware stops redirecting here.
-            await update({ mustChangePassword: false })
+            // The session is written again, the flag cleared from the
+            // account, so the gate stops sending the browser here. Not by the
+            // session hook's update, which does nothing until the page has
+            // loaded its session: pressed before, the page came back though
+            // the password had been changed (PR 228).
+            await refreshSession({ mustChangePassword: false })
             showToast(t('change_password_done'), 'success')
             // Loaded afresh rather than moved to within the app. Signing in
             // went to the dashboard, which was turned to this page, and the

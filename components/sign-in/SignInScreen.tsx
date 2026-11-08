@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import LanguageToggleButton from '@/components/LanguageToggleButton'
 import ThemeToggleButton from '@/components/ThemeToggleButton'
+import { SignInSignature } from '@/components/PoweredBy'
 
 /**
  * The sign-in screen (DESIGN.md §5.5, Sign-in), the one screen with no app
@@ -16,6 +17,10 @@ import ThemeToggleButton from '@/components/ThemeToggleButton'
  * the language and theme switches the account menu has. They were pinned to
  * the screen's bottom corners, so on a phone the theme switch covered Sign in
  * and the language switch the legal links (UI_PLAN.md §5 step 5).
+ *
+ * Then the "Powered by" signature, as the dashboard has it, as System
+ * settings has it (decided 2026-11-08): in the corner on a computer, and at
+ * the end of the page on a phone.
  */
 export function SignInScreen({ title, subtitle, children }: { title: string; subtitle?: ReactNode; children: ReactNode }) {
     const { t } = useLanguage()
@@ -40,6 +45,7 @@ export function SignInScreen({ title, subtitle, children }: { title: string; sub
                     <LanguageToggleButton />
                 </div>
             </footer>
+            <SignInSignature />
         </div>
     )
 }

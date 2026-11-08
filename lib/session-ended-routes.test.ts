@@ -29,7 +29,8 @@ describe("the route a page sends an ended session to", () => {
         state.session = null
         const res = await visit(COOKIES)
         expect(res.status).toBe(307)
-        expect(res.headers.get("location")).toBe("https://nizmo.test/login")
+        // Saying why there (lib/signed-out.test.ts).
+        expect(res.headers.get("location")).toBe("https://nizmo.test/login?session=ended")
         for (const name of ["next-auth.session-token", "next-auth.session-token.0", "__Secure-next-auth.session-token"]) {
             expect(res.cookies.get(name), name).toMatchObject({ value: "", maxAge: 0, path: "/" })
         }
@@ -89,8 +90,9 @@ describe("the pages", () => {
     // A request refused with a 401 signs the page out
     // (components/AuthInterceptor.tsx), as it did: the heartbeat's is refused
     // now, where a session with nobody in it reached the route as somebody's.
+    // To sign in told why (lib/signed-out.test.ts).
     it("left open, sign themselves out once the server refuses the session", () => {
-        expect(source("components/AuthInterceptor.tsx")).toMatch(/if \(res\.status === 401\) \{[^]*?if \(targetUrl && !targetUrl\.includes\('\/api\/auth\/'\)\) \{[^]*?signOut\(\{ callbackUrl: '\/login' \}\)/)
+        expect(source("components/AuthInterceptor.tsx")).toMatch(/if \(res\.status === 401\) \{[^]*?if \(targetUrl && !targetUrl\.includes\('\/api\/auth\/'\)\) \{[^]*?signOut\(\{ callbackUrl: SESSION_ENDED_SIGN_IN \}\)/)
     })
 
     // Refused, the heartbeat read an answer it didn't have, and the console
