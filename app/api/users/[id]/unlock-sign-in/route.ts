@@ -4,6 +4,7 @@ import { can } from "@/lib/permissions/can"
 import { verifyResourceAccess } from "@/lib/security"
 import { AuditLogService } from "@/lib/services/audit-log.service"
 import { unlockSignIn } from "@/lib/sign-in-lock"
+import { unpauseOwnPassword } from "@/lib/own-password"
 
 /**
  * Lifts a sign-in lock before its fifteen minutes are up (lib/sign-in-lock.ts):
@@ -12,7 +13,9 @@ import { unlockSignIn } from "@/lib/sign-in-lock"
  * company: a Super Admin anywhere, a company's Admin for their own people
  * (decided 2026-11-03), but never their own. It gives no access, only another
  * try at their own password, so it asks for nothing more, as resetting the
- * password doesn't.
+ * password doesn't. It lifts the pause on their password tries too, which
+ * five wrong ones set off where one's own password is asked for (PR 229;
+ * decided 2026-11-08, for the same people).
  */
 export const POST = withStandardHandler(async (req, session, json, { params }) => {
     if (!can(session.user, "employees.reset_password")) return ApiResponse.forbidden()
@@ -25,6 +28,7 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     if (!hasAccess) return ApiResponse.forbidden("Access denied")
 
     await unlockSignIn(id)
+    await unpauseOwnPassword(id)
     const bySuperAdmin = session.user.role === 'SUPER_ADMIN'
     await AuditLogService.log('UNLOCK_SIGN_IN', 'USER', id, {
         userId: bySuperAdmin ? null : session.user.id,

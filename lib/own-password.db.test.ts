@@ -40,7 +40,8 @@ INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayO
  ('e3', 'e3@x', '${hash}', 'Essam', 'One', 'EMPLOYEE', 2026, 'e3', 'c1'),
  ('e4', 'e4@x', '${hash}', 'Eid', 'One', 'EMPLOYEE', 2026, 'e4', 'c1'),
  ('e5', 'e5@x', '${hash}', 'Ezz', 'One', 'EMPLOYEE', 2026, 'e5', 'c1'),
- ('e6', 'e6@x', '${hash}', 'Eslam', 'One', 'EMPLOYEE', 2026, 'e6', 'c1');
+ ('e6', 'e6@x', '${hash}', 'Eslam', 'One', 'EMPLOYEE', 2026, 'e6', 'c1'),
+ ('e7', 'e7@x', '${hash}', 'Emad', 'One', 'EMPLOYEE', 2026, 'e7', 'c1');
 `
 const SUPER_ADMIN = `INSERT INTO "SuperAdmin"(id, email, username, password, "firstName", "lastName", "updatedAt") VALUES ('sa1', 'sa1@x', 'sa1', '${hash}', 'Sara', 'Adel', now());`
 
@@ -153,6 +154,23 @@ describe.skipIf(!ADMIN_URL)("one's own current password, checked by the server, 
         for (let i = 0; i < 5; i++) expect(await refusal(Users.resetPassword("e3", admin2.user, "not-it-at-all"))).toBe("INVALID_ADMIN_PASSWORD")
         expect(await refusal(Users.resetPassword("e3", admin2.user, CURRENT))).toBe("OWN_PASSWORD_TRIES")
         expect(await refusal(Users.verifyPassword("a2", CURRENT))).toBe("OWN_PASSWORD_TRIES")
+    })
+
+    // Unlock, beside their status, lifts it before the fifteen minutes are up,
+    // as it lifts a sign-in lock (decided 2026-11-08).
+    it("says until when an account's tries are paused, for the list, and Unlock lifts them", async () => {
+        const { ownPasswordPausedUntil, unpauseOwnPassword } = await import("@/lib/own-password")
+        for (let i = 0; i < 4; i++) await Users.verifyPassword("e7", "not-it-at-all")
+        expect((await ownPasswordPausedUntil(["e7", "e6"])).size).toBe(0)
+        await Users.verifyPassword("e7", "not-it-at-all")
+        const paused = await ownPasswordPausedUntil(["e7", "e6"])
+        expect([...paused.keys()]).toEqual(["e7"])
+        expect(paused.get("e7")!.getTime()).toBeGreaterThan(Date.now())
+        expect(await refusal(Users.verifyPassword("e7", CURRENT))).toBe("OWN_PASSWORD_TRIES")
+
+        await unpauseOwnPassword("e7")
+        expect((await ownPasswordPausedUntil(["e7"])).size).toBe(0)
+        expect(await Users.verifyPassword("e7", CURRENT)).toEqual({ valid: true })
     })
 
     it("counts only the wrong ones: the right ones give their try back", async () => {
