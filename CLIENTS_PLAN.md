@@ -789,6 +789,10 @@ balance first, automatically:
 - **Leaving the company.** Any balance still held becomes a debt
   (source: cash advance) in the existing debts feature, recovered through
   payroll or the final settlement as other debts are.
+  - Where the company's package doesn't include HR, there's neither, and
+    debts are payroll's: the balance stays theirs, on the Cash advances
+    tab, until its return is recorded (`UI_PLAN.md`, 2026-11-08). End
+    contract says so before the contract is ended.
 
 ### 7.4 The ledger and rules (Decided)
 
@@ -2310,3 +2314,10 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   the place's name, such as "Cairo Tower", where it was its whole address,
   and only places with a point on the map are suggested, so a pick always
   drops the pin (§2.4; #215 in `UI_PLAN.md`).
+- **2026-11-08:** Leaving the company where the package doesn't include
+  HR (§7.3; #226 in `UI_PLAN.md`): a cash advance still held stays on it,
+  on the Cash advances tab, until its return is recorded. It became a
+  debt, as it does with HR, which only Payroll's screens show. So did
+  what came back to someone gone, a cost's part put back or a correction
+  finding they held more, and what they held as an ending dated ahead
+  took effect.
