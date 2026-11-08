@@ -7,6 +7,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useDialog } from '@/lib/useDialog'
 import { countOf } from '@/lib/plural'
 import { isModuleKey, type ResolvedModules } from '@/lib/modules'
+import { MODULE_ICONS } from '@/lib/module-icons'
 import { PAGES, type SideBarGroup, type SideBarItemKey } from '@/lib/side-bar'
 import { ITEM_ICONS } from '@/lib/side-bar-icons'
 
@@ -49,16 +50,17 @@ export default function SideBar({ groups, modules, company, pathname, drawer, op
     const counted = (key: SideBarItemKey) => key === 'requests' && !!waiting && waiting > 0
 
     const item = (key: SideBarItemKey) => {
-        // A module's name and icon are the company's where it chose its own (lib/modules.ts).
-        const entry = isModuleKey(key) ? modules.entry(key) : { href: PAGES[key].href, label: t(PAGES[key].labelKey), icon: null }
+        // A module's name and icon are the company's where it chose its own
+        // (lib/modules.ts), drawn as the others are (DESIGN.md §6).
+        const entry = isModuleKey(key)
+            ? { ...modules.entry(key), glyph: MODULE_ICONS[modules.icon(key)].glyph }
+            : { href: PAGES[key].href, label: t(PAGES[key].labelKey), glyph: ITEM_ICONS[key] }
         return (
             <Link key={key} href={entry.href} className="ui-side-item" {...currentFor(entry.href)}
                 // Picking a page closes the drawer. Prefetch stays on: a small
                 // fixed set of links, and the most used way around the app.
                 onClick={asDialog ? onClose : undefined}>
-                {entry.icon
-                    ? <span className="ui-side-emoji" aria-hidden="true">{entry.icon}</span>
-                    : <Icon icon={ITEM_ICONS[key]} weight={here(entry.href) ? 'fill' : 'regular'} />}
+                <Icon icon={entry.glyph} weight={here(entry.href) ? 'fill' : 'regular'} />
                 {/* The count, heard with the name: the pill beside it is hidden from screen readers. */}
                 <span className="ui-side-label"><bdi>{entry.label}</bdi>{counted(key) && <span className="ui-visually-hidden">{t('side_bar_to_review').replace('{count}', countOf(t, locale, waiting!, 'requests'))}</span>}</span>
                 {counted(key) && <span className="ui-side-count" aria-hidden="true">{waiting!.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')}</span>}

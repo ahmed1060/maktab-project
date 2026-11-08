@@ -1,28 +1,27 @@
 'use client'
 
-import { Fragment, useMemo, useRef, useState, type FormEvent } from 'react'
+import { Fragment, useMemo, useState, type FormEvent } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
-import { Button, Card, Dialog, DialogActions, Field, Icon, TextInput, type PhosphorIcon } from '@/components/ui'
-import { focusFirstWrong } from '@/components/attendance-calendar/focus'
+import { Button, Card, Dialog, DialogActions, Field, Icon, TextInput } from '@/components/ui'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useReportUnsaved } from '@/lib/useUnsavedChanges'
-import type { TranslationKey } from '@/lib/translations'
 import {
     MAX_MODULE_LABEL_LENGTH,
     MODULES,
+    MODULE_ICON_NAMES,
     MODULE_KEYS,
     isModuleKey,
-    isValidModuleIcon,
     modulesFrom,
     parseModuleIcons,
     parseModuleOverrides,
     sameOverrides,
+    type ModuleIconName,
     type ModuleKey,
     type ModuleOverrides,
 } from '@/lib/modules'
+import { MODULE_ICONS } from '@/lib/module-icons'
 import { COMPANY_GROUPS } from '@/lib/side-bar'
-import { ITEM_ICONS } from '@/lib/side-bar-icons'
 
 /**
  * What a company calls each module, and its icon, in the Super Admin's
@@ -34,39 +33,12 @@ import { ITEM_ICONS } from '@/lib/side-bar-icons'
  */
 
 /**
- * A palette, not an emoji keyboard.
- *
- * Rendering all ~3,800 emoji would need a searchable index, skin-tone and
- * variation handling, and a virtualised grid — a component in its own right,
- * for a setting that gets touched once when a company is onboarded. These are
- * the ones a business module plausibly wants; anything else is one paste away
- * in the field underneath, which accepts any emoji at all.
+ * The icon to keep for a module: the one picked, or none for the module's
+ * own, picked from the list or with Use the default icon, as a blank name is
+ * no name. The module's own then follows it, should it ever change.
  */
-const PALETTE = [
-    '📊', '📈', '📉', '🗂️', '📋', '📁', '🗃️', '📅', '🗓️', '⏰',
-    '✅', '☑️', '📌', '📍', '🎯', '🏁', '🚩', '⭐', '🔖', '🏷️',
-    '📩', '📨', '✉️', '📬', '📣', '🔔', '💬', '📝', '🖊️', '📑',
-    '🤝', '👥', '👤', '🧑‍💼', '👔', '🏢', '🏬', '🏭', '🗄️', '🔑',
-    '💰', '💵', '💳', '🧾', '🏦', '📦', '🚚', '🛒', '🔧', '⚙️',
-    '🌴', '🏖️', '🛫', '🩺', '🧰', '🔍', '🛡️', '📡', '🧭', '💡',
-]
-
-/** What's wrong with an icon pasted in, said under its field; null when it will do. */
-export function iconError(text: string): TranslationKey | null {
-    const icon = text.trim()
-    if (!icon) return 'module_icon_required'
-    return isValidModuleIcon(icon) ? null : 'module_icon_invalid'
-}
-
-/**
- * The icon to store for a module: the emoji picked, or none for Use the
- * default icon, as a blank name is no name. The module's own icon is the
- * side bar's (lib/side-bar-icons.ts, DESIGN.md §6), not an emoji, so any
- * emoji picked is the company's own, even the one that was the module's
- * default until the side bar moved onto the building blocks.
- */
-export function overrideFor(icon: string | null): string | null {
-    return icon?.trim() || null
+export function overrideFor(key: ModuleKey, icon: ModuleIconName | null): ModuleIconName | null {
+    return icon && icon !== MODULES[key].icon ? icon : null
 }
 
 type Props = {
@@ -118,8 +90,8 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
         })
     }
 
-    const setIcon = (key: ModuleKey, picked: string | null) => {
-        const value = overrideFor(picked)
+    const setIcon = (key: ModuleKey, picked: ModuleIconName | null) => {
+        const value = overrideFor(key, picked)
         setIcons(prev => {
             const next = { ...prev }
             if (value) next[key] = value
@@ -174,9 +146,9 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
                 {MODULE_KEYS.map(key => (
                     <Field key={key} label={nameOf(key)}>{p => (
                         <span className="ui-module-name">
-                            <Button className="ui-emoji-button" aria-label={t('module_icon_choose_for').replace('{name}', nameOf(key))}
+                            <Button className="ui-module-icon-button" aria-label={t('module_icon_choose_for').replace('{name}', nameOf(key))}
                                 title={t('module_icon_choose')} aria-haspopup="dialog" disabled={saving} onClick={() => setPickerFor(key)}>
-                                {icons[key] ?? <Icon icon={ITEM_ICONS[key]} size={20} />}
+                                <Icon icon={MODULE_ICONS[preview.icon(key)].glyph} size={20} />
                             </Button>
                             <TextInput {...p} name={`label-${key}`} autoComplete="off" maxLength={MAX_MODULE_LABEL_LENGTH}
                                 value={labels[key] || ''} onChange={e => setLabel(key, e.target.value)} disabled={saving} />
@@ -199,7 +171,7 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
                                         const entry = preview.entry(key)
                                         return (
                                             <span key={key} className="ui-sidebar-preview-item">
-                                                {entry.icon ? <span aria-hidden="true">{entry.icon}</span> : <Icon icon={ITEM_ICONS[key]} />}
+                                                <Icon icon={MODULE_ICONS[entry.icon].glyph} />
                                                 <bdi>{entry.label}</bdi>
                                             </span>
                                         )
@@ -217,7 +189,7 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
             </form>
 
             {pickerFor && (
-                <IconDialog name={nameOf(pickerFor)} current={icons[pickerFor] ?? null} fallback={ITEM_ICONS[pickerFor]}
+                <IconDialog name={nameOf(pickerFor)} current={preview.icon(pickerFor)} own={MODULES[pickerFor].icon}
                     onPick={icon => setIcon(pickerFor, icon)} onClose={() => setPickerFor(null)} />
             )}
         </Card>
@@ -225,52 +197,41 @@ export default function CompanyModulesCard({ companyId, moduleLabels, moduleIcon
 }
 
 /**
- * A module's icon: one from the palette at a press, any emoji pasted in, or
- * back to the module's own, the side bar's. Picked into the form; saved with it.
+ * A module's icon (DESIGN.md §6): one of the 48 at a press, or back to the
+ * module's own. Picked into the form, and saved with it.
  */
-export function IconDialog({ name, current, fallback, onPick, onClose }: {
+export function IconDialog({ name, current, own, onPick, onClose }: {
     name: string
-    /** The company's own icon for it, if it chose one. */
-    current: string | null
+    /** The icon in use: the company's own, or the module's while it has none. */
+    current: ModuleIconName
     /** The module's own: the side bar's (lib/side-bar-icons.ts). */
-    fallback: PhosphorIcon
-    onPick: (icon: string | null) => void
+    own: ModuleIconName
+    onPick: (icon: ModuleIconName | null) => void
     onClose: () => void
 }) {
     const { t } = useLanguage()
-    const formRef = useRef<HTMLFormElement>(null)
-    const [pasted, setPasted] = useState('')
-    const [wrong, setWrong] = useState<TranslationKey | null>(null)
-
-    const submit = (e: FormEvent) => {
-        e.preventDefault()
-        const found = iconError(pasted)
-        setWrong(found)
-        if (found) { focusFirstWrong(formRef.current); return }
-        onPick(pasted.trim())
-    }
-
     return (
         <Dialog open onClose={onClose} title={t('module_icon_title').replace('{name}', name)}>
-            <div className="ui-emoji-grid">
-                {PALETTE.map(emoji => (
-                    <button key={emoji} type="button" className="ui-emoji" aria-pressed={current === emoji} onClick={() => onPick(emoji)}>{emoji}</button>
-                ))}
+            {/* Each a button named for what it draws, the one in use filled
+                and heard as pressed, and focus starting on it. */}
+            <div className="ui-icon-grid">
+                {MODULE_ICON_NAMES.map(icon => {
+                    const chosen = icon === current
+                    return (
+                        <button key={icon} type="button" className="ui-icon-choice" aria-label={t(MODULE_ICONS[icon].labelKey)}
+                            aria-pressed={chosen} autoFocus={chosen} onClick={() => onPick(icon)}>
+                            <Icon icon={MODULE_ICONS[icon].glyph} size={24} weight={chosen ? 'fill' : 'regular'} />
+                        </button>
+                    )
+                })}
             </div>
-            {/* A choice like the palette's, so beside it: among the dialog's
+            {/* A choice like the list's, so under it: among the dialog's
                 buttons it pushed Use this emoji onto a line of its own (audit
                 on part 4a). */}
-            <p><Button icon={fallback} onClick={() => onPick(null)}>{t('module_icon_reset')}</Button></p>
-            <form ref={formRef} className="ui-form" noValidate onSubmit={submit}>
-                <Field label={t('module_icon_custom')} error={wrong ? t(wrong) : undefined}>{p => (
-                    <TextInput {...p} name="icon" autoComplete="off" maxLength={16} value={pasted}
-                        onChange={e => { setPasted(e.target.value); setWrong(null) }} />
-                )}</Field>
-                <DialogActions>
-                    <Button onClick={onClose}>{t('cancel')}</Button>
-                    <Button type="submit" variant="primary">{t('module_icon_use')}</Button>
-                </DialogActions>
-            </form>
+            <p><Button icon={MODULE_ICONS[own].glyph} onClick={() => onPick(null)}>{t('module_icon_reset')}</Button></p>
+            <DialogActions>
+                <Button onClick={onClose}>{t('cancel')}</Button>
+            </DialogActions>
         </Dialog>
     )
 }

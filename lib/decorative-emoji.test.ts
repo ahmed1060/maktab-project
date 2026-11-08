@@ -55,15 +55,18 @@ describe("decorative emoji", () => {
         expect(bad).toEqual([])
     })
 
-    it("are hidden where icons passed as data are drawn", () => {
-        // A company's own icon for a module, in the side bar (components/SideBar.tsx).
+    it("aren't drawn for a company's own icon for a module, which is one of the app's, hidden as the others are", () => {
+        // It was an emoji, drawn as text in a span this test held to
+        // aria-hidden. Since PR 225 it's one of the app's own icons (DESIGN.md
+        // §6), drawn by the building blocks' Icon, which hides an icon beside
+        // its words from screen readers.
         const sideBar = readFileSync("components/SideBar.tsx", "utf8")
-        const drawn = sideBar.match(/<span [^>]*>\{entry\.icon\}<\/span>/g) ?? []
-        expect(drawn.length).toBeGreaterThan(0)
-        for (const span of drawn) expect(span).toContain('aria-hidden="true"')
+        expect(sideBar).not.toContain("{entry.icon}")
+        expect(sideBar).toContain("<Icon icon={entry.glyph} ")
         // The Modules tab's side bar preview (company settings part 4a): the name beside it says it.
         const preview = readFileSync("components/CompanyModulesCard.tsx", "utf8")
-        expect(preview).toContain('<span aria-hidden="true">{entry.icon}</span>')
+        expect(preview).not.toContain("{entry.icon}")
+        expect(preview).toContain("<Icon icon={MODULE_ICONS[entry.icon].glyph} />")
         expect(preview).toContain("<bdi>{entry.label}</bdi>")
     })
 

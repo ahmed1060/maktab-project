@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { MAX_MODULE_LABEL_LENGTH, isModuleKey, isValidModuleIcon } from "@/lib/modules"
+import { MAX_MODULE_LABEL_LENGTH, isModuleIconName, isModuleKey } from "@/lib/modules"
 import { MAX_PAYROLL_DAY } from "@/lib/payday"
 import { checkTimeZone } from "@/lib/timezone"
 import { ELIGIBLE_SETTINGS_TABS } from "@/lib/company-settings-access"
@@ -37,7 +37,7 @@ export const updateCompanySchema = z.object({
     // Company Settings: whether task-location auto-verify runs at all for
     // this company's tasks. See the matching comment on the Company model.
     autoVerifyLocation: z.boolean().optional(),
-    // This company's names and emoji for its modules, sent as whole maps
+    // This company's names and icons for its modules, sent as whole maps
     // rather than one key at a time — the settings form holds all nine and
     // saves them together, so a partial PATCH shape would only invite the two
     // to drift. An empty-string value means "clear this override"; the service
@@ -59,8 +59,8 @@ export const updateCompanySchema = z.object({
         .refine((map) => Object.keys(map).every(isModuleKey), {
             message: "Unknown module key",
         })
-        .refine((map) => Object.values(map).every((icon) => icon === "" || isValidModuleIcon(icon)), {
-            message: "Module icons must be a single emoji",
+        .refine((map) => Object.values(map).every((icon) => icon === "" || isModuleIconName(icon)), {
+            message: "Module icons must be ones from the list",
         })
         .optional()
         .nullable(),
