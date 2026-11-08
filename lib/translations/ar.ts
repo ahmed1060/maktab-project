@@ -4000,6 +4000,8 @@ export const ar = {
         audit_value_false: "لا",
         audit_value_redacted: "مخفي",
         audit_value_none: "لا شيء",
+        audit_value_default: "الافتراضي",
+        audit_module_name: "اسم قسم {name}",
         audit_value_SUPER_ADMIN: "مسؤول عام",
         audit_value_ADMIN: "مسؤول",
         audit_value_GIVEN: "صُرفت",

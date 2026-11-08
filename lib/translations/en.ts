@@ -4014,6 +4014,8 @@ export const en = {
         audit_value_false: "No",
         audit_value_redacted: "Hidden",
         audit_value_none: "None",
+        audit_value_default: "Default",
+        audit_module_name: "Name for {name}",
         audit_value_SUPER_ADMIN: "Super Admin",
         audit_value_ADMIN: "Admin",
         audit_value_GIVEN: "Given",

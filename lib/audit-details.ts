@@ -1,6 +1,7 @@
 import type { TranslationKey } from "@/lib/translations"
 import { isPermission, type Scope } from "@/lib/permissions/catalogue"
 import { permissionLabelKey, scopeLabelKey } from "@/lib/permissions/matrix"
+import { MODULES, MODULE_KEYS, isModuleKey } from "@/lib/modules"
 
 /**
  * An audit entry's details, as the reader reads them.
@@ -13,7 +14,8 @@ import { permissionLabelKey, scopeLabelKey } from "@/lib/permissions/matrix"
  * a change (`{ old, new }` or `{ from, to }`) reads "before → after". What a
  * person typed — names, titles, reasons — is shown as typed. A field or code
  * with no label yet is shown readably rather than hidden: "oldStatus" reads
- * "Old status".
+ * "Old status". A company's section names and icons, kept as whole maps, read
+ * one section at a time.
  */
 
 export type DetailLine = { label: string; value?: string; lines?: DetailLine[] }
@@ -77,14 +79,44 @@ export function describeValue(value: unknown, field: string, { t, locale }: Read
     return JSON.stringify(value)
 }
 
+/**
+ * A company's section names and icons (lib/services/company.service.ts), kept
+ * as the whole maps written, before and after: each section by its own name,
+ * a name as typed and an icon by its name. Before PR 233 they read as JSON.
+ */
+const SECTION_MAPS: Record<string, { label: TranslationKey; value: (stored: string, t: T) => string }> = {
+    moduleLabels: { label: "audit_module_name", value: stored => stored },
+    moduleIcons: { label: "module_icon_title", value: (stored, t) => t(`icon_name_${stored.replace(/-/g, "_")}` as TranslationKey) || stored },
+}
+
+/** One line for each section whose name or icon changed, in the side bar's order; null for what isn't such a pair of maps. */
+function sectionLines(field: string, before: unknown, after: unknown, { t, locale }: Reader): DetailLine[] | null {
+    const spec = SECTION_MAPS[field]
+    const map = (v: unknown) => v === null || v === undefined ? {} : isObject(v) ? v : null
+    const was = map(before), is = map(after)
+    if (!spec || !was || !is) return null
+    const arrow = locale === "ar" ? " ← " : " → "
+    const order = (key: string) => isModuleKey(key) ? MODULE_KEYS.indexOf(key) : MODULE_KEYS.length
+    const shown = (v: unknown) => typeof v === "string" && v ? spec.value(v, t) : t("audit_value_default")
+    return [...new Set([...Object.keys(was), ...Object.keys(is)])]
+        .filter(key => was[key] !== is[key])
+        .sort((a, b) => order(a) - order(b))
+        .map(key => ({
+            label: t(spec.label).replace("{name}", isModuleKey(key) ? t(MODULES[key].labelKey) : humanize(key)),
+            value: shown(was[key]) + arrow + shown(is[key]),
+        }))
+}
+
 export function describeDetails(details: unknown, reader: Reader): DetailLine[] {
     if (!isObject(details)) return details === null || details === undefined ? [] : [{ label: "", value: describeValue(details, "", reader) }]
     const arrow = reader.locale === "ar" ? " ← " : " → "
     return Object.entries(details)
         .filter(([, v]) => v !== undefined)
-        .map(([key, v]): DetailLine => {
+        .flatMap(([key, v]): DetailLine | DetailLine[] => {
             const label = fieldLabel(key, reader.t)
             const pair = change(v)
+            const sections = pair && sectionLines(key, pair[0], pair[1], reader)
+            if (sections) return sections
             if (pair) return { label, value: describeValue(pair[0], key, reader) + arrow + describeValue(pair[1], key, reader) }
             if (isObject(v)) return { label, lines: describeDetails(v, reader) }
             if (Array.isArray(v) && v.some(item => isObject(item) && !isGrant(item))) {

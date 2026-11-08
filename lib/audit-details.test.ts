@@ -79,6 +79,33 @@ describe("an audit entry's details, as the reader reads them", () => {
         ] })
     })
 
+    // They were two whole maps in JSON, {"tasks":"Jobs"} → {"tasks":"Work
+    // orders"} (PR 233): one line for each section that changed, named as the
+    // section is by default, its name as typed and its icon by its name.
+    it("reads a company's section names and icons one section at a time", () => {
+        const details = {
+            moduleLabels: { old: { tasks: "Jobs", records: "Files" }, new: { tasks: "Work orders", records: "Files", clients: "Customers" } },
+            moduleIcons: { old: {}, new: { tasks: "hard-hat" } },
+        }
+        expect(describeDetails(details, EN)).toEqual([
+            { label: "Name for Tasks", value: "Jobs → Work orders" },
+            { label: "Name for Clients", value: "Default → Customers" },
+            { label: "Icon for Tasks", value: "Default → Hard hat" },
+        ])
+        expect(describeDetails(details, AR)).toEqual([
+            { label: `اسم قسم ${ar.tasks}`, value: "Jobs ← Work orders" },
+            { label: `اسم قسم ${ar.clients}`, value: "الافتراضي ← Customers" },
+            { label: `أيقونة قسم ${ar.tasks}`, value: `الافتراضي ← ${ar.icon_name_hard_hat}` },
+        ])
+    })
+
+    it("reads a section given back its default, one it no longer has, and an icon from before the palette", () => {
+        expect(describeDetails({ moduleLabels: { old: { tasks: "Jobs" }, new: {} } }, EN)).toEqual([{ label: "Name for Tasks", value: "Jobs → Default" }])
+        expect(describeDetails({ moduleLabels: { old: { vendors: "Suppliers" }, new: {} } }, EN)).toEqual([{ label: "Name for Vendors", value: "Suppliers → Default" }])
+        expect(describeDetails({ moduleIcons: { old: { tasks: "🔧" }, new: { tasks: "wrench" } } }, EN)).toEqual([{ label: "Icon for Tasks", value: "🔧 → Wrench" }])
+        expect(describeDetails({ moduleIcons: { old: null, new: { tasks: "wrench" } } }, EN)).toEqual([{ label: "Icon for Tasks", value: "Default → Wrench" }])
+    })
+
     it("says nothing when there is nothing", () => {
         expect(describeDetails(null, EN)).toEqual([])
         expect(describeDetails({ note: null, skipped: [] }, EN)).toEqual([{ label: "Note", value: "None" }, { label: "Skipped", value: "None" }])
