@@ -1425,8 +1425,9 @@ Every UI PR meets all of these, and its screenshots show it:
 
 - **Tokens are CSS variables,** defined once in `app/globals.css` for light
   and for `:root[data-theme="dark"]`. Pages use tokens, never hex values.
-  The line colour is `--rule`, because `--hairline` already exists with an
-  older value that the pages not yet moved still use.
+  The line colour is `--rule`. It was named so because `--hairline` already
+  existed, with an older value, for the pages not yet moved; it went with
+  the last styles that used it.
 - **The brand tokens** (§2.1) are written into the page by the server from
   the company's or the system's colour, so the page never flashes the
   default first (`UI_PLAN.md` §4.6). Until the setting exists, they hold
@@ -1436,9 +1437,10 @@ Every UI PR meets all of these, and its screenshots show it:
 - **Fonts** are loaded with `next/font`, as Inter already is. Noto Sans
   Arabic is added with its Arabic subset. Outfit, the app's main font
   today, goes once no page uses it.
-- **Existing colour variables** (`--primary`, `--surface`, `--text-soft`,
-  `--ok-bg` and the rest) stay for the pages not yet moved. When the last
-  page using one moves to the building blocks, it's removed.
+- **Existing colour variables** (`--primary`, `--surface`, `--text-soft`
+  and the rest) stay for the pages not yet moved. When the last page using
+  one moves to the building blocks, it's removed, and so is a style no
+  page uses any more.
 
 ---
 
@@ -1858,3 +1860,9 @@ changed:
   English, in classes no stylesheet had, where every page says it's
   loading as the building blocks do. The "Powered by" signature keeps its
   look, as decided on 2026-11-05.
+- **2026-11-08:** In code (§10). The old pages' shared styles that no page
+  used any more went, and so did the colours only they used: the old
+  buttons, cards, fields, badges and window, the glass panels, and the
+  classes that hid or showed a part by screen width. `--hairline` was one
+  of those colours; the line colour keeps the name `--rule`. Nothing on
+  screen changed.
