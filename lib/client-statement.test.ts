@@ -6,6 +6,7 @@ import { ar } from "./translations/ar"
 import { en } from "./translations/en"
 import { moduleForApiPath } from "./features/routes"
 import { KNOWN_REFUSALS } from "./api-errors"
+import { calendarDay } from "./calendar-day"
 import {
     STATEMENT_MAX_CHARGES, isPdfReceipt, lastMonth, numberReceipts, statementHref, statementNote, statementPeriod, statementTotals,
     type Statement, type StatementCharge,
@@ -38,6 +39,11 @@ const esc = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").
 // A sentence as the sheet writes it: its own words escaped, its blanks filled with markup.
 const sentence = (template: string, values: Record<string, string>) =>
     template.split(/(\{\w+\})/).map(part => { const key = /^\{(\w+)\}$/.exec(part)?.[1]; return key !== undefined && key in values ? values[key] : esc(part) }).join("")
+// A period as the sheet's Intl writes it. ICU's ranges change between
+// versions: CI's Node 24 spaces the dash, "1 – 31 October 2026", where Node 22
+// writes "1–31 October 2026", and Chromium puts a comma before an Arabic year.
+const periodText = (locale: "en" | "ar", from: string, to: string) =>
+    new Intl.DateTimeFormat(locale === "ar" ? "ar-EG" : "en-GB", { day: "numeric", month: "long", year: "numeric" }).formatRange(calendarDay(from), calendarDay(to))
 
 const RECEIPTS = "https://p.supabase.co/storage/v1/object/public/app-assets/c1/receipts"
 const charge = (over: Partial<StatementCharge>): StatementCharge => ({
@@ -134,7 +140,8 @@ describe("the sheet", () => {
         const html = await sheet()
         expect(html).toContain(`<p class="ui-doc-company">Nile Works</p><p class="ui-doc-kind">${en.statement_title}</p>`)
         expect(html).toContain(`<dt>${en.statement_client}</dt><dd><bdi>Al Noor Trading</bdi><span class="ui-detail-note"><bdi>Hassan Adel</bdi></span></dd>`)
-        expect(html).toContain(`<dt>${en.doc_period}</dt><dd>1–31 October 2026</dd>`)
+        expect(periodText("en", "2026-10-01", "2026-10-31")).toMatch(/^1\s*–\s*31 October 2026$/)
+        expect(html).toContain(`<dt>${en.doc_period}</dt><dd>${periodText("en", "2026-10-01", "2026-10-31")}</dd>`)
         expect(html).toContain(`<dt>${en.statement_issued_on}</dt><dd>8 November 2026</dd>`)
     })
 
@@ -192,7 +199,7 @@ describe("the sheet", () => {
         const html = await sheet()
         const receipts = html.slice(html.indexOf('<section class="ui-doc-receipts"'))
         expect(receipts).toContain(`<h2 class="ui-doc-group-title">${en.statement_receipts}</h2>`)
-        expect(receipts).toContain(`<p class="ui-doc-print-only ui-doc-receipts-for">${sentence(en.statement_receipts_for, { client: "<bdi>Al Noor Trading</bdi>", period: "1–31 October 2026" })}</p>`)
+        expect(receipts).toContain(`<p class="ui-doc-print-only ui-doc-receipts-for">${sentence(en.statement_receipts_for, { client: "<bdi>Al Noor Trading</bdi>", period: periodText("en", "2026-10-01", "2026-10-31") })}</p>`)
         expect([...receipts.matchAll(/<figure /g)]).toHaveLength(5)
         expect(receipts).toContain(`<figure id="receipt-1" class="ui-doc-receipt"><figcaption><span class="ui-doc-receipt-number">Receipt 1</span><span>${sentence(en.statement_receipt_what, { what: "<bdi>Spare parts</bdi>", date: "2 Oct" })}</span><span>${esc(en.statement_receipt_paid.replace("{amount}", "1,850.00"))}</span></figcaption><img class="ui-doc-receipt-photo" src="${RECEIPTS}/r1.jpg" alt="${esc(en.statement_receipt_alt.replace("{n}", "1"))}"/></figure>`)
         // The PDF: a link on screen, a word on paper.
@@ -219,7 +226,7 @@ describe("the sheet", () => {
         state.locale = "ar"
         const html = await sheet()
         expect(html).toContain(`<p class="ui-doc-kind">${ar.statement_title}</p>`)
-        expect(html).toContain(`<dd>١–٣١ أكتوبر ٢٠٢٦</dd>`)
+        expect(html).toContain(`<dd>${periodText("ar", "2026-10-01", "2026-10-31")}</dd>`)
         expect(html).toContain(`<td class="ui-nowrap">٢ أكتوبر</td>`)
         expect(html).toContain(`<a href="#receipt-1">${ar.statement_receipt.replace("{n}", "١")}</a>`)
         expect(html).toContain(`<td class="ui-end">١٬٨٥٠٫٠٠</td>`)
@@ -230,7 +237,7 @@ describe("the sheet", () => {
         expect(html).toContain(`<span class="ui-doc-cell-title"><bdi>Spare parts</bdi></span>`)
         expect(html).toContain(`<span class="ui-doc-card-head"><bdi>Spare parts</bdi>`)
         expect(html).toContain(sentence(ar.statement_receipt_what, { what: "<bdi>Spare parts</bdi>", date: "٢ أكتوبر" }))
-        expect(html).toContain(sentence(ar.statement_receipts_for, { client: "<bdi>Al Noor Trading</bdi>", period: "١–٣١ أكتوبر ٢٠٢٦" }))
+        expect(html).toContain(sentence(ar.statement_receipts_for, { client: "<bdi>Al Noor Trading</bdi>", period: periodText("ar", "2026-10-01", "2026-10-31") }))
     })
 })
 
