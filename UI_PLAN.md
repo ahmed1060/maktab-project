@@ -585,8 +585,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      checked by the server where it's asked for, merged in #229 on
      2026-11-08; then Unlock lifting the pause on somebody's password
      tries, merged in #230 on 2026-11-08; then the saver's own password,
-     checked by the server, for somebody else's password or email, in
-     #231;
+     checked by the server, for somebody else's password or email, merged
+     in #231 on 2026-11-08; then Change password's Save before the page
+     has loaded its session, and the sign-in page saying a session ended,
+     in #232;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5288,3 +5290,29 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     wrong tries, the right one is refused too, and the dialog says so. In
     English on a computer and in Arabic on a phone (12 checks each).
   - The web interface audit found nothing to change: nothing new is shown.
+- **2026-11-08:** Two leftovers from a new password ending sessions (#232).
+  - Save on the Change password page, pressed before the page had loaded
+    its session, did nothing to it: the session still said the password
+    had to be changed, and the page came back, though it had been. Found
+    in #228's browser flows. The page now asks the server to write the
+    session again itself, and the minute's check catches a session up
+    with the account should one be left saying so.
+  - A browser the server signed out, its session ended by a new password
+    or a role changed with "Apply now", came back to the sign-in page
+    with nothing said. The page now says, above Sign in, as a note, that
+    the session ended, as it does when the password or the role changes,
+    until anything is sent (DESIGN.md §5.5, Sign-in). Signing out by
+    one's own choice says nothing.
+  - In the browser, against the scratch database: signed in with a
+    temporary password, Save pressed while the page's session was held
+    back goes to the dashboard, the new password saved and the session
+    clear of the flag; the page from before this went back to Change
+    password. An ordinary sign-in page says nothing; a browser whose
+    session an Admin's new password ended, opening a page, and a page
+    left open whose own request was refused, are each told at sign in,
+    until a wrong password is said in its place; signing out from the
+    account menu says nothing. In English on a computer and in Arabic on
+    a phone (13 checks each).
+  - The web interface audit found nothing to change: the note is the
+    sign-in page's own, where its other notes are, and screen readers
+    hear it.

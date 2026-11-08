@@ -504,7 +504,8 @@ session's next check its token is emptied, and an emptied token is no session
 and counts as signed out (`lib/auth.ts`, `proxy.ts`): a page left open signs
 itself out when a request of its own is refused, the heartbeat's at the
 latest, and a server page sends the browser to `/api/auth/ended`, which
-clears its cookie on the way to sign in.
+clears its cookie on the way to sign in. Either way it comes to sign in
+told its session ended (#232).
 
 A new password ends the account's sessions in the same way (#228): a
 temporary one an Admin gives, one set on the profile, one's own or someone
