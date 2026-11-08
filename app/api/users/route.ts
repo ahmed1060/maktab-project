@@ -16,7 +16,7 @@ import { can } from "@/lib/permissions/can"
 import { shapeUser } from "@/lib/permissions/shape"
 import { adminRefusal, assignmentRefusal } from "@/lib/role-errors"
 import { assertStepUp } from "@/lib/step-up"
-import { CURRENT_PASSWORD_WRONG, OWN_PASSWORD_TRIES } from "@/lib/own-password"
+import { CURRENT_PASSWORD_WRONG, OWN_PASSWORD_TRIES, OWN_PASSWORD_WRONG } from "@/lib/own-password"
 
 // F-13: role/status are now Postgres enums, not free text — a query-param
 // value that isn't a real enum member makes Postgres reject the whole
@@ -271,6 +271,8 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         if (error.message === 'FORBIDDEN_PASSWORD_RESET') return ApiResponse.forbidden("Changing somebody else's password needs the reset-password permission")
         // With their codes, said in the reader's language (PR 229).
         if (error.message === 'CURRENT_PASSWORD_WRONG') return ApiResponse.refused(403, CURRENT_PASSWORD_WRONG, 'CURRENT_PASSWORD_WRONG')
+        // The saver's own, for somebody else's password or email (PR 231).
+        if (error.message === 'OWN_PASSWORD_WRONG') return ApiResponse.refused(403, OWN_PASSWORD_WRONG, 'OWN_PASSWORD_WRONG')
         if (error.message === 'OWN_PASSWORD_TRIES') return ApiResponse.refused(429, OWN_PASSWORD_TRIES, 'OWN_PASSWORD_TRIES')
         if (error.message === 'TARGET_EXCEEDS_YOURS') return ApiResponse.forbidden("This person's role holds access yours doesn't, so only someone who could give it may change their password or email")
         const refusedRole = assignmentRefusal(error)

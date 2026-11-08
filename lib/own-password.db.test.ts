@@ -109,8 +109,9 @@ describe.skipIf(!ADMIN_URL)("one's own current password, checked by the server, 
         expect(await bcrypt.compare(NEW_PASSWORD, (await row("sa1", "SuperAdmin")).password)).toBe(true)
     })
 
+    // The Admin's own is asked instead (PR 231, lib/others-password.db.test.ts).
     it("isn't asked of an Admin setting somebody else's, which isn't theirs to know", async () => {
-        await Users.update({ id: "e3", password: NEW_PASSWORD } as any, admin)
+        await Users.update({ id: "e3", password: NEW_PASSWORD, confirmPassword: CURRENT } as any, admin)
         expect(await bcrypt.compare(NEW_PASSWORD, (await row("e3")).password)).toBe(true)
     })
 

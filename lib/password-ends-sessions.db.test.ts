@@ -88,7 +88,8 @@ describe.skipIf(!ADMIN_URL)("a new password, in Postgres", () => {
     })
 
     it("an Admin sets on somebody's profile ends all of theirs, and keeps none", async () => {
-        await Users.update({ id: "e2", password: NEW_PASSWORD } as any, admin)
+        // With the Admin's own, which somebody else's asks for (PR 231).
+        await Users.update({ id: "e2", password: NEW_PASSWORD, confirmPassword: ADMIN_PASSWORD } as any, admin)
         expect(await account("e2")).toEqual({ sessionVersion: 1, keptSession: null, mustChangePassword: false })
     })
 

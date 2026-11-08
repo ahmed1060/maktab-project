@@ -75,7 +75,8 @@ describe("a new password, set on the profile or the Change password page", () =>
     })
 
     it("of somebody else's ends all of theirs", async () => {
-        expect((await put({ id: "sami", password: "a-new-password-123" })).status).toBe(200)
+        // With the saver's own, which somebody else's asks for (PR 231).
+        expect((await put({ id: "sami", password: "a-new-password-123", confirmPassword: CURRENT })).status).toBe(200)
         expect(written[0]).toMatchObject({ sessionVersion: { increment: 1 } })
         expect(written[0]).not.toHaveProperty("keptSession")
     })

@@ -57,6 +57,8 @@ export const updateUserSchema = partialWithoutDefaults(createUserSchema).extend(
     // bcrypt's 72 bytes and then some: one set before today's limits is
     // checked as typed, not refused for its length.
     currentPassword: z.string().max(256).optional(),
+    // With somebody else's new password or email, the saver's own (PR 231).
+    confirmPassword: z.string().max(256).optional(),
 })
 
 export type CreateUserInput = z.infer<typeof createUserSchema>

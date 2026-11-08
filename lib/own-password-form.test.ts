@@ -17,6 +17,8 @@ describe("what the server answers about one's own password, in the page's langua
     it("says too many wrong tries, and a wrong current password, by their codes", () => {
         expect(ownPasswordRefusal({ code: "OWN_PASSWORD_TRIES" })).toBe("own_password_tries")
         expect(ownPasswordRefusal({ code: "CURRENT_PASSWORD_WRONG" })).toBe("incorrect_password")
+        // The saver's own, for somebody else's password or email (PR 231).
+        expect(ownPasswordRefusal({ code: "OWN_PASSWORD_WRONG" })).toBe("incorrect_password")
         expect(ownPasswordRefusal({ code: "SOMETHING_ELSE" })).toBeNull()
         expect(ownPasswordRefusal(null)).toBeNull()
     })
@@ -37,6 +39,15 @@ describe("the profile, sending the password it asked for", () => {
     it("sends it only with a new password of one's own", () => {
         const payload = save.slice(save.indexOf("method: 'PUT'"), save.indexOf("reassignReportsTo: reassignTo"))
         expect(payload).toContain("currentPassword: own && access.changePassword && password ? confirmed.current : undefined,")
+    })
+
+    // As the saver's own, for somebody else's (PR 231): with every save that
+    // sends their password or email, which the server asks it for where
+    // either changes.
+    it("sends it as the saver's own with what could change somebody else's password or email", () => {
+        const payload = save.slice(save.indexOf("method: 'PUT'"), save.indexOf("reassignReportsTo: reassignTo"))
+        expect(payload).toContain("confirmPassword: !own && ((access.changePassword && password) || access.changeEmail) ? confirmed.current : undefined,")
+        expect(payload.indexOf("confirmPassword:")).toBeGreaterThan(payload.indexOf("password: access.changePassword && password ? password : undefined,"))
     })
 
     it("says the server's refusal of it above the buttons, and forgets it once it's saved", () => {
