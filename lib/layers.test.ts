@@ -8,10 +8,16 @@ import { LAYER } from "./layers"
  * charges", which stays open and busy until the answer comes. Drawn under
  * it, the code's Confirm couldn't be clicked, so the action couldn't go on.
  */
+const css = readFileSync("components/ui/ui.css", "utf8")
+const layer = (selector: string) => {
+    const start = css.indexOf(`\n${selector} {`)
+    return Number(css.slice(start, css.indexOf("}", start)).match(/z-index: (\d+);/)?.[1])
+}
+
 describe("the code prompt", () => {
-    it("is above a confirmation, which is above an older page's modal", () => {
+    it("is above a confirmation, which is above a dialog", () => {
         expect(LAYER.codePrompt).toBeGreaterThan(LAYER.confirm)
-        expect(LAYER.confirm).toBeGreaterThan(LAYER.modal)
+        expect(LAYER.confirm).toBeGreaterThan(layer(".ui-dialog-backdrop"))
     })
 
     it("is drawn on its layer, and each confirmation and dialog on theirs", () => {
@@ -19,14 +25,9 @@ describe("the code prompt", () => {
         // blocks', above every other one (PR 217): they were the older pages' windows on this layer.
         const prompt = readFileSync("components/StepUpInterceptor.tsx", "utf8")
         expect(prompt.match(/<Dialog open\b[^>]*\baboveAll\b/g)).toHaveLength(2)
-        expect(readFileSync("components/Modal.tsx", "utf8")).toMatch(/zIndex = LAYER\.modal\b/)
-        const css = readFileSync("components/ui/ui.css", "utf8")
-        const layer = (selector: string) => {
-            const start = css.indexOf(`\n${selector} {`)
-            return Number(css.slice(start, css.indexOf("}", start)).match(/z-index: (\d+);/)?.[1])
-        }
-        // A building-block dialog over an older page's modal sits on the confirmations' layer, under
-        // the code: the old confirmation window that held it went in PR 189.
+        // A dialog opened over another, as a new location over a task's edit window, sits on the
+        // confirmations' layer, under the code. The older pages' window, and its layer under this
+        // one, went in PR 222.
         expect(layer(".ui-dialog-backdrop.is-over-modal")).toBe(LAYER.confirm)
         expect(layer(".ui-dialog-backdrop.is-above-all")).toBe(LAYER.codePrompt)
         // And the toasts over them all (DESIGN.md §5.5, Toast).

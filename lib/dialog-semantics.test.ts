@@ -30,15 +30,25 @@ describe("overlays", () => {
     const overlays = [...files("app"), ...files("components")]
         .filter(f => scrimsIn(readFileSync(f, "utf8")) > 0 && !OWN.has(f))
 
-    it.each(overlays)("%s uses useDialog for each overlay it draws", f => {
-        const s = readFileSync(f, "utf8")
-        const scrims = scrimsIn(s)
-        const panels = s.split("panelProps}").length - 1
-        expect(s).toContain("useDialog(")
-        expect(panels).toBeGreaterThanOrEqual(scrims)
-        // Each is named: by its heading (titleId) or, with no heading on screen, a label.
-        const named = (s.split("titleId}").length - 1) + (s.match(/useDialog\(.*\{ label:/g) ?? []).length
-        expect(named).toBeGreaterThanOrEqual(scrims)
+    // Every dialog is the building blocks' (components/ui/Dialog.tsx), whose
+    // dimmed page is in its stylesheet. The older pages' window, the last
+    // overlay a page drew of its own, went in PR 222: one drawn of its own
+    // again is held to the same.
+    it("the building blocks' dialog uses useDialog", () => {
+        expect(readFileSync("components/ui/Dialog.tsx", "utf8")).toContain("useDialog(open, onClose)")
+    })
+
+    it("each overlay a page draws of its own uses useDialog", () => {
+        for (const f of overlays) {
+            const s = readFileSync(f, "utf8")
+            const scrims = scrimsIn(s)
+            const panels = s.split("panelProps}").length - 1
+            expect(s, f).toContain("useDialog(")
+            expect(panels, f).toBeGreaterThanOrEqual(scrims)
+            // Each is named: by its heading (titleId) or, with no heading on screen, a label.
+            const named = (s.split("titleId}").length - 1) + (s.match(/useDialog\(.*\{ label:/g) ?? []).length
+            expect(named, f).toBeGreaterThanOrEqual(scrims)
+        }
     })
 })
 

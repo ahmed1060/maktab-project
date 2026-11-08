@@ -29,10 +29,13 @@ describe("lists read from SWR are sorted on a copy", () => {
     // Array.prototype.sort sorts in place. On data that came out of SWR's
     // cache that rewrites the cached answer every other reader of the same
     // key also sees.
-    it("the employee picker filters first, which makes the copy it sorts", () => {
-        const src = code("components/EmployeeFilter.tsx")
-        expect(src).toMatch(/\.filter\([^)]*\)\s*\.sort\(/)
-        expect(src).not.toMatch(/\b(data|payload|employeesResult)\s*\.sort\(/)
+    // The lists' employee filter, where the old filter panel's picker was
+    // until PR 222: it filters and maps, each making a new array, and sorts
+    // nothing it read in place.
+    it("the employee picker never sorts the list it read in place", () => {
+        const src = code("components/filters/useEmployeeOptions.ts")
+        expect(src).toContain("people.filter(")
+        expect(src).not.toMatch(/\b(data|people)\s*\.sort\(/)
     })
 
     it("the assignee list spreads into a new array before sorting", () => {

@@ -67,8 +67,8 @@ describe("text contrast, light theme", () => {
     it("small text isn't faded below 4.5:1", () => {
         // The dates sat on an overdue task's red card too. The Tasks list
         // is on the building blocks now, its overdue rows marked with a red
-        // edge and the word "Overdue" (lib/tasks-list.test.ts).
-        expect(ratio(token("text-soft"), token("danger-bg"))).toBeGreaterThanOrEqual(4.5)
+        // edge and the word "Overdue" (lib/tasks-list.test.ts), and the red
+        // card's colour went with the obligation's card, its last (PR 222).
 
         // The audit log's filter faded its labels to half; it's the building
         // blocks' filter bar now (lib/super-admin-audit-logs.test.ts).

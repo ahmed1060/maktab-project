@@ -50,25 +50,23 @@ function ratio(a: string, b: string): number {
 
 /**
  * Text pairs, held to AA 4.5:1. The indigo text went with the last thing
- * written in it, a range's days in the old calendar (PR 208).
+ * written in it, a range's days in the old calendar (PR 208), and the green,
+ * red and orange pairs with the old components no page used, theirs (PR 222).
  */
 const TEXT_PAIRS: [string, string][] = [
-    ["--ok-fg", "--ok-bg"],
-    ["--danger-fg", "--danger-bg"],
     ["--warn-fg", "--warn-bg"],
-    ["--warn-fg-warm", "--warn-bg-warm"],
     ["--info-fg", "--info-bg"],
 ]
 
-/** Body text against the surfaces it actually sits on. */
+/**
+ * Body text against the surfaces it actually sits on. The body text colour,
+ * the faint one and the sunk surface went with the old components (PR 222).
+ */
 const BODY_PAIRS: [string, string][] = [
     ["--text-strong", "--surface"],
     ["--text-main", "--surface"],
-    ["--text-body", "--surface"],
     ["--text-muted", "--surface"],
     ["--text-soft", "--surface"],
-    ["--text-body", "--surface-sunk"],
-    ["--text-muted", "--surface-sunk"],
 ]
 
 for (const [themeName, tokens] of [["light", LIGHT], ["dark", DARK]] as const) {
@@ -92,28 +90,6 @@ for (const [themeName, tokens] of [["light", LIGHT], ["dark", DARK]] as const) {
             })
         }
     })
-
-    describe(`${themeName}: faint text meets AA on the surfaces it sits on`, () => {
-        // Raised from #94a3b8, which was 2.56:1 on white — below even AA Large,
-        // and the colour of every timestamp and placeholder hint in the app. It
-        // is held here on both the card surface and the sunk one, because faint
-        // text appears on each.
-        for (const bg of ["--surface", "--surface-sunk"]) {
-            it(`--text-faint on ${bg}`, () => {
-                const r = ratio(tokens["--text-faint"], tokens[bg])
-                expect(r, `is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
-            })
-        }
-
-        it("stays lighter than --text-soft, or the two tokens collapse into one", () => {
-            const faint = luminance(tokens["--text-faint"])
-            const soft = luminance(tokens["--text-soft"])
-            // Lighter on light, lighter on dark — "faint" is a step away from
-            // the body colour in whichever direction the ground goes.
-            if (themeName === "light") expect(faint).toBeGreaterThan(soft)
-            else expect(faint).toBeLessThan(soft)
-        })
-    })
 }
 
 describe("the keyboard focus ring stands out (WCAG 1.4.11, 3:1)", () => {
@@ -121,7 +97,7 @@ describe("the keyboard focus ring stands out (WCAG 1.4.11, 3:1)", () => {
     // controls (accessibility audit, 4 October 2026, H3); now one ring in a
     // colour held to 3:1 against what it sits on, in each theme.
     for (const [themeName, tokens] of [["light", LIGHT], ["dark", DARK]] as const) {
-        for (const bg of ["--surface", "--surface-sunk", "--page-bg"]) {
+        for (const bg of ["--surface", "--page-bg"]) {
             it(`${themeName}: --focus-ring on ${bg}`, () => {
                 const r = ratio(tokens["--focus-ring"], tokens[bg])
                 expect(r, `is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
@@ -235,7 +211,6 @@ describe("the two themes are actually different", () => {
         // it, and its guidance is light over it whatever the page around is.
         const INVARIANT = new Set([
             "--primary", "--primary-hover", "--secondary", "--accent",
-            "--text-on-accent",
             "--logo-plate",
             "--paper", "--ink-on-paper",
             "--neutral-on-paper", "--waiting-on-paper", "--good-on-paper", "--problem-on-paper",
@@ -265,7 +240,7 @@ describe("dark: brand-coloured text meets AA 4.5:1 on its surfaces", () => {
     // dark theme, because white text sits on it in buttons, so text uses
     // --brand-primary-text.
     for (const fg of ["--brand-primary-text"]) {
-        for (const bg of ["--surface", "--surface-sunk"]) {
+        for (const bg of ["--surface"]) {
             it(`${fg} on ${bg}`, () => {
                 const r = ratio(DARK[fg], DARK[bg])
                 expect(r, `${fg} ${DARK[fg]} on ${bg} ${DARK[bg]} is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
@@ -282,37 +257,16 @@ describe("dark: brand-coloured text meets AA 4.5:1 on its surfaces", () => {
     })
 })
 
-describe("fills: white text on a status colour meets AA 4.5:1", () => {
+describe("white text on a status colour", () => {
     // Found by measuring every page's text in the dark theme: white on the
     // Approve button's green, the points badge's blue and an amber avatar was
     // 2.2 to 2.8:1, and much the same in the light theme. The -solid colours
     // are also text and strokes on the page, so the grounds under white text
-    // are their own tokens, the same hues darkened.
+    // were their own tokens, the same hues darkened.
     // The success fill went with the last thing on it, the Usernames page's
-    // green download button (PR 182), and the danger fill with a critical
-    // notification's red edge in the bell's old panel (PR 207).
-    const FILLS = ["--info-fill", "--warn-fill-warm", "--accent-fill"]
-
-    for (const [themeName, tokens] of [["light", LIGHT], ["dark", DARK]] as const) {
-        for (const fill of FILLS) {
-            it(`${themeName}: white on ${fill}`, () => {
-                expect(tokens[fill], `${fill} undefined in ${themeName}`).toBeDefined()
-                const r = ratio(tokens["--text-on-accent"] ?? LIGHT["--text-on-accent"], tokens[fill])
-                expect(r, `is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(4.5)
-            })
-        }
-    }
-
-    // A badge or a dot is a shape: in the dark theme it must still stand out
-    // from the card it's on (AA for graphics, 3:1). A hover shade shows only
-    // under the pointer, so it's held to less.
-    for (const fill of FILLS.filter(f => !f.endsWith("-hover"))) {
-        it(`dark: ${fill} stands out from --surface`, () => {
-            const r = ratio(DARK[fill], DARK["--surface"])
-            expect(r, `is ${r.toFixed(2)}:1`).toBeGreaterThanOrEqual(3)
-        })
-    }
-
+    // green download button (PR 182), the danger fill with a critical
+    // notification's red edge in the bell's old panel (PR 207), and the
+    // blue, orange and violet fills with the old filter panel (PR 222).
     it("screens put a fill, not a -solid colour, behind text", () => {
         const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
             e.isDirectory() ? files(join(dir, e.name)) : e.name.endsWith(".tsx") ? [join(dir, e.name)] : [])

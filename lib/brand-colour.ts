@@ -291,7 +291,12 @@ function fromLch(lch: Lch): string {
 /** A shade at least this light keeps its lightness (a ground, a pale tint, light text on dark). */
 const PALE = 0.75
 
-/** The older pages' grounds (app/globals.css --surface, --surface-subtle, --surface-sunk). */
+/**
+ * The older pages' grounds: the surface (app/globals.css --surface), and the
+ * two paler ones their panels were drawn on, whose tokens went with the last
+ * of those panels (PR 222). The shades are still held on all of them, so no
+ * company's colours moved.
+ */
 const OLD_LIGHT = ['#ffffff', '#f8fafc', '#f1f5f9']
 const OLD_DARK = ['#161b22', '#1c2128', '#21262d', '#0b0f14']
 /** The map's tiles are light in both themes (components/PointPicker.tsx). */
@@ -322,11 +327,10 @@ export const OLD_PAGE_SHADES = [
     { token: '--accent', light: '#8b5cf6', role: 'fill' },
     { token: '--button-from', light: '#4f46e5', role: 'fill' },
     { token: '--button-to', light: '#7c3aed', role: 'fill' },
-    { token: '--accent-fill', light: '#942ff5', dark: '#9047ec', role: 'fill' },
+    // The violet fill and the highlight bar's violet went with the old
+    // filter panel and the obligation's card, their last users (PR 222).
     { token: '--brand-primary-text', light: '#4f46e5', dark: '#a5b4fc', role: 'text' },
     { token: '--focus-ring', light: '#4338ca', dark: '#a5b4fc', role: 'edge' },
-    // A highlight bar (an obligation's card), held as text as it was a link's colour too.
-    { token: '--accent-solid', light: '#a855f7', dark: '#a86ef0', role: 'text' },
     { token: '--map-pin', light: '#4f46e5', role: 'edge', behind: 'map' },
     { token: '--page-bg', light: '#eef2ff', lightOnly: true, role: 'ground' },
 ] as const satisfies readonly { token: string; light: string; dark?: string; role: Role; behind?: Behind; lightOnly?: boolean }[]
