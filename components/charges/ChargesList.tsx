@@ -5,7 +5,7 @@ import useSWR from 'swr'
 import Link from 'next/link'
 import {
     ArrowCounterClockwiseIcon, CalendarBlankIcon, CalendarCheckIcon, CheckCircleIcon, CircleDashedIcon, ClipboardTextIcon, CoinsIcon,
-    HourglassIcon, PencilSimpleIcon, ProhibitIcon, ReceiptIcon, StorefrontIcon, WarningCircleIcon,
+    FileTextIcon, HourglassIcon, PencilSimpleIcon, ProhibitIcon, ReceiptIcon, StorefrontIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -13,11 +13,12 @@ import { useCompany } from '@/context/CompanyContext'
 import DateRangePicker from '@/components/DateRangePicker'
 import SafeDate from '@/components/SafeDate'
 import {
-    Button, ConfirmDialog, DataList, EmptyState, Field, FileChip, FilterBar, ItemTitle, ListCard, Pager, pageInRange, RowMenu, SearchInput, Section, Select,
+    Button, ButtonLink, ConfirmDialog, DataList, EmptyState, Field, FileChip, FilterBar, ItemTitle, ListCard, Pager, pageInRange, RowMenu, SearchInput, Section, Select,
     StatusBadge, TotalTiles, type Column, type MenuItem, type StatusTone,
 } from '@/components/ui'
 import { useClientOptions } from '@/components/locations/useClientOptions'
 import { chargeState, collectWording, confirmationOf, type ChargeStatus, type CollectConfirmation } from '@/lib/charges'
+import { statementHref } from '@/lib/client-statement'
 import { cents } from '@/lib/task-costs'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { useCan } from '@/lib/useCan'
@@ -49,7 +50,7 @@ type Offer = { count: number; amount: number; digest: string }
 export default function ChargesList({ client: onPage }: { client?: { id: string; name: string } } = {}) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
-    const { can } = useCan()
+    const { can, companyWide } = useCan()
     const { selectedCompanyId } = useCompany()
 
     const [query, setQuery] = useState('')
@@ -322,7 +323,14 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
     return (
         <Section
             title={t('charges_section')}
-            action={canCollect && offer && <Button size="sm" icon={CheckCircleIcon} onClick={() => setConfirming(confirmationOf(offer, { clientId: onPage.id, dateFrom, dateTo, search }))}>{t('charges_mark_collected')}</Button>}
+            action={(companyWide('charges.view') || (canCollect && offer)) && (
+                <span className="ui-section-actions">
+                    {/* Its statement, for the dates picked here (CLIENTS_PLAN.md §6.9): only for whoever
+                        sees all the company's charges, as one that left some out would mislead the client. */}
+                    {companyWide('charges.view') && <ButtonLink size="sm" icon={FileTextIcon} href={statementHref(onPage.id, dateFrom, dateTo)}>{t('statement_open')}</ButtonLink>}
+                    {canCollect && offer && <Button size="sm" icon={CheckCircleIcon} onClick={() => setConfirming(confirmationOf(offer, { clientId: onPage.id, dateFrom, dateTo, search }))}>{t('charges_mark_collected')}</Button>}
+                </span>
+            )}
         >
             {list}
         </Section>
