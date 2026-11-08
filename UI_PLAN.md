@@ -5095,3 +5095,16 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     where their session has everything.
   - A person's settlements, listed on their history, are Payroll's to the
     API as their payslips and debts are.
+  - In the browser, against the scratch database, with Delta Sites sold
+    Company Management without HR and Sami Nabil holding 750 of a cash
+    advance: before, the dialog showed a settlement of 2,533.33 owed to
+    them, for the company's Admin and the Super Admin alike, and ending
+    their contract recorded it, the 750 a debt it took. Now the dialog
+    shows no statement, as it opens or once it's worked out, for either:
+    only that the 750 stays on the Cash advances tab. Ended the day
+    before, the contract ends at once with no settlement or debt, and
+    they're on the Cash advances tab, no longer at work, holding 750.00.
+    In English on a computer and in Arabic on a phone, the Arabic's
+    digits its own and nothing scrolling sideways (36 checks). With HR,
+    the statement is as it was.
+  - The web interface audit found nothing to change.
