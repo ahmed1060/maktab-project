@@ -25,9 +25,12 @@ vi.mock("@/lib/auth", () => ({ authOptions: {} }))
 vi.mock("@/lib/storage", () => ({ supabase: { storage: { from: () => ({ remove: async () => ({}) }) } } }))
 vi.mock("@/lib/services/audit-log.service", () => ({ AuditLogService: { log: async () => {}, logSystemError: async () => "ref", friendlyErrorMessage: () => "error" } }))
 vi.mock("@/lib/services/system-settings.service", () => ({ SystemSettingsService: { get: async () => ({ stepUpMinutes: 15 }) } }))
-vi.mock("@/lib/prisma", () => ({
-    prisma: {
+vi.mock("@/lib/prisma", () => {
+    const prisma: any = {
         user: { findUnique: async () => null },
+        // The account's row, locked, as the write that keeps a session reads it.
+        $queryRaw: async (_sql: TemplateStringsArray, id: string) => [{ sessionVersion: ACCOUNTS[id].sessionVersion, keptSession: ACCOUNTS[id].keptSession }],
+        $transaction: async (write: (tx: unknown) => unknown) => write(prisma),
         superAdmin: {
             findUnique: async ({ where }: any) => ACCOUNTS[where.id] ?? null,
             // As Prisma answers: only what was asked for.
@@ -38,8 +41,9 @@ vi.mock("@/lib/prisma", () => ({
             },
         },
         rateLimit: { upsert: async () => ({ count: 1 }) },
-    },
-}))
+    }
+    return { prisma }
+})
 
 /** A save from the browser whose session is named "mine", at the account's version. */
 async function put(body: Record<string, unknown>, cookie: Record<string, unknown> | null = { sub: "sara", role: "SUPER_ADMIN", sid: "mine", sessionVersion: 4 }) {

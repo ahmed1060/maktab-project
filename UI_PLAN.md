@@ -5165,7 +5165,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   last month's refusal where that had more than 200 charges. Meanwhile
   the page header still names the client, and the period is blank until
   last month's statement comes.
-
 - **2026-11-08:** Two bug fixes (#228).
   - Add employee saved a pay typed as "1e" as 0, and a day off credit
     typed that way too. In a number field, the browser reads what it
@@ -5200,3 +5199,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     dev server reloaded the page; a person typing a password twice takes
     longer than the page does.
   - The web interface audit found nothing to change.
+- **2026-11-08:** From Codex's review of #228: the session a new password
+  of one's own keeps is worked out from the account's row as the write
+  moves it on, the row locked first. Two saves at once from the same
+  browser each kept it at the version after the one both had read, and
+  the account, moved on twice, was past that, so the browser was signed
+  out too. Set from two browsers at once, the first password still ends
+  the other browser's session, and neither is kept (`ROLES_PLAN.md`
+  §4.4).

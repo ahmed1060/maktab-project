@@ -516,7 +516,11 @@ session's check takes the version up rather than empty its token
 (`lib/session-kept.ts`). It's kept by the server rather than by the browser
 catching up afterwards: a request of its own refused meanwhile would have
 signed the page out. A session the account had already ended, whose check
-hadn't yet come, isn't kept by setting a password.
+hadn't yet come, isn't kept by setting a password. Which session is kept is
+worked out from the account's row, locked, as the write moves its version
+on, so two saves at once from the same browser keep it. Set from two
+browsers at once, the first password ends the other browser's session, and
+neither is kept (Codex on #228).
 
 ---
 

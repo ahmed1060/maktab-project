@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { can } from "@/lib/permissions/can"
-import { UserStatus } from "@prisma/client"
+import { Prisma, UserStatus } from "@prisma/client"
 import { supabase } from "@/lib/storage"
 import { RoleAssignmentService } from "./role-assignment.service"
 import bcrypt from "bcryptjs"
@@ -37,6 +37,22 @@ const SETTABLE_STATUSES = ["ACTIVE", "OFFLINE", "SUSPENDED"] as const
  * it ends and keeps).
  */
 const UNLOGGED = new Set(['password', 'mustChangePassword', 'sessionVersion', 'keptSession'])
+
+/**
+ * The session a new password of one's own keeps (lib/session-kept.ts), from
+ * the account as this write moves it on: its row is locked first, so two
+ * saves at once each see what the other wrote. Worked out from the row as it
+ * was read before, two saves from the same browser each named the version
+ * after the first, and the account, moved on twice, kept neither (Codex on
+ * PR 228).
+ */
+async function keepAsWritten(tx: Prisma.TransactionClient, table: 'User' | 'SuperAdmin', id: string, from: { sid?: unknown; sessionVersion?: unknown }): Promise<string | null> {
+    type Row = { sessionVersion: number; keptSession: string | null }
+    const [account] = table === 'User'
+        ? await tx.$queryRaw<Row[]>`SELECT "sessionVersion", "keptSession" FROM "User" WHERE id = ${id} FOR UPDATE`
+        : await tx.$queryRaw<Row[]>`SELECT "sessionVersion", "keptSession" FROM "SuperAdmin" WHERE id = ${id} FOR UPDATE`
+    return account ? keepAfterChange(account, from) : null
+}
 
 export class UserService {
     static async create(input: CreateUserInput, session: any) {
@@ -336,13 +352,14 @@ export class UserService {
             // a pending forced reset.
             updateData.mustChangePassword = false
             // And ends the account's sessions, each at its next check, but
-            // for the one a person sets their own from (PR 228). Signed in
-            // elsewhere with the old password, such as by someone who had
-            // learned it, the account stayed signed in there.
+            // for the one a person sets their own from (PR 228), worked out
+            // as it's written (keepAsWritten). Signed in elsewhere with the
+            // old password, such as by someone who had learned it, the
+            // account stayed signed in there.
             updateData.sessionVersion = { increment: 1 }
-            const kept = isSelf ? keepAfterChange((regularUser ?? superAdminUser)!, from) : null
-            if (kept) updateData.keptSession = kept
         }
+        // The session asking, if a new password of its own may keep it.
+        const keepFrom = password && isSelf ? from ?? null : null
         if (gender) updateData.gender = gender
 
         // 3. Avatar Management
@@ -529,10 +546,11 @@ export class UserService {
 
             const writeSelect = { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true, avatar: true, dayOffCredit: true, baseDayOffCredit: true, username: true }
             const handOff = rehome
-            const updated = await (handOff
+            const updated = await (handOff || keepFrom
                 ? prisma.$transaction(async (tx) => {
-                    await TeamHandOff.apply(tx, id, handOff, { id: session.user.id, role: userRole })
-                    return tx.user.update({ where: { id }, data: updateData, select: writeSelect })
+                    if (handOff) await TeamHandOff.apply(tx, id, handOff, { id: session.user.id, role: userRole })
+                    const kept = keepFrom ? await keepAsWritten(tx, 'User', id, keepFrom) : null
+                    return tx.user.update({ where: { id }, data: kept ? { ...updateData, keptSession: kept } : updateData, select: writeSelect })
                 })
                 : prisma.user.update({ where: { id }, data: updateData, select: writeSelect })
             ).catch(error => {
@@ -645,11 +663,13 @@ export class UserService {
         }
 
         if (superAdminUser) {
-            const updated = await prisma.superAdmin.update({
-                where: { id },
-                data: updateData,
-                select: { id: true, firstName: true, lastName: true, email: true, gender: true, avatar: true, username: true }
-            })
+            const select = { id: true, firstName: true, lastName: true, email: true, gender: true, avatar: true, username: true }
+            const updated = await (keepFrom
+                ? prisma.$transaction(async (tx) => {
+                    const kept = await keepAsWritten(tx, 'SuperAdmin', id, keepFrom)
+                    return tx.superAdmin.update({ where: { id }, data: kept ? { ...updateData, keptSession: kept } : updateData, select })
+                })
+                : prisma.superAdmin.update({ where: { id }, data: updateData, select }))
             return { ...updated, role: 'SUPER_ADMIN', status: 'ACTIVE', salary: 0 }
         }
     }

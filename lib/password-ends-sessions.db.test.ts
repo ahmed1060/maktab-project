@@ -29,7 +29,9 @@ INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayO
  ('e1', 'e1@x', 'p', 'Ehab', 'One', 'EMPLOYEE', 2026, 'e1', 'c1'),
  ('e2', 'e2@x', 'p', 'Eman', 'One', 'EMPLOYEE', 2026, 'e2', 'c1'),
  ('e3', 'e3@x', 'p', 'Essam', 'One', 'EMPLOYEE', 2026, 'e3', 'c1'),
- ('e4', 'e4@x', 'p', 'Eid', 'One', 'EMPLOYEE', 2026, 'e4', 'c1');
+ ('e4', 'e4@x', 'p', 'Eid', 'One', 'EMPLOYEE', 2026, 'e4', 'c1'),
+ ('e5', 'e5@x', 'p', 'Ezz', 'One', 'EMPLOYEE', 2026, 'e5', 'c1'),
+ ('e6', 'e6@x', 'p', 'Eslam', 'One', 'EMPLOYEE', 2026, 'e6', 'c1');
 `
 const SUPER_ADMIN = `INSERT INTO "SuperAdmin"(id, email, username, password, "firstName", "lastName", "updatedAt") VALUES ('sa1', 'sa1@x', 'sa1', 'p', 'Sara', 'Adel', now());`
 const NEW_PASSWORD = "a-new-password-123"
@@ -107,6 +109,33 @@ describe.skipIf(!ADMIN_URL)("a new password, in Postgres", () => {
         expect(row.sessionVersion).toBe(3)
         expect(isKept(row, { sid: "theirs" })).toBe(false)
         expect(isKept(row, { sid: "mine" })).toBe(false)
+    })
+
+    // Each worked out the session to keep from the version it read before
+    // writing, so two saves of one's own at once both named the version
+    // after the first: the account went on to the one after that, and kept
+    // no session (Codex on PR 228).
+    it("of one's own, saved twice at once from the same browser, keeps it", async () => {
+        const e5 = as({ id: "e5", role: "EMPLOYEE", companyId: "c1" })
+        await Promise.all([
+            Users.update({ id: "e5", password: `${NEW_PASSWORD}-a` } as any, e5, { sid: "mine", sessionVersion: 0 }),
+            Users.update({ id: "e5", password: `${NEW_PASSWORD}-b` } as any, e5, { sid: "mine", sessionVersion: 0 }),
+        ])
+        const row = await account("e5")
+        expect(row.sessionVersion).toBe(2)
+        expect(isKept(row, { sid: "mine" })).toBe(true)
+    })
+
+    it("of one's own, set from two browsers at once, keeps neither: the first one's ends the other", async () => {
+        const e6 = as({ id: "e6", role: "EMPLOYEE", companyId: "c1" })
+        await Promise.all([
+            Users.update({ id: "e6", password: `${NEW_PASSWORD}-a` } as any, e6, { sid: "one", sessionVersion: 0 }),
+            Users.update({ id: "e6", password: `${NEW_PASSWORD}-b` } as any, e6, { sid: "two", sessionVersion: 0 }),
+        ])
+        const row = await account("e6")
+        expect(row.sessionVersion).toBe(2)
+        expect(isKept(row, { sid: "one" })).toBe(false)
+        expect(isKept(row, { sid: "two" })).toBe(false)
     })
 
     it("of a Super Admin's own does the same", async () => {
