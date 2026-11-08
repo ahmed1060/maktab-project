@@ -22,18 +22,21 @@ const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.
 vi.mock("@/lib/storage", () => ({ supabase: { storage: { from: () => ({ remove: async () => ({ data: [], error: null }) }) } }, uploadToCloud: async () => { throw new Error("no uploads here") } }))
 
 const ADMIN_PASSWORD = "the-admins-own-password"
+// One's own is set with the current one (PR 229).
+const CURRENT = "their-own-current-password"
+const theirs = bcrypt.hashSync(CURRENT, 4)
 const PEOPLE = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'Nile Works', now());
 INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId") VALUES
  ('a1', 'a1@x', '${bcrypt.hashSync(ADMIN_PASSWORD, 4)}', 'Amal', 'One', 'ADMIN', 2026, 'a1', 'c1'),
  ('e1', 'e1@x', 'p', 'Ehab', 'One', 'EMPLOYEE', 2026, 'e1', 'c1'),
  ('e2', 'e2@x', 'p', 'Eman', 'One', 'EMPLOYEE', 2026, 'e2', 'c1'),
- ('e3', 'e3@x', 'p', 'Essam', 'One', 'EMPLOYEE', 2026, 'e3', 'c1'),
+ ('e3', 'e3@x', '${theirs}', 'Essam', 'One', 'EMPLOYEE', 2026, 'e3', 'c1'),
  ('e4', 'e4@x', 'p', 'Eid', 'One', 'EMPLOYEE', 2026, 'e4', 'c1'),
- ('e5', 'e5@x', 'p', 'Ezz', 'One', 'EMPLOYEE', 2026, 'e5', 'c1'),
- ('e6', 'e6@x', 'p', 'Eslam', 'One', 'EMPLOYEE', 2026, 'e6', 'c1');
+ ('e5', 'e5@x', '${theirs}', 'Ezz', 'One', 'EMPLOYEE', 2026, 'e5', 'c1'),
+ ('e6', 'e6@x', '${theirs}', 'Eslam', 'One', 'EMPLOYEE', 2026, 'e6', 'c1');
 `
-const SUPER_ADMIN = `INSERT INTO "SuperAdmin"(id, email, username, password, "firstName", "lastName", "updatedAt") VALUES ('sa1', 'sa1@x', 'sa1', 'p', 'Sara', 'Adel', now());`
+const SUPER_ADMIN = `INSERT INTO "SuperAdmin"(id, email, username, password, "firstName", "lastName", "updatedAt") VALUES ('sa1', 'sa1@x', 'sa1', '${theirs}', 'Sara', 'Adel', now());`
 const NEW_PASSWORD = "a-new-password-123"
 
 const as = (user: Record<string, unknown>) => ({ user: { ...withGrants(user as any), mfaEnabled: true, stepUpAt: Date.now() } }) as any
@@ -91,20 +94,20 @@ describe.skipIf(!ADMIN_URL)("a new password, in Postgres", () => {
 
     it("of one's own ends the account's other sessions, and keeps the one it was set from", async () => {
         const e3 = as({ id: "e3", role: "EMPLOYEE", companyId: "c1" })
-        await Users.update({ id: "e3", password: NEW_PASSWORD } as any, e3, { sid: "mine", sessionVersion: 0 })
+        await Users.update({ id: "e3", password: NEW_PASSWORD, currentPassword: CURRENT } as any, e3, { sid: "mine", sessionVersion: 0 })
         let row = await account("e3")
         expect(row).toEqual({ sessionVersion: 1, keptSession: "1:mine", mustChangePassword: false })
         expect(isKept(row, { sid: "mine" })).toBe(true)
         expect(isKept(row, { sid: "theirs" })).toBe(false)
 
         // Again, before its cookie has caught up with the first: still kept.
-        await Users.update({ id: "e3", password: `${NEW_PASSWORD}-2` } as any, e3, { sid: "mine", sessionVersion: 0 })
+        await Users.update({ id: "e3", password: `${NEW_PASSWORD}-2`, currentPassword: NEW_PASSWORD } as any, e3, { sid: "mine", sessionVersion: 0 })
         row = await account("e3")
         expect(row.sessionVersion).toBe(2)
         expect(isKept(row, { sid: "mine" })).toBe(true)
 
         // From a session the account had already ended: it ends with the rest.
-        await Users.update({ id: "e3", password: `${NEW_PASSWORD}-3` } as any, e3, { sid: "theirs", sessionVersion: 0 })
+        await Users.update({ id: "e3", password: `${NEW_PASSWORD}-3`, currentPassword: `${NEW_PASSWORD}-2` } as any, e3, { sid: "theirs", sessionVersion: 0 })
         row = await account("e3")
         expect(row.sessionVersion).toBe(3)
         expect(isKept(row, { sid: "theirs" })).toBe(false)
@@ -118,8 +121,8 @@ describe.skipIf(!ADMIN_URL)("a new password, in Postgres", () => {
     it("of one's own, saved twice at once from the same browser, keeps it", async () => {
         const e5 = as({ id: "e5", role: "EMPLOYEE", companyId: "c1" })
         await Promise.all([
-            Users.update({ id: "e5", password: `${NEW_PASSWORD}-a` } as any, e5, { sid: "mine", sessionVersion: 0 }),
-            Users.update({ id: "e5", password: `${NEW_PASSWORD}-b` } as any, e5, { sid: "mine", sessionVersion: 0 }),
+            Users.update({ id: "e5", password: `${NEW_PASSWORD}-a`, currentPassword: CURRENT } as any, e5, { sid: "mine", sessionVersion: 0 }),
+            Users.update({ id: "e5", password: `${NEW_PASSWORD}-b`, currentPassword: CURRENT } as any, e5, { sid: "mine", sessionVersion: 0 }),
         ])
         const row = await account("e5")
         expect(row.sessionVersion).toBe(2)
@@ -129,8 +132,8 @@ describe.skipIf(!ADMIN_URL)("a new password, in Postgres", () => {
     it("of one's own, set from two browsers at once, keeps neither: the first one's ends the other", async () => {
         const e6 = as({ id: "e6", role: "EMPLOYEE", companyId: "c1" })
         await Promise.all([
-            Users.update({ id: "e6", password: `${NEW_PASSWORD}-a` } as any, e6, { sid: "one", sessionVersion: 0 }),
-            Users.update({ id: "e6", password: `${NEW_PASSWORD}-b` } as any, e6, { sid: "two", sessionVersion: 0 }),
+            Users.update({ id: "e6", password: `${NEW_PASSWORD}-a`, currentPassword: CURRENT } as any, e6, { sid: "one", sessionVersion: 0 }),
+            Users.update({ id: "e6", password: `${NEW_PASSWORD}-b`, currentPassword: CURRENT } as any, e6, { sid: "two", sessionVersion: 0 }),
         ])
         const row = await account("e6")
         expect(row.sessionVersion).toBe(2)
@@ -139,7 +142,7 @@ describe.skipIf(!ADMIN_URL)("a new password, in Postgres", () => {
     })
 
     it("of a Super Admin's own does the same", async () => {
-        await Users.update({ id: "sa1", password: NEW_PASSWORD } as any, as({ id: "sa1", role: "SUPER_ADMIN", companyId: null }), { sid: "mine", sessionVersion: 0 })
+        await Users.update({ id: "sa1", password: NEW_PASSWORD, currentPassword: CURRENT } as any, as({ id: "sa1", role: "SUPER_ADMIN", companyId: null }), { sid: "mine", sessionVersion: 0 })
         expect(await account("sa1", "SuperAdmin")).toEqual({ sessionVersion: 1, keptSession: "1:mine", mustChangePassword: false })
     })
 

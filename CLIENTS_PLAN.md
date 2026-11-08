@@ -656,7 +656,7 @@ The company never buys on credit, so nothing is tracked as owed to shops.
 - The names follow `UI_PLAN.md` §3.1, principle 6: See, Add, Manage, plus a
   verb for anything that moves money.
 
-### 6.7 Paid to (Decided: left out for now)
+### 6.7 Paid to (Decided: left out, then turned down)
 
 - **Paid to isn't the same as the cost name:**
   - the **cost name** is what the money was for, such as "Spare parts";
@@ -666,6 +666,8 @@ The company never buys on credit, so nothing is tracked as owed to shops.
   possible.
 - **Suggested: leave it out now**, and add it later (§9) if you want totals
   per shop.
+- **Turned down** by the product owner on 2026-11-08 (§11): it isn't added
+  later either.
 
 ### 6.8 How it's built (step 6)
 
@@ -1145,8 +1147,6 @@ balance first, automatically:
 
 ## 9. Later (future enhancements)
 
-- **Paid to,** if it's dropped now (§6.7): who received the money, from a
-  saved list, for totals per shop.
 - **An advance for a particular task or client,** in addition to the general
   running balance (§7).
 
@@ -1181,6 +1181,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   from office cash or a card, so the employee isn't paid back: turned down
   by the product owner on 2026-11-08. Every cost stays paid back to the
   employee who added it, or from their cash advance (§7).
+- **"Paid to"** from a saved list, who received the money, for totals per
+  shop (§6.7): turned down by the product owner on 2026-11-08. The receipt
+  photo shows the shop, and the employee fills in no more than now.
 
 ---
 
@@ -2369,3 +2372,5 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-08:** "Paid by the company" turned down (§11), from §9: every
   cost stays paid back to the employee who added it, or from their cash
   advance.
+- **2026-11-08:** "Paid to" turned down (§11), from §9: a cost says what the
+  money was for, and its receipt photo shows who received it.

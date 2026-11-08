@@ -581,7 +581,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      on 2026-11-08; then a client's statement, to print or save as a PDF,
      merged in #227 on 2026-11-08 (`CLIENTS_PLAN.md` §6.9); then two bug
      fixes, a pay Add employee couldn't read and the sessions a new
-     password ends, in #228;
+     password ends, merged in #228 on 2026-11-08; then one's own password
+     checked by the server where it's asked for, in #229;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5207,3 +5208,34 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   out too. Set from two browsers at once, the first password still ends
   the other browser's session, and neither is kept (`ROLES_PLAN.md`
   §4.4).
+- **2026-11-08:** One's own password, checked by the server (#229).
+  - A new password of one's own needs the current one, sent with the
+    save and checked by the server, for people and Super Admins alike.
+    The profile asked for it before a save, but only in the browser, and
+    the save didn't: a session someone else held could set a new password
+    without knowing the old one, and since #228 that ends the owner's
+    other sessions too. The forced change after a temporary password
+    doesn't ask again for the one just used to sign in, from a session
+    signed in since it was given.
+  - Wrong tries at one's own password are counted per account, wherever
+    the server asks for it: the profile's check, the save, and an Admin's
+    own confirming a temporary password. Five in fifteen minutes, then
+    none until the fifteen minutes are up, which the password dialog
+    says. The profile's check said whether a guess was right as often as
+    it was asked.
+  - The audit log hides any field a request sends whose name says it's a
+    password, a passcode, a token or a secret. It hid five names, and a
+    temporary password's route sends the Admin's own as confirmPassword,
+    which it kept as typed. No temporary password had been given in
+    production yet.
+  - In the browser, against the scratch database: a new password of one's
+    own sent without the current one, or with a wrong one, is refused and
+    nothing is written; on the profile, the password the dialog asks for
+    is sent with the new one, which is saved, the browser still signed
+    in. Five wrong tries in the dialog are each said wrong, and the sixth,
+    the right one too, says too many tries; the same for an Admin's own
+    confirming a temporary password. Signed in with a temporary password,
+    the Change password page saves without asking for it again. In
+    English on a computer and in Arabic on a phone (16 checks each).
+  - The web interface audit found nothing to change: the new mistake is
+    said under the dialog's field, as a wrong password is.

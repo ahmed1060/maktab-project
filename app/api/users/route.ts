@@ -15,6 +15,7 @@ import { can } from "@/lib/permissions/can"
 import { shapeUser } from "@/lib/permissions/shape"
 import { adminRefusal, assignmentRefusal } from "@/lib/role-errors"
 import { assertStepUp } from "@/lib/step-up"
+import { CURRENT_PASSWORD_WRONG, OWN_PASSWORD_TRIES } from "@/lib/own-password"
 
 // F-13: role/status are now Postgres enums, not free text — a query-param
 // value that isn't a real enum member makes Postgres reject the whole
@@ -234,7 +235,9 @@ export const PUT = withStandardHandler(async (req, session, json) => {
 
     try {
         // 3. Service. A new password of one's own keeps the session it's set
-        // from, which is named in its cookie (lib/session-kept.ts).
+        // from, which is named in its cookie (lib/session-kept.ts), and needs
+        // the current one but on the forced change, from a session signed in
+        // since the temporary password was given (lib/own-password.ts).
         const from = id === session.user.id && validation.data.password
             ? await getToken({ req: req as NextRequest, secret: process.env.NEXTAUTH_SECRET })
             : null
@@ -259,6 +262,9 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         if (error.message === 'NAME_CHANGE_REQUIRES_ADMIN') return ApiResponse.forbidden("Name changes require admin approval")
         if (error.message === 'FORBIDDEN') return ApiResponse.forbidden()
         if (error.message === 'FORBIDDEN_PASSWORD_RESET') return ApiResponse.forbidden("Changing somebody else's password needs the reset-password permission")
+        // With their codes, said in the reader's language (PR 229).
+        if (error.message === 'CURRENT_PASSWORD_WRONG') return ApiResponse.refused(403, CURRENT_PASSWORD_WRONG, 'CURRENT_PASSWORD_WRONG')
+        if (error.message === 'OWN_PASSWORD_TRIES') return ApiResponse.refused(429, OWN_PASSWORD_TRIES, 'OWN_PASSWORD_TRIES')
         if (error.message === 'TARGET_EXCEEDS_YOURS') return ApiResponse.forbidden("This person's role holds access yours doesn't, so only someone who could give it may change their password or email")
         const refusedRole = assignmentRefusal(error)
         if (refusedRole) return refusedRole

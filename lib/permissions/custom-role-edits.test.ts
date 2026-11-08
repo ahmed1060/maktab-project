@@ -26,6 +26,13 @@ vi.mock("@/lib/services/salary-history.service", () => ({ SalaryHistoryService: 
 vi.mock("@/lib/services/salary.service", () => ({ SalaryService: { ensureRecordExists: async () => {} } }))
 vi.mock("@/lib/services/employment.service", () => ({ EmploymentService: { recordStatusChange: async () => {}, record: async () => ({ id: "ev" }), history: async () => [], timelineForMonth: async () => [] } }))
 vi.mock("@/lib/services/settlement.service", () => ({ SettlementService: { preview: async () => ({}), settleAndEnd: async () => ({ event: {}, settlement: {}, debt: null, preview: {} }) } }))
+// One's own password is checked by the server (PR 229, lib/own-password.db.test.ts).
+// The harness's people have none: "their-current-one" stands in for it, and a
+// password given a hash by a test is checked as it is.
+vi.mock("@/lib/own-password", async (original) => {
+    const real = await original<typeof import("@/lib/own-password")>()
+    return { ...real, ownPasswordMatches: async (id: string, hash: string, typed: string) => typed === "their-current-one" || real.ownPasswordMatches(id, hash, typed) }
+})
 
 const users = () => import("@/app/api/users/route")
 const put = async (body: unknown) => (await users()).PUT(withBody("PUT", "/api/users", body))
@@ -76,9 +83,10 @@ describe("setting somebody else's password", () => {
         expect(fieldsWritten()).toEqual(["mustChangePassword", "password", "sessionVersion"])
     })
 
-    it("of one's own account needs neither", async () => {
+    it("of one's own account needs neither, only the current one", async () => {
         onRole({}, { id: "emp", role: "EMPLOYEE", companyId: "c1" })
-        expect((await put({ id: "emp", password: "a-new-password-123" })).status).toBe(200)
+        expect((await put({ id: "emp", password: "a-new-password-123" })).status).toBe(403)
+        expect((await put({ id: "emp", password: "a-new-password-123", currentPassword: "their-current-one" })).status).toBe(200)
         // Sent with no session cookie, so no session of theirs is kept.
         expect(fieldsWritten()).toEqual(["mustChangePassword", "password", "sessionVersion"])
     })

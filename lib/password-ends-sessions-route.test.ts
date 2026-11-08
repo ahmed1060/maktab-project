@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import bcrypt from "bcryptjs"
 
 /**
  * PUT /api/users, where a password is set on the profile or the Change
@@ -14,7 +15,9 @@ vi.stubEnv("NEXTAUTH_SECRET", SECRET)
 
 const session = { value: null as any }
 const written: Record<string, unknown>[] = []
-const ACCOUNT = { firstName: "S", lastName: "A", gender: "FEMALE", avatar: null, isProtected: false, mustChangePassword: false, sessionVersion: 4, keptSession: null }
+// One's own is set with the current one (PR 229).
+const CURRENT = "the-current-password"
+const ACCOUNT = { firstName: "S", lastName: "A", gender: "FEMALE", avatar: null, isProtected: false, mustChangePassword: false, sessionVersion: 4, keptSession: null, password: bcrypt.hashSync(CURRENT, 4) }
 const ACCOUNTS: Record<string, any> = {
     sara: { ...ACCOUNT, id: "sara", email: "sara@nizmo.test", username: "sara" },
     sami: { ...ACCOUNT, id: "sami", email: "sami@nizmo.test", username: "sami" },
@@ -40,7 +43,7 @@ vi.mock("@/lib/prisma", () => {
                 return select ? Object.fromEntries(Object.keys(select).map(key => [key, row[key]])) : row
             },
         },
-        rateLimit: { upsert: async () => ({ count: 1 }) },
+        rateLimit: { findUnique: async () => null, upsert: async () => ({ count: 1 }), updateMany: async () => ({ count: 1 }) },
     }
     return { prisma }
 })
@@ -60,13 +63,13 @@ describe("a new password, set on the profile or the Change password page", () =>
     beforeEach(() => { written.length = 0; session.value = sara })
 
     it("of one's own ends the account's other sessions, and keeps the one it was set from", async () => {
-        expect((await put({ id: "sara", password: "a-new-password-123" })).status).toBe(200)
+        expect((await put({ id: "sara", password: "a-new-password-123", currentPassword: CURRENT })).status).toBe(200)
         expect(written).toHaveLength(1)
         expect(written[0]).toMatchObject({ mustChangePassword: false, sessionVersion: { increment: 1 }, keptSession: "5:mine" })
     })
 
     it("of one's own, from a session the account has already ended, keeps none", async () => {
-        expect((await put({ id: "sara", password: "a-new-password-123" }, { sub: "sara", role: "SUPER_ADMIN", sid: "mine", sessionVersion: 3 })).status).toBe(200)
+        expect((await put({ id: "sara", password: "a-new-password-123", currentPassword: CURRENT }, { sub: "sara", role: "SUPER_ADMIN", sid: "mine", sessionVersion: 3 })).status).toBe(200)
         expect(written[0]).toMatchObject({ sessionVersion: { increment: 1 } })
         expect(written[0]).not.toHaveProperty("keptSession")
     })
@@ -83,7 +86,7 @@ describe("a new password, set on the profile or the Change password page", () =>
     })
 
     it("says nothing of its sessions in the answer", async () => {
-        const body = await (await put({ id: "sara", password: "a-new-password-123" })).json()
+        const body = await (await put({ id: "sara", password: "a-new-password-123", currentPassword: CURRENT })).json()
         expect(body.data).not.toHaveProperty("sessionVersion")
         expect(body.data).not.toHaveProperty("keptSession")
     })

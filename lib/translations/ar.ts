@@ -829,6 +829,7 @@ export const ar = {
         profile_verify_password: "كلمة المرور",
         profile_verify_empty: "يُرجى إدخال كلمة المرور.",
         profile_verify_failed: "تعذّر التحقق من كلمة المرور. يُرجى المحاولة مرة أخرى.",
+        own_password_tries: "محاولات خاطئة كثيرة لهذا الحساب. يمكن المحاولة مرة أخرى خلال ١٥ دقيقة.",
         profile_first_name_invalid: "يُرجى إدخال اسم أول من ١٥ حرفاً على الأكثر.",
         profile_last_name_invalid: "يُرجى إدخال اسم عائلة من ١٥ حرفاً على الأكثر.",
         profile_name_by_request: "يُرسَل تغيير الاسم للموافقة أولاً، ويُطبَّق بعد الموافقة عليه.",

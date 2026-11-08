@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useEffectEvent, type FormEvent } from 'react'
+import { useState, useEffect, useEffectEvent, useRef, type FormEvent } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -27,7 +27,7 @@ import { TeamHandOffDialog } from './profile/TeamHandOffDialog'
 import { handoffRefusal } from '@/lib/end-contract'
 import { profileAccess } from '@/lib/profile-access'
 import { dayAfter, PROFILE_FIELDS, profileErrors, refusedField, type ProfileField } from '@/lib/profile-form'
-import { resetRefusal } from '@/lib/profile-password'
+import { ownPasswordRefusal, resetRefusal } from '@/lib/profile-password'
 import { fetcher, fetchRetrying } from '@/lib/swr-fetcher'
 import { calendarDateStr, DEFAULT_TIME_ZONE } from '@/lib/time'
 
@@ -140,6 +140,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // What one's own password is asked for, before it's done: saving the
     // form, or resetting their password (components/profile/PasswordDialogs.tsx).
     const [confirming, setConfirming] = useState<'UPDATE' | 'RESET_PASSWORD' | null>(null)
+    // The password it asked for, sent with a new password of one's own,
+    // which the server checks (PR 229). Kept for the save only.
+    const confirmed = useRef('')
 
     useEffect(() => {
         // Prevent default drag and drop behavior globally for this page
@@ -280,7 +283,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 headers: { 'Content-Type': 'application/json' }
             })
             const result = await res.json().catch(() => null)
-            if (!res.ok || !result?.success) return t(resetRefusal(result?.error))
+            if (!res.ok || !result?.success) return t(ownPasswordRefusal(result) ?? resetRefusal(result?.error))
             setConfirming(null)
             // Shown this once, in its own dialog.
             setIssuedTempPassword(result.data.password)
@@ -298,12 +301,16 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 headers: { 'Content-Type': 'application/json' }
             })
             const result = await res.json().catch(() => null)
-            // A check that failed, as when the server does, isn't a wrong password.
+            // Too many wrong tries, said as such; a check that failed
+            // otherwise, as when the server does, isn't a wrong password.
+            const refused = ownPasswordRefusal(result)
+            if (refused) return t(refused)
             if (!res.ok || !result?.success) return t('profile_verify_failed')
             if (!result.data?.valid) return t('incorrect_password')
         } catch {
             return t('profile_verify_failed')
         }
+        confirmed.current = password
         setConfirming(null)
         await executeSubmit()
         return null
@@ -502,6 +509,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     lastName: access.nameByRequest ? undefined : lastName,
                     email: access.changeEmail ? email : undefined,
                     password: access.changePassword && password ? password : undefined,
+                    // The one it replaces, checked by the server (PR 229).
+                    currentPassword: own && access.changePassword && password ? confirmed.current : undefined,
                     // Given by whoever may give it, and never by its kind,
                     // which the form follows only for what it shows. The
                     // server refuses what the field wouldn't have offered.
@@ -542,12 +551,16 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 }
                 // Anything else is the form's, said above its buttons.
                 setHandoff(null)
+                // One's own password, refused after the check before the save
+                // took it, or too many wrong tries: above the buttons.
+                const ownRefused = ownPasswordRefusal(answer)
                 // Under the field it's about, where it can be; above the buttons
                 // otherwise. About the role, from a save that didn't change it,
                 // as the last Admin's status can be: above the buttons, still
                 // in the reader's language.
                 const refused = refusedField(answer)
-                if (refused && (refused.field !== 'roleId' || roleGiven)) wrongAt({ [refused.field]: t(refused.key) })
+                if (ownRefused) setFormError(t(ownRefused))
+                else if (refused && (refused.field !== 'roleId' || roleGiven)) wrongAt({ [refused.field]: t(refused.key) })
                 else if (refused) setFormError(t(refused.key))
                 else setFormError(apiErrorText(text, t('error_generic')))
                 setSaving(false)
@@ -557,6 +570,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
             setHandoff(null)
             // Saved, it's nothing to lose.
             setChanged(false)
+            confirmed.current = ''
 
             // Sync Logic
             if (userId === session?.user?.id) {
