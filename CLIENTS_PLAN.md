@@ -740,6 +740,45 @@ The company never buys on credit, so nothing is tracked as owed to shops.
   - **A Super Admin sees a client's charges on its page whichever company
     they picked,** as the page is the client's.
 
+### 6.9 A client's statement (Decided)
+
+What a client was charged in a period, with the receipts, to send to the
+client or check against their records (`DESIGN.md` §5.5, Client
+statement). Decided on 2026-11-08 from the mock-up
+(https://claude.ai/artifact/FesR8AbYHBrEYM5ZtfKGq9), and built in #227.
+
+- **It lists the charges added to the client's tasks in the period,** not
+  left off its bill, oldest first: Paid, Service fee and Total, and each
+  Due, or Collected and the day, as it is the day the statement is issued.
+- **What's still due from before the period is one line,** so its last
+  total, Still due, is everything the client owes. An account statement,
+  with what was due at the start and a running balance, was the other way:
+  turned down, as charges are collected one by one, not paid in sums, and
+  marking one uncollected would change what an old statement said.
+- **The service fee is shown,** beside what was paid and the total. The
+  receipt shows what was paid anyway.
+- **The receipts are numbered in the list,** and their photos follow it,
+  printed from a new page, four to a page. A tick, With receipts, leaves
+  them out. A receipt that's a PDF is a file of its own, and isn't printed.
+- **It's printed, or saved as a PDF from the print dialog,** as payslips
+  are: no new service. Clients have no email address to send it to, and a
+  link a client could open without signing in is a larger question, left
+  for later.
+- **It's for whoever sees all the company's charges,** from Statement
+  beside Mark collected on the client's Charges. A Team Leader sees their
+  team's tasks' charges only, so they don't get it: a statement that left
+  some out would mislead the client.
+- **Its period is the dates picked on the client's Charges,** or last month
+  where none were, where the company is.
+- **Proposed, as #227 builds it:**
+  - **It holds 200 charges at most;** a longer period asks for a shorter
+    one, as each receipt's photo is loaded to be printed.
+  - **It's worked out each time it's opened.** Nothing is stored, so
+    nothing in the database changes; a numbered record of each statement
+    sent would be one of its own, later.
+  - **A Super Admin gets any client's,** from its page, as they get its
+    charges (§6.8).
+
 ---
 
 ## 7. Cash advances (عهدة)
@@ -1106,9 +1145,6 @@ balance first, automatically:
 
 ## 9. Later (future enhancements)
 
-- **An exportable client statement:** what the client was charged and what
-  was collected for a date range, with receipts. It can be sent to the
-  client or checked against their records.
 - **"Paid by the company."** A tick on the Costs page for a cost the company
   paid directly (office cash or card), so the employee isn't paid back. Until
   then, every cost is paid back to the employee who added it.
@@ -1141,6 +1177,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **Renaming on screen only.** The code is renamed too.
 - **Ticks on the employee's Add cost form.** Every cost is paid back and
   charged; exceptions are handled on the Costs page.
+- **A client statement with a running balance** (§6.9). Charges are
+  collected one by one, not paid in sums, and marking one uncollected
+  would change what an old statement said.
 
 ---
 
@@ -2321,3 +2360,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   what came back to someone gone, a cost's part put back or a correction
   finding they held more, and what they held as an ending dated ahead
   took effect.
+- **2026-11-08:** A client's statement (§6.9; #227 in `UI_PLAN.md`), the
+  first idea in §9, decided from its mock-up: the period's charges, each
+  as it is the day it's issued, with what's still due from before as one
+  line, and the receipts, printed or saved as a PDF, for whoever sees all
+  the company's charges. A client's charges were on screen only.
