@@ -590,7 +590,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      has loaded its session, the sign-in page saying a session ended, and
      the "Powered by" signature on the sign-in page, merged in #232 on
      2026-11-08; then the audit log reading a company's section names and
-     icons one section at a time, in #233;
+     icons one section at a time, merged in #233 on 2026-11-08; then what
+     the building blocks draw drawn by them, not copied by hand, in #234;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5358,3 +5359,35 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     before the names, and each map's sections the side bar's order.
   - The web interface audit found nothing else to change: the lines are
     the log's own, in its own type.
+- **2026-11-08:** What the building blocks draw is drawn by them, not
+  copied by hand (#234). Three leftovers of the move onto the building
+  blocks:
+  - Two buttons had their classes typed out. The Roles card's Export, a
+    file the browser fetches itself, is `ButtonDownload`, which a
+    section's link to a file uses too. The Brand colour card's preview of a
+    button, which no one can press or reach, is `ButtonLook`. Both look as
+    they did.
+  - An audit entry's phone card gave what it was on as a fragment in a line
+    laid out as a row, so its type, the comma and its ID each took a place
+    of their own, and in Arabic the comma fell under the type, on a line of
+    its own. It's one piece of text now, as every other card's detail is.
+    Found in #233's screenshots.
+  - The UI kit page's inline styles: it's a page, as the others are, its
+    phone cards hold their due date and points as the Tasks list's do, its
+    form is as wide as a form, and its rows of samples have a class of
+    their own.
+  - `lib/blocks-not-by-hand.test.ts` keeps it so: no button's classes
+    typed out on a page, no card detail given as a fragment, no inline
+    styles on the UI kit page.
+  - In the browser, against the scratch database, as the Super Admin: on a
+    phone, each audit card says its type and the comma after it on one
+    line, the ID after them, where the page from before this put the comma
+    on a line of its own; the Roles card's Export is a secondary button
+    with its icon, and pressed, the browser downloads the roles file; the
+    brand preview's button is a small primary one in the colour it
+    previews, in light and dark, which no one can press or reach; the UI
+    kit page has no inline styles, its samples side by side and wrapping,
+    its form as wide as a form. In English on a computer and in Arabic on
+    a phone (11 checks each), and the card in English on a phone too.
+  - The web interface audit found nothing else to change: nothing new is
+    shown, and what was is drawn as before.
