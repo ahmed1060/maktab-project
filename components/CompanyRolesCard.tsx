@@ -8,7 +8,7 @@ import { CopyIcon, DownloadSimpleIcon, EyeIcon, HourglassIcon, PencilSimpleIcon,
 import { fetcher, type SWRError } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
-import { Button, Card, Dialog, EmptyState, Icon, Row, RowMenu, StatusBadge, type MenuItem } from '@/components/ui'
+import { Button, ButtonDownload, Card, Dialog, EmptyState, Row, RowMenu, StatusBadge, type MenuItem } from '@/components/ui'
 import CopyRolesModal from '@/components/CopyRolesModal'
 import AccessReviewSetting, { type ReviewSetting } from '@/components/AccessReviewSetting'
 import RoleEditorModal, { type BaseRole, type EditableRole, type RoleSubmission, type Template } from '@/components/RoleEditorModal'
@@ -159,9 +159,7 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
                 title={t('roles_title')}
                 actions={<>
                     {/* A file, so a plain link the browser fetches itself. */}
-                    <a className="ui-btn ui-btn-secondary" href={`/api/roles/export?companyId=${companyId}&locale=${locale}`} download>
-                        <Icon icon={DownloadSimpleIcon} size={18} />{t('roles_export')}
-                    </a>
+                    <ButtonDownload icon={DownloadSimpleIcon} href={`/api/roles/export?companyId=${companyId}&locale=${locale}`}>{t('roles_export')}</ButtonDownload>
                     <Button icon={CopyIcon} onClick={() => setCopying(true)}>{t('roles_copy_from')}</Button>
                     <Button variant="primary" icon={PlusIcon} onClick={() => setEditing('new')}>{t('roles_new')}</Button>
                 </>}

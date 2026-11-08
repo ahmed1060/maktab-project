@@ -43,3 +43,24 @@ export function ButtonLink({ variant = 'secondary', size = 'md', icon, className
         </Link>
     )
 }
+
+/**
+ * A file to download, such as the Roles card's Export: a plain link, which
+ * the browser fetches itself, where the app's own would fetch it as a page.
+ */
+export function ButtonDownload({ variant = 'secondary', size = 'md', icon, className, children, href }: Look & { href: string; className?: string }) {
+    return (
+        <a className={classes(variant, size, className)} href={href} download>
+            {icon && <Icon icon={icon} size={size === 'sm' ? 16 : 18} />}
+            {children}
+        </a>
+    )
+}
+
+/**
+ * A button's look and nothing else, for a preview such as the Brand colour
+ * card's: no one can press it or reach it with Tab.
+ */
+export function ButtonLook({ variant = 'secondary', size = 'md', children }: Omit<Look, 'icon'>) {
+    return <span className={classes(variant, size)}>{children}</span>
+}

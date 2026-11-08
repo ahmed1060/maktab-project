@@ -3,7 +3,7 @@
  * them; their look is in ./ui.css, from the tokens in app/globals.css.
  */
 export { Icon, type PhosphorIcon } from './Icon'
-export { Button, ButtonLink, type ButtonVariant } from './Button'
+export { Button, ButtonDownload, ButtonLink, ButtonLook, type ButtonVariant } from './Button'
 export { Field, TextInput, PasswordInput, TextArea, SearchInput, Select, Choice, type FieldControlProps, type SelectOption } from './Field'
 export { ColourChoice } from './ColourChoice'
 export { Dialog, DialogActions, ConfirmDialog } from './Dialog'
