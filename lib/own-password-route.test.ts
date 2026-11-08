@@ -96,7 +96,7 @@ describe("a new password of one's own, on PUT /api/users", () => {
         tries.count = 5
         const res = await put({ id: "sara", password: "a-new-password-123", currentPassword: CURRENT })
         expect(res.status).toBe(429)
-        expect(await res.json()).toMatchObject({ success: false, code: "OWN_PASSWORD_TRIES", error: "Too many wrong tries for this account. You can try again within 15 minutes." })
+        expect(await res.json()).toMatchObject({ success: false, code: "OWN_PASSWORD_TRIES", error: "Too many wrong tries for this account. You can try again within 15 minutes, or your company's Admin can unlock it now." })
         expect(written).toEqual([])
     })
 

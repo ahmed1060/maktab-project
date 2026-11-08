@@ -44,6 +44,7 @@ interface Employee {
     teamLeader?: { id: string; firstName: string; lastName: string } | null
     // When they can sign in again, if they're locked out now; only for whoever may unlock (lib/sign-in-lock.ts).
     signInLockedUntil?: string | null
+    ownPasswordPausedUntil?: string | null
 }
 
 type Leader = { id: string; firstName: string; lastName: string }
@@ -299,7 +300,7 @@ export default function EmployeesPage() {
     const points = (e: Employee) => e.role === 'ADMIN' ? null : <span className="ui-chip">{countOf(t, locale, e.totalDifficultyPoints || 0, 'pts')}</span>
     const statusBadge = (e: Employee) => <StatusBadge tone={STATUS_TONE[e.status] ?? 'neutral'}>{STATUS_WORD[e.status] ? t(STATUS_WORD[e.status]) : e.status}</StatusBadge>
     // Locked out of signing in, with Unlock, under the status (decided 2026-11-03).
-    const lock = (e: Employee) => <SignInLock personId={e.id} name={nameOf(e)} until={e.signInLockedUntil} onUnlocked={() => { void mutate() }} />
+    const lock = (e: Employee) => <SignInLock personId={e.id} name={nameOf(e)} until={e.signInLockedUntil} paused={e.ownPasswordPausedUntil} onUnlocked={() => { void mutate() }} />
 
     const columns: Column<Employee>[] = [
         ...(canAssignTeams ? [{ key: 'pick', header: t('ui_select_column'), hideHeader: true, cell: checkbox }] : []),
@@ -392,7 +393,7 @@ export default function EmployeesPage() {
                                     { icon: EnvelopeSimpleIcon, text: <bdi>{e.email}</bdi> },
                                     { icon: IdentificationBadgeIcon, text: roleWord(e.role) },
                                     ...(e.role === 'EMPLOYEE' ? [{ icon: UsersThreeIcon, text: teamOf(e) }] : []),
-                                    ...(e.signInLockedUntil ? [{ icon: LockIcon, text: lock(e) }] : []),
+                                    ...(e.signInLockedUntil || e.ownPasswordPausedUntil ? [{ icon: LockIcon, text: lock(e) }] : []),
                                 ]}
                                 foot={<>{points(e) ?? <span />}{canActOnPeople && actions(e)}</>}
                             />

@@ -49,8 +49,8 @@ describe("the profile, sending the password it asked for", () => {
 
 describe("its words", () => {
     it("say too many tries as signing in does, in both languages, asking nothing in the masculine", () => {
-        expect(en.own_password_tries).toBe("Too many wrong tries for this account. You can try again within 15 minutes.")
-        expect(ar.own_password_tries).toBe("محاولات خاطئة كثيرة لهذا الحساب. يمكن المحاولة مرة أخرى خلال ١٥ دقيقة.")
+        expect(en.own_password_tries).toBe("Too many wrong tries for this account. You can try again within 15 minutes, or your company's Admin can unlock it now.")
+        expect(ar.own_password_tries).toBe("محاولات خاطئة كثيرة لهذا الحساب. يمكن المحاولة مرة أخرى خلال ١٥ دقيقة، أو يمكن لمسؤول الشركة فتحه الآن.")
         expect(ar.own_password_tries).not.toMatch(/(^|\s)(أدخل|اختر|حاول|اكتب|انسخ|تحقق)(\s|$)|هل أنت متأكد|هل تريد/)
     })
 })

@@ -7,6 +7,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { teamRefusalResponse } from "@/lib/team-handoff-response"
 import { createUserSchema, updateUserSchema } from "@/lib/validations/user.schema"
 import { lockedUntil } from "@/lib/sign-in-lock"
+import { ownPasswordPausedUntil } from "@/lib/own-password"
 import { UserService } from "@/lib/services/user.service"
 import { parsePaging } from "@/lib/pagination"
 import { buildUserWhereClause, buildUserOrderBy } from "@/lib/services/user-query"
@@ -161,6 +162,8 @@ export const GET = withStandardHandler(async (req, session) => {
     // Who's locked out of signing in, and until when, for whoever may unlock
     // them (app/api/users/[id]/unlock-sign-in).
     const locks = can(session.user, "employees.reset_password") ? await lockedUntil(users.map(u => u.id)) : null
+    // And whose password tries are paused, which Unlock lifts too (lib/own-password.ts).
+    const paused = can(session.user, "employees.reset_password") ? await ownPasswordPausedUntil(users.map(u => u.id)) : null
 
     const usersWithStatus = users.map(user => {
         let effectiveStatus = user.status
@@ -168,7 +171,11 @@ export const GET = withStandardHandler(async (req, session) => {
             const diffMs = new Date().getTime() - new Date(user.lastActivity).getTime()
             if (diffMs > 60000) effectiveStatus = 'OFFLINE'
         }
-        return { ...user, status: effectiveStatus, ...(locks ? { signInLockedUntil: locks?.get(user.id)?.toISOString() ?? null } : {}) }
+        return {
+            ...user, status: effectiveStatus,
+            ...(locks ? { signInLockedUntil: locks?.get(user.id)?.toISOString() ?? null } : {}),
+            ...(paused ? { ownPasswordPausedUntil: paused?.get(user.id)?.toISOString() ?? null } : {}),
+        }
     })
 
     return ApiResponse.success({

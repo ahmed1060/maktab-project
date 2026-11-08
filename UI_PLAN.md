@@ -582,7 +582,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      merged in #227 on 2026-11-08 (`CLIENTS_PLAN.md` §6.9); then two bug
      fixes, a pay Add employee couldn't read and the sessions a new
      password ends, merged in #228 on 2026-11-08; then one's own password
-     checked by the server where it's asked for, in #229;
+     checked by the server where it's asked for, merged in #229 on
+     2026-11-08; then Unlock lifting the pause on somebody's password
+     tries, in #230;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5239,3 +5241,25 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     English on a computer and in Arabic on a phone (16 checks each).
   - The web interface audit found nothing to change: the new mistake is
     said under the dialog's field, as a wrong password is.
+- **2026-11-08:** Unlock lifts the pause on somebody's password tries
+  (#230).
+  - Five wrong tries at one's own password paused it for fifteen minutes,
+    with nothing to do but wait: profile saves and an Admin's temporary
+    passwords with it. Unlock, beside the person's status, now lifts it
+    as it lifts a sign-in lock, for whoever may reset their password: a
+    Super Admin anywhere and a company's Admin for their own people
+    (decided 2026-11-08), never one's own.
+  - The people list says until when somebody's password tries are paused,
+    beside their status on Employees and All users, with Unlock named for
+    them; where sign-in is locked too, it says that, and Unlock lifts
+    both. The audit log records it as unlocking sign-in and password
+    tries.
+  - At too many tries, the password dialog says the company's Admin can
+    unlock it now, as signing in does.
+  - In the browser, against the scratch database: an Admin's password
+    tries paused, the Super Admin sees until when, beside their status,
+    with Unlock named for them; Unlock says so, the pause goes, the right
+    password works again and the audit log has it; one's own is refused.
+    In English on a computer and in Arabic on a phone (8 checks each).
+  - The web interface audit found nothing to change: the pause is shown
+    as the sign-in lock is, with the same button.

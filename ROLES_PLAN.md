@@ -220,7 +220,7 @@ them, as today.
 | | `employees.change_status` | Activate / suspend an account | `users/[id]/status` |
 | | `employees.end_contract` | End a contract or reinstate — starts a settlement | `users/[id]/employment` |
 | | `employees.delete` | **Soft-delete** an account — separate from archiving because it is destructive (the avatar is removed and the email released) | `DELETE /users` |
-| | `employees.reset_password` | Reset someone's password, and unlock their sign-in after too many wrong tries (decided 2026-11-03) | `users/[id]/reset-password`, `users/[id]/unlock-sign-in` |
+| | `employees.reset_password` | Reset someone's password, and unlock their sign-in after too many wrong tries (decided 2026-11-03), and the pause on their password tries (decided 2026-11-08) | `users/[id]/reset-password`, `users/[id]/unlock-sign-in` |
 | | `employees.assign_team` | Put people on a team / move teams | `users/team` |
 | | `employees.assign_role` | Assign a role directly (§4.2) | new |
 | | `employees.request_role` | Request a role assignment for Admin approval (§6.12) | new |
@@ -528,7 +528,9 @@ signed in with it: the version the temporary password moved the account to
 is that session's, and no session's from before it. Wrong tries at one's own
 password are counted per account wherever the server asks for it, the
 profile's check, the save and an Admin's own confirming a temporary
-password: five in fifteen minutes (`lib/own-password.ts`).
+password: five in fifteen minutes (`lib/own-password.ts`). Unlock lifts the
+pause before then, with a sign-in lock, for whoever may reset the person's
+password, never on one's own (#230).
 
 ---
 
