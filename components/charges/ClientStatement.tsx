@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { Details, DocGroup, DocLine, DocNote, DocTable, DocTotal, DocumentSheet, FileChip, type DocColumn } from '@/components/ui'
+import { fill } from '@/components/attendance-calendar/fill'
 import { calendarDay } from '@/lib/calendar-day'
 import { countOf } from '@/lib/plural'
 import { statementNote, type Statement, type StatementCharge } from '@/lib/client-statement'
@@ -43,11 +44,11 @@ export function StatementSheet({ statement, withReceipts }: { statement: Stateme
         : <span className="ui-doc-due">{t('charges_status_due')}</span>
 
     const columns: DocColumn<StatementCharge>[] = [
-        { key: 'day', header: t('statement_col_date'), cell: c => day(c.day) },
+        { key: 'day', header: t('statement_col_date'), nowrap: true, cell: c => day(c.day) },
         {
             key: 'charge', header: t('statement_col_charge'),
             cell: c => <>
-                <span className="ui-doc-cell-title">{what(c)}</span>
+                <span className="ui-doc-cell-title"><bdi>{what(c)}</bdi></span>
                 <span className="ui-doc-cell-detail"><bdi>{c.task.title}</bdi></span>
                 {withReceipts && <span className="ui-doc-cell-detail">{receiptRef(c)}</span>}
             </>,
@@ -55,12 +56,12 @@ export function StatementSheet({ statement, withReceipts }: { statement: Stateme
         { key: 'paid', header: t('charges_col_paid'), amount: true, cell: c => money(c.paid), foot: money(totals.paid) },
         { key: 'fee', header: t('charges_col_fee'), amount: true, cell: c => money(c.fee), foot: money(totals.fees) },
         { key: 'total', header: t('charges_col_total'), amount: true, cell: c => money(c.total), foot: money(totals.charged) },
-        { key: 'status', header: t('charges_col_status'), cell: status },
+        { key: 'status', header: t('charges_col_status'), nowrap: true, cell: status },
     ]
     // On phones: its day; what it is, with its total; then the rest.
     const card = (c: StatementCharge) => <>
         <span className="ui-doc-card-day">{day(c.day)}</span>
-        <span className="ui-doc-card-head"><span>{what(c)}</span><bdi className="ui-doc-amount">{money(c.total)}</bdi></span>
+        <span className="ui-doc-card-head"><bdi>{what(c)}</bdi><bdi className="ui-doc-amount">{money(c.total)}</bdi></span>
         <span className="ui-doc-card-detail"><bdi>{c.task.title}</bdi></span>
         <span className="ui-doc-card-detail">{t('statement_card_amounts').replace('{paid}', money(c.paid)).replace('{fee}', money(c.fee))}</span>
         <span className="ui-doc-card-foot"><span>{status(c)}</span>{withReceipts && <span>{receiptRef(c)}</span>}</span>
@@ -99,7 +100,7 @@ export function StatementSheet({ statement, withReceipts }: { statement: Stateme
                 <section className="ui-doc-receipts">
                     <h2 className="ui-doc-group-title">{t('statement_receipts')}</h2>
                     {/* On paper, a page of them says whose they are. */}
-                    <p className="ui-doc-print-only ui-doc-receipts-for">{t('statement_receipts_for').replace('{client}', client.name).replace('{period}', range)}</p>
+                    <p className="ui-doc-print-only ui-doc-receipts-for">{fill(t('statement_receipts_for'), { client: <bdi>{client.name}</bdi>, period: range })}</p>
                     <div className="ui-doc-receipt-grid">
                         {receipts.map(c => {
                             const receipt = c.receipt!
@@ -107,7 +108,7 @@ export function StatementSheet({ statement, withReceipts }: { statement: Stateme
                                 <figure key={c.id} id={`receipt-${receipt.number}`} className="ui-doc-receipt">
                                     <figcaption>
                                         <span className="ui-doc-receipt-number">{receiptName(receipt.number)}</span>
-                                        <span>{t('statement_receipt_what').replace('{what}', what(c)).replace('{date}', day(c.day))}</span>
+                                        <span>{fill(t('statement_receipt_what'), { what: <bdi>{what(c)}</bdi>, date: day(c.day) })}</span>
                                         <span>{t('statement_receipt_paid').replace('{amount}', money(c.paid))}</span>
                                     </figcaption>
                                     {receipt.pdf

@@ -1801,6 +1801,12 @@ a.ui-file-open:focus-visible,
     box-shadow: none;
     background: var(--paper);
   }
+  /* And the page's own ground: the sheet's box is one page tall, so what
+     runs past its first page is printed over the ground, which a page built
+     from the building blocks paints in --page (above). */
+  :root:has(.print-document) body {
+    background: var(--paper);
+  }
 }
 
 /* ── A document's table (§5.5) ── */
@@ -1859,9 +1865,12 @@ a.ui-file-open:focus-visible,
   text-align: end;
   white-space: nowrap;
 }
+/* What a row is, and its task: a word with no space in it, such as a link,
+   breaks where it must rather than pushing the amounts out of the sheet. */
 .ui-doc-cell-title,
 .ui-doc-cell-detail {
   display: block;
+  overflow-wrap: anywhere;
 }
 .ui-doc-cell-detail,
 .ui-doc-card-day,
@@ -1906,6 +1915,11 @@ a.ui-file-open:focus-visible,
 }
 .ui-doc-card-head {
   font-weight: 500;
+}
+.ui-doc-card-head > :first-child,
+.ui-doc-card-detail {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .ui-doc-cards-foot {
   margin-top: var(--space-1);
@@ -1985,6 +1999,11 @@ a.ui-file-open:focus-visible,
 .ui-doc-receipt-number {
   font-weight: 500;
 }
+/* Printed only: whose statement they're from, under their heading. */
+.ui-doc-receipts-for {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
 .ui-doc-receipt-photo,
 .ui-doc-receipt-file {
   box-sizing: border-box;
@@ -1994,8 +2013,11 @@ a.ui-file-open:focus-visible,
   border-radius: var(--radius-field);
   background: var(--page);
 }
+/* A little room inside its frame: a photo whose edge is white would
+   otherwise cover the frame's line where the two meet, on paper. */
 .ui-doc-receipt-photo {
   display: block;
+  padding: var(--space-1);
   object-fit: contain;
 }
 .ui-doc-receipt-file {
@@ -2020,8 +2042,9 @@ a.ui-file-open:focus-visible,
   }
 }
 /* A client statement, printed (§5.5): its table's headings start each page
-   it runs onto and no row is split; its receipts start on a new page, four
-   to a page and each whole, under a line saying whose they are. */
+   it runs onto, its foot comes once, at its end, and no row is split; its
+   receipts start on a new page, headed as the sheet is and under a line
+   saying whose they are, four to a page and each whole. */
 @media print {
   .ui-doc-print-only {
     display: block;
@@ -2035,8 +2058,17 @@ a.ui-file-open:focus-visible,
   .ui-doc-table tr {
     break-inside: avoid;
   }
+  /* A table's foot is repeated at the foot of each page it runs onto: its
+     sums would stand under the first page's rows as if they were all. */
+  .ui-doc-table tfoot {
+    display: table-row-group;
+  }
   .ui-doc-receipts {
     break-before: page;
+  }
+  .ui-doc-receipts > .ui-doc-group-title {
+    font-size: var(--text-xl);
+    line-height: var(--leading-xl);
   }
   .ui-doc-receipt-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

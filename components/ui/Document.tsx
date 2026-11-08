@@ -74,6 +74,8 @@ export type DocColumn<T> = {
     header: string
     /** An amount: on the end side, in even-width digits. */
     amount?: boolean
+    /** Kept on one line, such as a day: the column saying what a row is wraps instead. */
+    nowrap?: boolean
     cell: (row: T) => ReactNode
     foot?: string
 }
@@ -94,6 +96,7 @@ export function DocTable<T>({ caption, columns, rows, rowKey, card, footLabel }:
 }) {
     const firstSum = columns.findIndex(c => c.foot !== undefined)
     const end = (c: DocColumn<T>) => (c.amount ? 'ui-end' : undefined)
+    const cellClass = (c: DocColumn<T>) => end(c) ?? (c.nowrap ? 'ui-nowrap' : undefined)
     return (
         <div className="ui-doc-table-wrap">
             <table className="ui-doc-table">
@@ -102,7 +105,7 @@ export function DocTable<T>({ caption, columns, rows, rowKey, card, footLabel }:
                     <tr>{columns.map(c => <th key={c.key} scope="col" className={end(c)}>{c.header}</th>)}</tr>
                 </thead>
                 <tbody>
-                    {rows.map(row => <tr key={rowKey(row)}>{columns.map(c => <td key={c.key} className={end(c)}>{c.cell(row)}</td>)}</tr>)}
+                    {rows.map(row => <tr key={rowKey(row)}>{columns.map(c => <td key={c.key} className={cellClass(c)}>{c.cell(row)}</td>)}</tr>)}
                 </tbody>
                 {footLabel !== undefined && firstSum > 0 && (
                     <tfoot>

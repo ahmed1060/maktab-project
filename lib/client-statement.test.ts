@@ -35,6 +35,9 @@ beforeAll(async () => { await import("@/components/charges/ClientStatement") }, 
 
 const read = (path: string) => readFileSync(path, "utf8")
 const esc = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#x27;").replace(/"/g, "&quot;")
+// A sentence as the sheet writes it: its own words escaped, its blanks filled with markup.
+const sentence = (template: string, values: Record<string, string>) =>
+    template.split(/(\{\w+\})/).map(part => { const key = /^\{(\w+)\}$/.exec(part)?.[1]; return key !== undefined && key in values ? values[key] : esc(part) }).join("")
 
 const RECEIPTS = "https://p.supabase.co/storage/v1/object/public/app-assets/c1/receipts"
 const charge = (over: Partial<StatementCharge>): StatementCharge => ({
@@ -142,9 +145,9 @@ describe("the sheet", () => {
         expect(heads).toEqual([en.statement_col_date, en.statement_col_charge, `${en.charges_col_paid} (end)`, `${en.charges_col_fee} (end)`, `${en.charges_col_total} (end)`, en.charges_col_status])
         const rows = html.slice(html.indexOf("<tbody>"), html.indexOf("</tbody>"))
         expect([...rows.matchAll(/<tr>/g)]).toHaveLength(6)
-        expect(rows).toContain(`<td>2 Oct</td><td><span class="ui-doc-cell-title">Spare parts</span><span class="ui-doc-cell-detail"><bdi>AC repair, 2nd floor</bdi></span><span class="ui-doc-cell-detail"><a href="#receipt-1">Receipt 1</a></span></td><td class="ui-end">1,850.00</td><td class="ui-end">150.00</td><td class="ui-end">2,000.00</td><td>Collected 20 Oct</td>`)
+        expect(rows).toContain(`<td class="ui-nowrap">2 Oct</td><td><span class="ui-doc-cell-title"><bdi>Spare parts</bdi></span><span class="ui-doc-cell-detail"><bdi>AC repair, 2nd floor</bdi></span><span class="ui-doc-cell-detail"><a href="#receipt-1">Receipt 1</a></span></td><td class="ui-end">1,850.00</td><td class="ui-end">150.00</td><td class="ui-end">2,000.00</td><td class="ui-nowrap">Collected 20 Oct</td>`)
         expect(rows).toContain(`<span class="ui-doc-cell-detail">${en.statement_no_receipt}</span>`)
-        expect(rows).toContain(`<td><span class="ui-doc-due">${en.charges_status_due}</span></td>`)
+        expect(rows).toContain(`<td class="ui-nowrap"><span class="ui-doc-due">${en.charges_status_due}</span></td>`)
         expect(rows.indexOf("Spare parts")).toBeLessThan(rows.indexOf("LED bulbs"))
         // Its foot counts them and sums the three amounts.
         expect(html).toContain(`<tfoot><tr><th scope="row" colSpan="2">6 charges</th><td class="ui-end">4,400.00</td><td class="ui-end">380.00</td><td class="ui-end">4,780.00</td><td></td></tr></tfoot>`)
@@ -154,7 +157,7 @@ describe("the sheet", () => {
         const html = await sheet()
         expect(html).toContain(`<ul class="ui-doc-cards" aria-label="${en.statement_charges}">`)
         expect([...html.matchAll(/<li class="ui-doc-card">/g)]).toHaveLength(6)
-        expect(html).toContain(`<span class="ui-doc-card-day">2 Oct</span><span class="ui-doc-card-head"><span>Spare parts</span><bdi class="ui-doc-amount">2,000.00</bdi></span>`)
+        expect(html).toContain(`<span class="ui-doc-card-day">2 Oct</span><span class="ui-doc-card-head"><bdi>Spare parts</bdi><bdi class="ui-doc-amount">2,000.00</bdi></span>`)
         expect(html).toContain(esc(en.statement_card_amounts.replace("{paid}", "1,850.00").replace("{fee}", "150.00")))
         expect(html).toContain(`<div class="ui-doc-cards-foot"><p class="ui-doc-cards-count">6 charges</p>`)
     })
@@ -189,9 +192,9 @@ describe("the sheet", () => {
         const html = await sheet()
         const receipts = html.slice(html.indexOf('<section class="ui-doc-receipts"'))
         expect(receipts).toContain(`<h2 class="ui-doc-group-title">${en.statement_receipts}</h2>`)
-        expect(receipts).toContain(`<p class="ui-doc-print-only ui-doc-receipts-for">${esc(en.statement_receipts_for.replace("{client}", "Al Noor Trading").replace("{period}", "1–31 October 2026"))}</p>`)
+        expect(receipts).toContain(`<p class="ui-doc-print-only ui-doc-receipts-for">${sentence(en.statement_receipts_for, { client: "<bdi>Al Noor Trading</bdi>", period: "1–31 October 2026" })}</p>`)
         expect([...receipts.matchAll(/<figure /g)]).toHaveLength(5)
-        expect(receipts).toContain(`<figure id="receipt-1" class="ui-doc-receipt"><figcaption><span class="ui-doc-receipt-number">Receipt 1</span><span>${esc(en.statement_receipt_what.replace("{what}", "Spare parts").replace("{date}", "2 Oct"))}</span><span>${esc(en.statement_receipt_paid.replace("{amount}", "1,850.00"))}</span></figcaption><img class="ui-doc-receipt-photo" src="${RECEIPTS}/r1.jpg" alt="${esc(en.statement_receipt_alt.replace("{n}", "1"))}"/></figure>`)
+        expect(receipts).toContain(`<figure id="receipt-1" class="ui-doc-receipt"><figcaption><span class="ui-doc-receipt-number">Receipt 1</span><span>${sentence(en.statement_receipt_what, { what: "<bdi>Spare parts</bdi>", date: "2 Oct" })}</span><span>${esc(en.statement_receipt_paid.replace("{amount}", "1,850.00"))}</span></figcaption><img class="ui-doc-receipt-photo" src="${RECEIPTS}/r1.jpg" alt="${esc(en.statement_receipt_alt.replace("{n}", "1"))}"/></figure>`)
         // The PDF: a link on screen, a word on paper.
         const pdf = receipts.slice(receipts.indexOf('id="receipt-3"'), receipts.indexOf('id="receipt-4"'))
         expect(pdf).toContain(`href="${RECEIPTS}/r4.pdf"`)
@@ -208,8 +211,8 @@ describe("the sheet", () => {
 
     it("gives the year with each day where the period runs over two", async () => {
         const html = await sheet({ period: { from: "2026-12-15", to: "2027-01-14" }, charges: [charge({ id: "y", day: "2026-12-20", paid: 10, total: 10, collectedOn: "2027-01-02" })] })
-        expect(html).toContain("<td>20 Dec 2026</td>")
-        expect(html).toContain("<td>Collected 2 Jan 2027</td>")
+        expect(html).toContain(`<td class="ui-nowrap">20 Dec 2026</td>`)
+        expect(html).toContain(`<td class="ui-nowrap">Collected 2 Jan 2027</td>`)
     })
 
     it("is in the page's language, digits too", async () => {
@@ -217,11 +220,17 @@ describe("the sheet", () => {
         const html = await sheet()
         expect(html).toContain(`<p class="ui-doc-kind">${ar.statement_title}</p>`)
         expect(html).toContain(`<dd>١–٣١ أكتوبر ٢٠٢٦</dd>`)
-        expect(html).toContain(`<td>٢ أكتوبر</td>`)
+        expect(html).toContain(`<td class="ui-nowrap">٢ أكتوبر</td>`)
         expect(html).toContain(`<a href="#receipt-1">${ar.statement_receipt.replace("{n}", "١")}</a>`)
         expect(html).toContain(`<td class="ui-end">١٬٨٥٠٫٠٠</td>`)
-        expect(html).toContain(`<td>${ar.charges_collected_on.replace("{date}", "٢٠ أكتوبر")}</td>`)
+        expect(html).toContain(`<td class="ui-nowrap">${ar.charges_collected_on.replace("{date}", "٢٠ أكتوبر")}</td>`)
         expect(html).toContain(total(ar.statement_due, "٣٬٠٠٠٫٠٠"))
+        // What was bought is in the words it was written in, English here:
+        // isolated, so it reads in its own direction inside an Arabic line.
+        expect(html).toContain(`<span class="ui-doc-cell-title"><bdi>Spare parts</bdi></span>`)
+        expect(html).toContain(`<span class="ui-doc-card-head"><bdi>Spare parts</bdi>`)
+        expect(html).toContain(sentence(ar.statement_receipt_what, { what: "<bdi>Spare parts</bdi>", date: "٢ أكتوبر" }))
+        expect(html).toContain(sentence(ar.statement_receipts_for, { client: "<bdi>Al Noor Trading</bdi>", period: "١–٣١ أكتوبر ٢٠٢٦" }))
     })
 })
 
@@ -275,12 +284,26 @@ describe("the page and the button", () => {
         expect(page).toContain("code === 'STATEMENT_TOO_MANY'")
     })
 
-    it("prints its receipts from a new page, its table's rows whole, and its rules in a grey that prints", () => {
+    it("breaks a word with no space in it, such as a link, rather than pushing the amounts out of the sheet", () => {
+        // A charge described with a link put its total outside the sheet on
+        // a phone: the link was the narrowest its title could go.
+        const css = read("components/ui/ui.css")
+        expect(css).toMatch(/\.ui-doc-cell-title,\s*\.ui-doc-cell-detail \{[^}]*overflow-wrap: anywhere;/)
+        expect(css).toMatch(/\.ui-doc-card-head > :first-child,\s*\.ui-doc-card-detail \{\s*min-width: 0;\s*overflow-wrap: anywhere;/)
+    })
+
+    it("prints its receipts from a new page, its table's foot once and its rows whole, and its rules in a grey that prints", () => {
         const css = read("components/ui/ui.css")
         const print = css.slice(css.indexOf("/* A client statement, printed"))
         expect(print).toMatch(/\.ui-doc-receipts \{[^}]*break-before: page;/)
         expect(print).toMatch(/\.ui-doc-table tr \{[^}]*break-inside: avoid;/)
+        // Chromium repeats a table's foot at the foot of each page: its sums
+        // then stood under the first page's rows as if they were all.
+        expect(print).toMatch(/\.ui-doc-table tfoot \{\s*display: table-row-group;/)
         expect(print).toMatch(/\.ui-doc-receipt-grid \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/)
+        // The receipts' page is headed as the sheet is, the line under it smaller.
+        expect(print).toMatch(/\.ui-doc-receipts > \.ui-doc-group-title \{\s*font-size: var\(--text-xl\);\s*line-height: var\(--leading-xl\);/)
+        expect(css).toMatch(/\.ui-doc-receipts-for \{\s*font-size: var\(--text-sm\);\s*line-height: var\(--leading-sm\);/)
         const globals = read("app/globals.css")
         expect(globals).toMatch(/--rule-on-paper: #[0-9a-f]{6};/)
         expect(globals.slice(globals.indexOf(".print-document {"))).toContain("--rule: var(--rule-on-paper);")
