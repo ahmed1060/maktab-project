@@ -99,11 +99,15 @@ describe("at phone width", () => {
 
     it("the Super Admin's four figures stack rather than run off the screen", () => {
         // Two to a row needed ~336px in a 326px column: the right-hand
-        // tiles were cut off.
+        // tiles were cut off. They're the building blocks' total tiles now,
+        // whose columns give way on a narrow screen; the old grid's rules
+        // went with the old styles (PR 223).
         const css = readFileSync("app/globals.css", "utf8")
         expect(css).not.toMatch(/minmax\(\d+px, *1fr\)/)
-        const phone = css.slice(css.indexOf("@media (max-width: 480px)"))
-        expect(phone.slice(0, 200)).toContain(".dashboard-stats-block {\n    grid-template-columns: minmax(0, 1fr);")
+        const page = readFileSync("app/(dashboard)/dashboard/page.tsx", "utf8")
+        const overview = page.slice(page.indexOf("if (userRole === 'SUPER_ADMIN' && !companyId) {"))
+        expect(overview.slice(0, overview.indexOf("<Columns>"))).toContain("<TotalTiles items={[")
+        expect(readFileSync("components/ui/ui.css", "utf8")).toMatch(/\.ui-tiles \{\n  display: grid;\n  grid-template-columns: repeat\(auto-fit, minmax\(min\(160px, 100%\), 1fr\)\);/)
     })
 })
 

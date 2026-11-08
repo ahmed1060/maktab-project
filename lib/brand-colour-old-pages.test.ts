@@ -39,35 +39,27 @@ function oklch(value: string) {
 }
 
 type Shade = (typeof OLD_PAGE_SHADES)[number]
-/** `share` of `a` over `b`, as color-mix in srgb draws a tint over a panel. */
-function tint(a: string, b: string, share: number) {
-    const [x, y] = [a, b].map(c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)))
-    return "#" + x.map((v, i) => Math.round(v * share + y[i] * (1 - share)).toString(16).padStart(2, "0")).join("")
-}
-/** What a shade is drawn on. Text is also drawn on --primary at 10% and 20% (the payments history link, the pager). */
-function grounds(shade: Shade, theme: "light" | "dark", page: string, primary: string): string[] {
+/** What a shade is drawn on. */
+function grounds(shade: Shade, theme: "light" | "dark", page: string): string[] {
     const behind = "behind" in shade ? shade.behind : undefined
     if (behind === "map") return ["#ffffff"]
-    const base = theme === "light" ? [...LIGHT_GROUNDS, page] : DARK_GROUNDS
-    return shade.role === "text" ? [...base, tint(primary, base[0], 0.1), tint(primary, base[0], 0.2)] : base
+    return theme === "light" ? [...LIGHT_GROUNDS, page] : DARK_GROUNDS
 }
-// `.btn-primary:hover` brightens a fill 10% (app/globals.css).
+// The old filled button brightened 10% on hover. It went with the old styles
+// (PR 223); the fills are still held to it, so no company's colours moved.
 const hovered = (c: string) => "#" + [1, 3, 5].map(i => Math.min(255, Math.round(parseInt(c.slice(i, i + 2), 16) * 1.1)).toString(16).padStart(2, "0")).join("")
 /**
  * Each contrast a shade is held to, with WCAG's aim for it: white text on a
  * fill at rest and on hover, and in dark mode the fill against the dark
- * page; text or an edge against each ground.
+ * page; an edge against each ground.
  */
-function checks(shade: Shade, theme: "light" | "dark", page: string, primary: string): { of: (c: string) => number; aim: number }[] {
+function checks(shade: Shade, theme: "light" | "dark", page: string): { of: (c: string) => number; aim: number }[] {
     if (shade.role === "fill") return [
         { of: c => contrast("#ffffff", c), aim: 4.5 },
         { of: c => contrast("#ffffff", hovered(c)), aim: 4.5 },
         ...(theme === "dark" ? DARK_GROUNDS.map(g => ({ of: (c: string) => contrast(c, g), aim: 3 })) : []),
     ]
-    if (shade.role === "text" || shade.role === "edge") {
-        const aim = shade.role === "text" ? 4.5 : 3
-        return grounds(shade, theme, page, primary).map(g => ({ of: (c: string) => contrast(c, g), aim }))
-    }
+    if (shade.role === "edge") return grounds(shade, theme, page).map(g => ({ of: (c: string) => contrast(c, g), aim: 3 }))
     return []
 }
 
@@ -89,15 +81,14 @@ describe("the older pages' shades", () => {
         }
     })
 
-    it("cover every indigo and violet in app/globals.css, except the colours that mean something", () => {
-        // The info colours keep their meaning in every company, like the
-        // status colours. The lifetime badge's violet went with the old
-        // payments page (the Super Admin's pages part 3b).
-        const stays = /^--info-/
+    it("cover every indigo and violet in app/globals.css", () => {
+        // The info colours, which kept their meaning in every company, went
+        // with the old styles (PR 223), and the lifetime badge's violet with
+        // the old payments page (the Super Admin's pages part 3b).
         const following = new Set<string>(OLD_PAGE_SHADES.map(s => s.token))
         for (const block of [lightRoot, darkRoot]) {
             for (const [, token, value] of block.matchAll(/^\s*(--[a-z0-9-]+):\s*(#[0-9a-f]{6});/gm)) {
-                if (stays.test(token) || following.has(token)) continue
+                if (following.has(token)) continue
                 const { c, h } = oklch(value)
                 const violetish = c > 0.04 && h >= 255 && h <= 330
                 expect(violetish, `${token} ${value} is indigo or violet but doesn't follow the brand`).toBe(false)
@@ -117,8 +108,8 @@ describe("the older pages' shades", () => {
                 else if (shade.role === "fill") themes.push(["dark", shade.light, shades.dark[shade.token]])
                 for (const [theme, today, now] of themes) {
                     expect(now, `${picked} ${shade.token} ${theme}`).toMatch(/^#[0-9a-f]{6}$/)
-                    const todays = checks(shade, theme, defaultPage, "#6366f1")
-                    const nows = checks(shade, theme, page, (theme === "light" ? shades.light : shades.dark)["--primary"]!)
+                    const todays = checks(shade, theme, defaultPage)
+                    const nows = checks(shade, theme, page)
                     todays.forEach((check, i) => {
                         const need = Math.min(check.aim, check.of(today))
                         expect(nows[i].of(now!), `${picked} ${shade.token} ${theme} check ${i}`).toBeGreaterThanOrEqual(need - 0.005)
@@ -146,7 +137,7 @@ describe("the older pages' shades", () => {
     it("stand out from the dark page in dark mode as well as Nizmo's indigo does", () => {
         for (const picked of ["#1e3a8a", "#475569", "#000000"]) {
             const shades = oldPageShades(picked)
-            for (const token of ["--primary", "--button-from", "--button-to", "--accent"] as const) {
+            for (const token of ["--primary", "--button-from", "--button-to"] as const) {
                 const today = OLD_PAGE_SHADES.find(s => s.token === token)!.light
                 const now = shades.dark[token]
                 expect(now, `${picked} ${token}`).toMatch(/^#[0-9a-f]{6}$/)
@@ -181,22 +172,16 @@ describe("the older pages' shades", () => {
         expect(brandStyleSheet("#1e3a8a")).not.toContain("--accent-solid")
     })
 
-    // Codex on #81: the payments history link is --brand-primary-text on a
-    // 10% --primary tint; cyan's cleared 4.5:1 on white but was about
-    // 4.4:1 on the tint, where Nizmo's indigo is about 5.6:1.
-    it("keep text readable on the brand tints drawn behind it", () => {
-        // The Companies list's link is an item in its row's menu now, in the
-        // menu's own colours (the Super Admin's pages part 3a); the shades
-        // still hold on the tint for the older pages that draw one.
+    // Codex on #81: the payments history link was --brand-primary-text on a
+    // 10% --primary tint, where cyan's fell to about 4.4:1. The link is an
+    // item in its row's menu now, in the menu's own colours (the Super
+    // Admin's pages part 3a), and the brand colour as text went with the old
+    // window's close button, its last user (PR 223), so no shade is drawn on
+    // a brand tint any more.
+    it("keep no shade for text on the brand tints", () => {
         const companies = readFileSync("app/(dashboard)/dashboard/companies/page.tsx", "utf8")
         expect(companies).not.toContain("color-mix(")
-        for (const picked of ["#0891b2", "#0d9488", "#16a34a", "#facc15"]) {
-            const shades = oldPageShades(picked)
-            for (const share of [0.1, 0.2]) {
-                const need = Math.min(4.5, contrast("#4f46e5", tint("#6366f1", "#ffffff", share)))
-                expect(contrast(shades.light["--brand-primary-text"], tint(shades.light["--primary"], "#ffffff", share)), `${picked} ${share}`).toBeGreaterThanOrEqual(need)
-            }
-        }
+        expect(OLD_PAGE_SHADES.map(s => s.token as string)).not.toContain("--brand-primary-text")
     })
 
     it("take the chosen colour's hue: the brand stands in for Nizmo's indigo", () => {
@@ -204,7 +189,7 @@ describe("the older pages' shades", () => {
         expect(oldPageShades("#2563eb").light["--primary"]).toBe("#2563eb")
         // A green page is green, not indigo: more green than blue in every fill.
         const green = oldPageShades("#16a34a").light
-        for (const token of ["--primary", "--button-from", "--brand-primary-text"] as const) {
+        for (const token of ["--primary", "--button-from"] as const) {
             const [, g, b] = [1, 3, 5].map(i => parseInt(green[token].slice(i, i + 2), 16))
             expect(g, token).toBeGreaterThan(b)
         }
@@ -222,7 +207,7 @@ describe("the older pages' shades", () => {
         const shades = oldPageShades("#16a34a")
         expect(light).toContain(`--button-from:${shades.light["--button-from"]}`)
         expect(light).toContain(`--page-bg:${shades.light["--page-bg"]}`)
-        expect(dark).toContain(`--brand-primary-text:${shades.dark["--brand-primary-text"]}`)
+        expect(dark).toContain(`--focus-ring:${shades.dark["--focus-ring"]}`)
         // The page's ground is pale in light mode only; dark mode keeps its own.
         expect(dark).not.toContain("--page-bg")
     })
@@ -252,12 +237,12 @@ describe("the side bar and the glows go through them", () => {
     })
 
     it("draws the indigo glows from --primary rather than a fixed indigo", () => {
+        // The old field's focus glow and the old filled button's went with
+        // them (PR 223); the page's glow is left.
         const css = stripComments(globals)
         for (const glow of [
             "--page-veil-a: color-mix(in srgb, var(--primary) 15%, transparent);",
             "--page-veil-a: color-mix(in srgb, var(--primary) 10%, transparent);",
-            "box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 15%, transparent);",
-            "box-shadow: 0 4px 15px color-mix(in srgb, var(--primary) 35%, transparent);",
         ]) expect(css).toContain(glow)
     })
 })

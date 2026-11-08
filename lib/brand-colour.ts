@@ -304,13 +304,13 @@ const MAP = ['#ffffff']
 
 /**
  * What a shade is for, which sets what it's held to:
- * - fill: white text sits on it, 4.5:1, at rest and on hover;
- * - text: it's text on the grounds, 4.5:1;
+ * - fill: white text sat on it, 4.5:1, at rest and on hover, as on the old
+ *   buttons; it's still held to that, so no company's colours move;
  * - edge: a focus ring, a highlight bar or a map pin, 3:1 against what's behind;
  * - ground: the page's own colour, pale, held to nothing;
  * - decor: a tint in a gradient, held to nothing.
  */
-type Role = 'fill' | 'text' | 'edge' | 'ground' | 'decor'
+type Role = 'fill' | 'edge' | 'ground' | 'decor'
 type Behind = 'pages' | 'map'
 
 /**
@@ -321,24 +321,20 @@ type Behind = 'pages' | 'map'
  * colours, they mean something, or are only background.
  */
 export const OLD_PAGE_SHADES = [
-    // First: text on the pages is held on its tints, so it's worked out before them.
     { token: '--primary', light: '#6366f1', role: 'fill' },
-    { token: '--primary-hover', light: '#4f46e5', role: 'fill' },
-    { token: '--accent', light: '#8b5cf6', role: 'fill' },
     { token: '--button-from', light: '#4f46e5', role: 'fill' },
     { token: '--button-to', light: '#7c3aed', role: 'fill' },
     // The violet fill and the highlight bar's violet went with the old
     // filter panel and the obligation's card, their last users (PR 222).
-    { token: '--brand-primary-text', light: '#4f46e5', dark: '#a5b4fc', role: 'text' },
+    // The hover indigo and the violet, which nothing drew with, and the
+    // brand colour as text, whose last user was the old window's close
+    // button, went with the old styles (PR 223).
     { token: '--focus-ring', light: '#4338ca', dark: '#a5b4fc', role: 'edge' },
     { token: '--map-pin', light: '#4f46e5', role: 'edge', behind: 'map' },
     { token: '--page-bg', light: '#eef2ff', lightOnly: true, role: 'ground' },
 ] as const satisfies readonly { token: string; light: string; dark?: string; role: Role; behind?: Behind; lightOnly?: boolean }[]
 
 export type OldPageToken = (typeof OLD_PAGE_SHADES)[number]['token']
-
-/** Nizmo's indigo's --primary, the same in both themes. */
-const DEFAULT_PRIMARY = OLD_PAGE_SHADES[0].light
 
 /** The same distance from `picked` as `shade` is from Nizmo's indigo. */
 function follow(shade: string, picked: string): string {
@@ -350,34 +346,27 @@ function follow(shade: string, picked: string): string {
     })
 }
 
-/**
- * The light brand tints text is drawn on: --primary at 10% and 20% over a
- * panel (the payments history link, the pager's current page).
- */
-const TEXT_TINTS = [0.10, 0.20]
-
-/**
- * What a shade sits on, in a theme, with this brand's page colour. Text on
- * the pages sits on the brand tints of this theme's --primary too.
- */
-function groundsFor(behind: Behind | undefined, theme: 'light' | 'dark', page: string, primary?: string): string[] {
+/** What a shade sits on, in a theme, with this brand's page colour. */
+function groundsFor(behind: Behind | undefined, theme: 'light' | 'dark', page: string): string[] {
     if (behind === 'map') return MAP
-    const grounds = theme === 'light' ? [...OLD_LIGHT, page] : OLD_DARK
-    const panel = grounds[0]
-    return primary ? [...grounds, ...TEXT_TINTS.map(share => mix(primary, panel, share))] : grounds
+    return theme === 'light' ? [...OLD_LIGHT, page] : OLD_DARK
 }
 
 /** One contrast a shade is held to, and the most it's asked for there. */
 type Check = { of: (c: string) => number; aim: number }
 
-/** A filled button on hover: `.btn-primary:hover` brightens it 10% (app/globals.css). */
+/**
+ * A filled button on hover: the old `.btn-primary:hover` brightened it 10%.
+ * It went with the old styles (PR 223); the fills are still held to it, so
+ * no company's colours move.
+ */
 const HOVER_BRIGHTNESS = 1.1
 const brightened = (c: string) => hex(rgb(c).map(v => v * HOVER_BRIGHTNESS) as Rgb)
 
 /**
  * What a shade is held to, in its role: white text on a fill, at rest and
  * brightened on hover, and in dark mode the fill against the dark page;
- * text or an edge against each ground it's drawn on.
+ * an edge against each ground it's drawn on.
  */
 function checksFor(role: Role, grounds: string[], theme: 'light' | 'dark' = 'light'): Check[] {
     if (role === 'fill') return [
@@ -386,10 +375,7 @@ function checksFor(role: Role, grounds: string[], theme: 'light' | 'dark' = 'lig
         // In dark mode a fill also has to stand out from the dark page.
         ...(theme === 'dark' ? grounds.map(g => ({ of: (c: string) => contrast(c, g), aim: SHAPE })) : []),
     ]
-    if (role === 'text' || role === 'edge') {
-        const aim = role === 'text' ? TEXT : SHAPE
-        return grounds.map(g => ({ of: c => contrast(c, g), aim }))
-    }
+    if (role === 'edge') return grounds.map(g => ({ of: c => contrast(c, g), aim: SHAPE }))
     return []
 }
 
@@ -419,10 +405,8 @@ export function oldPageShades(picked: string | null | undefined): { light: Recor
         for (const [theme, value] of themes) {
             const behind = 'behind' in shade ? shade.behind : undefined
             // Held to what it has with Nizmo's indigo, up to WCAG's aim.
-            // --primary comes first, so text can be held on its tints.
-            const tinted = role === 'text'
-            const todays = checksFor(role, groundsFor(behind, theme, defaultPage, tinted ? DEFAULT_PRIMARY : undefined), theme)
-            const checks = checksFor(role, groundsFor(behind, theme, page, tinted ? (theme === 'light' ? light : dark)['--primary'] : undefined), theme)
+            const todays = checksFor(role, groundsFor(behind, theme, defaultPage), theme)
+            const checks = checksFor(role, groundsFor(behind, theme, page), theme)
             const ok = holds(value, todays, checks)
             let c: string
             if (role === 'fill' && theme === 'dark') {

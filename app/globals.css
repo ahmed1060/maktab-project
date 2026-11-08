@@ -11,24 +11,12 @@
   --cam-ink: #fff;
   --cam-done: #22c55e;
   --cam-warn: #f59e0b;
-  /* Liquid Glass Palette */
+  /* The old pages' indigo (Indigo 500), still in the page's glow and the
+     scroll bar. It follows a company's brand colour (lib/brand-colour.ts). */
   --primary: #6366f1;
-  /* Indigo 500 */
-  --primary-hover: #4f46e5;
-  --secondary: #ec4899;
-  /* Pink 500 */
-  --accent: #8b5cf6;
-  /* Violet 500 */
-
-  --glass-border: rgba(255, 255, 255, 0.4);
-  --glass-bg: rgba(255, 255, 255, 0.25);
-  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
 
   --text-main: #1e293b;
   --text-muted: #475569;
-
-  --radius: 1.5rem;
-  /* Super rounded modern look */
 
   /* ── Semantic tokens (D1) ─────────────────────────────────────────────────
      Named by role, never by colour. This is what turns a dark palette into a
@@ -41,7 +29,7 @@
      afterwards. Dark values arrive in D2 and nothing above this line changes.
 
      The scale is the one the codebase already used by hand: Tailwind slate for
-     surfaces and text, and its status families for the badge pairs. */
+     surfaces and text. */
 
   /* The surface. The two more recessed ones, the borders, and the colours
      below that only the old components drew with went with them (PR 222). */
@@ -55,47 +43,23 @@
   /* Raised from #64748b, which was 4.34:1 on the old pages' sunk surface. */
   --text-soft: #5b6878;
 
-  /* Status pairs. Each is a background and a foreground chosen together — in
-     D2 the dark equivalents are re-derived as pairs, never inverted, because
-     flipping a light pair produces a colour nobody chose. */
-  --ok-bg: #dcfce7;
-
+  /* The delete icon's red (components/TrashIcon.tsx). The status pairs that
+     were here went with the last styles that used them (PR 222, PR 223); the
+     building blocks' are --status-* below. */
   --danger-solid: #ef4444;
-
-  --warn-bg: #fef3c7;
-  --warn-border: #fcd34d;
-  --warn-fg: #92400e;
-
-  --info-bg: #e0f2fe;
-  --info-fg: #0369a1;
-
-
-  /* Second wave: the long tail the first pass left. Same families, more
-     weights — the codebase reached for a lighter or darker shade whenever a
-     badge sat on an unusual ground, and each of those needs its own dark
-     counterpart rather than being collapsed into the nearest neighbour. */
-  --ok-fg-deep: #065f46;
-  --ok-border: #86efac;
-
-  --info-border-indigo: #a5b4fc;
 
   /* The brand marks. Aliases rather than new values, so there is still exactly
      one place each brand colour is defined. */
   --brand-primary: var(--primary);
-  /* The brand colour as text. A shade darker than --primary in the light
-     theme: --primary itself is 4.47:1 on white and 3.95:1 on its own 10% tint,
-     just short of 4.5. In the dark one it is too dark to read on the dark
-     surfaces (2.8:1), and --primary itself can't lighten there, because white
-     text sits on it in buttons. */
-  --brand-primary-text: #4f46e5;
 
   /* The keyboard focus ring: at least 3:1 against the surfaces and the page
      it sits on (WCAG 1.4.11), in each theme. */
   --focus-ring: #4338ca;
 
-  /* Filled buttons: white text at least 4.5:1 across the whole gradient (was
-     --primary to --accent, 4.47 and 4.23:1). Theme-invariant, like --primary:
-     the text on them is white in both themes. */
+  /* The bar along the top while a page changes (.nav-progress below). They
+     were the old filled buttons' gradient, held to white text at 4.5:1, and
+     still are, so no company's brand colours move (lib/brand-colour.ts).
+     Theme-invariant, like --primary. */
   --button-from: #4f46e5;
   --button-to: #7c3aed;
   /* The map (components/PointPicker.tsx, its rules in components/ui/ui.css): its tiles are light in both themes, so these don't change in dark mode. */
@@ -104,21 +68,6 @@
   --map-halo: #ffffff;
   --map-shadow: rgba(0, 0, 0, 0.5);
 
-  /* A field's outline, at least 3:1 against the surface it sits on (WCAG
-     1.4.11): the border is what shows where a field is. Was indigo at 25%,
-     1.4:1. */
-  --field-border: #7c8595;
-
-  /* Glass, as tokens rather than literals in the utilities below. The current
-     design's identity is white-tinted glass; on a dark ground white tint reads
-     as fog, so dark needs its own tint and a lower alpha. That is a design
-     decision, which is exactly why it belongs in a token. */
-  --glass-solid: rgba(255, 255, 255, 0.7);
-  --glass-card-bg: rgba(255, 255, 255, 0.55);
-  --glass-card-border: rgba(255, 255, 255, 0.5);
-  --glass-card-hover: rgba(255, 255, 255, 0.75);
-  --glass-card-border-hover: rgba(255, 255, 255, 0.8);
-  --glass-shadow-hover: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
   /* The ground a company's own logo is drawn on, in the side bar and its
      previews (DESIGN.md §5.1). Near-white in both themes on purpose: a logo's
      colours are anyone's, and the side bar is dark in dark mode, so this is
@@ -126,10 +75,10 @@
      there at all. */
   --logo-plate: #f4f6fa;
 
-  /* The sticky header that appears on scroll. Its own tokens rather than the
-     card ones: it sits over moving content, so it needs enough opacity to stop
-     that content reading through it — a translucent bar with a heading bleeding
-     through is not glass, it is a rendering artefact. */
+  /* The sticky header that appears on scroll (components/ui/ui.css). It sits
+     over moving content, so it needs enough opacity to stop that content
+     reading through it — a translucent bar with a heading bleeding through is
+     not glass, it is a rendering artefact. */
   --header-glass-bg: rgba(255, 255, 255, 0.82);
   --header-glass-border: rgba(255, 255, 255, 0.45);
   --header-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
@@ -144,24 +93,7 @@
   --chip-solid-bg: #0f172a;
   --chip-solid-fg: #ffffff;
 
-  /* Translucent whites, which the codebase writes out by hand about a hundred
-     times. They split into two roles that need opposite treatment in dark:
-
-     --veil-*  is elevation, a border, or a hover state. On light it whitens; on
-               dark it also whitens, much more faintly, because lighter is how
-               dark interfaces express raised.
-
-     --panel-* is a surface whose job is to hide what is behind it — a modal, a
-               dropdown, the login card. On dark it has to become a near-opaque
-               dark surface, not a faint white, or the content behind it reads
-               straight through. */
-  --veil-20: rgba(255, 255, 255, 0.2);
-  --veil-50: rgba(255, 255, 255, 0.5);
-
-  --panel-85: rgba(255, 255, 255, 0.85);
-  --panel-90: rgba(255, 255, 255, 0.9);
-
-  /* Black, in the three jobs it does here. Each needs different treatment on a
+  /* Black, in the two jobs it does here. Each needs different treatment on a
      dark ground:
 
      --shadow-*  a drop shadow. Black at 5-10% is simply invisible against a
@@ -169,11 +101,8 @@
                  carrying. Dark needs a far heavier one to read at all.
      --scrim     the dimming layer behind a modal. Stays dark in both themes —
                  its job is to push the page back — but goes deeper on dark,
-                 where a 50% scrim over an already-dark page barely registers.
-     --hairline  a faint dark rule. On dark it has to invert to a faint light
-                 one, like the veils above. */
+                 where a 50% scrim over an already-dark page barely registers. */
   --shadow-weak: rgba(0, 0, 0, 0.1);
-  --shadow-mid: rgba(0, 0, 0, 0.25);
 
   --scrim: rgba(0, 0, 0, 0.5);
 
@@ -192,8 +121,6 @@
   --waiting-on-paper: #7a4b0a;
   --good-on-paper: #05690d;
   --problem-on-paper: #b3093c;
-
-  --hairline: rgba(0, 0, 0, 0.05);
 
   /* The page ground itself. */
   --page-bg: #eef2ff;
@@ -276,18 +203,6 @@ body::before {
   }
 }
 
-@keyframes pulse {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.5;
-  }
-}
-
 /* The "Powered by" signature (components/DashboardShell.tsx), kept as it is
    (DESIGN.md §5.1): floating in the corner on a desktop, at the end of the
    page on a phone. In CSS, not decided by script after the page has run, so
@@ -341,112 +256,6 @@ body::before {
   }
 }
 
-/* Responsive Utilities */
-.lg-hidden {
-  display: block;
-}
-
-.lg-block {
-  display: none;
-}
-
-@media (min-width: 1024px) {
-  .lg-hidden {
-    display: none !important;
-  }
-
-  .lg-block {
-    display: block !important;
-  }
-}
-
-.mobile-hidden {
-  display: none;
-}
-
-.mobile-block {
-  display: block;
-}
-
-@media (max-width: 768px) {
-  .hide-on-mobile {
-    display: none !important;
-  }
-
-  .show-on-mobile {
-    display: flex !important;
-  }
-}
-
-@media (min-width: 769px) {
-  .show-on-mobile {
-    display: none !important;
-  }
-}
-
-.dashboard-chart-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-}
-
-@media (max-width: 1024px) {
-  .dashboard-chart-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.responsive-sidebar-grid {
-  display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 1.5rem;
-}
-
-@media (max-width: 1024px) {
-  .responsive-sidebar-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* The Super Admin dashboard's top row: four stat tiles beside the donut chart.
-   The outer grid is auto-fit, so its column count falls to one on a narrow
-   screen — and asking a child to span 2 columns of a 1-column grid does not
-   clamp, it makes the browser invent an implicit second track. The block then
-   comes out wider than the page and the whole dashboard scrolls sideways, with
-   the first card clipped off the left edge.
-
-   Below the width where two 300px columns can fit, the block stops spanning and
-   simply occupies the single column it is in. Its own 2x2 arrangement of tiles
-   is unchanged. */
-.dashboard-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
-  gap: 2rem;
-  margin-bottom: 3rem;
-}
-
-.dashboard-stats-block {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  grid-column: span 2;
-}
-
-@media (max-width: 700px) {
-  .dashboard-stats-block {
-    grid-column: auto;
-  }
-}
-
-/* On a phone two tiles side by side need more than the ~326px there is, so
-   the block came out wider than its column and the right-hand tiles were cut
-   off. One tile to a row there. */
-@media (max-width: 480px) {
-  .dashboard-stats-block {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 @media (max-width: 600px) {
   /* The "Powered by" mark is fixed to the bottom corner, which is empty margin
      on a desktop and is card content on a phone — it was sitting on top of a
@@ -457,167 +266,6 @@ body::before {
     opacity: 0.5 !important;
     padding: 1.5rem 0 0.5rem;
   }
-}
-
-@media (max-width: 1023px) {
-  .mobile-padding {
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
-  }
-
-  .mobile-gap-dense {
-    gap: 0.75rem !important;
-  }
-
-  .md-hidden {
-    display: none !important;
-  }
-
-
-  .sm-select {
-    padding: 0.35rem 0.5rem !important;
-    font-size: 0.75rem !important;
-    max-width: 100px !important;
-    min-width: unset !important;
-    height: 36px !important;
-    color: var(--text-main) !important;
-    background-image: none !important;
-    background-color: var(--veil-50) !important;
-    -webkit-appearance: none !important;
-    -moz-appearance: none !important;
-    appearance: none !important;
-  }
-
-  .sm-select option {
-    color: var(--text-main) !important;
-    /* Keep options readable */
-  }
-}
-
-/* Glassmorphism Utilities */
-.glass {
-  background: var(--glass-solid);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
-  border-radius: var(--radius);
-}
-
-.glass-card {
-  background: var(--glass-card-bg);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-card-border);
-  border-radius: var(--radius);
-  padding: 1.5rem;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.glass-card:hover {
-  transform: translateY(-5px);
-  background: var(--glass-card-hover);
-  box-shadow: var(--glass-shadow-hover);
-  border-color: var(--glass-card-border-hover);
-}
-
-/* Backward compatibility / default card style */
-.card {
-  background: var(--glass-card-bg);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-card-border);
-  border-radius: var(--radius);
-  padding: 1.5rem;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.card:hover {
-  transform: translateY(-5px);
-  background: var(--glass-card-hover);
-  box-shadow: var(--glass-shadow-hover);
-  border-color: var(--glass-card-border-hover);
-}
-
-/* Glass Variants */
-.glass-success {
-  background: color-mix(in srgb, var(--ok-bg) 40%, transparent);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--ok-border);
-  color: var(--ok-fg-deep);
-}
-
-.glass-warning {
-  background: color-mix(in srgb, var(--warn-bg) 40%, transparent);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--warn-border);
-  color: var(--warn-fg);
-}
-
-.glass-info {
-  background: color-mix(in srgb, var(--info-bg) 40%, transparent);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--info-border-indigo);
-  color: var(--info-fg);
-}
-
-
-/* Modern Inputs */
-.input {
-  width: 100%;
-  padding: 0.625rem 1rem;
-  /* Reduced padding for compact inputs */
-  height: 42px;
-  /* Fixed height instead of min-height */
-  /* --panel-85, not a white literal: this rule sets color to --text-main,
-     which the dark palette makes near-white. A hardcoded white ground under a
-     themed foreground is near-white text on near-white, and .input is on 115
-     elements — every text field in the product. The placeholder has its own
-     colour, so the only rows that looked broken were the ones somebody had
-     actually typed in. */
-  background: var(--panel-85);
-  border: 1px solid var(--field-border);
-  border-radius: 1rem;
-  font-family: inherit;
-  font-size: 1rem;
-  /* Slightly larger text */
-  color: var(--text-main);
-  transition: all 0.2s;
-  backdrop-filter: blur(4px);
-  box-sizing: border-box;
-  /* Ensure padding doesn't affect width */
-  display: flex;
-  /* aligns content for some inputs */
-  align-items: center;
-}
-
-select.input {
-  appearance: none;
-  /* remove default OS styling */
-  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-  background-position: right 1rem center;
-  background-repeat: no-repeat;
-  background-size: 1.5em 1.5em;
-  padding-right: 2.5rem;
-}
-
-html[dir="rtl"] select.input {
-  background-position: left 1rem center;
-  padding-right: 1rem;
-  padding-left: 2.5rem;
-}
-
-.input:focus {
-  background: var(--panel-90);
-  border-color: var(--primary);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 15%, transparent);
-}
-
-/* The click-outside area behind a dialog's panel: it fills the overlay, and
-   the panel (position: relative, a higher z-index) sits on top. It was written
-   as Tailwind's "absolute inset-0", which this project doesn't have, so it had
-   no size and clicking outside a dialog did nothing. */
-.modal-backdrop {
-  position: absolute;
-  inset: 0;
 }
 
 /* Keyboard focus, on everything that can take it (WCAG 2.4.7). Only for the
@@ -665,36 +313,8 @@ html:has(#main-content) {
   outline: none;
 }
 
-/* Modern Buttons */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.75rem 1.5rem;
-  border-radius: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  border: none;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  letter-spacing: 0.025em;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, var(--button-from) 0%, var(--button-to) 100%);
-  color: white;
-  box-shadow: 0 4px 15px color-mix(in srgb, var(--primary) 35%, transparent);
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px color-mix(in srgb, var(--primary) 45%, transparent);
-  filter: brightness(1.1);
-}
-
-/* What a button is doing, for every button: the .btn ones and the half that
-   are styled inline. Before, nothing styled a disabled button at all, so one
+/* What a button is doing, for every button: the building blocks' and any
+   styled inline. Before, nothing styled a disabled button at all, so one
    that had switched itself off while it saved looked exactly as it had a
    moment before, and a click seemed to do nothing.
    The !important is for the inline styles, which would otherwise win. */
@@ -735,23 +355,6 @@ button[aria-busy="true"]::after {
   border-inline-end-color: transparent;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
-}
-
-/* .btn is a flex row with its own gap. */
-.btn[aria-busy="true"]::after {
-  margin-inline-start: 0;
-}
-
-.badge {
-  padding: 0.35rem 0.85rem;
-  border-radius: 2rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  background: var(--veil-50);
-  backdrop-filter: blur(4px);
-  border: 1px solid var(--veil-20);
 }
 
 /* The bar along the top while a page changes (components/NavigationProgress.tsx).
@@ -807,94 +410,6 @@ button[aria-busy="true"]::after {
   background-color: color-mix(in srgb, var(--primary) 60%, transparent);
 }
 
-/* Modern Modal System (Pop-up Page Effect) */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--scrim);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  animation: fadeIn 0.3s ease-out;
-}
-
-.modal-content {
-  background: var(--panel-85);
-  backdrop-filter: blur(20px);
-  border: 1px solid var(--veil-50);
-  box-shadow: 0 25px 50px -12px var(--shadow-mid);
-  border-radius: 2rem;
-  padding: 0;
-  overflow: hidden;
-  animation: modalScaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.modal-header {
-  padding: 1.5rem 2rem;
-  background: var(--veil-50);
-  border-bottom: 1px solid var(--hairline);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.modal-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--text-main);
-  margin: 0;
-}
-
-.modal-body {
-  padding: 2rem;
-}
-
-.modal-footer {
-  padding: 1.5rem 2rem;
-  background: var(--hairline);
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-}
-
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: color 0.2s;
-}
-
-.modal-close:hover {
-  color: var(--brand-primary-text);
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes modalScaleUp {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
 /* Hide native password reveal button in browsers like Edge */
 input::-ms-reveal,
 input::-ms-clear {
@@ -909,21 +424,6 @@ input::-webkit-credentials-auto-fill-button {
   pointer-events: none;
 }
 
-.spinner-small {
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  border-top: 2px solid #fff;
-  width: 16px;
-  height: 16px;
-  animation: spin 1s linear infinite;
-  display: inline-block;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
 /* ── Dark mode (D2) ────────────────────────────────────────────────────────
    One block, because there are two states and the root is always stamped with
    one of them. It was three: "follow the system" stamped no attribute and was
@@ -935,8 +435,9 @@ input::-webkit-credentials-auto-fill-button {
    Status colours are re-derived, never inverted. A #dcfce7 background under
    #166534 text is a light-mode pair; flipping those two produces a colour
    nobody chose. The dark equivalent is a dark tint under a light foreground,
-   picked for contrast on dark — see lib/contrast.test.ts, which holds every
-   pair in both themes to 4.5:1.
+   picked for contrast on dark. The old pages' pairs went with the last
+   styles that used them (PR 223); the building blocks' are --status-* below,
+   and lib/design-tokens.test.ts holds each in both themes to 4.5:1.
 
    Light mode above is untouched — but "no change at all" no longer follows
    from that, and it used to. While the third state existed, somebody on a dark
@@ -959,53 +460,21 @@ input::-webkit-credentials-auto-fill-button {
     --text-muted: #b9c2cc;
     --text-soft: #9aa4af;
 
-    --ok-bg: #0b2b1a;
-    --ok-fg-deep: #9beec0;
-    --ok-border: #1c5c3a;
-
     --danger-solid: #f2565a;
-
-    --warn-bg: #3a2c0d;
-    --warn-border: #6b5117;
-    --warn-fg: #f0c96b;
-
-    --info-bg: #0d2b3d;
-    --info-fg: #7cc9f0;
-    --info-border-indigo: #3d4b7a;
-
-    --brand-primary-text: #a5b4fc;
     --focus-ring: #a5b4fc;
-    --field-border: #6e7681;
 
-    /* Dark glass: its own tint, at a lower alpha. White tint on a dark ground
-       reads as fog rather than as glass. */
-    --glass-border: rgba(255, 255, 255, 0.09);
-    --glass-bg: rgba(255, 255, 255, 0.04);
-    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-    --glass-solid: rgba(22, 27, 34, 0.82);
-    --glass-card-bg: rgba(22, 27, 34, 0.7);
-    --glass-card-border: rgba(255, 255, 255, 0.09);
-    --glass-card-hover: rgba(28, 33, 41, 0.85);
-    --glass-card-border-hover: rgba(255, 255, 255, 0.16);
-    --glass-shadow-hover: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
+    /* The sticky header's glass: its own tint, at a lower alpha. White tint
+       on a dark ground reads as fog rather than as glass. */
     --header-glass-bg: rgba(13, 17, 23, 0.88);
     --header-glass-border: rgba(255, 255, 255, 0.1);
     --header-shadow: 0 4px 30px rgba(0, 0, 0, 0.45);
     --highlight-tint: rgba(168, 85, 247, 0.14);
     --chip-solid-bg: #2b3340;
     --chip-solid-fg: #f0f6fc;
-    --veil-20: rgba(255, 255, 255, 0.06);
-    --veil-50: rgba(255, 255, 255, 0.11);
-
-    --panel-85: rgba(22, 27, 34, 0.91);
-    --panel-90: rgba(22, 27, 34, 0.94);
 
     --shadow-weak: rgba(0, 0, 0, 0.45);
-    --shadow-mid: rgba(0, 0, 0, 0.6);
 
     --scrim: rgba(0, 0, 0, 0.7);
-
-    --hairline: rgba(255, 255, 255, 0.06);
 
     --page-bg: #0b0f14;
     --page-veil-a: color-mix(in srgb, var(--primary) 10%, transparent);
@@ -1063,11 +532,12 @@ input::-webkit-credentials-auto-fill-button {
 }
 
 /* "Reduce motion" (WCAG 2.2.2, 2.3.3; audit M5). For people who ask their
-   device for less motion: the background stops drifting, cards stop lifting,
-   and fades and slides end at once instead of playing. Animations are cut to
-   a single near-instant run rather than removed, so whatever they reveal still
-   ends visible. Loading spinners keep turning, more slowly: they are how the
-   page says it is still working. */
+   device for less motion: the background stops drifting, and fades and
+   slides end at once instead of playing. Animations are cut to a single
+   near-instant run rather than removed, so whatever they reveal still ends
+   visible. Loading spinners keep turning, more slowly: they are how the page
+   says it is still working. The cards and buttons that lifted on hover went
+   with the old styles (PR 223). */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1081,11 +551,6 @@ input::-webkit-credentials-auto-fill-button {
   [style*="spin"] {
     animation-duration: 1.5s !important;
     animation-iteration-count: infinite !important;
-  }
-  .glass-card:hover,
-  .card:hover,
-  .btn-primary:hover {
-    transform: none !important;
   }
 }
 

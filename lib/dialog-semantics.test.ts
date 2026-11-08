@@ -9,13 +9,13 @@ import { join } from "node:path"
  * 2026, C2). Before, only the face camera did; the rest left focus on the
  * page behind them.
  *
- * An overlay is found by its scrim: var(--scrim) drawn inline, or the shared
- * .modal-overlay class (app/globals.css), which draws the same one. A new
- * one is caught whichever way it is written; four that used the class had
- * been missed, and behaved as no dialog at all (Codex review of #36).
+ * An overlay is found by its scrim: var(--scrim) drawn inline. The shared
+ * .modal-overlay class drew the same one, and four that used it had been
+ * missed, behaving as no dialog at all (Codex review of #36); it went with
+ * the old styles (PR 223).
  */
-/** The overlays a file draws: each line opening one, by its scrim or the class that draws it. */
-const scrimsIn = (s: string) => s.split("\n").filter(l => l.includes("var(--scrim)") || l.includes('className="modal-overlay"')).length
+/** The overlays a file draws: each line opening one, by its scrim. */
+const scrimsIn = (s: string) => s.split("\n").filter(l => l.includes("var(--scrim)")).length
 const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
     e.isDirectory() ? files(join(dir, e.name)) : e.name.endsWith(".tsx") ? [join(dir, e.name)] : [])
 
