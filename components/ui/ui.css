@@ -1801,6 +1801,288 @@ a.ui-file-open:focus-visible,
     box-shadow: none;
     background: var(--paper);
   }
+  /* And the page's own ground: the sheet's box is one page tall, so what
+     runs past its first page is printed over the ground, which a page built
+     from the building blocks paints in --page (above). */
+  :root:has(.print-document) body {
+    background: var(--paper);
+  }
+}
+
+/* ── A document's table (§5.5) ── */
+/* A document's lines with several amounts each, such as a client statement's
+   charges: a table on computers and on paper, and on phones a block of lines
+   for each row, as a list's card is (§5.4), its foot too. */
+.ui-doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  font-variant-numeric: tabular-nums;
+}
+.ui-doc-table caption {
+  padding-bottom: var(--space-1);
+  caption-side: top;
+  text-align: start;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: 500;
+}
+.ui-doc-table th,
+.ui-doc-table td {
+  padding: var(--space-2);
+  text-align: start;
+  vertical-align: top;
+}
+.ui-doc-table th:first-child,
+.ui-doc-table td:first-child {
+  padding-inline-start: 0;
+}
+.ui-doc-table th:last-child,
+.ui-doc-table td:last-child {
+  padding-inline-end: 0;
+}
+.ui-doc-table thead th {
+  border-bottom: 1px solid var(--ink);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: 400;
+  white-space: nowrap;
+}
+.ui-doc-table tbody td {
+  border-bottom: 1px solid var(--rule);
+}
+.ui-doc-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.ui-doc-table tfoot th,
+.ui-doc-table tfoot td {
+  border-top: 1px solid var(--ink);
+  font-weight: 600;
+}
+.ui-doc-table .ui-end {
+  text-align: end;
+  white-space: nowrap;
+}
+/* What a row is, and its task: a word with no space in it, such as a link,
+   breaks where it must rather than pushing the amounts out of the sheet. */
+.ui-doc-cell-title,
+.ui-doc-cell-detail {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.ui-doc-cell-detail,
+.ui-doc-card-day,
+.ui-doc-card-detail,
+.ui-doc-card-foot {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.ui-doc-cell-detail,
+.ui-doc-card-day,
+.ui-doc-card-detail {
+  color: var(--muted);
+}
+.ui-doc-table a,
+.ui-doc-cards a {
+  color: var(--brand-text);
+}
+.ui-doc-due {
+  font-weight: 600;
+}
+.ui-doc-cards,
+.ui-doc-cards-foot {
+  display: none;
+}
+.ui-doc-cards {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--ink);
+}
+.ui-doc-card {
+  display: flex;
+  flex-direction: column;
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--rule);
+}
+.ui-doc-card-head,
+.ui-doc-card-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.ui-doc-card-head {
+  font-weight: 500;
+}
+.ui-doc-card-head > :first-child,
+.ui-doc-card-detail {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ui-doc-cards-foot {
+  margin-top: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--ink);
+}
+.ui-doc-cards-count {
+  font-weight: 600;
+}
+@media screen and (max-width: 767px) {
+  .ui-doc-table {
+    display: none;
+  }
+  .ui-doc-cards,
+  .ui-doc-cards-foot {
+    display: block;
+  }
+}
+/* In the table's place when there's nothing in it. */
+.ui-doc-empty {
+  color: var(--muted);
+}
+
+/* ── Client statement (§5.5) ── */
+/* The period, With receipts and the hint about a PDF: a row of their own,
+   above the sheet, at its width, so none of it is printed. */
+.ui-doc-controls {
+  width: 100%;
+  max-width: 736px;
+  margin-inline: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+}
+.ui-doc-controls > .ui-field {
+  flex: 0 1 280px;
+}
+.ui-doc-controls-hint {
+  margin: 0;
+  margin-inline-start: auto;
+}
+@media (max-width: 767px) {
+  .ui-doc-controls > .ui-field {
+    flex-basis: 100%;
+  }
+  .ui-doc-controls-hint {
+    margin-inline-start: 0;
+  }
+}
+/* Its receipts: each one's photo, whole, under its number, what it was for,
+   the day and what was paid. */
+.ui-doc-receipts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ui-doc-receipt-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.ui-doc-receipt {
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ui-doc-receipt figcaption {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  overflow-wrap: anywhere;
+}
+.ui-doc-receipt-number {
+  font-weight: 500;
+}
+/* Printed only: whose statement they're from, under their heading. */
+.ui-doc-receipts-for {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.ui-doc-receipt-photo,
+.ui-doc-receipt-file {
+  box-sizing: border-box;
+  width: 100%;
+  height: 190px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-field);
+  background: var(--page);
+}
+/* A little room inside its frame: a photo whose edge is white would
+   otherwise cover the frame's line where the two meet, on paper. */
+.ui-doc-receipt-photo {
+  display: block;
+  padding: var(--space-1);
+  object-fit: contain;
+}
+.ui-doc-receipt-file {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  text-align: center;
+}
+/* What only paper says, and what only a screen shows. */
+.ui-doc-print-only {
+  display: none;
+}
+@media screen and (max-width: 767px) {
+  .ui-doc-receipt-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+  .ui-doc-receipt-photo,
+  .ui-doc-receipt-file {
+    height: 140px;
+  }
+}
+/* A client statement, printed (§5.5): its table's headings start each page
+   it runs onto, its foot comes once, at its end, and no row is split; its
+   receipts start on a new page, headed as the sheet is and under a line
+   saying whose they are, four to a page and each whole. */
+@media print {
+  .ui-doc-print-only {
+    display: block;
+  }
+  .ui-doc-screen-only {
+    display: none;
+  }
+  .ui-doc-table thead {
+    display: table-header-group;
+  }
+  .ui-doc-table tr {
+    break-inside: avoid;
+  }
+  /* A table's foot is repeated at the foot of each page it runs onto: its
+     sums would stand under the first page's rows as if they were all. */
+  .ui-doc-table tfoot {
+    display: table-row-group;
+  }
+  .ui-doc-receipts {
+    break-before: page;
+  }
+  .ui-doc-receipts > .ui-doc-group-title {
+    font-size: var(--text-xl);
+    line-height: var(--leading-xl);
+  }
+  .ui-doc-receipt-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-6);
+  }
+  .ui-doc-receipt {
+    break-inside: avoid;
+  }
+  .ui-doc-receipt-photo,
+  .ui-doc-receipt-file {
+    height: 100mm;
+    border-radius: 0;
+    background: none;
+  }
 }
 
 /* ── Check-in (§5.5) ── */
@@ -2789,6 +3071,14 @@ a.ui-file-open:focus-visible,
   justify-content: space-between;
   gap: var(--space-3);
   min-height: 30px;
+}
+/* More than one action on a section's heading, such as Statement and Mark
+   collected on a client's Charges. */
+.ui-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }
 .ui-section-title {
   margin: 0;

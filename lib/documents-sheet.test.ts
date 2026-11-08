@@ -81,6 +81,17 @@ describe("the sheet", () => {
         expect(css.indexOf("@media print")).toBeGreaterThan(css.indexOf(".ui-doc {"))
         expect(print).toMatch(/\.ui-doc \{[^}]*padding: 0;[^}]*max-width: none;[^}]*border: none;[^}]*box-shadow: none;[^}]*background: var\(--paper\);/)
     })
+
+    it("prints on white on every page it runs onto", () => {
+        // The sheet's box is one page tall; what runs past the first page is
+        // printed over the page's own ground, which a building-block page
+        // paints in --page (PR 227: a statement's second page was blue-grey).
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        const print = css.slice(css.indexOf("@media print"))
+        expect(print).toMatch(/:root:has\(\.print-document\) body \{\s*background: var\(--paper\);\s*\}/)
+        // Later than, and as specific as, the rule that paints the ground.
+        expect(css.indexOf(":root:has(.print-document) body {")).toBeGreaterThan(css.indexOf(":root:has(.ui-page) body {"))
+    })
 })
 
 describe("a payslip", () => {

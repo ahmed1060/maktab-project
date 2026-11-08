@@ -31,6 +31,10 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     CHARGE_CONFIRMATION_REQUIRED: { status: 400, message: "Confirm the charges to collect, as their client's page lists them." },
     CHARGE_LIST_CHANGED: { status: 409, message: "The charges to collect changed since you looked. Here they are as they are now." },
     CHARGE_NOT_COLLECTED: { status: 409, message: "This charge hasn't been collected, so there's nothing to undo." },
+    // A client's statement (CLIENTS_PLAN.md §6.9).
+    STATEMENT_CLIENT_REQUIRED: { status: 400, message: "Say which client the statement is for." },
+    STATEMENT_COMPANY_WIDE: { status: 403, message: "A client's statement lists all its charges, so it's for whoever sees all the company's charges." },
+    STATEMENT_TOO_MANY: { status: 400, message: "This period has more than 200 charges, more than one statement holds. Pick a shorter period." },
     // Cash advances (CLIENTS_PLAN.md §7).
     CASH_ADVANCE_COMPANY_REQUIRED: { status: 400, message: "Pick a company to see its cash advances." },
     CASH_ADVANCE_NOT_FOUND: { status: 404, message: "That cash advance isn't there. Refresh the page to see it as it is now." },

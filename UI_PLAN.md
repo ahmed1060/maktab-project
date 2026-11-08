@@ -577,7 +577,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      Engineering, merged in #224 on 2026-11-08; then the icon a company
      chooses for a module, from 48 of the app's own, merged in #225 on
      2026-11-08 (§4.4); then ending a contract where the company's
-     package has no Payroll, which records no settlement, in #226;
+     package has no Payroll, which records no settlement, merged in #226
+     on 2026-11-08; then a client's statement, to print or save as a PDF,
+     in #227 (`CLIENTS_PLAN.md` §6.9);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5108,3 +5110,56 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     digits its own and nothing scrolling sideways (36 checks). With HR,
     the statement is as it was.
   - The web interface audit found nothing to change.
+- **2026-11-08:** A client's statement (#227; `CLIENTS_PLAN.md` §6.9;
+  `DESIGN.md` §5.5, Client statement and a document's table), from its
+  mock-up. A client's charges were on screen only, on its page and the
+  Costs page's Charged to clients tab: none of it could be printed or
+  sent to the client.
+  - Statement, beside Mark collected on the client's Charges, opens it for
+    the dates picked there, or last month where none were. It's there for
+    whoever sees all the company's charges: a Team Leader, who sees their
+    team's only, doesn't get it, and the server refuses them too.
+  - The page header has Print. Above the sheet, at its width, are the
+    period, With receipts and a hint that the print dialog saves a PDF;
+    the page's address keeps the period and the tick.
+  - The sheet lists the period's charges in a document's table, a new
+    building block: Paid, Service fee, Total and status, its foot counting
+    them and summing the three. On a phone each charge is a block of
+    lines. Then Charged in this period, Collected, what's still due from
+    before the period, and Still due, with a note saying what's due.
+  - The receipts follow, numbered as the list numbers them, each photo
+    whole; printed, from a new page, four to a page. A PDF opens from its
+    place, and printed, says it's a file of its own.
+  - Printed, the table's headings start each page it runs onto, no row is
+    split, and its rules are in a grey that prints, `--rule-on-paper`.
+  - At most 200 charges: a longer period asks for a shorter one.
+  - In the browser, against the scratch database, with Acme Supplies
+    charged 10 times in October, three of them collected on 2 November,
+    one charge from September still due, and three receipts, one of them
+    a PDF: before, the client's Charges had no Statement and the address
+    was no page. Now the Admin's Statement opens October, its sums as the
+    database has them, printed on three A4 pages with the receipts on the
+    third. Unticked, the receipts and their numbers go; 29 October alone
+    has its 9 charges and what was due before it; 201 charges ask for a
+    shorter period. The Team Leader gets no Statement, and the address
+    says there's no such statement; a role with all the company's
+    charges, and the Super Admin, get it. In English on a computer and in
+    Arabic on a phone, nothing scrolling sideways (27 and 24 checks).
+  - Found in the browser flows, printed: every page after the first
+    showed the page's ground, the table's foot was repeated at each
+    page's foot, days broke over two lines, the receipts' line saying
+    whose they are was larger than their heading, and a photo whose edge
+    is white covered its frame's line. On a phone, in Arabic, a charge
+    described with a link put its total outside the sheet. All are fixed,
+    `DESIGN.md` first. What was bought, the person's own words, keeps its
+    own direction, as the client's Charges has it.
+  - The web interface audit found nothing more to change. The receipts'
+    photos load as the page opens, not as they're scrolled to: one not
+    loaded yet could print blank.
+- **2026-11-08:** From Codex's review of #227: a client's statement page
+  shows only the statement fetched for its address. With the period
+  cleared, the one for the dates before was kept while last month's
+  loaded, shown as last month's and printable, and it stayed in place of
+  last month's refusal where that had more than 200 charges. Meanwhile
+  the page header still names the client, and the period is blank until
+  last month's statement comes.

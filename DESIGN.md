@@ -1192,11 +1192,60 @@ These are built once, in the building-blocks PR, and every page uses them
     so the colour is never the only signal, and a bar prints where a fill
     wouldn't.
   - It's in the page's language, digits too.
-  - Printed, the sheet is all there is: black on white, without the app
-    around it, with 18mm margins, and its notes' bars in the colours they
-    have on a light screen, from dark mode too.
+  - Printed, the sheet is all there is: black on white on every page it
+    runs onto, without the app around it, with 18mm margins, and its notes'
+    bars in the colours they have on a light screen, from dark mode too.
   - One that isn't there, or isn't theirs, says so. One that didn't load
     says that instead, with Try again (§5.5, A list that didn't load).
+- **A document's table:** a document's lines with several amounts each,
+  such as a client statement's charges.
+  - Its column headings are `--text-sm` in `--muted`, over a 1px rule in
+    `--ink`. A 1px `--rule` is between its rows. Its amounts are on the end
+    side, in even-width digits. A day, and a status with its day such as
+    Collected 2 Nov, stay on one line: the column saying what it is wraps
+    instead. Its foot, such as how many and their sums, is weight 600, over
+    a 1px rule in `--ink`.
+  - On phones, each row is a block of lines, as a list's card is (§5.4):
+    its day; what it is, with its total on the end side; then the rest.
+  - Printed, its headings start every page it runs onto, its foot comes
+    once, at its end, no row is split between two pages, and its rules are
+    in `--rule-on-paper`, a grey that prints where `--rule` all but
+    vanishes.
+- **Client statement:** a document of what one client was charged in a
+  period, with the receipts, to send to the client or check against their
+  records.
+  - It's opened from Statement, beside Mark collected on the client's
+    Charges, by whoever sees all the company's charges. A Team Leader sees
+    only their team's tasks' charges, so they don't get it: a statement
+    that left some out would mislead the client.
+  - Above the sheet, as for any document: Print, the page header's primary
+    button. On a row of its own at the sheet's width: the period, With
+    receipts, ticked as it opens, and a hint that the print dialog saves it
+    as a PDF. The period is the dates picked on the client's Charges, or
+    last month where none were. The page's address keeps both.
+  - Its details: the client, with its owner under its name; the period;
+    and the day it was issued. Each charge's status, and what's due, are as
+    they are that day.
+  - Its charges are those added to the client's tasks in the period and
+    not left off its bill, oldest first, in a document's table: the day;
+    what was bought, with its task and its receipt's number, or No
+    receipt, under it; Paid, Service fee and Total; and Due, or Collected
+    and the day. Its foot counts them and sums the three amounts. With none
+    in the period, the table's place says so.
+  - Its totals: Charged in this period; Collected, taken off; Still due
+    from before the period's first day, only where some is; and Still due,
+    the figure the statement is for, its last total.
+  - A note says what's still due and for how many charges, with the
+    Waiting on someone colour, or that nothing is, with the Good colour.
+  - With receipts, they follow under Receipts: each one's photo, whole,
+    with its number, what was bought, the day and what was paid above it,
+    four to a row on computers and two on phones. Printed, they start on a
+    new page, headed Receipts in `--text-xl`, as the sheet's company is,
+    with a line in `--text-sm` under it saying whose statement they're
+    from; four to a page, each whole. A receipt that's a PDF opens from its
+    place there; printed, it says it's a file of its own.
+  - A period with more charges than one statement holds (200) says so,
+    and asks for a shorter one.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
@@ -1947,3 +1996,8 @@ changed:
   would record, a payroll statement such a company has no screen for, and
   ending the contract recorded it. A cash advance still held became one of
   payroll's debts, which no screen there shows.
+- **2026-11-08:** A client statement (§5.5, Client statement and a
+  document's table), from `CLIENTS_PLAN.md` §9. A client's charges were on
+  screen only, on its page and the Costs page's Charged to clients tab:
+  none of it could be printed or sent to the client. A document's lines
+  had one amount each.

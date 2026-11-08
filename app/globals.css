@@ -121,6 +121,9 @@
   --waiting-on-paper: #7a4b0a;
   --good-on-paper: #05690d;
   --problem-on-paper: #b3093c;
+  /* A document's table's rules on paper (DESIGN.md §5.5, A document's
+     table): --rule is all but white, and gone once printed. */
+  --rule-on-paper: #9aa4b1;
 
   /* The page ground itself. */
   --page-bg: #eef2ff;
@@ -524,6 +527,7 @@ input::-webkit-credentials-auto-fill-button {
         --status-waiting-fg: var(--waiting-on-paper);
         --status-good-fg: var(--good-on-paper);
         --problem-text: var(--problem-on-paper);
+        --rule: var(--rule-on-paper);
     }
 
     @page {
