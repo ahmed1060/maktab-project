@@ -845,6 +845,14 @@ These are built once, in the building-blocks PR, and every page uses them
     are in, and the main button waits for its own: the figure confirmed is
     the figure recorded. Screen readers hear the figures once they're in.
     One that didn't load says so, with Try again.
+    - Where what it would record belongs to a module the company's package
+      doesn't include, it isn't there (Page layout, above), whoever opens
+      the dialog: the record follows the company's package. Ending a
+      contract without Payroll records no settlement, so the dialog shows
+      none. What they still hold of a cash advance stays on their advance,
+      to be returned, and a note waiting on someone says so, with the
+      amount, where the statement would be. The main button still waits
+      until it's worked out for what's picked.
   - One that asks who takes over, such as a leader's team when they stop
     leading it, names whom it's about, each in a list, then who takes
     them, with no one among the choices. Answered, it stays open until the
@@ -1934,3 +1942,8 @@ changed:
   it in place of the module's icon, never filled, at a size of its own.
   The dialog marked none of the 60 while the company had none of its own,
   as the module's own wasn't among them.
+- **2026-11-08:** Ending a contract where the company's package doesn't
+  include Payroll (§5.5, Dialog). The dialog showed the settlement it
+  would record, a payroll statement such a company has no screen for, and
+  ending the contract recorded it. A cash advance still held became one of
+  payroll's debts, which no screen there shows.

@@ -575,7 +575,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      any more, removed in #223, merged on 2026-11-08; then the motion of
      menus, dialogs, toasts and the side bar, with Emil Design
      Engineering, merged in #224 on 2026-11-08; then the icon a company
-     chooses for a module, from 48 of the app's own, in #225 (§4.4);
+     chooses for a module, from 48 of the app's own, merged in #225 on
+     2026-11-08 (§4.4); then ending a contract where the company's
+     package has no Payroll, which records no settlement, in #226;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5072,3 +5074,37 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - the web interface audit found the dialog's buttons missing from the
     list of controls that take a tap at once, with no grey flash, as the
     emoji were. They're in it now.
+- **2026-11-08:** A module's icon was merged in #225. Ending a contract
+  where the company's package doesn't include HR comes next, in #226
+  (`DESIGN.md` §5.5, Dialog; `CLIENTS_PLAN.md` §7.3). It was left out of
+  #202, as it changes what ending a contract records.
+  - Ending a contract there records the ending alone, its team handed
+    over as ever. It recorded a settlement, a payroll statement no screen
+    there shows, and any debt the person owed back.
+  - The dialog shows no settlement: it showed one, worked out from a
+    salary such a company doesn't keep, and refused a day in a month they
+    had none. What they still hold of a cash advance is said where the
+    statement would be, as one waiting on someone. End contract still
+    waits until that's worked out for the day picked.
+  - That cash advance stays on their advance, on the Cash advances tab,
+    to be returned. It became a debt, which only Payroll's screens show,
+    as did what came back to them once they'd gone, such as a cost's part
+    put back, and what they held as an ending dated ahead took effect.
+  - The record follows the company's package, whoever ends the contract:
+    the Super Admin's dialog reads the package from the company itself,
+    where their session has everything.
+  - A person's settlements, listed on their history, are Payroll's to the
+    API as their payslips and debts are.
+  - In the browser, against the scratch database, with Delta Sites sold
+    Company Management without HR and Sami Nabil holding 750 of a cash
+    advance: before, the dialog showed a settlement of 2,533.33 owed to
+    them, for the company's Admin and the Super Admin alike, and ending
+    their contract recorded it, the 750 a debt it took. Now the dialog
+    shows no statement, as it opens or once it's worked out, for either:
+    only that the 750 stays on the Cash advances tab. Ended the day
+    before, the contract ends at once with no settlement or debt, and
+    they're on the Cash advances tab, no longer at work, holding 750.00.
+    In English on a computer and in Arabic on a phone, the Arabic's
+    digits its own and nothing scrolling sideways (36 checks). With HR,
+    the statement is as it was.
+  - The web interface audit found nothing to change.

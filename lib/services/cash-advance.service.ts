@@ -10,6 +10,7 @@ import { filterTimeZone } from "@/lib/services/filter-zone"
 import { uploadedHere } from "@/lib/services/cost-receipts"
 import type { Paging } from "@/lib/pagination"
 import { owedTo } from "@/lib/services/costs-query"
+import { companyHasModule } from "@/lib/services/company-package"
 import {
     CASH_ADVANCE_NOTE_MAX, HANDOVER_FOLDER, RECORDED_KINDS, balanceAfter, cashAdvancesInUse, dayOf, signedAmount, type RecordedKind,
 } from "@/lib/cash-advances"
@@ -247,10 +248,11 @@ export class CashAdvanceService {
                     },
                 })
                 // Someone whose contract has ended holds nothing: a correction
-                // finding they held more makes it a debt, as at their leaving (§7.3).
+                // finding they held more makes it a debt, as at their leaving
+                // (§7.3). Where the package has no Payroll, it stays on theirs.
                 if (now.status === GONE && after > 0) {
-                    await CashAdvanceService.toDebt(tx, companyId, person.id, null, { dueDate: new Date(), by: { id: session.user.id, name: session.user.name } })
-                    return { entry: entryOf(entry), balance: 0 }
+                    const debt = await CashAdvanceService.toDebt(tx, companyId, person.id, null, { dueDate: new Date(), by: { id: session.user.id, name: session.user.name } })
+                    if (debt) return { entry: entryOf(entry), balance: 0 }
                 }
                 return { entry: entryOf(entry), balance: after }
             })
@@ -344,7 +346,8 @@ export class CashAdvanceService {
             })),
         })
         // Someone whose contract has ended holds nothing: what's put back on
-        // theirs becomes a debt at once, as at their leaving (§7.3).
+        // theirs becomes a debt at once, as at their leaving (§7.3), where the
+        // package has Payroll (toDebt).
         for (const userId of gone) await CashAdvanceService.toDebt(tx, companyId, userId, null, { dueDate: new Date(), by })
     }
 
@@ -356,6 +359,14 @@ export class CashAdvanceService {
      * counted, and anything else since is refused, as the statement would no
      * longer add up. Null counts whatever they hold, as an ending dated ahead
      * takes effect. Null when nothing is held.
+     *
+     * Debts are payroll's, recovered through payroll or the final settlement,
+     * so whatever they hold becomes one only where the company's package
+     * includes Payroll. Without it, nothing could recover the debt and no
+     * screen there shows one: the balance stays theirs, on the Cash advances
+     * tab, until its return is recorded, and this is null. What a settlement
+     * counted is a debt all the same: a settlement is only worked out where
+     * there's Payroll (SettlementService.preview).
      */
     static async toDebt(
         tx: Prisma.TransactionClient,
@@ -364,6 +375,7 @@ export class CashAdvanceService {
         counted: number | null,
         debt: { dueDate: Date; by: { id: string; name?: string | null } },
     ) {
+        if (counted === null && !(await companyHasModule(companyId, "PAYROLL", tx))) return null
         await CashAdvanceService.lockPerson(tx, userId)
         const held = await balanceOf(tx, companyId, userId)
         if (counted !== null && held !== cents(counted)) throw new Error("CASH_ADVANCE_CHANGED")

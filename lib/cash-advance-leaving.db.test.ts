@@ -105,6 +105,8 @@ describe.skipIf(!ADMIN_URL)("leaving with a cash advance held, in Postgres", () 
     it("counts what's held as a debt the settlement recovers, before the contract ends", async () => {
         await give("e1", 1000)
         const preview = await Settlements.preview("e1", LAST_DAY)
+        // A company with no package has everything, Payroll too.
+        if (!preview.settles) throw new Error("no settlement worked out")
         expect(preview.cashAdvanceHeldMinor).toBe(100_000)
         expect(preview.debtsOutstandingMinor).toBe(100_000)
         expect(preview.debtRecoveredMinor).toBe(100_000)
@@ -117,7 +119,7 @@ describe.skipIf(!ADMIN_URL)("leaving with a cash advance held, in Postgres", () 
         const [debt] = await debtsOf("e1")
         expect(debt).toMatchObject({ amount: 1000, recovered: 1000, status: "SETTLED", source: "CASH_ADVANCE", sourceId: expect.any(String) })
         expect(advanceDebt?.amount.toString()).toBe("1000")
-        expect(Number(settlement.debtRecoveredAmount)).toBe(1000)
+        expect(Number(settlement?.debtRecoveredAmount)).toBe(1000)
         // The entry that took it there, which the debt names, in their history.
         const { rows } = await db.query(`SELECT kind, amount::float, "recordedByName" FROM "CashAdvanceEntry" WHERE id = $1`, [debt.sourceId])
         expect(rows).toEqual([{ kind: "DEBT", amount: -1000, recordedByName: "Amal One" }])

@@ -7,15 +7,15 @@ import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import DatePickerSingle from '@/components/DatePickerSingle'
 import { Button, Dialog, DialogActions, DocGroup, DocLine, DocNote, DocTotal, Field, TextArea } from '@/components/ui'
 import { apiErrorText } from '@/lib/api-error-text'
-import { accessEndsNow, dayLabel, endContractRefusal, handoffRefusal, lastDayErrors, TEAM_LEADERS, undecidedDays, type Settlement } from '@/lib/end-contract'
+import { accessEndsNow, dayLabel, endContractRefusal, handoffRefusal, lastDayErrors, TEAM_LEADERS, undecidedDays, type Ending, type Settlement } from '@/lib/end-contract'
 import { countOf } from '@/lib/plural'
 import { fetcher, fetchRetrying } from '@/lib/swr-fetcher'
 import type { TranslationKey } from '@/lib/translations'
 import { TeamHandOffDialog, type Leader, type Person } from './TeamHandOffDialog'
 
-/** What the dialog has for a date: its settlement, why it can't be worked out, or that it didn't load. */
+/** What the dialog has for a date: what ending would record, why it can't be worked out, or that it didn't load. */
 type Shown =
-    | { for: string; settlement: Settlement; undecided: number }
+    | { for: string; settlement: Ending; undecided: number }
     | { for: string; refused: TranslationKey }
     | { for: string; failed: true }
 
@@ -41,14 +41,23 @@ function Named({ text, name }: { text: string; name: string }) {
  * What's wrong is said under the date where it's about it, above the buttons
  * otherwise, in the reader's language. A leader with a team is asked where it
  * goes first, in the hand-off, and the contract ends with the answer.
+ *
+ * Where the company's package has no Payroll, ending records no settlement,
+ * so there's none to show: what they still hold of a cash advance, which
+ * stays on it, is said in its place (DESIGN.md §5.5, Dialog).
  */
-export function EndContractDialog({ userId, name, status, leadsATeam = false, today, onClose, onDone }: {
+export function EndContractDialog({ userId, name, status, leadsATeam = false, settles = true, today, onClose, onDone }: {
     userId: string
     name: string
     /** ARCHIVED reinstates instead. */
     status: string
     /** They're a Team Leader, so a team may be theirs to hand over. */
     leadsATeam?: boolean
+    /**
+     * Whether ending it records a settlement: the company's package has
+     * Payroll. Until the date's answer says, which then decides.
+     */
+    settles?: boolean
     /** Today in the company's calendar: the leaving date offered first, and what's past. */
     today: string
     onClose: () => void
@@ -107,7 +116,11 @@ export function EndContractDialog({ userId, name, status, leadsATeam = false, to
     const unavailable = !!current && 'failed' in current
     // The last one worked out stays while the next is, so the dialog doesn't jump.
     const settled = shown && 'settlement' in shown ? shown : null
+    const preview = settled?.settlement ?? null
+    // A statement, as the date's answer has it; the package's until one is in.
+    const statement = preview ? preview.settles : settles
     const refusedDate = current && 'refused' in current ? t(current.refused) : undefined
+    const retry = () => { setShown(null); setAttempt(n => n + 1) }
 
     /**
      * Ends the contract, or reinstates it. `reassignTo` is the hand-off's
@@ -198,15 +211,20 @@ export function EndContractDialog({ userId, name, status, leadsATeam = false, to
                         <>
                             <DatePickerSingle name="lastWorkingDay" label={t('last_working_day')} hint={t('last_working_day_hint')} error={errors.lastWorkingDay ?? refusedDate}
                                 value={lastWorkingDay} disabled={busy} onChange={day => { setLastWorkingDay(day); setErrors({}); setError(null) }} />
-                            {lastWorkingDay && !refusedDate && (
-                                <SettlementPreview
-                                    settlement={settled?.settlement ?? null}
+                            {lastWorkingDay && !refusedDate && (statement
+                                ? <SettlementPreview
+                                    settlement={preview?.settles ? preview : null}
                                     undecided={settled?.undecided ?? 0}
                                     stale={!!settled && settled.for !== lastWorkingDay}
                                     failed={unavailable}
-                                    onRetry={() => { setShown(null); setAttempt(n => n + 1) }}
+                                    onRetry={retry}
                                 />
-                            )}
+                                : <WithoutSettlement
+                                    held={preview && !preview.settles ? preview.cashAdvanceHeld : null}
+                                    stale={!!settled && settled.for !== lastWorkingDay}
+                                    failed={unavailable}
+                                    onRetry={retry}
+                                />)}
                             <Field label={t('end_contract_reason')}>{p => (
                                 <TextArea {...p} name="reason" dir="auto" rows={2} value={reason} disabled={busy} onChange={e => setReason(e.target.value)} />
                             )}</Field>
@@ -236,6 +254,42 @@ export function EndContractDialog({ userId, name, status, leadsATeam = false, to
             )}
         </>
     )
+}
+
+/**
+ * Where the company's package has no Payroll (DESIGN.md §5.5, Dialog): no
+ * statement, since ending records none. What they still hold of a cash
+ * advance stays on it, on the Cash advances tab, until its return is
+ * recorded, and is said where the statement would be, as one waiting on
+ * someone. Nothing at all when they hold none.
+ */
+export function WithoutSettlement({ held, stale = false, failed = false, onRetry }: {
+    /** What they still hold of a cash advance; null until it's worked out. */
+    held: number | null
+    /** Worked out for the date before, while the date picked's is. */
+    stale?: boolean
+    /** It didn't load, after its three tries. */
+    failed?: boolean
+    onRetry?: () => void
+}) {
+    const { t, locale } = useLanguage()
+    const money = (n: number) => new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
+
+    let content
+    if (failed) {
+        content = <>
+            <p className="ui-error">{t('end_contract_check_failed')}</p>
+            <Button size="sm" onClick={onRetry}>{t('try_again')}</Button>
+        </>
+    } else if (held === null) {
+        content = <p className="ui-hint">{t('loading')}</p>
+    } else if (held > 0) {
+        content = <DocNote tone="waiting">{t('end_contract_advance_stays').replace('{amount}', money(held))}</DocNote>
+    } else {
+        return null
+    }
+    // Said to screen readers as it comes, as the statement is.
+    return <div className="ui-settlement" aria-live="polite" aria-busy={stale || undefined}>{content}</div>
 }
 
 /**
