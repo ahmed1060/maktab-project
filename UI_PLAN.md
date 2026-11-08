@@ -579,7 +579,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      2026-11-08 (§4.4); then ending a contract where the company's
      package has no Payroll, which records no settlement, merged in #226
      on 2026-11-08; then a client's statement, to print or save as a PDF,
-     in #227 (`CLIENTS_PLAN.md` §6.9);
+     merged in #227 on 2026-11-08 (`CLIENTS_PLAN.md` §6.9); then two bug
+     fixes, a pay Add employee couldn't read and the sessions a new
+     password ends, in #228;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5163,3 +5165,45 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   last month's refusal where that had more than 200 charges. Meanwhile
   the page header still names the client, and the period is blank until
   last month's statement comes.
+- **2026-11-08:** Two bug fixes (#228).
+  - Add employee saved a pay typed as "1e" as 0, and a day off credit
+    typed that way too. In a number field, the browser reads what it
+    can't make a number of as empty, as though it had been left empty,
+    and the server counts an empty one as 0. It's now said wrong under
+    its field before anything is sent, and the pay field takes the focus,
+    as the profile form has done since #193.
+  - A new password ends the account's other sessions: a temporary one an
+    Admin gives, one set on the profile, one's own or someone else's, and
+    the one the Change password page asks for. Only a reset by email did
+    (#198), so the account stayed signed in wherever it was, such as by
+    someone who had learned the old password. Each session ends at its
+    next check, within a minute. The browser a person sets their own from
+    stays signed in: the account keeps it, at the version that ended the
+    others (`ROLES_PLAN.md` §4.4), so nothing it asks meanwhile is
+    refused.
+  - In the browser, against the scratch database: before, "1e" and "-"
+    were saved as a pay of 0.00 and a day off credit of 0, and a minute
+    after each new password the account's other browsers were still
+    signed in. Now both are said wrong under their fields and nothing is
+    saved; typed again, the person is added with them. Within a minute of
+    one's own password on the profile, an Admin's temporary password and
+    one set on someone's profile, their other browsers are signed out.
+    The browser that set its own, and the Change password page, stay
+    signed in through their next check with nothing they asked refused,
+    their cookies at the new version. In English on a computer and in
+    Arabic on a phone (23 checks each).
+  - Found in the browser flows: Save on the Change password page does
+    nothing to the session if it's pressed before the page has loaded it,
+    as next-auth's update() does nothing then, so the page comes back,
+    the password changed. It was so before this, and seen only when the
+    dev server reloaded the page; a person typing a password twice takes
+    longer than the page does.
+  - The web interface audit found nothing to change.
+- **2026-11-08:** From Codex's review of #228: the session a new password
+  of one's own keeps is worked out from the account's row as the write
+  moves it on, the row locked first. Two saves at once from the same
+  browser each kept it at the version after the one both had read, and
+  the account, moved on twice, was past that, so the browser was signed
+  out too. Set from two browsers at once, the first password still ends
+  the other browser's session, and neither is kept (`ROLES_PLAN.md`
+  §4.4).

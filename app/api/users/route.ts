@@ -1,4 +1,6 @@
 import { withStandardHandler } from "@/lib/api-utils"
+import { getToken } from "next-auth/jwt"
+import type { NextRequest } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { UserRole, UserStatus } from "@prisma/client"
 import { ApiResponse } from "@/lib/api-response"
@@ -231,8 +233,12 @@ export const PUT = withStandardHandler(async (req, session, json) => {
     }
 
     try {
-        // 3. Service
-        const result = await UserService.update(validation.data, session)
+        // 3. Service. A new password of one's own keeps the session it's set
+        // from, which is named in its cookie (lib/session-kept.ts).
+        const from = id === session.user.id && validation.data.password
+            ? await getToken({ req: req as NextRequest, secret: process.env.NEXTAUTH_SECRET })
+            : null
+        const result = await UserService.update(validation.data, session, from)
         return ApiResponse.success(shapeUser(session.user, result as any))
     } catch (error: any) {
         // 4. Error Mapping

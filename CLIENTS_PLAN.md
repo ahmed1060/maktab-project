@@ -1145,9 +1145,6 @@ balance first, automatically:
 
 ## 9. Later (future enhancements)
 
-- **"Paid by the company."** A tick on the Costs page for a cost the company
-  paid directly (office cash or card), so the employee isn't paid back. Until
-  then, every cost is paid back to the employee who added it.
 - **Paid to,** if it's dropped now (§6.7): who received the money, from a
   saved list, for totals per shop.
 - **An advance for a particular task or client,** in addition to the general
@@ -1180,6 +1177,10 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **A client statement with a running balance** (§6.9). Charges are
   collected one by one, not paid in sums, and marking one uncollected
   would change what an old statement said.
+- **"Paid by the company,"** a tick for a cost the company paid directly,
+  from office cash or a card, so the employee isn't paid back: turned down
+  by the product owner on 2026-11-08. Every cost stays paid back to the
+  employee who added it, or from their cash advance (§7).
 
 ---
 
@@ -2365,3 +2366,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   as it is the day it's issued, with what's still due from before as one
   line, and the receipts, printed or saved as a PDF, for whoever sees all
   the company's charges. A client's charges were on screen only.
+- **2026-11-08:** "Paid by the company" turned down (§11), from §9: every
+  cost stays paid back to the employee who added it, or from their cash
+  advance.

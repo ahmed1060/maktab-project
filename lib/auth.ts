@@ -15,6 +15,7 @@ import { headers } from "next/headers"
 import { RateLimiter, getClientIp } from "./api-utils"
 import { countSignIn, forgetSignIn, giveBackSignIn, holdMessage, lockKeyFor, markWrongSignIn, type Counted } from "./sign-in-lock"
 import { signInWhere } from "./sign-in-account"
+import { isKept } from "./session-kept"
 import { MfaService } from "./services/mfa.service"
 import { VerificationCodeService } from "./services/verification-code.service"
 import { TrustedDeviceService } from "./services/trusted-device.service"
@@ -493,7 +494,10 @@ export const authOptions: NextAuthOptions = {
                 token.featureAccess = (user as any).featureAccess || null
                 token.subscription = (user as any).subscription || null
                 token.checkedAt = Date.now()
-                token.jti = uuidv4()
+                // This browser's session, by name, for a new password of the
+                // account's own to keep it (lib/session-kept.ts). Not the jti:
+                // next-auth gives the token a new one each time it writes it.
+                token.sid = uuidv4()
                 // What they may do: their role's grants (ROLES_PLAN.md §4.4).
                 // The Super Admin is outside the role system and holds none.
                 if (user.role !== 'SUPER_ADMIN') Object.assign(token, await RoleService.forToken(user.id as string), { catalogue: CATALOGUE_VERSION })
@@ -503,6 +507,11 @@ export const authOptions: NextAuthOptions = {
                     token.remember = (user as any).remember
                 }
             }
+
+            // A session signed in before sessions had names is given one, kept
+            // the next time its cookie is written (each page asks for its
+            // session as it opens, and that writes it).
+            if (token.sub && !token.sid) token.sid = uuidv4()
 
             // DYNAMIC EXPIRATION LOGIC
             // If the user didn't check "Stay Signed In", we force the token to expire in 24 hours.
@@ -560,12 +569,15 @@ export const authOptions: NextAuthOptions = {
                         const userRole = token.role as string
 
                         let dbVersion = 0
+                        // The session a new password of the account's own kept (lib/session-kept.ts).
+                        let keptSession: string | null = null
                         if (userRole === 'SUPER_ADMIN') {
                             const sa = await prisma.superAdmin.findUnique({
                                 where: { id: userId },
-                                select: { sessionVersion: true, isProtected: true, emailVerifiedAt: true, mfaEnabled: true }
+                                select: { sessionVersion: true, keptSession: true, isProtected: true, emailVerifiedAt: true, mfaEnabled: true }
                             })
                             dbVersion = sa?.sessionVersion || 0
+                            keptSession = sa?.keptSession ?? null
                             // A preview follows the role as it is edited, and
                             // ends with it if it is deleted.
                             if (token.preview) {
@@ -584,7 +596,7 @@ export const authOptions: NextAuthOptions = {
                                 prisma.user.findUnique({
                                     where: { id: userId },
                                     select: {
-                                        sessionVersion: true, status: true, emailVerifiedAt: true, mfaEnabled: true,
+                                        sessionVersion: true, keptSession: true, status: true, emailVerifiedAt: true, mfaEnabled: true,
                                         role: true, roleId: true, assignedRole: { select: { version: true } },
                                         actingUntil: true,
                                         company: {
@@ -621,6 +633,7 @@ export const authOptions: NextAuthOptions = {
                                 prisma.systemSettings.findUnique({ where: { id: 'default' }, select: { maintenanceMode: true, maintenanceMessage: true } })
                             ])
                             dbVersion = u?.sessionVersion || 0
+                            keptSession = u?.keptSession ?? null
                             token.userStatus = u?.status
                             token.companyBanned = u?.company?.isBanned || false
                             token.emailVerified = !!u?.emailVerifiedAt
@@ -667,7 +680,12 @@ export const authOptions: NextAuthOptions = {
                             const tokenVersion = token.sessionVersion as number
 
                             // If DB version is higher than token version, revoke!
-                            if (dbVersion > tokenVersion) {
+                            // Unless this is the session a new password of the
+                            // account's own was set from: it's kept, at the
+                            // version that ended the others.
+                            if (dbVersion > tokenVersion && isKept({ sessionVersion: dbVersion, keptSession }, token)) {
+                                token.sessionVersion = dbVersion
+                            } else if (dbVersion > tokenVersion) {
                                 console.log(`[AUTH] REVOKING session for user ${userId} (Token:${tokenVersion} vs DB:${dbVersion})`)
                                 return {} as any // Emptied: no session (session() above), and signed out (proxy.ts)
                             }

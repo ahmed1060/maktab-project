@@ -72,13 +72,15 @@ describe("setting somebody else's password", () => {
         // account over, so it needs everything the person's role holds (below).
         onRole({ "employees.view": "COMPANY", "employees.edit": "COMPANY", "employees.reset_password": "COMPANY", "records.view": "COMPANY", "records.contribute": "COMPANY", "lists.add": "COMPANY" })
         expect((await put({ id: "emp", password: "a-new-password-123" })).status).toBe(200)
-        expect(fieldsWritten()).toEqual(["mustChangePassword", "password"])
+        // And their sessions end, each at its next check (PR 228).
+        expect(fieldsWritten()).toEqual(["mustChangePassword", "password", "sessionVersion"])
     })
 
     it("of one's own account needs neither", async () => {
         onRole({}, { id: "emp", role: "EMPLOYEE", companyId: "c1" })
         expect((await put({ id: "emp", password: "a-new-password-123" })).status).toBe(200)
-        expect(fieldsWritten()).toEqual(["mustChangePassword", "password"])
+        // Sent with no session cookie, so no session of theirs is kept.
+        expect(fieldsWritten()).toEqual(["mustChangePassword", "password", "sessionVersion"])
     })
 })
 
@@ -139,7 +141,7 @@ describe("taking over somebody else's account", () => {
         asHr()
         expect((await put({ id: "emp", password: "a-new-password-123" })).status).toBe(200)
         expect((await put({ id: "emp", email: "emp.new@c1.test" })).status).toBe(200)
-        expect(fieldsWritten()).toEqual(["email", "mustChangePassword", "password"])
+        expect(fieldsWritten()).toEqual(["email", "mustChangePassword", "password", "sessionVersion"])
     })
 
     it("the temporary password route asks the same", async () => {
@@ -155,7 +157,7 @@ describe("taking over somebody else's account", () => {
             expect((await reset("tl")).status).toBe(403)
             expect(fieldsWritten()).toEqual([])
             expect((await reset("emp")).status).toBe(200)
-            expect(fieldsWritten()).toEqual(["mustChangePassword", "password"])
+            expect(fieldsWritten()).toEqual(["mustChangePassword", "password", "sessionVersion"])
         } finally {
             prismaMock.user.findUnique = findUnique
         }
