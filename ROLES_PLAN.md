@@ -506,6 +506,18 @@ itself out when a request of its own is refused, the heartbeat's at the
 latest, and a server page sends the browser to `/api/auth/ended`, which
 clears its cookie on the way to sign in.
 
+A new password ends the account's sessions in the same way (#228): a
+temporary one an Admin gives, one set on the profile, one's own or someone
+else's, the one the Change password page asks for, and a reset by email
+(#198). The session a person sets their own from is kept. The account
+remembers it in `keptSession`, as the version that ended the others and the
+session's id, which its token is given at sign-in (`sid`), and that
+session's check takes the version up rather than empty its token
+(`lib/session-kept.ts`). It's kept by the server rather than by the browser
+catching up afterwards: a request of its own refused meanwhile would have
+signed the page out. A session the account had already ended, whose check
+hadn't yet come, isn't kept by setting a password.
+
 ---
 
 ## 5. Data model
