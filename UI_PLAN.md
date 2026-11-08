@@ -346,18 +346,17 @@ Three Arabic names were chosen so that no two things share a name
      app match.
    - Icons are imported one at a time, so only the ones used are shipped.
    - Arrows and other icons that point a direction are flipped in Arabic.
-   - Companies can rename modules and pick an emoji for each today. Instead,
-     they'll pick from a short list of about 50 business icons.
+   - Companies rename modules, and since #225 pick each one's icon from a
+     short list of 48 business icons, each module's own among them
+     (`DESIGN.md` §6). Until then they picked any emoji.
    - The side bar draws Phosphor icons since #203, each item's as
-     `DESIGN.md` §6 names it. A company's own emoji for a module still
-     shows there in place of the module's icon, and the Modules tab still
-     offers emoji, until the icons PR.
-   - The setting stays live until the icons PR deploys, so a company can
-     still pick any emoji, a pasted one included, before then. The PR maps
-     every stored choice, not only the defaults: each default emoji to its
-     icon, and anything else to the module's default icon. A company's
-     renamed labels are kept. Production is checked again, read only, just
-     before the PR is merged.
+     `DESIGN.md` §6 names it, and since #225 a company's own icon for a
+     module as it draws the others.
+   - #225 maps every stored choice, not only the defaults: each default
+     emoji to its icon, and anything else to the module's own icon. A
+     company's renamed labels are kept. Production had none to map on
+     2026-11-08, and is checked again, read only, just before #225 is
+     merged.
 5. **Pages move to the building blocks one by one,** each in a small PR,
    after `CLIENTS_PLAN.md`'s steps (§5).
 6. **A brand colour,** set in the settings (§4.6).
@@ -575,7 +574,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      merged on 2026-11-08; then the old pages' shared styles nothing used
      any more, removed in #223, merged on 2026-11-08; then the motion of
      menus, dialogs, toasts and the side bar, with Emil Design
-     Engineering, in #224;
+     Engineering, merged in #224 on 2026-11-08; then the icon a company
+     chooses for a module, from 48 of the app's own, in #225 (§4.4);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5033,3 +5033,29 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     pixel (17 shots). One first shot, the calendar's on a computer, was
     taken before the Tasks page's titles filter had loaded, as the dev
     server had just rebuilt, and matched when taken again.
+- **2026-11-08:** A module's icon, chosen by its company (§4.4, #225). As
+  `DESIGN.md` §6 now says:
+  - a company picks each module's icon in Company settings, Modules, from
+    48 of the app's own icons, each module's own among them. It picked an
+    emoji, from 60 in the dialog or any one pasted into a field under
+    them, and the side bar showed it at a size of its own, never filled;
+  - the dialog's 48 are buttons 44px square, as many to a row as fit,
+    each named for what it draws in the page's language. The one in use
+    is filled, marked and heard as pressed, and focus starts on it; while
+    the company has none of its own, that's the module's own. The emoji
+    were 26px wide on a phone, under the 44px a finger needs, and none
+    was marked while the company had none of its own;
+  - the module's own, picked from the list or with Use the default icon,
+    keeps nothing for the company, so it follows the module's icon;
+  - the side bar draws a company's icon as it draws the others, filled on
+    its page;
+  - a migration maps what companies had chosen
+    (`20261202000000_module_icon_names`): each emoji that was a module's
+    default until #203 becomes the icon that took its place, with or
+    without its variation mark, and any other goes, so the module shows
+    its own. Their names for their modules are kept. Production had none
+    to map on 2026-11-08: none of its 3 companies had an icon or a name of
+    its own;
+  - the API takes only icons from the list. The words for the emoji field
+    went, and the Arabic name and tooltip of each module's icon button are
+    verbal nouns now, where they told the reader what to do.
