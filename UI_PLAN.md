@@ -584,7 +584,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      password ends, merged in #228 on 2026-11-08; then one's own password
      checked by the server where it's asked for, merged in #229 on
      2026-11-08; then Unlock lifting the pause on somebody's password
-     tries, in #230;
+     tries, merged in #230 on 2026-11-08; then the saver's own password,
+     checked by the server, for somebody else's password or email, in
+     #231;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5263,3 +5265,26 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     In English on a computer and in Arabic on a phone (8 checks each).
   - The web interface audit found nothing to change: the pause is shown
     as the sign-in lock is, with the same button.
+- **2026-11-08:** Somebody else's password or email needs the saver's own,
+  checked by the server (#231).
+  - The profile asks for the saver's own password before every save, but
+    only in the browser, and the save didn't check it: a session someone
+    else held could set a person's password, or their email and then reset
+    it, and sign in as them. They're the two ways into an account, which a
+    temporary password already asked the saver's own for.
+  - Missing or wrong, the save is refused and nothing is written, said
+    above the buttons as a wrong password. Its wrong tries are counted
+    with the rest of one's own: five in fifteen minutes, then none, which
+    Unlock lifts.
+  - The rest of a profile isn't asked for it by the server: a new salary
+    asks for a recent authenticator code, and the photo and a suspension
+    are saved on their own.
+  - In the browser, against the scratch database: somebody else's new
+    password or email sent without the saver's own, or with a wrong one,
+    is refused and nothing is written, while the rest of their profile is
+    saved; on their profile, a wrong one in the dialog is said under it,
+    and the right one saves their new password, sent as the Admin's own;
+    a refusal of the save itself is said above the buttons; after five
+    wrong tries, the right one is refused too, and the dialog says so. In
+    English on a computer and in Arabic on a phone (12 checks each).
+  - The web interface audit found nothing to change: nothing new is shown.

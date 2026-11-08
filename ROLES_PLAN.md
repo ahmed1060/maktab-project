@@ -532,6 +532,11 @@ password: five in fifteen minutes (`lib/own-password.ts`). Unlock lifts the
 pause before then, with a sign-in lock, for whoever may reset the person's
 password, never on one's own (#230).
 
+Somebody else's password or email, the two ways into their account, need the
+saver's own password too, checked by the server and counted with the rest of
+their tries (#231), as a temporary password does. Asked after the checks that
+the saver may change them, so a save refused for those isn't a try.
+
 ---
 
 ## 5. Data model

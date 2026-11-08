@@ -16,10 +16,13 @@ export function resetRefusal(error: unknown): TranslationKey {
  * What the server answers about one's own password, by its code, in the
  * page's language (PR 229): too many wrong tries, from the profile's check
  * or the save, and a wrong current password, from a save that came after a
- * right one was checked. Null for anything else.
+ * right one was checked, or a wrong one of the saver's own, for somebody
+ * else's password or email (PR 231). Null for anything else.
  */
 export function ownPasswordRefusal(body: { code?: unknown } | null): TranslationKey | null {
     if (body?.code === 'OWN_PASSWORD_TRIES') return 'own_password_tries'
     if (body?.code === 'CURRENT_PASSWORD_WRONG') return 'incorrect_password'
+    // The saver's own, refused for somebody else's password or email (PR 231).
+    if (body?.code === 'OWN_PASSWORD_WRONG') return 'incorrect_password'
     return null
 }

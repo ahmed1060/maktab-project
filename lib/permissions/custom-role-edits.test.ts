@@ -31,7 +31,12 @@ vi.mock("@/lib/services/settlement.service", () => ({ SettlementService: { previ
 // password given a hash by a test is checked as it is.
 vi.mock("@/lib/own-password", async (original) => {
     const real = await original<typeof import("@/lib/own-password")>()
-    return { ...real, ownPasswordMatches: async (id: string, hash: string, typed: string) => typed === "their-current-one" || real.ownPasswordMatches(id, hash, typed) }
+    // The stand-in password, for one's own and the saver's own alike (PR 231).
+    return {
+        ...real,
+        ownPasswordMatches: async (id: string, hash: string, typed: string) => typed === "their-current-one" || real.ownPasswordMatches(id, hash, typed),
+        confirmOwnPassword: async (saver: { id: string; role: string }, typed: string | undefined) => { if (typed !== "their-current-one") await real.confirmOwnPassword(saver, typed) },
+    }
 })
 
 const users = () => import("@/app/api/users/route")
@@ -78,7 +83,8 @@ describe("setting somebody else's password", () => {
         // With the Employee role's own grants too: setting a password takes the
         // account over, so it needs everything the person's role holds (below).
         onRole({ "employees.view": "COMPANY", "employees.edit": "COMPANY", "employees.reset_password": "COMPANY", "records.view": "COMPANY", "records.contribute": "COMPANY", "lists.add": "COMPANY" })
-        expect((await put({ id: "emp", password: "a-new-password-123" })).status).toBe(200)
+        // With the saver's own password, which somebody else's asks for (PR 231).
+        expect((await put({ id: "emp", password: "a-new-password-123", confirmPassword: "their-current-one" })).status).toBe(200)
         // And their sessions end, each at its next check (PR 228).
         expect(fieldsWritten()).toEqual(["mustChangePassword", "password", "sessionVersion"])
     })
@@ -147,8 +153,8 @@ describe("taking over somebody else's account", () => {
 
     it("is theirs to do to an Employee, whose role they hold all of", async () => {
         asHr()
-        expect((await put({ id: "emp", password: "a-new-password-123" })).status).toBe(200)
-        expect((await put({ id: "emp", email: "emp.new@c1.test" })).status).toBe(200)
+        expect((await put({ id: "emp", password: "a-new-password-123", confirmPassword: "their-current-one" })).status).toBe(200)
+        expect((await put({ id: "emp", email: "emp.new@c1.test", confirmPassword: "their-current-one" })).status).toBe(200)
         expect(fieldsWritten()).toEqual(["email", "mustChangePassword", "password", "sessionVersion"])
     })
 
@@ -174,7 +180,7 @@ describe("taking over somebody else's account", () => {
     it("stays the built-in Admin's to do to their own people", async () => {
         onRole({}, { id: "admin", role: "ADMIN", companyId: "c1" })
         state.session.user = stepUpConfirmed(withGrants({ id: "admin", role: "ADMIN", companyId: "c1" }))
-        expect((await put({ id: "tl", password: "a-new-password-123" })).status).toBe(200)
-        expect((await put({ id: "emp", email: "emp.new@c1.test" })).status).toBe(200)
+        expect((await put({ id: "tl", password: "a-new-password-123", confirmPassword: "their-current-one" })).status).toBe(200)
+        expect((await put({ id: "emp", email: "emp.new@c1.test", confirmPassword: "their-current-one" })).status).toBe(200)
     })
 })

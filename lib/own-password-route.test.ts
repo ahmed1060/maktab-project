@@ -4,6 +4,8 @@ import bcrypt from "bcryptjs"
 /**
  * One's own current password, checked by the server (lib/own-password.db.
  * test.ts has why): what PUT /api/users and POST /api/auth/verify answer.
+ * And the saver's own, for somebody else's password or email (PR 231,
+ * lib/others-password.db.test.ts).
  * These drive the real routes and UserService; the database is a stand-in
  * holding two Super Admins, and its count of wrong tries is set by each test.
  */
@@ -113,9 +115,34 @@ describe("a new password of one's own, on PUT /api/users", () => {
         expect(written).toEqual([])
     })
 
-    it("isn't asked of someone setting somebody else's", async () => {
-        expect((await put({ id: "sami", password: "a-new-password-123" })).status).toBe(200)
-        expect(tries.count).toBe(0)
+    // Theirs isn't asked: the saver's own is (PR 231).
+    it("asks someone setting somebody else's for their own instead, by its code", async () => {
+        for (const body of [{ id: "sami", password: "a-new-password-123" }, { id: "sami", password: "a-new-password-123", confirmPassword: "not-it-at-all" }]) {
+            const res = await put(body)
+            expect(res.status).toBe(403)
+            expect(await res.json()).toMatchObject({ success: false, code: "OWN_PASSWORD_WRONG", error: "Your own password is needed to change someone else's password or email, and that isn't it" })
+        }
+        expect(written).toEqual([])
+        expect(tries.count).toBe(1)
+        expect((await put({ id: "sami", password: "a-new-password-123", confirmPassword: CURRENT })).status).toBe(200)
+        expect(written).toHaveLength(1)
+        expect(tries.count).toBe(1)
+    })
+
+    it("asks it for somebody else's new email too, and not for the rest", async () => {
+        expect((await put({ id: "sami", email: "sami-new@nizmo.test" })).status).toBe(403)
+        expect(written).toEqual([])
+        expect((await put({ id: "sami", firstName: "Sami", email: "sami@nizmo.test" })).status).toBe(200)
+        expect((await put({ id: "sami", email: "sami-new@nizmo.test", confirmPassword: CURRENT })).status).toBe(200)
+        expect(written).toHaveLength(2)
+    })
+
+    it("refuses somebody else's after five wrong tries, even with the right one, by its code", async () => {
+        tries.count = 5
+        const res = await put({ id: "sami", password: "a-new-password-123", confirmPassword: CURRENT })
+        expect(res.status).toBe(429)
+        expect(await res.json()).toMatchObject({ success: false, code: "OWN_PASSWORD_TRIES" })
+        expect(written).toEqual([])
     })
 })
 

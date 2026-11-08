@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
 import { readFileSync, readdirSync } from "node:fs"
 import { Client } from "pg"
+import bcrypt from "bcryptjs"
 import { withGrants } from "@/lib/permissions/test-actors"
 
 /**
@@ -19,10 +20,11 @@ const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.
 
 vi.mock("@/lib/storage", () => ({ supabase: { storage: { from: () => ({ remove: async () => ({ data: [], error: null }) }) } }, uploadToCloud: async () => { throw new Error("no uploads here") } }))
 
+const ADMIN_PASSWORD = "the-admins-own-password"
 const PEOPLE = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now());
 INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId") VALUES
- ('a1', 'a1@x', 'p', 'Amal', 'One', 'ADMIN', 2026, 'a1', 'c1'),
+ ('a1', 'a1@x', '${bcrypt.hashSync(ADMIN_PASSWORD, 4)}', 'Amal', 'One', 'ADMIN', 2026, 'a1', 'c1'),
  ('e1', 'e1@x', 'p', 'Ehab', 'One', 'EMPLOYEE', 2026, 'axb', 'c1'),
  ('e2', 'e2@x', 'p', 'Mona', 'One', 'EMPLOYEE', 2026, 'Mona', 'c1'),
  ('e3', 'e3@x', 'p', 'Badr', 'One', 'EMPLOYEE', 2026, 'ab', 'c1');
@@ -91,7 +93,8 @@ describe.skipIf(!ADMIN_URL)("a username chosen for someone new, in Postgres", ()
     // A person's email changed to one somebody else has: Prisma's unique
     // index caught it, and it escaped as a 500 (a person's profile, part 3, PR 193).
     it("refuses an email somebody else has, when a person's is changed, as that", async () => {
-        await expect(Users.update({ id: "e1", email: "e2@x" } as any, admin)).rejects.toThrow("EMAIL_IN_USE")
+        // With the Admin's own password, which somebody else's email asks for (PR 231).
+        await expect(Users.update({ id: "e1", email: "e2@x", confirmPassword: ADMIN_PASSWORD } as any, admin)).rejects.toThrow("EMAIL_IN_USE")
         expect((await db.query(`SELECT email FROM "User" WHERE id = 'e1'`)).rows[0].email).toBe("e1@x")
     })
 })

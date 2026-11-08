@@ -24,7 +24,7 @@ import { TeamHandOff, type Rehome } from "./team-handoff.service"
 import { assertStepUp, assertRecentStepUp } from "@/lib/step-up"
 import { sessionHasModule } from "@/lib/features/require"
 import { keepAfterChange } from "@/lib/session-kept"
-import { ownPasswordMatches } from "@/lib/own-password"
+import { confirmOwnPassword, ownPasswordMatches } from "@/lib/own-password"
 
 /**
  * The account statuses a status write may set. ARCHIVED and DELETED come only
@@ -265,7 +265,7 @@ export class UserService {
      */
     static async update(input: UpdateUserInput, session: any, from?: { sid?: unknown; sessionVersion?: unknown } | null) {
         const userRole = session.user.role
-        const { id, firstName, lastName, email, password, currentPassword, role, roleId, actingUntil, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username, status, teamLeaderId, reassignReportsTo } = input
+        const { id, firstName, lastName, email, password, currentPassword, confirmPassword, role, roleId, actingUntil, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username, status, teamLeaderId, reassignReportsTo } = input
 
         const regularUser = await prisma.user.findUnique({ where: { id } })
         const superAdminUser = !regularUser ? await prisma.superAdmin.findUnique({ where: { id } }) : null
@@ -372,6 +372,14 @@ export class UserService {
             // old password, such as by someone who had learned it, the
             // account stayed signed in there.
             updateData.sessionVersion = { increment: 1 }
+        }
+        // Somebody else's password or email, the two ways into their account,
+        // need the saver's own password, checked here (PR 231), as a temporary
+        // password does (resetPassword): the profile asked for it, but only in
+        // the browser. After the checks that the saver may change them, so a
+        // save refused for those isn't a try.
+        if (!isSelf && (updateData.password !== undefined || updateData.email !== undefined)) {
+            await confirmOwnPassword(session.user, confirmPassword)
         }
         // The session asking, if a new password of its own may keep it.
         const keepFrom = password && isSelf ? from ?? null : null

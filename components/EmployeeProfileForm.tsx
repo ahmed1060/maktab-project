@@ -140,8 +140,10 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // What one's own password is asked for, before it's done: saving the
     // form, or resetting their password (components/profile/PasswordDialogs.tsx).
     const [confirming, setConfirming] = useState<'UPDATE' | 'RESET_PASSWORD' | null>(null)
-    // The password it asked for, sent with a new password of one's own,
-    // which the server checks (PR 229). Kept for the save only.
+    // The password it asked for, sent with a new password of one's own
+    // (PR 229), and as the saver's own with what could change somebody
+    // else's password or email (PR 231), which the server checks. Kept for
+    // the save only.
     const confirmed = useRef('')
 
     useEffect(() => {
@@ -511,6 +513,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     password: access.changePassword && password ? password : undefined,
                     // The one it replaces, checked by the server (PR 229).
                     currentPassword: own && access.changePassword && password ? confirmed.current : undefined,
+                    // The saver's own, which the server asks for where their
+                    // password or email changes (PR 231).
+                    confirmPassword: !own && ((access.changePassword && password) || access.changeEmail) ? confirmed.current : undefined,
                     // Given by whoever may give it, and never by its kind,
                     // which the form follows only for what it shows. The
                     // server refuses what the field wouldn't have offered.
