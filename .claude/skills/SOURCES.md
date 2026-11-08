@@ -10,6 +10,7 @@ entry here in the same commit.
 | `ui-ux-pro-max` | [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill), `.claude/skills/ui-ux-pro-max` | `09170eec67eefd46a7ae85de61b40c194020f997` (2026-09-27) | MIT |
 | `web-design-guidelines` | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills), `skills/web-design-guidelines`; its rules from [vercel-labs/web-interface-guidelines](https://github.com/vercel-labs/web-interface-guidelines), `command.md` | skill `063bee94c3f4df8453406c830b0a7df0f2860278` (2026-08-28); rules `434b7f91364665f2f733b310ec54809bf8f37937` (2026-10-05) | MIT |
 | `impeccable` (written guidance only) | [pbakaus/impeccable](https://github.com/pbakaus/impeccable), `.claude/skills/impeccable` | `d631a8827f99414d2b6daba4ef08b7f8701751d7` (2026-10-08, tag `skill-v4.5.2`) | Apache 2.0 |
+| `emil-design-eng` | [emilkowalski/skills](https://github.com/emilkowalski/skills), `skills/emil-design-eng` | `c8a79627b59d72d764d6ab6f2c87c09a48169833` (2026-11-04) | MIT |
 
 ## What was changed here
 
@@ -59,8 +60,18 @@ entry here in the same commit.
   - **Updating:** read the new version's pages in full, copy them over
     unchanged, check that `SKILL.md`'s list of left-out steps still holds,
     and change this entry in the same commit.
+- **`emil-design-eng`:** `SKILL.md` is identical to the pinned commit,
+  except for a note at the top on how it's used in Nizmo and where
+  `DESIGN.md` differs. Added with the motion work (`UI_PLAN.md` §7.1).
+  - **What it runs:** nothing. It's one page of written guidance, with no
+    scripts.
+  - **`LICENSE`:** the repository's, as the skill's folder has none of its
+    own.
+  - **Left out, the repository's other skills** (`animate`,
+    `review-animations`, `apple-design` and the rest): `UI_PLAN.md` §7.3
+    keeps to two design skills at once, and this one is for the motion
+    work only.
 
 ## Not added
 
-- **Emil Design Engineering:** added with the motion work (`UI_PLAN.md` §7.1).
 - **Frontend Design:** used once, to write `DESIGN.md`, and not kept.
