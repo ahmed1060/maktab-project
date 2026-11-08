@@ -102,7 +102,8 @@ describe("its rules (components/ui/ui.css)", () => {
     })
 
     it("slide one in from the end side in 200ms, the other way in Arabic, and not at all with reduce motion", () => {
-        expect(rule(".ui-toast")).toMatch(/animation: ui-toast-in 200ms ease-out;/)
+        // Starting fast and settling, on the curve of what comes in (DESIGN.md §8; PR 224).
+        expect(rule(".ui-toast")).toMatch(/animation: ui-toast-in 200ms var\(--ease-out\);/)
         expect(UI).toMatch(/@keyframes ui-toast-in \{\s*from \{\s*opacity: 0;\s*transform: translateX\(16px\);\s*\}\s*\}/)
         expect(UI).toMatch(/@keyframes ui-toast-in-rtl \{\s*from \{\s*opacity: 0;\s*transform: translateX\(-16px\);\s*\}\s*\}/)
         expect(rule('[dir="rtl"] .ui-toast')).toMatch(/animation-name: ui-toast-in-rtl;/)
@@ -111,7 +112,9 @@ describe("its rules (components/ui/ui.css)", () => {
         const shared = reduced.slice(0, reduced.indexOf("\n}\n"))
         expect(shared).toMatch(/\.ui-toast-close \{\s*transition: none;/)
         expect(shared).toMatch(/\.ui-toast \{\s*animation: none;/)
-        expect(UI.match(/@media \(prefers-reduced-motion: reduce\)/g)?.length).toBe(3)
+        // That one, the side bar's, the top bar's, and the motion's at the end, after
+        // every rule its pop-ups' entrances are in (lib/motion.test.ts; PR 224).
+        expect(UI.match(/@media \(prefers-reduced-motion: reduce\)/g)?.length).toBe(4)
     })
 
     it("make Close a 32px target, 44px under a finger, with a ring when the keyboard reaches it", () => {

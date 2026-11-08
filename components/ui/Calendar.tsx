@@ -8,6 +8,7 @@ import { useHydrated } from '@/lib/useHydrated'
 import { useNow } from '@/lib/useNow'
 import { isoOf } from '@/lib/calendar-keys'
 import { calendarPlace, wholeHeight } from '@/lib/calendar-place'
+import { growsFrom } from '@/lib/grows-from'
 import { dayLabel, dayNumber, monthCells, monthTitle, weekdays } from '@/lib/calendar-text'
 import type { PickerKeys } from '@/lib/usePickerKeyboard'
 import { Button } from './Button'
@@ -16,15 +17,19 @@ import { Icon } from './Icon'
 /**
  * Puts a calendar against its field (lib/calendar-place.ts), no taller than
  * the room it has there, as custom properties the CSS uses on a computer
- * only: on a phone it's in the middle of the screen whatever they say.
+ * only: on a phone it's in the middle of the screen whatever they say. It
+ * grows from its corner by the field's start edge as it comes in
+ * (DESIGN.md §8).
  */
 function placeAgainst(panel: HTMLElement | null, field: HTMLElement | null) {
     if (!panel || !field) return
     const view = document.documentElement
+    const rtl = getComputedStyle(field).direction === 'rtl'
     const spot = calendarPlace(field.getBoundingClientRect(), { width: panel.offsetWidth, height: wholeHeight(panel) },
-        { width: view.clientWidth, height: view.clientHeight }, getComputedStyle(field).direction === 'rtl')
+        { width: view.clientWidth, height: view.clientHeight }, rtl)
     panel.style.setProperty('--calendar-start', `${spot.start}px`)
     panel.style.setProperty('--calendar-max-height', `${spot.maxHeight}px`)
+    panel.style.setProperty('--calendar-origin', growsFrom('start', spot.top !== undefined, rtl))
     if (spot.top !== undefined) {
         panel.style.setProperty('--calendar-top', `${spot.top}px`)
         panel.style.removeProperty('--calendar-bottom')

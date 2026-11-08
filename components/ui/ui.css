@@ -323,9 +323,11 @@
 /* ── A date, or a range of dates (§5.3) ──
    The calendar a date field opens, drawn as the menus are. On a computer it's
    fixed against its field: components/ui/Calendar.tsx says where, as
-   --calendar-start and --calendar-top or --calendar-bottom, and how tall it
-   can be, as --calendar-max-height. The layer under it is nothing there, so
-   a click elsewhere goes on to what was clicked. */
+   --calendar-start and --calendar-top or --calendar-bottom, how tall it
+   can be, as --calendar-max-height, and the corner it grows from as it
+   comes in, as --calendar-origin (the motion's, at the end). The layer
+   under it is nothing there, so a click elsewhere goes on to what was
+   clicked. */
 .ui-calendar-layer {
   display: contents;
 }
@@ -2520,7 +2522,8 @@ a.ui-file-open:focus-visible,
 }
 /* A level-2 panel; its meaning's colour is a bar on its start edge and its
    icon's, as a note above the page's is: the toast's colour, which its
-   words don't take. It slides in from the end side. */
+   words don't take. It slides in from the end side, starting fast and
+   settling (§8). */
 .ui-toast {
   display: flex;
   align-items: flex-start;
@@ -2536,7 +2539,7 @@ a.ui-file-open:focus-visible,
   box-shadow: var(--elev-2);
   color: var(--status-neutral-fg);
   pointer-events: auto;
-  animation: ui-toast-in 200ms ease-out;
+  animation: ui-toast-in 200ms var(--ease-out);
 }
 .ui-toast[data-tone="good"] {
   color: var(--status-good-fg);
@@ -4198,7 +4201,8 @@ a.ui-donut-row:focus-visible {
   .ui-control[data-busy]::after,
   .ui-btn[aria-busy="true"]::after,
   .ui-camera-tick,
-  .ui-toast {
+  .ui-toast,
+  [dir="rtl"] .ui-toast {
     animation: none;
   }
 }
@@ -4557,7 +4561,9 @@ a.ui-donut-row:focus-visible {
     box-shadow: var(--elev-2);
     transform: translateX(-100%);
     visibility: hidden;
-    transition: transform 200ms ease-out, visibility 0s linear 200ms;
+    /* Out over 150ms, faster than it came in, as a phone's own sheets move
+       (§8); hidden once it's out. */
+    transition: transform 150ms var(--ease-drawer), visibility 0s linear 150ms;
   }
   [dir="rtl"] .ui-side-bar {
     transform: translateX(100%);
@@ -4571,7 +4577,7 @@ a.ui-donut-row:focus-visible {
   .ui-side-bar[data-open="true"] {
     transform: none;
     visibility: visible;
-    transition: transform 200ms ease-out;
+    transition: transform 200ms var(--ease-drawer);
   }
   .ui-side-scrim {
     display: block;
@@ -5312,3 +5318,106 @@ a.ui-notice:focus-visible {
     padding: var(--space-1) var(--space-4) var(--space-4);
   }
 }
+
+/* ── Motion (§8): what opens from a button, and dialogs ──
+   Each is put on the page as it opens and taken off as it closes, so it
+   comes in from its keyframes every time, and goes at once. What comes in
+   starts fast and settles (--ease-out), and grows from 96%, never from
+   nothing. Here, at the end, after every rule of theirs, so that "reduce
+   motion" below ends all of it. The toast's slide and the side bar's are
+   in their own blocks, above. */
+@keyframes ui-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes ui-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@keyframes ui-grow-in {
+  from {
+    transform: scale(0.96);
+  }
+}
+
+/* A menu or a panel opened from its button fades in as it grows, in 150ms,
+   as they open many times a day, from the corner nearest the button. The
+   row menu and the calendar are placed by their code, which says the
+   corner too (lib/grows-from.ts): the row menu in its own style, the
+   calendar as --calendar-origin. The top bar's three are under their
+   buttons, lined up with their end edge, or the company picker's start
+   edge, wherever the bar spreads them. CSS has no logical transform-origin,
+   so Arabic's is said again. */
+.ui-menu,
+.ui-account-menu,
+.ui-notices,
+.ui-company-picker-panel,
+.ui-calendar {
+  animation: ui-pop-in 150ms var(--ease-out);
+}
+.ui-calendar {
+  transform-origin: var(--calendar-origin, center);
+}
+.ui-account-menu,
+.ui-notices {
+  transform-origin: top right;
+}
+.ui-company-picker-panel {
+  transform-origin: top left;
+}
+[dir="rtl"] .ui-account-menu,
+[dir="rtl"] .ui-notices {
+  transform-origin: top left;
+}
+[dir="rtl"] .ui-company-picker-panel {
+  transform-origin: top right;
+}
+
+/* A dialog: the dimmed page fades in, and the dialog on it grows from its
+   middle, as it's tied to no button, in 200ms. It fades with the page under
+   it: faded twice, it would come in late. */
+.ui-dialog-backdrop {
+  animation: ui-fade-in 200ms var(--ease-out);
+}
+.ui-dialog {
+  animation: ui-grow-in 200ms var(--ease-out);
+}
+
+/* The page beside the side bar dims as the side bar slides in. */
+@media (max-width: 1023px) {
+  .ui-side-scrim {
+    animation: ui-fade-in 200ms var(--ease-out);
+  }
+}
+
+/* On a phone the calendar is in the middle of the screen over the dimmed
+   page, and opens as a dialog does. */
+@media (max-width: 767px) {
+  .ui-calendar-layer {
+    animation: ui-fade-in 200ms var(--ease-out);
+  }
+  .ui-calendar {
+    transform-origin: center;
+    animation: ui-grow-in 200ms var(--ease-out);
+  }
+}
+
+/* With "reduce motion", all of it is at once, fades too (§8); app/globals.css
+   ends any animation at once besides. */
+@media (prefers-reduced-motion: reduce) {
+  .ui-menu,
+  .ui-account-menu,
+  .ui-notices,
+  .ui-company-picker-panel,
+  .ui-calendar,
+  .ui-calendar-layer,
+  .ui-dialog-backdrop,
+  .ui-dialog,
+  .ui-side-scrim {
+    animation: none;
+  }
+}
+/* end of the motion */

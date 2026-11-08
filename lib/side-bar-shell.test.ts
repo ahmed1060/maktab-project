@@ -252,8 +252,10 @@ describe("the side bar's look (components/ui/ui.css)", () => {
         for (const selector of [".ui-side-item", ".ui-side-close", ".ui-side-legal a"]) expect(list, selector).toContain(selector)
     })
 
-    it("slides over 200ms, and at once with reduce motion on (DESIGN.md §8)", () => {
-        expect(phone).toContain("transition: transform 200ms ease-out, visibility 0s linear 200ms;")
+    it("slides in over 200ms and out over 150ms, and at once with reduce motion on (DESIGN.md §8)", () => {
+        // As a phone's own sheets move (PR 224); lib/motion.test.ts has the rest of it.
+        expect(phone).toContain("transition: transform 150ms var(--ease-drawer), visibility 0s linear 150ms;")
+        expect(phone).toContain("transition: transform 200ms var(--ease-drawer);")
         expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\s*\.ui-side-bar,\s*\.ui-side-bar\[data-open="true"\] \{\s*transition: none;/)
     })
 

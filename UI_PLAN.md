@@ -573,7 +573,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      what was left of the dashboard's frame, merged in #221 on 2026-11-07;
      then the six old components no page used any more, removed in #222,
      merged on 2026-11-08; then the old pages' shared styles nothing used
-     any more, removed in #223;
+     any more, removed in #223, merged on 2026-11-08; then the motion of
+     menus, dialogs, toasts and the side bar, with Emil Design
+     Engineering, in #224;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -634,7 +636,7 @@ QA Tools for Coding Agents". The other five were turned down (§7.4).
 | Building | **UI/UX Pro Max** | Chosen earlier, on the `ui-refactor` branch. It's a library of palettes, font pairings and UX rules to look things up in. |
 | Checking every UI PR | **Vercel Web Design Guidelines** | Audits the changed screens for focus states, forms, accessibility, wording and edge cases. Its findings are fixed in the same PR. |
 | Checking every UI PR | **Playwright** | Opens the app in a real browser and takes screenshots in English and Arabic, at phone and desktop width. Claude's cloud sessions already use it. |
-| Polish, later | **Emil Design Engineering** | Adds motion to toasts, dialogs, drawers and menus, once the building blocks exist. It respects the device's "reduce motion" setting. |
+| Motion | **Emil Design Engineering** | Added in #224 (`.claude/skills/emil-design-eng`) for the motion of toasts, dialogs, the side bar and menus, once the building blocks existed (`DESIGN.md` §8). It respects the device's "reduce motion" setting. |
 
 ### 7.2 Choosing the look
 
@@ -681,7 +683,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - They're added in the building-blocks PR.
   - Impeccable's written guidance is added in step 3a's PR, once question 8
     was answered (§6).
-  - Emil is added in the motion PR.
+  - Emil was added in the motion PR, #224.
 - **Playwright's MCP is optional.** It's for having Claude click through the
   app on the product owner's own computer, so nothing is added to the
   project.
@@ -5000,3 +5002,34 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     when taken again in both states: two were taken while the dev server
     restarted, and two with the pointer resting on the profile's first
     radio.
+- **2026-11-08:** Menus, dialogs, toasts and the side bar move as they come
+  in (#224), with Emil Design Engineering (§7.1), added to
+  `.claude/skills/` as published, pinned, with a note on where `DESIGN.md`
+  differs (`.claude/skills/SOURCES.md`). As `DESIGN.md` §8 now says:
+  - a menu or a panel opened from its button (a row's menu, the account
+    menu, the bell's panel, the company picker, and a date field's
+    calendar on a computer) fades in as it grows from 96%, from the corner
+    nearest its button, in 150ms. They appeared at once, in full;
+  - a dialog fades in with the dimmed page and grows from 96% from its
+    middle, in 200ms, and so does a date field's calendar on a phone;
+  - a toast slides in as before, on the new curve. The side bar on a
+    phone slides in over 200ms and out over 150ms, where it went as slowly
+    as it came, and the page beside it dims as it comes in, where it went
+    dark at once;
+  - what comes in starts fast and settles (`--ease-out`); the side bar
+    moves as a phone's own sheets do (`--ease-drawer`). Going is at once,
+    but for the side bar, which stays in the page;
+  - with "reduce motion" all of it is at once, fades too, where Emil
+    Design Engineering would keep them: `DESIGN.md` wins (§7.3). In
+    Arabic, the toast's slide still ran with "reduce motion" on, its
+    right-to-left rule outranking the one meant to stop it, and was cut
+    short only by the app's rule for every animation; it's stopped now;
+  - the row menu and the calendar, which their code places, say which
+    corner they grow from (`lib/grows-from.ts`);
+  - in the browser, in English on a computer and in Arabic on a phone,
+    each opens with its animation, duration, curve and corner, a row's
+    menu above its button too (39 checks), and with "reduce motion" each
+    is at once (22 checks). Once in, each looks as it did, pixel for
+    pixel (17 shots). One first shot, the calendar's on a computer, was
+    taken before the Tasks page's titles filter had loaded, as the dev
+    server had just rebuilt, and matched when taken again.
