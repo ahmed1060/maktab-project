@@ -1335,6 +1335,12 @@ These are built once, in the building-blocks PR, and every page uses them
     screen readers hear it. The primary button can still be pressed while
     an account is held back, as an Admin may unlock it before the time
     is up.
+  - A browser the server signed out, its session ended, as a new
+    password or a role changed with "Apply now" ends it, comes back to
+    sign in told so, in the same place, as a note: that its session
+    ended, as it does when the password or the role changes, and to sign
+    in again. It stays until something else is said there. Signing out
+    by one's own choice says nothing.
   - "Forgot your password?" is two steps in the same card: the account's
     email, then the code sent to it with the new password, asked twice, as
     Change password asks it, its hint saying how long it must be. Neither
@@ -2001,3 +2007,7 @@ changed:
   screen only, on its page and the Costs page's Charged to clients tab:
   none of it could be printed or sent to the client. A document's lines
   had one amount each.
+- **2026-11-08:** Signed out by the server (§5.5, Sign-in). A browser
+  whose session ended, as a new password or a role changed with "Apply
+  now" ends it, came back to the sign-in page with nothing said: it read
+  as though the app had forgotten them.
