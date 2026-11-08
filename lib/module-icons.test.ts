@@ -106,6 +106,14 @@ describe("what a company keeps", () => {
     })
 })
 
+describe("the icon dialog's buttons", () => {
+    it("take a tap at once, with no grey flash, as every control does (web interface audit)", () => {
+        const ui = readFileSync("components/ui/ui.css", "utf8")
+        const shared = ui.slice(0, ui.indexOf("touch-action: manipulation;"))
+        expect(shared.slice(shared.lastIndexOf("}") + 1)).toMatch(/\.ui-icon-choice,\n/)
+    })
+})
+
 describe("no emoji left", () => {
     it("in the side bar, the Modules tab, the stylesheet or the words", () => {
         const files = ["components/SideBar.tsx", "components/CompanyModulesCard.tsx", "components/ui/ui.css", "lib/modules.ts", "lib/validations/company.schema.ts"]
