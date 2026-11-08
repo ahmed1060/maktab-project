@@ -570,7 +570,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      task's page, merged in #218 on 2026-11-07; then a page that broke
      and the app itself, merged in #219 on 2026-11-07; then the privacy
      policy and the terms of service, merged in #220 on 2026-11-07; then
-     what was left of the dashboard's frame, in #221;
+     what was left of the dashboard's frame, merged in #221 on 2026-11-07;
+     then the six old components no page used any more, removed in #222;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -4928,3 +4929,38 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     (`components/PageLoading.tsx`, which the dashboard's own loading
     screen is now too), in the page's language. It said "Loading
     section..." in English, in classes no stylesheet had.
+- **2026-11-08:** The six old components no page used any more are gone
+  (#222), as every page is on the building blocks, which do each of their
+  jobs:
+  - the old filter panel and its searchable select
+    (`components/EmployeeFilter.tsx`, `components/SearchableSelect.tsx`),
+    where the lists have the filter bar (`components/ui/FilterBar.tsx`, with
+    `components/filters`); the obligation's card
+    (`components/ObligationCard.tsx`); the pager (`components/Pagination.tsx`),
+    where the lists have the building blocks' (`components/ui/Pager.tsx`);
+    the sort control (`components/SortControl.tsx`); and the older pages'
+    window (`components/Modal.tsx`), where every window is the building
+    blocks' dialog;
+  - what only they used went with them: the obligation card's highlight
+    timer (`lib/useTemporaryHighlight.ts`) and its pulse, the filter panel's
+    rule for a phone (`app/globals.css`), the 12 words only they said, in
+    both languages, and the older pages' window's layer (`lib/layers.ts`);
+  - so did the 28 colours only they drew with, in both themes
+    (`app/globals.css`): the two paler surfaces, the borders, the body text,
+    the faint text and the text on a fill, some of the green, red, blue and
+    orange status colours and their fills, the two violets, two greys, a
+    panel and a shadow. The two violets followed a company's brand colour,
+    which no longer gives them a shade (`lib/brand-colour.ts`); the other
+    shades are still held on the paler surfaces, so no company's colours
+    moved;
+  - the tests that read them now read what does their job: the pager's
+    arrows are named on the building blocks' pager, a shared link's hidden
+    filters are counted on the Tasks and Costs pages' filter bars, and the
+    lists' employee filter sorts nothing it read in place. The contrast
+    checks on the colours that went, went with them;
+  - in the browser, the lists they once drew (Tasks, Costs, Obligations and
+    Employees) are the same, pixel for pixel, in English on a computer and
+    in Arabic on a phone;
+  - the old pages' shared styles that lose their last users here (`.btn`
+    and `.glass`) are left for a PR of their own, with the other old styles
+    nothing uses, as tests still pin some of them.
