@@ -5156,3 +5156,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - The web interface audit found nothing more to change. The receipts'
     photos load as the page opens, not as they're scrolled to: one not
     loaded yet could print blank.
+- **2026-11-08:** From Codex's review of #227: a client's statement page
+  shows only the statement fetched for its address. With the period
+  cleared, the one for the dates before was kept while last month's
+  loaded, shown as last month's and printable, and it stayed in place of
+  last month's refusal where that had more than 200 charges. Meanwhile
+  the page header still names the client, and the period is blank until
+  last month's statement comes.

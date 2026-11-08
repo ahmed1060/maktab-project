@@ -12,6 +12,13 @@ import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useModules } from '@/lib/useModules'
 import { STATEMENT_MAX_CHARGES, type Statement } from '@/lib/client-statement'
 
+// A statement, with the address it was fetched for: SWR keeps the last one
+// while another loads, and only this address's is shown as its statement.
+// With the period cleared, the one for the dates before was taken for last
+// month's, printable, and stayed in place of last month's refusal where
+// that had too many charges (Codex on PR 227).
+const fetchStatement = (key: string) => fetcher(key).then((body: { data: Statement }) => ({ key, statement: body.data }))
+
 /**
  * A client's statement (CLIENTS_PLAN.md §6.9; DESIGN.md §5.5, Client
  * statement), opened from Statement on its Charges: its charges for a
@@ -40,10 +47,12 @@ export default function ClientStatementPage() {
     const asked = dayIso(from) === from && dayIso(to) === to ? (from <= to ? { from, to } : { from: to, to: from }) : null
     const query = new URLSearchParams({ clientId: id })
     if (asked) { query.set('from', asked.from); query.set('to', asked.to) }
-    const { data, error, isLoading, isValidating, mutate } = useSWR<{ data: Statement }>(`/api/charges/statement?${query}`, fetcher, { keepPreviousData: true })
-    const shown = data?.data ?? null
-    // The one asked for; another period's, kept while it loads, is never shown as it.
-    const statement = shown && (!asked || (shown.period.from === asked.from && shown.period.to === asked.to)) ? shown : null
+    const key = `/api/charges/statement?${query}`
+    const { data, error, isLoading, isValidating, mutate } = useSWR(key, fetchStatement, { keepPreviousData: true })
+    // This address's; another's, kept while it loads, is never shown as it.
+    const statement = data?.key === key ? data.statement : null
+    // The client's name meanwhile, from whichever of its statements is here.
+    const known = data?.statement.client.id === id ? data.statement : null
     const failure = error as SWRError | undefined
     const code = failure?.info?.code
     const missing = failure?.status === 403 || failure?.status === 404
@@ -58,7 +67,7 @@ export default function ClientStatementPage() {
         if (start && end) { q.set('from', start); q.set('to', end) } else { q.delete('from'); q.delete('to') }
     })
 
-    const name = shown?.client.name
+    const name = known?.client.name
     const header = (
         <PageHeader
             title={t('statement_title')}
@@ -69,7 +78,7 @@ export default function ClientStatementPage() {
     )
     const controls = (
         <div className="ui-doc-controls">
-            <DateRangePicker hideLabel label={t('doc_period')} dateFrom={asked?.from ?? shown?.period.from ?? ''} dateTo={asked?.to ?? shown?.period.to ?? ''} onChange={pickPeriod} />
+            <DateRangePicker hideLabel label={t('doc_period')} dateFrom={asked?.from ?? statement?.period.from ?? ''} dateTo={asked?.to ?? statement?.period.to ?? ''} onChange={pickPeriod} />
             <label className="ui-choice">
                 <input type="checkbox" className="ui-check" checked={withReceipts} onChange={e => go(q => { if (e.target.checked) q.delete('receipts'); else q.set('receipts', '0') })} />
                 {t('statement_with_receipts')}
