@@ -1201,7 +1201,8 @@
 }
 /* Ending a contract (a person's profile, part 5): its settlement before it's
    recorded, with the statement's own lines, totals and notes (§5.5,
-   Document), under a heading of its own. */
+   Document), under a heading of its own. Where the package has no Payroll,
+   what's said in its place (§5.5, Dialog). */
 .ui-settlement {
   display: flex;
   flex-direction: column;

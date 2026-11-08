@@ -247,7 +247,8 @@ export class EmploymentService {
             // kept working). Released together with the archive, or not at all.
             // So is a cash advance given them, or put back on theirs, since:
             // it becomes a debt as their settlement's did (CLIENTS_PLAN.md
-            // §7.3), recorded as by whoever recorded the ending.
+            // §7.3), recorded as by whoever recorded the ending, where the
+            // company's package has Payroll (CashAdvanceService.toDebt).
             const released = next === "ARCHIVED"
                 ? await prisma.$transaction(async (tx) => {
                     const rehome = user.role === "TEAM_LEADER" ? await TeamHandOff.unassignRemaining(tx, user.id) : null

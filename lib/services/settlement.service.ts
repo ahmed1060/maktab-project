@@ -10,6 +10,8 @@ import { SalaryHistoryService } from "./salary-history.service"
 import { TeamHandOff } from "./team-handoff.service"
 import { notifyTeamMoves } from "./team-notify.service"
 import { CASH_ADVANCE_DEBT, CashAdvanceService } from "./cash-advance.service"
+import { PACKAGE_FACTS } from "./company-package"
+import { hasModule, resolveBundles } from "@/lib/features/bundles"
 
 /**
  * Producing the statement that ends an employment.
@@ -23,13 +25,19 @@ import { CASH_ADVANCE_DEBT, CashAdvanceService } from "./cash-advance.service"
  * The figures are frozen here rather than recomputed on read. A settlement is a
  * statement about a moment, and a salary change entered next week must not
  * quietly rewrite what somebody was told they were owed.
+ *
+ * Only where the company's package includes Payroll. A settlement is
+ * payroll's statement and its debts are payroll's to recover, and a company
+ * without it has neither, nor a screen for them: there, ending a contract
+ * records the ending alone (DESIGN.md §5.5, Dialog). Decided by the company's
+ * package, whoever ends the contract.
  */
 export class SettlementService {
-    /** The company's calendar and payroll day, resolved once. */
+    /** The company's calendar and payroll day, and whether it settles at all, resolved once. */
     private static async policyFor(userId: string) {
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            select: { companyId: true, company: { select: { payrollDay: true, timezone: true } } },
+            select: { companyId: true, company: { select: { payrollDay: true, timezone: true, package: PACKAGE_FACTS } } },
         })
         if (!user) throw new Error("USER_NOT_FOUND")
 
@@ -42,6 +50,10 @@ export class SettlementService {
             companyId: user.companyId,
             payrollDay: user.company?.payrollDay ?? 25,
             timeZone: resolveTimeZone(user.company?.timezone, settings?.defaultTimezone),
+            // Whether its package includes Payroll, whose statement this is. No
+            // package is grandfathered, with everything, and so is no company,
+            // which ending the contract refuses (USER_HAS_NO_COMPANY).
+            settles: hasModule(resolveBundles(user.company?.package), "PAYROLL"),
         }
     }
 
@@ -115,8 +127,15 @@ export class SettlementService {
      * document can stop carrying a blanket caveat.
      */
     static async preview(userId: string, lastWorkingDay: string) {
-        const { companyId, payrollDay, timeZone } = await this.policyFor(userId)
+        const { companyId, payrollDay, timeZone, settles } = await this.policyFor(userId)
         const endsAt = endOfContractInstant(lastWorkingDay, timeZone)
+        // What they still hold of a cash advance (CLIENTS_PLAN.md §7.3): a debt
+        // due with the settlement where there is one, and otherwise theirs
+        // still, on the Cash advances tab, until its return is recorded.
+        const heldMinor = companyId ? toMinor((await CashAdvanceService.heldBy(companyId, userId)).toFixed(2)) : 0
+        // Where the package has no Payroll there's no statement to work out,
+        // and no salary is asked for: the ending is all that's recorded.
+        if (!settles) return { settles: false as const, endsAt, timeZone, cashAdvanceHeldMinor: heldMinor }
         const { year, month } = calendarParts(endsAt, timeZone)
 
         const [events, rates] = await Promise.all([
@@ -152,7 +171,6 @@ export class SettlementService {
         // What they still hold of a cash advance becomes a debt as the contract
         // ends (CLIENTS_PLAN.md §7.3), due with the settlement, and is recovered
         // from it as the debts already there are.
-        const heldMinor = companyId ? toMinor((await CashAdvanceService.heldBy(companyId, userId)).toFixed(2)) : 0
         const debts = [
             ...await this.recoverableDebtsFor(userId),
             ...(heldMinor > 0 ? [{ id: CASH_ADVANCE_DEBT, outstandingMinor: heldMinor, dueDate }] : []),
@@ -160,6 +178,7 @@ export class SettlementService {
         const recovery = planFinalRecovery({ netMinor: Math.max(0, preview.netMinor), debts })
 
         return {
+            settles: true as const,
             ...preview,
             endsAt,
             payrollDay,
@@ -210,6 +229,11 @@ export class SettlementService {
      * somebody locked out and owed an amount nobody has written down; a
      * statement with no ended contract is a document about something that did
      * not happen. Both halves or nothing.
+     *
+     * Where the company's package has no Payroll, there's no statement to
+     * produce, and the ending is all that's recorded, its team handed over as
+     * ever: no settlement, no debt, and none of theirs recovered. What they
+     * still hold of a cash advance stays on it, to be returned.
      */
     static async settleAndEnd(input: {
         userId: string
@@ -258,6 +282,8 @@ export class SettlementService {
                 reason: input.reason,
                 createdById: input.createdById,
             }, tx)
+
+            if (!preview.settles) return { event, settlement: null, debt: null, advanceDebt: null, preview }
 
             const settlement = await tx.finalSettlement.create({
                 data: {

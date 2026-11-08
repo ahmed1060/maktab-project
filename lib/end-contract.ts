@@ -9,6 +9,7 @@ import type { TranslationKey } from '@/lib/translations'
 
 /** What ending on a date would settle at, as the employment route previews it. */
 export type Settlement = {
+    settles: true
     daysWorked: number
     earned: number
     paid: number
@@ -21,6 +22,16 @@ export type Settlement = {
     cashAdvanceHeld?: number
     payable: number
 }
+
+/**
+ * Where the company's package has no Payroll, there's no settlement (DESIGN.md
+ * §5.5, Dialog): what they still hold of a cash advance, which stays on it to
+ * be returned, is all there is to say.
+ */
+export type NoSettlement = { settles: false; cashAdvanceHeld: number }
+
+/** What ending on a date would record, as the route previews it. */
+export type Ending = Settlement | NoSettlement
 
 /** This month's suspensions, as the route gives them with the preview. */
 export type Timeline = { suspensions: { fromDay: number; toDay: number; deduct: boolean | null }[] }

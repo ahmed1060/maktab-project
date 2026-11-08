@@ -1298,6 +1298,9 @@ export const en = {
         end_contract_effective_later: "Access ends at the start of the following day.",
         end_contract_undecided: "This month has {days} under a suspension nobody has ruled on. They're treated as paid until somebody decides.",
         end_contract_preview_failed: "The settlement couldn't be worked out.",
+        // Where the package has no Payroll: no settlement, and a cash advance still held stays on it (DESIGN.md §5.5, Dialog).
+        end_contract_advance_stays: "They still hold {amount} of a cash advance. It stays on the Cash advances tab until its return is recorded.",
+        end_contract_check_failed: "What ending the contract would record couldn't be worked out.",
         end_contract_no_salary: "There's no salary on record for them in that month, so the settlement can't be worked out. Choose a day in a month they're paid for.",
         end_contract_date_needed: "Choose their last working day.",
         end_contract_last_admin: "They're the company's last Admin at work. Give the Admin role to someone else first.",

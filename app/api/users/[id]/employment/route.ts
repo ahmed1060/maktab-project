@@ -54,6 +54,12 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
 
     try {
         const preview = await SettlementService.preview(userId, lastWorkingDay)
+        // Where the company's package has no Payroll there's no settlement:
+        // what they still hold of a cash advance, which stays on it, is all
+        // there is to say (DESIGN.md §5.5, Dialog).
+        if (!preview.settles) {
+            return ApiResponse.success({ history, timeline, preview: { settles: false, cashAdvanceHeld: toMajor(preview.cashAdvanceHeldMinor) } })
+        }
         return ApiResponse.success({
             history,
             timeline,
@@ -131,7 +137,9 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     // P5 shipped the preview and said plainly that the refusal had to wait for
     // a table to persist a settlement into. This is that refusal: there is no
     // path here that ends a contract without producing the statement, because
-    // both happen in one transaction or neither does.
+    // both happen in one transaction or neither does. Where the company's
+    // package has no Payroll, there's no statement to produce, and the ending
+    // is recorded alone (SettlementService.settleAndEnd).
     try {
         const { event, settlement, debt, preview } = await SettlementService.settleAndEnd({
             userId,

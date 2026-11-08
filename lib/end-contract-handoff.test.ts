@@ -67,13 +67,15 @@ vi.mock("@/lib/prisma", () => ({
 }))
 
 const preview = {
-    endsAt: PAST, earnedMinor: 0, paidMinor: 0, netMinor: 0, debtRecoveredMinor: 0,
+    settles: true, endsAt: PAST, earnedMinor: 0, paidMinor: 0, netMinor: 0, debtRecoveredMinor: 0,
     dueDate: PAST, debtAllocations: [], cashAdvanceHeldMinor: 0,
 }
+// Where the company's package has no Payroll: no settlement to work out (DESIGN.md §5.5, Dialog).
+const withoutPayroll = { settles: false, endsAt: PAST, timeZone: "Africa/Cairo", cashAdvanceHeldMinor: 50_000 }
 
-async function end(reassignReportsTo?: string | null, extra: any = {}) {
+async function end(reassignReportsTo?: string | null, extra: any = {}, previewed: object = preview) {
     const { SettlementService } = await import("@/lib/services/settlement.service")
-    vi.spyOn(SettlementService, "preview").mockResolvedValue(preview as any)
+    vi.spyOn(SettlementService, "preview").mockResolvedValue(previewed as any)
     vi.spyOn(SettlementService as any, "policyFor").mockResolvedValue({ companyId: "co-1", payrollDay: 25, timeZone: "Africa/Cairo" })
     return SettlementService.settleAndEnd({
         userId: "tl-1",
@@ -165,6 +167,19 @@ describe("ending the contract of somebody with no team", () => {
         expect(db.settled).toBe(true)
         expect(db.moved).toBeNull()
         expect(db.audited).toBeNull()
+    })
+})
+
+describe("ending a contract where the package has no Payroll", () => {
+    it("still asks where a leader's team goes, and moves it with the ending, but writes no statement", async () => {
+        db.reports = [{ id: "e-1", firstName: "Laila", lastName: "Fouad" }]
+        await expect(end(undefined, {}, withoutPayroll)).rejects.toThrow("LEADER_HAS_REPORTS")
+        const ended = await end("tl-2", {}, withoutPayroll)
+        expect(db.moved).toEqual({ ids: ["e-1"], to: "tl-2", inTx: true })
+        expect(db.archived).toEqual([{ id: "tl-1", inTx: true }])
+        expect(db.settled).toBe(false)
+        expect(ended).toMatchObject({ settlement: null, debt: null, advanceDebt: null })
+        expect(ended.event).toMatchObject({ type: "CONTRACT_ENDED", userId: "tl-1" })
     })
 })
 

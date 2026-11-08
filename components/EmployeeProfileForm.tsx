@@ -8,6 +8,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { HourglassIcon, PencilSimpleIcon } from '@phosphor-icons/react/ssr'
 import { useCan, useViewer } from '@/lib/useCan'
 import { useFeatures } from '@/lib/features/useFeatures'
+import { hasModule, resolveBundles, type PackageFacts } from '@/lib/features/bundles'
 import { useAssignableRoles, type AssignableRole } from '@/lib/useAssignableRoles'
 import { roleLabel } from '@/lib/role-label'
 import { apiErrorText } from "@/lib/api-error-text"
@@ -88,7 +89,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // team. It carries the names, so the modal asks about these people rather
     // than about a count.
     const [handoff, setHandoff] = useState<{ id: string; firstName: string; lastName: string }[] | null>(null)
-    const [companies, setCompanies] = useState<{ id: string, name: string }[]>([])
+    // Each with its package, which the Super Admin's session doesn't carry.
+    const [companies, setCompanies] = useState<{ id: string, name: string, package?: PackageFacts }[]>([])
     // Nothing to load without a user id; the effect below warns about that
     // case rather than loading anything.
     const [loading, setLoading] = useState(Boolean(userId))
@@ -324,6 +326,13 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // Today in the company's calendar, as the server reads a leaving date: the
     // one ending a contract offers first.
     const today = calendarDateStr(openedAt, companyZone ?? DEFAULT_TIME_ZONE)
+    // Whether ending their contract records a settlement: the company's
+    // package has Payroll (DESIGN.md §5.5, Dialog). A company's people carry
+    // their own in the session; the Super Admin's carries everything, so
+    // theirs is the company's own, from the list of companies.
+    const settles = userRole === 'SUPER_ADMIN'
+        ? hasModule(resolveBundles(companies.find(c => c.id === companyId)?.package), 'PAYROLL')
+        : features.has('PAYROLL')
     // The roles to pick from, where a role is picked: the form, or asking
     // from their details (lib/useAssignableRoles.ts). Their details alone
     // don't need them.
@@ -645,6 +654,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                         name={name}
                         status={status}
                         leadsATeam={role === 'TEAM_LEADER'}
+                        settles={settles}
                         today={today}
                         onClose={() => setShowEndContract(false)}
                         onDone={() => { setReloadKey(k => k + 1); router.refresh() }}
