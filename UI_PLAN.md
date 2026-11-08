@@ -587,8 +587,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      tries, merged in #230 on 2026-11-08; then the saver's own password,
      checked by the server, for somebody else's password or email, merged
      in #231 on 2026-11-08; then Change password's Save before the page
-     has loaded its session, and the sign-in page saying a session ended,
-     in #232;
+     has loaded its session, the sign-in page saying a session ended, and
+     the "Powered by" signature on the sign-in page, in #232;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5316,3 +5316,15 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - The web interface audit found nothing to change: the note is the
     sign-in page's own, where its other notes are, and screen readers
     hear it.
+- **2026-11-08:** The "Powered by" signature on the sign-in page (#232),
+  as the product owner asked: only the dashboard had it, so the first page
+  anyone sees didn't. The same mark, drawn by the same component, in the
+  same places: the bottom corner on the end side on a computer, and on a
+  phone at the end of the page, under the links and switches. System
+  settings' switch and name apply to it as to the dashboard's.
+  - In the browser, against the scratch database: in English and Arabic
+    at 1280 and in English at 1024 it's in the end corner, over neither
+    the card nor the links; at 768 and at 360 in both languages it's
+    under the links and switches, the Arabic phone page still one screen
+    tall; the name set in System settings is shown, and switched off it
+    isn't there (14 checks).
