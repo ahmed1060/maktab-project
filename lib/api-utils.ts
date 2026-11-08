@@ -13,6 +13,7 @@ import { can } from "@/lib/permissions/can"
 import type { Permission } from "@/lib/permissions/catalogue"
 import { accountKind } from "@/lib/security"
 import { StepUpError } from "@/lib/step-up"
+import { redactSecrets } from "./redact"
 
 type HandlerOptions = {
     allowedRoles?: string[]
@@ -359,13 +360,9 @@ export function withStandardHandler(
                 }
 
                 // --- Wave 16: Strict Sanitization ---
-                const sanitizedBody = body ? { ...body } : null
-                if (sanitizedBody) {
-                    const sensitiveKeys = ['password', 'passcode', 'token', 'secret', 'plainPassword']
-                    for (const key of sensitiveKeys) {
-                        if (key in sanitizedBody) sanitizedBody[key] = '[REDACTED]'
-                    }
-                }
+                // Any name that says it's a secret, as the Admin's own password
+                // confirming a temporary one was kept as typed (lib/redact.ts).
+                const sanitizedBody = redactSecrets(body)
 
                 await prisma.auditLog.create({
                     data: {
