@@ -339,9 +339,8 @@ These are built once, in the building-blocks PR, and every page uses them
     on every page, when the person comes back to the window, and once
     something is decided on the Requests page. It replaces the top bar's
     count of name changes alone, whose button is gone;
-  - a company that chose its own icon for a module, an emoji, sees it in
-    place of the module's icon, until companies choose theirs from the
-    side bar's own icons, a later step;
+  - a company that chose its own icon for a module (§6) sees it in place
+    of the module's, drawn as the others are, and filled on its page;
   - Company settings, Roles and access and Saved lists sit at the bottom,
     under a hairline, and stay there while the groups above them scroll,
     as the Super Admin's do;
@@ -1338,6 +1337,7 @@ These are built once, in the building-blocks PR, and every page uses them
     on phones;
   - 16px in fields and detail lines;
   - 20px in the top bar on a computer, and 22px on a phone;
+  - 24px in a module's icon dialog (below);
   - 40px in empty states.
 - **The selected side bar item** uses the filled version of its icon.
 - **The side bar's icons** (§5.1), as the approved mock-up has them:
@@ -1354,6 +1354,33 @@ These are built once, in the building-blocks PR, and every page uses them
     `ArrowsLeftRight`, Access reviews `ListChecks`, Who can
     `MagnifyingGlass`, Check-ins `MapPin`, Audit logs `ClipboardText`,
     System health `Heartbeat`, System settings `GearSix`.
+- **A module's icon, chosen by its company** (`UI_PLAN.md` §4.4): a
+  company may choose its own for each of the nine modules, in Company
+  settings, Modules, from a short list of 48. There are no emoji: each
+  phone and computer draws them its own way.
+  - The list holds each module's icon, and others a renamed module might
+    want: charts, work and tools, dates, messages, files, money, people,
+    trade and places. In this order: `SquaresFour`, `ChartBar`,
+    `ChartLineUp`, `ChartPieSlice`, `CheckSquare`, `ListChecks`,
+    `ClipboardText`, `Kanban`, `Briefcase`, `Wrench`, `Toolbox`, `Broom`,
+    `PushPin`, `CalendarCheck`, `CalendarBlank`, `Clock`, `Bell`,
+    `Certificate`, `Tray`, `EnvelopeSimple`, `ChatCircleText`,
+    `SealCheck`, `Folders`, `FolderSimple`, `FileText`, `Archive`,
+    `Coins`, `Money`, `Wallet`, `CreditCard`, `Receipt`, `Bank`, `Users`,
+    `UsersThree`, `IdentificationCard`, `HardHat`, `ShieldCheck`,
+    `Handshake`, `Storefront`, `Buildings`, `Factory`, `ShoppingCart`,
+    `Package`, `Truck`, `MapTrifold`, `MapPin`, `House`, `Warehouse`.
+  - Each module's icon is a button before the field for its name, named
+    "Choose an icon for Clients". It opens a dialog titled "Icon for
+    Clients", with the 48 as buttons 44px square, as many to a row as fit.
+    Each is named for what it draws, in the page's language.
+  - The one in use is marked as chosen: filled, on `--highlight-tint`,
+    with a `--brand-primary` edge, and heard as pressed. Focus starts on
+    it. While the company has none of its own, that's the module's own.
+  - Picking one puts it in the form and closes the dialog; it's saved with
+    the form. Use the default icon, under the list with the module's icon
+    beside its words, does the same with the module's own. The module's
+    own, picked either way, keeps nothing for the company.
 - **Icons that point a direction are flipped in Arabic:** arrows, chevrons,
   and "back" and "next" icons. Icons that don't point (a check, a bell, a
   pin) are never flipped.
@@ -1901,3 +1928,9 @@ changed:
   in full. The side bar and the toasts moved on the browser's own
   ease-out, and the side bar went as slowly as it came. The page beside
   the side bar went dim at once.
+- **2026-11-08:** A module's icon, chosen by its company (§6; §5.1, the
+  side bar). A company chose an emoji for a module, from 60 in the icon
+  dialog or any one pasted into a field under them. The side bar showed
+  it in place of the module's icon, never filled, at a size of its own.
+  The dialog marked none of the 60 while the company had none of its own,
+  as the module's own wasn't among them.
