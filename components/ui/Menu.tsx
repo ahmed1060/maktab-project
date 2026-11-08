@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { createPortal } from 'react-dom'
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { DotsThreeIcon } from '@phosphor-icons/react/ssr'
+import { growsFrom } from '@/lib/grows-from'
 import { Icon, type PhosphorIcon } from './Icon'
 import { cx } from './cx'
 
@@ -62,7 +63,8 @@ export function RowMenu({ label, items, tooltip }: {
     }
 
     // Placed against the button once the list's height is known: below it,
-    // or above it when it would run off the bottom of the screen.
+    // or above it when it would run off the bottom of the screen. It grows
+    // from its corner by the button as it comes in (DESIGN.md §8).
     useLayoutEffect(() => {
         if (!open || !button.current || !menu.current) return
         const at = button.current.getBoundingClientRect()
@@ -72,6 +74,7 @@ export function RowMenu({ label, items, tooltip }: {
         setPlace({
             insetInlineEnd: rtl ? at.left : window.innerWidth - at.right,
             ...(below ? { top: at.bottom + 4 } : { bottom: window.innerHeight - at.top + 4 }),
+            transformOrigin: growsFrom('end', below, rtl),
         })
     }, [open])
 
