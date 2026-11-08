@@ -588,7 +588,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      checked by the server, for somebody else's password or email, merged
      in #231 on 2026-11-08; then Change password's Save before the page
      has loaded its session, the sign-in page saying a session ended, and
-     the "Powered by" signature on the sign-in page, in #232;
+     the "Powered by" signature on the sign-in page, merged in #232 on
+     2026-11-08; then the audit log reading a company's section names and
+     icons one section at a time, in #233;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5328,3 +5330,31 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     under the links and switches, the Arabic phone page still one screen
     tall; the name set in System settings is shown, and switched off it
     isn't there (14 checks).
+- **2026-11-08:** The audit log reads a company's section names and icons
+  one section at a time (#233). They're logged as the two whole maps,
+  before and after, as they're written, and the log showed them as JSON:
+  `{"tasks":"Jobs"} → {"tasks":"Work orders"}`. Each section that changed
+  now has its own line, named as the section is by default: "Name for
+  Tasks: Jobs → Work orders", "Icon for Tasks: Default → Hard hat". A
+  section with nothing set reads Default; an icon from before the palette
+  (#225) is shown as it was stored. What's stored is unchanged, so the
+  entries already there read the same way.
+  - Found in the browser: a change whose two sides were both in the other
+    language's script read the wrong way round. "Vendors ← Customers" in
+    an Arabic line drew as one run left to right, the arrow pointing at
+    the name it had been, and two Arabic names in an English line did the
+    same. Each side of a change is now drawn in its own `<bdi>`, the arrow
+    between them taking the page's direction, for every change in the
+    log.
+  - In the browser, against the scratch database, as the Super Admin: a
+    company's sections renamed twice and given an icon, as the Modules
+    tab saves them, are logged as the whole maps, as before, and the
+    newest entry reads one line for each section that changed, with no
+    JSON; each change is drawn with its before where the line starts and
+    the arrow pointing at its after, two English names in Arabic and two
+    Arabic names in English included; the page doesn't scroll sideways.
+    In English on a computer and in Arabic on a phone (6 checks each).
+    The lines follow the order the details are stored in, the icons
+    before the names, and each map's sections the side bar's order.
+  - The web interface audit found nothing else to change: the lines are
+    the log's own, in its own type.

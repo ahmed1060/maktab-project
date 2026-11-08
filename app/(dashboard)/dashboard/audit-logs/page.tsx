@@ -13,7 +13,7 @@ import {
 import { useCompany } from '@/context/CompanyContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { AUDIT_ACTIONS, AUDIT_ACTION_GROUPS, AUDIT_ENTITY_TYPES } from '@/lib/audit-codes'
-import { describeDetails, type DetailLine } from '@/lib/audit-details'
+import { changeArrow, describeDetails, type DetailLine } from '@/lib/audit-details'
 import { countOf } from '@/lib/plural'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
@@ -128,7 +128,10 @@ export default function AuditLogsPage() {
             {items.map((line, i) => (
                 <li key={i}>
                     {line.label && <span className="ui-hint">{line.label}{line.lines ? '' : ': '}</span>}
-                    {line.value !== undefined && <span className="ui-report-value">{line.value}</span>}
+                    {/* A change's two sides each in its own direction, whatever their script (PR 233). */}
+                    {line.change
+                        ? <span className="ui-report-value"><bdi>{line.change.before}</bdi>{changeArrow(locale)}<bdi>{line.change.after}</bdi></span>
+                        : line.value !== undefined && <span className="ui-report-value">{line.value}</span>}
                     {line.lines && lines(line.lines)}
                 </li>
             ))}
