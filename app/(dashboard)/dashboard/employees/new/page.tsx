@@ -105,13 +105,21 @@ export default function NewEmployeePage() {
         if (first) setFocusOn(f => ({ field: first, n: (f?.n ?? 0) + 1 }))
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setError('')
         setFocusOn(null)
+        // In a number field, what the browser can't read ("1e", "-") reads as
+        // empty, as though left empty, which was saved as 0: it's asked of the
+        // fields themselves, as the form doesn't let the browser check them.
+        const form = e.currentTarget
+        const unreadable = (['salary', 'dayOffCredit'] as const).filter(name => {
+            const field = form.elements.namedItem(name)
+            return field instanceof HTMLInputElement && field.validity.badInput
+        })
         const wrong = newEmployeeErrors({
             firstName, lastName, email, password, company: { needed: isSuperAdmin, id: companyId },
-            salary: { shown: salaryShown, text: salary }, dayOffCredit: { shown: dayOffShown, text: dayOffCredit },
+            salary: { shown: salaryShown, text: salary }, dayOffCredit: { shown: dayOffShown, text: dayOffCredit }, unreadable,
         })
         if (Object.keys(wrong).length > 0) {
             wrongAt(Object.fromEntries(Object.entries(wrong).map(([field, key]) => [field, t(key)])))

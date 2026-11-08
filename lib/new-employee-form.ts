@@ -32,6 +32,12 @@ export function newEmployeeErrors(typed: {
      */
     salary?: { shown: boolean; text: string }
     dayOffCredit?: { shown: boolean; text: string }
+    /**
+     * The number fields the browser couldn't read ("1e", "-"): it gives them
+     * as empty, as though left empty, which the server takes as 0. Asked of
+     * the fields themselves (validity.badInput), as the profile form does.
+     */
+    unreadable?: readonly ('salary' | 'dayOffCredit')[]
 }): Partial<Record<NewEmployeeField, TranslationKey>> {
     const errors: Partial<Record<NewEmployeeField, TranslationKey>> = {}
     if (!typed.firstName.trim()) errors.firstName = 'emp_new_first_name_required'
@@ -39,8 +45,8 @@ export function newEmployeeErrors(typed: {
     if (!EMAIL.test(typed.email.trim())) errors.email = 'emp_new_email_invalid'
     if (typed.password.length < PASSWORD_MIN) errors.password = 'emp_new_password_short'
     if (typed.company.needed && !typed.company.id) errors.companyId = 'emp_new_company_required'
-    if (typed.salary?.shown && !zeroOrMore(typed.salary.text)) errors.salary = 'emp_new_salary_invalid'
-    if (typed.dayOffCredit?.shown && !zeroOrMore(typed.dayOffCredit.text)) errors.dayOffCredit = 'emp_new_day_off_invalid'
+    if (typed.salary?.shown && (typed.unreadable?.includes('salary') || !zeroOrMore(typed.salary.text))) errors.salary = 'emp_new_salary_invalid'
+    if (typed.dayOffCredit?.shown && (typed.unreadable?.includes('dayOffCredit') || !zeroOrMore(typed.dayOffCredit.text))) errors.dayOffCredit = 'emp_new_day_off_invalid'
     return errors
 }
 

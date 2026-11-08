@@ -254,6 +254,35 @@ describe("Add employee, found by Codex", () => {
     })
 })
 
+describe("Add employee, a number the browser can't read", () => {
+    // In a number field, what the browser can't read ("1e", "-") reads as
+    // empty, as though left empty: a pay typed as "1e" was saved as 0, and a
+    // day off credit too. The profile form has asked its fields since PR 193.
+    const ok = { firstName: "Mona", lastName: "Adel", email: "mona@example.com", password: "a-long-enough-one", company: { needed: false, id: "" } }
+    const empty = { salary: { shown: true, text: "" }, dayOffCredit: { shown: true, text: "" } }
+
+    it("says so under its field, before anything is sent", async () => {
+        const { newEmployeeErrors } = await import("@/lib/new-employee-form")
+        expect(newEmployeeErrors({ ...ok, ...empty, unreadable: ["salary"] })).toEqual({ salary: "emp_new_salary_invalid" })
+        expect(newEmployeeErrors({ ...ok, ...empty, unreadable: ["dayOffCredit"] })).toEqual({ dayOffCredit: "emp_new_day_off_invalid" })
+        expect(newEmployeeErrors({ ...ok, ...empty, unreadable: ["salary", "dayOffCredit"] }))
+            .toEqual({ salary: "emp_new_salary_invalid", dayOffCredit: "emp_new_day_off_invalid" })
+        // Left empty, it's still fine: the server counts it as 0.
+        expect(newEmployeeErrors({ ...ok, ...empty, unreadable: [] })).toEqual({})
+        expect(newEmployeeErrors({ ...ok, ...empty })).toEqual({})
+        // Not asked for, not checked.
+        expect(newEmployeeErrors({ ...ok, salary: { shown: false, text: "" }, dayOffCredit: { shown: false, text: "" }, unreadable: ["salary", "dayOffCredit"] })).toEqual({})
+    })
+
+    it("asks the fields themselves, as the profile form does", () => {
+        const src = readFileSync(PAGE, "utf8")
+        expect(src).toContain("const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {")
+        expect(src).toContain("const unreadable = (['salary', 'dayOffCredit'] as const).filter(name => {")
+        expect(src).toContain("return field instanceof HTMLInputElement && field.validity.badInput")
+        expect(src).toContain("salary: { shown: salaryShown, text: salary }, dayOffCredit: { shown: dayOffShown, text: dayOffCredit }, unreadable,")
+    })
+})
+
 describe("Add employee, where the company's package leaves pay or day off out", () => {
     // DESIGN.md §5.5, Page layout: pay is Payroll's, a day off balance Day
     // off's. Both were asked for whatever the package, and saved.
