@@ -1072,6 +1072,12 @@ export class TaskService {
             }
 
             const updatedTaskRecord = await tx.task.update({ where: { id }, data: updateData })
+            // Paid, a rejected task is approved or completed: what anyone
+            // still holds for it in cash advances joins their running
+            // balance, as at its approval (CLIENTS_PLAN.md §7.9).
+            if (task.companyId && (updateData.status === 'APPROVED' || updateData.status === 'COMPLETED') && !['APPROVED', 'COMPLETED'].includes(task.status)) {
+                await CashAdvanceService.movePart(tx, task.companyId, { taskId: id, clientId: null }, "TASK_PAID", { id: userId, name: session.user.name, role: userRole })
+            }
 
             await tx.auditLog.create({
                 data: {
@@ -1419,7 +1425,7 @@ export class TaskService {
 
             const tasks = await tx.task.findMany({
                 where: whereClause,
-                select: { id: true, companyId: true, totalCost: true, memberCosts: true, memberPaymentStatus: true, assignees: { select: { id: true, teamLeaderId: true } } } as any
+                select: { id: true, companyId: true, status: true, totalCost: true, memberCosts: true, memberPaymentStatus: true, assignees: { select: { id: true, teamLeaderId: true } } } as any
             })
 
             if (tasks.length !== taskIds.length && userRole !== 'SUPER_ADMIN') {
@@ -1427,6 +1433,8 @@ export class TaskService {
             }
 
             let count = 0
+            // Completed here, from not decided: their cash advance money moves below.
+            const decided: { companyId: string; part: { taskId: string; clientId: null } }[] = []
             for (const task of tasks as any[]) {
                 const mCosts: Record<string, number> = task.memberCosts || {}
 
@@ -1448,6 +1456,7 @@ export class TaskService {
                             updatedAt: new Date()
                         } as any
                     })
+                    if (allPaid && task.companyId && !['APPROVED', 'COMPLETED'].includes(task.status)) decided.push({ companyId: task.companyId, part: { taskId: task.id, clientId: null } })
                     count++
                     continue
                 }
@@ -1467,8 +1476,14 @@ export class TaskService {
                         updatedAt: new Date() // Force timestamp update for history
                     } as any
                 })
+                if (task.companyId && !['APPROVED', 'COMPLETED'].includes(task.status)) decided.push({ companyId: task.companyId, part: { taskId: task.id, clientId: null } })
                 count++
             }
+            // A rejected task paid is completed: what anyone holds for it in
+            // cash advances joins their running balance, as at an approval
+            // (CLIENTS_PLAN.md §7.9). All the tasks are held above; everyone's
+            // advance is held once, in one order.
+            await CashAdvanceService.moveParts(tx, decided, "TASK_PAID", { id: userId, name: session.user.name, role: userRole })
 
             await tx.auditLog.create({
                 data: {

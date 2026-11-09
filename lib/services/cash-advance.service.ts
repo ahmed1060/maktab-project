@@ -184,7 +184,23 @@ async function todayIn(companyId: string, db: Db = prisma): Promise<string> {
 }
 
 /** Why what's held for a task or a client moved to the running balance (§7.9, 7g), as the audit log says. */
-export type MovedBecause = "TASK_APPROVED" | "TASK_DELETED" | "CLIENT_ARCHIVED" | "CLIENT_DELETED" | "BY_HAND"
+export type MovedBecause = "TASK_APPROVED" | "TASK_PAID" | "TASK_DELETED" | "CLIENT_ARCHIVED" | "CLIENT_DELETED" | "BY_HAND"
+
+/**
+ * Holds the tasks and clients money is for (§7.9), before anyone's advance
+ * is held: always tasks, then clients, then people, each in the order of
+ * their ids. Approving or deleting a task, and archiving or deleting a
+ * client, hold its row first too, so one waits for the other rather than
+ * each waiting on the other's hold; and an advance given for a task or a
+ * client meanwhile waits, and finds it done with, rather than being given
+ * for it after its money has moved.
+ */
+async function holdParts(tx: Prisma.TransactionClient, parts: readonly AdvanceFor[]) {
+    const tasks = [...new Set(parts.flatMap(p => p.taskId ? [p.taskId] : []))].sort()
+    const clients = [...new Set(parts.flatMap(p => p.clientId ? [p.clientId] : []))].sort()
+    for (const id of tasks) await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ${id} FOR SHARE`
+    for (const id of clients) await tx.$queryRaw`SELECT id FROM "Client" WHERE id = ${id} FOR SHARE`
+}
 
 /** Whoever moved it: a user, or a Super Admin. */
 export type Mover = { id: string; name?: string | null; role?: string }
@@ -354,6 +370,8 @@ export class CashAdvanceService {
                 // person's balance, one entry at a time.
                 await tx.$queryRaw`SELECT id FROM "Company" WHERE id = ${companyId} FOR KEY SHARE`
                 await inUse(companyId, tx)
+                // What it's for, before the person (holdParts): read below once held.
+                await holdParts(tx, [part])
                 await CashAdvanceService.lockPerson(tx, person.id)
                 // Deleted for good while this waited: nothing is theirs any more.
                 // And whether they're at work, or gone, as it is now: an ending
@@ -453,12 +471,13 @@ export class CashAdvanceService {
         await tx.$queryRaw`SELECT id FROM "Company" WHERE id = ${companyId} FOR KEY SHARE`
         const company = await tx.company.findUnique({ where: { id: companyId }, select: { cashAdvancesAllowed: true, cashAdvancesOn: true } })
         if (!cashAdvancesInUse(company)) return none
-        await CashAdvanceService.lockPerson(tx, author.id)
         const order: AdvanceFor[] = [
             { taskId: on.taskId, clientId: null },
             ...(on.clientId ? [{ taskId: null, clientId: on.clientId }] : []),
             { taskId: null, clientId: null },
         ]
+        await holdParts(tx, order)
+        await CashAdvanceService.lockPerson(tx, author.id)
         const left: number[] = []
         for (const part of order) left.push(Math.max(0, await partOf(tx, companyId, author.id, part)))
         return amounts.map(amount => {
@@ -497,7 +516,9 @@ export class CashAdvanceService {
         let gone: string[] = []
         let taken = new Map<string, SpentPart[]>(paid.map(c => [c.id, [...(c.parts ?? [{ taskId: null, clientId: null, amount: c.part }])]]))
         if (way === 1) {
-            // Each person's advance held, in one order, so two removals don't wait on each other.
+            // What each took from, held first (holdParts); then each person's
+            // advance, in one order, so two removals don't wait on each other.
+            await holdParts(tx, [...(await takenBy(tx, paid)).values()].flat())
             const authors = [...new Set(paid.map(c => c.authorId))].sort()
             for (const authorId of authors) await CashAdvanceService.lockPerson(tx, authorId)
             // Someone deleted for good since has no advance to put it back on:
@@ -515,6 +536,18 @@ export class CashAdvanceService {
                 costId: c.id, taskId, forTaskId: p.taskId, forClientId: p.clientId, recordedById: by.id, recordedByName: by.name ?? null,
             }))),
         })
+        // Put back on a client since archived, it joins the running balance
+        // as the rest of that client's money did (§7.9): nothing could spend
+        // it there. A task's own money comes back only to a task in progress.
+        if (way === 1) {
+            const clients = [...new Set(paid.flatMap(c => (taken.get(c.id) ?? []).flatMap(p => p.clientId ? [p.clientId] : [])))]
+            const archived = clients.length ? await tx.client.findMany({ where: { id: { in: clients }, archivedAt: { not: null } }, select: { id: true } }) : []
+            for (const c of paid) {
+                for (const p of taken.get(c.id) ?? []) {
+                    if (p.clientId && archived.some(a => a.id === p.clientId)) await movedToRunning(tx, companyId, c.authorId, { taskId: null, clientId: p.clientId }, "CLIENT_ARCHIVED", by)
+                }
+            }
+        }
         // Someone whose contract has ended holds nothing: what's put back on
         // theirs becomes a debt at once, as at their leaving (§7.3), where the
         // package has Payroll (toDebt).
@@ -546,6 +579,8 @@ export class CashAdvanceService {
         debt: { dueDate: Date; by: { id: string; name?: string | null } },
     ) {
         if (counted === null && !(await companyHasModule(companyId, "PAYROLL", tx))) return null
+        // What they hold for tasks and clients, moved below, held first (holdParts).
+        await holdParts(tx, (await heldFor(tx, companyId, userId)).map(h => h.key))
         await CashAdvanceService.lockPerson(tx, userId)
         const held = await balanceOf(tx, companyId, userId)
         if (counted !== null && held !== cents(counted)) throw new Error("CASH_ADVANCE_CHANGED")
@@ -638,16 +673,26 @@ export class CashAdvanceService {
      * each other, and what they hold is read again under it.
      */
     static async movePart(tx: Prisma.TransactionClient, companyId: string, part: AdvanceFor, because: MovedBecause, by: Mover) {
-        if (!part.taskId && !part.clientId) return
+        await CashAdvanceService.moveParts(tx, [{ companyId, part }], because, by)
+    }
+
+    /**
+     * The same for several tasks or clients at once, as Mark all as paid
+     * completes them: everyone holding for any of them is held first, in the
+     * order of their ids, then each part moves. Their rows are the caller's
+     * to hold, before this.
+     */
+    static async moveParts(tx: Prisma.TransactionClient, items: readonly { companyId: string; part: AdvanceFor }[], because: MovedBecause, by: Mover) {
+        const wanted = items.filter(i => i.part.taskId || i.part.clientId)
+        if (!wanted.length) return
         const holders = await tx.cashAdvanceEntry.findMany({
-            where: { companyId, forTaskId: part.taskId, forClientId: part.clientId },
-            distinct: ["userId"],
-            select: { userId: true },
+            where: { OR: wanted.map(i => ({ companyId: i.companyId, forTaskId: i.part.taskId, forClientId: i.part.clientId })) },
+            distinct: ["companyId", "userId", "forTaskId", "forClientId"],
+            select: { companyId: true, userId: true, forTaskId: true, forClientId: true },
         })
-        for (const userId of holders.map(h => h.userId).sort()) {
-            await CashAdvanceService.lockPerson(tx, userId)
-            await movedToRunning(tx, companyId, userId, part, because, by)
-        }
+        for (const userId of [...new Set(holders.map(h => h.userId))].sort()) await CashAdvanceService.lockPerson(tx, userId)
+        const order = [...holders].sort((a, b) => a.userId.localeCompare(b.userId) || (a.forTaskId ?? "").localeCompare(b.forTaskId ?? "") || (a.forClientId ?? "").localeCompare(b.forClientId ?? ""))
+        for (const h of order) await movedToRunning(tx, h.companyId, h.userId, { taskId: h.forTaskId, clientId: h.forClientId }, because, by)
     }
 
     /**
@@ -669,6 +714,7 @@ export class CashAdvanceService {
             // As an entry recorded: the company's switch can't go off meanwhile.
             await tx.$queryRaw`SELECT id FROM "Company" WHERE id = ${companyId} FOR KEY SHARE`
             await inUse(companyId, tx)
+            await holdParts(tx, [part])
             await CashAdvanceService.lockPerson(tx, person.id)
             const moved = await movedToRunning(tx, companyId, person.id, part, "BY_HAND", { id: session.user.id, name: session.user.name, role: session.user.role })
             if (!moved) throw new Error("CASH_ADVANCE_NOTHING_HELD")

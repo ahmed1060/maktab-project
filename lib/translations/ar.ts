@@ -3804,6 +3804,7 @@ export const ar = {
         audit_field_forClientId: "مخصّصة للعميل (المعرّف)",
         audit_field_because: "السبب",
         audit_value_TASK_APPROVED: "اعتُمدت المهمة",
+        audit_value_TASK_PAID: "دُفعت المهمة",
         audit_value_TASK_DELETED: "حُذفت المهمة",
         audit_value_CLIENT_ARCHIVED: "أُرشف العميل",
         audit_value_CLIENT_DELETED: "حُذف العميل",

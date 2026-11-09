@@ -26,32 +26,46 @@ INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayO
  ('a1', 'a1@x', 'p', 'Amal', 'One', 'ADMIN', 2026, 'a1', 'c1', NULL),
  ('e1', 'e1@x', 'p', 'Ehab', 'One', 'EMPLOYEE', 2026, 'e1', 'c1', NULL),
  ('e2', 'e2@x', 'p', 'Eman', 'One', 'EMPLOYEE', 2026, 'e2', 'c1', NULL),
- ('e3', 'e3@x', 'p', 'Essam', 'One', 'EMPLOYEE', 2026, 'e3', 'c1', NULL);
+ ('e3', 'e3@x', 'p', 'Essam', 'One', 'EMPLOYEE', 2026, 'e3', 'c1', NULL),
+ ('e4', 'e4@x', 'p', 'Fady', 'One', 'EMPLOYEE', 2026, 'e4', 'c1', NULL),
+ ('e5', 'e5@x', 'p', 'Hoda', 'One', 'EMPLOYEE', 2026, 'e5', 'c1', NULL);
 `
 // Nile Foods has tasks; Dune and Reed have none. Ehab and Essam are on the
-// gate, Ehab alone on the roof and the dock, Eman on the shed.
+// gate, Ehab alone on the roof and the dock, Eman on the shed. Fady is on the
+// mast and the keel, Hoda on the hull and Kelp's pier.
 const WORK = `
 INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES
  ('nile', 'c1', 'Nile Foods', 'o', '0100', 'HQ', now()),
  ('dune', 'c1', 'Dune', 'o', '0101', 'HQ', now()),
- ('reed', 'c1', 'Reed', 'o', '0102', 'HQ', now());
+ ('reed', 'c1', 'Reed', 'o', '0102', 'HQ', now()),
+ ('kelp', 'c1', 'Kelp', 'o', '0103', 'HQ', now()),
+ ('sand', 'c1', 'Sand', 'o', '0104', 'HQ', now()),
+ ('moss', 'c1', 'Moss', 'o', '0105', 'HQ', now());
 INSERT INTO "Location"(id, "companyId", "clientId", name, "isHq", latitude, longitude, "updatedAt") VALUES ('port', 'c1', NULL, 'Port gate', false, 31.18, 29.87, now());
 INSERT INTO "Task"(id, title, description, status, deadline, "companyId", "clientId", "locationId", "updatedAt") VALUES
  ('gate', 'Fix the gate', 'd', 'PENDING_CONFIRMATION', now() + interval '2 days', 'c1', 'nile', 'port', now()),
  ('roof', 'Patch the roof', 'd', 'PENDING_CONFIRMATION', now() + interval '2 days', 'c1', NULL, 'port', now()),
  ('dock', 'Sweep the dock', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', NULL, 'port', now()),
- ('shed', 'Paint the shed', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', NULL, 'port', now());
-INSERT INTO "_MultipleAssignees"("A", "B") VALUES ('gate', 'e1'), ('gate', 'e3'), ('roof', 'e1'), ('dock', 'e1'), ('shed', 'e2');
+ ('shed', 'Paint the shed', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', NULL, 'port', now()),
+ ('mast', 'Raise the mast', 'd', 'PENDING_CONFIRMATION', now() + interval '2 days', 'c1', NULL, 'port', now()),
+ ('keel', 'Scrape the keel', 'd', 'PENDING_CONFIRMATION', now() + interval '2 days', 'c1', NULL, 'port', now()),
+ ('hull', 'Seal the hull', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', NULL, 'port', now()),
+ ('pier', 'Mend the pier', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', 'kelp', 'port', now());
+INSERT INTO "_MultipleAssignees"("A", "B") VALUES ('gate', 'e1'), ('gate', 'e3'), ('roof', 'e1'), ('dock', 'e1'), ('shed', 'e2'),
+ ('mast', 'e4'), ('keel', 'e4'), ('hull', 'e5'), ('pier', 'e5');
 `
 
 const as = (user: Record<string, unknown>) => ({ user: { ...withGrants(user as any), mfaEnabled: true, stepUpAt: Date.now() } }) as any
 const admin = as({ id: "a1", role: "ADMIN", companyId: "c1", name: "Amal One" })
 const ehab = as({ id: "e1", role: "EMPLOYEE", companyId: "c1", name: "Ehab One" })
+const hoda = as({ id: "e5", role: "EMPLOYEE", companyId: "c1", name: "Hoda One" })
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 const PAGE = { page: 1, limit: 50, skip: 0 }
 
 describe.skipIf(!ADMIN_URL)("what's left of an advance for a task or a client, in Postgres", () => {
     const dbName = `advance_moving_test_${Date.now()}`
     let db: Client
+    let dbUrl: string
     let Advances: typeof import("@/lib/services/cash-advance.service").CashAdvanceService
     let Tasks: typeof import("@/lib/services/task.service").TaskService
     let Clients: typeof import("@/lib/services/client.service").ClientService
@@ -62,6 +76,18 @@ describe.skipIf(!ADMIN_URL)("what's left of an advance for a task or a client, i
     const refusal = (p: Promise<unknown>) => p.then(() => "moved", (e: Error) => e.message)
     const advance = (userId: string) => Advances.person(admin.user, userId, PAGE)
     const held = async (userId: string) => (await advance(userId)).held.map(h => [h.forTask?.id ?? h.forClient?.id, h.amount])
+    // Another connection, as another request would be.
+    const connect = async () => { const c = new Client({ connectionString: dbUrl }); await c.connect(); return c }
+    // Whether a person's advance is free to hold: nothing is waiting with it held.
+    const personFree = async (userId: string) => {
+        const c = await connect()
+        try {
+            await c.query("BEGIN")
+            const { rows } = await c.query(`SELECT pg_try_advisory_xact_lock(hashtextextended($1, 0)) AS ok`, [`cash-advance:${userId}`])
+            await c.query("ROLLBACK")
+            return rows[0].ok as boolean
+        } finally { await c.end() }
+    }
     const moved = async (userId: string) =>
         (await db.query(`SELECT amount::float, "forTaskId", "forClientId", "recordedByName" FROM "CashAdvanceEntry" WHERE "userId" = $1 AND kind::text = 'MOVED' ORDER BY "createdAt", amount`, [userId])).rows
 
@@ -72,6 +98,7 @@ describe.skipIf(!ADMIN_URL)("what's left of an advance for a task or a client, i
         await a.end()
         const url = new URL(ADMIN_URL!)
         url.pathname = `/${dbName}`
+        dbUrl = url.toString()
         db = new Client({ connectionString: url.toString() })
         await db.connect()
         for (const m of MIGRATIONS) {
@@ -201,5 +228,80 @@ describe.skipIf(!ADMIN_URL)("what's left of an advance for a task or a client, i
             ["e2", "CLIENT_ARCHIVED", 250],
             ["e3", "CLIENT_DELETED", 50],
         ])
+    })
+
+    it("moves a rejected task's money when paying it completes it", async () => {
+        await give("e4", 120, { forTaskId: "mast" })
+        await Tasks.review("mast", admin, { status: "REJECTED" })
+        expect(await held("e4")).toEqual([["mast", 120]])
+        await Tasks.updatePayment("mast", admin, { paymentStatus: "PAID" })
+        expect(await held("e4")).toEqual([])
+        expect((await advance("e4")).running).toBe(120)
+    })
+
+    it("moves it as Mark all as paid completes a rejected task", async () => {
+        await give("e4", 80, { forTaskId: "keel" })
+        await Tasks.review("keel", admin, { status: "REJECTED" })
+        await Tasks.bulkUpdatePayment(["keel"], admin)
+        expect(await held("e4")).toEqual([])
+        expect((await advance("e4")).running).toBe(200)
+        const because = (await db.query(`SELECT details->>'because' AS b FROM "AuditLog" WHERE action = 'MOVE_CASH_ADVANCE' AND "entityId" = 'e4' ORDER BY "createdAt"`)).rows.map(r => r.b)
+        expect(because).toEqual(["TASK_PAID", "TASK_PAID"])
+    })
+
+    it("refuses an advance given for a task while its approval commits", async () => {
+        const approval = await connect()
+        await approval.query("BEGIN")
+        await approval.query(`UPDATE "Task" SET status = 'APPROVED' WHERE id = 'hull'`)
+        const giving = refusal(give("e5", 60, { forTaskId: "hull" }))
+        await sleep(500)
+        await approval.query("COMMIT")
+        await approval.end()
+        expect(await giving).toBe("CASH_ADVANCE_TASK_DONE")
+        expect(await held("e5")).toEqual([])
+    })
+
+    it("refuses an advance given for a client while it's archived, holding the client before the person", async () => {
+        const archiving = await connect()
+        await archiving.query("BEGIN")
+        await archiving.query(`SELECT id FROM "Client" WHERE id = 'sand' FOR UPDATE`)
+        const giving = refusal(give("e5", 70, { forClientId: "sand" }))
+        await sleep(500)
+        // Waiting for the client, not holding Hoda's advance: the archive can take it.
+        expect(await personFree("e5")).toBe(true)
+        await archiving.query(`UPDATE "Client" SET "archivedAt" = now() WHERE id = 'sand'`)
+        await archiving.query("COMMIT")
+        await archiving.end()
+        expect(await giving).toBe("CASH_ADVANCE_CLIENT_ARCHIVED")
+        expect(await held("e5")).toEqual([])
+    })
+
+    it("moves by hand only once it holds the client, so a move and an archive can't wait on each other", async () => {
+        await give("e5", 90, { forClientId: "moss" })
+        const archiving = await connect()
+        await archiving.query("BEGIN")
+        await archiving.query(`SELECT id FROM "Client" WHERE id = 'moss' FOR UPDATE`)
+        const moving = refusal(Advances.move(admin, "e5", { forClientId: "moss" }))
+        await sleep(500)
+        expect(await personFree("e5")).toBe(true)
+        await archiving.query("ROLLBACK")
+        await archiving.end()
+        expect(await moving).toBe("moved")
+        expect(await held("e5")).toEqual([])
+        expect((await advance("e5")).running).toBe(90)
+    })
+
+    it("puts back a removed cost's money on the running balance where its client has been archived", async () => {
+        await give("e5", 100, { forClientId: "kelp" })
+        await Tasks.submit("pier", "e5", hoda, { isDraft: true, costs: [{ amount: 40, description: "Rope" }] })
+        expect(await held("e5")).toEqual([["kelp", 60]])
+        // Kelp has a task: it's archived, and its 60 moves.
+        expect(await Clients.delete("kelp", admin)).toMatchObject({ archived: true })
+        expect(await held("e5")).toEqual([])
+        const [cost] = (await db.query(`SELECT id FROM "TaskCost" WHERE "taskId" = 'pier'`)).rows
+        await Tasks.deleteItem("pier", hoda, { type: "COST", itemId: cost.id })
+        // The 40 goes back where it came from, and on to the running balance.
+        expect(await held("e5")).toEqual([])
+        expect((await advance("e5")).running).toBe(190)
     })
 })

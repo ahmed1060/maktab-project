@@ -3818,6 +3818,7 @@ export const en = {
         audit_field_forClientId: "For the client (ID)",
         audit_field_because: "Why",
         audit_value_TASK_APPROVED: "The task was approved",
+        audit_value_TASK_PAID: "The task was paid",
         audit_value_TASK_DELETED: "The task was deleted",
         audit_value_CLIENT_ARCHIVED: "The client was archived",
         audit_value_CLIENT_DELETED: "The client was deleted",
