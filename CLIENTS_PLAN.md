@@ -1082,6 +1082,33 @@ each question.
   - 7g: what's left moves to the running balance: on its own when the task
     is approved or deleted or the client archived, and by hand for a
     client.
+- **Proposed, as 7e builds it:**
+  - **Each entry is for one task, one client, or neither,** the running
+    balance. What's held for each is the sum of its entries, never below
+    zero, and the person's balance is the sum of them all, as before.
+  - **Give advance asks what it's for:** any cost, a task or a client. The
+    tasks offered are the open ones the person is on, the soonest due
+    first; the clients, the company's not archived, by name. A task
+    approved or completed, one they're no longer on, or a client archived
+    is refused as it's saved.
+  - **Record return and Correction ask which part they're on,** where the
+    person holds money for a task or a client: the running balance, or
+    one of those, each with what's held. Neither takes its part below
+    zero.
+  - **Until 7f, costs are paid from the running balance only.** Money for
+    a task or a client waits for 7f to spend it; a cost beyond the running
+    balance is owed to the employee, as today.
+  - **Until 7g, a task or a client deleted** leaves its money on the
+    person's balance, for nothing in particular: its entries stay, and
+    join the running balance.
+  - **Leaving the company (§7.3)** moves what's held for each task and
+    client to the running balance first, each as a pair of entries, Moved
+    to the running balance, then the whole balance becomes a debt, as
+    before.
+  - **Where it shows:** under each balance on the Cash advances tab, how
+    much of it is for tasks or clients; on the person's page and My cash
+    advance, the running balance beside the balance, a card of what's held
+    for each task and client, and each entry saying what it was for.
 
 ---
 
@@ -1173,8 +1200,11 @@ each question.
        My cash advance, was merged in #112 on 2026-10-30, and 7b, costs
        paid from the advance, in #113, and 7c, the permissions for the
        companies already there, in #114, and 7d, a balance held on
-       leaving becoming a debt, in #115. Step 7 is done, and with it
+       leaving becoming a debt, in #115. Step 7 was done, and with it
        steps 0–7.
+     - An advance for a particular task or client (§7.9), decided on
+       2026-11-09, adds three PRs to step 7, 7e to 7g. 7e, the ledger
+       holding money for a task or a client, in #235.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -2421,3 +2451,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   advance.
 - **2026-11-08:** "Paid to" turned down (§11), from §9: a cost says what the
   money was for, and its receipt photo shows who received it.
+- **2026-11-09:** An advance for a particular task or client (§7.9),
+  decided from the recommended answers, and its first PR, 7e, built in
+  #235 (`UI_PLAN.md`): Give advance asks what it's for, Record return and
+  Correction which part they're on, and each place a balance shows says
+  what of it is for tasks or clients. Costs still spend the running
+  balance only, until 7f.
