@@ -15,6 +15,7 @@ import { earliestDeadline } from "@/lib/deadline"
 import { isReviewed } from "@/lib/task-reviewed"
 import { shareOwed, allSharesPaid } from "@/lib/cost-shares"
 import { CashAdvanceService, spentTotal } from "@/lib/services/cash-advance.service"
+import { assertStepUp } from "@/lib/step-up"
 import { LocationService } from "./location.service"
 import { ListService } from "./list.service"
 import { snapshotOf } from "./costs-query"
@@ -707,6 +708,13 @@ export class TaskService {
         const { newAssigneeIds } = data
         const userId = session.user.id
         const userRole = session.user.role
+        // Who takes what someone left off holds for the task (§7.9, 7h):
+        // someone on the copy, picked, or the copy's only person.
+        const heldGoesTo: unknown = data?.heldGoesTo
+        if (heldGoesTo !== undefined && heldGoesTo !== null && (typeof heldGoesTo !== "string" || !newAssigneeIds.includes(heldGoesTo))) {
+            throw new Error("TRANSFER_HELD_RECEIVER_INVALID")
+        }
+        const picked = typeof heldGoesTo === "string" ? heldGoesTo : null
 
         return await prisma.$transaction(async (tx) => {
             // 1. Fetch original task with assignees
@@ -799,6 +807,16 @@ export class TaskService {
                     }
                 })
 
+                // What's held for the task follows it to the copy (§7.9, 7h).
+                const companyId = originalTask.companyId as string
+                await CashAdvanceService.followTransfer(tx, {
+                    companyId, fromTaskId: originalTask.id, toTaskId: newTask.id,
+                    current: currentAssigneeIds, next: newAssigneeIds, picked,
+                    mayPass: person => can(session.user, "cash_advances.give", { companyId, userId: person.id, teamLeaderId: person.teamLeaderId }),
+                    assertCode: () => assertStepUp(session, "cash_advances.give"),
+                    by: { id: userId, name: session.user.name, role: userRole },
+                })
+
                 // Create notifications for all new assignees
                 await tx.notification.createMany({
                     data: addedIds.map((id: string) => ({
@@ -826,6 +844,20 @@ export class TaskService {
 
             return { originalId: originalTask.id, clones: newTask ? 1 : 0 }
         })
+    }
+
+    /**
+     * What Transfer task's dialog says will happen to what's held for the
+     * task (CLIENTS_PLAN.md §7.9, 7h), for whoever may transfer it, as
+     * `transfer` checks: the people it would go to, and who'd take what the
+     * left-off hold, if picked.
+     */
+    static async transferPreview(id: string, session: any, next: string[], picked: string | null) {
+        const task = await prisma.task.findUnique({ where: { id }, select: { companyId: true, assignees: { select: { id: true } } } })
+        if (!task?.companyId) throw new Error("TASK_NOT_FOUND")
+        const current = task.assignees.map(a => a.id)
+        if (!current.includes(session.user.id) && !can(session.user, "tasks.transfer")) throw new Error("UNAUTHORIZED_TRANSFER")
+        return CashAdvanceService.transferPreview(session.user, { companyId: task.companyId, taskId: id, current, next, picked })
     }
 
     /**

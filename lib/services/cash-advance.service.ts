@@ -10,6 +10,7 @@ import { filterTimeZone } from "@/lib/services/filter-zone"
 import { uploadedHere } from "@/lib/services/cost-receipts"
 import type { Paging } from "@/lib/pagination"
 import { owedTo } from "@/lib/services/costs-query"
+import { transferPlan } from "@/lib/cash-advance-transfer"
 import { companyHasModule } from "@/lib/services/company-package"
 import {
     CASH_ADVANCE_NOTE_MAX, HANDOVER_FOLDER, RECORDED_KINDS, balanceAfter, cashAdvancesInUse, dayOf, forOf, signedAmount, type AdvanceFor, type RecordedKind,
@@ -63,12 +64,21 @@ const PERSON = { id: true, firstName: true, lastName: true, status: true, compan
 
 const ENTRY = {
     id: true, kind: true, amount: true, date: true, note: true, photoUrl: true, confirmedAt: true, recordedByName: true, createdAt: true,
+    // Passed on with a transfer: who it came from, or went to (§7.9, 7h).
+    counterpartName: true,
     // A Spent one's task, while it's there (§7.4).
     task: { select: { id: true, title: true } },
     // What the money is for, while it's there (§7.9).
     forTask: { select: { id: true, title: true } },
     forClient: { select: { id: true, name: true } },
 } satisfies Prisma.CashAdvanceEntrySelect
+
+/**
+ * Waiting for its receiver to confirm it (§7.3): an advance given, or money
+ * passed to them with a task's transfer (§7.9, 7h). What follows a transfer
+ * to the same person is confirmed as it's written: it was theirs already.
+ */
+const AWAITING = { kind: { in: ["GIVEN", "TRANSFERRED"] }, amount: { gt: 0 }, confirmedAt: null } satisfies Prisma.CashAdvanceEntryWhereInput
 
 function nameOf(person: { firstName: string; lastName: string }) {
     return `${person.firstName} ${person.lastName}`.trim()
@@ -157,7 +167,7 @@ async function takenBy(db: Db, costs: readonly { id: string; part: number }[]): 
 async function balancesIn(companyId: string) {
     const [sums, awaiting, running] = await Promise.all([
         prisma.cashAdvanceEntry.groupBy({ by: ["userId"], where: { companyId }, _sum: { amount: true }, _max: { date: true } }),
-        prisma.cashAdvanceEntry.groupBy({ by: ["userId"], where: { companyId, kind: "GIVEN", confirmedAt: null }, _sum: { amount: true } }),
+        prisma.cashAdvanceEntry.groupBy({ by: ["userId"], where: { companyId, ...AWAITING }, _sum: { amount: true } }),
         prisma.cashAdvanceEntry.groupBy({ by: ["userId"], where: { companyId, forTaskId: null, forClientId: null }, _sum: { amount: true } }),
     ])
     const waiting = new Map(awaiting.map(a => [a.userId, cents(Number(a._sum.amount ?? 0))]))
@@ -184,7 +194,7 @@ async function todayIn(companyId: string, db: Db = prisma): Promise<string> {
 }
 
 /** Why what's held for a task or a client moved to the running balance (§7.9, 7g), as the audit log says. */
-export type MovedBecause = "TASK_APPROVED" | "TASK_PAID" | "TASK_DELETED" | "CLIENT_ARCHIVED" | "CLIENT_DELETED" | "BY_HAND"
+export type MovedBecause = "TASK_APPROVED" | "TASK_PAID" | "TASK_DELETED" | "CLIENT_ARCHIVED" | "CLIENT_DELETED" | "BY_HAND" | "TAKEN_OFF"
 
 /**
  * Holds the tasks and clients money is for (§7.9), before anyone's advance
@@ -315,7 +325,7 @@ export class CashAdvanceService {
             balanceOf(prisma, person.companyId, person.id),
             partOf(prisma, person.companyId, person.id, { taskId: null, clientId: null }),
             heldFor(prisma, person.companyId, person.id),
-            prisma.cashAdvanceEntry.aggregate({ where: { ...where, kind: "GIVEN", confirmedAt: null }, _sum: { amount: true } }),
+            prisma.cashAdvanceEntry.aggregate({ where: { ...where, ...AWAITING }, _sum: { amount: true } }),
         ])
         return {
             today: await todayIn(person.companyId),
@@ -435,7 +445,9 @@ export class CashAdvanceService {
      */
     static async confirm(session: Session, entryId: string) {
         const entry = entryId ? await prisma.cashAdvanceEntry.findUnique({ where: { id: entryId }, select: { id: true, userId: true, companyId: true, kind: true, amount: true, confirmedAt: true } }) : null
-        if (!entry || entry.userId !== session.user.id || entry.kind !== "GIVEN") throw new Error("CASH_ADVANCE_NOT_FOUND")
+        // An advance given, or money passed to them with a transfer (§7.9, 7h).
+        const confirmable = entry?.kind === "GIVEN" || (entry?.kind === "TRANSFERRED" && Number(entry.amount) > 0)
+        if (!entry || entry.userId !== session.user.id || !confirmable) throw new Error("CASH_ADVANCE_NOT_FOUND")
         await inUse(entry.companyId)
         const confirmedAt = new Date()
         return prisma.$transaction(async tx => {
@@ -690,6 +702,122 @@ export class CashAdvanceService {
         await holdParts(tx, [{ taskId, clientId: null }, ...[...taken.values()].flat()])
         const holders = await tx.cashAdvanceEntry.findMany({ where: { companyId, forTaskId: taskId, forClientId: null }, distinct: ["userId"], select: { userId: true } })
         for (const userId of [...new Set([...paid.map(c => c.authorId), ...holders.map(h => h.userId)])].sort()) await CashAdvanceService.lockPerson(tx, userId)
+    }
+
+    /**
+     * What's held for a task follows it to its copy as it's transferred
+     * (§7.9, 7h), as transferPlan says: whoever's still on the copy keeps
+     * theirs, now for the copy; whoever's left off passes theirs to the
+     * receiver, who confirms receiving it, with two-factor sign-in
+     * (assertCode, asked once, and only if anything passes), or it joins
+     * their own running balance.
+     *
+     * Under the hold on the task, which the transfer has updated, and on
+     * each person's advance, taken here in the order of their ids. Each is a
+     * pair of entries and a line in the audit log.
+     */
+    static async followTransfer(tx: Prisma.TransactionClient, move: {
+        companyId: string
+        fromTaskId: string
+        toTaskId: string
+        /** Who's on the task, and who the transfer puts on the copy. */
+        current: readonly string[]
+        next: readonly string[]
+        /** Who takes what the left-off hold, as picked: one of `next`, or null. */
+        picked: string | null
+        /** Whether whoever transfers it may give and settle this person's advance. */
+        mayPass: (person: { id: string; teamLeaderId: string | null }) => boolean
+        assertCode: () => Promise<void>
+        by: Mover
+    }) {
+        const { companyId, fromTaskId, toTaskId, by } = move
+        const from = { taskId: fromTaskId, clientId: null }
+        const people = [...new Set([...move.current, ...move.next])].sort()
+        for (const id of people) await CashAdvanceService.lockPerson(tx, id)
+        const found = new Map((await tx.user.findMany({ where: { id: { in: people } }, select: { id: true, firstName: true, lastName: true, teamLeaderId: true } })).map(u => [u.id, u]))
+        const nameOfId = (id: string) => { const u = found.get(id); return u ? nameOf(u) : null }
+        const held = await Promise.all(move.current.map(async userId => ({ userId, amount: await partOf(tx, companyId, userId, from) })))
+        const plan = transferPlan({
+            current: move.current, next: move.next, held, picked: move.picked,
+            mayPass: id => { const u = found.get(id); return !!u && move.mayPass({ id, teamLeaderId: u.teamLeaderId }) },
+        })
+        // Theirs to pass on, but to whom: the transfer has to say.
+        if (plan.needsReceiver) throw new Error("TRANSFER_HELD_RECEIVER_REQUIRED")
+        if (plan.moves.some(m => m.what === "PASSED")) await move.assertCode()
+
+        const date = new Date(`${await todayIn(companyId, tx)}T00:00:00Z`)
+        const superAdmin = by.role === "SUPER_ADMIN"
+        const entry = { companyId, kind: "TRANSFERRED" as const, date, recordedById: by.id, recordedByName: by.name ?? null }
+        const log = (fromUserId: string, toUserId: string, amount: number) => tx.auditLog.create({
+            data: {
+                action: "TRANSFER_CASH_ADVANCE", entityType: "USER", entityId: toUserId,
+                userId: superAdmin ? null : by.id, superAdminId: superAdmin ? by.id : null,
+                details: { amount, fromTaskId, toTaskId, fromUserId, toUserId },
+            },
+        })
+        for (const m of plan.moves) {
+            if (m.what === "RUNNING") {
+                await movedToRunning(tx, companyId, m.userId, from, "TAKEN_OFF", by)
+            } else if (m.what === "KEPT") {
+                await tx.cashAdvanceEntry.createMany({
+                    data: [
+                        { ...entry, userId: m.userId, amount: -m.amount, forTaskId: fromTaskId },
+                        // Theirs already: nothing to confirm.
+                        { ...entry, userId: m.userId, amount: m.amount, forTaskId: toTaskId, confirmedAt: new Date() },
+                    ],
+                })
+                await log(m.userId, m.userId, m.amount)
+            } else {
+                const to = m.to!
+                await tx.cashAdvanceEntry.createMany({
+                    data: [
+                        { ...entry, userId: m.userId, amount: -m.amount, forTaskId: fromTaskId, counterpartName: nameOfId(to) },
+                        // Theirs to spend now, and to confirm receiving, as an advance given.
+                        { ...entry, userId: to, amount: m.amount, forTaskId: toTaskId, counterpartName: nameOfId(m.userId) },
+                    ],
+                })
+                await log(m.userId, to, m.amount)
+            }
+        }
+    }
+
+    /**
+     * What Transfer task's dialog says will happen to what's held for the
+     * task (§7.9, 7h), before it's sent: the same plan the transfer follows,
+     * with each person's name, and the amount only where whoever transfers
+     * it may see that person's cash advance, or it's their own; whether
+     * anyone holds any, said where no copy is made, as it stays. Whether a
+     * receiver is to be picked: where the copy has more than one person and
+     * someone left off would pass theirs on.
+     */
+    static async transferPreview(user: Actor & { id: string }, task: { companyId: string; taskId: string; current: readonly string[]; next: readonly string[]; picked: string | null }) {
+        const { companyId, current, next } = task
+        const sums = await prisma.cashAdvanceEntry.groupBy({
+            by: ["userId"], where: { companyId, forTaskId: task.taskId, forClientId: null, userId: { in: [...current] } }, _sum: { amount: true },
+        })
+        const held = sums.map(s => ({ userId: s.userId, amount: cents(Number(s._sum.amount ?? 0)) })).filter(h => h.amount > 0)
+        if (!held.length) return { copy: next.some(id => !current.includes(id)), held: false, moves: [], pickReceiver: false }
+        const people = new Map((await prisma.user.findMany({
+            // The task's company's only: anyone else named in the query is no one here.
+            where: { id: { in: [...new Set([...held.map(h => h.userId), ...next])] }, companyId }, select: { id: true, firstName: true, lastName: true, teamLeaderId: true },
+        })).map(u => [u.id, u]))
+        const target = (id: string) => ({ companyId, userId: id, teamLeaderId: people.get(id)?.teamLeaderId ?? null })
+        const mayPass = (id: string) => people.has(id) && can(user, "cash_advances.give", target(id))
+        const picked = task.picked && next.includes(task.picked) ? task.picked : null
+        const plan = transferPlan({ current, next, held, picked, mayPass })
+        const named = (id: string) => ({ id, name: people.has(id) ? nameOf(people.get(id)!) : "" })
+        const seen = (id: string) => id === user.id || can(user, "cash_advances.view", target(id))
+        return {
+            copy: plan.copy,
+            // Someone holds money for it: with no copy, it stays with the task.
+            held: true,
+            moves: plan.moves.map(m => ({
+                person: named(m.userId), what: m.what,
+                to: m.what === "PASSED" && m.to ? named(m.to) : null,
+                amount: seen(m.userId) ? m.amount : null,
+            })),
+            pickReceiver: transferPlan({ current, next, held, picked: null, mayPass }).needsReceiver,
+        }
     }
 
     /**

@@ -5,7 +5,7 @@ import useSWR from 'swr'
 import Link from 'next/link'
 import {
     ArrowUDownLeftIcon, ArrowsLeftRightIcon, CalendarBlankIcon, CheckCircleIcon, ClipboardTextIcon, HandCoinsIcon, HandshakeIcon, HourglassIcon, NotePencilIcon, PaperclipIcon, SlidersHorizontalIcon,
-    UserIcon, WalletIcon, WarningCircleIcon,
+    UserIcon, UserSwitchIcon, WalletIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -25,7 +25,7 @@ const LIMIT = 20
 
 const KIND_LABEL: Record<EntryKind, TranslationKey> = {
     GIVEN: 'advances_kind_given', SPENT: 'advances_kind_spent', RETURNED: 'advances_kind_returned', CORRECTION: 'advances_kind_correction',
-    DEBT: 'advances_kind_debt', MOVED: 'advances_kind_moved',
+    DEBT: 'advances_kind_debt', MOVED: 'advances_kind_moved', TRANSFERRED: 'advances_kind_transferred',
 }
 
 type Advance = {
@@ -127,8 +127,10 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
         )
     }
 
-    const awaitingOf = (e: AdvanceEntry) => e.kind === 'GIVEN' && !e.confirmedAt
-    const status = (e: AdvanceEntry) => e.kind !== 'GIVEN' ? null
+    // Money passed on with a transfer, from someone taken off the task (§7.9, 7h): confirmed as an advance given.
+    const passedHere = (e: AdvanceEntry) => e.kind === 'TRANSFERRED' && e.amount > 0 && !!e.counterpartName
+    const awaitingOf = (e: AdvanceEntry) => (e.kind === 'GIVEN' || passedHere(e)) && !e.confirmedAt
+    const status = (e: AdvanceEntry) => e.kind !== 'GIVEN' && !passedHere(e) ? null
         : e.confirmedAt ? <StatusBadge tone="good">{t('advances_confirmed')}</StatusBadge>
             : <StatusBadge tone="waiting">{t('advances_awaiting')}</StatusBadge>
     // Spent on a cost, or put back as it was removed; on its task, while it's there (§7.4).
@@ -146,6 +148,9 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
         : forName(e) && !(e.forTask && e.task && e.forTask.id === e.task.id)
             && <span>{fill(t('advances_for_name'), { name: forName(e) })}</span>
     const forIcon = (e: AdvanceEntry) => e.forClient ? HandshakeIcon : ClipboardTextIcon
+    // Passed on with a transfer: to whom, or from whom.
+    const counterpart = (e: AdvanceEntry) => e.kind === 'TRANSFERRED' && e.counterpartName
+        && <span>{fill(t(e.amount < 0 ? 'advances_to_name' : 'advances_from_name'), { name: <bdi>{e.counterpartName}</bdi> })}</span>
     // Whoever gives and settles their advances moves a part to the running balance; not on one's own.
     const canMove = advance.canGive && !mine
     const partName = (part: HeldFor) => part.forTask?.title ?? part.forClient?.name ?? ''
@@ -154,6 +159,7 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
     const lines = (e: AdvanceEntry) => [
         ...(onTask(e) ? [{ icon: ClipboardTextIcon, text: onTask(e) }] : []),
         ...(forPart(e) ? [{ icon: forIcon(e), text: forPart(e) }] : []),
+        ...(counterpart(e) ? [{ icon: UserSwitchIcon, text: counterpart(e) }] : []),
         ...(e.note ? [{ icon: NotePencilIcon, text: <bdi>{e.note}</bdi> }] : []),
     ]
     const what = (e: AdvanceEntry) => {
@@ -226,6 +232,7 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
                             { icon: WalletIcon, text: <strong className="ui-num">{signed(e.amount)}</strong> },
                             ...(onTask(e) ? [{ icon: ClipboardTextIcon, text: onTask(e) }] : []),
                             ...(forPart(e) ? [{ icon: forIcon(e), text: forPart(e) }] : []),
+                            ...(counterpart(e) ? [{ icon: UserSwitchIcon, text: counterpart(e) }] : []),
                             { icon: CalendarBlankIcon, text: <span>{dayLabel(e.date, locale)}</span> },
                             ...(e.note ? [{ icon: NotePencilIcon, text: <bdi>{e.note}</bdi> }] : []),
                             { icon: UserIcon, text: <span>{t('advances_recorded_by').replace('{name}', e.recordedByName ?? t('unknown_user'))}</span> },
@@ -258,7 +265,9 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
             <ConfirmDialog
                 open={!!confirming}
                 title={t('advances_confirm_receipt')}
-                body={t('advances_confirm_question').replace('{amount}', confirming ? money(confirming.amount) : '').replace('{date}', confirming ? dayLabel(confirming.date, locale) : '')}
+                body={confirming?.kind === 'TRANSFERRED'
+                    ? fill(t('advances_confirm_passed_question'), { amount: money(confirming.amount), name: <bdi>{confirming.counterpartName}</bdi> })
+                    : t('advances_confirm_question').replace('{amount}', confirming ? money(confirming.amount) : '').replace('{date}', confirming ? dayLabel(confirming.date, locale) : '')}
                 confirmLabel={t('advances_confirm_button').replace('{amount}', confirming ? money(confirming.amount) : '')}
                 onConfirm={confirm}
                 onCancel={() => setConfirming(null)}

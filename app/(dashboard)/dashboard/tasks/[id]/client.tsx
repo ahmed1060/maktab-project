@@ -34,6 +34,12 @@ import type { TranslationKey } from '@/lib/translations'
 /** Done with: decided, and nothing more is handed in. */
 const DECIDED = ['APPROVED', 'COMPLETED', 'REJECTED']
 
+// Transfer task's refusals over the cash advance money held for the task, in the page's language (CLIENTS_PLAN.md §7.9, 7h).
+const TRANSFER_REFUSALS: Record<string, TranslationKey> = {
+    TRANSFER_HELD_RECEIVER_REQUIRED: 'transfer_held_receiver_required',
+    TRANSFER_HELD_RECEIVER_INVALID: 'transfer_held_receiver_invalid',
+}
+
 /** An address that isn't a task, or no longer is: said on a page with the way back. */
 export function TaskNotFound() {
     const { t } = useLanguage()
@@ -636,13 +642,14 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
         }
     }
 
-    const handleTransfer = async () => {
+    const handleTransfer = async (heldGoesTo: string | null) => {
         if (transferAssigneeIds.length === 0 || transferring) return
         setTransferring(true)
         try {
             const res = await fetch(`/api/tasks/${task.id}/transfer`, {
                 method: 'POST',
-                body: JSON.stringify({ newAssigneeIds: transferAssigneeIds }),
+                // With who takes the cash advance money someone left off holds (CLIENTS_PLAN.md §7.9, 7h).
+                body: JSON.stringify({ newAssigneeIds: transferAssigneeIds, ...(heldGoesTo ? { heldGoesTo } : {}) }),
                 headers: { 'Content-Type': 'application/json' }
             })
             if (!res.ok) {
@@ -652,7 +659,10 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
                     return
                 }
                 const data = await res.json().catch(() => ({}))
-                throw new Error(data.error || 'Transfer failed')
+                // Passing money on asks for the code: turned down, its prompt said what it needed.
+                if (data.code === 'STEP_UP_REQUIRED' || data.code === 'MFA_ENROL_REQUIRED') return
+                const refusal = TRANSFER_REFUSALS[data.code as string]
+                throw new Error(refusal ? t(refusal) : data.error || 'Transfer failed')
             }
             showToast(t('task_transfer_success'), 'success')
             setIsTransferModalOpen(false)
@@ -1059,6 +1069,7 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
             />
 
             <TaskTransferModal
+                taskId={task.id}
                 isOpen={isTransferModalOpen}
                 onClose={() => setIsTransferModalOpen(false)}
                 people={transferPeople}

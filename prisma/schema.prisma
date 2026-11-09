@@ -1703,6 +1703,9 @@ model CashAdvanceEntry {
   /// running balance. Each part's entries add up to what's held for it.
   forTaskId      String?
   forClientId    String?
+  /// Passed on with a transfer (§7.9, 7h): who it came from, or went to, by
+  /// name then. A user, so no relation.
+  counterpartName String?
   createdAt      DateTime             @default(now())
   company        Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1732,6 +1735,10 @@ enum CashAdvanceEntryKind {
   /// Money for a task or a client moved to the running balance (§7.9), as
   /// a pair: taken from the one, added to the other.
   MOVED
+  /// Money for a task that followed it to its copy as it was transferred
+  /// (§7.9, 7h), as a pair: taken from the original, added for the copy, to
+  /// the same person or, from someone left off, to someone on the copy.
+  TRANSFERRED
 }
 
 /// How far a grant reaches: the person's own records, their team's, or the

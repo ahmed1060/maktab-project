@@ -9,7 +9,7 @@ import type { TranslationKey } from "@/lib/translations"
 /** The entries a person records (§7.3, §7.4). Spent ones come with costs, in 7b. */
 export const RECORDED_KINDS = ["GIVEN", "RETURNED", "CORRECTION"] as const
 export type RecordedKind = typeof RECORDED_KINDS[number]
-export type EntryKind = RecordedKind | "SPENT" | "DEBT" | "MOVED"
+export type EntryKind = RecordedKind | "SPENT" | "DEBT" | "MOVED" | "TRANSFERRED"
 
 /**
  * What an entry's money is for (§7.9): one task or one client, or neither,
