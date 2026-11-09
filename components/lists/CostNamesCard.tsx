@@ -53,7 +53,7 @@ export default function CostNamesCard({ companyId, on, saved, superAdmin, readOn
     // the company's own Saved lists. A Super Admin's is the company picked
     // above, which may be another.
     const onList = none
-        ? <>{t('cost_names_none_saved')}{!superAdmin && <> <Link className="ui-link" href="/dashboard/lists">{t('saved_lists_title')}</Link></>}</>
+        ? <>{t('cost_names_none_saved')}{!superAdmin && <> <Link className="ui-text-link" href="/dashboard/lists">{t('saved_lists_title')}</Link></>}</>
         : t('cost_names_on_list').replace('{names}', countOf(t, locale, saved, 'names'))
 
     return (

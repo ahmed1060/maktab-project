@@ -296,7 +296,7 @@ export const en = {
         cost_names_list_only_label: "Only names from the saved list",
         cost_names_list_only_hint: "When on, a cost's name is picked from the saved list, or typed as the list has it, so a client's statement adds costs up under the same names. When off, any name can be typed.",
         cost_names_on_list: "{names} on the saved list.",
-        cost_names_none_saved: "The saved list has no cost names yet, so this can't be switched on.",
+        cost_names_none_saved: "The saved list has no cost names yet, so this can't be turned on.",
         saved_lists_title: "Saved lists",
         saved_lists_subtitle: "The names your team picks from as they type a task's title or a cost's name.",
         lists_tab_cost_names: "Cost names",

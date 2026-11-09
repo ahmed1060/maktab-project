@@ -166,7 +166,13 @@ describe("the Cost names card (CLIENTS_PLAN.md §6.9)", () => {
         const html = await costNames({ saved: 0 })
         expect(html).toContain(en.cost_names_none_saved.replace(/'/g, "&#x27;"))
         expect(html).toMatch(new RegExp(`<button[^>]*disabled=""[^>]*>${en.settings_turn_on}</button>`))
-        expect(html).toContain(`href="/dashboard/lists">${en.saved_lists_title}</a>`)
+        expect(html).toContain(`<a class="ui-text-link" href="/dashboard/lists">${en.saved_lists_title}</a>`)
+        // Said as its button says it (web interface audit).
+        expect(en.cost_names_none_saved).toContain("turned on")
+        // A link in a sentence, as DESIGN.md has them: the brand's text colour, underlined, its name kept whole (web interface audit).
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-text-link \{[^}]*color: var\(--brand-text\);[^}]*text-decoration: underline;[^}]*white-space: nowrap;/)
+        expect(css).toMatch(/\.ui-text-link:focus-visible \{[^}]*outline: 2px solid var\(--brand-text\);/)
         // A Super Admin's Saved lists are the company picked above, which may be another.
         expect(await costNames({ saved: 0, superAdmin: true })).not.toContain('href="/dashboard/lists"')
     })
