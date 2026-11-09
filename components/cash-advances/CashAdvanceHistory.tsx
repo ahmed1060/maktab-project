@@ -4,13 +4,13 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import {
-    ArrowUDownLeftIcon, CalendarBlankIcon, CheckCircleIcon, ClipboardTextIcon, HandCoinsIcon, HourglassIcon, NotePencilIcon, PaperclipIcon, SlidersHorizontalIcon, UserIcon,
-    WalletIcon, WarningCircleIcon,
+    ArrowUDownLeftIcon, CalendarBlankIcon, CheckCircleIcon, ClipboardTextIcon, HandCoinsIcon, HandshakeIcon, HourglassIcon, NotePencilIcon, PaperclipIcon, SlidersHorizontalIcon,
+    UserIcon, WalletIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import {
-    Button, ConfirmDialog, DataList, EmptyState, FileChip, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange, StatusBadge, TotalTiles, type Column,
+    Button, Card, ConfirmDialog, DataList, Details, EmptyState, FileChip, Icon, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange, StatusBadge, TotalTiles, type Column,
 } from '@/components/ui'
 import { fetcher } from '@/lib/swr-fetcher'
 import { countOf } from '@/lib/plural'
@@ -18,7 +18,7 @@ import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { dayLabel, refusalText, type EntryKind, type RecordedKind } from '@/lib/cash-advances'
 import type { TranslationKey } from '@/lib/translations'
 import CashAdvanceDialog from './CashAdvanceDialog'
-import type { AdvanceEntry } from './types'
+import type { AdvanceEntry, HeldFor } from './types'
 
 const LIMIT = 20
 
@@ -32,6 +32,9 @@ type Advance = {
     today: string
     person: { id: string; name: string; atWork: boolean }
     balance: number
+    /** The running balance, and what of the rest is for each task and client (CLIENTS_PLAN.md §7.9). */
+    running: number
+    held: HeldFor[]
     awaiting: number
     data: AdvanceEntry[]
     total: number
@@ -106,9 +109,20 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
     const onTask = (e: AdvanceEntry) => e.kind !== 'SPENT' ? null
         : e.task ? <Link href={`/dashboard/tasks/${encodeURIComponent(e.task.id)}`} prefetch={false} className="ui-item-link"><bdi>{e.task.title}</bdi></Link>
             : <span>{t('advances_task_gone')}</span>
+    // What the money was for: a task or a client, while it's there (§7.9).
+    const forName = (part: { forTask: AdvanceEntry['forTask']; forClient: AdvanceEntry['forClient'] }) =>
+        part.forTask ? <Link href={`/dashboard/tasks/${encodeURIComponent(part.forTask.id)}`} prefetch={false} className="ui-item-link"><bdi>{part.forTask.title}</bdi></Link>
+            : part.forClient ? <bdi>{part.forClient.name}</bdi> : null
+    const forPart = (e: AdvanceEntry) => forName(e) && <span>{t('advances_for_name').split('{name}').map((bit, i) => <span key={i}>{i > 0 && forName(e)}{bit}</span>)}</span>
+    const forIcon = (e: AdvanceEntry) => e.forClient ? HandshakeIcon : ClipboardTextIcon
     const what = (e: AdvanceEntry) => (
         <>
-            <ItemTitle title={kindOf(e)} detail={onTask(e) ?? (e.note ? <bdi>{e.note}</bdi> : undefined)} detailIcon={onTask(e) ? ClipboardTextIcon : e.note ? NotePencilIcon : undefined} />
+            <ItemTitle
+                title={kindOf(e)}
+                detail={onTask(e) ?? forPart(e) ?? (e.note ? <bdi>{e.note}</bdi> : undefined)}
+                detailIcon={onTask(e) ? ClipboardTextIcon : forPart(e) ? forIcon(e) : e.note ? NotePencilIcon : undefined}
+            />
+            {(onTask(e) || forPart(e)) && e.note && <div className="ui-item-detail"><Icon icon={NotePencilIcon} size={16} /><bdi>{e.note}</bdi></div>}
             {e.photoUrl && <FileChip name={t('advances_photo')} href={e.photoUrl} />}
         </>
     )
@@ -143,8 +157,14 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
             />
             <TotalTiles items={[
                 { label: t(mine ? 'advances_your_balance' : 'advances_col_balance'), value: money(advance.balance) },
+                ...(advance.held.length ? [{ label: t('advances_running'), value: money(advance.running) }] : []),
                 { label: t('advances_col_awaiting'), value: money(advance.awaiting), note: mine && advance.awaiting > 0 ? t('advances_awaiting_note') : undefined },
             ]} />
+            {advance.held.length > 0 && (
+                <Card title={t('advances_held_for')}>
+                    <Details items={advance.held.map(part => ({ label: forName(part), value: <span className="ui-num">{money(part.amount)}</span> }))} />
+                </Card>
+            )}
             <DataList
                 caption={t('advances_history')}
                 columns={columns}
@@ -157,6 +177,7 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
                         details={[
                             { icon: WalletIcon, text: <strong className="ui-num">{signed(e.amount)}</strong> },
                             ...(onTask(e) ? [{ icon: ClipboardTextIcon, text: onTask(e) }] : []),
+                            ...(forPart(e) ? [{ icon: forIcon(e), text: forPart(e) }] : []),
                             { icon: CalendarBlankIcon, text: <span>{dayLabel(e.date, locale)}</span> },
                             ...(e.note ? [{ icon: NotePencilIcon, text: <bdi>{e.note}</bdi> }] : []),
                             { icon: UserIcon, text: <span>{t('advances_recorded_by').replace('{name}', e.recordedByName ?? t('unknown_user'))}</span> },

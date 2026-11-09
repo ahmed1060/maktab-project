@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import {
-    ArrowUDownLeftIcon, BuildingsIcon, CalendarBlankIcon, ClockCounterClockwiseIcon, HandCoinsIcon, HourglassIcon, SlidersHorizontalIcon,
+    ArrowUDownLeftIcon, BuildingsIcon, CalendarBlankIcon, ClipboardTextIcon, ClockCounterClockwiseIcon, HandCoinsIcon, HourglassIcon, SlidersHorizontalIcon,
     UsersIcon, WalletIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
@@ -96,11 +96,13 @@ export default function CashAdvancesList() {
         />
     )
     const last = (h: AdvanceHolder) => h.lastDate ? <span>{dayLabel(h.lastDate, locale)}</span> : <span className="ui-hint">{t('advances_none_yet')}</span>
+    // What of it is for a task or a client (CLIENTS_PLAN.md §7.9).
+    const earmarked = (h: AdvanceHolder) => h.earmarked > 0 && <div className="ui-hint ui-nowrap">{t('advances_of_which').replace('{amount}', money(h.earmarked))}</div>
     const awaiting = (h: AdvanceHolder) => h.awaiting > 0 ? <StatusBadge tone="waiting">{money(h.awaiting)}</StatusBadge> : <span className="ui-hint">—</span>
 
     const columns: Column<AdvanceHolder>[] = [
         { key: 'person', header: t('advances_col_person'), cell: person },
-        { key: 'balance', header: t('advances_col_balance'), align: 'end', cell: h => <strong className="ui-nowrap">{money(h.balance)}</strong> },
+        { key: 'balance', header: t('advances_col_balance'), align: 'end', cell: h => <><strong className="ui-nowrap">{money(h.balance)}</strong>{earmarked(h)}</> },
         { key: 'awaiting', header: t('advances_col_awaiting'), align: 'end', cell: h => <span className="ui-nowrap">{awaiting(h)}</span> },
         { key: 'last', header: t('advances_col_last'), cell: h => <span className="ui-nowrap">{last(h)}</span> },
         { key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end', cell: actions },
@@ -152,6 +154,7 @@ export default function CashAdvancesList() {
                                 status={!h.atWork ? <StatusBadge tone="neutral">{t('advances_not_at_work_badge')}</StatusBadge> : undefined}
                                 details={[
                                     { icon: WalletIcon, text: <span>{t('advances_col_balance')}: <strong className="ui-num">{money(h.balance)}</strong></span> },
+                                    ...(h.earmarked > 0 ? [{ icon: ClipboardTextIcon, text: <span>{t('advances_of_which').replace('{amount}', money(h.earmarked))}</span> }] : []),
                                     ...(h.awaiting > 0 ? [{ icon: HourglassIcon, text: <span>{t('advances_col_awaiting')}: <span className="ui-num">{money(h.awaiting)}</span></span> }] : []),
                                     { icon: CalendarBlankIcon, text: <span>{t('advances_col_last')}: {last(h)}</span> },
                                 ]}

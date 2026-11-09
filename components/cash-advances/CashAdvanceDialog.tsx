@@ -5,14 +5,14 @@ import useSWR from 'swr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import DatePickerSingle from '@/components/DatePickerSingle'
-import { Button, Choice, Details, Dialog, Field, FileChip, FileChips, FilePicker, TextArea, TextInput } from '@/components/ui'
+import { Button, Choice, Details, Dialog, Field, FileChip, FileChips, FilePicker, Select, TextArea, TextInput } from '@/components/ui'
 import {
     CASH_ADVANCE_NOTE_MAX, HANDOVER_ACCEPT, HANDOVER_FOLDER, balanceAfter, refusalText, signedAmount, todayHere, type RecordedKind,
 } from '@/lib/cash-advances'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import type { TranslationKey } from '@/lib/translations'
 import { fetcher } from '@/lib/swr-fetcher'
-import type { AdvancePerson, Owed } from './types'
+import type { AdvancePerson, HeldFor, Owed } from './types'
 
 const TITLE: Record<RecordedKind, TranslationKey> = { GIVEN: 'advances_give_title', RETURNED: 'advances_return_title', CORRECTION: 'advances_correct_title' }
 const SAVE: Record<RecordedKind, TranslationKey> = { GIVEN: 'advances_give', RETURNED: 'advances_record_return', CORRECTION: 'advances_save_correction' }
@@ -24,7 +24,17 @@ const DONE: Record<RecordedKind, TranslationKey> = { GIVEN: 'advances_given_done
  * advance given, a photo of the signed hand-over. A return is never more
  * than they hold, and a correction says why and never takes the balance
  * below zero. The server asks for two-factor sign-in.
+ *
+ * An advance given says what it's for: any cost, one of the open tasks the
+ * person is on, or one of the company's clients (CLIENTS_PLAN.md §7.9). A
+ * return or a correction says which part of the advance it's on, where
+ * they hold money for a task or a client, and never takes that part below
+ * zero.
  */
+
+/** A part of a person's advance, as the From field picks it: "" for the running balance. */
+const partKey = (part: { forTask: { id: string } | null; forClient: { id: string } | null }) =>
+    part.forTask ? `task:${part.forTask.id}` : part.forClient ? `client:${part.forClient.id}` : ''
 export default function CashAdvanceDialog({ person, kind, today: companyToday, onClose, onSaved }: {
     person: AdvancePerson | null
     kind: RecordedKind
@@ -47,14 +57,29 @@ export default function CashAdvanceDialog({ person, kind, today: companyToday, o
     const [uploaded, setUploaded] = useState<{ file: File; url: string } | null>(null)
     // What the company owes them, offered with the advance (CLIENTS_PLAN.md §7.3): asked for as it opens.
     const [payOwed, setPayOwed] = useState<'yes' | 'no'>('no')
-    const { data: about } = useSWR<{ data: { owed: Owed | null } }>(person && kind === 'GIVEN' ? `/api/cash-advances/${encodeURIComponent(person.id)}?limit=1` : null, fetcher)
+    // What it's for, an advance given (§7.9), or which part a return or a correction is on.
+    const [forKind, setForKind] = useState<'any' | 'task' | 'client'>('any')
+    const [forId, setForId] = useState('')
+    const [from, setFrom] = useState('')
+    const { data: about } = useSWR<{ data: { owed: Owed | null; running: number; held: HeldFor[] } }>(person ? `/api/cash-advances/${encodeURIComponent(person.id)}?limit=1` : null, fetcher)
     const owed = kind === 'GIVEN' ? about?.data?.owed ?? null : null
+    const held = about?.data?.held ?? []
+    const { data: offered } = useSWR<{ data: { tasks: { id: string; title: string }[]; clients: { id: string; name: string }[] } }>(
+        person && kind === 'GIVEN' ? `/api/cash-advances/${encodeURIComponent(person.id)}/purposes` : null, fetcher)
+    const choices = forKind === 'task'
+        ? (offered?.data?.tasks ?? []).map(task => ({ value: task.id, label: task.title }))
+        : (offered?.data?.clients ?? []).map(client => ({ value: client.id, label: client.name }))
 
     useAdjustOnChange([person?.id, kind], () => {
         setAmount(''); setDirection('add'); setDate(today); setNote(''); setPhoto(null); setUploaded(null); setPayOwed('no')
+        setForKind('any'); setForId(''); setFrom('')
     })
 
-    const balance = person?.balance ?? 0
+    // A return or a correction is on the part picked: the running balance, or what's for a task or a client.
+    const picked = held.find(part => partKey(part) === from)
+    const balance = kind === 'GIVEN' ? person?.balance ?? 0 : picked ? picked.amount : about?.data?.running ?? person?.balance ?? 0
+    const balanceLabel = kind === 'GIVEN' || held.length === 0 ? t('advances_col_balance')
+        : picked ? t('advances_for_name').replace('{name}', picked.forTask?.title ?? picked.forClient?.name ?? '') : t('advances_running')
     const typed = direction === 'take' && kind === 'CORRECTION' ? `-${amount.trim()}` : amount
     const signed = amount.trim() === '' ? null : signedAmount(kind, typed)
     const after = signed === null ? null : balanceAfter(balance, signed)
@@ -64,7 +89,8 @@ export default function CashAdvanceDialog({ person, kind, today: companyToday, o
                 : undefined
     const dateError = date && date > today ? t('advances_date_invalid') : undefined
     const noteError = note.length > CASH_ADVANCE_NOTE_MAX ? t('advances_note_too_long') : undefined
-    const ready = signed !== null && after !== null && !!date && !dateError && !noteError && (kind !== 'CORRECTION' || note.trim() !== '')
+    const forChosen = kind !== 'GIVEN' || forKind === 'any' || !!forId
+    const ready = signed !== null && after !== null && !!date && !dateError && !noteError && (kind !== 'CORRECTION' || note.trim() !== '') && forChosen
 
     const money = (n: number) => `${n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${t('egp')}`
 
@@ -90,7 +116,11 @@ export default function CashAdvanceDialog({ person, kind, today: companyToday, o
             const res = await fetch(`/api/cash-advances/${encodeURIComponent(person.id)}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ kind, amount: kind === 'CORRECTION' ? signed : Math.abs(signed!), date, note: note.trim() || null, photoUrl: kind === 'GIVEN' ? await photoUrl() : null }),
+                body: JSON.stringify({
+                    kind, amount: kind === 'CORRECTION' ? signed : Math.abs(signed!), date, note: note.trim() || null, photoUrl: kind === 'GIVEN' ? await photoUrl() : null,
+                    forTaskId: kind === 'GIVEN' ? (forKind === 'task' ? forId : null) : picked?.forTask?.id ?? null,
+                    forClientId: kind === 'GIVEN' ? (forKind === 'client' ? forId : null) : picked?.forClient?.id ?? null,
+                }),
             })
             const answer = await res.json().catch(() => null)
             if (!res.ok) {
@@ -132,10 +162,34 @@ export default function CashAdvanceDialog({ person, kind, today: companyToday, o
         >
             <form id={formId} onSubmit={save} className="ui-dialog-body" noValidate>
                 <p className="ui-hint">{t(kind === 'GIVEN' ? 'advances_give_hint' : kind === 'RETURNED' ? 'advances_return_hint' : 'advances_correct_hint')}</p>
+                {kind !== 'GIVEN' && held.length > 0 && (
+                    <Field label={t('advances_from')}>{p => (
+                        <Select {...p} name="from" value={from} onChange={e => setFrom(e.target.value)} options={[
+                            { value: '', label: `${t('advances_running')}: ${money(about?.data?.running ?? 0)}` },
+                            ...held.map(part => ({ value: partKey(part), label: `${t('advances_for_name').replace('{name}', part.forTask?.title ?? part.forClient?.name ?? '')}: ${money(part.amount)}` })),
+                        ]} />
+                    )}</Field>
+                )}
                 <Details items={[
-                    { label: t('advances_col_balance'), value: <span className="ui-num">{money(balance)}</span> },
+                    { label: balanceLabel, value: <span className="ui-num">{money(balance)}</span> },
                     ...(after !== null ? [{ label: t('advances_balance_after'), value: <span className="ui-num">{money(after)}</span> }] : []),
                 ]} />
+                {kind === 'GIVEN' && (
+                    <Choice
+                        legend={t('advances_for')}
+                        name="for"
+                        value={forKind}
+                        onChange={value => { setForKind(value); setForId('') }}
+                        options={[{ value: 'any', label: t('advances_for_any') }, { value: 'task', label: t('advances_for_task') }, { value: 'client', label: t('advances_for_client') }]}
+                    />
+                )}
+                {kind === 'GIVEN' && forKind !== 'any' && (
+                    choices.length > 0
+                        ? <Field label={t(forKind === 'task' ? 'advances_pick_task' : 'advances_pick_client')} hint={t('advances_for_hint')}>{p => (
+                            <Select {...p} name="forId" value={forId} onChange={e => setForId(e.target.value)} options={[{ value: '', label: t(forKind === 'task' ? 'advances_choose_task' : 'advances_choose_client') }, ...choices]} />
+                        )}</Field>
+                        : offered && <p className="ui-hint">{t(forKind === 'task' ? 'advances_no_open_tasks' : 'advances_no_clients')}</p>
+                )}
                 {kind === 'CORRECTION' && (
                     <Choice
                         legend={t('advances_correct_direction')}

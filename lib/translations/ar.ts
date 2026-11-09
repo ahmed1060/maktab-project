@@ -3148,6 +3148,8 @@ export const ar = {
         advances_for_client: "عميل",
         advances_pick_task: "المهمة",
         advances_pick_client: "العميل",
+        advances_choose_task: "اختيار مهمة",
+        advances_choose_client: "اختيار عميل",
         advances_for_hint: "تُدفع تكاليفها من هذا المبلغ أولًا.",
         advances_no_open_tasks: "لا توجد مهام مفتوحة مُسندة لصاحب العهدة.",
         advances_no_clients: "لا يوجد عملاء للاختيار.",
