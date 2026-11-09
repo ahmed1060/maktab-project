@@ -427,10 +427,21 @@ export class TaskService {
             // Each added when its entry says.
             const addedAt = new Date()
             const rows = []
+            // A company that names costs from its saved list only (CLIENTS_PLAN.md §6.9).
+            const listOnly = costs.length > 0 && !!(await tx.company.findUnique({ where: { id: currentTask.companyId ?? "" }, select: { costNamesFromListOnly: true } }))?.costNamesFromListOnly
             for (const c of costs) {
                 // Its name as typed, and the name it was picked as (CLIENTS_PLAN.md §5.5).
-                const nameEntryId = await ListService.picked(tx, c.nameEntryId, c.description, { companyId: currentTask.companyId, kind: "COST_NAME" })
-                rows.push({ id: randomUUID(), taskId: id, authorId: userId, authorName: session.user.name ?? null, amount: c.amount, description: c.description, nameEntryId, receiptUrl: c.receiptUrl, createdAt: addedAt })
+                let nameEntryId = await ListService.picked(tx, c.nameEntryId, c.description, { companyId: currentTask.companyId, kind: "COST_NAME" })
+                let description = c.description
+                if (listOnly && !nameEntryId) {
+                    // Typed as one of the list's, capitals and spaces aside, it's that
+                    // name, in its words; else it isn't on the list, and nothing is added.
+                    const named = description ? await ListService.named(tx, description, { companyId: currentTask.companyId, kind: "COST_NAME" }) : null
+                    if (!named) throw new Error("COST_NAME_NOT_ON_LIST")
+                    nameEntryId = named.id
+                    description = named.name
+                }
+                rows.push({ id: randomUUID(), taskId: id, authorId: userId, authorName: session.user.name ?? null, amount: c.amount, description, nameEntryId, receiptUrl: c.receiptUrl, createdAt: addedAt })
             }
             for (const r of rows) {
                 comments.push(costEntry({ id: r.id, amount: r.amount, description: r.description, author: r.authorName, authorId: userId, date: addedAt.toISOString() }))

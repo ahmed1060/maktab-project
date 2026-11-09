@@ -124,6 +124,7 @@ export const updateCompanySchema = z.object({
     // money, which CompanyService.update checks.
     cashAdvancesAllowed: z.boolean().optional(),
     cashAdvancesOn: z.boolean().optional(),
+    costNamesFromListOnly: z.boolean().optional(),
 
     // Trial extension, in days, added on top of whichever preset was chosen.
     // A delta rather than a new total: "give them another week" is how the

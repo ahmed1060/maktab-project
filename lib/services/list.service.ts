@@ -212,6 +212,21 @@ export class ListService {
         if (entry.archivedAt && entryId !== at.current) throw new Error("LIST_NAME_ARCHIVED")
         return sameListName(entry.name, text) ? entryId : null
     }
+
+    /**
+     * The list's name a typed one is, capitals and spaces aside, not
+     * archived; or null. For a company that keeps cost names to its list
+     * (CLIENTS_PLAN.md §6.9), where a name typed in full is the name.
+     */
+    static async named(db: Tx | typeof prisma, text: string, at: { companyId: string | null; kind: ListKind }): Promise<{ id: string; name: string } | null> {
+        const typed = text.replace(/\s+/g, " ").trim()
+        if (!typed || !at.companyId) return null
+        return db.listEntry.findFirst({
+            where: { companyId: at.companyId, kind: at.kind, archivedAt: null, name: { equals: typed, mode: "insensitive" } },
+            select: { id: true, name: true },
+            orderBy: { createdAt: "asc" },
+        })
+    }
 }
 
 export { LIST_NAME_LIMITS }

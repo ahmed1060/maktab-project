@@ -309,6 +309,38 @@ describe.skipIf(!ADMIN_URL)("saved lists, in Postgres", () => {
             const [log] = (await db.query(`SELECT details FROM "AuditLog" WHERE action = 'MERGE_LIST_NAMES'`)).rows
             expect(log.details).toEqual({ name: "Transport", into: "TRAIN", uses: 1 })
         })
+
+        it("keeps a cost's name to the saved list where the company says so: picked, or typed as one of it", async () => {
+            const train = await idOf("TRAIN")
+            const count = async () => (await db.query(`SELECT count(*)::int AS n FROM "TaskCost" WHERE "taskId" = $1`, [taskId])).rows[0].n
+            const before = await count()
+            const refused = (costs: unknown[]) => expect(Tasks.submit(taskId, "e1", employee, { isDraft: true, costs } as any)).rejects.toMatchObject({ message: "COST_NAME_NOT_ON_LIST" })
+            await db.query(`UPDATE "Company" SET "costNamesFromListOnly" = true WHERE id = 'c1'`)
+            try {
+                // Typed and on no list, with no name, or picked and then typed over.
+                await refused([{ amount: 5, description: "Taxi home" }])
+                await refused([{ amount: 5, description: "" }])
+                await refused([{ amount: 5, description: "Train fare", nameEntryId: train }])
+                // A name on another list, or another company's, isn't one.
+                await refused([{ amount: 5, description: "Fix the door" }])
+                // Refused, a submission adds none of its costs.
+                await refused([{ amount: 5, description: "TRAIN", nameEntryId: train }, { amount: 5, description: "Taxi home" }])
+                expect(await count()).toBe(before)
+                // Picked; or typed as the list has it, capitals and spaces aside, and saved in its words.
+                await Tasks.submit(taskId, "e1", employee, { isDraft: true, costs: [{ amount: 7, description: "TRAIN", nameEntryId: train }, { amount: 6, description: "  train " }] } as any)
+                const rows = (await db.query(`SELECT description, "nameEntryId" FROM "TaskCost" WHERE "taskId" = $1 AND amount IN (6, 7) ORDER BY amount DESC`, [taskId])).rows
+                expect(rows).toEqual([{ description: "TRAIN", nameEntryId: train }, { description: "TRAIN", nameEntryId: train }])
+                // Archived, a name isn't on the list to type.
+                await Lists.setArchived(admin, { id: train, archived: true })
+                await refused([{ amount: 4, description: "train" }])
+                await Lists.setArchived(admin, { id: train, archived: false })
+            } finally {
+                await db.query(`UPDATE "Company" SET "costNamesFromListOnly" = false WHERE id = 'c1'`)
+            }
+            // Off, a typed name is kept as typed, as before.
+            await Tasks.submit(taskId, "e1", employee, { isDraft: true, costs: [{ amount: 3, description: "Taxi home" }] } as any)
+            expect((await db.query(`SELECT description, "nameEntryId" FROM "TaskCost" WHERE "taskId" = $1 AND amount = 3`, [taskId])).rows).toEqual([{ description: "Taxi home", nameEntryId: null }])
+        })
     })
 
     describe("filters by a saved name (5c)", () => {

@@ -27,7 +27,7 @@ vi.mock("@/lib/services/audit-log.service", () => ({ AuditLogService: { log: asy
 
 const C1 = {
     id: "c1", name: "One", isBanned: false,
-    autoVerifyLocation: false, cashAdvancesAllowed: false, cashAdvancesOn: true, logoUrl: "https://example.test/logo.png",
+    autoVerifyLocation: false, cashAdvancesAllowed: false, cashAdvancesOn: true, costNamesFromListOnly: false, logoUrl: "https://example.test/logo.png",
     payrollDay: 25, payslipsVisible: false, timezone: "Africa/Cairo", debtRecoveryPercent: 100,
     moduleLabels: null, moduleIcons: null,
     adminSettingsEnabled: true, adminSettingsTabs: ["general", "payroll"],
@@ -37,12 +37,16 @@ const C1 = {
 let company: typeof C1
 /** What the company's people hold in cash advances (CLIENTS_PLAN.md §7.6). */
 let held = 0
+/** The cost names on its saved list, not archived (CLIENTS_PLAN.md §6.9). */
+let costNames = 3
 
 beforeEach(() => {
     company = { ...C1, adminSettingsTabs: [...C1.adminSettingsTabs] }
     audited.length = 0
     held = 0
+    costNames = 3
     prismaMock.cashAdvanceEntry.aggregate = async () => ({ _sum: { amount: held } })
+    prismaMock.listEntry.count = async ({ where }: any) => (where.companyId === "c1" && where.kind === "COST_NAME" && where.archivedAt === null ? costNames : 0)
     prismaMock.company.findUnique = async ({ where }: any) => where.id === "c1" ? { ...company } : null
     prismaMock.company.update = async ({ data }: any) => { state.written.push({ ...data }); company = { ...company, ...data }; return company }
 })
@@ -132,7 +136,8 @@ describe("the company settings API", () => {
         expect(data.tabs).toEqual(["general", "payroll"])
         expect(data.canEdit).toBe(true)
         expect(Object.keys(data.company).sort()).toEqual([
-            "autoVerifyLocation", "cashAdvancesAllowed", "cashAdvancesHeld", "cashAdvancesOn", "debtRecoveryPercent", "id", "name", "payrollDay", "payslipsVisible", "timezone",
+            "autoVerifyLocation", "cashAdvancesAllowed", "cashAdvancesHeld", "cashAdvancesOn", "costNamesFromListOnly", "costNamesOffered", "costNamesSaved",
+            "debtRecoveryPercent", "id", "name", "payrollDay", "payslipsVisible", "timezone",
         ])
     })
 
@@ -206,6 +211,30 @@ describe("the company settings API", () => {
         expect(state.written).toEqual([])
     })
 
+    it("lets the Admin keep cost names to the saved list, once it has one, and switch it off again (CLIENTS_PLAN.md §6.9)", async () => {
+        as("admin")
+        const shown = async () => (await (await get()).json()).data.company
+        expect(await shown()).toMatchObject({ costNamesFromListOnly: false, costNamesSaved: 3, costNamesOffered: true })
+        // With no names on the list, nobody could add a cost.
+        costNames = 0
+        const none = await put({ tab: "general", costNamesFromListOnly: true })
+        expect(none.status).toBe(409)
+        expect((await none.json()).code).toBe("COST_NAMES_NONE_SAVED")
+        expect(state.written).toEqual([])
+        costNames = 3
+        expect((await put({ tab: "general", costNamesFromListOnly: true })).status).toBe(200)
+        expect(state.written).toEqual([{ costNamesFromListOnly: true }])
+        expect(audited[0][3]).toMatchObject({ details: { costNamesFromListOnly: { old: false, new: true } } })
+        // Off again, whatever the list holds.
+        costNames = 0
+        state.written = []
+        expect((await put({ tab: "general", costNamesFromListOnly: false })).status).toBe(200)
+        expect(state.written).toEqual([{ costNamesFromListOnly: false }])
+        // A company without the Costs module isn't offered it.
+        company.package = { hasCompanyManagement: false, hasHR: true }
+        expect((await shown()).costNamesOffered).toBe(false)
+    })
+
     it("lets the Super Admin save any tab's fields, the debt cap included", async () => {
         as("superAdmin")
         company.adminSettingsEnabled = false
@@ -263,22 +292,31 @@ describe("the menu entry", () => {
 
     it("is offered by the same rule, asked afresh", async () => {
         as("admin")
-        expect((await visible()).data).toEqual({ visible: true, cashAdvances: false })
+        expect((await visible()).data).toEqual({ visible: true, cashAdvances: false, costNamesFromList: false })
         company.adminSettingsEnabled = false
-        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false })
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false, costNamesFromList: false })
         company.adminSettingsEnabled = true
         as("employee")
-        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false })
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false, costNamesFromList: false })
         as("superAdmin")
-        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false })
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false, costNamesFromList: false })
     })
 
     it("says, with it, whether the company uses cash advances, for My cash advance (CLIENTS_PLAN.md §7.5)", async () => {
         as("employee")
         company.cashAdvancesAllowed = true
-        expect((await visible()).data).toEqual({ visible: false, cashAdvances: true })
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: true, costNamesFromList: false })
         company.cashAdvancesOn = false
-        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false })
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false, costNamesFromList: false })
+    })
+
+    it("says whether the company names costs from its saved list only, for Add cost (CLIENTS_PLAN.md §6.9)", async () => {
+        as("employee")
+        company.costNamesFromListOnly = true
+        expect((await visible()).data).toMatchObject({ costNamesFromList: true })
+        // A Super Admin has no company of their own: the server still holds it.
+        as("superAdmin")
+        expect((await visible()).data).toMatchObject({ costNamesFromList: false })
     })
 
     it("is asked again as the person moves around, since the layout does not re-render", () => {
