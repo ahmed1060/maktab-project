@@ -1316,7 +1316,8 @@ each question.
      - An advance for a particular task or client (§7.9), decided on
        2026-11-09, adds four PRs to step 7, 7e to 7h. 7e, the ledger
        holding money for a task or a client, merged in #235 on
-       2026-11-09, and 7f, costs spending it first, in #236. 7h, money
+       2026-11-09, and 7f, costs spending it first, in #236, and 7g, what's
+       left moving to the running balance, built in #239. 7h, money
        passing to someone else on a task, was added on 2026-11-09.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
@@ -2592,3 +2593,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   task where more than one is, who confirms they received it. Passing it
   on needs whoever may give and settle advances; anyone else's edit moves
   it to the person's running balance. A fourth PR, 7h, for it.
+- **2026-11-09:** 7g, what's left of an advance for a task or client moving
+  to the running balance (§7.9), built in #239 (`UI_PLAN.md`): on its own
+  as the task is approved or deleted, or the client archived or deleted,
+  and by hand, Move to running balance on a person's cash advance. A
+  rejected task keeps its money. The history says a Moved entry came from
+  a task or client since deleted, and the audit log says why each moved.

@@ -597,8 +597,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      2026-11-09; then costs spending it first (7f), merged in #236 on
      2026-11-09; then the client statement by cost name, beside every
      charge (`CLIENTS_PLAN.md` §6.9), merged in #237 on 2026-11-09; then
-     cost names only from the saved list, a company setting (§6.9), in
-     #238;
+     cost names only from the saved list, a company setting (§6.9),
+     merged in #238 on 2026-11-09; then what's left of an advance for a
+     task or client moving to the running balance (§7.9, 7g), in #239;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5556,3 +5557,40 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     - while Add checked a name, the amount, the name and the receipt could
       still be changed, and Add then took what it was clicked with and
       cleared the change. The cost's fields wait for the check too.
+- **2026-11-09:** What's left of an advance for a task or client moves to
+  the running balance (#239; `CLIENTS_PLAN.md` §7.9, 7g), as the product
+  owner decided.
+  - **On its own:** a task approved, or completed, as one with no costs
+    is, or deleted, and a client archived or deleted, move what anyone
+    holds for it to their running balance, as a pair of Moved entries,
+    recorded by whoever did it. A rejected task keeps its money: it can be
+    handed in again. `CashAdvanceService.movePart()`, from the task's
+    review and deletion and the client's deletion, which archives one with
+    tasks.
+  - **By hand:** on a person's cash advance, each task and client under
+    Held for has Move to running balance beside its amount, for whoever
+    may give and settle their advances (never on one's own), with
+    two-factor sign-in. A confirmation says how much, what it was for and
+    whose running balance it joins; its main button isn't red, as nothing
+    is lost. `POST /api/cash-advances/[userId]/move`; with nothing left to
+    move, `CASH_ADVANCE_NOTHING_HELD`.
+  - **The history:** a Moved entry taken from a task or client since
+    deleted says "From a task or client since deleted", where it said
+    nothing.
+  - **The audit log:** each move is a line of its own,
+    `MOVE_CASH_ADVANCE`, saying how much, what it was for, and why: the
+    task approved or deleted, the client archived or deleted, or by hand.
+  - **From the web interface audit:** the button's name said the amount
+    first, so it didn't start with the words it shows, and someone using
+    voice control couldn't name it by them. It starts with them now:
+    "Move to running balance: 400.00 EGP held for Clean the vents". And
+    in Arabic, the amount is "مبلغ … المخصّص", agreeing with مبلغ.
+  - **Browser flows** against the scratch database, in English on a
+    computer and in Arabic on a phone (12 checks each): Held for with a
+    Move button on the task's money and the client's, each named for what
+    it moves; the deleted task's entry saying so; the confirmation's
+    words; the task's 400 moved as a pair after two-factor sign-in, Held
+    for then listing the client only, the toast, the focus kept on the
+    other row's button, and the audit line saying by hand; and the
+    employee's own My cash advance with no Move button. Nothing scrolls
+    sideways.
