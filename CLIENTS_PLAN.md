@@ -1115,8 +1115,25 @@ each question.
   - **For a client:** it stays for that client until it's returned, or
     moved to the running balance by whoever may settle advances, or the
     client is archived, when it joins the running balance.
+  - **By hand, for a task or a client** (decided 2026-11-09): whoever may
+    settle advances moves what's held for either to the running balance,
+    for a task that's stuck or won't be finished, as for a client.
   - Either way it's an entry of its own, Moved to the running balance, so
     the history says where the money went.
+  - **Taken off a task** (decided 2026-11-09): what the person holds for
+    it passes to someone else on the task, since it's that task's money.
+    - A task always has someone on it, so there's always someone to take
+      it: whoever's left, or whoever joins in their place.
+    - Where more than one is on the task, whoever saves it picks who takes
+      it; where one is, it's theirs without asking.
+    - The one who takes it confirms they received the cash, as with an
+      advance given (§7.3), so there's no later dispute; it shows as
+      awaiting their confirmation until then, and they can spend it
+      straight away.
+    - Passing it on needs whoever may give and settle advances, with
+      two-factor sign-in. Anyone else who takes someone off a task can
+      still save it: the money then joins that person's running balance,
+      as Moved, and the edit says so.
 - **Who gives it:** whoever may give and settle cash advances (§7.7), with
   two-factor sign-in, as any advance. Seeing it is See cash advances, and
   one's own on My cash advance, as today. There's no new permission.
@@ -1125,15 +1142,17 @@ each question.
   tab, the person's own page and My cash advance. A return, a correction
   or leaving the company (§7.3) takes from all of it, the money for a task
   or a client included.
-- **Proposed:** it ships as three PRs:
+- **Proposed:** it ships as four PRs:
   - 7e: the ledger holds money for a task or a client: Give advance asks
     what it's for, and each place a balance shows lists what's held for
     each, with Record return and Correction able to say which;
   - 7f: costs spend it: a cost on that task, or on that client's tasks,
     takes from the money for it first, and Add cost says so;
   - 7g: what's left moves to the running balance: on its own when the task
-    is approved or deleted or the client archived, and by hand for a
-    client.
+    is approved or deleted or the client archived, and by hand for a task
+    or a client;
+  - 7h: someone taken off a task passes what they hold for it to someone
+    else on it, who confirms they received it.
 - **Proposed, as 7e builds it:**
   - **Each entry is for one task, one client, or neither,** the running
     balance. What's held for each is the sum of its entries, never below
@@ -1276,9 +1295,10 @@ each question.
        leaving becoming a debt, in #115. Step 7 was done, and with it
        steps 0–7.
      - An advance for a particular task or client (§7.9), decided on
-       2026-11-09, adds three PRs to step 7, 7e to 7g. 7e, the ledger
+       2026-11-09, adds four PRs to step 7, 7e to 7h. 7e, the ledger
        holding money for a task or a client, merged in #235 on
-       2026-11-09, and 7f, costs spending it first, in #236.
+       2026-11-09, and 7f, costs spending it first, in #236. 7h, money
+       passing to someone else on a task, was added on 2026-11-09.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -2546,3 +2566,10 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   it's turned on, and only once the list has a name. Where it's on, a
   cost's name is picked, or typed as the list has it, and the field says
   what to do with any other. The server checks it too.
+- **2026-11-09:** What's left of an advance for a task or a client (§7.9),
+  decided with the product owner: moved to the running balance by hand
+  for a task as for a client; and someone taken off a task passes what
+  they hold for it to someone else on it, picked by whoever saves the
+  task where more than one is, who confirms they received it. Passing it
+  on needs whoever may give and settle advances; anyone else's edit moves
+  it to the person's running balance. A fourth PR, 7h, for it.
