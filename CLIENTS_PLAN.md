@@ -816,8 +816,9 @@ statement). Decided on 2026-11-08 from the mock-up
     holds.
   - **Where it's on, a cost's name is one of the list's:**
     - picked;
-    - or typed in full as the list has it, capitals and spaces aside, and
-      saved as the list's name, linked to it;
+    - or typed in full as the list has it, capitals and the spaces around
+      it aside, the spaces inside it kept, and saved as the list's name,
+      linked to it;
     - anything else isn't added. The field says so under it: pick one, or
       add it from the suggestions for whoever may add names, or ask
       whoever keeps the saved lists. With no name, it says one is needed.
@@ -827,6 +828,7 @@ statement). Decided on 2026-11-08 from the mock-up
     - the task page checks the name on Add, and the server checks it again
       when the task is handed in (`COST_NAME_NOT_ON_LIST`), matching the
       text as typed, so "%" is no name;
+    - nothing is saved or handed in while a name is being checked;
     - costs already added keep their names: it's for names from now on;
     - the task page has the setting with the task, its company's, so a
       Super Admin's Add cost is checked as anyone's.

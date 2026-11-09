@@ -5505,8 +5505,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - **A task's Add cost, where it's on:** the name field says "Cost name,
     from the saved list" before anything is typed. On Add:
     - a name picked is taken;
-    - a name typed in full as the list has it, capitals and spaces aside,
-      is taken as that name (`nameOnList()` in `lib/saved-lists.ts`);
+    - a name typed in full as the list has it, capitals and the spaces
+      around it aside, is taken as that name (`nameOnList()` in `lib/saved-lists.ts`);
     - anything else stays unadded, and the field says why under it, in the
       error colour, until it's typed again: pick one, or add it from the
       suggestions for whoever may add names, or ask whoever keeps the
@@ -5545,3 +5545,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     needed, and saving the draft with each linked to its name; the server
     refusing a name sent past the page; turned off, any name again; and
     the Super Admin's page for the company. Nothing scrolls sideways.
+  - **Codex's review, fixed:**
+    - saved or handed in while Add checked a cost's name, the task went
+      without that cost, which the save's clearing could then drop with its
+      receipt. Save draft and Submit wait for the check now;
+    - a saved name with two spaces inside it, "Taxi  home", was refused
+      typed exactly: the spaces inside what was typed were made one. A
+      typed name keeps its inside spaces now, on the page and on the
+      server, as the list does (`DESIGN.md` §5.3).
