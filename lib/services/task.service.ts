@@ -587,6 +587,13 @@ export class TaskService {
                 })
             }
 
+            // Approved, what anyone still holds for it in cash advances joins
+            // their running balance (CLIENTS_PLAN.md §7.9). Rejected, it
+            // stays: the task can be handed in again.
+            if (hasPoints(newStatus) && oldTask.companyId) {
+                await CashAdvanceService.movePart(tx, oldTask.companyId, { taskId: id, clientId: null }, "TASK_APPROVED", { id: userId, name: session.user.name, role: userRole })
+            }
+
             // 5. Audit Log (Centralized)
             const { AuditLogService } = await import("./audit-log.service")
             await AuditLogService.log('REVIEW_TASK', 'TASK', id, {
@@ -889,6 +896,9 @@ export class TaskService {
             if (task.companyId) {
                 const advanced = await tx.taskCost.findMany({ where: { taskId: id, fromAdvance: { gt: 0 } }, select: { id: true, authorId: true, fromAdvance: true } })
                 await CashAdvanceService.spent(tx, task.companyId, id, advanced.map(c => ({ id: c.id, authorId: c.authorId, part: Number(c.fromAdvance) })), 1, { id: userId, name: session.user.name })
+                // And what's still held for it joins each one's running
+                // balance, while the task is there to say so (CLIENTS_PLAN.md §7.9).
+                await CashAdvanceService.movePart(tx, task.companyId, { taskId: id, clientId: null }, "TASK_DELETED", { id: userId, name: session.user.name, role: userRole })
             }
 
             if (Array.isArray(task.attachments)) {

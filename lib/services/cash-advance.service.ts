@@ -75,7 +75,13 @@ function nameOf(person: { firstName: string; lastName: string }) {
 }
 
 function entryOf(entry: Prisma.CashAdvanceEntryGetPayload<{ select: typeof ENTRY }>) {
-    return { ...entry, amount: Number(entry.amount), date: entry.date.toISOString().slice(0, 10) }
+    const amount = Number(entry.amount)
+    return {
+        ...entry, amount, date: entry.date.toISOString().slice(0, 10),
+        // Taken from a task or a client since deleted (§7.9, 7g): a Moved
+        // entry is always taken from one, so one taken from neither had it.
+        partGone: entry.kind === "MOVED" && amount < 0 && !entry.forTask && !entry.forClient,
+    }
 }
 
 /** Whether this company uses cash advances; refused as not otherwise (§7.6). */
@@ -175,6 +181,41 @@ async function balancesIn(companyId: string) {
  */
 async function todayIn(companyId: string, db: Db = prisma): Promise<string> {
     return calendarDateStr(new Date(), await filterTimeZone(companyId, db))
+}
+
+/** Why what's held for a task or a client moved to the running balance (§7.9, 7g), as the audit log says. */
+export type MovedBecause = "TASK_APPROVED" | "TASK_DELETED" | "CLIENT_ARCHIVED" | "CLIENT_DELETED" | "BY_HAND"
+
+/** Whoever moved it: a user, or a Super Admin. */
+export type Mover = { id: string; name?: string | null; role?: string }
+
+/**
+ * Moves all one person holds for one task or one client to their running
+ * balance (§7.9, 7g): a pair of Moved entries, taken from the one and added
+ * to the other, on today where the company is, and a line in the audit log.
+ * What it moved, or nothing where they hold none. Under the hold on their
+ * advance.
+ */
+async function movedToRunning(tx: Prisma.TransactionClient, companyId: string, userId: string, part: AdvanceFor, because: MovedBecause, by: Mover): Promise<number> {
+    const amount = await partOf(tx, companyId, userId, part)
+    if (amount <= 0) return 0
+    const date = new Date(`${await todayIn(companyId, tx)}T00:00:00Z`)
+    const entry = { companyId, userId, kind: "MOVED" as const, date, recordedById: by.id, recordedByName: by.name ?? null }
+    await tx.cashAdvanceEntry.createMany({
+        data: [
+            { ...entry, amount: -amount, forTaskId: part.taskId, forClientId: part.clientId },
+            { ...entry, amount },
+        ],
+    })
+    const superAdmin = by.role === "SUPER_ADMIN"
+    await tx.auditLog.create({
+        data: {
+            action: "MOVE_CASH_ADVANCE", entityType: "USER", entityId: userId,
+            userId: superAdmin ? null : by.id, superAdminId: superAdmin ? by.id : null,
+            details: { amount, because, ...(part.taskId && { forTaskId: part.taskId }), ...(part.clientId && { forClientId: part.clientId }) },
+        },
+    })
+    return amount
 }
 
 /** A name's words, each in the first or last name. */
@@ -586,6 +627,52 @@ export class CashAdvanceService {
                 { ...entry, amount: -h.amount, forTaskId: h.key.taskId, forClientId: h.key.clientId },
                 { ...entry, amount: h.amount },
             ]),
+        })
+    }
+
+    /**
+     * Moves what everyone holds for one task or one client to their running
+     * balance (§7.9, 7g): as the task is approved or deleted, or the client
+     * archived or deleted. Each person's advance is held in the order of
+     * their ids, so no cost spends it meanwhile and two moves can't wait on
+     * each other, and what they hold is read again under it.
+     */
+    static async movePart(tx: Prisma.TransactionClient, companyId: string, part: AdvanceFor, because: MovedBecause, by: Mover) {
+        if (!part.taskId && !part.clientId) return
+        const holders = await tx.cashAdvanceEntry.findMany({
+            where: { companyId, forTaskId: part.taskId, forClientId: part.clientId },
+            distinct: ["userId"],
+            select: { userId: true },
+        })
+        for (const userId of holders.map(h => h.userId).sort()) {
+            await CashAdvanceService.lockPerson(tx, userId)
+            await movedToRunning(tx, companyId, userId, part, because, by)
+        }
+    }
+
+    /**
+     * Move to running balance, by hand (§7.9, 7g): all a person holds for one
+     * task or one client, for a task that's stuck or won't be finished, as
+     * for a client. For whoever may give and settle their advances, with
+     * two-factor sign-in, as any entry that moves money.
+     */
+    static async move(session: Session, userId: string, input: { forTaskId?: unknown; forClientId?: unknown }) {
+        await assertStepUp(session, "cash_advances.give")
+        const part = forOf(input)
+        if (!part || (!part.taskId && !part.clientId)) throw new Error("CASH_ADVANCE_FOR_INVALID")
+        const person = userId ? await prisma.user.findUnique({ where: { id: userId }, select: PERSON }) : null
+        if (!person?.companyId || person.role === "SUPER_ADMIN") throw new Error("CASH_ADVANCE_NOT_FOUND")
+        const companyId = person.companyId
+        // Another company's, and one's own, are none of theirs (§7.8).
+        if (!can(session.user as Actor, "cash_advances.give", { companyId, userId: person.id, teamLeaderId: person.teamLeaderId })) throw new Error("CASH_ADVANCE_NOT_FOUND")
+        return prisma.$transaction(async tx => {
+            // As an entry recorded: the company's switch can't go off meanwhile.
+            await tx.$queryRaw`SELECT id FROM "Company" WHERE id = ${companyId} FOR KEY SHARE`
+            await inUse(companyId, tx)
+            await CashAdvanceService.lockPerson(tx, person.id)
+            const moved = await movedToRunning(tx, companyId, person.id, part, "BY_HAND", { id: session.user.id, name: session.user.name, role: session.user.role })
+            if (!moved) throw new Error("CASH_ADVANCE_NOTHING_HELD")
+            return { moved, balance: await balanceOf(tx, companyId, person.id) }
         })
     }
 

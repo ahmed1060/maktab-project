@@ -1,0 +1,205 @@
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
+import { readFileSync, readdirSync } from "node:fs"
+import { Client } from "pg"
+import { withGrants } from "@/lib/permissions/test-actors"
+
+/**
+ * What's left of an advance for a task or a client (CLIENTS_PLAN.md §7.9,
+ * step 7g), against a real Postgres: it moves to the running balance as the
+ * task is approved or deleted, or the client archived or deleted, and by
+ * hand for whoever may give and settle advances. A rejected task keeps it.
+ * Each move is a pair of Moved entries, and the balance stays what it was.
+ *
+ * Needs a Postgres it may create databases on: set ROLES_TEST_DATABASE_URL to
+ * its maintenance database. Skipped without it (CI has no database).
+ */
+
+const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
+const MIGRATIONS = readdirSync("prisma/migrations").filter(m => m !== "migration_lock.toml").sort((a, b) => (a === "0_init" ? -1 : b === "0_init" ? 1 : a.localeCompare(b)))
+const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
+
+vi.mock("@/lib/storage", () => ({ supabase: { storage: { from: () => ({ exists: async () => ({ data: true }), remove: async () => ({ data: [], error: null }) }) } }, uploadToCloud: async () => { throw new Error("no uploads here") } }))
+
+const PEOPLE = `
+INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now());
+INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "teamLeaderId") VALUES
+ ('a1', 'a1@x', 'p', 'Amal', 'One', 'ADMIN', 2026, 'a1', 'c1', NULL),
+ ('e1', 'e1@x', 'p', 'Ehab', 'One', 'EMPLOYEE', 2026, 'e1', 'c1', NULL),
+ ('e2', 'e2@x', 'p', 'Eman', 'One', 'EMPLOYEE', 2026, 'e2', 'c1', NULL),
+ ('e3', 'e3@x', 'p', 'Essam', 'One', 'EMPLOYEE', 2026, 'e3', 'c1', NULL);
+`
+// Nile Foods has tasks; Dune and Reed have none. Ehab and Essam are on the
+// gate, Ehab alone on the roof and the dock, Eman on the shed.
+const WORK = `
+INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES
+ ('nile', 'c1', 'Nile Foods', 'o', '0100', 'HQ', now()),
+ ('dune', 'c1', 'Dune', 'o', '0101', 'HQ', now()),
+ ('reed', 'c1', 'Reed', 'o', '0102', 'HQ', now());
+INSERT INTO "Location"(id, "companyId", "clientId", name, "isHq", latitude, longitude, "updatedAt") VALUES ('port', 'c1', NULL, 'Port gate', false, 31.18, 29.87, now());
+INSERT INTO "Task"(id, title, description, status, deadline, "companyId", "clientId", "locationId", "updatedAt") VALUES
+ ('gate', 'Fix the gate', 'd', 'PENDING_CONFIRMATION', now() + interval '2 days', 'c1', 'nile', 'port', now()),
+ ('roof', 'Patch the roof', 'd', 'PENDING_CONFIRMATION', now() + interval '2 days', 'c1', NULL, 'port', now()),
+ ('dock', 'Sweep the dock', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', NULL, 'port', now()),
+ ('shed', 'Paint the shed', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', NULL, 'port', now());
+INSERT INTO "_MultipleAssignees"("A", "B") VALUES ('gate', 'e1'), ('gate', 'e3'), ('roof', 'e1'), ('dock', 'e1'), ('shed', 'e2');
+`
+
+const as = (user: Record<string, unknown>) => ({ user: { ...withGrants(user as any), mfaEnabled: true, stepUpAt: Date.now() } }) as any
+const admin = as({ id: "a1", role: "ADMIN", companyId: "c1", name: "Amal One" })
+const ehab = as({ id: "e1", role: "EMPLOYEE", companyId: "c1", name: "Ehab One" })
+const PAGE = { page: 1, limit: 50, skip: 0 }
+
+describe.skipIf(!ADMIN_URL)("what's left of an advance for a task or a client, in Postgres", () => {
+    const dbName = `advance_moving_test_${Date.now()}`
+    let db: Client
+    let Advances: typeof import("@/lib/services/cash-advance.service").CashAdvanceService
+    let Tasks: typeof import("@/lib/services/task.service").TaskService
+    let Clients: typeof import("@/lib/services/client.service").ClientService
+    let prisma: typeof import("@/lib/prisma").prisma
+
+    const give = (userId: string, amount: number, more: Record<string, unknown> = {}) =>
+        Advances.record(admin, userId, { kind: "GIVEN", amount, date: "2026-10-01", ...more })
+    const refusal = (p: Promise<unknown>) => p.then(() => "moved", (e: Error) => e.message)
+    const advance = (userId: string) => Advances.person(admin.user, userId, PAGE)
+    const held = async (userId: string) => (await advance(userId)).held.map(h => [h.forTask?.id ?? h.forClient?.id, h.amount])
+    const moved = async (userId: string) =>
+        (await db.query(`SELECT amount::float, "forTaskId", "forClientId", "recordedByName" FROM "CashAdvanceEntry" WHERE "userId" = $1 AND kind::text = 'MOVED' ORDER BY "createdAt", amount`, [userId])).rows
+
+    beforeAll(async () => {
+        const a = new Client({ connectionString: ADMIN_URL })
+        await a.connect()
+        await a.query(`CREATE DATABASE ${dbName}`)
+        await a.end()
+        const url = new URL(ADMIN_URL!)
+        url.pathname = `/${dbName}`
+        db = new Client({ connectionString: url.toString() })
+        await db.connect()
+        for (const m of MIGRATIONS) {
+            await db.query(sql(m))
+            if (m === "20260920000000_team_leader") await db.query(PEOPLE)
+        }
+        await db.query(WORK)
+        await db.query(`UPDATE "Company" SET "cashAdvancesAllowed" = true WHERE id = 'c1'`)
+        process.env.POSTGRES_PRISMA_URL = url.toString()
+        Advances = (await import("@/lib/services/cash-advance.service")).CashAdvanceService
+        Tasks = (await import("@/lib/services/task.service")).TaskService
+        Clients = (await import("@/lib/services/client.service")).ClientService
+        prisma = (await import("@/lib/prisma")).prisma
+    }, 180_000)
+
+    afterAll(async () => {
+        await prisma?.$disconnect()
+        await db?.end()
+        const a = new Client({ connectionString: ADMIN_URL })
+        await a.connect()
+        await a.query(`DROP DATABASE IF EXISTS ${dbName} WITH (FORCE)`)
+        await a.end()
+    })
+
+    it("moves what everyone holds for a task to their running balance as it's approved", async () => {
+        await give("e1", 500, { forTaskId: "gate" })
+        await give("e1", 300)
+        await give("e3", 200, { forTaskId: "gate" })
+        await give("e1", 100, { forTaskId: "roof" })
+
+        // No costs, so approved is completed: the same to its money.
+        await Tasks.review("gate", admin, { status: "APPROVED" })
+        expect(await held("e1")).toEqual([["roof", 100]])
+        expect(await held("e3")).toEqual([])
+        const e1 = await advance("e1")
+        expect([e1.balance, e1.running]).toEqual([900, 800])
+        expect((await advance("e3")).running).toBe(200)
+        // A pair each, by whoever approved it: taken from the task, added to the running balance.
+        expect(await moved("e1")).toEqual([
+            { amount: -500, forTaskId: "gate", forClientId: null, recordedByName: "Amal One" },
+            { amount: 500, forTaskId: null, forClientId: null, recordedByName: "Amal One" },
+        ])
+        expect(await moved("e3")).toEqual([
+            { amount: -200, forTaskId: "gate", forClientId: null, recordedByName: "Amal One" },
+            { amount: 200, forTaskId: null, forClientId: null, recordedByName: "Amal One" },
+        ])
+    })
+
+    it("leaves a rejected task its money, as it can be handed in again", async () => {
+        await Tasks.review("roof", admin, { status: "REJECTED" })
+        expect(await held("e1")).toEqual([["roof", 100]])
+        expect((await moved("e1")).length).toBe(2)
+        // Approved later, it moves then.
+        await Tasks.review("roof", admin, { status: "APPROVED" })
+        expect(await held("e1")).toEqual([])
+        expect((await advance("e1")).running).toBe(900)
+    })
+
+    it("moves what's held for a task as it's deleted, and says the task it was for is gone", async () => {
+        await give("e1", 150, { forTaskId: "dock" })
+        await Tasks.delete("dock", admin)
+        expect(await held("e1")).toEqual([])
+        const e1 = await advance("e1")
+        expect([e1.balance, e1.running]).toEqual([1050, 1050])
+        // Taken from a part that's gone: the history says so.
+        const taken = e1.data.find(e => e.kind === "MOVED" && e.amount === -150)
+        expect(taken).toMatchObject({ forTask: null, forClient: null, partGone: true })
+        expect(e1.data.find(e => e.kind === "MOVED" && e.amount === 150)).toMatchObject({ partGone: false })
+        expect(e1.data.find(e => e.kind === "MOVED" && e.amount === -500)).toMatchObject({ forTask: { id: "gate" }, partGone: false })
+    })
+
+    it("moves what's held for a client as it's archived or deleted", async () => {
+        await give("e2", 250, { forClientId: "nile" })
+        await give("e3", 50, { forClientId: "dune" })
+        // Nile Foods has tasks: it's archived.
+        expect(await Clients.delete("nile", admin)).toMatchObject({ archived: true })
+        expect(await held("e2")).toEqual([])
+        expect((await advance("e2")).running).toBe(250)
+        expect(await moved("e2")).toEqual([
+            { amount: -250, forTaskId: null, forClientId: "nile", recordedByName: "Amal One" },
+            { amount: 250, forTaskId: null, forClientId: null, recordedByName: "Amal One" },
+        ])
+        // Restored, nothing comes back.
+        await Clients.restore("nile", admin)
+        expect(await held("e2")).toEqual([])
+        // Dune has none: it's deleted for good.
+        expect(await Clients.delete("dune", admin)).toMatchObject({ archived: false })
+        expect(await held("e3")).toEqual([])
+        expect((await advance("e3")).running).toBe(250)
+    })
+
+    it("moves a task's or a client's money by hand, for whoever may give and settle advances", async () => {
+        await give("e2", 300, { forTaskId: "shed" })
+        await give("e2", 120, { forClientId: "reed" })
+        expect(await refusal(Advances.move(ehab, "e2", { forTaskId: "shed" }))).toBe("CASH_ADVANCE_NOT_FOUND")
+        expect(await refusal(Advances.move(admin, "e2", {}))).toBe("CASH_ADVANCE_FOR_INVALID")
+        expect(await refusal(Advances.move(admin, "e2", { forTaskId: "shed", forClientId: "reed" }))).toBe("CASH_ADVANCE_FOR_INVALID")
+        expect(await refusal(Advances.move(admin, "e2", { forTaskId: "gate" }))).toBe("CASH_ADVANCE_NOTHING_HELD")
+
+        expect(await Advances.move(admin, "e2", { forTaskId: "shed" })).toMatchObject({ moved: 300, balance: 670 })
+        expect(await held("e2")).toEqual([["reed", 120]])
+        expect(await Advances.move(admin, "e2", { forClientId: "reed" })).toMatchObject({ moved: 120, balance: 670 })
+        expect(await held("e2")).toEqual([])
+        expect((await advance("e2")).running).toBe(670)
+        expect(await refusal(Advances.move(admin, "e2", { forClientId: "reed" }))).toBe("CASH_ADVANCE_NOTHING_HELD")
+
+        const audit = (await db.query(`SELECT details FROM "AuditLog" WHERE action = 'MOVE_CASH_ADVANCE' AND "entityId" = 'e2' AND details->>'because' = 'BY_HAND' ORDER BY "createdAt"`)).rows
+        expect(audit.map(r => r.details)).toEqual([
+            expect.objectContaining({ amount: 300, forTaskId: "shed", because: "BY_HAND" }),
+            expect.objectContaining({ amount: 120, forClientId: "reed", because: "BY_HAND" }),
+        ])
+    })
+
+    it("asks for two-factor sign-in to move by hand", async () => {
+        await give("e2", 40, { forTaskId: "shed" })
+        const stale = { user: { ...admin.user, stepUpAt: 0 } } as any
+        expect(await refusal(Advances.move(stale, "e2", { forTaskId: "shed" }))).toMatch(/STEP_UP/)
+        expect(await held("e2")).toEqual([["shed", 40]])
+    })
+
+    it("logs each automatic move, saying why", async () => {
+        const audit = (await db.query(`SELECT "entityId", details FROM "AuditLog" WHERE action = 'MOVE_CASH_ADVANCE' AND details->>'because' <> 'BY_HAND' ORDER BY "createdAt", "entityId"`)).rows
+        expect(audit.map(r => [r.entityId, r.details.because, r.details.amount])).toEqual([
+            ["e1", "TASK_APPROVED", 500], ["e3", "TASK_APPROVED", 200],
+            ["e1", "TASK_APPROVED", 100],
+            ["e1", "TASK_DELETED", 150],
+            ["e2", "CLIENT_ARCHIVED", 250],
+            ["e3", "CLIENT_DELETED", 50],
+        ])
+    })
+})
