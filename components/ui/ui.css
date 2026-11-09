@@ -1970,6 +1970,15 @@ a.ui-file-open:focus-visible,
   margin: 0;
   margin-inline-start: auto;
 }
+/* Which statement: the tabs, and the line under them on what it shows. */
+.ui-doc-views {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+.ui-doc-views > .ui-hint {
+  margin: 0;
+}
 @media (max-width: 767px) {
   .ui-doc-controls > .ui-field {
     flex-basis: 100%;
@@ -2006,6 +2015,31 @@ a.ui-file-open:focus-visible,
 }
 .ui-doc-receipt-number {
   font-weight: 500;
+}
+/* By cost name: each name's receipts under it, its name and how many as
+   their heading, and its charges with none said after them. */
+.ui-doc-receipt-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-block-start: var(--space-4);
+}
+/* Under Receipts, so no larger than it on screen; on paper, where Receipts
+   is as large as the sheet's company, a size up. */
+.ui-doc-receipt-group-title {
+  margin: 0;
+  padding-block-end: var(--space-1);
+  border-block-end: 1px solid var(--rule);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.ui-doc-receipt-missing {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  overflow-wrap: anywhere;
 }
 /* Printed only: whose statement they're from, under their heading. */
 .ui-doc-receipts-for {
@@ -2084,6 +2118,12 @@ a.ui-file-open:focus-visible,
   }
   .ui-doc-receipt {
     break-inside: avoid;
+  }
+  /* A name's heading stays with its first receipts. */
+  .ui-doc-receipt-group-title {
+    font-size: var(--text-md);
+    line-height: var(--leading-md);
+    break-after: avoid;
   }
   .ui-doc-receipt-photo,
   .ui-doc-receipt-file {

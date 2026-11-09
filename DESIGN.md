@@ -1221,10 +1221,14 @@ These are built once, in the building-blocks PR, and every page uses them
     only their team's tasks' charges, so they don't get it: a statement
     that left some out would mislead the client.
   - Above the sheet, as for any document: Print, the page header's primary
-    button. On a row of its own at the sheet's width: the period, With
+    button. At the sheet's width, tabs pick which statement it is, Every
+    charge as it opens or By cost name, with a line under them saying what
+    the picked one shows. On a row of its own under them: the period, With
     receipts, ticked as it opens, and a hint that the print dialog saves it
     as a PDF. The period is the dates picked on the client's Charges, or
-    last month where none were. The page's address keeps both.
+    last month where none were. The page's address keeps all three.
+  - The sheet says which it is under the company's name: "Client
+    statement, every charge" or "Client statement, by cost name".
   - Its details: the client, with its owner under its name; the period;
     and the day it was issued. Each charge's status, and what's due, are as
     they are that day.
@@ -1234,6 +1238,19 @@ These are built once, in the building-blocks PR, and every page uses them
     receipt, under it; Paid, Service fee and Total; and Due, or Collected
     and the day. Its foot counts them and sums the three amounts. With none
     in the period, the table's place says so.
+  - By cost name, the same charges are added up by what they're called, in
+    a document's table in place of theirs: each cost name, how many charges
+    it has, and their Paid, Service fee and Total, highest total first. Its
+    foot counts the names and the charges and sums the three amounts. What's
+    still due is left to the totals under it.
+    - A charge picked from a saved list is under that name, as the list has
+      it now.
+    - A typed name is under a saved name, or with other typed ones, that it
+      matches with capitals, spaces, Arabic's letter forms (أ إ آ ا, ة ه,
+      ى ي), its vowel marks and the stretch line (ـ) set aside. Typed only,
+      it's shown as it was typed most often. Nothing else is guessed: a
+      typo is a name of its own.
+    - A charge with no name is under No name.
   - Its totals: Charged in this period; Collected, taken off; Still due
     from before the period's first day, only where some is; and Still due,
     the figure the statement is for, its last total.
@@ -1246,6 +1263,11 @@ These are built once, in the building-blocks PR, and every page uses them
     with a line in `--text-sm` under it saying whose statement they're
     from; four to a page, each whole. A receipt that's a PDF opens from its
     place there; printed, it says it's a file of its own.
+  - By cost name, the receipts are under each name, in the table's order:
+    its name and how many receipts as a heading, then each one's photo with
+    its number, the day, its task and what was paid. A charge under the
+    name with no receipt is said under them. They're numbered in that
+    order.
   - A period with more charges than one statement holds (200) says so,
     and asks for a shorter one.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
@@ -2019,3 +2041,7 @@ changed:
 - **2026-11-08:** The "Powered by" signature on the sign-in page (§5.1;
   §5.5, Sign-in), as the product owner asked. It was only in the
   dashboard, so the first page anyone sees didn't have it.
+- **2026-11-09:** A client statement in two versions (§5.5, Client
+  statement), as the product owner asked: every charge, as it was, or the
+  same charges added up by cost name, the saved lists' first purpose, with
+  the receipts under each name.

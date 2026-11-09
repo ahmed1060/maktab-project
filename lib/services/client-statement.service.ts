@@ -5,13 +5,17 @@ import { filterTimeZone } from "@/lib/services/filter-zone"
 import { dayRange } from "@/lib/day-range"
 import { calendarDateStr } from "@/lib/time"
 import { cents } from "@/lib/task-costs"
-import { STATEMENT_MAX_CHARGES, numberReceipts, statementPeriod, statementTotals, type Statement } from "@/lib/client-statement"
+import { STATEMENT_MAX_CHARGES, byCostName, numberReceipts, statementPeriod, statementTotals, type Statement } from "@/lib/client-statement"
 
 /**
  * A client's statement (CLIENTS_PLAN.md §6.9; DESIGN.md §5.5, Client
  * statement): the charges added to its tasks in a period, in the company's
  * own days, and not left off its bill, oldest first, each as it is today;
  * and what's still due from before the period.
+ *
+ * The same charges by cost name too: under the saved list's name a charge
+ * was picked from, as the list has it now, or a name a typed one matches,
+ * the company's own saved cost names first.
  *
  * Only for whoever sees all the company's charges. A Team Leader sees their
  * team's tasks' only, and a statement that left some out would mislead the
@@ -34,10 +38,14 @@ export async function clientStatement(user: Actor & { id: string }, input: { cli
     const range = dayRange(period.from, period.to, timeZone) as { gte: Date; lte: Date }
     const tasks: Prisma.TaskWhereInput = { clientId: client.id, companyId: client.companyId }
 
-    const [rows, before] = await Promise.all([
+    const [rows, before, saved] = await Promise.all([
         prisma.taskCost.findMany({
             where: { notCharged: false, createdAt: range, task: tasks },
-            select: { id: true, amount: true, serviceFee: true, description: true, receiptUrl: true, collectedAt: true, createdAt: true, task: { select: { id: true, title: true } } },
+            select: {
+                id: true, amount: true, serviceFee: true, description: true, receiptUrl: true, collectedAt: true, createdAt: true,
+                task: { select: { id: true, title: true } },
+                nameEntry: { select: { name: true } },
+            },
             orderBy: [{ createdAt: "asc" }, { id: "asc" }],
             // One more than it holds, to know when there are more.
             take: STATEMENT_MAX_CHARGES + 1,
@@ -47,10 +55,16 @@ export async function clientStatement(user: Actor & { id: string }, input: { cli
             _sum: { amount: true, serviceFee: true },
             _count: { _all: true },
         }),
+        // The company's own saved cost names, archived too: a name it no
+        // longer offers is still the name. Those in use first, then oldest.
+        prisma.listEntry.findMany({
+            where: { companyId: client.companyId, kind: "COST_NAME" },
+            select: { name: true, archivedAt: true, createdAt: true },
+        }),
     ])
     if (rows.length > STATEMENT_MAX_CHARGES) throw new Error("STATEMENT_TOO_MANY")
 
-    const charges = numberReceipts(rows.map(r => {
+    const lines = rows.map(r => {
         const [paid, fee] = [Number(r.amount), Number(r.serviceFee)]
         return {
             id: r.id,
@@ -63,13 +77,19 @@ export async function clientStatement(user: Actor & { id: string }, input: { cli
             collectedOn: r.collectedAt ? calendarDateStr(r.collectedAt, timeZone) : null,
             receiptUrl: r.receiptUrl,
         }
-    }))
+    })
+    const savedNames = saved
+        .sort((a, b) => Number(a.archivedAt !== null) - Number(b.archivedAt !== null) || a.createdAt.getTime() - b.createdAt.getTime())
+        .map(e => e.name)
+    const names = byCostName(lines.map((l, i) => ({ ...l, entryName: rows[i].nameEntry?.name ?? null })), savedNames)
+    const charges = numberReceipts(lines)
     return {
         company: { name: company?.name ?? "", logoUrl: company?.logoUrl ?? null },
         client: { id: client.id, name: client.name, ownerName: client.ownerName },
         period,
         issuedOn,
         charges,
+        names,
         totals: statementTotals(charges, {
             amount: Number(before._sum.amount ?? 0) + Number(before._sum.serviceFee ?? 0),
             count: before._count._all,
