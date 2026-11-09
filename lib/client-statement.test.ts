@@ -8,8 +8,8 @@ import { moduleForApiPath } from "./features/routes"
 import { KNOWN_REFUSALS } from "./api-errors"
 import { calendarDay } from "./calendar-day"
 import {
-    STATEMENT_MAX_CHARGES, isPdfReceipt, lastMonth, numberReceipts, statementHref, statementNote, statementPeriod, statementTotals,
-    type Statement, type StatementCharge,
+    STATEMENT_MAX_CHARGES, byCostName, costNameKey, isPdfReceipt, lastMonth, numberReceipts, statementHref, statementNote, statementPeriod, statementTotals,
+    type Statement, type StatementCharge, type StatementView,
 } from "./client-statement"
 
 /**
@@ -65,12 +65,13 @@ const STATEMENT: Statement = {
     period: { from: "2026-10-01", to: "2026-10-31" },
     issuedOn: "2026-11-08",
     charges: CHARGES,
+    names: byCostName(CHARGES.map(c => ({ ...c, entryName: null })), []),
     totals: statementTotals(CHARGES, { amount: 600, count: 1 }),
 }
 
-async function sheet(over: Partial<Statement> = {}, withReceipts = true) {
+async function sheet(over: Partial<Statement> = {}, withReceipts = true, view: StatementView = "every") {
     const { StatementSheet } = await import("@/components/charges/ClientStatement")
-    return renderToStaticMarkup(h(StatementSheet, { statement: { ...STATEMENT, ...over }, withReceipts }))
+    return renderToStaticMarkup(h(StatementSheet, { statement: { ...STATEMENT, ...over }, withReceipts, view }))
 }
 const line = (label: string, amount: string) => `<div class="ui-doc-line"><span>${esc(label)}</span><bdi class="ui-doc-amount">${amount}</bdi></div>`
 const total = (label: string, amount: string) => `<div class="ui-doc-line ui-doc-total"><span>${esc(label)}</span><bdi class="ui-doc-amount">${amount}</bdi></div>`
@@ -138,7 +139,7 @@ describe("its charges, receipts and totals", () => {
 describe("the sheet", () => {
     it("is the company's document, for the client, the period and the day it was issued", async () => {
         const html = await sheet()
-        expect(html).toContain(`<p class="ui-doc-company">Nile Works</p><p class="ui-doc-kind">${en.statement_title}</p>`)
+        expect(html).toContain(`<p class="ui-doc-company">Nile Works</p><p class="ui-doc-kind">${en.statement_kind_every}</p>`)
         expect(html).toContain(`<dt>${en.statement_client}</dt><dd><bdi>Al Noor Trading</bdi><span class="ui-detail-note"><bdi>Hassan Adel</bdi></span></dd>`)
         expect(periodText("en", "2026-10-01", "2026-10-31")).toMatch(/^1\s*–\s*31 October 2026$/)
         expect(html).toContain(`<dt>${en.doc_period}</dt><dd>${periodText("en", "2026-10-01", "2026-10-31")}</dd>`)
@@ -225,7 +226,7 @@ describe("the sheet", () => {
     it("is in the page's language, digits too", async () => {
         state.locale = "ar"
         const html = await sheet()
-        expect(html).toContain(`<p class="ui-doc-kind">${ar.statement_title}</p>`)
+        expect(html).toContain(`<p class="ui-doc-kind">${ar.statement_kind_every}</p>`)
         expect(html).toContain(`<dd>${periodText("ar", "2026-10-01", "2026-10-31")}</dd>`)
         expect(html).toContain(`<td class="ui-nowrap">٢ أكتوبر</td>`)
         expect(html).toContain(`<a href="#receipt-1">${ar.statement_receipt.replace("{n}", "١")}</a>`)
@@ -238,6 +239,164 @@ describe("the sheet", () => {
         expect(html).toContain(`<span class="ui-doc-card-head"><bdi>Spare parts</bdi>`)
         expect(html).toContain(sentence(ar.statement_receipt_what, { what: "<bdi>Spare parts</bdi>", date: "٢ أكتوبر" }))
         expect(html).toContain(sentence(ar.statement_receipts_for, { client: "<bdi>Al Noor Trading</bdi>", period: periodText("ar", "2026-10-01", "2026-10-31") }))
+    })
+})
+
+// The second canvas's October (https://claude.ai/artifact/RuPsgbZJXxa93nV2D4FTTm):
+// Spare parts picked from the saved list once and typed once, Transport
+// typed three ways, and Materials picked.
+const K = {
+    ac: { id: "k1", title: "AC repair, 2nd floor" },
+    cabling: { id: "k2", title: "Network cabling" },
+    door: { id: "k4", title: "Fix the meeting room door" },
+    lights: { id: "k5", title: "Replace the lights, Maadi branch" },
+}
+const NAMED = [
+    { ...charge({ id: "n1", day: "2026-10-02", description: "Transport", task: K.ac, paid: 150, fee: 0, total: 150, collectedOn: "2026-10-20" }), entryName: null, receiptUrl: `${RECEIPTS}/t1.jpg` },
+    { ...charge({ id: "n2", day: "2026-10-02", description: "Spare parts", task: K.ac, paid: 1850, fee: 150, total: 2000, collectedOn: "2026-10-20" }), entryName: "Spare parts", receiptUrl: `${RECEIPTS}/s1.jpg` },
+    { ...charge({ id: "n3", day: "2026-10-09", description: "transport ", task: K.cabling, paid: 120, fee: 0, total: 120, collectedOn: "2026-10-20" }), entryName: null, receiptUrl: null },
+    { ...charge({ id: "n4", day: "2026-10-21", description: "spare  parts", task: K.door, paid: 350, fee: 50, total: 400 }), entryName: null, receiptUrl: `${RECEIPTS}/s2.jpg` },
+    { ...charge({ id: "n5", day: "2026-10-28", description: "Materials", task: K.lights, paid: 540, fee: 60, total: 600 }), entryName: "Materials", receiptUrl: `${RECEIPTS}/m1.jpg` },
+    { ...charge({ id: "n6", day: "2026-10-28", description: "TRANSPORT", task: K.lights, paid: 200, fee: 0, total: 200 }), entryName: null, receiptUrl: `${RECEIPTS}/t2.jpg` },
+]
+const SAVED = ["Spare parts", "Materials", "Petrol"]
+const NAMED_CHARGES = numberReceipts(NAMED.map(({ entryName: _, ...c }) => c))
+const BY_NAME: Partial<Statement> = {
+    charges: NAMED_CHARGES,
+    names: byCostName(NAMED, SAVED),
+    totals: statementTotals(NAMED_CHARGES, { amount: 600, count: 1 }),
+}
+const typed = (id: string, description: string | null, total: number, entryName: string | null = null) => ({ id, description, entryName, paid: total, fee: 0, total })
+
+describe("by cost name", () => {
+    it("matches names with capitals, spaces, Arabic's letter forms, vowel marks and the stretch line set aside", () => {
+        expect(costNameKey("  Spare   Parts ")).toBe("spare parts")
+        expect(costNameKey("spare parts")).toBe("spare parts")
+        expect(costNameKey("Spare\u00a0parts")).toBe("spare parts")
+        // أ إ آ ا, ة ه and ى ي are typed either way for the same word.
+        expect(costNameKey("أجرة نقل")).toBe(costNameKey("اجره نقل"))
+        expect(costNameKey("إصلاح")).toBe(costNameKey("اصلاح"))
+        expect(costNameKey("آلة")).toBe(costNameKey("اله"))
+        expect(costNameKey("مستشفى")).toBe(costNameKey("مستشفي"))
+        // Vowel marks and the stretch line are how it was typed, not what.
+        expect(costNameKey("مُوَاصَلَات")).toBe(costNameKey("مواصلات"))
+        expect(costNameKey("مواصـــلات")).toBe(costNameKey("مواصلات"))
+        // Nothing else is guessed: another word, or a typo, is a name of its own.
+        expect(costNameKey("Transportation")).not.toBe(costNameKey("Transport"))
+        expect(costNameKey("Transprt")).not.toBe(costNameKey("Transport"))
+        expect(costNameKey("Cables")).not.toBe(costNameKey("Cable"))
+        // No name.
+        for (const none of [null, undefined, "", "   "]) expect(costNameKey(none)).toBe("")
+    })
+
+    it("adds up the charges under each name, highest total first", () => {
+        expect(byCostName(NAMED, SAVED)).toEqual([
+            { key: "spare parts", name: "Spare parts", ids: ["n2", "n4"], paid: 2200, fee: 200, total: 2400 },
+            { key: "materials", name: "Materials", ids: ["n5"], paid: 540, fee: 60, total: 600 },
+            { key: "transport", name: "Transport", ids: ["n1", "n3", "n6"], paid: 470, fee: 0, total: 470 },
+        ])
+        // To the piastre, as amounts are kept.
+        expect(byCostName([typed("a", "Tape", 0.1), typed("b", "tape", 0.2)], [])[0].total).toBe(0.3)
+    })
+
+    it("shows a saved name as the list has it now, and a typed one as it was typed most often", () => {
+        // Renamed on the list: its charges follow it, and a typed one that matches the new name joins them.
+        expect(byCostName([typed("a", "Spare parts", 10, "Genuine spare parts"), typed("b", "genuine spare  PARTS", 5), typed("c", "Spare parts", 1)], ["Genuine spare parts"]))
+            .toEqual([
+                { key: "genuine spare parts", name: "Genuine spare parts", ids: ["a", "b"], paid: 15, fee: 0, total: 15 },
+                { key: "spare parts", name: "Spare parts", ids: ["c"], paid: 1, fee: 0, total: 1 },
+            ])
+        // Typed only, as it was typed most often, its spaces tidied; the first where it's a tie.
+        expect(byCostName([typed("a", "taxi", 1), typed("b", "Taxi ", 1), typed("c", " Taxi", 1)], [])[0].name).toBe("Taxi")
+        expect(byCostName([typed("a", "Taxi  fare", 1), typed("b", "taxi fare", 1)], [])[0].name).toBe("Taxi fare")
+        // A typed name joins a saved one, even one no charge here was picked from.
+        expect(byCostName([typed("a", "petrol", 30)], SAVED)[0].name).toBe("Petrol")
+        // In Arabic, as one line.
+        expect(byCostName([typed("a", "مواصلات", 10), typed("b", "مُواصلات", 5), typed("c", "مواصـلات", 5)], [])).toEqual([
+            { key: costNameKey("مواصلات"), name: "مواصلات", ids: ["a", "b", "c"], paid: 20, fee: 0, total: 20 },
+        ])
+    })
+
+    it("puts a charge with no name under No name, and a typo under its own", () => {
+        const names = byCostName([typed("a", null, 1), typed("b", "", 1), typed("c", "  ", 1), typed("d", "Transprt", 20), typed("e", "Transport", 10)], [])
+        expect(names.map(n => [n.name, n.ids])).toEqual([["Transprt", ["d"]], ["Transport", ["e"]], [null, ["a", "b", "c"]]])
+        expect(names[2]).toMatchObject({ key: "", total: 3 })
+    })
+
+    it("puts names with the same total in alphabetical order, and No name last", () => {
+        expect(byCostName([typed("a", null, 10), typed("b", "Bolts", 10), typed("c", "Anchors", 10)], []).map(n => n.name)).toEqual(["Anchors", "Bolts", null])
+    })
+})
+
+describe("the sheet by cost name", () => {
+    it("says it's by cost name, under the company's name", async () => {
+        const html = await sheet(BY_NAME, true, "name")
+        expect(html).toContain(`<p class="ui-doc-company">Nile Works</p><p class="ui-doc-kind">${en.statement_kind_by_name}</p>`)
+        expect(html).toContain(`<dt>${en.statement_client}</dt><dd><bdi>Al Noor Trading</bdi>`)
+    })
+
+    it("lists each name with how many charges and their Paid, Service fee and Total, and leaves what's due to the totals", async () => {
+        const html = await sheet(BY_NAME, true, "name")
+        expect(html).toContain(`<caption>${en.statement_charges_by_name}</caption>`)
+        const heads = [...html.matchAll(/<th scope="col"( class="ui-end")?>([^<]*)<\/th>/g)].map(m => `${m[2]}${m[1] ? " (end)" : ""}`)
+        expect(heads).toEqual([en.statement_col_cost_name, `${en.statement_col_count} (end)`, `${en.charges_col_paid} (end)`, `${en.charges_col_fee} (end)`, `${en.charges_col_total} (end)`])
+        const rows = html.slice(html.indexOf("<tbody>"), html.indexOf("</tbody>"))
+        expect([...rows.matchAll(/<tr><td><bdi>([^<]*)<\/bdi>/g)].map(m => m[1])).toEqual(["Spare parts", "Materials", "Transport"])
+        expect(rows).toContain(`<tr><td><bdi>Spare parts</bdi></td><td class="ui-end">2</td><td class="ui-end">2,200.00</td><td class="ui-end">200.00</td><td class="ui-end">2,400.00</td></tr>`)
+        expect(html).toContain(`<tfoot><tr><th scope="row" colSpan="1">3 names</th><td class="ui-end">6</td><td class="ui-end">3,210.00</td><td class="ui-end">260.00</td><td class="ui-end">3,470.00</td></tr></tfoot>`)
+        // Its totals and note are the every-charge statement's.
+        expect(html).toContain(line(en.statement_charged, "3,470.00"))
+        expect(html).toContain(line(en.statement_collected, "−2,270.00"))
+        expect(html).toContain(total(en.statement_due, "1,800.00"))
+        // No day, status or receipt number on a line of sums.
+        expect(html).not.toContain(`>${en.statement_col_date}</th>`)
+        expect(html).not.toContain(`>${en.charges_col_status}</th>`)
+        expect(html).not.toContain('href="#receipt-')
+        // On phones, a card for each name: it and its total, then how many, then the amounts.
+        expect(html).toContain(`<span class="ui-doc-card-head"><bdi>Spare parts</bdi><bdi class="ui-doc-amount">2,400.00</bdi></span><span class="ui-doc-card-detail">2 charges</span><span class="ui-doc-card-detail">${esc(en.statement_card_amounts.replace("{paid}", "2,200.00").replace("{fee}", "200.00"))}</span>`)
+    })
+
+    it("names No name in the page's words", async () => {
+        const names = byCostName([typed("a", null, 5)], [])
+        const html = await sheet({ charges: [charge({ id: "a", description: null, paid: 5, total: 5 })], names }, true, "name")
+        expect(html).toContain(`<tr><td>${en.statement_no_name}</td>`)
+    })
+
+    it("shows the receipts under each name, in the table's order, numbered that way", async () => {
+        const html = await sheet(BY_NAME, true, "name")
+        const receipts = html.slice(html.indexOf('<section class="ui-doc-receipts"'))
+        expect(receipts).toContain(`<h2 class="ui-doc-group-title">${en.statement_receipts}</h2>`)
+        const heads = [...receipts.matchAll(/<h3 class="ui-doc-receipt-group-title">(.*?)<\/h3>/g)].map(m => m[1])
+        expect(heads).toEqual([
+            sentence(en.statement_receipts_group, { name: "<bdi>Spare parts</bdi>", count: "2 receipts" }),
+            sentence(en.statement_receipts_group, { name: "<bdi>Materials</bdi>", count: "1 receipt" }),
+            sentence(en.statement_receipts_group, { name: "<bdi>Transport</bdi>", count: "2 receipts" }),
+        ])
+        expect([...receipts.matchAll(/<figure id="receipt-(\d+)"[^>]*>.*?src="([^"]*)"/g)].map(m => [m[1], m[2].slice(RECEIPTS.length + 1)]))
+            .toEqual([["1", "s1.jpg"], ["2", "s2.jpg"], ["3", "m1.jpg"], ["4", "t1.jpg"], ["5", "t2.jpg"]])
+        // Each with its number, its day and task, and what was paid.
+        expect(receipts).toContain(`<figure id="receipt-1" class="ui-doc-receipt"><figcaption><span class="ui-doc-receipt-number">Receipt 1</span><span>${sentence(en.statement_receipt_when, { date: "2 Oct", task: "<bdi>AC repair, 2nd floor</bdi>" })}</span><span>${esc(en.statement_receipt_paid.replace("{amount}", "1,850.00"))}</span></figcaption>`)
+        // A charge under the name with no receipt is said under them.
+        const transport = receipts.slice(receipts.lastIndexOf('<h3 class="ui-doc-receipt-group-title">'))
+        expect(transport).toContain(`<p class="ui-doc-receipt-missing">${sentence(en.statement_no_receipt_for, { date: "9 Oct", task: "<bdi>Network cabling</bdi>" })}</p>`)
+    })
+
+    it("leaves the receipts out without With receipts", async () => {
+        const html = await sheet(BY_NAME, false, "name")
+        expect(html).not.toContain("ui-doc-receipts")
+        expect(html).not.toContain("ui-doc-receipt-group-title")
+    })
+
+    it("is in the page's language, digits too", async () => {
+        state.locale = "ar"
+        const html = await sheet(BY_NAME, true, "name")
+        expect(html).toContain(`<p class="ui-doc-kind">${ar.statement_kind_by_name}</p>`)
+        expect(html).toContain(`<caption>${ar.statement_charges_by_name}</caption>`)
+        expect(html).toContain(`<tr><td><bdi>Spare parts</bdi></td><td class="ui-end">٢</td><td class="ui-end">٢٬٢٠٠٫٠٠</td>`)
+        expect(html).toContain(`<th scope="row" colSpan="1">${ar.count_names_few.replace("{n}", "٣")}</th><td class="ui-end">٦</td>`)
+        expect(html).toContain(total(ar.statement_due, "١٬٨٠٠٫٠٠"))
+        expect(html).toContain(sentence(ar.statement_receipts_group, { name: "<bdi>Spare parts</bdi>", count: ar.count_receipts_two }))
+        expect(html).toContain(sentence(ar.statement_receipt_when, { date: "٢ أكتوبر", task: "<bdi>AC repair, 2nd floor</bdi>" }))
     })
 })
 
@@ -325,6 +484,10 @@ describe("the words", () => {
         "statement_note_both", "statement_note_period", "statement_note_before", "statement_note_clear",
         "statement_receipts", "statement_receipts_for", "statement_receipt_what", "statement_receipt_paid", "statement_receipt_alt",
         "statement_receipt_pdf", "statement_receipt_open", "statement_too_many",
+        "statement_view_label", "statement_view_every", "statement_view_by_name", "statement_view_every_hint", "statement_view_by_name_hint",
+        "statement_kind_every", "statement_kind_by_name", "statement_charges_by_name", "statement_col_cost_name", "statement_col_count",
+        "statement_no_name", "statement_receipts_group", "statement_receipt_when", "statement_no_receipt_for",
+        "count_receipts_zero", "count_receipts_one", "count_receipts_two", "count_receipts_few", "count_receipts_many", "count_receipts_other",
     ]
 
     it("are in both languages, with the same places to fill", () => {

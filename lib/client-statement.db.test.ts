@@ -65,6 +65,27 @@ INSERT INTO "TaskCost"(id, "taskId", "authorName", amount, "serviceFee", descrip
  ('t9', 'k9', 'Someone', 99, 0, 'Theirs', NULL, false, NULL, '2026-10-12T09:00:00Z');
 INSERT INTO "TaskCost"(id, "taskId", "authorName", amount, description, "createdAt")
  SELECT 'b' || n, 'k6', 'Basma', 1, 'Errand ' || n, '2026-10-01T09:00:00Z'::timestamp + (n || ' minutes')::interval FROM generate_series(1, 201) n;
+-- Named Co's October, by cost name: one picked from the saved list since
+-- renamed, and typed to match it; one typed to match a saved name no charge
+-- picked; Taxi typed three ways, which another company's list and the task
+-- titles' list have; and one with no name.
+INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES
+ ('named', 'c1', 'Named Co', 'Nadia', '0104', 'Cairo', now());
+INSERT INTO "Task"(id, title, description, status, deadline, "companyId", "clientId", "locationId", "updatedAt") VALUES
+ ('k8', 'Fit the kitchen', 'd', 'APPROVED', now(), 'c1', 'named', 'port', now());
+INSERT INTO "ListEntry"(id, "companyId", kind, name, "archivedAt", "updatedAt") VALUES
+ ('le1', 'c1', 'COST_NAME', 'Genuine spare parts', NULL, now()),
+ ('le2', 'c1', 'COST_NAME', 'Petrol', '2026-10-01T00:00:00Z', now()),
+ ('le3', 'c2', 'COST_NAME', 'TAXI', NULL, now()),
+ ('le4', 'c1', 'TASK_TITLE', 'TAXI', NULL, now());
+INSERT INTO "TaskCost"(id, "taskId", "authorName", amount, "serviceFee", description, "nameEntryId", "createdAt") VALUES
+ ('m1', 'k8', 'Ehab', 100, 10, 'Spare parts', 'le1', '2026-10-03T09:00:00Z'),
+ ('m2', 'k8', 'Ehab', 50, 0, 'genuine spare  PARTS', NULL, '2026-10-04T09:00:00Z'),
+ ('m3', 'k8', 'Ehab', 30, 0, 'petrol', NULL, '2026-10-05T09:00:00Z'),
+ ('m4', 'k8', 'Ehab', 20, 0, 'Taxi', NULL, '2026-10-06T09:00:00Z'),
+ ('m5', 'k8', 'Ehab', 25, 0, 'taxi', NULL, '2026-10-07T09:00:00Z'),
+ ('m6', 'k8', 'Ehab', 15, 0, 'Taxi', NULL, '2026-10-08T09:00:00Z'),
+ ('m7', 'k8', 'Ehab', 5, 0, NULL, NULL, '2026-10-09T09:00:00Z');
 `
 
 const admin = withGrants({ id: "a1", role: "ADMIN", companyId: "c1", name: "Amal One" })
@@ -126,6 +147,23 @@ describe.skipIf(!ADMIN_URL)("a client statement, in Postgres", () => {
         expect(s.client).toEqual({ id: "noor", name: "Al Noor Trading", ownerName: "Hassan Adel" })
         expect(s.period).toEqual(OCTOBER)
         expect(s.issuedOn).toBe(calendarDateStr(new Date(), "Africa/Cairo"))
+    })
+
+    it("adds up the charges by cost name: the saved list's name as it is now, typed ones matching it or each other, and No name", async () => {
+        const s = await statement(admin, { clientId: "named", ...OCTOBER })
+        expect(s.charges.map(c => c.id)).toEqual(["m1", "m2", "m3", "m4", "m5", "m6", "m7"])
+        expect(s.names).toEqual([
+            { key: "genuine spare parts", name: "Genuine spare parts", ids: ["m1", "m2"], paid: 150, fee: 10, total: 160 },
+            // Typed as Taxi twice, taxi once: neither company's other lists name it.
+            { key: "taxi", name: "Taxi", ids: ["m4", "m5", "m6"], paid: 60, fee: 0, total: 60 },
+            // Archived, a saved name is still its name.
+            { key: "petrol", name: "Petrol", ids: ["m3"], paid: 30, fee: 0, total: 30 },
+            { key: "", name: null, ids: ["m7"], paid: 5, fee: 0, total: 5 },
+        ])
+        // Every charge's statement is the same, its charges as they were.
+        expect(s.charges[0]).toMatchObject({ id: "m1", description: "Spare parts" })
+        expect(s.charges[0]).not.toHaveProperty("entryName")
+        expect(s.totals.charged).toBe(255)
     })
 
     it("counts its days where the company is, the period's first and last whole", async () => {

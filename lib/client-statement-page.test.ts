@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, it, expect, vi } from "vitest"
 import { createElement as h, type ReactElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
+import { readFileSync } from "node:fs"
 import { en } from "./translations/en"
 import { SWRError } from "./swr-fetcher"
 import type { Statement } from "./client-statement"
@@ -62,6 +63,7 @@ const OCT_29: Statement = {
     period: { from: "2026-10-29", to: "2026-10-29" },
     issuedOn: "2026-11-08",
     charges: [],
+    names: [],
     totals: { paid: 0, fees: 0, charged: 0, collected: 0, due: 0, dueCount: 0, dueBefore: 0, dueBeforeCount: 0, stillDue: 0 },
 }
 const TOO_MANY = Object.assign(new SWRError("Request failed"), {
@@ -127,5 +129,40 @@ describe("the statement it shows", () => {
         state.search = ""
         state.answer = () => ({ data: kept, isLoading: true, isValidating: true })
         expect(render()).toContain('<p class="ui-page-subtitle"><bdi>Al Noor Trading</bdi></p>')
+    })
+})
+
+describe("which statement", () => {
+    const tabs = (html: string) => [...html.matchAll(/<button type="button" role="tab" id="statement-view-(\w+)"[^>]*aria-selected="(true|false)"[^>]*>([^<]*)<\/button>/g)].map(m => [m[1], m[2], m[3]])
+
+    it("opens on Every charge, its tabs above the period, with a line on what it shows", async () => {
+        await opened29October()
+        const html = render()
+        expect(html).toContain(`role="tablist" aria-label="${en.statement_view_label}"`)
+        expect(tabs(html)).toEqual([["every", "true", en.statement_view_every], ["name", "false", en.statement_view_by_name]])
+        expect(html).toContain(en.statement_view_every_hint)
+        expect(html).toContain(`<p class="ui-doc-kind">${en.statement_kind_every}</p>`)
+        // Above the period, so the sheet's own row stays as it was.
+        expect(html.indexOf('role="tablist"')).toBeLessThan(html.indexOf('<div class="ui-doc-controls"><label class="ui-choice">'))
+        expect(html).toContain('id="statement-sheet" role="tabpanel"')
+    })
+
+    it("is By cost name when the address says so, for the same statement", async () => {
+        const kept = await opened29October()
+        state.search = "from=2026-10-29&to=2026-10-29&by=name"
+        state.answer = () => ({ data: kept })
+        const html = render()
+        // The same statement is fetched: which one is how it's shown.
+        expect(state.keys.at(-1)).toBe("/api/charges/statement?clientId=noor&from=2026-10-29&to=2026-10-29")
+        expect(tabs(html)).toEqual([["every", "false", en.statement_view_every], ["name", "true", en.statement_view_by_name]])
+        expect(html).toContain(en.statement_view_by_name_hint.replace("'", "&#x27;"))
+        expect(html).toContain(`<p class="ui-doc-kind">${en.statement_kind_by_name}</p>`)
+    })
+
+    it("keeps the pick in the address, with the period and With receipts", () => {
+        const page = readFileSync("app/(dashboard)/dashboard/clients/[id]/statement/page.tsx", "utf8")
+        expect(page).toContain("const view: StatementView = params.get('by') === 'name' ? 'name' : 'every'")
+        expect(page).toContain("go(q => { if (next === 'name') q.set('by', 'name'); else q.delete('by') })")
+        expect(page).toContain("<StatementSheet statement={statement} withReceipts={withReceipts} view={view} />")
     })
 })
