@@ -79,6 +79,8 @@ export default function ClientStatementPage() {
         />
     )
     const pickView = (next: StatementView) => go(q => { if (next === 'name') q.set('by', 'name'); else q.delete('by') })
+    // The sheet the tabs show, while there is one.
+    const panel = statement ? 'statement-sheet' : undefined
     const controls = <>
         <div className="ui-doc-controls ui-doc-views">
             <Tabs
@@ -87,8 +89,8 @@ export default function ClientStatementPage() {
                 value={view}
                 onChange={pickView}
                 items={[
-                    { value: 'every', label: t('statement_view_every'), controls: 'statement-sheet' },
-                    { value: 'name', label: t('statement_view_by_name'), controls: 'statement-sheet' },
+                    { value: 'every', label: t('statement_view_every'), controls: panel },
+                    { value: 'name', label: t('statement_view_by_name'), controls: panel },
                 ]}
             />
             <p className="ui-hint">{t(view === 'name' ? 'statement_view_by_name_hint' : 'statement_view_every_hint')}</p>

@@ -5484,3 +5484,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     its receipts was larger and bolder than Receipts above it. It's the
     small size now, bold, and a size up on paper, where Receipts is as
     large as the sheet's company.
+  - **From the web interface audit:** a name in the table, and a name or
+    task over the receipts, breaks inside a long word, as a charge's does,
+    rather than push the amounts out; the tabs name their panel only while
+    there is one; the receipts' groups use the page's own directions.

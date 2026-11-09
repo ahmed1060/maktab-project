@@ -165,4 +165,21 @@ describe("which statement", () => {
         expect(page).toContain("go(q => { if (next === 'name') q.set('by', 'name'); else q.delete('by') })")
         expect(page).toContain("<StatementSheet statement={statement} withReceipts={withReceipts} view={view} />")
     })
+
+    it("names its panel only while there is one", async () => {
+        // Loading, or with too many charges, there's no sheet for the tabs to name.
+        state.answer = () => ({ isLoading: true })
+        expect(render()).not.toContain('aria-controls="statement-sheet"')
+        await opened29October()
+        expect(render()).toContain('aria-controls="statement-sheet"')
+    })
+
+    it("breaks a name or a task inside a long word over the receipts, as a charge's are", () => {
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-doc-receipt-group-title \{[^}]*overflow-wrap: anywhere;/)
+        expect(css).toMatch(/\.ui-doc-receipt-missing \{[^}]*overflow-wrap: anywhere;/)
+        // The way the page reads: no left, right, top or bottom.
+        const rules = css.slice(css.indexOf(".ui-doc-receipt-group {"), css.indexOf("/* Printed only: whose statement"))
+        expect(rules).not.toMatch(/(margin|padding|border)-(top|bottom|left|right)/)
+    })
 })

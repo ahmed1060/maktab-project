@@ -341,8 +341,9 @@ describe("the sheet by cost name", () => {
         const heads = [...html.matchAll(/<th scope="col"( class="ui-end")?>([^<]*)<\/th>/g)].map(m => `${m[2]}${m[1] ? " (end)" : ""}`)
         expect(heads).toEqual([en.statement_col_cost_name, `${en.statement_col_count} (end)`, `${en.charges_col_paid} (end)`, `${en.charges_col_fee} (end)`, `${en.charges_col_total} (end)`])
         const rows = html.slice(html.indexOf("<tbody>"), html.indexOf("</tbody>"))
-        expect([...rows.matchAll(/<tr><td><bdi>([^<]*)<\/bdi>/g)].map(m => m[1])).toEqual(["Spare parts", "Materials", "Transport"])
-        expect(rows).toContain(`<tr><td><bdi>Spare parts</bdi></td><td class="ui-end">2</td><td class="ui-end">2,200.00</td><td class="ui-end">200.00</td><td class="ui-end">2,400.00</td></tr>`)
+        expect([...rows.matchAll(/<tr><td><span class="ui-doc-cell-title"><bdi>([^<]*)<\/bdi>/g)].map(m => m[1])).toEqual(["Spare parts", "Materials", "Transport"])
+        // A name breaks inside a long word, as a charge's does, rather than push the amounts out.
+        expect(rows).toContain(`<tr><td><span class="ui-doc-cell-title"><bdi>Spare parts</bdi></span></td><td class="ui-end">2</td><td class="ui-end">2,200.00</td><td class="ui-end">200.00</td><td class="ui-end">2,400.00</td></tr>`)
         expect(html).toContain(`<tfoot><tr><th scope="row" colSpan="1">3 names</th><td class="ui-end">6</td><td class="ui-end">3,210.00</td><td class="ui-end">260.00</td><td class="ui-end">3,470.00</td></tr></tfoot>`)
         // Its totals and note are the every-charge statement's.
         expect(html).toContain(line(en.statement_charged, "3,470.00"))
@@ -359,7 +360,7 @@ describe("the sheet by cost name", () => {
     it("names No name in the page's words", async () => {
         const names = byCostName([typed("a", null, 5)], [])
         const html = await sheet({ charges: [charge({ id: "a", description: null, paid: 5, total: 5 })], names }, true, "name")
-        expect(html).toContain(`<tr><td>${en.statement_no_name}</td>`)
+        expect(html).toContain(`<tr><td><span class="ui-doc-cell-title">${en.statement_no_name}</span></td>`)
     })
 
     it("shows the receipts under each name, in the table's order, numbered that way", async () => {
@@ -392,7 +393,7 @@ describe("the sheet by cost name", () => {
         const html = await sheet(BY_NAME, true, "name")
         expect(html).toContain(`<p class="ui-doc-kind">${ar.statement_kind_by_name}</p>`)
         expect(html).toContain(`<caption>${ar.statement_charges_by_name}</caption>`)
-        expect(html).toContain(`<tr><td><bdi>Spare parts</bdi></td><td class="ui-end">٢</td><td class="ui-end">٢٬٢٠٠٫٠٠</td>`)
+        expect(html).toContain(`<tr><td><span class="ui-doc-cell-title"><bdi>Spare parts</bdi></span></td><td class="ui-end">٢</td><td class="ui-end">٢٬٢٠٠٫٠٠</td>`)
         expect(html).toContain(`<th scope="row" colSpan="1">${ar.count_names_few.replace("{n}", "٣")}</th><td class="ui-end">٦</td>`)
         expect(html).toContain(total(ar.statement_due, "١٬٨٠٠٫٠٠"))
         expect(html).toContain(sentence(ar.statement_receipts_group, { name: "<bdi>Spare parts</bdi>", count: ar.count_receipts_two }))

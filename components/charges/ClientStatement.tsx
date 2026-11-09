@@ -73,7 +73,8 @@ export function StatementSheet({ statement, withReceipts, view = 'every' }: { st
     // By cost name: each name, how many, and their amounts.
     const nameOf = (n: StatementName): ReactNode => (n.name === null ? t('statement_no_name') : <bdi>{n.name}</bdi>)
     const nameColumns: DocColumn<StatementName>[] = [
-        { key: 'name', header: t('statement_col_cost_name'), cell: nameOf },
+        // Breaking inside a long word, as a charge's title does, rather than push the amounts out.
+        { key: 'name', header: t('statement_col_cost_name'), cell: n => <span className="ui-doc-cell-title">{nameOf(n)}</span> },
         { key: 'count', header: t('statement_col_count'), amount: true, cell: n => number(n.ids.length), foot: number(charges.length) },
         { key: 'paid', header: t('charges_col_paid'), amount: true, cell: n => money(n.paid), foot: money(totals.paid) },
         { key: 'fee', header: t('charges_col_fee'), amount: true, cell: n => money(n.fee), foot: money(totals.fees) },
