@@ -805,8 +805,30 @@ statement). Decided on 2026-11-08 from the mock-up
     the pick is kept in the page's address (`by=name`), and it's how the
     same statement is shown, so picking it fetches nothing.
 - **Cost names only from the saved list,** a company setting, so a company
-  that wants its lines exact can have them: decided on 2026-11-09, to be
-  built next (#238), off for every company until it's switched on.
+  that wants its lines exact can have them: decided on 2026-11-09, built in
+  #238, off for every company until it's switched on.
+  - **Where:** Company settings' General tab, a Cost names card, for a
+    company with the Costs module. Its Admin and the Super Admin turn it on
+    and off, and each change is audited.
+  - **Turned on only once the saved list has a cost name,** or nobody could
+    add a cost. The card says how many names the list holds, or that it
+    has none, with a link to Saved lists. It's turned off whatever the list
+    holds.
+  - **Where it's on, a cost's name is one of the list's:**
+    - picked;
+    - or typed in full as the list has it, capitals and spaces aside, and
+      saved as the list's name, linked to it;
+    - anything else isn't added. The field says so under it: pick one, or
+      add it from the suggestions for whoever may add names, or ask
+      whoever keeps the saved lists. With no name, it says one is needed.
+  - **Where it's off,** the rules above apply, as approved: a typed name is
+    kept as typed.
+  - **Proposed, as #238 builds it:**
+    - the task page checks the name on Add, and the server checks it again
+      when the task is handed in (`COST_NAME_NOT_ON_LIST`), matching the
+      text as typed, so "%" is no name;
+    - costs already added keep their names: it's for names from now on;
+    - a Super Admin's own Add cost is checked by the server only.
 
 ---
 
@@ -2516,3 +2538,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   charges added up by what they're called, with the receipts under each
   name. And a company setting for cost names only from the saved list,
   decided, to be built in #238.
+- **2026-11-09:** Cost names only from the saved list (§6.9), built in
+  #238 (`UI_PLAN.md`): a company setting on the General tab, off until
+  it's turned on, and only once the list has a name. Where it's on, a
+  cost's name is picked, or typed as the list has it, and the field says
+  what to do with any other. The server checks it too.
