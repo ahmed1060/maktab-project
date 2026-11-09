@@ -166,6 +166,16 @@ describe("the Audit logs page", () => {
         expect(html).toContain(`${en.audit_field_route}: </span><span class="ui-report-value">/api/tasks</span>`)
     })
 
+    // Its type, the comma and its ID were each a place of their own in the
+    // card's line, and the comma fell under the type on a phone in Arabic
+    // (found in the browser, PR 234): one piece of text, as every card's.
+    it("says on a phone card what an entry was on as one piece of text, in either language", async () => {
+        const en_ = await render({ ...people, [LIST]: listed([entry()]) })
+        expect(en_).toMatch(new RegExp(`<div class="ui-meta"><svg[^>]*>[^]*?</svg><span>${en.audit_entity_TASK}, <bdi dir="ltr" translate="no">task-123</bdi></span></div>`))
+        const ar_ = await render({ ...people, [LIST]: listed([entry()]) }, { locale: "ar" })
+        expect(ar_).toMatch(new RegExp(`<div class="ui-meta"><svg[^>]*>[^]*?</svg><span>${ar.audit_entity_TASK}، <bdi dir="ltr" translate="no">task-123</bdi></span></div>`))
+    })
+
     // "Vendors ← Customers" drew as one run left to right in an Arabic line,
     // the arrow pointing at the name it was (found in the browser, PR 233).
     it("draws each side of a change in its own direction, the arrow the page's way", async () => {

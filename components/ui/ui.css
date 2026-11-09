@@ -701,6 +701,14 @@
   flex-wrap: wrap;
   gap: var(--space-2);
 }
+/* The UI kit page's samples side by side, such as every button and every
+   badge: the Super Admin's page of the building blocks (PR 234). */
+.ui-kit-samples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
 /* A group of fields under one label, such as a task's assignees, with no
    frame of its own. */
 .ui-fieldset {

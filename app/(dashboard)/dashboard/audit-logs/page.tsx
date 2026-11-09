@@ -200,7 +200,7 @@ export default function AuditLogsPage() {
                     <ListCard
                         title={label('audit_action_', log.action)}
                         details={[
-                            { icon: ShapesIcon, text: <>{label('audit_entity_', log.entityType)}{t('list_separator')}{itemId(log)}</> },
+                            { icon: ShapesIcon, text: <span>{label('audit_entity_', log.entityType)}{t('list_separator')}{itemId(log)}</span> },
                             { icon: UserIcon, text: `${by(log).name}${t('list_separator')}${by(log).as}` },
                             { icon: LightningIcon, text: when(log) },
                         ]}

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { ArrowLeftIcon } from '@phosphor-icons/react/ssr'
+import { ButtonDownload } from './Button'
 import { Icon, type PhosphorIcon } from './Icon'
 import type { StatusTone } from './StatusBadge'
 import { cx } from './cx'
@@ -86,7 +87,7 @@ export function Section({ title, action, children }: { title: ReactNode; action?
  * the browser fetches itself, where the app's own would fetch it as a page.
  */
 export function SectionLink({ href, download, children }: { href: string; download?: boolean; children: ReactNode }) {
-    if (download) return <a className="ui-btn ui-btn-quiet ui-btn-sm" href={href} download>{children}</a>
+    if (download) return <ButtonDownload variant="quiet" size="sm" href={href}>{children}</ButtonDownload>
     return <Link href={href} className="ui-btn ui-btn-quiet ui-btn-sm">{children}</Link>
 }
 

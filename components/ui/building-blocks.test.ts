@@ -360,6 +360,20 @@ describe("page layout, sections, rows and tiles", () => {
         expect(html).toBe('<a class="ui-btn ui-btn-quiet ui-btn-sm" href="/api/payroll/2026/10/export" download="">Download CSV</a>')
     })
 
+    // The Roles card's Export was a link with the classes typed out (PR 234).
+    it("a button can be a file to download, a plain link the browser fetches itself", () => {
+        expect(render(h(ui.ButtonDownload, { href: "/api/roles/export?companyId=c1", children: "Export" })))
+            .toBe('<a class="ui-btn ui-btn-secondary" href="/api/roles/export?companyId=c1" download="">Export</a>')
+        expect(render(h(ui.ButtonDownload, { href: "/x.csv", variant: "quiet", size: "sm", icon: PlusIcon, children: "CSV" })))
+            .toMatch(/^<a class="ui-btn ui-btn-quiet ui-btn-sm" href="\/x.csv" download=""><svg[^]*<\/svg>CSV<\/a>$/)
+    })
+
+    // The Brand colour card's preview had a primary button's classes typed out
+    // on a span: a look to judge the colour by, which no one can press (PR 234).
+    it("a button's look, for a preview, is no button at all", () => {
+        expect(render(h(ui.ButtonLook, { variant: "primary", size: "sm", children: "Button" }))).toBe('<span class="ui-btn ui-btn-primary ui-btn-sm">Button</span>')
+    })
+
     it("a card that needs someone, or says something's wrong, says so with its tone, and a plain one has none", () => {
         expect(render(h(ui.Card, { title: "Waiting on a decision", tone: "waiting", children: "x" }))).toBe('<section class="ui-panel ui-card" data-tone="waiting"><div class="ui-card-head"><h2 class="ui-card-title">Waiting on a decision</h2></div>x</section>')
         expect(render(h(ui.Card, { title: "Cannot be calculated", tone: "problem", children: "x" }))).toContain('data-tone="problem"')

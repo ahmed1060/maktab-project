@@ -3,7 +3,7 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { WarningIcon } from '@phosphor-icons/react/ssr'
-import { Button, Card, ColourChoice, Icon } from '@/components/ui'
+import { Button, ButtonLook, Card, ColourChoice, Icon } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { BRAND_PRESETS, brandTokens, EXAMPLE_BRAND_CODE, nearErrorRed } from '@/lib/brand-colour'
@@ -93,7 +93,7 @@ export default function BrandColourCard({ saved, defaultColour, hint, onSave, re
                     {(['light', 'dark'] as const).map(theme => (
                         <div key={theme} className="ui-colour-preview-theme" data-preview={theme} style={tokens[theme] as CSSProperties}>
                             <span className="ui-colour-preview-name">{t(theme === 'light' ? 'theme_light' : 'theme_dark')}</span>
-                            <span className="ui-btn ui-btn-primary ui-btn-sm">{t('brand_preview_button')}</span>
+                            <ButtonLook variant="primary" size="sm">{t('brand_preview_button')}</ButtonLook>
                             <span className="ui-colour-preview-link">{t('brand_preview_link')}</span>
                             <span className="ui-colour-preview-tab">{t('brand_preview_tab')}</span>
                         </div>

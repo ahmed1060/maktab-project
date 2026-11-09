@@ -9,7 +9,7 @@ import AccessDenied from '@/components/AccessDenied'
 import DatePickerSingle from '@/components/DatePickerSingle'
 import { useLanguage } from '@/context/LanguageContext'
 import {
-    Button, ButtonLink, Card, DataList, DueDate, EmptyState, Field, FilterBar, ItemTitle, ListCard, PageHeader, PageNote, Pager, Person,
+    Button, ButtonLink, Card, DataList, DueDate, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, PageNote, Pager, Person,
     Row, RowMenu, Rows, SearchInput, Section, SectionLink, Select, StatusBadge, Tabs, TextInput, TotalTiles, taskStatusTone, type Column,
 } from '@/components/ui'
 
@@ -101,7 +101,7 @@ export default function UiKitPage() {
     ]
 
     return (
-        <div style={{ background: 'var(--page)', padding: 'clamp(var(--space-4), 4vw, var(--space-8))', borderRadius: 'var(--radius-panel)', display: 'grid', gap: 'var(--space-6)' }}>
+        <Page>
             {/* Together, so the note keeps its own 24px over the header, as on a page. */}
             <div>
                 <PageNote tone="neutral">{s.pageNote}</PageNote>
@@ -141,7 +141,7 @@ export default function UiKitPage() {
                         title={pick(t.title)}
                         status={<StatusBadge tone={taskStatusTone(t.status)}>{statusWord[t.status]}</StatusBadge>}
                         details={[{ icon: MapPinIcon, text: pick(t.place) }]}
-                        foot={<>{people(t)}<span style={{ display: 'inline-flex', gap: 'var(--space-2)', alignItems: 'center' }}><DueDate overdue={t.overdue}>{day(t.due)}</DueDate>{pts(t.pts)}</span></>}
+                        foot={<>{people(t)}<span className="ui-row-actions"><DueDate overdue={t.overdue}>{day(t.due)}</DueDate>{pts(t.pts)}</span></>}
                     />
                 )}
                 footer={<Pager page={page} pageCount={3} onPage={setPage} summary={s.results} />}
@@ -158,7 +158,7 @@ export default function UiKitPage() {
             </Section>
 
             <Card title={s.buttons}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', alignItems: 'center' }}>
+                <div className="ui-kit-samples">
                     <Button variant="primary" icon={PlusIcon}>{s.primary}</Button>
                     <Button>{s.secondary}</Button>
                     <Button variant="quiet">{s.quiet}</Button>
@@ -170,13 +170,13 @@ export default function UiKitPage() {
             </Card>
 
             <Card title={s.badges}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+                <div className="ui-kit-samples">
                     {Object.entries(statusWord).map(([key, word]) => <StatusBadge key={key} tone={taskStatusTone(key)}>{word}</StatusBadge>)}
                 </div>
             </Card>
 
             <Card title={s.form}>
-                <div style={{ display: 'grid', gap: 'var(--space-4)', maxWidth: 720 }}>
+                <div className="ui-form">
                     <Field label={s.name} hint={s.nameHint}>{p => <TextInput {...p} defaultValue={ar ? 'النور للتجارة' : 'Al Noor Trading'} />}</Field>
                     <Field label={s.code} error={s.codeError}>{p => <TextInput {...p} inputMode="numeric" defaultValue="12345" />}</Field>
                     <DatePickerSingle label={s.deadline} value={deadline} onChange={setDeadline} />
@@ -186,6 +186,6 @@ export default function UiKitPage() {
             <div className="ui-panel">
                 <EmptyState icon={ClipboardTextIcon} title={s.empty} action={<Button variant="primary" icon={PlusIcon}>{s.emptyAction}</Button>} />
             </div>
-        </div>
+        </Page>
     )
 }
