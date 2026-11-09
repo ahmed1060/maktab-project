@@ -30,12 +30,13 @@ INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayO
  ('e4', 'e4@x', 'p', 'Fady', 'One', 'EMPLOYEE', 2026, 'e4', 'c1', NULL),
  ('e5', 'e5@x', 'p', 'Hoda', 'One', 'EMPLOYEE', 2026, 'e5', 'c1', NULL),
  ('e6', 'e6@x', 'p', 'Gamal', 'One', 'EMPLOYEE', 2026, 'e6', 'c1', NULL),
- ('e7', 'e7@x', 'p', 'Iman', 'One', 'EMPLOYEE', 2026, 'e7', 'c1', NULL);
+ ('e7', 'e7@x', 'p', 'Iman', 'One', 'EMPLOYEE', 2026, 'e7', 'c1', NULL),
+ ('e8', 'e8@x', 'p', 'Karim', 'One', 'EMPLOYEE', 2026, 'e8', 'c1', NULL);
 `
 // Nile Foods has tasks; Dune and Reed have none. Ehab and Essam are on the
 // gate, Ehab alone on the roof and the dock, Eman on the shed. Fady is on the
 // mast and the keel, Hoda on the hull and Kelp's pier, Gamal on Reef's buoy,
-// Gamal and Iman on the raft. Sara is a Super Admin.
+// Gamal and Iman on the raft, Karim on the oar. Sara is a Super Admin.
 const WORK = `
 INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES
  ('nile', 'c1', 'Nile Foods', 'o', '0100', 'HQ', now()),
@@ -57,9 +58,10 @@ INSERT INTO "Task"(id, title, description, status, deadline, "companyId", "clien
  ('hull', 'Seal the hull', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', NULL, 'port', now()),
  ('pier', 'Mend the pier', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', 'kelp', 'port', now()),
  ('buoy', 'Paint the buoy', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', 'reef', 'port', now()),
- ('raft', 'Lash the raft', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', NULL, 'port', now());
+ ('raft', 'Lash the raft', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', NULL, 'port', now()),
+ ('oar', 'Carve the oar', 'd', 'PENDING_CONFIRMATION', now() + interval '2 days', 'c1', NULL, 'port', now());
 INSERT INTO "_MultipleAssignees"("A", "B") VALUES ('gate', 'e1'), ('gate', 'e3'), ('roof', 'e1'), ('dock', 'e1'), ('shed', 'e2'),
- ('mast', 'e4'), ('keel', 'e4'), ('hull', 'e5'), ('pier', 'e5'), ('buoy', 'e6'), ('raft', 'e6'), ('raft', 'e7');
+ ('mast', 'e4'), ('keel', 'e4'), ('hull', 'e5'), ('pier', 'e5'), ('buoy', 'e6'), ('raft', 'e6'), ('raft', 'e7'), ('oar', 'e8');
 `
 
 const as = (user: Record<string, unknown>) => ({ user: { ...withGrants(user as any), mfaEnabled: true, stepUpAt: Date.now() } }) as any
@@ -345,5 +347,20 @@ describe.skipIf(!ADMIN_URL)("what's left of an advance for a task or a client, i
         expect((await advance("e7")).running).toBe(40)
         expect((await advance("e6")).running).toBe(110)
         expect(await held("e6")).toEqual([])
+    })
+
+    it("ends a contract without waiting on an approval of a task its money is for", async () => {
+        await give("e8", 70, { forTaskId: "oar" })
+        // An approval under way: the task updated, its transaction still open.
+        const approval = await connect()
+        await approval.query("BEGIN")
+        await approval.query(`UPDATE "Task" SET status = 'APPROVED' WHERE id = 'oar'`)
+        const ending = prisma.$transaction(tx => Advances.toDebt(tx, "c1", "e8", 70, { dueDate: new Date(), by: { id: "a1", name: "Amal One" } }))
+        const outcome = await Promise.race([ending.then(() => "done", (e: Error) => e.message), sleep(2000).then(() => "waiting")])
+        await approval.query("ROLLBACK")
+        await approval.end()
+        await ending.catch(() => {})
+        expect(outcome).toBe("done")
+        expect((await advance("e8")).balance).toBe(0)
     })
 })

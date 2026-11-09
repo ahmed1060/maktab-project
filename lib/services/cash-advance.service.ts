@@ -189,17 +189,28 @@ export type MovedBecause = "TASK_APPROVED" | "TASK_PAID" | "TASK_DELETED" | "CLI
 /**
  * Holds the tasks and clients money is for (§7.9), before anyone's advance
  * is held: always tasks, then clients, then people, each in the order of
- * their ids. Approving or deleting a task, and archiving or deleting a
- * client, hold its row first too, so one waits for the other rather than
- * each waiting on the other's hold; and an advance given for a task or a
- * client meanwhile waits, and finds it done with, rather than being given
- * for it after its money has moved.
+ * their ids. Deleting a task, and archiving or deleting a client, hold its
+ * row first too, so one waits for the other rather than each waiting on the
+ * other's hold.
+ *
+ * Held as their keys only, by default: that waits for a deletion or an
+ * archive, never for an approval's update, which an ending contract, holding
+ * the person's row, mustn't wait on while the approval waits for that row.
+ * An advance given holds them whole ("SHARE"), so it also waits for an
+ * approval, then finds the task decided, rather than being given for it
+ * after its money has moved.
  */
-async function holdParts(tx: Prisma.TransactionClient, parts: readonly AdvanceFor[]) {
+async function holdParts(tx: Prisma.TransactionClient, parts: readonly AdvanceFor[], hold: "KEY SHARE" | "SHARE" = "KEY SHARE") {
     const tasks = [...new Set(parts.flatMap(p => p.taskId ? [p.taskId] : []))].sort()
     const clients = [...new Set(parts.flatMap(p => p.clientId ? [p.clientId] : []))].sort()
-    for (const id of tasks) await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ${id} FOR SHARE`
-    for (const id of clients) await tx.$queryRaw`SELECT id FROM "Client" WHERE id = ${id} FOR SHARE`
+    for (const id of tasks) {
+        if (hold === "SHARE") await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ${id} FOR SHARE`
+        else await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ${id} FOR KEY SHARE`
+    }
+    for (const id of clients) {
+        if (hold === "SHARE") await tx.$queryRaw`SELECT id FROM "Client" WHERE id = ${id} FOR SHARE`
+        else await tx.$queryRaw`SELECT id FROM "Client" WHERE id = ${id} FOR KEY SHARE`
+    }
 }
 
 /** Whoever moved it: a user, or a Super Admin. */
@@ -370,8 +381,9 @@ export class CashAdvanceService {
                 // person's balance, one entry at a time.
                 await tx.$queryRaw`SELECT id FROM "Company" WHERE id = ${companyId} FOR KEY SHARE`
                 await inUse(companyId, tx)
-                // What it's for, before the person (holdParts): read below once held.
-                await holdParts(tx, [part])
+                // What it's for, before the person (holdParts): read below once
+                // held. Given, it waits for an approval too, and finds it decided.
+                await holdParts(tx, [part], kind === "GIVEN" ? "SHARE" : "KEY SHARE")
                 await CashAdvanceService.lockPerson(tx, person.id)
                 // Deleted for good while this waited: nothing is theirs any more.
                 // And whether they're at work, or gone, as it is now: an ending
