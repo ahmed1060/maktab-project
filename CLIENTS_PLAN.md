@@ -2642,3 +2642,11 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   still on it keeps theirs, now for the copy; whoever's left off passes
   theirs to someone on the copy, picked by whoever transfers it, who
   confirms receiving it. Proposed, as 7h builds it, in #241.
+- **2026-11-09:** 7h built in #241 (`UI_PLAN.md`), as proposed: a new
+  kind of entry, Moved with the task's transfer, in pairs, each saying who
+  the other was where it passed between two people. Transfer task says
+  what happens before it's sent, for the people picked, and asks who takes
+  it where the copy has more than one; the one who takes it confirms
+  receiving it on My cash advance, and can spend it meanwhile. Where
+  whoever transfers it may not give the receiver an advance either, it
+  joins the left-off person's running balance, as for one they may not.

@@ -5669,3 +5669,44 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     company the switch was still offered. That endpoint sends both now,
     and the browser flows open the Super Admin's view of the company too
     (17 checks each).
+- **2026-11-09:** What's held for a task follows it when it's transferred
+  (#241; `CLIENTS_PLAN.md` §7.9, 7h), as the product owner decided.
+  - **Only a transfer that makes a copy moves anything,** one that adds
+    someone. Whoever's still on the copy keeps what they held, now for the
+    copy, with nothing to confirm. Whoever's left off passes theirs to one
+    person on the copy, who confirms receiving it on My cash advance and
+    can spend it meanwhile. Passing it needs whoever transfers it to be
+    able to give and settle both advances, with two-factor sign-in, asked
+    once; otherwise it joins the left-off person's running balance.
+  - **The ledger:** a new kind of entry, `TRANSFERRED`, in pairs, with
+    `counterpartName` saying who the other was where it passed between
+    two people. The migration, `20261207000000_advance_transfer`, adds the
+    kind and the column, and lets a positive one be confirmed. The audit
+    log has `TRANSFER_CASH_ADVANCE` for each, and Moved entries say
+    "Taken off the task as it was transferred".
+  - **One answer for both:** `transferPlan()` (`lib/cash-advance-transfer.ts`)
+    says what happens, for the transfer (`CashAdvanceService.followTransfer`,
+    from `TaskService.transfer`) and for its dialog
+    (`GET /api/tasks/[id]/transfer?to=&goesTo=`).
+  - **Transfer task's dialog** says it under the people picked, under a
+    heading of its own (`DESIGN.md` §5.5, Dialog): a line for each person
+    holding any, the amount only for whoever may see their cash advance.
+    Where it passes on and the copy has more than one person, who takes
+    it is picked there, and Transfer waits for the pick. Where no one's
+    added, it says what's held stays with the task. It's worked out again
+    as people are picked, the last lines staying meanwhile, with Try again
+    if it couldn't be. Who takes it missing, or not on the copy, is
+    refused in the page's language: `TRANSFER_HELD_RECEIVER_REQUIRED`,
+    `TRANSFER_HELD_RECEIVER_INVALID`.
+  - **On a person's cash advance,** the pair reads "Moved with the task's
+    transfer", with "To" or "From" whom. Money passed on is awaiting, with
+    Confirm receipt, asking whether it reached them from that person.
+  - **Browser flows** against the scratch database, in English on a
+    computer and in Arabic on a phone (16 checks each), put back after
+    each run: Hana taking Youssef off Delta Sites' task with no one added,
+    told it stays; adding Rami, told Sami keeps his 120 and Youssef's 250
+    passes to whoever's picked, with Transfer waiting; Rami picked, then
+    sent with a code; the entries and the audit lines as they should be;
+    Youssef's history saying to whom; Rami confirming receipt from
+    Youssef. Nothing scrolls sideways.
+  - **From the web interface audit:** nothing to change.
