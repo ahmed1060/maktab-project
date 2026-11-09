@@ -603,7 +603,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      #239 on 2026-11-09; then a switch to turn off the high-risk
      confirmation, for every company or for one (`ROLES_PLAN.md` §6.15),
      merged in #240 on 2026-11-09; then what's held for a task following
-     it when it's transferred (`CLIENTS_PLAN.md` §7.9, 7h), in #241;
+     it when it's transferred (`CLIENTS_PLAN.md` §7.9, 7h), merged in #241
+     on 2026-11-09; then a company's high-risk switch greyed, and refused
+     by the server, while the system's is off (`ROLES_PLAN.md` §6.15), in
+     #242;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5716,3 +5719,34 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     or settle it. It passes now only to someone of the task's company at
     work, read under their hold, and otherwise joins the left-off person's
     running balance, as the dialog says. A Postgres test failed first.
+- **2026-11-09:** A company's high-risk switch while the Super Admin has
+  the system's off (#242; `ROLES_PLAN.md` §6.15), as the product owner
+  decided.
+  - **On Company settings' General tab,** the card reads Off, with Turn on
+    still there but greyed: `aria-disabled`, not `disabled`, so the
+    keyboard reaches it and a screen reader hears the note beside it as
+    its reason, and clicking it does nothing (`DESIGN.md` §5.2). The note:
+    "Turned off by the Super Admin. Only the Super Admin can turn it on
+    again." On the Super Admin's own view of a company, a link to System
+    settings follows it.
+  - **The server refuses it too:** `CompanyService.update()` refuses a
+    change to a company's switch while the system's is off,
+    `HIGH_RISK_OFF_FOR_ALL` (409), for its Admin and the Super Admin
+    alike, before any code is asked. The General tab's other settings
+    still save, a refused change writes nothing to the company or the
+    audit log, and the company's own choice counts again once the
+    system's is on.
+  - **Turned off while the page is open:** Turn off is refused, said in
+    the page's language, and the card greys at once.
+  - **Browser flows** against the scratch database, in English on a
+    computer and in Arabic on a phone (10 checks each), put back after
+    each run: Hana's card greyed, reached by the keyboard, its reason
+    heard, a click doing nothing; the server's refusal, with nothing
+    changed or logged; Sara's view of Delta Sites the same, with the link;
+    with the system's on, a working Turn off; the system's turned off
+    while Hana's page is open, refused with no code asked, and the card
+    greyed. Nothing scrolls sideways.
+  - **From the web interface audit:** the System settings link was in the
+    note's grey, with nothing to say it was a link; it's a link in a
+    sentence now, in the brand's colour and underlined, as the cost names
+    card has it.

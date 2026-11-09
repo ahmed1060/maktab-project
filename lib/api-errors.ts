@@ -62,6 +62,8 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     COST_NAMES_NONE_SAVED: { status: 409, message: "Cost names can only be kept to the saved list once it has one. Add cost names on the Saved lists page first." },
     COST_NAME_NOT_ON_LIST: { status: 400, message: "This company names costs from its saved list only. Pick a name from it." },
     CASH_ADVANCES_HELD: { status: 409, message: "Cash advances can't be switched off while anyone holds advance money. It must be spent or returned first." },
+    // A company's high-risk switch while the Super Admin has it off for every company (ROLES_PLAN.md §6.15).
+    HIGH_RISK_OFF_FOR_ALL: { status: 409, message: "Turned off by the Super Admin. Only the Super Admin can turn it on again." },
     TASK_HAS_CHARGES: { status: 409, message: "This task's costs are charged to its client, so it can't be deleted. Mark them not charged to the client first." },
     COST_RECEIPT_INVALID: { status: 400, message: "A cost's receipt couldn't be saved. Remove the cost, and add it again with its photo." },
     COST_ALREADY_PAID: { status: 409, message: "This person's costs on this task are paid, so this one can't be removed." },

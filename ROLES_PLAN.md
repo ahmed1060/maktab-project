@@ -842,6 +842,19 @@ Proposed, as the build does it (#240):
     from a Super Admin working in that company.
 - **Where the system's is off,** the company's card says so and can't be
   changed: there's nothing for it to turn.
+- **Decided with the product owner on 2026-11-09, built in #242:**
+  - **The company's button stays, greyed,** reading Off with Turn on,
+    `aria-disabled` so it's still reached, and clicking it does nothing.
+    Beside it: "Turned off by the Super Admin. Only the Super Admin can
+    turn it on again." On the Super Admin's own view of a company, a link
+    to System settings follows it.
+  - **The server refuses it too:** while the system's is off, a change to a
+    company's switch is refused, `HIGH_RISK_OFF_FOR_ALL`, for its Admin and
+    the Super Admin alike, before any code is asked. Saving the General
+    tab's other settings still works, and a refused change writes nothing,
+    to the company or the audit log.
+  - **The company's own choice is kept,** and counts again once the
+    system's is on.
 - **Still asked whatever the switches say:**
   - the Super Admin's own actions that aren't permissions: deleting a
     company, face verification and its key, resetting points, and setting

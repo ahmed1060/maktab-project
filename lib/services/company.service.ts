@@ -8,6 +8,7 @@ import { decideLifecycleNotices, NOTICE_AUDIENCE, lifecycleEmailCopy, lifecycleO
 import { sendPlainEmail } from "@/lib/email"
 import { resolveSubscriptionState, needsAttention, computeTrialEnd, DEFAULT_TRIAL_PRESET } from "@/lib/billing/state"
 import { assertRecentStepUp } from "@/lib/step-up"
+import { SystemSettingsService } from "./system-settings.service"
 import { CreateCompanyInput, UpdateCompanyInput } from "../validations/company.schema"
 import { parseModuleIcons, parseModuleOverrides, planOverrideWrite, sameOverrides } from "@/lib/modules"
 import { bucketPathFor, logoExtension, validateLogo } from "@/lib/company-logo"
@@ -282,8 +283,13 @@ export class CompanyService {
 
         // The high-risk confirmation (ROLES_PLAN.md §6.15): turning it off or
         // on asks for an authenticator code once, whoever turns it. Saving it
-        // as it already is asks nothing.
-        if (confirmHighRisk !== undefined && confirmHighRisk !== existing.confirmHighRisk) await assertRecentStepUp(session)
+        // as it already is asks nothing. Where the Super Admin has it off for
+        // every company, a company's can't be changed, by its Admin or the
+        // Super Admin, and that's said before any code is asked (PR 242).
+        if (confirmHighRisk !== undefined && confirmHighRisk !== existing.confirmHighRisk) {
+            if (!((await SystemSettingsService.get()).confirmHighRisk ?? true)) throw new Error("HIGH_RISK_OFF_FOR_ALL")
+            await assertRecentStepUp(session)
+        }
 
         // Both maps are stored the same way now that vendorsLabel is gone — see
         // planOverrideWrite for what undefined, null and a map each mean here.
