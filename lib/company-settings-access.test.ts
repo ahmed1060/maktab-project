@@ -235,6 +235,15 @@ describe("the company settings API", () => {
         expect((await shown()).costNamesOffered).toBe(false)
     })
 
+    it("shows the Super Admin the same cost names setting, from the company's own page", async () => {
+        as("superAdmin")
+        const { GET } = await import("@/app/api/companies/route")
+        const shown = async () => (await (await GET(new Request(url("/api/companies?id=c1")))).json()).data
+        expect(await shown()).toMatchObject({ costNamesFromListOnly: false, costNamesSaved: 3, costNamesOffered: true })
+        company.package = { hasCompanyManagement: false, hasHR: true }
+        expect((await shown()).costNamesOffered).toBe(false)
+    })
+
     it("lets the Super Admin save any tab's fields, the debt cap included", async () => {
         as("superAdmin")
         company.adminSettingsEnabled = false

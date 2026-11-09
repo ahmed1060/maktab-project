@@ -216,13 +216,15 @@ export class ListService {
     /**
      * The list's name a typed one is, capitals and spaces aside, not
      * archived; or null. For a company that keeps cost names to its list
-     * (CLIENTS_PLAN.md §6.9), where a name typed in full is the name.
+     * (CLIENTS_PLAN.md §6.9), where a name typed in full is the name. Prisma
+     * matches an insensitive `equals` with ILIKE, so the text is matched as
+     * typed: "%" would be any name.
      */
     static async named(db: Tx | typeof prisma, text: string, at: { companyId: string | null; kind: ListKind }): Promise<{ id: string; name: string } | null> {
         const typed = text.replace(/\s+/g, " ").trim()
         if (!typed || !at.companyId) return null
         return db.listEntry.findFirst({
-            where: { companyId: at.companyId, kind: at.kind, archivedAt: null, name: { equals: typed, mode: "insensitive" } },
+            where: { companyId: at.companyId, kind: at.kind, archivedAt: null, name: { equals: likeText(typed), mode: "insensitive" } },
             select: { id: true, name: true },
             orderBy: { createdAt: "asc" },
         })

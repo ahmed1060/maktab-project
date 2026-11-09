@@ -323,6 +323,9 @@ describe.skipIf(!ADMIN_URL)("saved lists, in Postgres", () => {
                 await refused([{ amount: 5, description: "Train fare", nameEntryId: train }])
                 // A name on another list, or another company's, isn't one.
                 await refused([{ amount: 5, description: "Fix the door" }])
+                // Typed as a pattern, "%" or "TRAI_", it's not the name: matched as typed.
+                await refused([{ amount: 5, description: "%" }])
+                await refused([{ amount: 5, description: "TRAI_" }])
                 // Refused, a submission adds none of its costs.
                 await refused([{ amount: 5, description: "TRAIN", nameEntryId: train }, { amount: 5, description: "Taxi home" }])
                 expect(await count()).toBe(before)
