@@ -1356,7 +1356,8 @@ each question.
        holding money for a task or a client, merged in #235 on
        2026-11-09, and 7f, costs spending it first, in #236, and 7g, what's
        left moving to the running balance, in #239. 7h, money following a
-       task's transfer, was added on 2026-11-09, to be built in #241.
+       task's transfer, added on 2026-11-09, was merged in #241 the same
+       day, so step 7 is done again.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -2651,3 +2652,5 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   receiving it on My cash advance, and can spend it meanwhile. Where
   whoever transfers it may not give the receiver an advance either, it
   joins the left-off person's running balance, as for one they may not.
+- **2026-11-09:** §8 says 7h was merged in #241, rather than to be built
+  there (#243).
