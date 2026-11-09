@@ -639,7 +639,9 @@ model Task {
   assignees           User[]            @relation("MultipleAssignees")
   costs               TaskCost[]
   /// Cash advance entries spent on its costs, and put back (CLIENTS_PLAN.md §7.4).
-  advanceEntries      CashAdvanceEntry[]
+  advanceEntries      CashAdvanceEntry[] @relation("AdvanceOnTask")
+  /// Cash advance money given for it (§7.9).
+  advancesFor         CashAdvanceEntry[] @relation("AdvanceForTask")
 
   @@index([createdBy])
   @@index([companyId])
@@ -1204,6 +1206,8 @@ model Client {
   company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdBy    User?    @relation("ClientCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   tasks        Task[]
+  /// Cash advance money given for it (CLIENTS_PLAN.md §7.9).
+  advancesFor  CashAdvanceEntry[]
   /// Its records, in sections (CLIENTS_PLAN.md §0.2).
   recordSections RecordSection[]
   /// Its places: its HQ, and its branches and sites (CLIENTS_PLAN.md §2).
@@ -1681,16 +1685,24 @@ model CashAdvanceEntry {
   /// (§7.4). Both are kept apart from the entry, which outlives them.
   costId         String?
   taskId         String?
+  /// What the money is for (§7.9): one task or one client, or neither, the
+  /// running balance. Each part's entries add up to what's held for it.
+  forTaskId      String?
+  forClientId    String?
   createdAt      DateTime             @default(now())
   company        Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   cost           TaskCost?            @relation(fields: [costId], references: [id], onDelete: SetNull)
-  task           Task?                @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  task           Task?                @relation("AdvanceOnTask", fields: [taskId], references: [id], onDelete: SetNull)
+  forTask        Task?                @relation("AdvanceForTask", fields: [forTaskId], references: [id], onDelete: SetNull)
+  forClient      Client?              @relation(fields: [forClientId], references: [id], onDelete: SetNull)
 
   @@index([companyId, userId])
   @@index([userId, createdAt])
   @@index([costId])
   @@index([taskId])
+  @@index([forTaskId])
+  @@index([forClientId])
 }
 
 enum CashAdvanceEntryKind {
@@ -1703,6 +1715,9 @@ enum CashAdvanceEntryKind {
   /// What was still held on leaving the company, which became a debt
   /// recovered as other debts are (§7.3). Debt.sourceId names it.
   DEBT
+  /// Money for a task or a client moved to the running balance (§7.9), as
+  /// a pair: taken from the one, added to the other.
+  MOVED
 }
 
 /// How far a grant reaches: the person's own records, their team's, or the

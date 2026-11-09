@@ -12,14 +12,21 @@ import type { Paging } from "@/lib/pagination"
 import { owedTo } from "@/lib/services/costs-query"
 import { companyHasModule } from "@/lib/services/company-package"
 import {
-    CASH_ADVANCE_NOTE_MAX, HANDOVER_FOLDER, RECORDED_KINDS, balanceAfter, cashAdvancesInUse, dayOf, signedAmount, type RecordedKind,
+    CASH_ADVANCE_NOTE_MAX, HANDOVER_FOLDER, RECORDED_KINDS, balanceAfter, cashAdvancesInUse, dayOf, forOf, signedAmount, type AdvanceFor, type RecordedKind,
 } from "@/lib/cash-advances"
 
 /**
  * Cash advances (CLIENTS_PLAN.md §7): money a company gives an employee up
  * front, to pay task costs from. Every movement is an entry, never edited,
  * and a balance is always the sum of its person's entries (§7.4).
+ *
+ * Each entry is for one task or one client, or neither (§7.9): what's held
+ * for each is that part's entries' sum, never below zero, and the running
+ * balance is what's for neither. A balance is all of it.
  */
+
+/** A task decided: an advance isn't given for it any more (§7.9). */
+const DECIDED = ["APPROVED", "COMPLETED"] as const
 
 /** Whose contract has ended: they hold no advance money, so what comes back to them is a debt (§7.3). */
 const GONE = "ARCHIVED"
@@ -42,7 +49,7 @@ export type CashAdvanceFilters = {
 }
 
 /** What a person records (§7.3, §7.4), as sent. */
-export type CashAdvanceInput = { kind?: unknown; amount?: unknown; date?: unknown; note?: unknown; photoUrl?: unknown }
+export type CashAdvanceInput = { kind?: unknown; amount?: unknown; date?: unknown; note?: unknown; photoUrl?: unknown; forTaskId?: unknown; forClientId?: unknown }
 
 const PERSON = { id: true, firstName: true, lastName: true, status: true, companyId: true, teamLeaderId: true, role: true } satisfies Prisma.UserSelect
 
@@ -50,6 +57,9 @@ const ENTRY = {
     id: true, kind: true, amount: true, date: true, note: true, photoUrl: true, confirmedAt: true, recordedByName: true, createdAt: true,
     // A Spent one's task, while it's there (§7.4).
     task: { select: { id: true, title: true } },
+    // What the money is for, while it's there (§7.9).
+    forTask: { select: { id: true, title: true } },
+    forClient: { select: { id: true, name: true } },
 } satisfies Prisma.CashAdvanceEntrySelect
 
 function nameOf(person: { firstName: string; lastName: string }) {
@@ -73,21 +83,60 @@ async function balanceOf(db: Db, companyId: string, userId: string): Promise<num
     return cents(Number(sum._sum.amount ?? 0))
 }
 
+/** What a person holds for one part of their advance: a task, a client, or neither, the running balance (§7.9). */
+async function partOf(db: Db, companyId: string, userId: string, part: AdvanceFor): Promise<number> {
+    const sum = await db.cashAdvanceEntry.aggregate({ where: { companyId, userId, forTaskId: part.taskId, forClientId: part.clientId }, _sum: { amount: true } })
+    return cents(Number(sum._sum.amount ?? 0))
+}
+
+/**
+ * What a person holds for each task and each client (§7.9), with its task's
+ * title or its client's name: those holding anything, tasks before clients.
+ */
+async function heldFor(db: Db, companyId: string, userId: string) {
+    const parts = await db.cashAdvanceEntry.groupBy({
+        by: ["forTaskId", "forClientId"],
+        where: { companyId, userId, OR: [{ forTaskId: { not: null } }, { forClientId: { not: null } }] },
+        _sum: { amount: true },
+    })
+    const held = parts.map(p => ({ forTaskId: p.forTaskId, forClientId: p.forClientId, amount: cents(Number(p._sum.amount ?? 0)) })).filter(p => p.amount !== 0)
+    if (!held.length) return []
+    const [tasks, clients] = await Promise.all([
+        db.task.findMany({ where: { id: { in: held.flatMap(p => p.forTaskId ? [p.forTaskId] : []) } }, select: { id: true, title: true } }),
+        db.client.findMany({ where: { id: { in: held.flatMap(p => p.forClientId ? [p.forClientId] : []) } }, select: { id: true, name: true } }),
+    ])
+    return held
+        .map(p => ({
+            forTask: p.forTaskId ? tasks.find(t => t.id === p.forTaskId) ?? null : null,
+            forClient: p.forClientId ? clients.find(c => c.id === p.forClientId) ?? null : null,
+            amount: p.amount,
+            key: { taskId: p.forTaskId, clientId: p.forClientId },
+        }))
+        .sort((a, b) => Number(!!a.forClient) - Number(!!b.forClient) || (a.forTask?.title ?? a.forClient?.name ?? "").localeCompare(b.forTask?.title ?? b.forClient?.name ?? ""))
+}
+
 /**
  * Each person's balance in a company, what of it is awaiting their
  * confirmation, and the day of their last movement: those with entries only.
  */
 async function balancesIn(companyId: string) {
-    const [sums, awaiting] = await Promise.all([
+    const [sums, awaiting, running] = await Promise.all([
         prisma.cashAdvanceEntry.groupBy({ by: ["userId"], where: { companyId }, _sum: { amount: true }, _max: { date: true } }),
         prisma.cashAdvanceEntry.groupBy({ by: ["userId"], where: { companyId, kind: "GIVEN", confirmedAt: null }, _sum: { amount: true } }),
+        prisma.cashAdvanceEntry.groupBy({ by: ["userId"], where: { companyId, forTaskId: null, forClientId: null }, _sum: { amount: true } }),
     ])
     const waiting = new Map(awaiting.map(a => [a.userId, cents(Number(a._sum.amount ?? 0))]))
-    return new Map(sums.map(s => [s.userId, {
-        balance: cents(Number(s._sum.amount ?? 0)),
-        awaiting: waiting.get(s.userId) ?? 0,
-        lastDate: s._max.date ? s._max.date.toISOString().slice(0, 10) : null,
-    }]))
+    const free = new Map(running.map(r => [r.userId, cents(Number(r._sum.amount ?? 0))]))
+    return new Map(sums.map(s => {
+        const balance = cents(Number(s._sum.amount ?? 0))
+        return [s.userId, {
+            balance,
+            // What of it is for a task or a client (§7.9).
+            earmarked: cents(balance - (free.get(s.userId) ?? 0)),
+            awaiting: waiting.get(s.userId) ?? 0,
+            lastDate: s._max.date ? s._max.date.toISOString().slice(0, 10) : null,
+        }]
+    }))
 }
 
 /**
@@ -135,7 +184,7 @@ export class CashAdvanceService {
             prisma.user.findMany({ where, select: PERSON, orderBy: [{ firstName: "asc" }, { lastName: "asc" }, { id: "asc" }], skip: paging.skip, take: paging.limit }),
             prisma.user.findMany({ where, select: { id: true } }),
         ])
-        const of = (id: string) => balances.get(id) ?? { balance: 0, awaiting: 0, lastDate: null }
+        const of = (id: string) => balances.get(id) ?? { balance: 0, earmarked: 0, awaiting: 0, lastDate: null }
         return {
             // The day an entry is recorded on as the form opens, and the last it may be: today where the company is.
             today: await todayIn(companyId),
@@ -163,16 +212,21 @@ export class CashAdvanceService {
         await inUse(person.companyId)
 
         const where = { companyId: person.companyId, userId: person.id }
-        const [entries, total, balance, awaiting] = await Promise.all([
+        const [entries, total, balance, running, held, awaiting] = await Promise.all([
             prisma.cashAdvanceEntry.findMany({ where, select: ENTRY, orderBy: [{ date: "desc" }, { createdAt: "desc" }, { id: "desc" }], skip: paging.skip, take: paging.limit }),
             prisma.cashAdvanceEntry.count({ where }),
             balanceOf(prisma, person.companyId, person.id),
+            partOf(prisma, person.companyId, person.id, { taskId: null, clientId: null }),
+            heldFor(prisma, person.companyId, person.id),
             prisma.cashAdvanceEntry.aggregate({ where: { ...where, kind: "GIVEN", confirmedAt: null }, _sum: { amount: true } }),
         ])
         return {
             today: await todayIn(person.companyId),
             person: { id: person.id, name: nameOf(person), atWork: (AT_WORK as readonly string[]).includes(person.status) },
             balance,
+            // The running balance, and what of the rest is for each task and client (§7.9).
+            running,
+            held: held.map(({ forTask, forClient, amount }) => ({ forTask, forClient, amount })),
             awaiting: cents(Number(awaiting._sum.amount ?? 0)),
             data: entries.map(entryOf),
             total,
@@ -189,6 +243,12 @@ export class CashAdvanceService {
      * the person's advance. An advance is given only to someone at work; a
      * return is never more than the balance, and a correction never takes it
      * below zero. Moves money, so it asks for two-factor sign-in (§7.7).
+     *
+     * Each is on one part of the advance (§7.9): the running balance, or
+     * what's for one task or one client. An advance for a task goes only to
+     * someone on it, while it isn't decided; one for a client, while it isn't
+     * archived. A return or a correction is on a part they hold money in, and
+     * never takes that part below zero.
      */
     static async record(session: Session, userId: string, input: CashAdvanceInput) {
         await assertStepUp(session, "cash_advances.give")
@@ -203,6 +263,8 @@ export class CashAdvanceService {
         if (kind === "CORRECTION" && !note) throw new Error("CASH_ADVANCE_REASON_REQUIRED")
         const photoUrl = typeof input.photoUrl === "string" && input.photoUrl ? input.photoUrl : null
         if (input.photoUrl != null && input.photoUrl !== "" && (!photoUrl || kind !== "GIVEN")) throw new Error("CASH_ADVANCE_PHOTO_INVALID")
+        const part = forOf(input)
+        if (!part) throw new Error("CASH_ADVANCE_FOR_INVALID")
 
         const person = userId ? await prisma.user.findUnique({ where: { id: userId }, select: PERSON }) : null
         if (!person?.companyId || person.role === "SUPER_ADMIN") throw new Error("CASH_ADVANCE_NOT_FOUND")
@@ -229,12 +291,15 @@ export class CashAdvanceService {
                 const now = await tx.user.findUnique({ where: { id: person.id }, select: { status: true } })
                 if (!now) throw new Error("CASH_ADVANCE_NOT_FOUND")
                 if (kind === "GIVEN" && !(AT_WORK as readonly string[]).includes(now.status)) throw new Error("CASH_ADVANCE_NOT_AT_WORK")
-                const before = await balanceOf(tx, companyId, person.id)
-                const after = balanceAfter(before, amount)
-                if (after === null) throw new Error(kind === "RETURNED" ? "CASH_ADVANCE_MORE_THAN_HELD" : "CASH_ADVANCE_BELOW_ZERO")
+                await CashAdvanceService.assertFor(tx, kind, companyId, person.id, part)
+                // That part never goes below zero, and so neither does the whole.
+                const partAfter = balanceAfter(await partOf(tx, companyId, person.id, part), amount)
+                if (partAfter === null) throw new Error(kind === "RETURNED" ? "CASH_ADVANCE_MORE_THAN_HELD" : "CASH_ADVANCE_BELOW_ZERO")
+                const after = cents(await balanceOf(tx, companyId, person.id) + amount)
                 const entry = await tx.cashAdvanceEntry.create({
                     data: {
                         companyId, userId: person.id, kind, amount, date: new Date(`${date}T00:00:00Z`), note, photoUrl,
+                        forTaskId: part.taskId, forClientId: part.clientId,
                         recordedById: session.user.id, recordedByName: session.user.name ?? null,
                     },
                     select: ENTRY,
@@ -244,7 +309,7 @@ export class CashAdvanceService {
                         action: { GIVEN: "GIVE_CASH_ADVANCE", RETURNED: "RETURN_CASH_ADVANCE", CORRECTION: "CORRECT_CASH_ADVANCE" }[kind],
                         entityType: "USER", entityId: person.id,
                         userId: superAdmin ? null : session.user.id, superAdminId: superAdmin ? session.user.id : null,
-                        details: { entryId: entry.id, amount, date, balance: after, ...(note && { note }) },
+                        details: { entryId: entry.id, amount, date, balance: after, ...(note && { note }), ...(part.taskId && { forTaskId: part.taskId }), ...(part.clientId && { forClientId: part.clientId }) },
                     },
                 })
                 // Someone whose contract has ended holds nothing: a correction
@@ -301,6 +366,9 @@ export class CashAdvanceService {
      * company person's: a Super Admin holds none. Each cost's part, which
      * spent() then records once the costs are there. Holds the company and
      * the person's advance, as recording an entry does.
+     *
+     * The running balance only: what's for a task or a client isn't spent
+     * here (§7.9).
      */
     static async spendFor(tx: Prisma.TransactionClient, author: { id: string; role?: string | null }, companyId: string | null, amounts: readonly number[]): Promise<number[]> {
         const none = amounts.map(() => 0)
@@ -309,7 +377,7 @@ export class CashAdvanceService {
         const company = await tx.company.findUnique({ where: { id: companyId }, select: { cashAdvancesAllowed: true, cashAdvancesOn: true } })
         if (!cashAdvancesInUse(company)) return none
         await CashAdvanceService.lockPerson(tx, author.id)
-        let balance = await balanceOf(tx, companyId, author.id)
+        let balance = await partOf(tx, companyId, author.id, { taskId: null, clientId: null })
         return amounts.map(amount => {
             const part = cents(Math.min(balance, amount))
             balance = cents(balance - part)
@@ -380,6 +448,9 @@ export class CashAdvanceService {
         const held = await balanceOf(tx, companyId, userId)
         if (counted !== null && held !== cents(counted)) throw new Error("CASH_ADVANCE_CHANGED")
         if (held <= 0) return null
+        // What's for a task or a client is moved to the running balance first
+        // (§7.9), so each part comes to nothing with the whole.
+        await CashAdvanceService.moveToRunning(tx, companyId, userId, debt.by)
         const entry = await tx.cashAdvanceEntry.create({
             data: {
                 companyId, userId, kind: "DEBT", amount: -held, date: new Date(`${await todayIn(companyId, tx)}T00:00:00Z`),
@@ -389,6 +460,71 @@ export class CashAdvanceService {
         })
         return tx.debt.create({
             data: { userId, companyId, amount: held, source: CASH_ADVANCE_DEBT, sourceId: entry.id, dueDate: debt.dueDate },
+        })
+    }
+
+    /**
+     * What an advance for this person can be for (§7.9): the open tasks
+     * they're on, and the company's clients not archived, by name. For
+     * whoever may give them an advance.
+     */
+    static async purposes(user: Actor & { id: string }, userId: string) {
+        const person = userId ? await prisma.user.findUnique({ where: { id: userId }, select: PERSON }) : null
+        if (!person?.companyId || person.role === "SUPER_ADMIN") throw new Error("CASH_ADVANCE_NOT_FOUND")
+        const companyId = person.companyId
+        if (!can(user, "cash_advances.give", { companyId, userId: person.id, teamLeaderId: person.teamLeaderId })) throw new Error("CASH_ADVANCE_NOT_FOUND")
+        await inUse(companyId)
+        const [tasks, clients] = await Promise.all([
+            prisma.task.findMany({
+                where: { companyId, status: { notIn: [...DECIDED] }, assignees: { some: { id: person.id } } },
+                select: { id: true, title: true },
+                orderBy: [{ deadline: "asc" }, { title: "asc" }, { id: "asc" }],
+            }),
+            prisma.client.findMany({ where: { companyId, archivedAt: null }, select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }] }),
+        ])
+        return { tasks, clients }
+    }
+
+    /**
+     * Whether an entry may be on this part of a person's advance (§7.9). An
+     * advance for a task: one of the company's, the person on it, not yet
+     * decided. For a client: one of the company's, not archived. A return or
+     * a correction: a part they hold money in, or have.
+     */
+    static async assertFor(tx: Prisma.TransactionClient, kind: RecordedKind, companyId: string, userId: string, part: AdvanceFor) {
+        if (!part.taskId && !part.clientId) return
+        if (kind !== "GIVEN") {
+            const has = await tx.cashAdvanceEntry.count({ where: { companyId, userId, forTaskId: part.taskId, forClientId: part.clientId } })
+            if (!has) throw new Error("CASH_ADVANCE_FOR_INVALID")
+            return
+        }
+        if (part.taskId) {
+            const task = await tx.task.findFirst({ where: { id: part.taskId, companyId }, select: { status: true, assignees: { where: { id: userId }, select: { id: true } } } })
+            if (!task) throw new Error("CASH_ADVANCE_FOR_INVALID")
+            if ((DECIDED as readonly string[]).includes(task.status)) throw new Error("CASH_ADVANCE_TASK_DONE")
+            if (!task.assignees.length) throw new Error("CASH_ADVANCE_NOT_ON_TASK")
+        } else {
+            const client = await tx.client.findFirst({ where: { id: part.clientId!, companyId }, select: { archivedAt: true } })
+            if (!client) throw new Error("CASH_ADVANCE_FOR_INVALID")
+            if (client.archivedAt) throw new Error("CASH_ADVANCE_CLIENT_ARCHIVED")
+        }
+    }
+
+    /**
+     * Moves what a person holds for each task and client to their running
+     * balance (§7.9): a pair of Moved entries for each, taken from the one
+     * and added to the other. Under the hold on their advance.
+     */
+    static async moveToRunning(tx: Prisma.TransactionClient, companyId: string, userId: string, by: { id: string; name?: string | null }) {
+        const held = await heldFor(tx, companyId, userId)
+        if (!held.length) return
+        const date = new Date(`${await todayIn(companyId, tx)}T00:00:00Z`)
+        const entry = { companyId, userId, kind: "MOVED" as const, date, recordedById: by.id, recordedByName: by.name ?? null }
+        await tx.cashAdvanceEntry.createMany({
+            data: held.flatMap(h => [
+                { ...entry, amount: -h.amount, forTaskId: h.key.taskId, forClientId: h.key.clientId },
+                { ...entry, amount: h.amount },
+            ]),
         })
     }
 

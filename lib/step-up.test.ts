@@ -60,6 +60,8 @@ describe("every high-risk action asks", () => {
         "lib/services/record.service.ts": "called by DELETE /api/records and /api/records/sections, which ask",
         // Names them as what a review lists, not to let anybody act.
         "lib/services/access-review.service.ts": "the permissions an access review lists",
+        // What an advance may be for, offered in Give advance; POST /api/cash-advances/[userId] asks before giving it.
+        "app/api/cash-advances/[userId]/purposes/route.ts": "cash_advances.give for the tasks and clients Give advance offers",
     }
     const uses = (source: string, p: string) => new RegExp(`["']${p.replace(".", "\\.")}["']`).test(source)
 

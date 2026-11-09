@@ -9,7 +9,26 @@ import type { TranslationKey } from "@/lib/translations"
 /** The entries a person records (§7.3, §7.4). Spent ones come with costs, in 7b. */
 export const RECORDED_KINDS = ["GIVEN", "RETURNED", "CORRECTION"] as const
 export type RecordedKind = typeof RECORDED_KINDS[number]
-export type EntryKind = RecordedKind | "SPENT" | "DEBT"
+export type EntryKind = RecordedKind | "SPENT" | "DEBT" | "MOVED"
+
+/**
+ * What an entry's money is for (§7.9): one task or one client, or neither,
+ * the running balance.
+ */
+export type AdvanceFor = { taskId: string | null; clientId: string | null }
+
+/**
+ * What an advance is for, as sent: a task, a client, or neither. Null for
+ * what can't be: both at once, or one that isn't an id.
+ */
+export function forOf(input: { forTaskId?: unknown; forClientId?: unknown }): AdvanceFor | null {
+    const id = (raw: unknown): string | null | undefined =>
+        raw === undefined || raw === null || raw === "" ? null : typeof raw === "string" && raw.length <= 64 ? raw : undefined
+    const taskId = id(input.forTaskId)
+    const clientId = id(input.forClientId)
+    if (taskId === undefined || clientId === undefined || (taskId && clientId)) return null
+    return { taskId, clientId }
+}
 
 /** The most one entry moves, as for a service fee (§7.8). */
 export const CASH_ADVANCE_MAX = 1_000_000
@@ -74,6 +93,10 @@ export const REFUSAL_KEYS = {
     CASH_ADVANCE_ALREADY_CONFIRMED: "advances_already_confirmed",
     CASH_ADVANCE_PHOTO_INVALID: "advances_photo_invalid",
     CASH_ADVANCE_DATE_INVALID: "advances_date_invalid",
+    CASH_ADVANCE_FOR_INVALID: "advances_for_invalid",
+    CASH_ADVANCE_NOT_ON_TASK: "advances_not_on_task",
+    CASH_ADVANCE_TASK_DONE: "advances_task_done",
+    CASH_ADVANCE_CLIENT_ARCHIVED: "advances_client_archived",
 } as const satisfies Record<string, TranslationKey>
 
 /** What to tell the person when the server refuses, in their language where it can be. */

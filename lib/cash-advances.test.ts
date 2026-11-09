@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { CASH_ADVANCE_MAX, balanceAfter, cashAdvancesInUse, dayOf, signedAmount } from "./cash-advances"
+import { CASH_ADVANCE_MAX, balanceAfter, cashAdvancesInUse, dayOf, forOf, signedAmount } from "./cash-advances"
 
 /** Cash advances' rules as the screens and the server both take them (CLIENTS_PLAN.md §7). */
 describe("cash advances", () => {
@@ -33,6 +33,16 @@ describe("cash advances", () => {
         expect(balanceAfter(0.3, -0.1)).toBe(0.2)
         expect(balanceAfter(700, -700.01)).toBeNull()
         expect(balanceAfter(0, 50)).toBe(50)
+    })
+
+    it("are for one task or one client, or neither (§7.9)", () => {
+        expect(forOf({})).toEqual({ taskId: null, clientId: null })
+        expect(forOf({ forTaskId: "", forClientId: null })).toEqual({ taskId: null, clientId: null })
+        expect(forOf({ forTaskId: "k1" })).toEqual({ taskId: "k1", clientId: null })
+        expect(forOf({ forClientId: "c1" })).toEqual({ taskId: null, clientId: "c1" })
+        expect(forOf({ forTaskId: "k1", forClientId: "c1" })).toBeNull()
+        expect(forOf({ forTaskId: 7 })).toBeNull()
+        expect(forOf({ forClientId: "x".repeat(65) })).toBeNull()
     })
 
     it("take a day only as a real day of the calendar", () => {

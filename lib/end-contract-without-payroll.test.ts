@@ -139,7 +139,8 @@ describe("a cash advance held by someone who's gone", () => {
             $queryRaw: async () => [],
             company: { findUnique: vi.fn(async () => ({ package: pkg, timezone: "Africa/Cairo" })) },
             systemSettings: { findUnique: async () => null },
-            cashAdvanceEntry: { aggregate: async () => ({ _sum: { amount: held } }), create: vi.fn(async () => ({ id: "x1" })) },
+            // Held for no task or client (CLIENTS_PLAN.md §7.9): nothing to move first.
+            cashAdvanceEntry: { aggregate: async () => ({ _sum: { amount: held } }), groupBy: async () => [], create: vi.fn(async () => ({ id: "x1" })) },
             debt: { create: vi.fn(async ({ data }: { data: unknown }) => ({ id: "d1", ...(data as object) })) },
         }
     }

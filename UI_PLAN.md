@@ -591,7 +591,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      the "Powered by" signature on the sign-in page, merged in #232 on
      2026-11-08; then the audit log reading a company's section names and
      icons one section at a time, merged in #233 on 2026-11-08; then what
-     the building blocks draw drawn by them, not copied by hand, in #234;
+     the building blocks draw drawn by them, not copied by hand, merged in
+     #234 on 2026-11-09; then an advance for a particular task or client,
+     its first part (`CLIENTS_PLAN.md` §7.9, 7e), in #235;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5391,3 +5393,41 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     a phone (11 checks each), and the card in English on a phone too.
   - The web interface audit found nothing else to change: nothing new is
     shown, and what was is drawn as before.
+- **2026-11-09:** An advance for a particular task or client, its first
+  part (#235; `CLIENTS_PLAN.md` §7.9, 7e). The screens, on the blocks
+  they already had (`Choice`, `Select`, `Field`, `Details`, `Card`), so
+  `DESIGN.md` needs nothing new:
+  - **Give advance** asks what it's for: any cost, a task or a client.
+    Picking a task or a client offers the open tasks the person is on, or
+    the company's clients, and Give advance waits for one; with none to
+    offer, it says so. Under the pick: it's kept apart from the running
+    balance, for this alone. The words say what costs do with it only from
+    7f, when they do.
+  - **Record return and Correction** ask which part they're on, From,
+    where the person holds money for a task or a client: the running
+    balance or one of those, each with what's held, the name isolated so
+    a name in the other script keeps its place beside the amount. The
+    balance shown, and the balance after, are that part's.
+  - **A person's cash advance,** theirs on My cash advance too: the running
+    balance beside the balance, a card of what's held for each task and
+    client, the task a link to its page, and each entry saying what it was
+    for, with its note under it.
+  - **The Cash advances tab:** under each balance, how much of it is for
+    tasks or clients.
+  - **Found in the browser and fixed:** right after an advance was given
+    for a client, Record return didn't offer the client's money: the
+    dialog read the person's parts as it first opened. Each entry saved
+    reads them again. And on a phone, in Arabic, From cut each part's
+    amount off; it says only the name and the amount now.
+  - In the browser, against the scratch database, as the Admin: Give
+    advance offers the open tasks the person is on and only those, and
+    waits for one to be picked; an advance for a task and one for a client
+    are kept each for what it was given for; Record return offers the
+    running balance, the task's and the client's, refuses more than the
+    task's 400, shows 400 and 250 after, and takes the 150 from the task's
+    money; the person's page shows the running balance, 250 held for the
+    task and 300 for the client, and what each entry was for; the Cash
+    advances tab says 550 of the balance is for tasks or clients; nothing
+    scrolls sideways. In English on a computer and in Arabic on a phone
+    (16 checks each).
+  - The web interface audit found nothing else to change.

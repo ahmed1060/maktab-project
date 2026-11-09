@@ -7,6 +7,8 @@ export type AdvanceHolder = {
     /** Not suspended, deleted or gone: an advance may be given. */
     atWork: boolean
     balance: number
+    /** What of the balance is for a task or a client (CLIENTS_PLAN.md §7.9). */
+    earmarked: number
     awaiting: number
     lastDate: string | null
 }
@@ -25,7 +27,13 @@ export type AdvanceEntry = {
     createdAt: string
     /** A Spent one's task, while it's there (§7.4). */
     task: { id: string; title: string } | null
+    /** What the money is for, while it's there (§7.9). */
+    forTask: { id: string; title: string } | null
+    forClient: { id: string; name: string } | null
 }
+
+/** What a person holds for one task or one client (§7.9). */
+export type HeldFor = { forTask: { id: string; title: string } | null; forClient: { id: string; name: string } | null; amount: number }
 
 /** What the company owes someone for their costs, as Mark all as paid would pay it (§7.3). */
 export type Owed = { count: number; amount: number; digest: string }
