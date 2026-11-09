@@ -30,6 +30,8 @@ export type AdvanceEntry = {
     /** What the money is for, while it's there (§7.9). */
     forTask: { id: string; title: string } | null
     forClient: { id: string; name: string } | null
+    /** Taken from a task or a client since deleted: a Moved one (§7.9). */
+    partGone: boolean
 }
 
 /** What a person holds for one task or one client (§7.9). */

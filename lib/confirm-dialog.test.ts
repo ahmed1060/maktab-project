@@ -26,7 +26,7 @@ const ASKED: { file: string; count: number; danger: number }[] = [
     { file: "components/locations/LocationsList.tsx", count: 1, danger: 0 },
     { file: "components/charges/ChargesList.tsx", count: 2, danger: 0 },
     // Saying a cash advance arrived: it was red, the old window's default.
-    { file: "components/cash-advances/CashAdvanceHistory.tsx", count: 1, danger: 0 },
+    { file: "components/cash-advances/CashAdvanceHistory.tsx", count: 2, danger: 0 },
     { file: "components/lists/SavedLists.tsx", count: 1, danger: 0 },
     // A person's photo, on their profile (PR 191).
     { file: "components/profile/ProfilePhoto.tsx", count: 1, danger: 1 },

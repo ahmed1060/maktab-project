@@ -52,6 +52,7 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     CASH_ADVANCE_NOT_ON_TASK: { status: 409, message: "An advance for a task goes only to someone on it." },
     CASH_ADVANCE_TASK_DONE: { status: 409, message: "That task is decided already, so no advance is given for it." },
     CASH_ADVANCE_CLIENT_ARCHIVED: { status: 409, message: "That client is archived, so no advance is given for them." },
+    CASH_ADVANCE_NOTHING_HELD: { status: 409, message: "They hold nothing for that any more. Refresh the page to see it as it is now." },
     CASH_ADVANCE_ALREADY_CONFIRMED: { status: 409, message: "You've already confirmed receiving this advance." },
     CASH_ADVANCE_CHANGED: { status: 409, message: "Their cash advance changed while the settlement was worked out. Look at the settlement again, then end the contract." },
     CASH_ADVANCE_STILL_HELD: { status: 409, message: "This person still holds cash advance money. Record its return before deleting them for good." },
