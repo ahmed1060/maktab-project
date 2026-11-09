@@ -1201,6 +1201,25 @@ each question.
     for a task or a client anywhere, it says the one balance, as before.
   - **A person's cash advance** says which part a Spent entry took from,
     unless it's the entry's own task, which its task line already says.
+- **Proposed, as 7g builds it:**
+  - **A task approved,** or completed, as one with no costs is, moves what
+    everyone holds for it to their running balance, each as a pair of
+    Moved entries, recorded by whoever approved it, on that day where the
+    company is. Rejected, it keeps its money, as it can be handed in again;
+    reopened after it's approved, the money stays where it went.
+  - **A task deleted:** once its costs have put back what they took, what's
+    still held for it moves the same way, before it's gone. Its entries
+    then lose the task, as before; a Moved entry taken from a part that's
+    gone says it was a task or client since deleted.
+  - **A client archived,** or deleted, moves what's held for it the same
+    way. Restored, nothing comes back.
+  - **By hand:** on a person's cash advance, under Held for, each task and
+    client has Move to running balance, for whoever may give and settle
+    their advances, with two-factor sign-in. It moves all of it, after a
+    confirmation saying how much and what it was for.
+  - **Each person's advance is held** while it moves, in the order of their
+    ids, so no cost spends it meanwhile and two moves can't wait on each
+    other.
 
 ---
 
