@@ -1223,10 +1223,10 @@ each question.
   - **Each person's advance is held** while it moves, in the order of their
     ids, so no cost spends it meanwhile and two moves can't wait on each
     other. Whatever writes an entry for a task or a client holds that task,
-    then that client, before anyone's advance, as approving, deleting and
-    archiving do: one waits for the other instead of each for the other,
-    and an advance given for a task or a client meanwhile waits, then
-    finds it done with and is refused.
+    then that client, before anyone's advance, as deleting and archiving
+    do: one waits for the other instead of each for the other. An advance
+    given for a task or a client meanwhile also waits for an approval,
+    then finds it done with and is refused.
 
 ---
 

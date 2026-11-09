@@ -5623,3 +5623,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
       archived client was logged as a user, which the audit log refused,
       and the removal with it. Who removed it is carried through, as a
       Super Admin.
+  - **Codex's third review, fixed:** ending a contract, holding the
+    person's row, then held the tasks their money was for as an approval
+    does, while an approval holds its task and then updates that person's
+    points: each could wait on the other. A task or client is held by its
+    key only now, which waits for a deletion or an archive but not an
+    approval; only an advance given holds it whole, to wait for an
+    approval and find the task decided.
