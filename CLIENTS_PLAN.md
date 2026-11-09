@@ -828,7 +828,8 @@ statement). Decided on 2026-11-08 from the mock-up
       when the task is handed in (`COST_NAME_NOT_ON_LIST`), matching the
       text as typed, so "%" is no name;
     - costs already added keep their names: it's for names from now on;
-    - a Super Admin's own Add cost is checked by the server only.
+    - the task page has the setting with the task, its company's, so a
+      Super Admin's Add cost is checked as anyone's.
 
 ---
 

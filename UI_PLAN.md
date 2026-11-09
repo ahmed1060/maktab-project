@@ -5521,3 +5521,27 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     any name. It's matched as typed now.
   - **Also:** the Arabic for a name that couldn't be added to its list
     asks with يُرجى, as the app's other requests do.
+  - **Found in the browser and fixed:**
+    - Add read the setting from the side bar's settings after the page
+      came, so a cost added first wasn't checked, and a Super Admin's
+      never was. It comes with the task now, its company's, from the
+      server;
+    - the focus went to the name field after an error, and its
+      suggestions covered the error. The error is said as it comes
+      (`role="alert"`), and the focus stays on Add;
+    - Add, busy while it checks, was disabled, which dropped the focus to
+      the page. It says it's busy and takes no second press instead;
+    - an error under the name pushed the amount and Add down below it.
+      The row lines them up at their tops.
+  - **From the web interface audit:** Saved lists, in the card's note, was
+    the browser's own blue. It's a link in a sentence as `DESIGN.md` has
+    them (`.ui-text-link`): the brand's text colour, underlined, its name
+    on one line. And the note says "turned on", as its button does.
+  - **Browser flows** against the scratch database, in English on a
+    computer and in Arabic on a phone (27 checks each): the card with no
+    names and with nine, turned on and audited; an employee's Add cost
+    refusing "taxi home" with the error under the field, taking
+    "  TRANSPORT " as Transport and a picked Parking, saying a name is
+    needed, and saving the draft with each linked to its name; the server
+    refusing a name sent past the page; turned off, any name again; and
+    the Super Admin's page for the company. Nothing scrolls sideways.
