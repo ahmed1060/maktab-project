@@ -45,9 +45,9 @@ export default function AdvanceBalanceHint({ on }: { on: { taskId: string; clien
     const said = parts.map((p, i) => (
         <Fragment key={p.kind}>
             {i > 0 && t('advances_add_cost_then')}
-            {p.kind === 'task' ? fill(t('advances_add_cost_task'), { amount: <span className="ui-num">{money(p.amount)}</span> })
-                : p.kind === 'client' ? fill(t('advances_add_cost_client'), { amount: <span className="ui-num">{money(p.amount)}</span>, name: <bdi>{p.name}</bdi> })
-                    : fill(t('advances_add_cost_running'), { amount: <span className="ui-num">{money(p.amount)}</span> })}
+            {p.kind === 'task' ? fill(t('advances_add_cost_task'), { amount: <span className="ui-num ui-nowrap">{money(p.amount)}</span> })
+                : p.kind === 'client' ? fill(t('advances_add_cost_client'), { amount: <span className="ui-num ui-nowrap">{money(p.amount)}</span>, name: <bdi>{p.name}</bdi> })
+                    : fill(t('advances_add_cost_running'), { amount: <span className="ui-num ui-nowrap">{money(p.amount)}</span> })}
         </Fragment>
     ))
     return (
