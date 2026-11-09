@@ -259,7 +259,7 @@ export class CompanyService {
     }
 
     static async update(input: UpdateCompanyInput, session: any) {
-        const { id, name, usernameCode, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs, brandColour, cashAdvancesAllowed, cashAdvancesOn, costNamesFromListOnly } = input
+        const { id, name, usernameCode, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs, brandColour, cashAdvancesAllowed, cashAdvancesOn, costNamesFromListOnly, confirmHighRisk } = input
         const existing = await prisma.company.findUnique({ where: { id } })
         if (!existing) throw new Error("COMPANY_NOT_FOUND")
 
@@ -279,6 +279,11 @@ export class CompanyService {
             const saved = await prisma.listEntry.count({ where: { companyId: id, kind: "COST_NAME", archivedAt: null } })
             if (saved === 0) throw new Error("COST_NAMES_NONE_SAVED")
         }
+
+        // The high-risk confirmation (ROLES_PLAN.md §6.15): turning it off or
+        // on asks for an authenticator code once, whoever turns it. Saving it
+        // as it already is asks nothing.
+        if (confirmHighRisk !== undefined && confirmHighRisk !== existing.confirmHighRisk) await assertRecentStepUp(session)
 
         // Both maps are stored the same way now that vendorsLabel is gone — see
         // planOverrideWrite for what undefined, null and a map each mean here.
@@ -312,6 +317,7 @@ export class CompanyService {
             ...(cashAdvancesAllowed !== undefined && { cashAdvancesAllowed }),
             ...(cashAdvancesOn !== undefined && { cashAdvancesOn }),
             ...(costNamesFromListOnly !== undefined && { costNamesFromListOnly }),
+            ...(confirmHighRisk !== undefined && { confirmHighRisk }),
         }
         // Switching cash advances off waits for any advance being recorded,
         // and is refused while anyone holds advance money (§7.6).
@@ -389,6 +395,9 @@ export class CompanyService {
         }
         if (costNamesFromListOnly !== undefined && costNamesFromListOnly !== existing.costNamesFromListOnly) {
             changes.costNamesFromListOnly = { old: existing.costNamesFromListOnly, new: costNamesFromListOnly }
+        }
+        if (confirmHighRisk !== undefined && confirmHighRisk !== existing.confirmHighRisk) {
+            changes.confirmHighRisk = { old: existing.confirmHighRisk, new: confirmHighRisk }
         }
 
         if (Object.keys(changes).length > 0) {

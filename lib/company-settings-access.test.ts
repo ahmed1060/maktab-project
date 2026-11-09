@@ -27,7 +27,7 @@ vi.mock("@/lib/services/audit-log.service", () => ({ AuditLogService: { log: asy
 
 const C1 = {
     id: "c1", name: "One", isBanned: false,
-    autoVerifyLocation: false, cashAdvancesAllowed: false, cashAdvancesOn: true, costNamesFromListOnly: false, logoUrl: "https://example.test/logo.png",
+    autoVerifyLocation: false, cashAdvancesAllowed: false, cashAdvancesOn: true, costNamesFromListOnly: false, confirmHighRisk: true, logoUrl: "https://example.test/logo.png",
     payrollDay: 25, payslipsVisible: false, timezone: "Africa/Cairo", debtRecoveryPercent: 100,
     moduleLabels: null, moduleIcons: null,
     adminSettingsEnabled: true, adminSettingsTabs: ["general", "payroll"],
@@ -136,8 +136,8 @@ describe("the company settings API", () => {
         expect(data.tabs).toEqual(["general", "payroll"])
         expect(data.canEdit).toBe(true)
         expect(Object.keys(data.company).sort()).toEqual([
-            "autoVerifyLocation", "cashAdvancesAllowed", "cashAdvancesHeld", "cashAdvancesOn", "costNamesFromListOnly", "costNamesOffered", "costNamesSaved",
-            "debtRecoveryPercent", "id", "name", "payrollDay", "payslipsVisible", "timezone",
+            "autoVerifyLocation", "cashAdvancesAllowed", "cashAdvancesHeld", "cashAdvancesOn", "confirmHighRisk", "confirmHighRiskForAll", "costNamesFromListOnly",
+            "costNamesOffered", "costNamesSaved", "debtRecoveryPercent", "id", "name", "payrollDay", "payslipsVisible", "timezone",
         ])
     })
 

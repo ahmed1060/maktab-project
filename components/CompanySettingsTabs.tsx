@@ -12,6 +12,7 @@ import CompanyModulesCard from '@/components/CompanyModulesCard'
 import CompanySettingsAccessCard from '@/components/CompanySettingsAccessCard'
 import CashAdvancesCard from '@/components/cash-advances/CashAdvancesCard'
 import CostNamesCard from '@/components/lists/CostNamesCard'
+import HighRiskCard from '@/components/HighRiskCard'
 import { Button, Dialog, Tabs } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { COMPANY_SETTINGS_TABS, type CompanySettingsTabKey } from '@/lib/company-settings-tabs'
@@ -49,6 +50,12 @@ export type CompanySettings = {
     costNamesFromListOnly?: boolean
     costNamesOffered?: boolean
     costNamesSaved?: number
+    /**
+     * The high-risk confirmation (ROLES_PLAN.md §6.15): the company's own
+     * switch, and whether the system's is on, which it counts under.
+     */
+    confirmHighRisk?: boolean
+    confirmHighRiskForAll?: boolean
     moduleLabels: unknown
     moduleIcons: unknown
     logoUrl: string | null
@@ -153,6 +160,13 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
                                 onSaved={onSaved}
                             />
                         )}
+                        <HighRiskCard
+                            companyId={companyId}
+                            on={company.confirmHighRisk ?? true}
+                            offForAll={company.confirmHighRiskForAll === false}
+                            readOnly={readOnly}
+                            onSaved={onSaved}
+                        />
                     </>
                 )}
 

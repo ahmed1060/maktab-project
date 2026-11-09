@@ -8,6 +8,7 @@ import { DEFAULT_POWERED_BY_NAME } from '@/lib/branding-defaults'
 import { ZONE_SHORTLIST } from '@/lib/timezone'
 import type { TranslationKey } from '@/lib/translations'
 import { useReportUnsaved } from '@/lib/useUnsavedChanges'
+import HighRiskSwitch, { switchRefusal, type SwitchAnswer } from '@/components/HighRiskSwitch'
 
 /**
  * System settings' forms (UI_PLAN.md §5 step 5, Operations part 4a): the
@@ -31,6 +32,8 @@ export type StoredSettings = {
     poweredByName: string | null
     defaultTimezone: string
     stepUpMinutes: number
+    /** The high-risk confirmation for every company (ROLES_PLAN.md §6.15). */
+    confirmHighRisk?: boolean
     brandColour: string
 }
 
@@ -161,10 +164,12 @@ function useCardSave(onSaved: OnSaved) {
 }
 
 /** A number of the system's: the auto-verify distance, or the high-risk confirmation's minutes. */
-function NumberCard({ field, title, note, label, stored, onSaved }: {
+function NumberCard({ field, title, note, before, label, stored, onSaved }: {
     field: NumberField
     title: string
     note: ReactNode
+    /** What the card holds above the number, such as the switch the number is about. */
+    before?: ReactNode
     label: string
     stored: StoredSettings
     onSaved: OnSaved
@@ -200,6 +205,7 @@ function NumberCard({ field, title, note, label, stored, onSaved }: {
     return (
         <Card title={title}>
             <p className="ui-card-note">{note}</p>
+            {before}
             <form ref={form} className="ui-card-form" noValidate onSubmit={submit}>
                 <Field label={label} hint={t(range).replace('{min}', num(min)).replace('{max}', num(max))} error={error}>{p => (
                     <TextInput {...p} name={field} type="number" inputMode="numeric" min={min} max={max} autoComplete="off" readOnly={saving}
@@ -220,10 +226,25 @@ export function LocationCard({ stored, onSaved }: { stored: StoredSettings; onSa
         label={t('location_verify_radius_label')} stored={stored} onSaved={onSaved} />
 }
 
-/** How long a high-risk action's authenticator code lasts (ROLES_PLAN.md §6.15). */
+/**
+ * The high-risk confirmation (ROLES_PLAN.md §6.15): whether it's asked in
+ * every company, turned off and on here, and how long its code lasts.
+ */
 export function StepUpCard({ stored, onSaved }: { stored: StoredSettings; onSaved: OnSaved }) {
     const { t } = useLanguage()
+    const saveSwitch = async (next: boolean): Promise<SwitchAnswer> => {
+        const res = await fetch('/api/system-settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ confirmHighRisk: next }),
+        })
+        const answer = await res.json().catch(() => null)
+        if (!res.ok || !answer?.success) return switchRefusal(answer)
+        onSaved(answer.data, { confirmHighRisk: next })
+        return 'saved'
+    }
     return <NumberCard field="stepUpMinutes" title={t('step_up_minutes_label')} note={t('step_up_minutes_hint')}
+        before={<HighRiskSwitch scope="all" on={stored.confirmHighRisk ?? true} save={saveSwitch} />}
         label={t('sys_step_up_minutes')} stored={stored} onSaved={onSaved} />
 }
 

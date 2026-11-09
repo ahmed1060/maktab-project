@@ -36,6 +36,8 @@ vi.mock("@/lib/prisma", () => {
         rateLimit: { upsert: async () => ({ count: 1 }), findUnique: async () => null, create: async () => ({ count: 1 }), update: async () => ({ count: 1 }) },
         auditLog: { create: async () => ({}) },
         systemSettings: { findUnique: async () => null, findFirst: async () => null },
+        // The company's high-risk confirmation (§6.15), on as it starts.
+        company: { findUnique: async () => ({ confirmHighRisk: true }) },
     }
     client.$transaction = async (fn: any) => fn(client)
     return { prisma: client }

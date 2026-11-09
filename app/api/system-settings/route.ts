@@ -3,6 +3,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { SystemSettingsService } from "@/lib/services/system-settings.service"
 import { updateSystemSettingsSchema } from "@/lib/validations/system-settings.schema"
 import { RealtimeBroadcastService } from "@/lib/services/realtime-broadcast.service"
+import { assertRecentStepUp } from "@/lib/step-up"
 
 
 
@@ -22,6 +23,9 @@ export const PUT = withStandardHandler(async (req, session, json) => {
     }
 
     const before = await SystemSettingsService.get()
+    // The high-risk confirmation for every company (ROLES_PLAN.md §6.15):
+    // turning it off or on asks for an authenticator code once.
+    if (validation.data.confirmHighRisk !== undefined && validation.data.confirmHighRisk !== before.confirmHighRisk) await assertRecentStepUp(session)
     const updated = await SystemSettingsService.update(validation.data)
 
     const changes: Record<string, { old: any, new: any }> = {}
@@ -48,6 +52,9 @@ export const PUT = withStandardHandler(async (req, session, json) => {
     }
     if (before.brandColour !== updated.brandColour) {
         changes.brandColour = { old: before.brandColour, new: updated.brandColour }
+    }
+    if (before.confirmHighRisk !== updated.confirmHighRisk) {
+        changes.confirmHighRisk = { old: before.confirmHighRisk, new: updated.confirmHighRisk }
     }
 
     if (Object.keys(changes).length > 0) {
