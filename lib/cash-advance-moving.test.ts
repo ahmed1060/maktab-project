@@ -67,6 +67,9 @@ describe("Move to running balance", () => {
                 expect(ar[key]).toContain(word)
             }
         }
+        // The button's name starts with what it shows, so it's found by what it says.
+        expect(en.advances_move_label.startsWith(`${en.advances_move}:`)).toBe(true)
+        expect(ar.advances_move_label.startsWith(`${ar.advances_move}:`)).toBe(true)
         expect(en.advances_move_body).toContain("{person}")
         expect(ar.advances_move_body).toContain("{person}")
         const arabic = keys.map(k => ar[k]).join(" ")

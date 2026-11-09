@@ -3205,7 +3205,7 @@ export const ar = {
         advances_kind_put_back: "أُعيد إلى العهدة",
         advances_task_gone: "مهمة حُذفت بعدها",
         advances_move: "نقل إلى الرصيد الجاري",
-        advances_move_label: "نقل {amount} المخصّصة لـ {name} إلى الرصيد الجاري",
+        advances_move_label: "نقل إلى الرصيد الجاري: مبلغ {amount} المخصّص لـ {name}",
         advances_move_title: "النقل إلى الرصيد الجاري",
         advances_move_body: "يُنقل مبلغ {amount} المخصّص لـ {name} إلى الرصيد الجاري لدى {person}، ويُصرف منه على أي تكلفة بعد ذلك.",
         advances_move_button: "نقل {amount}",

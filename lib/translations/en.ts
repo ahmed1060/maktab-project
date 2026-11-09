@@ -3216,7 +3216,7 @@ export const en = {
         advances_kind_put_back: "Put back",
         advances_task_gone: "A task since deleted",
         advances_move: "Move to running balance",
-        advances_move_label: "Move {amount} held for {name} to the running balance",
+        advances_move_label: "Move to running balance: {amount} held for {name}",
         advances_move_title: "Move to the running balance",
         advances_move_body: "{amount} held for {name} joins {person}'s running balance, and pays for any cost from then on.",
         advances_move_button: "Move {amount}",
