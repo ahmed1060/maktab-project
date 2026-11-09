@@ -195,6 +195,31 @@ describe("what whoever it's for hands in", () => {
     })
 })
 
+describe("a cost's name where the company keeps them to its saved list (CLIENTS_PLAN.md §6.9; DESIGN.md §5.3)", () => {
+    it("says so before anything is typed, and not otherwise", async () => {
+        expect(await form({ listOnly: true })).toContain('placeholder="cost_name_from_list_placeholder"')
+        expect(await form()).toContain('placeholder="cost_description_placeholder"')
+    })
+
+    it("checks the name on Add, says under the field what's wrong, and adds the cost under the list's name", () => {
+        const src = readFileSync("components/TaskSubmissionForm.tsx", "utf8")
+        expect(src).toContain("await nameOnList(costName, costNames.suggest)")
+        expect(src).toContain("onAddCost(checked.name)")
+        // Under the field, as the building blocks' field says a mistake.
+        expect(src).toMatch(/<Field[^>]*error=\{problem\}/)
+        expect(src).toContain("costNames.onAdd ? 'cost_name_not_listed_add' : 'cost_name_not_listed_ask'")
+        // Typing again clears it.
+        expect(src).toContain("onChange={v => { setNameProblem(null); setCostName(v) }}")
+    })
+
+    it("is asked of the side bar's settings, and the page adds what Add was given", () => {
+        const src = readFileSync("app/(dashboard)/dashboard/tasks/[id]/client.tsx", "utf8")
+        expect(src).toContain("listOnly={!!shell?.data?.costNamesFromList}")
+        expect(src).toContain("const handleAddCost = (name: PickedName = costName) => {")
+        expect(src).toContain("description: name.text, nameEntryId: name.entryId")
+    })
+})
+
 describe("its edit window", () => {
     it("is a dialog of the building blocks, its fields labelled, with its counts", () => {
         const src = readFileSync("components/TaskEditDetailsModal.tsx", "utf8")

@@ -1,10 +1,12 @@
 'use client'
+import { useState } from 'react'
 import { MapPinIcon, PaperPlaneTiltIcon, PlusIcon, XIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { COST_DESCRIPTION_MAX, RECEIPT_ACCEPT } from '@/lib/task-costs'
 import AdvanceBalanceHint from '@/components/cash-advances/AdvanceBalanceHint'
 import { Button, Card, Field, FileChip, FileChips, FilePicker, NamePicker, TextArea, TextInput, type PickedName } from '@/components/ui'
 import { useListNames } from '@/components/lists/useListNames'
+import { nameOnList } from '@/lib/saved-lists'
 
 /** The files a task takes: images, PDF and Office, as the upload route does. */
 const TASK_FILE_ACCEPT = '.jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx'
@@ -27,7 +29,13 @@ interface TaskSubmissionFormProps {
     clientId: string | null
     cost: string
     setCost: (v: string) => void
-    onAddCost: () => void
+    /** Add, with the list's name where it was checked against the list. */
+    onAddCost: (name?: PickedName) => void
+    /**
+     * The company keeps cost names to its saved list (CLIENTS_PLAN.md §6.9;
+     * DESIGN.md §5.3): the field says so, and Add takes one of them.
+     */
+    listOnly?: boolean
     /** The next cost's receipt photo, if one was picked (CLIENTS_PLAN.md §6.2). */
     costReceipt: File | null
     onCostReceipt: (files: File[]) => void
@@ -54,10 +62,37 @@ export default function TaskSubmissionForm({
     costName, setCostName, companyId, taskId, clientId, cost, setCost, onAddCost, costReceipt, onCostReceipt, onClearCostReceipt, costEntries, onRemoveCostEntry,
     note, setNote,
     capturingLocation, locationStatus, onCaptureLocation,
-    onSaveDraft, onSubmitRequest, loadingType, locked = false
+    onSaveDraft, onSubmitRequest, loadingType, locked = false, listOnly = false
 }: TaskSubmissionFormProps) {
     const { t, locale } = useLanguage()
     const costNames = useListNames('COST_NAME', companyId)
+    // What's wrong with the name, said under the field until it's typed again.
+    const [nameProblem, setNameProblem] = useState<{ key: 'cost_name_needed' | 'cost_name_not_listed_add' | 'cost_name_not_listed_ask'; typed: string } | null>(null)
+    const [checking, setChecking] = useState(false)
+    const problem = nameProblem && t(nameProblem.key).replace('{name}', nameProblem.typed)
+    const nameLabel = t(listOnly ? 'cost_name_from_list_placeholder' : 'cost_description_placeholder')
+
+    // Where the company keeps cost names to its saved list, Add takes one of
+    // them, one typed in full as the list has it too; otherwise the field
+    // says why. If the list doesn't answer, the cost is added as it is, and
+    // the server checks it when the task is handed in.
+    const addCost = async () => {
+        if (!listOnly) { onAddCost(); return }
+        setChecking(true)
+        try {
+            const checked = await nameOnList(costName, costNames.suggest)
+            if ('name' in checked) {
+                setNameProblem(null)
+                onAddCost(checked.name)
+                return
+            }
+            setNameProblem({ key: checked.problem === 'needed' ? 'cost_name_needed' : costNames.onAdd ? 'cost_name_not_listed_add' : 'cost_name_not_listed_ask', typed: checked.typed })
+        } catch {
+            onAddCost()
+        } finally {
+            setChecking(false)
+        }
+    }
     const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
     const money = (n: number) => `${n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${t('egp')}`
 
@@ -85,12 +120,12 @@ export default function TaskSubmissionForm({
                     <AdvanceBalanceHint on={{ taskId, clientId }} />
                     {/* On a phone the name takes the line, and the amount goes below: its suggestions need the width. */}
                     <div className="ui-cost-entry">
-                        <Field label={t('cost_description_placeholder')} hideLabel>{p => (
+                        <Field label={nameLabel} hideLabel error={problem}>{p => (
                             <NamePicker
                                 {...p}
-                                placeholder={t('cost_description_placeholder')}
+                                placeholder={nameLabel}
                                 value={costName}
-                                onChange={setCostName}
+                                onChange={v => { setNameProblem(null); setCostName(v) }}
                                 {...costNames}
                                 addLabel={t('lists_add_to_list')}
                                 failedLabel={t('lists_add_failed')}
@@ -100,7 +135,7 @@ export default function TaskSubmissionForm({
                         <Field label={t('cost_amount_placeholder')} hideLabel>{p => (
                             <TextInput {...p} type="number" inputMode="decimal" name="cost-amount" autoComplete="off" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} disabled={locked} />
                         )}</Field>
-                        <Button icon={PlusIcon} onClick={onAddCost} disabled={!cost || locked}>{t('add_label')}</Button>
+                        <Button icon={PlusIcon} onClick={() => { void addCost() }} busy={checking} disabled={!cost || locked}>{t('add_label')}</Button>
                     </div>
                     {/* Its receipt, picked before Add, goes with the cost added next; picked again, it's replaced. */}
                     {costReceipt && (

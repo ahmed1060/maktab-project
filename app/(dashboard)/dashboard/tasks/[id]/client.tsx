@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import useSWR from 'swr'
 import { ArrowCounterClockwiseIcon, CheckIcon, CheckSquareIcon, CurrencyCircleDollarIcon, PencilSimpleIcon, TrashIcon, UserSwitchIcon, XIcon } from '@phosphor-icons/react/ssr'
 // Its dates once the browser has the page: drawn on the server, they came out in its time zone.
 import SafeDate from '@/components/SafeDate'
@@ -22,7 +23,7 @@ import { useCan } from '@/lib/useCan'
 import { useModules } from '@/lib/useModules'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { useDeadlineClock } from '@/lib/useDeadlineClock'
-import { fetchRetrying } from '@/lib/swr-fetcher'
+import { fetcher, fetchRetrying } from '@/lib/swr-fetcher'
 import { decidedByName } from '@/lib/decided-by'
 import { countOf } from '@/lib/plural'
 import { locationLabel } from '@/lib/locations'
@@ -65,6 +66,10 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
 }) {
     const { t, locale } = useLanguage()
     const modules = useModules()
+    // Whether the company keeps cost names to its saved list (CLIENTS_PLAN.md
+    // §6.9), as the side bar's settings say. A Super Admin's are checked when
+    // the task is handed in.
+    const { data: shell } = useSWR<{ data: { costNamesFromList?: boolean } }>(userRole !== 'SUPER_ADMIN' ? '/api/company-settings/visible' : null, fetcher)
 
     // Parse member costs and payment status
     const getMemberCosts = (taskObj: any) => {
@@ -370,13 +375,13 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
         setPendingFiles(prev => prev.filter((_, i) => i !== index))
     }
 
-    const handleAddCost = () => {
+    const handleAddCost = (name: PickedName = costName) => {
         if (!cost) return
         if (parseFloat(cost) < 0) {
             showToast(t('cost_negative_error'), 'error')
             return
         }
-        setCostEntries(prev => [...prev, { amount: parseFloat(cost), description: costName.text, nameEntryId: costName.entryId, receipt: costReceipt }])
+        setCostEntries(prev => [...prev, { amount: parseFloat(cost), description: name.text, nameEntryId: name.entryId, receipt: costReceipt }])
         setCost('')
         setCostName({ text: '', entryId: null })
         setCostReceipt(null)
@@ -1006,6 +1011,7 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
                             cost={cost}
                             setCost={setCost}
                             onAddCost={handleAddCost}
+                            listOnly={!!shell?.data?.costNamesFromList}
                             costReceipt={costReceipt}
                             onCostReceipt={handleCostReceipt}
                             onClearCostReceipt={() => setCostReceipt(null)}

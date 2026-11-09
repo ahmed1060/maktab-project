@@ -138,6 +138,64 @@ describe("the General tab", () => {
     })
 })
 
+async function costNames(props: Record<string, unknown> = {}, locale: "en" | "ar" = "en") {
+    state.locale = locale
+    const { default: Card } = await import("@/components/lists/CostNamesCard")
+    return renderToStaticMarkup(h(Card, { companyId: "c1", on: false, saved: 3, superAdmin: false, readOnly: false, onSaved: () => {}, ...props } as never))
+}
+
+describe("the Cost names card (CLIENTS_PLAN.md §6.9)", () => {
+    it("says what it keeps, and how many names the saved list holds, off with Turn on", async () => {
+        const html = await costNames()
+        expect(html).toContain(`<h2 class="ui-card-title">${en.cost_names_settings_title}</h2>`)
+        expect(html).toContain(en.cost_names_settings_hint.replace(/'/g, "&#x27;"))
+        expect(html).toContain(en.cost_names_list_only_label)
+        expect(html).toContain(en.cost_names_list_only_hint.replace(/'/g, "&#x27;"))
+        expect(html).toContain("3 names on the saved list.")
+        expect(html).toContain(`<span class="ui-badge ui-badge-neutral">${en.advances_off_badge}</span>`)
+        expect(html).toMatch(new RegExp(`<button[^>]*class="ui-btn ui-btn-primary ui-btn-sm"(?![^>]*disabled)[^>]*>${en.settings_turn_on}</button>`))
+    })
+
+    it("is on with Turn off, whatever the list holds", async () => {
+        const html = await costNames({ on: true, saved: 0 })
+        expect(html).toContain(`<span class="ui-badge ui-badge-good">${en.advances_on}</span>`)
+        expect(html).toMatch(new RegExp(`<button(?![^>]*disabled)[^>]*>${en.settings_turn_off}</button>`))
+    })
+
+    it("can't be turned on with no names on the list, and says where to add one", async () => {
+        const html = await costNames({ saved: 0 })
+        expect(html).toContain(en.cost_names_none_saved.replace(/'/g, "&#x27;"))
+        expect(html).toMatch(new RegExp(`<button[^>]*disabled=""[^>]*>${en.settings_turn_on}</button>`))
+        expect(html).toContain(`href="/dashboard/lists">${en.saved_lists_title}</a>`)
+        // A Super Admin's Saved lists are the company picked above, which may be another.
+        expect(await costNames({ saved: 0, superAdmin: true })).not.toContain('href="/dashboard/lists"')
+    })
+
+    it("shows the setting without a button to whoever can only look", async () => {
+        const html = await costNames({ readOnly: true })
+        expect(html).toContain(en.advances_off_badge)
+        expect(html).not.toContain("</button>")
+    })
+
+    it("is in the page's language, its count too", async () => {
+        const html = await costNames({ saved: 2 }, "ar")
+        expect(html).toContain(ar.cost_names_settings_title)
+        expect(html).toContain(`${ar.count_names_two} في القائمة المحفوظة.`)
+        expect(html).toContain(ar.settings_turn_on)
+    })
+
+    it("is on the General tab for a company with the Costs module only", async () => {
+        const offered = { data: { data: { company: { ...COMPANY, costNamesOffered: true, costNamesFromListOnly: false, costNamesSaved: 3 }, tabs: ["general"], canEdit: true } } }
+        expect(await own({ swr: { "/api/company-settings": offered } })).toContain(`<h2 class="ui-card-title">${en.cost_names_settings_title}</h2>`)
+        const notOffered = { data: { data: { company: { ...COMPANY, costNamesOffered: false }, tabs: ["general"], canEdit: true } } }
+        expect(await own({ swr: { "/api/company-settings": notOffered } })).not.toContain(en.cost_names_settings_title)
+    })
+
+    it("lets the task page know at once, as the side bar's settings are asked again", () => {
+        expect(readFileSync("components/lists/CostNamesCard.tsx", "utf8")).toContain("void mutate('/api/company-settings/visible')")
+    })
+})
+
 describe("found in the browser (the audit, company settings part 1)", () => {
     it("keeps a card's flush rows inset from its edges, in line with its title", () => {
         // Stretched to the card's edges and stripped of their padding, the
