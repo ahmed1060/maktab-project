@@ -603,7 +603,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      #239 on 2026-11-09; then a switch to turn off the high-risk
      confirmation, for every company or for one (`ROLES_PLAN.md` §6.15),
      merged in #240 on 2026-11-09; then what's held for a task following
-     it when it's transferred (`CLIENTS_PLAN.md` §7.9, 7h), in #241;
+     it when it's transferred (`CLIENTS_PLAN.md` §7.9, 7h), merged in #241
+     on 2026-11-09; then a company's high-risk switch greyed, and refused
+     by the server, while the system's is off (`ROLES_PLAN.md` §6.15), in
+     #242;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
