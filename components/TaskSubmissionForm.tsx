@@ -121,7 +121,9 @@ export default function TaskSubmissionForm({
                     <legend className="ui-label">{t('add_costs_label')}</legend>
                     {/* Their cash advance, which pays the costs they add first (CLIENTS_PLAN.md §7.2). */}
                     <AdvanceBalanceHint on={{ taskId, clientId }} />
-                    {/* On a phone the name takes the line, and the amount goes below: its suggestions need the width. */}
+                    {/* On a phone the name takes the line, and the amount goes below: its suggestions need the width.
+                        While Add checks the name, the cost's fields wait: Add takes what it
+                        was clicked with, then clears them (Codex on PR 238). */}
                     <div className="ui-cost-entry">
                         <Field label={nameLabel} hideLabel error={problem}>{p => (
                             <NamePicker
@@ -133,10 +135,11 @@ export default function TaskSubmissionForm({
                                 addLabel={t('lists_add_to_list')}
                                 failedLabel={t('lists_add_failed')}
                                 maxLength={COST_DESCRIPTION_MAX}
+                                disabled={checking}
                             />
                         )}</Field>
                         <Field label={t('cost_amount_placeholder')} hideLabel>{p => (
-                            <TextInput {...p} type="number" inputMode="decimal" name="cost-amount" autoComplete="off" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} disabled={locked} />
+                            <TextInput {...p} type="number" inputMode="decimal" name="cost-amount" autoComplete="off" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} disabled={locked || checking} />
                         )}</Field>
                         {/* Busy, not disabled: a disabled button drops the focus. */}
                         <Button icon={PlusIcon} onClick={() => { void addCost() }} aria-busy={checking || undefined} disabled={!cost || locked}>{t('add_label')}</Button>
@@ -144,10 +147,10 @@ export default function TaskSubmissionForm({
                     {/* Its receipt, picked before Add, goes with the cost added next; picked again, it's replaced. */}
                     {costReceipt && (
                         <FileChips label={t('cost_receipt')}>
-                            <FileChip name={costReceipt.name} size={costReceipt.size} onRemove={locked ? undefined : onClearCostReceipt} />
+                            <FileChip name={costReceipt.name} size={costReceipt.size} onRemove={locked || checking ? undefined : onClearCostReceipt} />
                         </FileChips>
                     )}
-                    <FilePicker label={t('cost_receipt_attach')} hint={t('cost_receipt_hint')} accept={RECEIPT_ACCEPT} onFiles={onCostReceipt} disabled={uploading || locked} multiple={false} />
+                    <FilePicker label={t('cost_receipt_attach')} hint={t('cost_receipt_hint')} accept={RECEIPT_ACCEPT} onFiles={onCostReceipt} disabled={uploading || locked || checking} multiple={false} />
                     {costEntries.length > 0 && (
                         <ul className="ui-rows" aria-label={t('add_costs_label')}>
                             {costEntries.map((e, i) => (

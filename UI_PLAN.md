@@ -5553,3 +5553,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
       typed exactly: the spaces inside what was typed were made one. A
       typed name keeps its inside spaces now, on the page and on the
       server, as the list does (`DESIGN.md` §5.3).
+    - while Add checked a name, the amount, the name and the receipt could
+      still be changed, and Add then took what it was clicked with and
+      cleared the change. The cost's fields wait for the check too.
