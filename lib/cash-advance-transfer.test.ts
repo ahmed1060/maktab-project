@@ -51,6 +51,16 @@ describe("what happens to what's held for the task", () => {
         expect(transferPlan({ current: ["a"], next: ["b", "c"], held, picked: null, mayPass: () => false }).needsReceiver).toBe(false)
     })
 
+    // Codex on PR 241: someone no longer at work, or another company's, takes none.
+    it("passes nothing to a receiver who may not take it: it joins the running balance", () => {
+        const held = [{ userId: "a", amount: 100 }]
+        expect(transferPlan({ current: ["a"], next: ["b"], held, picked: null, mayPass: everyone, mayReceive: id => id !== "b" }).moves)
+            .toEqual([{ userId: "a", amount: 100, what: "RUNNING" }])
+        // Still on it, a person keeps their own, whoever they are.
+        expect(transferPlan({ current: ["a"], next: ["a", "b"], held, picked: null, mayPass: everyone, mayReceive: () => false }).moves)
+            .toEqual([{ userId: "a", amount: 100, what: "KEPT" }])
+    })
+
     it("leaves out whoever holds nothing, and anyone not on the task", () => {
         expect(transferPlan({ current: ["a", "b"], next: ["a", "c"], held: [{ userId: "a", amount: 0 }, { userId: "b", amount: 50 }, { userId: "z", amount: 10 }], picked: null, mayPass: everyone }).moves)
             .toEqual([{ userId: "b", amount: 50, what: "PASSED", to: null }])
@@ -61,6 +71,7 @@ describe("the transfer", () => {
     it("follows the plan as it makes the copy, asking for the code once and only if anything passes", () => {
         const service = read("lib/services/cash-advance.service.ts")
         expect(service).toContain("if (plan.needsReceiver) throw new Error(\"TRANSFER_HELD_RECEIVER_REQUIRED\")")
+        expect(service).toContain("mayReceive: id => atWork(found.get(id)),")
         expect(service).toContain("if (plan.moves.some(m => m.what === \"PASSED\")) await move.assertCode()")
         expect(service).toContain("await movedToRunning(tx, companyId, m.userId, from, \"TAKEN_OFF\", by)")
         const tasks = read("lib/services/task.service.ts")

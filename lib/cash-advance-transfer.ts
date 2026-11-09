@@ -7,7 +7,8 @@
  * anything. Whoever's on the copy keeps what they held, now for the copy.
  * Whoever's left off passes theirs to one person on the copy, picked, or the
  * copy's only person, if whoever transfers it may give and settle both
- * their advances; otherwise it joins their own running balance.
+ * their advances and the receiver may take one (at work, in the task's
+ * company); otherwise it joins their own running balance.
  */
 
 /** Someone on the task, and what they hold for it. */
@@ -19,7 +20,7 @@ export type TransferMove =
     | { userId: string; amount: number; what: "PASSED"; to: string | null }
     | { userId: string; amount: number; what: "RUNNING" }
 
-export function transferPlan({ current, next, held, picked, mayPass }: {
+export function transferPlan({ current, next, held, picked, mayPass, mayReceive = () => true }: {
     /** Who's on the task now, and who the transfer puts on the copy. */
     current: readonly string[]
     next: readonly string[]
@@ -28,6 +29,8 @@ export function transferPlan({ current, next, held, picked, mayPass }: {
     picked: string | null
     /** Whether whoever transfers it may give and settle this person's advance. */
     mayPass: (userId: string) => boolean
+    /** Whether the receiver may be given money: at work, in the task's company (Codex on PR 241). */
+    mayReceive?: (userId: string) => boolean
 }): { copy: boolean; moves: TransferMove[]; needsReceiver: boolean } {
     const copy = next.some(id => !current.includes(id))
     if (!copy) return { copy, moves: [], needsReceiver: false }
@@ -37,7 +40,7 @@ export function transferPlan({ current, next, held, picked, mayPass }: {
     const holders = held.filter(h => h.amount > 0 && current.includes(h.userId)).sort((a, b) => a.userId.localeCompare(b.userId))
     for (const { userId, amount } of holders) {
         if (next.includes(userId)) moves.push({ userId, amount, what: "KEPT" })
-        else if (!mayPass(userId) || (receiver !== null && !mayPass(receiver))) moves.push({ userId, amount, what: "RUNNING" })
+        else if (!mayPass(userId) || (receiver !== null && !(mayPass(receiver) && mayReceive(receiver)))) moves.push({ userId, amount, what: "RUNNING" })
         else {
             if (receiver === null) needsReceiver = true
             moves.push({ userId, amount, what: "PASSED", to: receiver })

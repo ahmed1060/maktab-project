@@ -5710,3 +5710,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     Youssef's history saying to whom; Rami confirming receipt from
     Youssef. Nothing scrolls sideways.
   - **From the web interface audit:** nothing to change.
+  - **Codex's review, fixed:** money could pass to someone no longer at
+    work, whose contract had ended, and a Super Admin's transfer to another
+    company's person put it in the task's company, where they couldn't see
+    or settle it. It passes now only to someone of the task's company at
+    work, read under their hold, and otherwise joins the left-off person's
+    running balance, as the dialog says. A Postgres test failed first.

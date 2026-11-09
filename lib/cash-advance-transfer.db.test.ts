@@ -31,11 +31,13 @@ INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayO
  ('e3', 'e3@x', 'p', 'Essam', 'One', 'EMPLOYEE', 2026, 'e3', 'c1', NULL),
  ('e4', 'e4@x', 'p', 'Fady', 'One', 'EMPLOYEE', 2026, 'e4', 'c1', NULL),
  ('e5', 'e5@x', 'p', 'Hoda', 'One', 'EMPLOYEE', 2026, 'e5', 'c1', NULL),
+ ('e6', 'e6@x', 'p', 'Ola', 'One', 'EMPLOYEE', 2026, 'e6', 'c1', NULL),
  ('x1', 'x1@x', 'p', 'Xena', 'Two', 'EMPLOYEE', 2026, 'x1', 'c2', NULL);
 `
 // Ehab and Eman are on the gate and the dock, Ehab alone on the roof, Eman
 // alone on the shed, Fady on the mast, Fady and Hoda on the keel, Ehab and
-// Eman on the pier.
+// Eman on the pier, Ehab alone on the cove and the quay. Ola is archived
+// before the cove is transferred to them; Xena is another company's.
 const WORK = `
 INSERT INTO "Location"(id, "companyId", "clientId", name, "isHq", latitude, longitude, "updatedAt") VALUES ('port', 'c1', NULL, 'Port gate', false, 31.18, 29.87, now());
 INSERT INTO "Task"(id, title, description, status, deadline, "companyId", "locationId", "updatedAt") VALUES
@@ -45,9 +47,12 @@ INSERT INTO "Task"(id, title, description, status, deadline, "companyId", "locat
  ('shed', 'Paint the shed', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', 'port', now()),
  ('mast', 'Raise the mast', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', 'port', now()),
  ('keel', 'Scrape the keel', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', 'port', now()),
- ('pier', 'Mend the pier', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', 'port', now());
+ ('pier', 'Mend the pier', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', 'port', now()),
+ ('cove', 'Dredge the cove', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', 'port', now()),
+ ('quay', 'Light the quay', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', 'port', now());
 INSERT INTO "_MultipleAssignees"("A", "B") VALUES ('gate', 'e1'), ('gate', 'e2'), ('roof', 'e1'), ('dock', 'e1'), ('dock', 'e2'),
- ('shed', 'e2'), ('mast', 'e4'), ('keel', 'e4'), ('keel', 'e5'), ('pier', 'e1'), ('pier', 'e2');
+ ('shed', 'e2'), ('mast', 'e4'), ('keel', 'e4'), ('keel', 'e5'), ('pier', 'e1'), ('pier', 'e2'),
+ ('cove', 'e1'), ('quay', 'e1');
 `
 
 const MINUTE = 60_000
@@ -59,6 +64,7 @@ const admin = confirmed(AMAL)
 const ehab = noCode({ id: "e1", role: "EMPLOYEE", companyId: "c1", name: "Ehab One" })
 const eman = noCode({ id: "e2", role: "EMPLOYEE", companyId: "c1", name: "Eman One" })
 const essam = noCode({ id: "e3", role: "EMPLOYEE", companyId: "c1", name: "Essam One" })
+const sara = confirmed({ id: "sa1", role: "SUPER_ADMIN", name: "Sara Admin" })
 const PAGE = { page: 1, limit: 50, skip: 0 }
 
 describe.skipIf(!ADMIN_URL)("what's held for a task follows it when it's transferred, in Postgres", () => {
@@ -91,6 +97,7 @@ describe.skipIf(!ADMIN_URL)("what's held for a task follows it when it's transfe
             if (m === "20260920000000_team_leader") await db.query(PEOPLE)
         }
         await db.query(WORK)
+        await db.query(`INSERT INTO "SuperAdmin"(id, email, password, "firstName", "lastName", username, "updatedAt") VALUES ('sa1', 'sa1@x', 'p', 'Sara', 'Admin', 'sa1', now())`)
         await db.query(`UPDATE "Company" SET "cashAdvancesAllowed" = true WHERE id = 'c1'`)
         process.env.POSTGRES_PRISMA_URL = url.toString()
         Advances = (await import("@/lib/services/cash-advance.service")).CashAdvanceService
@@ -238,6 +245,26 @@ describe.skipIf(!ADMIN_URL)("what's held for a task follows it when it's transfe
         expect(await outcome(Tasks.transferPreview("pier", essam, ["e3"], null))).toBe("UNAUTHORIZED_TRANSFER")
         // Only said: nothing moved.
         expect(await held("e1")).toEqual(before)
+    })
+
+    // Codex on PR 241: money was passed to someone no longer at work, or in
+    // another company, where the company couldn't settle it.
+    it("passes nothing to someone no longer at work, or another company's: it joins the running balance", async () => {
+        await db.query(`UPDATE "User" SET status = 'ARCHIVED' WHERE id = 'e6'`)
+        await give("e1", 60, "cove")
+        expect((await Tasks.transferPreview("cove", admin, ["e6"], null)).moves).toEqual([
+            { person: { id: "e1", name: "Ehab One" }, what: "RUNNING", to: null, amount: 60 },
+        ])
+        expect(await outcome(Tasks.transfer("cove", admin, { newAssigneeIds: ["e6"] }))).toBe("done")
+        expect(await held("e1")).not.toContainEqual(["cove", 60])
+        expect(await entries("e6", "TRANSFERRED")).toEqual([])
+        expect((await entries("e1", "MOVED")).filter(e => e.forTaskId === "cove")).toEqual([{ amount: -60, forTaskId: "cove", counterpartName: null, confirmed: false }])
+
+        // A Super Admin may transfer a task to another company's person: nothing passes to them.
+        await give("e1", 80, "quay")
+        expect(await outcome(Tasks.transfer("quay", sara, { newAssigneeIds: ["x1"] }))).toBe("done")
+        expect(await held("e1")).not.toContainEqual(["quay", 80])
+        expect((await db.query(`SELECT count(*)::int AS n FROM "CashAdvanceEntry" WHERE "userId" = 'x1'`)).rows[0].n).toBe(0)
     })
 
     it("logs each, saying how much, from which task to which, and from whom to whom", async () => {

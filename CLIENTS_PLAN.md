@@ -1174,9 +1174,10 @@ each question.
     received it, as an advance given; it's theirs to spend meanwhile.
     Several left off all pass to the one picked.
   - **Passing it needs** whoever may give and settle both people's advances,
-    with two-factor sign-in, as it's money changing hands. Without that,
-    what they held joins their own running balance, Moved, and Transfer
-    task said so before it was sent.
+    with two-factor sign-in, as it's money changing hands, and the one
+    taking it at work, in the task's company, as an advance given needs
+    (Codex on #241). Without that, what they held joins their own running
+    balance, Moved, and Transfer task said so before it was sent.
   - **Transfer task says what happens** to what's held for the task, by
     whom, before it's sent: who keeps theirs, whose passes to whom, and
     whose joins their running balance. The amounts are shown only to

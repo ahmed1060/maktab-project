@@ -37,6 +37,8 @@ export const CASH_ADVANCE_DEBT = "CASH_ADVANCE"
 
 /** At work: not suspended, deleted or gone, so an advance may be given (§7.4). */
 const AT_WORK = ["ACTIVE", "OFFLINE"] as const
+/** Not suspended, deleted or gone: may be given an advance (§7.3). */
+const atWork = (person: { status: string } | undefined) => !!person && (AT_WORK as readonly string[]).includes(person.status)
 
 type Db = Prisma.TransactionClient | typeof prisma
 
@@ -734,12 +736,15 @@ export class CashAdvanceService {
         const from = { taskId: fromTaskId, clientId: null }
         const people = [...new Set([...move.current, ...move.next])].sort()
         for (const id of people) await CashAdvanceService.lockPerson(tx, id)
-        const found = new Map((await tx.user.findMany({ where: { id: { in: people } }, select: { id: true, firstName: true, lastName: true, teamLeaderId: true } })).map(u => [u.id, u]))
+        // The task's company's people only, read under their holds: money passes
+        // only to someone of it, at work (Codex on PR 241).
+        const found = new Map((await tx.user.findMany({ where: { id: { in: people }, companyId }, select: { id: true, firstName: true, lastName: true, teamLeaderId: true, status: true } })).map(u => [u.id, u]))
         const nameOfId = (id: string) => { const u = found.get(id); return u ? nameOf(u) : null }
         const held = await Promise.all(move.current.map(async userId => ({ userId, amount: await partOf(tx, companyId, userId, from) })))
         const plan = transferPlan({
             current: move.current, next: move.next, held, picked: move.picked,
             mayPass: id => { const u = found.get(id); return !!u && move.mayPass({ id, teamLeaderId: u.teamLeaderId }) },
+            mayReceive: id => atWork(found.get(id)),
         })
         // Theirs to pass on, but to whom: the transfer has to say.
         if (plan.needsReceiver) throw new Error("TRANSFER_HELD_RECEIVER_REQUIRED")
@@ -799,12 +804,13 @@ export class CashAdvanceService {
         if (!held.length) return { copy: next.some(id => !current.includes(id)), held: false, moves: [], pickReceiver: false }
         const people = new Map((await prisma.user.findMany({
             // The task's company's only: anyone else named in the query is no one here.
-            where: { id: { in: [...new Set([...held.map(h => h.userId), ...next])] }, companyId }, select: { id: true, firstName: true, lastName: true, teamLeaderId: true },
+            where: { id: { in: [...new Set([...held.map(h => h.userId), ...next])] }, companyId }, select: { id: true, firstName: true, lastName: true, teamLeaderId: true, status: true },
         })).map(u => [u.id, u]))
         const target = (id: string) => ({ companyId, userId: id, teamLeaderId: people.get(id)?.teamLeaderId ?? null })
         const mayPass = (id: string) => people.has(id) && can(user, "cash_advances.give", target(id))
         const picked = task.picked && next.includes(task.picked) ? task.picked : null
-        const plan = transferPlan({ current, next, held, picked, mayPass })
+        const mayReceive = (id: string) => atWork(people.get(id))
+        const plan = transferPlan({ current, next, held, picked, mayPass, mayReceive })
         const named = (id: string) => ({ id, name: people.has(id) ? nameOf(people.get(id)!) : "" })
         const seen = (id: string) => id === user.id || can(user, "cash_advances.view", target(id))
         return {
@@ -816,7 +822,7 @@ export class CashAdvanceService {
                 to: m.what === "PASSED" && m.to ? named(m.to) : null,
                 amount: seen(m.userId) ? m.amount : null,
             })),
-            pickReceiver: transferPlan({ current, next, held, picked: null, mayPass }).needsReceiver,
+            pickReceiver: transferPlan({ current, next, held, picked: null, mayPass, mayReceive }).needsReceiver,
         }
     }
 
