@@ -1001,6 +1001,8 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
                             costName={costName}
                             setCostName={setCostName}
                             companyId={task.companyId}
+                            taskId={task.id}
+                            clientId={task.clientId ?? null}
                             cost={cost}
                             setCost={setCost}
                             onAddCost={handleAddCost}

@@ -22,6 +22,9 @@ interface TaskSubmissionFormProps {
     setCostName: (v: PickedName) => void
     /** The task's company, whose cost names are offered. */
     companyId?: string | null
+    /** The task and its client, whose cash advance money pays a cost here first (CLIENTS_PLAN.md §7.9). */
+    taskId: string
+    clientId: string | null
     cost: string
     setCost: (v: string) => void
     onAddCost: () => void
@@ -48,7 +51,7 @@ interface TaskSubmissionFormProps {
 
 export default function TaskSubmissionForm({
     pendingFiles, onAddFiles, onRemoveFile, uploading,
-    costName, setCostName, companyId, cost, setCost, onAddCost, costReceipt, onCostReceipt, onClearCostReceipt, costEntries, onRemoveCostEntry,
+    costName, setCostName, companyId, taskId, clientId, cost, setCost, onAddCost, costReceipt, onCostReceipt, onClearCostReceipt, costEntries, onRemoveCostEntry,
     note, setNote,
     capturingLocation, locationStatus, onCaptureLocation,
     onSaveDraft, onSubmitRequest, loadingType, locked = false
@@ -79,7 +82,7 @@ export default function TaskSubmissionForm({
                 <fieldset className="ui-field ui-fieldset">
                     <legend className="ui-label">{t('add_costs_label')}</legend>
                     {/* Their cash advance, which pays the costs they add first (CLIENTS_PLAN.md §7.2). */}
-                    <AdvanceBalanceHint />
+                    <AdvanceBalanceHint on={{ taskId, clientId }} />
                     {/* On a phone the name takes the line, and the amount goes below: its suggestions need the width. */}
                     <div className="ui-cost-entry">
                         <Field label={t('cost_description_placeholder')} hideLabel>{p => (

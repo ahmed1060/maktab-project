@@ -17,6 +17,7 @@ import { countOf } from '@/lib/plural'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { dayLabel, refusalText, type EntryKind, type RecordedKind } from '@/lib/cash-advances'
 import type { TranslationKey } from '@/lib/translations'
+import { fill } from '@/components/attendance-calendar/fill'
 import CashAdvanceDialog from './CashAdvanceDialog'
 import type { AdvanceEntry, HeldFor } from './types'
 
@@ -113,19 +114,26 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
     const forName = (part: { forTask: AdvanceEntry['forTask']; forClient: AdvanceEntry['forClient'] }) =>
         part.forTask ? <Link href={`/dashboard/tasks/${encodeURIComponent(part.forTask.id)}`} prefetch={false} className="ui-item-link"><bdi>{part.forTask.title}</bdi></Link>
             : part.forClient ? <bdi>{part.forClient.name}</bdi> : null
-    const forPart = (e: AdvanceEntry) => forName(e) && <span>{t('advances_for_name').split('{name}').map((bit, i) => <span key={i}>{i > 0 && forName(e)}{bit}</span>)}</span>
+    // Not said where it's the entry's own task: a cost on the gate paid from the gate's money (§7.9).
+    const forPart = (e: AdvanceEntry) => forName(e) && !(e.forTask && e.task && e.forTask.id === e.task.id)
+        && <span>{fill(t('advances_for_name'), { name: forName(e) })}</span>
     const forIcon = (e: AdvanceEntry) => e.forClient ? HandshakeIcon : ClipboardTextIcon
-    const what = (e: AdvanceEntry) => (
-        <>
-            <ItemTitle
-                title={kindOf(e)}
-                detail={onTask(e) ?? forPart(e) ?? (e.note ? <bdi>{e.note}</bdi> : undefined)}
-                detailIcon={onTask(e) ? ClipboardTextIcon : forPart(e) ? forIcon(e) : e.note ? NotePencilIcon : undefined}
-            />
-            {(onTask(e) || forPart(e)) && e.note && <div className="ui-item-detail"><Icon icon={NotePencilIcon} size={16} /><bdi>{e.note}</bdi></div>}
-            {e.photoUrl && <FileChip name={t('advances_photo')} href={e.photoUrl} />}
-        </>
-    )
+    // Its lines under what it is: its task, what it was for, its note, each with its icon.
+    const lines = (e: AdvanceEntry) => [
+        ...(onTask(e) ? [{ icon: ClipboardTextIcon, text: onTask(e) }] : []),
+        ...(forPart(e) ? [{ icon: forIcon(e), text: forPart(e) }] : []),
+        ...(e.note ? [{ icon: NotePencilIcon, text: <bdi>{e.note}</bdi> }] : []),
+    ]
+    const what = (e: AdvanceEntry) => {
+        const [first, ...more] = lines(e)
+        return (
+            <>
+                <ItemTitle title={kindOf(e)} detail={first?.text} detailIcon={first?.icon} />
+                {more.map((line, i) => <div key={i} className="ui-item-detail"><Icon icon={line.icon} size={16} />{line.text}</div>)}
+                {e.photoUrl && <FileChip name={t('advances_photo')} href={e.photoUrl} />}
+            </>
+        )
+    }
     const by = (e: AdvanceEntry) => e.recordedByName ? <bdi>{e.recordedByName}</bdi> : t('unknown_user')
     const confirmButton = (e: AdvanceEntry) => mine && awaitingOf(e) && (
         <Button size="sm" icon={CheckCircleIcon} onClick={() => setConfirming(e)}>{t('advances_confirm_receipt')}</Button>

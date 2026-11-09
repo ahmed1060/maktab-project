@@ -39,6 +39,14 @@ const AT_WORK = ["ACTIVE", "OFFLINE"] as const
 
 type Db = Prisma.TransactionClient | typeof prisma
 
+/** What a cost takes from one part of its author's advance (§7.9): its task's money, its client's, or the running balance. */
+export type SpentPart = AdvanceFor & { amount: number }
+
+/** What a cost took from its author's advance, all parts together: its From advance. */
+export function spentTotal(parts: readonly SpentPart[]): number {
+    return cents(parts.reduce((sum, p) => sum + p.amount, 0))
+}
+
 /** The Cash advances tab's filters (§7.5, §7.8). */
 export type CashAdvanceFilters = {
     /** A Super Admin's chosen company: they pick one first. */
@@ -113,6 +121,27 @@ async function heldFor(db: Db, companyId: string, userId: string) {
             key: { taskId: p.forTaskId, clientId: p.forClientId },
         }))
         .sort((a, b) => Number(!!a.forClient) - Number(!!b.forClient) || (a.forTask?.title ?? a.forClient?.name ?? "").localeCompare(b.forTask?.title ?? b.forClient?.name ?? ""))
+}
+
+/**
+ * What each cost took from each part of its author's advance (§7.9), as its
+ * Spent entries say, to put back as it's removed. Whatever of what it took
+ * its entries don't name a part for is the running balance's: a cost from
+ * before 7f took it from there.
+ */
+async function takenBy(db: Db, costs: readonly { id: string; part: number }[]): Promise<Map<string, SpentPart[]>> {
+    const sums = await db.cashAdvanceEntry.groupBy({
+        by: ["costId", "forTaskId", "forClientId"],
+        where: { kind: "SPENT", costId: { in: costs.map(c => c.id) } },
+        _sum: { amount: true },
+    })
+    return new Map(costs.map(c => {
+        const parts: SpentPart[] = sums
+            .filter(s => s.costId === c.id && Number(s._sum.amount ?? 0) < 0 && (s.forTaskId || s.forClientId))
+            .map(s => ({ taskId: s.forTaskId, clientId: s.forClientId, amount: cents(-Number(s._sum.amount ?? 0)) }))
+        const rest = cents(c.part - parts.reduce((sum, p) => sum + p.amount, 0))
+        return [c.id, rest > 0 ? [...parts, { taskId: null, clientId: null, amount: rest }] : parts]
+    }))
 }
 
 /**
@@ -363,55 +392,87 @@ export class CashAdvanceService {
      * Pays costs being added from their author's advance first (§7.2): each
      * the part the balance covers, in the order they're added, never more
      * than the cost. Only where the company uses cash advances, and only a
-     * company person's: a Super Admin holds none. Each cost's part, which
-     * spent() then records once the costs are there. Holds the company and
-     * the person's advance, as recording an entry does.
+     * company person's: a Super Admin holds none. What each cost takes from
+     * each part, which spent() then records once the costs are there. Holds
+     * the company and the person's advance, as recording an entry does.
      *
-     * The running balance only: what's for a task or a client isn't spent
-     * here (§7.9).
+     * The money for the cost's task goes first, then for its task's client,
+     * then the running balance (§7.9): the narrowest first. Money for any
+     * other task or client isn't touched.
      */
-    static async spendFor(tx: Prisma.TransactionClient, author: { id: string; role?: string | null }, companyId: string | null, amounts: readonly number[]): Promise<number[]> {
-        const none = amounts.map(() => 0)
+    static async spendFor(
+        tx: Prisma.TransactionClient,
+        author: { id: string; role?: string | null },
+        companyId: string | null,
+        amounts: readonly number[],
+        on: { taskId: string; clientId: string | null },
+    ): Promise<SpentPart[][]> {
+        const none = amounts.map((): SpentPart[] => [])
         if (!companyId || author.role === "SUPER_ADMIN") return none
         await tx.$queryRaw`SELECT id FROM "Company" WHERE id = ${companyId} FOR KEY SHARE`
         const company = await tx.company.findUnique({ where: { id: companyId }, select: { cashAdvancesAllowed: true, cashAdvancesOn: true } })
         if (!cashAdvancesInUse(company)) return none
         await CashAdvanceService.lockPerson(tx, author.id)
-        let balance = await partOf(tx, companyId, author.id, { taskId: null, clientId: null })
+        const order: AdvanceFor[] = [
+            { taskId: on.taskId, clientId: null },
+            ...(on.clientId ? [{ taskId: null, clientId: on.clientId }] : []),
+            { taskId: null, clientId: null },
+        ]
+        const left: number[] = []
+        for (const part of order) left.push(Math.max(0, await partOf(tx, companyId, author.id, part)))
         return amounts.map(amount => {
-            const part = cents(Math.min(balance, amount))
-            balance = cents(balance - part)
-            return part
+            let due = cents(amount)
+            const taken: SpentPart[] = []
+            order.forEach((part, i) => {
+                const take = cents(Math.min(left[i], due))
+                if (take <= 0) return
+                left[i] = cents(left[i] - take)
+                due = cents(due - take)
+                taken.push({ ...part, amount: take })
+            })
+            return taken
         })
     }
 
     /**
      * Spent entries for costs paid from an advance (§7.4): taken off as they
-     * were added (way -1), or put back as they're removed (way 1), each on
-     * its cost and task. One put back is put back whether or not the company
-     * still uses cash advances: the money is the person's again.
+     * were added (way -1), one for each part a cost took from (§7.9), or put
+     * back as they're removed (way 1), each on the part its cost took it
+     * from, as the cost's own entries say. What a cost from before 7f took
+     * named no part: it goes back on the running balance, where it came
+     * from. One put back is put back whether or not the company still uses
+     * cash advances: the money is the person's again.
      */
-    static async spent(tx: Prisma.TransactionClient, companyId: string, taskId: string, costs: readonly { id: string; authorId: string | null; part: number }[], way: -1 | 1, by: { id: string; name?: string | null }) {
-        let parts = costs.filter((c): c is { id: string; authorId: string; part: number } => !!c.authorId && c.part > 0)
-        if (!parts.length) return
+    static async spent(
+        tx: Prisma.TransactionClient,
+        companyId: string,
+        taskId: string,
+        costs: readonly { id: string; authorId: string | null; part: number; parts?: readonly SpentPart[] }[],
+        way: -1 | 1,
+        by: { id: string; name?: string | null },
+    ) {
+        let paid = costs.filter((c): c is { id: string; authorId: string; part: number; parts?: readonly SpentPart[] } => !!c.authorId && c.part > 0)
+        if (!paid.length) return
         let gone: string[] = []
+        let taken = new Map<string, SpentPart[]>(paid.map(c => [c.id, [...(c.parts ?? [{ taskId: null, clientId: null, amount: c.part }])]]))
         if (way === 1) {
             // Each person's advance held, in one order, so two removals don't wait on each other.
-            const authors = [...new Set(parts.map(c => c.authorId))].sort()
+            const authors = [...new Set(paid.map(c => c.authorId))].sort()
             for (const authorId of authors) await CashAdvanceService.lockPerson(tx, authorId)
             // Someone deleted for good since has no advance to put it back on:
             // theirs went with them, held at nothing (UserService.delete).
             const here = await tx.user.findMany({ where: { id: { in: authors } }, select: { id: true, status: true } })
-            parts = parts.filter(c => here.some(u => u.id === c.authorId))
-            if (!parts.length) return
+            paid = paid.filter(c => here.some(u => u.id === c.authorId))
+            if (!paid.length) return
             gone = here.filter(u => u.status === GONE).map(u => u.id)
+            taken = await takenBy(tx, paid)
         }
         const date = new Date(`${await todayIn(companyId, tx)}T00:00:00Z`)
         await tx.cashAdvanceEntry.createMany({
-            data: parts.map(c => ({
-                companyId, userId: c.authorId, kind: "SPENT" as const, amount: cents(way * c.part), date,
-                costId: c.id, taskId, recordedById: by.id, recordedByName: by.name ?? null,
-            })),
+            data: paid.flatMap(c => (taken.get(c.id) ?? []).map(p => ({
+                companyId, userId: c.authorId, kind: "SPENT" as const, amount: cents(way * p.amount), date,
+                costId: c.id, taskId, forTaskId: p.taskId, forClientId: p.clientId, recordedById: by.id, recordedByName: by.name ?? null,
+            }))),
         })
         // Someone whose contract has ended holds nothing: what's put back on
         // theirs becomes a debt at once, as at their leaving (§7.3), where the

@@ -151,7 +151,7 @@ async function form(fields: object = {}) {
     const { default: TaskSubmissionForm } = await import("@/components/TaskSubmissionForm")
     return renderToStaticMarkup(h(TaskSubmissionForm, {
         pendingFiles: [], onAddFiles: () => {}, onRemoveFile: () => {}, uploading: false,
-        costName: { text: "", entryId: null }, setCostName: () => {}, companyId: "c1", cost: "", setCost: () => {}, onAddCost: () => {},
+        costName: { text: "", entryId: null }, setCostName: () => {}, companyId: "c1", taskId: "k1", clientId: null, cost: "", setCost: () => {}, onAddCost: () => {},
         costReceipt: null, onCostReceipt: () => {}, onClearCostReceipt: () => {}, costEntries: [], onRemoveCostEntry: () => {},
         note: "", setNote: () => {}, capturingLocation: false, locationStatus: "", onCaptureLocation: () => {},
         onSaveDraft: () => {}, onSubmitRequest: () => {}, loadingType: null, locked: false,

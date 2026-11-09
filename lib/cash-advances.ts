@@ -30,6 +30,28 @@ export function forOf(input: { forTaskId?: unknown; forClientId?: unknown }): Ad
     return { taskId, clientId }
 }
 
+/** What a person holds for one task or one client (§7.9), as their advance's page reads it. */
+export type HeldPart = { forTask: { id: string; title: string } | null; forClient: { id: string; name: string } | null; amount: number }
+
+/** One part of an advance a cost here is paid from, in the order it pays (§7.9). */
+export type PaysFrom = { kind: "task"; amount: number } | { kind: "client"; name: string; amount: number } | { kind: "running"; amount: number }
+
+/**
+ * What pays a cost added on a task, as Add cost says it (§7.9): what's held
+ * for the task, then for its client, then the running balance, each that
+ * holds anything. Money for any other task or client never does.
+ */
+export function paysFirst(held: readonly HeldPart[], running: number, on: { taskId: string; clientId: string | null }): PaysFrom[] {
+    const task = held.find(h => h.forTask?.id === on.taskId)
+    const client = on.clientId ? held.find(h => h.forClient?.id === on.clientId) : undefined
+    const parts: PaysFrom[] = [
+        { kind: "task", amount: task?.amount ?? 0 },
+        { kind: "client", name: client?.forClient?.name ?? "", amount: client?.amount ?? 0 },
+        { kind: "running", amount: running },
+    ]
+    return parts.filter(p => p.amount > 0)
+}
+
 /** The most one entry moves, as for a service fee (§7.8). */
 export const CASH_ADVANCE_MAX = 1_000_000
 
