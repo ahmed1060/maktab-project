@@ -58,6 +58,17 @@ describe("the switches are saved", () => {
     it("tells a company's settings whether it's off for every company", () => {
         expect(read("app/api/company-settings/route.ts")).toContain("shown.confirmHighRiskForAll = (await SystemSettingsService.get()).confirmHighRisk")
     })
+
+    // The Super Admin's Company settings load the company from /api/companies,
+    // not /api/company-settings: without both, a company's switch read On
+    // whatever it was, and was offered where it's off for every company
+    // (Codex on PR 240).
+    it("sends the Super Admin's Company settings the company's switch and the system's", () => {
+        const route = read("app/api/companies/route.ts")
+        const one = route.slice(route.indexOf("if (id) {"), route.indexOf("const { page, limit }"))
+        expect(one).toMatch(/select: \{[^}]*\bconfirmHighRisk: true/)
+        expect(one).toContain("confirmHighRiskForAll: (await SystemSettingsService.get()).confirmHighRisk,")
+    })
 })
 
 describe("the switch on the page", () => {

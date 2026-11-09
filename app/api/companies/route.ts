@@ -18,7 +18,7 @@ export const GET = withStandardHandler(async (req, session) => {
         const company = await prisma.company.findUnique({
             where: { id },
             select: {
-                id: true, name: true, isBanned: true, autoVerifyLocation: true, cashAdvancesAllowed: true, cashAdvancesOn: true, costNamesFromListOnly: true,
+                id: true, name: true, isBanned: true, autoVerifyLocation: true, cashAdvancesAllowed: true, cashAdvancesOn: true, costNamesFromListOnly: true, confirmHighRisk: true,
                 moduleLabels: true, moduleIcons: true, logoUrl: true, brandColour: true,
                 payrollDay: true, payslipsVisible: true, timezone: true, debtRecoveryPercent: true,
                 adminSettingsEnabled: true, adminSettingsTabs: true,
@@ -28,12 +28,14 @@ export const GET = withStandardHandler(async (req, session) => {
         })
         if (!company) return ApiResponse.notFound("Company not found")
         // What the Branding tab's "Use the default" goes back to (UI_PLAN.md §4.6),
-        // what's held, which keeps cash advances on (CLIENTS_PLAN.md §7.6), and
+        // what's held, which keeps cash advances on (CLIENTS_PLAN.md §7.6),
         // whether cost names can be kept to the saved list, and how many it
-        // holds (§6.9), as company-settings' General tab has them.
+        // holds (§6.9), and whether the high-risk confirmation is on for every
+        // company (ROLES_PLAN.md §6.15), as company-settings' General tab has them.
         return ApiResponse.success({
             ...company,
             defaultBrandColour: (await SystemSettingsService.get()).brandColour,
+            confirmHighRiskForAll: (await SystemSettingsService.get()).confirmHighRisk,
             cashAdvancesHeld: await CashAdvanceService.heldIn(company.id),
             costNamesOffered: hasModule(resolveBundles(company.package), "COSTS"),
             costNamesSaved: await prisma.listEntry.count({ where: { companyId: company.id, kind: "COST_NAME", archivedAt: null } }),
