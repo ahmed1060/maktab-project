@@ -602,7 +602,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      task or client moving to the running balance (§7.9, 7g), merged in
      #239 on 2026-11-09; then a switch to turn off the high-risk
      confirmation, for every company or for one (`ROLES_PLAN.md` §6.15),
-     in #240;
+     merged in #240 on 2026-11-09; then what's held for a task following
+     it when it's transferred (`CLIENTS_PLAN.md` §7.9, 7h), in #241;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
