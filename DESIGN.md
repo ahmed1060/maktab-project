@@ -533,6 +533,14 @@ These are built once, in the building-blocks PR, and every page uses them
 - **Busy and disabled states** follow the existing rules from the buttons
   work (global CSS, and a confirmation showing its work under way, §5.5,
   Dialog).
+- **A button that can't be used here,** for a reason the person can't
+  change from this page, such as a company's high-risk switch while the
+  Super Admin has it off for every company, stays where it would be,
+  greyed, with why in a note beside it. It's `aria-disabled`, not
+  `disabled`, so the keyboard still reaches it and a screen reader hears
+  the note as its reason; clicking it does nothing, asking nothing and
+  sending nothing. The server refuses the same change, so the page is
+  never the only thing standing in its way.
 
 ### 5.3 Fields and the filter bar
 
@@ -2080,3 +2088,7 @@ changed:
 - **2026-11-09:** Transfer task says what happens to cash advance money
   held for the task (§5.5, Dialog), for the people picked, and who takes
   what someone left off holds is picked there (`CLIENTS_PLAN.md` §7.9, 7h).
+- **2026-11-09:** A button that can't be used here stays in place, greyed
+  and `aria-disabled`, with why in a note beside it (§5.2), as a company's
+  high-risk switch is while the Super Admin has it off for every company
+  (`ROLES_PLAN.md` §6.15).
