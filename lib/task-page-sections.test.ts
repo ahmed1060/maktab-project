@@ -217,6 +217,9 @@ describe("a cost's name where the company keeps them to its saved list (CLIENTS_
         expect(src).toContain("if (checking) return")
         expect(src).toContain("aria-busy={checking || undefined}")
         expect(src).not.toContain("busy={checking}")
+        // Saved or handed in while a name is being checked, the cost wasn't in it, or was cleared with what was (Codex on PR 238).
+        expect(src).toContain("onClick={onSubmitRequest} disabled={uploading || checking}")
+        expect(src).toContain("onClick={onSaveDraft} disabled={uploading || locked || checking}")
         // The amount and Add stay level with the name, an error under it or not (found in the browser).
         expect(readFileSync("components/ui/ui.css", "utf8")).toMatch(/\.ui-cost-entry \{[^}]*align-items: flex-start;/)
     })

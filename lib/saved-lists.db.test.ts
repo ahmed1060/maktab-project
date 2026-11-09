@@ -333,6 +333,16 @@ describe.skipIf(!ADMIN_URL)("saved lists, in Postgres", () => {
                 await Tasks.submit(taskId, "e1", employee, { isDraft: true, costs: [{ amount: 7, description: "TRAIN", nameEntryId: train }, { amount: 6, description: "  train " }] } as any)
                 const rows = (await db.query(`SELECT description, "nameEntryId" FROM "TaskCost" WHERE "taskId" = $1 AND amount IN (6, 7) ORDER BY amount DESC`, [taskId])).rows
                 expect(rows).toEqual([{ description: "TRAIN", nameEntryId: train }, { description: "TRAIN", nameEntryId: train }])
+                // A saved name keeps the spaces inside it: typed as it is, it's that name; typed with one, it isn't (Codex on PR 238).
+                await db.query(`INSERT INTO "ListEntry"(id, "companyId", kind, name, "updatedAt") VALUES ('double-space', 'c1', 'COST_NAME', 'Taxi  home', now())`)
+                try {
+                    await Tasks.submit(taskId, "e1", employee, { isDraft: true, costs: [{ amount: 8, description: " taxi  HOME" }] } as any)
+                    expect((await db.query(`SELECT description, "nameEntryId" FROM "TaskCost" WHERE "taskId" = $1 AND amount = 8`, [taskId])).rows).toEqual([{ description: "Taxi  home", nameEntryId: "double-space" }])
+                    await refused([{ amount: 5, description: "Taxi home" }])
+                } finally {
+                    await db.query(`DELETE FROM "TaskCost" WHERE "nameEntryId" = 'double-space'`)
+                    await db.query(`DELETE FROM "ListEntry" WHERE id = 'double-space'`)
+                }
                 // Archived, a name isn't on the list to type.
                 await Lists.setArchived(admin, { id: train, archived: true })
                 await refused([{ amount: 4, description: "train" }])

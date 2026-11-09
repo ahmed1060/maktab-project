@@ -187,11 +187,13 @@ export default function TaskSubmissionForm({
                     </div>
                 </div>
 
+                {/* While a cost's name is checked, nothing is saved or handed in:
+                    it would go without that cost (Codex on PR 238). */}
                 <div className="ui-form-actions">
-                    <Button variant="primary" icon={PaperPlaneTiltIcon} onClick={onSubmitRequest} disabled={uploading} busy={loadingType === 'SUBMIT'}>
+                    <Button variant="primary" icon={PaperPlaneTiltIcon} onClick={onSubmitRequest} disabled={uploading || checking} busy={loadingType === 'SUBMIT'}>
                         {loadingType === 'SUBMIT' ? t('submitting') : t('submit_task_button')}
                     </Button>
-                    <Button onClick={onSaveDraft} disabled={uploading || locked} busy={loadingType === 'DRAFT'}>
+                    <Button onClick={onSaveDraft} disabled={uploading || locked || checking} busy={loadingType === 'DRAFT'}>
                         {loadingType === 'DRAFT' ? t('saving') : t('save_draft_button')}
                     </Button>
                 </div>

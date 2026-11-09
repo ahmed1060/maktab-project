@@ -53,7 +53,7 @@ describe("a filter by a saved name (§5.9)", () => {
 })
 
 describe("a cost's name where the company keeps them to its saved list (CLIENTS_PLAN.md §6.9; DESIGN.md §5.3)", () => {
-    const LIST = [{ id: "n-train", name: "TRAIN" }, { id: "n-fare", name: "Train fare" }, { id: "n-taxi", name: "Taxi" }]
+    const LIST = [{ id: "n-train", name: "TRAIN" }, { id: "n-fare", name: "Train fare" }, { id: "n-taxi", name: "Taxi" }, { id: "n-home", name: "Taxi  home" }]
     // As /api/lists suggests: the names containing what's typed, capitals aside.
     const suggest = async (typed: string) => LIST.filter(n => n.name.toLowerCase().includes(typed.toLowerCase()))
 
@@ -61,9 +61,11 @@ describe("a cost's name where the company keeps them to its saved list (CLIENTS_
         expect(await nameOnList({ text: "Taxi", entryId: "n-taxi" }, suggest)).toEqual({ name: { text: "Taxi", entryId: "n-taxi" } })
     })
 
-    it("takes a name typed in full as the list has it, capitals and spaces aside, as if picked", async () => {
+    it("takes a name typed in full as the list has it, capitals and the spaces around it aside, as if picked", async () => {
         expect(await nameOnList({ text: "train", entryId: null }, suggest)).toEqual({ name: { text: "TRAIN", entryId: "n-train" } })
-        expect(await nameOnList({ text: "  train   FARE ", entryId: null }, suggest)).toEqual({ name: { text: "Train fare", entryId: "n-fare" } })
+        expect(await nameOnList({ text: "  train FARE ", entryId: null }, suggest)).toEqual({ name: { text: "Train fare", entryId: "n-fare" } })
+        // A saved name keeps the spaces inside it, so typed as it is, it's that name (Codex on PR 238).
+        expect(await nameOnList({ text: "taxi  HOME", entryId: null }, suggest)).toEqual({ name: { text: "Taxi  home", entryId: "n-home" } })
     })
 
     it("says a name is needed when none is typed", async () => {
@@ -72,7 +74,7 @@ describe("a cost's name where the company keeps them to its saved list (CLIENTS_
 
     it("says a name isn't on the list, as typed, when it's only part of one, or not there", async () => {
         expect(await nameOnList({ text: "Tra", entryId: null }, suggest)).toEqual({ problem: "not_listed", typed: "Tra" })
-        expect(await nameOnList({ text: "Taxi  home", entryId: null }, suggest)).toEqual({ problem: "not_listed", typed: "Taxi home" })
+        expect(await nameOnList({ text: "Taxi home  ", entryId: null }, suggest)).toEqual({ problem: "not_listed", typed: "Taxi home" })
         // A pattern is text, as the server matches it.
         expect(await nameOnList({ text: "%", entryId: null }, async () => LIST)).toEqual({ problem: "not_listed", typed: "%" })
     })
