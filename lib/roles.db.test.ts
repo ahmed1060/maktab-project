@@ -61,6 +61,8 @@ const PUSH_CLAIM = "20261024000000_push_claim"
 const APP_ATTEST = "20261025000000_app_attest"
 const FACE = "20261026000000_face_switches"
 const FACE_REVIEWS = "20261027000000_face_reviews"
+// Company.brandColour and SystemSettings.brandColour (UI_PLAN.md §4.6).
+const BRAND_COLOUR = "20261103000000_brand_colour"
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 // clients.* became records.* (CLIENTS_PLAN.md §0.2): the built-in roles'
 // grants went through it.
@@ -77,6 +79,9 @@ const LOCATIONS_GRANTED = "20261110000000_locations_granted"
 const LISTS_GRANTED = "20261116000000_lists_granted"
 // The built-in Admin and Team Leader roles' charges.* (CLIENTS_PLAN.md §6.6, §6.8).
 const CHARGES_GRANTED = "20261119000000_charges_granted"
+// Company.cashAdvancesAllowed and cashAdvancesOn, the cash advance switches
+// (CLIENTS_PLAN.md §7.6).
+const CASH_ADVANCES = "20261120000000_cash_advances"
 // The built-in Admin and Team Leader roles' cash_advances.* (CLIENTS_PLAN.md §7.7, §7.8).
 const CASH_ADVANCES_GRANTED = "20261122000000_cash_advances_granted"
 // The built-in Employee and Team Leader roles' dayoff.request (UI_PLAN.md §2.3, part 2b).
@@ -87,6 +92,11 @@ const USERNAME_CODES = "20261129000000_company_username_code"
 // User.keptSession, which every read of a person's whole row now carries
 // (lib/session-kept.ts, PR 228).
 const KEPT_SESSION = "20261203000000_kept_session"
+// Company.costNamesFromListOnly (CLIENTS_PLAN.md §6.9), and the high-risk
+// switches, Company.confirmHighRisk and SystemSettings.confirmHighRisk
+// (ROLES_PLAN.md §6.15).
+const COST_NAMES_FROM_LIST = "20261205000000_cost_names_from_list"
+const CONFIRM_HIGH_RISK = "20261206000000_confirm_high_risk"
 
 const BEFORE_ROLES = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now());
@@ -138,6 +148,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(APP_ATTEST))
         await db.query(sql(FACE))
         await db.query(sql(FACE_REVIEWS))
+        await db.query(sql(BRAND_COLOUR))
         await db.query(sql(RECORDS))
         await db.query(sql(RECORDS_KEPT))
         await db.query(sql(RECORDS_COMPAT_DROPPED))
@@ -145,10 +156,13 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(LOCATIONS_GRANTED))
         await db.query(sql(LISTS_GRANTED))
         await db.query(sql(CHARGES_GRANTED))
+        await db.query(sql(CASH_ADVANCES))
         await db.query(sql(CASH_ADVANCES_GRANTED))
         await db.query(sql(DAYOFF_REQUEST_GRANTED))
         await db.query(sql(USERNAME_CODES))
         await db.query(sql(KEPT_SESSION))
+        await db.query(sql(COST_NAMES_FROM_LIST))
+        await db.query(sql(CONFIRM_HIGH_RISK))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
@@ -170,6 +184,24 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
     }
     const roleOf = (company: string, builtIn: string) =>
         `(SELECT id FROM "Role" WHERE "companyId" = '${company}' AND "builtIn" = '${builtIn}')`
+
+    // The services read and write a company, a person and the system's
+    // settings whole, so a column the schema has and this database lacks
+    // fails every test that touches one, with a message about the column, not
+    // the test. Three did, from Company.brandColour on.
+    it("builds a company, a person and the system's settings with every column the schema has", async () => {
+        const { Prisma } = await import("@prisma/client")
+        const missing: Record<string, string[]> = {}
+        for (const table of ["Company", "User", "SystemSettings"]) {
+            const model = Prisma.dmmf.datamodel.models.find(m => m.name === table)!
+            const wanted = model.fields.filter(f => f.kind === "scalar" || f.kind === "enum").map(f => f.dbName ?? f.name)
+            const { rows } = await db.query(`SELECT column_name FROM information_schema.columns WHERE table_name = $1`, [table])
+            const has = new Set(rows.map(r => r.column_name))
+            const lacking = wanted.filter(column => !has.has(column))
+            if (lacking.length) missing[table] = lacking
+        }
+        expect(missing).toEqual({})
+    })
 
     describe("the migration", () => {
         it("gives every company its three built-in roles, with the built-in grants", async () => {
