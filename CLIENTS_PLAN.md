@@ -1206,20 +1206,27 @@ each question.
     everyone holds for it to their running balance, each as a pair of
     Moved entries, recorded by whoever approved it, on that day where the
     company is. Rejected, it keeps its money, as it can be handed in again;
-    reopened after it's approved, the money stays where it went.
+    paid then, it's approved or completed, and its money moves as at an
+    approval. Reopened after it's approved, the money stays where it went.
   - **A task deleted:** once its costs have put back what they took, what's
     still held for it moves the same way, before it's gone. Its entries
     then lose the task, as before; a Moved entry taken from a part that's
     gone says it was a task or client since deleted.
   - **A client archived,** or deleted, moves what's held for it the same
-    way. Restored, nothing comes back.
+    way. Restored, nothing comes back. A cost removed after its client is
+    archived puts back what it took from the client's money, and that
+    moves on to the running balance too: nothing could spend it there.
   - **By hand:** on a person's cash advance, under Held for, each task and
     client has Move to running balance, for whoever may give and settle
     their advances, with two-factor sign-in. It moves all of it, after a
     confirmation saying how much and what it was for.
   - **Each person's advance is held** while it moves, in the order of their
     ids, so no cost spends it meanwhile and two moves can't wait on each
-    other.
+    other. Whatever writes an entry for a task or a client holds that task,
+    then that client, before anyone's advance, as approving, deleting and
+    archiving do: one waits for the other instead of each for the other,
+    and an advance given for a task or a client meanwhile waits, then
+    finds it done with and is refused.
 
 ---
 

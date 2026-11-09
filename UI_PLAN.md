@@ -5594,3 +5594,23 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     other row's button, and the audit line saying by hand; and the
     employee's own My cash advance with no Move button. Nothing scrolls
     sideways.
+  - **Codex's review, fixed:**
+    - moving by hand while the same client was archived could leave each
+      waiting on the other: the archive held the client and wanted the
+      person's advance, and the move the other way round. Whatever writes
+      an entry for a task or a client now holds that task, then that
+      client, before anyone's advance, as approving, deleting and
+      archiving do: giving, returning, correcting, moving by hand,
+      spending, putting back and leaving the company
+      (`holdParts()` in `lib/services/cash-advance.service.ts`);
+    - a rejected task paid is approved or completed without a review, so
+      its money stayed held for it. Paying it, one share or Mark all as
+      paid, moves it now, the audit saying the task was paid
+      (`TASK_PAID`);
+    - an advance given for a task while its approval was being saved, or
+      for a client while it was being archived, could be saved after the
+      move and stay held for it. It waits for the task or client now, and
+      then finds it decided or archived and is refused.
+  - **Found while fixing them:** a cost removed after its client was
+    archived put its money back on that client's, where nothing could
+    spend it. It goes on to the running balance.
