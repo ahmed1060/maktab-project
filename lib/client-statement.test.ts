@@ -260,7 +260,8 @@ const NAMED = [
     { ...charge({ id: "n6", day: "2026-10-28", description: "TRANSPORT", task: K.lights, paid: 200, fee: 0, total: 200 }), entryName: null, receiptUrl: `${RECEIPTS}/t2.jpg` },
 ]
 const SAVED = ["Spare parts", "Materials", "Petrol"]
-const NAMED_CHARGES = numberReceipts(NAMED.map(({ entryName: _, ...c }) => c))
+// The charges as the statement has them: without the saved list's name, which only groups them.
+const NAMED_CHARGES = numberReceipts(NAMED.map(c => { const { entryName, ...charge } = c; void entryName; return charge }))
 const BY_NAME: Partial<Statement> = {
     charges: NAMED_CHARGES,
     names: byCostName(NAMED, SAVED),
