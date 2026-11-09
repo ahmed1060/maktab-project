@@ -870,6 +870,21 @@ These are built once, in the building-blocks PR, and every page uses them
     them, with no one among the choices. Answered, it stays open until the
     change is sent, as a confirmation does, and why the one picked can't
     take them is said under the choice.
+  - Transfer task, where anyone on the task holds cash advance money for
+    it, says what happens to it for the people picked, under a heading of
+    its own, below them: a line for each person holding any, naming them,
+    then that they keep it, now for the task's copy; that it passes to
+    whoever takes it, who confirms receiving it; or that it joins their
+    running balance. The amount is in the line only for whoever may see
+    that person's cash advance, or it's their own.
+    - Where it passes on and the copy has more than one person, who takes
+      it is picked from them, below the lines, and the main button waits
+      for the pick.
+    - Where no one's added, no copy is made, and a line says what's held
+      stays with the task.
+    - It's worked out again as people are picked, as a statement is
+      (above): the last lines stay until the next are in, the main button
+      waits for its own, and one that didn't load says so, with Try again.
 - **Toast:** a few words on what an action did, such as "Saved", or why it
   couldn't be done, at the top of the screen on its end side, over every
   dialog. It's a level-2 panel (§4.3) on `--panel-raised`, with 8px
@@ -2062,3 +2077,6 @@ changed:
 - **2026-11-09:** A name typed in full as its list has it (§5.3) is that
   name with the spaces around it aside, the spaces inside it kept, as the
   list keeps them (Codex on #238).
+- **2026-11-09:** Transfer task says what happens to cash advance money
+  held for the task (§5.5, Dialog), for the people picked, and who takes
+  what someone left off holds is picked there (`CLIENTS_PLAN.md` §7.9, 7h).

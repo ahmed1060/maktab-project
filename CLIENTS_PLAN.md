@@ -1134,6 +1134,12 @@ each question.
       two-factor sign-in. Anyone else who takes someone off a task can
       still save it: the money then joins that person's running balance,
       as Moved, and the edit says so.
+    - **It's Transfer task that takes someone off** (decided 2026-11-09,
+      once the build found Edit task doesn't change who's on a task):
+      the original goes for review and a copy is made for the new people,
+      so the money follows the work to the copy. Whoever's still on the
+      copy keeps theirs, now for the copy; whoever's left off passes theirs
+      to someone on the copy, as above.
 - **Who gives it:** whoever may give and settle cash advances (§7.7), with
   two-factor sign-in, as any advance. Seeing it is See cash advances, and
   one's own on My cash advance, as today. There's no new permission.
@@ -1153,6 +1159,31 @@ each question.
     or a client;
   - 7h: someone taken off a task passes what they hold for it to someone
     else on it, who confirms they received it.
+- **Proposed, as 7h builds it:**
+  - **Only a transfer that makes a copy moves anything.** One that adds no
+    one makes none, and the original keeps its people and their money,
+    which moves on as 7g has it.
+  - **Whoever's still on the copy** keeps what they held for the original,
+    now for the copy: a pair of entries, Moved with the transfer, taken
+    from the one and added to the other. It's their own money, so it needs
+    no rights and no confirming.
+  - **Whoever's left off** passes what they hold to one person on the copy:
+    whoever transfers it picks who, where the copy has more than one; with
+    one, it's theirs. It's a pair too, from the one to the other, each
+    saying who the other was, and the one who takes it confirms they
+    received it, as an advance given; it's theirs to spend meanwhile.
+    Several left off all pass to the one picked.
+  - **Passing it needs** whoever may give and settle both people's advances,
+    with two-factor sign-in, as it's money changing hands, and the one
+    taking it at work, in the task's company, as an advance given needs
+    (Codex on #241). Without that, what they held joins their own running
+    balance, Moved, and Transfer task said so before it was sent.
+  - **Transfer task says what happens** to what's held for the task, by
+    whom, before it's sent: who keeps theirs, whose passes to whom, and
+    whose joins their running balance. The amounts are shown only to
+    whoever sees cash advances.
+  - **The audit log** has a line for each: `TRANSFER_CASH_ADVANCE`, saying
+    how much, from which task to which, and from whom to whom.
 - **Proposed, as 7e builds it:**
   - **Each entry is for one task, one client, or neither,** the running
     balance. What's held for each is the sum of its entries, never below
@@ -1324,8 +1355,8 @@ each question.
        2026-11-09, adds four PRs to step 7, 7e to 7h. 7e, the ledger
        holding money for a task or a client, merged in #235 on
        2026-11-09, and 7f, costs spending it first, in #236, and 7g, what's
-       left moving to the running balance, built in #239. 7h, money
-       passing to someone else on a task, was added on 2026-11-09.
+       left moving to the running balance, in #239. 7h, money following a
+       task's transfer, was added on 2026-11-09, to be built in #241.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -2606,3 +2637,17 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   and by hand, Move to running balance on a person's cash advance. A
   rejected task keeps its money. The history says a Moved entry came from
   a task or client since deleted, and the audit log says why each moved.
+- **2026-11-09:** 7h (§7.9), decided with the product owner once the build
+  found Edit task doesn't change who's on a task: it's Transfer task that
+  takes someone off, so the money follows the work to the copy. Whoever's
+  still on it keeps theirs, now for the copy; whoever's left off passes
+  theirs to someone on the copy, picked by whoever transfers it, who
+  confirms receiving it. Proposed, as 7h builds it, in #241.
+- **2026-11-09:** 7h built in #241 (`UI_PLAN.md`), as proposed: a new
+  kind of entry, Moved with the task's transfer, in pairs, each saying who
+  the other was where it passed between two people. Transfer task says
+  what happens before it's sent, for the people picked, and asks who takes
+  it where the copy has more than one; the one who takes it confirms
+  receiving it on My cash advance, and can spend it meanwhile. Where
+  whoever transfers it may not give the receiver an advance either, it
+  joins the left-off person's running balance, as for one they may not.

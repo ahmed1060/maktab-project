@@ -32,6 +32,8 @@ export type AdvanceEntry = {
     forClient: { id: string; name: string } | null
     /** Taken from a task or a client since deleted: a Moved one (§7.9). */
     partGone: boolean
+    /** Passed on with a transfer: who it went to, or came from (§7.9, 7h). */
+    counterpartName: string | null
 }
 
 /** What a person holds for one task or one client (§7.9). */

@@ -55,6 +55,9 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     CASH_ADVANCE_NOTHING_HELD: { status: 409, message: "They hold nothing for that any more. Refresh the page to see it as it is now." },
     CASH_ADVANCE_ALREADY_CONFIRMED: { status: 409, message: "You've already confirmed receiving this advance." },
     CASH_ADVANCE_CHANGED: { status: 409, message: "Their cash advance changed while the settlement was worked out. Look at the settlement again, then end the contract." },
+    // Transfer task, where someone left off holds money for the task (CLIENTS_PLAN.md §7.9, 7h).
+    TRANSFER_HELD_RECEIVER_REQUIRED: { status: 400, message: "Someone taken off this task holds cash advance money for it. Pick who on the task takes it." },
+    TRANSFER_HELD_RECEIVER_INVALID: { status: 400, message: "Whoever takes the money held for this task has to be someone it's transferred to." },
     CASH_ADVANCE_STILL_HELD: { status: 409, message: "This person still holds cash advance money. Record its return before deleting them for good." },
     COST_NAMES_NONE_SAVED: { status: 409, message: "Cost names can only be kept to the saved list once it has one. Add cost names on the Saved lists page first." },
     COST_NAME_NOT_ON_LIST: { status: 400, message: "This company names costs from its saved list only. Pick a name from it." },
