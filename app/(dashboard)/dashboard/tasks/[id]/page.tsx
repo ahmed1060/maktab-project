@@ -36,6 +36,10 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
             place: { select: { name: true, latitude: true, longitude: true, client: { select: { name: true } } } },
             // Its costs, each with its description (CLIENTS_PLAN.md §4.4, §4.5).
             costs: { select: { id: true, amount: true, description: true, authorId: true, authorName: true, receiptUrl: true, fromAdvance: true, createdAt: true } },
+            // Whether its company names costs from the saved list only
+            // (CLIENTS_PLAN.md §6.9), for Add cost, with the task: asked
+            // after the page came, a cost added first wasn't checked.
+            company: { select: { costNamesFromListOnly: true } },
         }
     })
 
@@ -108,5 +112,6 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
         creatorName={creatorName}
         currentUserName={(session?.user as any)?.name}
         isRestricted={isRestricted}
+        costNamesFromList={!!task.company?.costNamesFromListOnly}
     />
 }

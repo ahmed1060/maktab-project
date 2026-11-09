@@ -301,31 +301,22 @@ describe("the menu entry", () => {
 
     it("is offered by the same rule, asked afresh", async () => {
         as("admin")
-        expect((await visible()).data).toEqual({ visible: true, cashAdvances: false, costNamesFromList: false })
+        expect((await visible()).data).toEqual({ visible: true, cashAdvances: false })
         company.adminSettingsEnabled = false
-        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false, costNamesFromList: false })
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false })
         company.adminSettingsEnabled = true
         as("employee")
-        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false, costNamesFromList: false })
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false })
         as("superAdmin")
-        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false, costNamesFromList: false })
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false })
     })
 
     it("says, with it, whether the company uses cash advances, for My cash advance (CLIENTS_PLAN.md §7.5)", async () => {
         as("employee")
         company.cashAdvancesAllowed = true
-        expect((await visible()).data).toEqual({ visible: false, cashAdvances: true, costNamesFromList: false })
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: true })
         company.cashAdvancesOn = false
-        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false, costNamesFromList: false })
-    })
-
-    it("says whether the company names costs from its saved list only, for Add cost (CLIENTS_PLAN.md §6.9)", async () => {
-        as("employee")
-        company.costNamesFromListOnly = true
-        expect((await visible()).data).toMatchObject({ costNamesFromList: true })
-        // A Super Admin has no company of their own: the server still holds it.
-        as("superAdmin")
-        expect((await visible()).data).toMatchObject({ costNamesFromList: false })
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false })
     })
 
     it("is asked again as the person moves around, since the layout does not re-render", () => {

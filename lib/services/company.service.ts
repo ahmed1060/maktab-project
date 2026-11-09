@@ -430,9 +430,6 @@ export class CompanyService {
                 // Whether it uses cash advances, for My cash advance in the
                 // side bar (CLIENTS_PLAN.md §7.5), read with it.
                 cashAdvancesAllowed: true, cashAdvancesOn: true,
-                // Whether its costs are named from the saved list only, for
-                // Add cost on a task's page (CLIENTS_PLAN.md §6.9).
-                costNamesFromListOnly: true,
                 // A tab tied to a module exists only for a company holding it.
                 package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } },
             },

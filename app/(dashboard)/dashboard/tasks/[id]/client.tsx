@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import useSWR from 'swr'
 import { ArrowCounterClockwiseIcon, CheckIcon, CheckSquareIcon, CurrencyCircleDollarIcon, PencilSimpleIcon, TrashIcon, UserSwitchIcon, XIcon } from '@phosphor-icons/react/ssr'
 // Its dates once the browser has the page: drawn on the server, they came out in its time zone.
 import SafeDate from '@/components/SafeDate'
@@ -23,7 +22,7 @@ import { useCan } from '@/lib/useCan'
 import { useModules } from '@/lib/useModules'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { useDeadlineClock } from '@/lib/useDeadlineClock'
-import { fetcher, fetchRetrying } from '@/lib/swr-fetcher'
+import { fetchRetrying } from '@/lib/swr-fetcher'
 import { decidedByName } from '@/lib/decided-by'
 import { countOf } from '@/lib/plural'
 import { locationLabel } from '@/lib/locations'
@@ -54,7 +53,7 @@ export function TaskNotFound() {
  * decision; what needs saying about it; its details, notes and files; then
  * its costs, location history and what its assignee hands in.
  */
-export default function TaskDetailClient({ task: initialTask, now, userRole, userId, creatorName, isRestricted }: {
+export default function TaskDetailClient({ task: initialTask, now, userRole, userId, creatorName, isRestricted, costNamesFromList = false }: {
     task: any
     /** When the server drew it, so its deadline reads the same on the server and here. */
     now: number
@@ -63,13 +62,11 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
     creatorName: string | null
     currentUserName: string
     isRestricted: boolean
+    /** Its company names costs from the saved list only (CLIENTS_PLAN.md §6.9). */
+    costNamesFromList?: boolean
 }) {
     const { t, locale } = useLanguage()
     const modules = useModules()
-    // Whether the company keeps cost names to its saved list (CLIENTS_PLAN.md
-    // §6.9), as the side bar's settings say. A Super Admin's are checked when
-    // the task is handed in.
-    const { data: shell } = useSWR<{ data: { costNamesFromList?: boolean } }>(userRole !== 'SUPER_ADMIN' ? '/api/company-settings/visible' : null, fetcher)
 
     // Parse member costs and payment status
     const getMemberCosts = (taskObj: any) => {
@@ -1011,7 +1008,7 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
                             cost={cost}
                             setCost={setCost}
                             onAddCost={handleAddCost}
-                            listOnly={!!shell?.data?.costNamesFromList}
+                            listOnly={costNamesFromList}
                             costReceipt={costReceipt}
                             onCostReceipt={handleCostReceipt}
                             onClearCostReceipt={() => setCostReceipt(null)}

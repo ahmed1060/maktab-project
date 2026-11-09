@@ -9,9 +9,7 @@ import { cashAdvancesInUse } from "@/lib/cash-advances"
  * same question the dashboard layout answers on the first paint, asked again
  * as they move around, so the Super Admin's switch reaches an open dashboard
  * (ATTENDANCE_PLAN.md §5.2). And, read with it, whether the company uses cash
- * advances, for My cash advance in the side bar (CLIENTS_PLAN.md §7.5); and
- * whether it names costs from its saved list only, for Add cost on a task's
- * page (CLIENTS_PLAN.md §6.9).
+ * advances, for My cash advance in the side bar (CLIENTS_PLAN.md §7.5).
  */
 export const GET = withStandardHandler(async (_req, session) => {
     const companyId = session.user.role === "SUPER_ADMIN" ? null : session.user.companyId
@@ -19,6 +17,5 @@ export const GET = withStandardHandler(async (_req, session) => {
     return ApiResponse.success({
         visible: !!exposure && visibleSettingsTabs(session.user, exposure).length > 0,
         cashAdvances: cashAdvancesInUse(exposure),
-        costNamesFromList: !!exposure?.costNamesFromListOnly,
     })
 })

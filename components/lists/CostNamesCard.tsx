@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useSWRConfig } from 'swr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { Button, Card, Row, StatusBadge } from '@/components/ui'
@@ -25,7 +24,6 @@ export default function CostNamesCard({ companyId, on, saved, superAdmin, readOn
 }) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
-    const { mutate } = useSWRConfig()
     const [saving, setSaving] = useState(false)
     const none = saved === 0
 
@@ -44,8 +42,6 @@ export default function CostNamesCard({ companyId, on, saved, superAdmin, readOn
             }
             onSaved({ costNamesFromListOnly: next })
             showToast(t('settings_saved_success'), 'success')
-            // A task's Add cost, at once.
-            void mutate('/api/company-settings/visible')
         } catch {
             showToast(t('error_generic'), 'error')
         } finally {

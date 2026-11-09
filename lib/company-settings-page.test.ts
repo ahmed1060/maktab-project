@@ -191,8 +191,8 @@ describe("the Cost names card (CLIENTS_PLAN.md §6.9)", () => {
         expect(await own({ swr: { "/api/company-settings": notOffered } })).not.toContain(en.cost_names_settings_title)
     })
 
-    it("lets the task page know at once, as the side bar's settings are asked again", () => {
-        expect(readFileSync("components/lists/CostNamesCard.tsx", "utf8")).toContain("void mutate('/api/company-settings/visible')")
+    it("asks nothing else again: a task's Add cost has the setting with the task", () => {
+        expect(readFileSync("components/lists/CostNamesCard.tsx", "utf8")).not.toContain("mutate(")
     })
 })
 

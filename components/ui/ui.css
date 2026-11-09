@@ -3500,11 +3500,12 @@ a.ui-row:focus-visible {
   font-weight: 500;
 }
 /* A cost's name, its amount and Add on a line, the name taking what's
-   left; on a phone the name takes the line, its suggestions needing it. */
+   left; on a phone the name takes the line, its suggestions needing it.
+   Level at their tops: an error under the name pushed the others down. */
 .ui-cost-entry {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: var(--space-2);
 }
 .ui-cost-entry > :first-child {

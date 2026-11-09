@@ -210,13 +210,25 @@ describe("a cost's name where the company keeps them to its saved list (CLIENTS_
         expect(src).toContain("costNames.onAdd ? 'cost_name_not_listed_add' : 'cost_name_not_listed_ask'")
         // Typing again clears it.
         expect(src).toContain("onChange={v => { setNameProblem(null); setCostName(v) }}")
-        // The focus goes to the field, which reads its error and offers the list's names (web interface audit).
-        expect(src).toContain("entry.current?.querySelector<HTMLInputElement>('[role=combobox]')?.focus()")
+        // Said as it comes, the focus left on Add: on the field, its suggestions would cover the error (found in the browser).
+        expect(src).toContain("const problem = nameProblem && <span role=\"alert\">{t(nameProblem.key).replace('{name}', nameProblem.typed)}</span>")
+        expect(src).not.toContain(".focus()")
+        // Busy, a button is disabled, which drops the focus: Add says it's busy and takes no second press instead (found in the browser).
+        expect(src).toContain("if (checking) return")
+        expect(src).toContain("aria-busy={checking || undefined}")
+        expect(src).not.toContain("busy={checking}")
+        // The amount and Add stay level with the name, an error under it or not (found in the browser).
+        expect(readFileSync("components/ui/ui.css", "utf8")).toMatch(/\.ui-cost-entry \{[^}]*align-items: flex-start;/)
     })
 
-    it("is asked of the side bar's settings, and the page adds what Add was given", () => {
+    it("comes with the task, its company's, so Add knows at once, and the page adds what Add was given", () => {
+        // Asked of the side bar's settings after the page came, a cost added first wasn't checked (found in the browser).
+        const server = readFileSync("app/(dashboard)/dashboard/tasks/[id]/page.tsx", "utf8")
+        expect(server).toContain("company: { select: { costNamesFromListOnly: true } },")
+        expect(server).toContain("costNamesFromList={!!task.company?.costNamesFromListOnly}")
         const src = readFileSync("app/(dashboard)/dashboard/tasks/[id]/client.tsx", "utf8")
-        expect(src).toContain("listOnly={!!shell?.data?.costNamesFromList}")
+        expect(src).toContain("listOnly={costNamesFromList}")
+        expect(src).not.toContain("/api/company-settings/visible")
         expect(src).toContain("const handleAddCost = (name: PickedName = costName) => {")
         expect(src).toContain("description: name.text, nameEntryId: name.entryId")
     })

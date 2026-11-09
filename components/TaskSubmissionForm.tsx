@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { MapPinIcon, PaperPlaneTiltIcon, PlusIcon, XIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { COST_DESCRIPTION_MAX, RECEIPT_ACCEPT } from '@/lib/task-costs'
@@ -69,8 +69,9 @@ export default function TaskSubmissionForm({
     // What's wrong with the name, said under the field until it's typed again.
     const [nameProblem, setNameProblem] = useState<{ key: 'cost_name_needed' | 'cost_name_not_listed_add' | 'cost_name_not_listed_ask'; typed: string } | null>(null)
     const [checking, setChecking] = useState(false)
-    const entry = useRef<HTMLDivElement>(null)
-    const problem = nameProblem && t(nameProblem.key).replace('{name}', nameProblem.typed)
+    // Said as it comes, with the focus left on Add: on the field, its
+    // suggestions would cover it.
+    const problem = nameProblem && <span role="alert">{t(nameProblem.key).replace('{name}', nameProblem.typed)}</span>
     const nameLabel = t(listOnly ? 'cost_name_from_list_placeholder' : 'cost_description_placeholder')
 
     // Where the company keeps cost names to its saved list, Add takes one of
@@ -79,6 +80,7 @@ export default function TaskSubmissionForm({
     // the server checks it when the task is handed in.
     const addCost = async () => {
         if (!listOnly) { onAddCost(); return }
+        if (checking) return
         setChecking(true)
         try {
             const checked = await nameOnList(costName, costNames.suggest)
@@ -88,8 +90,6 @@ export default function TaskSubmissionForm({
                 return
             }
             setNameProblem({ key: checked.problem === 'needed' ? 'cost_name_needed' : costNames.onAdd ? 'cost_name_not_listed_add' : 'cost_name_not_listed_ask', typed: checked.typed })
-            // Back to the field: it reads its error, and offers the list's names.
-            entry.current?.querySelector<HTMLInputElement>('[role=combobox]')?.focus()
         } catch {
             onAddCost()
         } finally {
@@ -122,7 +122,7 @@ export default function TaskSubmissionForm({
                     {/* Their cash advance, which pays the costs they add first (CLIENTS_PLAN.md §7.2). */}
                     <AdvanceBalanceHint on={{ taskId, clientId }} />
                     {/* On a phone the name takes the line, and the amount goes below: its suggestions need the width. */}
-                    <div className="ui-cost-entry" ref={entry}>
+                    <div className="ui-cost-entry">
                         <Field label={nameLabel} hideLabel error={problem}>{p => (
                             <NamePicker
                                 {...p}
@@ -138,7 +138,8 @@ export default function TaskSubmissionForm({
                         <Field label={t('cost_amount_placeholder')} hideLabel>{p => (
                             <TextInput {...p} type="number" inputMode="decimal" name="cost-amount" autoComplete="off" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} disabled={locked} />
                         )}</Field>
-                        <Button icon={PlusIcon} onClick={() => { void addCost() }} busy={checking} disabled={!cost || locked}>{t('add_label')}</Button>
+                        {/* Busy, not disabled: a disabled button drops the focus. */}
+                        <Button icon={PlusIcon} onClick={() => { void addCost() }} aria-busy={checking || undefined} disabled={!cost || locked}>{t('add_label')}</Button>
                     </div>
                     {/* Its receipt, picked before Add, goes with the cost added next; picked again, it's replaced. */}
                     {costReceipt && (
