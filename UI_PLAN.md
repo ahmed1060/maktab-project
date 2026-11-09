@@ -599,7 +599,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      charge (`CLIENTS_PLAN.md` §6.9), merged in #237 on 2026-11-09; then
      cost names only from the saved list, a company setting (§6.9),
      merged in #238 on 2026-11-09; then what's left of an advance for a
-     task or client moving to the running balance (§7.9, 7g), in #239;
+     task or client moving to the running balance (§7.9, 7g), merged in
+     #239 on 2026-11-09; then a switch to turn off the high-risk
+     confirmation, for every company or for one (`ROLES_PLAN.md` §6.15),
+     in #240;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5630,3 +5633,38 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     key only now, which waits for a deletion or an archive but not an
     approval; only an advance given holds it whole, to wait for an
     approval and find the task decided.
+- **2026-11-09:** A switch to turn off the high-risk confirmation (#240;
+  `ROLES_PLAN.md` §6.15), as the product owner decided.
+  - **On System settings,** the Super Admin turns it off or on for every
+    company. **On Company settings' General tab,** where it's on for all,
+    a company's Admin turns it off or on for their company, and the
+    Super Admin can for any company. Where it's off for all, the
+    company's card says so and offers nothing to turn.
+  - **Off, nothing extra is asked:** paying, approving payroll, giving
+    advances, ending contracts, deleting and the other high-risk actions
+    go through with no code, and need no two-factor sign-in.
+  - **Turning either one off or on asks for a code once,** and the audit
+    log says who did it, from what to what.
+  - **What it doesn't change:** a Super Admin follows the system's switch
+    only. Their own actions that aren't permissions, such as deleting a
+    company, still ask for a code, and so does turning a switch.
+  - **Browser flows** against the scratch database, in English on a
+    computer and in Arabic on a phone (15 checks each), put back after
+    each run: the Super Admin's card On with Turn off; turning it off
+    asked first, its button not red, then a code, then Off with Turn on,
+    and the audit line theirs; Hana's Company settings saying it's off
+    for every company, with nothing to turn; on again; Hana turning her
+    company's off the same way, the toast, the focus kept on the button,
+    now Turn on, and the audit line hers; with it off, an advance given
+    with no two-factor sign-in, and with it on, refused until it's set
+    up. Nothing scrolls sideways.
+  - **From the web interface audit:** nothing to change. The buttons are
+    the building blocks', turning off is asked first, the toast says it's
+    saved, and the focus stays on the switch's button as it flips.
+  - **Codex's review, fixed:** the Super Admin's Company settings load the
+    company from `/api/companies`, which sent neither the company's switch
+    nor whether it's on for every company. So a company that had turned it
+    off read On, with only Turn off, and where it was off for every
+    company the switch was still offered. That endpoint sends both now,
+    and the browser flows open the Super Admin's view of the company too
+    (17 checks each).

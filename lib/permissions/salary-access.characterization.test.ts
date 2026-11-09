@@ -31,6 +31,8 @@ vi.mock("@/lib/prisma", () => ({
     prisma: {
         // No settings row: step-up (§6.15) uses its default interval.
         systemSettings: { findUnique: async () => null },
+        // The company's high-risk confirmation, on as it starts.
+        company: { findUnique: async () => ({ confirmHighRisk: true }) },
         rateLimit: { findUnique: async () => null, upsert: async () => ({ count: 1 }) },
         user: { findUnique: async ({ where }: any) => USERS[where.id] ?? null },
     },

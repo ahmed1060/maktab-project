@@ -125,6 +125,8 @@ export const updateCompanySchema = z.object({
     cashAdvancesAllowed: z.boolean().optional(),
     cashAdvancesOn: z.boolean().optional(),
     costNamesFromListOnly: z.boolean().optional(),
+    // The high-risk confirmation for this company's people (ROLES_PLAN.md §6.15).
+    confirmHighRisk: z.boolean().optional(),
 
     // Trial extension, in days, added on top of whichever preset was chosen.
     // A delta rather than a new total: "give them another week" is how the

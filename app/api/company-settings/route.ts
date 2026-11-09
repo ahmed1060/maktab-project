@@ -32,7 +32,7 @@ export const GET = withStandardHandler(async (req, session) => {
         select: {
             id: true, name: true, adminSettingsEnabled: true, adminSettingsTabs: true,
             package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } },
-            autoVerifyLocation: true, cashAdvancesAllowed: true, cashAdvancesOn: true, costNamesFromListOnly: true, logoUrl: true, brandColour: true,
+            autoVerifyLocation: true, cashAdvancesAllowed: true, cashAdvancesOn: true, costNamesFromListOnly: true, confirmHighRisk: true, logoUrl: true, brandColour: true,
             payrollDay: true, payslipsVisible: true, timezone: true, debtRecoveryPercent: true,
         },
     })
@@ -52,6 +52,9 @@ export const GET = withStandardHandler(async (req, session) => {
         // as it's switched on only once it has one.
         shown.costNamesOffered = hasModule(resolveBundles(company.package), "COSTS")
         shown.costNamesSaved = await prisma.listEntry.count({ where: { companyId: company.id, kind: "COST_NAME", archivedAt: null } })
+        // The high-risk confirmation (ROLES_PLAN.md §6.15): off for every
+        // company, its own switch has nothing to turn.
+        shown.confirmHighRiskForAll = (await SystemSettingsService.get()).confirmHighRisk
     }
     if (tabs.includes("branding")) {
         shown.logoUrl = company.logoUrl

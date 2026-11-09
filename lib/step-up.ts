@@ -18,6 +18,12 @@ import { PERMISSIONS, type Permission } from "@/lib/permissions/catalogue"
  * Somebody without two-factor authentication is not locked out of anything
  * else; a high-risk action tells them to set it up first (the owner's
  * decision, rather than forcing enrolment at sign-in).
+ *
+ * It can be turned off (§6.15, decided on 2026-11-09): for every company on
+ * System settings, and for one company on Company settings. Off, a high-risk
+ * action asks for nothing, not even two-factor authentication. The actions
+ * assertRecentStepUp guards, the Super Admin's own and turning a switch
+ * itself, ask whatever the switches say.
  */
 
 export const DEFAULT_STEP_UP_MINUTES = 60
@@ -26,7 +32,16 @@ export function isHighRisk(permission: Permission): boolean {
     return !!(PERMISSIONS[permission] as { highRisk?: string }).highRisk
 }
 
-type Viewer = { mfaEnabled?: boolean | null; stepUpAt?: number | null; preview?: unknown }
+type Viewer = { mfaEnabled?: boolean | null; stepUpAt?: number | null; preview?: unknown; role?: string | null; companyId?: string | null }
+
+/**
+ * Whether a high-risk action asks for a code: where the system's switch and
+ * the person's company's are both on. A Super Admin follows the system's
+ * only: a company's switch is about its own people.
+ */
+export function asksForCode({ system, company, superAdmin }: { system: boolean; company: boolean; superAdmin: boolean }): boolean {
+    return system && (superAdmin || company)
+}
 
 /** Why a high-risk action cannot go ahead yet, or null if it can. */
 export function stepUpRefusal(user: Viewer, permission: Permission, minutes: number, now: number = Date.now()): "MFA_ENROL_REQUIRED" | "STEP_UP_REQUIRED" | null {
@@ -51,9 +66,20 @@ export class StepUpError extends Error {
 export async function assertStepUp(session: { user: Viewer }, permission: Permission): Promise<void> {
     if (!isHighRisk(permission)) return
     const { SystemSettingsService } = await import("@/lib/services/system-settings.service")
-    const minutes = (await SystemSettingsService.get()).stepUpMinutes ?? DEFAULT_STEP_UP_MINUTES
+    const settings = await SystemSettingsService.get()
+    if (!(await confirmsHighRisk(session.user, settings.confirmHighRisk ?? true))) return
+    const minutes = settings.stepUpMinutes ?? DEFAULT_STEP_UP_MINUTES
     const refusal = stepUpRefusal(session.user, permission, minutes)
     if (refusal) throw new StepUpError(refusal, minutes)
+}
+
+/** The switches, as they are for this person: their company's read only where the system's is on. */
+async function confirmsHighRisk(user: Viewer, system: boolean): Promise<boolean> {
+    const superAdmin = user.role === "SUPER_ADMIN"
+    if (!system || superAdmin || !user.companyId) return asksForCode({ system, company: true, superAdmin })
+    const { prisma } = await import("@/lib/prisma")
+    const company = await prisma.company.findUnique({ where: { id: user.companyId }, select: { confirmHighRisk: true } })
+    return asksForCode({ system, company: company?.confirmHighRisk ?? true, superAdmin })
 }
 
 /**

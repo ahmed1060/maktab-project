@@ -26,6 +26,8 @@ export const updateSystemSettingsSchema = z.object({
     // How long a step-up MFA confirmation lasts (ROLES_PLAN.md §6.15). The
     // database holds the same bounds.
     stepUpMinutes: z.number().int().min(5).max(480).optional(),
+    // The high-risk confirmation for every company (ROLES_PLAN.md §6.15).
+    confirmHighRisk: z.boolean().optional(),
     // The default brand colour (UI_PLAN.md §4.6). Never empty: the default
     // is always a colour, so the sign-in page always has one.
     brandColour: brandColourSchema.optional(),

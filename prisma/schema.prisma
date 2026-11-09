@@ -258,6 +258,11 @@ model Company {
   /// client statement by cost name adds it up under the same name. Off until
   /// its Admin switches it on, which needs a name on the list.
   costNamesFromListOnly Boolean                  @default(false)
+  /// The high-risk confirmation for this company's people (ROLES_PLAN.md
+  /// §6.15): on, a high-risk action asks for an authenticator code, as long
+  /// as the system's switch is on too. Its Admin, or the Super Admin, turns
+  /// it off, which asks for a code once.
+  confirmHighRisk      Boolean                   @default(true)
   /// The letters before the number in a username Nizmo makes up for this
   /// company's people (ds0, ds1…), in lower case; no other company has them
   /// (lib/username.ts). Null for a company added before codes whose people's
@@ -392,6 +397,10 @@ model SystemSettings {
   /// or less, counted from when it was entered. A setting, so it can be
   /// tuned without a release.
   stepUpMinutes              Int      @default(60)
+  /// The high-risk confirmation for every company (ROLES_PLAN.md §6.15).
+  /// Off, no high-risk action asks for a code, whatever a company's own
+  /// switch says. A Super Admin's follow this one only.
+  confirmHighRisk            Boolean  @default(true)
   /// Face verification for the whole system (ATTENDANCE_PLAN.md §9.5, §10.4).
   /// Only the protected Super Admin changes it. OFF until they decide; PAUSED
   /// stops it everywhere and keeps enrolments.
