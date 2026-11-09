@@ -2024,12 +2024,14 @@ a.ui-file-open:focus-visible,
   gap: var(--space-2);
   margin-top: var(--space-4);
 }
+/* Under Receipts, so no larger than it on screen; on paper, where Receipts
+   is as large as the sheet's company, a size up. */
 .ui-doc-receipt-group-title {
   margin: 0;
   padding-bottom: var(--space-1);
   border-bottom: 1px solid var(--rule);
-  font-size: var(--text-md);
-  line-height: var(--leading-md);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
   font-weight: 600;
 }
 .ui-doc-receipt-missing {
@@ -2117,6 +2119,8 @@ a.ui-file-open:focus-visible,
   }
   /* A name's heading stays with its first receipts. */
   .ui-doc-receipt-group-title {
+    font-size: var(--text-md);
+    line-height: var(--leading-md);
     break-after: avoid;
   }
   .ui-doc-receipt-photo,

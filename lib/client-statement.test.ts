@@ -470,6 +470,10 @@ describe("the page and the button", () => {
         // The receipts' page is headed as the sheet is, the line under it smaller.
         expect(print).toMatch(/\.ui-doc-receipts > \.ui-doc-group-title \{\s*font-size: var\(--text-xl\);\s*line-height: var\(--leading-xl\);/)
         expect(css).toMatch(/\.ui-doc-receipts-for \{\s*font-size: var\(--text-sm\);\s*line-height: var\(--leading-sm\);/)
+        // By cost name, each name's heading is under Receipts, never larger
+        // than it, and printed it stays with its first receipts.
+        expect(css).toMatch(/\.ui-doc-receipt-group-title \{[^}]*font-size: var\(--text-sm\);[^}]*font-weight: 600;/)
+        expect(print).toMatch(/\.ui-doc-receipt-group-title \{\s*font-size: var\(--text-md\);\s*line-height: var\(--leading-md\);\s*break-after: avoid;/)
         const globals = read("app/globals.css")
         expect(globals).toMatch(/--rule-on-paper: #[0-9a-f]{6};/)
         expect(globals.slice(globals.indexOf(".print-document {"))).toContain("--rule: var(--rule-on-paper);")

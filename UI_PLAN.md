@@ -5480,3 +5480,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     way (`receiptsByName()`), with each one's day and task, and the name's
     charges with no receipt said under them.
   - "Receipts" is a count word, in both languages.
+  - **Found in the browser and fixed:** on screen, each name's heading over
+    its receipts was larger and bolder than Receipts above it. It's the
+    small size now, bold, and a size up on paper, where Receipts is as
+    large as the sheet's company.
