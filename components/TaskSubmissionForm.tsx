@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { MapPinIcon, PaperPlaneTiltIcon, PlusIcon, XIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { COST_DESCRIPTION_MAX, RECEIPT_ACCEPT } from '@/lib/task-costs'
@@ -69,6 +69,7 @@ export default function TaskSubmissionForm({
     // What's wrong with the name, said under the field until it's typed again.
     const [nameProblem, setNameProblem] = useState<{ key: 'cost_name_needed' | 'cost_name_not_listed_add' | 'cost_name_not_listed_ask'; typed: string } | null>(null)
     const [checking, setChecking] = useState(false)
+    const entry = useRef<HTMLDivElement>(null)
     const problem = nameProblem && t(nameProblem.key).replace('{name}', nameProblem.typed)
     const nameLabel = t(listOnly ? 'cost_name_from_list_placeholder' : 'cost_description_placeholder')
 
@@ -87,6 +88,8 @@ export default function TaskSubmissionForm({
                 return
             }
             setNameProblem({ key: checked.problem === 'needed' ? 'cost_name_needed' : costNames.onAdd ? 'cost_name_not_listed_add' : 'cost_name_not_listed_ask', typed: checked.typed })
+            // Back to the field: it reads its error, and offers the list's names.
+            entry.current?.querySelector<HTMLInputElement>('[role=combobox]')?.focus()
         } catch {
             onAddCost()
         } finally {
@@ -119,7 +122,7 @@ export default function TaskSubmissionForm({
                     {/* Their cash advance, which pays the costs they add first (CLIENTS_PLAN.md §7.2). */}
                     <AdvanceBalanceHint on={{ taskId, clientId }} />
                     {/* On a phone the name takes the line, and the amount goes below: its suggestions need the width. */}
-                    <div className="ui-cost-entry">
+                    <div className="ui-cost-entry" ref={entry}>
                         <Field label={nameLabel} hideLabel error={problem}>{p => (
                             <NamePicker
                                 {...p}

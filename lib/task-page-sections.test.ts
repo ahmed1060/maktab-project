@@ -210,6 +210,8 @@ describe("a cost's name where the company keeps them to its saved list (CLIENTS_
         expect(src).toContain("costNames.onAdd ? 'cost_name_not_listed_add' : 'cost_name_not_listed_ask'")
         // Typing again clears it.
         expect(src).toContain("onChange={v => { setNameProblem(null); setCostName(v) }}")
+        // The focus goes to the field, which reads its error and offers the list's names (web interface audit).
+        expect(src).toContain("entry.current?.querySelector<HTMLInputElement>('[role=combobox]')?.focus()")
     })
 
     it("is asked of the side bar's settings, and the page adds what Add was given", () => {
