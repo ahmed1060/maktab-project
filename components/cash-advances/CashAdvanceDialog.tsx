@@ -61,7 +61,7 @@ export default function CashAdvanceDialog({ person, kind, today: companyToday, o
     const [forKind, setForKind] = useState<'any' | 'task' | 'client'>('any')
     const [forId, setForId] = useState('')
     const [from, setFrom] = useState('')
-    const { data: about } = useSWR<{ data: { owed: Owed | null; running: number; held: HeldFor[] } }>(person ? `/api/cash-advances/${encodeURIComponent(person.id)}?limit=1` : null, fetcher)
+    const { data: about, mutate: refreshAbout } = useSWR<{ data: { owed: Owed | null; running: number; held: HeldFor[] } }>(person ? `/api/cash-advances/${encodeURIComponent(person.id)}?limit=1` : null, fetcher)
     const owed = kind === 'GIVEN' ? about?.data?.owed ?? null : null
     const held = about?.data?.held ?? []
     const { data: offered } = useSWR<{ data: { tasks: { id: string; title: string }[]; clients: { id: string; name: string }[] } }>(
@@ -127,6 +127,8 @@ export default function CashAdvanceDialog({ person, kind, today: companyToday, o
                 showToast(refusalText(t, answer), 'error')
                 return
             }
+            // What they hold for each part has moved: the next entry opens on it as it is now.
+            void refreshAbout()
             // And what they're owed, exactly as it said, as Mark all as paid pays their costs (§4.1).
             const paying = owed && payOwed === 'yes' ? owed : null
             if (paying) {
@@ -166,7 +168,8 @@ export default function CashAdvanceDialog({ person, kind, today: companyToday, o
                     <Field label={t('advances_from')}>{p => (
                         <Select {...p} name="from" value={from} onChange={e => setFrom(e.target.value)} options={[
                             { value: '', label: `${t('advances_running')}: ${money(about?.data?.running ?? 0)}` },
-                            ...held.map(part => ({ value: partKey(part), label: `${t('advances_for_name').replace('{name}', part.forTask?.title ?? part.forClient?.name ?? '')}: ${money(part.amount)}` })),
+                            // The name isolated, so a name in the other script keeps its place beside the amount.
+                            ...held.map(part => ({ value: partKey(part), label: `\u2068${part.forTask?.title ?? part.forClient?.name ?? ''}\u2069: ${money(part.amount)}` })),
                         ]} />
                     )}</Field>
                 )}

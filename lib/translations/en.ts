@@ -3161,7 +3161,7 @@ export const en = {
         advances_pick_client: "Client",
         advances_choose_task: "Choose a task",
         advances_choose_client: "Choose a client",
-        advances_for_hint: "Costs on it are paid from this money first.",
+        advances_for_hint: "It's kept apart from the running balance, for this alone.",
         advances_no_open_tasks: "Nothing they're on is open.",
         advances_no_clients: "The company has no clients to pick.",
         advances_from: "From",
