@@ -9,8 +9,10 @@ import { withGrants } from "@/lib/permissions/test-actors"
  * client beside the running balance; it's given only for a task the person
  * is on and not yet decided, or a client not archived; a return or a
  * correction says which part it's on, and never takes that part below zero;
- * a cost spends only the running balance until 7f; and leaving the company
- * moves each part to the running balance before it becomes a debt.
+ * a cost spends the money for its task first, then for its task's client,
+ * then the running balance (7f), and goes back on the parts it came from as
+ * it's removed; and leaving the company moves each part to the running
+ * balance before it becomes a debt.
  *
  * Needs a Postgres it may create databases on: set ROLES_TEST_DATABASE_URL to
  * its maintenance database. Skipped without it (CI has no database).
@@ -148,14 +150,68 @@ describe.skipIf(!ADMIN_URL)("an advance for a task or a client, in Postgres", ()
         expect(after.held.map(h => h.amount)).toEqual([350, 60])
     })
 
-    it("spends only the running balance on a cost, until 7f spends the money for a task", async () => {
-        // Ehab holds 200 to spend, and 350 for the gate and 60 for Nile Foods besides.
-        await Tasks.submit("gate", "e1", ehab, { isDraft: true, costs: [{ amount: 300, description: "Hinges" }] })
-        const cost = (await db.query(`SELECT amount::float, "fromAdvance"::float AS advance FROM "TaskCost" WHERE "taskId" = 'gate'`)).rows[0]
-        expect(cost).toEqual({ amount: 300, advance: 200 })
-        const after = await advance("e1")
-        expect(after).toMatchObject({ balance: 410, running: 0 })
-        expect(after.held.map(h => h.amount)).toEqual([350, 60])
+    const parts = async (userId: string) => (await advance(userId)).held.map(h => [h.forTask?.id ?? h.forClient?.id, h.amount])
+
+    it("spends a cost from the money for its task first, then for its client, then the running balance (7f)", async () => {
+        // Ehab holds 350 for the gate, 60 for Nile Foods, the gate's client, and 200 besides.
+        await Tasks.submit("gate", "e1", ehab, { isDraft: true, costs: [{ amount: 300, description: "Hinges" }, { amount: 100, description: "Lock" }] })
+        const costs = (await db.query(`SELECT description, amount::float, "fromAdvance"::float AS advance FROM "TaskCost" WHERE "taskId" = 'gate' ORDER BY amount DESC`)).rows
+        expect(costs).toEqual([{ description: "Hinges", amount: 300, advance: 300 }, { description: "Lock", amount: 100, advance: 100 }])
+        // Each part it took from is an entry of its own, on its cost.
+        const spent = (await db.query(`SELECT c.description, e.amount::float, e."forTaskId", e."forClientId" FROM "CashAdvanceEntry" e JOIN "TaskCost" c ON c.id = e."costId" WHERE e.kind = 'SPENT' AND e."taskId" = 'gate' ORDER BY c.amount DESC, e."forTaskId" NULLS LAST`)).rows
+        expect(spent).toEqual([
+            { description: "Hinges", amount: -300, forTaskId: "gate", forClientId: null },
+            { description: "Lock", amount: -50, forTaskId: "gate", forClientId: null },
+            { description: "Lock", amount: -50, forTaskId: null, forClientId: "nile" },
+        ])
+        // The running balance untouched, while the gate's and Nile Foods' money paid.
+        expect(await advance("e1")).toMatchObject({ balance: 210, running: 200 })
+        expect(await parts("e1")).toEqual([["nile", 10]])
+    })
+
+    it("spends the client's money on any of its tasks, and none held for a task or a client on a cost elsewhere", async () => {
+        await db.query(`INSERT INTO "Task"(id, title, description, status, deadline, "companyId", "clientId", "locationId", "updatedAt") VALUES ('dock', 'Fix the dock', 'd', 'IN_PROGRESS', now() + interval '3 days', 'c1', 'nile', 'port', now());
+            INSERT INTO "_MultipleAssignees"("A", "B") VALUES ('dock', 'e1')`)
+        await give("e1", 40, { forClientId: "nile" })
+        // Another of Nile Foods' tasks: from its money, 50.
+        await Tasks.submit("dock", "e1", ehab, { isDraft: true, costs: [{ amount: 30, description: "Rope" }] })
+        // A task with no client: the running balance only, though 20 is held for Nile Foods.
+        await Tasks.submit("yard", "e1", ehab, { isDraft: true, costs: [{ amount: 50, description: "Bags" }] })
+        expect(await advance("e1")).toMatchObject({ balance: 170, running: 150 })
+        expect(await parts("e1")).toEqual([["nile", 20]])
+    })
+
+    it("puts a cost's money back on the parts it came from as it's removed", async () => {
+        const lock = (await db.query(`SELECT id FROM "TaskCost" WHERE "taskId" = 'gate' AND description = 'Lock'`)).rows[0].id
+        await Tasks.deleteItem("gate", ehab, { type: "COST", itemId: lock })
+        // 50 back for the gate, and 50 for Nile Foods.
+        expect(await parts("e1")).toEqual([["gate", 50], ["nile", 70]])
+        expect(await advance("e1")).toMatchObject({ balance: 270, running: 150 })
+        const back = (await db.query(`SELECT amount::float, "forTaskId", "forClientId" FROM "CashAdvanceEntry" WHERE kind = 'SPENT' AND "costId" IS NULL AND amount > 0 ORDER BY "forTaskId" NULLS LAST`)).rows
+        expect(back).toEqual([{ amount: 50, forTaskId: "gate", forClientId: null }, { amount: 50, forTaskId: null, forClientId: "nile" }])
+    })
+
+    it("puts back what a deleted task's costs took, its own money then the running balance's, until 7g", async () => {
+        await db.query(`INSERT INTO "Task"(id, title, description, status, deadline, "companyId", "clientId", "locationId", "updatedAt") VALUES ('shed', 'Paint the shed', 'd', 'IN_PROGRESS', now() + interval '9 days', 'c1', NULL, 'port', now());
+            INSERT INTO "_MultipleAssignees"("A", "B") VALUES ('shed', 'e1')`)
+        await give("e1", 25, { forTaskId: "shed" })
+        // 25 from the shed's money, 15 from the running balance.
+        await Tasks.submit("shed", "e1", ehab, { isDraft: true, costs: [{ amount: 40, description: "Paint" }] })
+        expect(await advance("e1")).toMatchObject({ balance: 255, running: 135 })
+        await Tasks.delete("shed", admin)
+        // Each back where it came from, and the shed's gone with its task: on the running balance, until 7g.
+        expect(await advance("e1")).toMatchObject({ balance: 295, running: 175 })
+        expect(await parts("e1")).toEqual([["gate", 50], ["nile", 70]])
+    })
+
+    it("puts back what a cost from before 7f took on the running balance, where it was taken from", async () => {
+        // Its Spent entry names no part, as 7b wrote them.
+        await db.query(`INSERT INTO "TaskCost"(id, "taskId", "authorId", "authorName", amount, description, "fromAdvance") VALUES ('old', 'gate', 'e1', 'Ehab One', 20, 'Old', 20);
+            INSERT INTO "CashAdvanceEntry"(id, "companyId", "userId", kind, amount, date, "recordedById", "costId", "taskId") VALUES ('old-spent', 'c1', 'e1', 'SPENT', -20, '2026-10-01', 'e1', 'old', 'gate')`)
+        expect((await advance("e1")).running).toBe(155)
+        await Tasks.deleteItem("gate", ehab, { type: "COST", itemId: "old" })
+        expect((await advance("e1")).running).toBe(175)
+        expect(await parts("e1")).toEqual([["gate", 50], ["nile", 70]])
     })
 
     it("moves each part to the running balance before what's held becomes a debt on leaving", async () => {
@@ -176,7 +232,7 @@ describe.skipIf(!ADMIN_URL)("an advance for a task or a client, in Postgres", ()
     it("offers what it can be for: the open tasks they're on, and the company's clients not archived", async () => {
         const offered = await Advances.purposes(admin.user, "e1")
         // Soonest due first, then by title.
-        expect(offered.tasks).toEqual([{ id: "yard", title: "Clean the yard" }, { id: "gate", title: "Fix the gate" }])
+        expect(offered.tasks).toEqual([{ id: "yard", title: "Clean the yard" }, { id: "gate", title: "Fix the gate" }, { id: "dock", title: "Fix the dock" }])
         expect(offered.clients).toEqual([{ id: "nile", name: "Nile Foods" }])
         // Only for whoever may give them an advance.
         expect(await Advances.purposes(ehab.user, "e2").then(() => "offered", (e: Error) => e.message)).toBe("CASH_ADVANCE_NOT_FOUND")

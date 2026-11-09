@@ -14,7 +14,7 @@ import { SystemSettingsService } from "./system-settings.service"
 import { earliestDeadline } from "@/lib/deadline"
 import { isReviewed } from "@/lib/task-reviewed"
 import { shareOwed, allSharesPaid } from "@/lib/cost-shares"
-import { CashAdvanceService } from "@/lib/services/cash-advance.service"
+import { CashAdvanceService, spentTotal } from "@/lib/services/cash-advance.service"
 import { LocationService } from "./location.service"
 import { ListService } from "./list.service"
 import { snapshotOf } from "./costs-query"
@@ -437,7 +437,9 @@ export class TaskService {
             }
             // Paid from their cash advance first (CLIENTS_PLAN.md §7.2): only
             // the rest is theirs to be paid back, in their share and the total.
-            const fromAdvance = await CashAdvanceService.spendFor(tx, { id: userId, role: session.user.role }, currentTask.companyId, rows.map(r => r.amount))
+            // Its task's money first, then its client's, then the running balance (§7.9).
+            const spentParts = await CashAdvanceService.spendFor(tx, { id: userId, role: session.user.role }, currentTask.companyId, rows.map(r => r.amount), { taskId: id, clientId: currentTask.clientId })
+            const fromAdvance = spentParts.map(spentTotal)
             const owedAdded = cents(totalAdded - fromAdvance.reduce((sum, part) => sum + part, 0))
 
             if (location) {
@@ -493,7 +495,7 @@ export class TaskService {
                 throw e?.code === 'P2002' ? new Error("COST_RECEIPT_INVALID") : e
             })
             if (currentTask.companyId) {
-                await CashAdvanceService.spent(tx, currentTask.companyId, id, rows.map((r, i) => ({ id: r.id, authorId: userId, part: fromAdvance[i] })), -1, { id: userId, name: session.user.name })
+                await CashAdvanceService.spent(tx, currentTask.companyId, id, rows.map((r, i) => ({ id: r.id, authorId: userId, part: fromAdvance[i], parts: spentParts[i] })), -1, { id: userId, name: session.user.name })
             }
 
             if (!isDraft && task.createdBy) {
