@@ -114,8 +114,13 @@ export class ClientService {
                 tx.clientRecord.count({ where: { section: { clientId: id } } }),
                 tx.task.count({ where: { clientId: id } }),
             ])
+            // What anyone holds for it in cash advances joins their running
+            // balance, archived or deleted (CLIENTS_PLAN.md §7.9).
+            const { CashAdvanceService } = await import("./cash-advance.service")
+            const mover = { id: userId, name: session.user.name, role: userRole }
             if (records > 0 || tasks > 0 || options.archive) {
                 const archived = await tx.client.update({ where: { id }, data: { archivedAt: client.archivedAt ?? new Date() } })
+                await CashAdvanceService.movePart(tx, client.companyId, { taskId: null, clientId: id }, "CLIENT_ARCHIVED", mover)
                 await AuditLogService.log('ARCHIVE_VENDOR', 'VENDOR', id, {
                     tx,
                     userId: userRole !== 'SUPER_ADMIN' ? userId : null,
@@ -125,6 +130,7 @@ export class ClientService {
                 return { ...archived, archived: true as const }
             }
 
+            await CashAdvanceService.movePart(tx, client.companyId, { taskId: null, clientId: id }, "CLIENT_DELETED", mover)
             const result = await tx.client.delete({ where: { id } })
 
             await AuditLogService.log('DELETE_VENDOR', 'VENDOR', id, {

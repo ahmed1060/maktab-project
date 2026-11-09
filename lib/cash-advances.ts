@@ -119,6 +119,7 @@ export const REFUSAL_KEYS = {
     CASH_ADVANCE_NOT_ON_TASK: "advances_not_on_task",
     CASH_ADVANCE_TASK_DONE: "advances_task_done",
     CASH_ADVANCE_CLIENT_ARCHIVED: "advances_client_archived",
+    CASH_ADVANCE_NOTHING_HELD: "advances_nothing_held",
 } as const satisfies Record<string, TranslationKey>
 
 /** What to tell the person when the server refuses, in their language where it can be. */

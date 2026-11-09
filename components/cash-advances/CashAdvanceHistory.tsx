@@ -4,7 +4,7 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import {
-    ArrowUDownLeftIcon, CalendarBlankIcon, CheckCircleIcon, ClipboardTextIcon, HandCoinsIcon, HandshakeIcon, HourglassIcon, NotePencilIcon, PaperclipIcon, SlidersHorizontalIcon,
+    ArrowUDownLeftIcon, ArrowsLeftRightIcon, CalendarBlankIcon, CheckCircleIcon, ClipboardTextIcon, HandCoinsIcon, HandshakeIcon, HourglassIcon, NotePencilIcon, PaperclipIcon, SlidersHorizontalIcon,
     UserIcon, WalletIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
@@ -56,6 +56,7 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
     const [page, setPage] = useState(1)
     const [recording, setRecording] = useState<RecordedKind | null>(null)
     const [confirming, setConfirming] = useState<AdvanceEntry | null>(null)
+    const [moving, setMoving] = useState<HeldFor | null>(null)
 
     const url = `/api/cash-advances/${encodeURIComponent(userId)}?page=${page}&limit=${LIMIT}`
     const { data, error, isLoading, isValidating, mutate } = useSWR<{ data: Advance }>(url, fetcher, { keepPreviousData: true })
@@ -82,6 +83,31 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
             showToast(t('error_generic'), 'error')
         } finally {
             setConfirming(null)
+        }
+    }
+
+    /**
+     * Move to running balance (CLIENTS_PLAN.md §7.9): all of what's held for
+     * a task or a client, once it's confirmed. Two-factor sign-in is asked
+     * for on the way, as for any entry that moves money.
+     */
+    const move = async () => {
+        const part = moving
+        if (!part) return
+        try {
+            const res = await fetch(`/api/cash-advances/${encodeURIComponent(userId)}/move`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ forTaskId: part.forTask?.id ?? null, forClientId: part.forClient?.id ?? null }),
+            })
+            const answer = await res.json().catch(() => null)
+            if (!res.ok) showToast(refusalText(t, answer), 'error')
+            else showToast(t('advances_moved_done'), 'success')
+            void mutate()
+        } catch {
+            showToast(t('error_generic'), 'error')
+        } finally {
+            setMoving(null)
         }
     }
 
@@ -115,9 +141,15 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
         part.forTask ? <Link href={`/dashboard/tasks/${encodeURIComponent(part.forTask.id)}`} prefetch={false} className="ui-item-link"><bdi>{part.forTask.title}</bdi></Link>
             : part.forClient ? <bdi>{part.forClient.name}</bdi> : null
     // Not said where it's the entry's own task: a cost on the gate paid from the gate's money (§7.9).
-    const forPart = (e: AdvanceEntry) => forName(e) && !(e.forTask && e.task && e.forTask.id === e.task.id)
-        && <span>{fill(t('advances_for_name'), { name: forName(e) })}</span>
+    // A Moved entry whose task or client has since been deleted says so.
+    const forPart = (e: AdvanceEntry) => e.partGone ? <span>{t('advances_for_gone')}</span>
+        : forName(e) && !(e.forTask && e.task && e.forTask.id === e.task.id)
+            && <span>{fill(t('advances_for_name'), { name: forName(e) })}</span>
     const forIcon = (e: AdvanceEntry) => e.forClient ? HandshakeIcon : ClipboardTextIcon
+    // Whoever gives and settles their advances moves a part to the running balance; not on one's own.
+    const canMove = advance.canGive && !mine
+    const partName = (part: HeldFor) => part.forTask?.title ?? part.forClient?.name ?? ''
+    const moveLabel = (part: HeldFor) => t('advances_move_label').replace('{amount}', money(part.amount)).replace('{name}', partName(part))
     // Its lines under what it is: its task, what it was for, its note, each with its icon.
     const lines = (e: AdvanceEntry) => [
         ...(onTask(e) ? [{ icon: ClipboardTextIcon, text: onTask(e) }] : []),
@@ -170,7 +202,15 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
             ]} />
             {advance.held.length > 0 && (
                 <Card title={t('advances_held_for')}>
-                    <Details items={advance.held.map(part => ({ label: forName(part), value: <span className="ui-num">{money(part.amount)}</span> }))} />
+                    <Details items={advance.held.map(part => ({
+                        label: forName(part),
+                        value: (
+                            <span className="ui-detail-act">
+                                <span className="ui-num">{money(part.amount)}</span>
+                                {canMove && <Button size="sm" icon={ArrowsLeftRightIcon} aria-label={moveLabel(part)} onClick={() => setMoving(part)}>{t('advances_move')}</Button>}
+                            </span>
+                        ),
+                    }))} />
                 </Card>
             )}
             <DataList
@@ -206,6 +246,15 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
                 onSaved={() => { void mutate() }}
             />
             {/* Saying it arrived deletes nothing: the main button, where it was the old window's red. */}
+            {/* Moving keeps every pound theirs: the main button, not red. */}
+            <ConfirmDialog
+                open={!!moving}
+                title={t('advances_move_title')}
+                body={moving ? fill(t('advances_move_body'), { amount: money(moving.amount), name: <bdi>{partName(moving)}</bdi>, person: <bdi>{advance.person.name}</bdi> }) : ''}
+                confirmLabel={fill(t('advances_move_button'), { amount: moving ? money(moving.amount) : '' })}
+                onConfirm={move}
+                onCancel={() => setMoving(null)}
+            />
             <ConfirmDialog
                 open={!!confirming}
                 title={t('advances_confirm_receipt')}

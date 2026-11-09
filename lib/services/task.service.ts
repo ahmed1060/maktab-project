@@ -506,7 +506,7 @@ export class TaskService {
                 throw e?.code === 'P2002' ? new Error("COST_RECEIPT_INVALID") : e
             })
             if (currentTask.companyId) {
-                await CashAdvanceService.spent(tx, currentTask.companyId, id, rows.map((r, i) => ({ id: r.id, authorId: userId, part: fromAdvance[i], parts: spentParts[i] })), -1, { id: userId, name: session.user.name })
+                await CashAdvanceService.spent(tx, currentTask.companyId, id, rows.map((r, i) => ({ id: r.id, authorId: userId, part: fromAdvance[i], parts: spentParts[i] })), -1, { id: userId, name: session.user.name, role: session.user.role })
             }
 
             if (!isDraft && task.createdBy) {
@@ -585,6 +585,13 @@ export class TaskService {
                     where: { id: { in: oldTask.assignees.map(a => a.id) } },
                     data: { totalDifficultyPoints: { increment: pointDelta } }
                 })
+            }
+
+            // Approved, what anyone still holds for it in cash advances joins
+            // their running balance (CLIENTS_PLAN.md §7.9). Rejected, it
+            // stays: the task can be handed in again.
+            if (hasPoints(newStatus) && oldTask.companyId) {
+                await CashAdvanceService.movePart(tx, oldTask.companyId, { taskId: id, clientId: null }, "TASK_APPROVED", { id: userId, name: session.user.name, role: userRole })
             }
 
             // 5. Audit Log (Centralized)
@@ -888,7 +895,13 @@ export class TaskService {
             // removing each would put it back (CLIENTS_PLAN.md §7.4).
             if (task.companyId) {
                 const advanced = await tx.taskCost.findMany({ where: { taskId: id, fromAdvance: { gt: 0 } }, select: { id: true, authorId: true, fromAdvance: true } })
-                await CashAdvanceService.spent(tx, task.companyId, id, advanced.map(c => ({ id: c.id, authorId: c.authorId, part: Number(c.fromAdvance) })), 1, { id: userId, name: session.user.name })
+                const costs = advanced.map(c => ({ id: c.id, authorId: c.authorId, part: Number(c.fromAdvance) }))
+                // Everyone it changes held at once, in one order, before anything moves.
+                await CashAdvanceService.holdForTaskDelete(tx, task.companyId, id, costs)
+                await CashAdvanceService.spent(tx, task.companyId, id, costs, 1, { id: userId, name: session.user.name, role: userRole })
+                // And what's still held for it joins each one's running
+                // balance, while the task is there to say so (CLIENTS_PLAN.md §7.9).
+                await CashAdvanceService.movePart(tx, task.companyId, { taskId: id, clientId: null }, "TASK_DELETED", { id: userId, name: session.user.name, role: userRole })
             }
 
             if (Array.isArray(task.attachments)) {
@@ -1062,6 +1075,12 @@ export class TaskService {
             }
 
             const updatedTaskRecord = await tx.task.update({ where: { id }, data: updateData })
+            // Paid, a rejected task is approved or completed: what anyone
+            // still holds for it in cash advances joins their running
+            // balance, as at its approval (CLIENTS_PLAN.md §7.9).
+            if (task.companyId && (updateData.status === 'APPROVED' || updateData.status === 'COMPLETED') && !['APPROVED', 'COMPLETED'].includes(task.status)) {
+                await CashAdvanceService.movePart(tx, task.companyId, { taskId: id, clientId: null }, "TASK_PAID", { id: userId, name: session.user.name, role: userRole })
+            }
 
             await tx.auditLog.create({
                 data: {
@@ -1175,7 +1194,7 @@ export class TaskService {
                     }
                 }
                 if (linked && advanced > 0 && task.companyId) {
-                    await CashAdvanceService.spent(tx, task.companyId, id, [{ id: linked.id, authorId: linked.authorId, part: advanced }], 1, { id: userId, name: session.user.name })
+                    await CashAdvanceService.spent(tx, task.companyId, id, [{ id: linked.id, authorId: linked.authorId, part: advanced }], 1, { id: userId, name: session.user.name, role: session.user.role })
                 }
                 if (isCost && typeof item.costId === 'string') costRow = item.costId
             } else {
@@ -1409,7 +1428,7 @@ export class TaskService {
 
             const tasks = await tx.task.findMany({
                 where: whereClause,
-                select: { id: true, companyId: true, totalCost: true, memberCosts: true, memberPaymentStatus: true, assignees: { select: { id: true, teamLeaderId: true } } } as any
+                select: { id: true, companyId: true, status: true, totalCost: true, memberCosts: true, memberPaymentStatus: true, assignees: { select: { id: true, teamLeaderId: true } } } as any
             })
 
             if (tasks.length !== taskIds.length && userRole !== 'SUPER_ADMIN') {
@@ -1417,6 +1436,8 @@ export class TaskService {
             }
 
             let count = 0
+            // Completed here, from not decided: their cash advance money moves below.
+            const decided: { companyId: string; part: { taskId: string; clientId: null } }[] = []
             for (const task of tasks as any[]) {
                 const mCosts: Record<string, number> = task.memberCosts || {}
 
@@ -1438,6 +1459,7 @@ export class TaskService {
                             updatedAt: new Date()
                         } as any
                     })
+                    if (allPaid && task.companyId && !['APPROVED', 'COMPLETED'].includes(task.status)) decided.push({ companyId: task.companyId, part: { taskId: task.id, clientId: null } })
                     count++
                     continue
                 }
@@ -1457,8 +1479,14 @@ export class TaskService {
                         updatedAt: new Date() // Force timestamp update for history
                     } as any
                 })
+                if (task.companyId && !['APPROVED', 'COMPLETED'].includes(task.status)) decided.push({ companyId: task.companyId, part: { taskId: task.id, clientId: null } })
                 count++
             }
+            // A rejected task paid is completed: what anyone holds for it in
+            // cash advances joins their running balance, as at an approval
+            // (CLIENTS_PLAN.md §7.9). All the tasks are held above; everyone's
+            // advance is held once, in one order.
+            await CashAdvanceService.moveParts(tx, decided, "TASK_PAID", { id: userId, name: session.user.name, role: userRole })
 
             await tx.auditLog.create({
                 data: {
