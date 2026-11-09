@@ -24,7 +24,7 @@ const LIMIT = 20
 
 const KIND_LABEL: Record<EntryKind, TranslationKey> = {
     GIVEN: 'advances_kind_given', SPENT: 'advances_kind_spent', RETURNED: 'advances_kind_returned', CORRECTION: 'advances_kind_correction',
-    DEBT: 'advances_kind_debt',
+    DEBT: 'advances_kind_debt', MOVED: 'advances_kind_moved',
 }
 
 type Advance = {

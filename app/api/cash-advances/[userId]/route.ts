@@ -24,5 +24,7 @@ export const POST = withStandardHandler(async (_req, session, json, { params }) 
     const body = json ?? {}
     return ApiResponse.success(await CashAdvanceService.record(session, params.userId, {
         kind: body.kind, amount: body.amount, date: body.date, note: body.note, photoUrl: body.photoUrl,
+        // What it's for: a task or a client, or neither (CLIENTS_PLAN.md §7.9).
+        forTaskId: body.forTaskId, forClientId: body.forClientId,
     }))
 }, { permission: "cash_advances.give" })
