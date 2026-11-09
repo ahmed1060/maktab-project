@@ -5648,3 +5648,16 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - **What it doesn't change:** a Super Admin follows the system's switch
     only. Their own actions that aren't permissions, such as deleting a
     company, still ask for a code, and so does turning a switch.
+  - **Browser flows** against the scratch database, in English on a
+    computer and in Arabic on a phone (15 checks each), put back after
+    each run: the Super Admin's card On with Turn off; turning it off
+    asked first, its button not red, then a code, then Off with Turn on,
+    and the audit line theirs; Hana's Company settings saying it's off
+    for every company, with nothing to turn; on again; Hana turning her
+    company's off the same way, the toast, the focus kept on the button,
+    now Turn on, and the audit line hers; with it off, an advance given
+    with no two-factor sign-in, and with it on, refused until it's set
+    up. Nothing scrolls sideways.
+  - **From the web interface audit:** nothing to change. The buttons are
+    the building blocks', turning off is asked first, the toast says it's
+    saved, and the focus stays on the switch's button as it flips.
