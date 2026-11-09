@@ -634,7 +634,8 @@ These are built once, in the building-blocks PR, and every page uses them
     settings' Cost names does for a cost's name, the field asks for one of
     them. Before anything is typed it says so, as "Cost name, from the
     saved list". A name typed and not picked is taken where it's one of the
-    list's, capitals and spaces aside. Otherwise Add leaves the cost unadded
+    list's, capitals and the spaces around it aside, the spaces inside it
+    kept, as the list keeps them. Otherwise Add leaves the cost unadded
     and says under the field, with the error colour, that the name isn't on
     the list: pick one, or add it from the suggestions for whoever may add
     names, or ask whoever keeps the saved lists for anyone else. With no
@@ -2058,3 +2059,6 @@ changed:
   one of the list's where the company keeps its names to the list alone,
   as the product owner asked for cost names, so a client statement by cost
   name adds them up under the same names.
+- **2026-11-09:** A name typed in full as its list has it (§5.3) is that
+  name with the spaces around it aside, the spaces inside it kept, as the
+  list keeps them (Codex on #238).
