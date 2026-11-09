@@ -5614,3 +5614,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - **Found while fixing them:** a cost removed after its client was
     archived put its money back on that client's, where nothing could
     spend it. It goes on to the running balance.
+  - **Codex's second review, fixed:**
+    - deleting a task held the people its costs' money went back to, then
+      those holding money for it, in two steps: two deletions could each
+      hold one and wait for the other. Everyone a deletion changes is held
+      at once, in one order, first (`holdForTaskDelete()`);
+    - a Super Admin removing a cost whose money then moved on from an
+      archived client was logged as a user, which the audit log refused,
+      and the removal with it. Who removed it is carried through, as a
+      Super Admin.
