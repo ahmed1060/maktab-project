@@ -3531,7 +3531,7 @@ export const en = {
         high_risk_company_note: "Paying, approving payroll, giving advances, ending contracts, deleting and the other high-risk actions ask for an authenticator code.",
         high_risk_on: "On",
         high_risk_off: "Off",
-        high_risk_off_for_all: "Off for every company, on System settings.",
+        high_risk_off_for_all: "Turned off by the Super Admin. Only the Super Admin can turn it on again.",
         high_risk_off_title: "Turn off the high-risk confirmation?",
         high_risk_off_body_all: "Paying, approving payroll, giving advances, ending contracts, deleting and the other high-risk actions will go through with no code in every company. It can be turned on again here.",
         high_risk_off_body_company: "This company's payments, payroll approvals, advances, contract endings, deletions and other high-risk actions will go through with no code. It can be turned on again here.",

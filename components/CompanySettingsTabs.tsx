@@ -165,6 +165,7 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
                             on={company.confirmHighRisk ?? true}
                             offForAll={company.confirmHighRiskForAll === false}
                             readOnly={readOnly}
+                            superAdmin={superAdmin}
                             onSaved={onSaved}
                         />
                     </>

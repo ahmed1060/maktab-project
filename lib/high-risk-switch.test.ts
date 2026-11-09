@@ -7,6 +7,8 @@ import { updateCompanySchema } from "./validations/company.schema"
 import { updateSystemSettingsSchema } from "./validations/system-settings.schema"
 import { settingsTab } from "./company-settings-tabs"
 import { maySetField } from "./company-settings-access"
+import { KNOWN_REFUSALS } from "./api-errors"
+import { switchRefusal } from "@/components/HighRiskSwitch"
 
 /**
  * The switch that turns off the high-risk confirmation (ROLES_PLAN.md §6.15,
@@ -102,11 +104,53 @@ describe("the switch on the page", () => {
 
     it("is on Company settings' General tab, and says when it's off for every company", () => {
         const tabs = read("components/CompanySettingsTabs.tsx")
-        expect(tabs).toMatch(/<HighRiskCard\s+companyId=\{companyId\}\s+on=\{company\.confirmHighRisk \?\? true\}\s+offForAll=\{company\.confirmHighRiskForAll === false\}\s+readOnly=\{readOnly\}\s+onSaved=\{onSaved\}/)
+        expect(tabs).toMatch(/<HighRiskCard\s+companyId=\{companyId\}\s+on=\{company\.confirmHighRisk \?\? true\}\s+offForAll=\{company\.confirmHighRiskForAll === false\}\s+readOnly=\{readOnly\}\s+superAdmin=\{superAdmin\}\s+onSaved=\{onSaved\}/)
         expect(sw).toContain("const changeable = !readOnly && !offForAll")
-        expect(sw).toContain("note={offForAll ? t('high_risk_off_for_all') : undefined}")
+        expect(sw).toContain("note={offForAll ? <span id={noteId}>{t('high_risk_off_for_all')}")
         const card = read("components/HighRiskCard.tsx")
         expect(card).toContain("body: JSON.stringify({ companyId, tab: 'general', confirmHighRisk: next })")
+    })
+})
+
+// Decided with the product owner on 2026-11-09 (ROLES_PLAN.md §6.15, PR 242):
+// where the system's is off, a company's switch is greyed, with why beside
+// it, and the server refuses a change to it, for its Admin and the Super
+// Admin alike, before any code is asked.
+describe("a company's switch while the system's is off", () => {
+    const sw = read("components/HighRiskSwitch.tsx")
+
+    it("stays, greyed: Turn on, aria-disabled, heard with the note as its reason, and clicking it does nothing", () => {
+        expect(sw).toContain("const blocked = !readOnly && offForAll")
+        expect(sw).toContain(`{blocked && <Button size="sm" variant="primary" aria-disabled="true" aria-describedby={noteId}>{t('settings_turn_on')}</Button>}`)
+        // Nothing to click: no handler on it.
+        const button = sw.slice(sw.indexOf("{blocked && <Button"), sw.indexOf("</Button>}", sw.indexOf("{blocked && <Button")))
+        expect(button).not.toContain("onClick")
+        expect(sw).toContain("const shownOn = on && !offForAll")
+    })
+
+    it("links the Super Admin to System settings, beside the note", () => {
+        expect(sw).toContain(`{systemSettingsLink && <> <Link href="/dashboard/system-settings" className="ui-text-link">{t('system_settings')}</Link></>}`)
+        expect(read("components/HighRiskCard.tsx")).toContain("systemSettingsLink={superAdmin}")
+    })
+
+    it("is refused by the server before any code is asked, changing nothing", () => {
+        expect(KNOWN_REFUSALS.HIGH_RISK_OFF_FOR_ALL).toMatchObject({ status: 409 })
+        const service = read("lib/services/company.service.ts")
+        const refused = service.indexOf(`throw new Error("HIGH_RISK_OFF_FOR_ALL")`)
+        expect(refused).toBeGreaterThan(0)
+        expect(refused).toBeLessThan(service.indexOf("await assertRecentStepUp(session)", refused))
+    })
+
+    it("says the refusal in the page's language, and greys the card at once", () => {
+        expect(switchRefusal({ code: "HIGH_RISK_OFF_FOR_ALL", error: "in English" })).toEqual({ offForAll: true })
+        expect(sw).toContain("answer.offForAll ? t('high_risk_off_for_all') : answer.error || t('error_generic')")
+        expect(read("components/HighRiskCard.tsx")).toContain("if (typeof refusal === 'object' && refusal.offForAll) onSaved({ confirmHighRiskForAll: false })")
+    })
+
+    it("says who turned it off and who can turn it on, in both languages", () => {
+        expect(en.high_risk_off_for_all).toBe("Turned off by the Super Admin. Only the Super Admin can turn it on again.")
+        expect(ar.high_risk_off_for_all).toBe("أُوقف من قِبل المسؤول العام، ولا يُعاد تشغيله إلا من قِبله.")
+        expect(KNOWN_REFUSALS.HIGH_RISK_OFF_FOR_ALL.message).toBe(en.high_risk_off_for_all)
     })
 })
 

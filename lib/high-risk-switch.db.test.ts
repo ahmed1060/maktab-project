@@ -165,4 +165,35 @@ describe.skipIf(!ADMIN_URL)("turning off the high-risk confirmation, in Postgres
         expect(logged).toEqual([{ userId: null, superAdminId: "sa1" }])
         await setCompany("c2", true)
     })
+
+    // Decided with the product owner on 2026-11-09 (ROLES_PLAN.md §6.15, PR 242):
+    // where the system's is off, a company's switch can't be changed, by its
+    // Admin or the Super Admin, and it's refused before any code is asked.
+    it("refuses a change to a company's switch while the system's is off, for its Admin and the Super Admin, changing nothing", async () => {
+        await setSystem(false)
+        try {
+            const before = (await db.query(`SELECT count(*)::int AS n FROM "AuditLog" WHERE action::text = 'UPDATE_COMPANY'`)).rows[0].n
+            // Refused first, even without a code or two-factor sign-in: no code is asked for something refused.
+            expect(await outcome(Companies.update({ id: "c1", confirmHighRisk: false } as any, noCode(AMAL)))).toBe("HIGH_RISK_OFF_FOR_ALL")
+            expect(await outcome(Companies.update({ id: "c1", confirmHighRisk: false } as any, noTwoFactor(AMAL)))).toBe("HIGH_RISK_OFF_FOR_ALL")
+            expect(await outcome(Companies.update({ id: "c1", confirmHighRisk: false } as any, confirmed(AMAL)))).toBe("HIGH_RISK_OFF_FOR_ALL")
+            expect(await outcome(Companies.update({ id: "c2", confirmHighRisk: false } as any, confirmed(SARA)))).toBe("HIGH_RISK_OFF_FOR_ALL")
+            expect(await companyOn("c1")).toBe(true)
+            expect(await companyOn("c2")).toBe(true)
+            // Nothing in the audit log either.
+            expect((await db.query(`SELECT count(*)::int AS n FROM "AuditLog" WHERE action::text = 'UPDATE_COMPANY'`)).rows[0].n).toBe(before)
+
+            // A company's other settings, and its switch as it already is, still save.
+            expect(await outcome(Companies.update({ id: "c1", autoVerifyLocation: true } as any, noCode(AMAL)))).toBe("goes through")
+            expect(await outcome(Companies.update({ id: "c1", confirmHighRisk: true, autoVerifyLocation: false } as any, noCode(AMAL)))).toBe("goes through")
+
+            // A company's own choice, kept while the system's is off, counts again once it's on.
+            await setCompany("c2", false)
+        } finally {
+            await setSystem(true)
+        }
+        expect(await asks(noCode(BASMA))).toBe("goes through")
+        expect(await asks(noCode(AMAL))).toBe("STEP_UP_REQUIRED")
+        await setCompany("c2", true)
+    })
 })
