@@ -110,18 +110,18 @@ describe.skipIf(!ADMIN_URL)("what's held for a task follows it when it's transfe
     it("keeps the money of whoever's still on the copy, now for the copy, with no rights and no code", async () => {
         await give("e1", 400, "gate")
         const awaiting = (await Advances.person(admin.user, "e1", PAGE)).awaiting
-        // Ehab transfers his own task, keeping himself on it and adding Essam.
+        // Ehab transfers their own task, staying on it and adding Essam.
         expect(await outcome(Tasks.transfer("gate", ehab, { newAssigneeIds: ["e1", "e3"] }))).toBe("done")
         const copy = (await copyOf("gate"))!
         expect(copy).toBeTruthy()
         expect(await held("e1")).toEqual([[copy, 400]])
         expect(await balance("e1")).toBe(400)
-        // A pair, his own: nothing to confirm.
+        // A pair, their own: nothing to confirm.
         expect(await entries("e1", "TRANSFERRED")).toEqual([
             { amount: -400, forTaskId: "gate", counterpartName: null, confirmed: false },
             { amount: 400, forTaskId: copy, counterpartName: null, confirmed: true },
         ])
-        // Nothing more to confirm than the advance he was given.
+        // Nothing more to confirm than the advance Ehab was given.
         expect((await Advances.person(admin.user, "e1", PAGE)).awaiting).toBe(awaiting)
     })
 
@@ -164,7 +164,7 @@ describe.skipIf(!ADMIN_URL)("what's held for a task follows it when it's transfe
     it("moves it to their own running balance where whoever transfers it may not give advances", async () => {
         await give("e2", 150, "shed")
         const before = await balance("e2")
-        // Eman transfers her own task to Essam: she may, but may not give advances.
+        // Eman transfers their own task to Essam: they may, but may not give advances.
         expect(await outcome(Tasks.transfer("shed", eman, { newAssigneeIds: ["e3"] }))).toBe("done")
         expect(await held("e2")).not.toContainEqual(["shed", 150])
         expect(await balance("e2")).toBe(before)
@@ -216,8 +216,8 @@ describe.skipIf(!ADMIN_URL)("what's held for a task follows it when it's transfe
         })
         expect((await Tasks.transferPreview("pier", admin, ["e2", "e3"], "e3")).moves[0]).toEqual(
             { person: { id: "e1", name: "Ehab One" }, what: "PASSED", to: { id: "e3", name: "Essam One" }, amount: 100 })
-        // Eman, transferring it herself, may not give advances: Ehab's joins his running
-        // balance, and she sees only her own amount.
+        // Eman, transferring it themselves, may not give advances: Ehab's joins Ehab's own
+        // running balance, and Eman sees only their own amount.
         expect(await Tasks.transferPreview("pier", eman, ["e2", "e3"], null)).toEqual({
             copy: true,
             held: true,

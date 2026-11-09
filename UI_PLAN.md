@@ -5704,7 +5704,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - **Browser flows** against the scratch database, in English on a
     computer and in Arabic on a phone (16 checks each), put back after
     each run: Hana taking Youssef off Delta Sites' task with no one added,
-    told it stays; adding Rami, told Sami keeps his 120 and Youssef's 250
+    told it stays; adding Rami, told Sami keeps their 120 and Youssef's 250
     passes to whoever's picked, with Transfer waiting; Rami picked, then
     sent with a code; the entries and the audit lines as they should be;
     Youssef's history saying to whom; Rami confirming receipt from
