@@ -509,7 +509,7 @@ export class CashAdvanceService {
         taskId: string,
         costs: readonly { id: string; authorId: string | null; part: number; parts?: readonly SpentPart[] }[],
         way: -1 | 1,
-        by: { id: string; name?: string | null },
+        by: Mover,
     ) {
         let paid = costs.filter((c): c is { id: string; authorId: string; part: number; parts?: readonly SpentPart[] } => !!c.authorId && c.part > 0)
         if (!paid.length) return
@@ -663,6 +663,21 @@ export class CashAdvanceService {
                 { ...entry, amount: h.amount },
             ]),
         })
+    }
+
+    /**
+     * Before a task is deleted (§7.4, §7.9): what its costs took from and the
+     * task itself are held (holdParts), then everyone whose advance its
+     * deletion changes, its costs' authors and whoever holds money for it,
+     * all in one order, before anything is put back or moved. Held in two
+     * steps, two deletions could each hold one and wait for the other.
+     */
+    static async holdForTaskDelete(tx: Prisma.TransactionClient, companyId: string, taskId: string, costs: readonly { id: string; authorId: string | null; part: number }[]) {
+        const paid = costs.filter((c): c is { id: string; authorId: string; part: number } => !!c.authorId && c.part > 0)
+        const taken = paid.length ? await takenBy(tx, paid) : new Map<string, SpentPart[]>()
+        await holdParts(tx, [{ taskId, clientId: null }, ...[...taken.values()].flat()])
+        const holders = await tx.cashAdvanceEntry.findMany({ where: { companyId, forTaskId: taskId, forClientId: null }, distinct: ["userId"], select: { userId: true } })
+        for (const userId of [...new Set([...paid.map(c => c.authorId), ...holders.map(h => h.userId)])].sort()) await CashAdvanceService.lockPerson(tx, userId)
     }
 
     /**

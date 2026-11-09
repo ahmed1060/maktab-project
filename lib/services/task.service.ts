@@ -506,7 +506,7 @@ export class TaskService {
                 throw e?.code === 'P2002' ? new Error("COST_RECEIPT_INVALID") : e
             })
             if (currentTask.companyId) {
-                await CashAdvanceService.spent(tx, currentTask.companyId, id, rows.map((r, i) => ({ id: r.id, authorId: userId, part: fromAdvance[i], parts: spentParts[i] })), -1, { id: userId, name: session.user.name })
+                await CashAdvanceService.spent(tx, currentTask.companyId, id, rows.map((r, i) => ({ id: r.id, authorId: userId, part: fromAdvance[i], parts: spentParts[i] })), -1, { id: userId, name: session.user.name, role: session.user.role })
             }
 
             if (!isDraft && task.createdBy) {
@@ -895,7 +895,10 @@ export class TaskService {
             // removing each would put it back (CLIENTS_PLAN.md §7.4).
             if (task.companyId) {
                 const advanced = await tx.taskCost.findMany({ where: { taskId: id, fromAdvance: { gt: 0 } }, select: { id: true, authorId: true, fromAdvance: true } })
-                await CashAdvanceService.spent(tx, task.companyId, id, advanced.map(c => ({ id: c.id, authorId: c.authorId, part: Number(c.fromAdvance) })), 1, { id: userId, name: session.user.name })
+                const costs = advanced.map(c => ({ id: c.id, authorId: c.authorId, part: Number(c.fromAdvance) }))
+                // Everyone it changes held at once, in one order, before anything moves.
+                await CashAdvanceService.holdForTaskDelete(tx, task.companyId, id, costs)
+                await CashAdvanceService.spent(tx, task.companyId, id, costs, 1, { id: userId, name: session.user.name, role: userRole })
                 // And what's still held for it joins each one's running
                 // balance, while the task is there to say so (CLIENTS_PLAN.md §7.9).
                 await CashAdvanceService.movePart(tx, task.companyId, { taskId: id, clientId: null }, "TASK_DELETED", { id: userId, name: session.user.name, role: userRole })
@@ -1191,7 +1194,7 @@ export class TaskService {
                     }
                 }
                 if (linked && advanced > 0 && task.companyId) {
-                    await CashAdvanceService.spent(tx, task.companyId, id, [{ id: linked.id, authorId: linked.authorId, part: advanced }], 1, { id: userId, name: session.user.name })
+                    await CashAdvanceService.spent(tx, task.companyId, id, [{ id: linked.id, authorId: linked.authorId, part: advanced }], 1, { id: userId, name: session.user.name, role: session.user.role })
                 }
                 if (isCost && typeof item.costId === 'string') costRow = item.costId
             } else {

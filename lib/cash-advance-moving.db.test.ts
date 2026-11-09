@@ -28,11 +28,14 @@ INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayO
  ('e2', 'e2@x', 'p', 'Eman', 'One', 'EMPLOYEE', 2026, 'e2', 'c1', NULL),
  ('e3', 'e3@x', 'p', 'Essam', 'One', 'EMPLOYEE', 2026, 'e3', 'c1', NULL),
  ('e4', 'e4@x', 'p', 'Fady', 'One', 'EMPLOYEE', 2026, 'e4', 'c1', NULL),
- ('e5', 'e5@x', 'p', 'Hoda', 'One', 'EMPLOYEE', 2026, 'e5', 'c1', NULL);
+ ('e5', 'e5@x', 'p', 'Hoda', 'One', 'EMPLOYEE', 2026, 'e5', 'c1', NULL),
+ ('e6', 'e6@x', 'p', 'Gamal', 'One', 'EMPLOYEE', 2026, 'e6', 'c1', NULL),
+ ('e7', 'e7@x', 'p', 'Iman', 'One', 'EMPLOYEE', 2026, 'e7', 'c1', NULL);
 `
 // Nile Foods has tasks; Dune and Reed have none. Ehab and Essam are on the
 // gate, Ehab alone on the roof and the dock, Eman on the shed. Fady is on the
-// mast and the keel, Hoda on the hull and Kelp's pier.
+// mast and the keel, Hoda on the hull and Kelp's pier, Gamal on Reef's buoy,
+// Gamal and Iman on the raft. Sara is a Super Admin.
 const WORK = `
 INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES
  ('nile', 'c1', 'Nile Foods', 'o', '0100', 'HQ', now()),
@@ -40,7 +43,9 @@ INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locati
  ('reed', 'c1', 'Reed', 'o', '0102', 'HQ', now()),
  ('kelp', 'c1', 'Kelp', 'o', '0103', 'HQ', now()),
  ('sand', 'c1', 'Sand', 'o', '0104', 'HQ', now()),
- ('moss', 'c1', 'Moss', 'o', '0105', 'HQ', now());
+ ('moss', 'c1', 'Moss', 'o', '0105', 'HQ', now()),
+ ('reef', 'c1', 'Reef', 'o', '0106', 'HQ', now());
+INSERT INTO "SuperAdmin"(id, email, password, "firstName", "lastName", username, "updatedAt") VALUES ('sa1', 'sa1@x', 'p', 'Sara', 'Admin', 'sa1', now());
 INSERT INTO "Location"(id, "companyId", "clientId", name, "isHq", latitude, longitude, "updatedAt") VALUES ('port', 'c1', NULL, 'Port gate', false, 31.18, 29.87, now());
 INSERT INTO "Task"(id, title, description, status, deadline, "companyId", "clientId", "locationId", "updatedAt") VALUES
  ('gate', 'Fix the gate', 'd', 'PENDING_CONFIRMATION', now() + interval '2 days', 'c1', 'nile', 'port', now()),
@@ -50,15 +55,20 @@ INSERT INTO "Task"(id, title, description, status, deadline, "companyId", "clien
  ('mast', 'Raise the mast', 'd', 'PENDING_CONFIRMATION', now() + interval '2 days', 'c1', NULL, 'port', now()),
  ('keel', 'Scrape the keel', 'd', 'PENDING_CONFIRMATION', now() + interval '2 days', 'c1', NULL, 'port', now()),
  ('hull', 'Seal the hull', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', NULL, 'port', now()),
- ('pier', 'Mend the pier', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', 'kelp', 'port', now());
+ ('pier', 'Mend the pier', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', 'kelp', 'port', now()),
+ ('buoy', 'Paint the buoy', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', 'reef', 'port', now()),
+ ('raft', 'Lash the raft', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', NULL, 'port', now());
 INSERT INTO "_MultipleAssignees"("A", "B") VALUES ('gate', 'e1'), ('gate', 'e3'), ('roof', 'e1'), ('dock', 'e1'), ('shed', 'e2'),
- ('mast', 'e4'), ('keel', 'e4'), ('hull', 'e5'), ('pier', 'e5');
+ ('mast', 'e4'), ('keel', 'e4'), ('hull', 'e5'), ('pier', 'e5'), ('buoy', 'e6'), ('raft', 'e6'), ('raft', 'e7');
 `
 
 const as = (user: Record<string, unknown>) => ({ user: { ...withGrants(user as any), mfaEnabled: true, stepUpAt: Date.now() } }) as any
 const admin = as({ id: "a1", role: "ADMIN", companyId: "c1", name: "Amal One" })
 const ehab = as({ id: "e1", role: "EMPLOYEE", companyId: "c1", name: "Ehab One" })
 const hoda = as({ id: "e5", role: "EMPLOYEE", companyId: "c1", name: "Hoda One" })
+const gamal = as({ id: "e6", role: "EMPLOYEE", companyId: "c1", name: "Gamal One" })
+const iman = as({ id: "e7", role: "EMPLOYEE", companyId: "c1", name: "Iman One" })
+const sara = as({ id: "sa1", role: "SUPER_ADMIN", name: "Sara Admin" })
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 const PAGE = { page: 1, limit: 50, skip: 0 }
 
@@ -303,5 +313,37 @@ describe.skipIf(!ADMIN_URL)("what's left of an advance for a task or a client, i
         // The 40 goes back where it came from, and on to the running balance.
         expect(await held("e5")).toEqual([])
         expect((await advance("e5")).running).toBe(190)
+    })
+
+    it("logs a Super Admin's removal as theirs when its money moves on from an archived client", async () => {
+        await give("e6", 50, { forClientId: "reef" })
+        await Tasks.submit("buoy", "e6", gamal, { isDraft: true, costs: [{ amount: 30, description: "Rope" }] })
+        expect(await Clients.delete("reef", admin)).toMatchObject({ archived: true })
+        const [cost] = (await db.query(`SELECT id FROM "TaskCost" WHERE "taskId" = 'buoy'`)).rows
+        await Tasks.deleteItem("buoy", sara, { type: "COST", itemId: cost.id })
+        expect(await held("e6")).toEqual([])
+        expect((await advance("e6")).running).toBe(50)
+        const { rows } = await db.query(`SELECT "userId", "superAdminId" FROM "AuditLog" WHERE action = 'MOVE_CASH_ADVANCE' AND "entityId" = 'e6' ORDER BY "createdAt" DESC LIMIT 1`)
+        expect(rows).toEqual([{ userId: null, superAdminId: "sa1" }])
+    })
+
+    it("holds everyone a task's deletion touches, in one order, before putting anything back", async () => {
+        // Iman pays a cost on the raft from her running balance; Gamal holds money for the raft.
+        await give("e7", 40)
+        await Tasks.submit("raft", "e7", iman, { isDraft: true, costs: [{ amount: 25, description: "Planks" }] })
+        await give("e6", 60, { forTaskId: "raft" })
+        const other = await connect()
+        await other.query("BEGIN")
+        await other.query(`SELECT pg_advisory_xact_lock(hashtextextended('cash-advance:e6', 0))::text`)
+        const deleting = refusal(Tasks.delete("raft", admin))
+        await sleep(500)
+        // Waiting for Gamal's advance, not holding Iman's meanwhile.
+        expect(await personFree("e7")).toBe(true)
+        await other.query("ROLLBACK")
+        await other.end()
+        expect(await deleting).toBe("moved")
+        expect((await advance("e7")).running).toBe(40)
+        expect((await advance("e6")).running).toBe(110)
+        expect(await held("e6")).toEqual([])
     })
 })
