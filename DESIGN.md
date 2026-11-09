@@ -629,7 +629,16 @@ These are built once, in the building-blocks PR, and every page uses them
     closes them. Each suggestion is 36px tall (44px on phones), and the
     one under the keys is shaded;
   - the field says which name it's linked to only by the suggestion
-    picked: typing again unlinks it.
+    picked: typing again unlinks it;
+  - where the company keeps a list's names to the list alone, as Company
+    settings' Cost names does for a cost's name, the field asks for one of
+    them. Before anything is typed it says so, as "Cost name, from the
+    saved list". A name typed and not picked is taken where it's one of the
+    list's, capitals and spaces aside. Otherwise Add leaves the cost unadded
+    and says under the field, with the error colour, that the name isn't on
+    the list: pick one, or add it from the suggestions for whoever may add
+    names, or ask whoever keeps the saved lists for anyone else. With no
+    name, it says a name is needed.
 - **A pick of several from a long list,** such as a task's assignees, is
   a group under its visible label:
   - a search field, which narrows the list as it's typed;
@@ -2045,3 +2054,7 @@ changed:
   statement), as the product owner asked: every charge, as it was, or the
   same charges added up by cost name, the saved lists' first purpose, with
   the receipts under each name.
+- **2026-11-09:** A name typed or picked from a saved list (§5.3) asks for
+  one of the list's where the company keeps its names to the list alone,
+  as the product owner asked for cost names, so a client statement by cost
+  name adds them up under the same names.
