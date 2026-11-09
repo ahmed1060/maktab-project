@@ -6,6 +6,7 @@ import { CompanyService } from "@/lib/services/company.service"
 import { parsePaging } from "@/lib/pagination"
 import { SystemSettingsService } from "@/lib/services/system-settings.service"
 import { CashAdvanceService } from "@/lib/services/cash-advance.service"
+import { hasModule, resolveBundles } from "@/lib/features/bundles"
 
 export const GET = withStandardHandler(async (req, session) => {
     if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.forbidden()
@@ -17,7 +18,7 @@ export const GET = withStandardHandler(async (req, session) => {
         const company = await prisma.company.findUnique({
             where: { id },
             select: {
-                id: true, name: true, isBanned: true, autoVerifyLocation: true, cashAdvancesAllowed: true, cashAdvancesOn: true,
+                id: true, name: true, isBanned: true, autoVerifyLocation: true, cashAdvancesAllowed: true, cashAdvancesOn: true, costNamesFromListOnly: true,
                 moduleLabels: true, moduleIcons: true, logoUrl: true, brandColour: true,
                 payrollDay: true, payslipsVisible: true, timezone: true, debtRecoveryPercent: true,
                 adminSettingsEnabled: true, adminSettingsTabs: true,
@@ -27,11 +28,15 @@ export const GET = withStandardHandler(async (req, session) => {
         })
         if (!company) return ApiResponse.notFound("Company not found")
         // What the Branding tab's "Use the default" goes back to (UI_PLAN.md §4.6),
-        // and what's held, which keeps cash advances on (CLIENTS_PLAN.md §7.6).
+        // what's held, which keeps cash advances on (CLIENTS_PLAN.md §7.6), and
+        // whether cost names can be kept to the saved list, and how many it
+        // holds (§6.9), as company-settings' General tab has them.
         return ApiResponse.success({
             ...company,
             defaultBrandColour: (await SystemSettingsService.get()).brandColour,
             cashAdvancesHeld: await CashAdvanceService.heldIn(company.id),
+            costNamesOffered: hasModule(resolveBundles(company.package), "COSTS"),
+            costNamesSaved: await prisma.listEntry.count({ where: { companyId: company.id, kind: "COST_NAME", archivedAt: null } }),
         })
     }
 

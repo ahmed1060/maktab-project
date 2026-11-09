@@ -28,6 +28,27 @@ export function sameListName(a: string, b: string): boolean {
     return a.trim().toLowerCase() === b.trim().toLowerCase()
 }
 
+/**
+ * A cost's name where the company keeps them to its saved list
+ * (CLIENTS_PLAN.md §6.9; DESIGN.md §5.3), as the field checks it on Add:
+ * the name picked; or the list's name a typed one is, capitals and the
+ * spaces around it aside, taken as if picked; or what's wrong, for the
+ * field to say under it. The spaces inside it are kept, as a saved name
+ * keeps them (Codex on PR 238). The server checks the same
+ * (ListService.named), matching the text as typed, so a pattern such as
+ * "%" is no name.
+ */
+export async function nameOnList(
+    value: { text: string; entryId: string | null },
+    suggest: (typed: string) => Promise<readonly { id: string; name: string }[]>,
+): Promise<{ name: { text: string; entryId: string } } | { problem: "needed" | "not_listed"; typed: string }> {
+    if (value.entryId) return { name: { text: value.text, entryId: value.entryId } }
+    const typed = value.text.trim()
+    if (!typed) return { problem: "needed", typed }
+    const found = (await suggest(typed)).find(n => sameListName(n.name, typed))
+    return found ? { name: { text: found.name, entryId: found.id } } : { problem: "not_listed", typed }
+}
+
 /** A name typed or picked, and the company whose list it was picked from. */
 export type CompanyPick = { name: { text: string; entryId: string | null }; company: string | null }
 

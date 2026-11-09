@@ -14,5 +14,8 @@ import { cashAdvancesInUse } from "@/lib/cash-advances"
 export const GET = withStandardHandler(async (_req, session) => {
     const companyId = session.user.role === "SUPER_ADMIN" ? null : session.user.companyId
     const exposure = companyId ? await CompanyService.settingsExposure(companyId) : null
-    return ApiResponse.success({ visible: !!exposure && visibleSettingsTabs(session.user, exposure).length > 0, cashAdvances: cashAdvancesInUse(exposure) })
+    return ApiResponse.success({
+        visible: !!exposure && visibleSettingsTabs(session.user, exposure).length > 0,
+        cashAdvances: cashAdvancesInUse(exposure),
+    })
 })

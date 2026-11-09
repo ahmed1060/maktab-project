@@ -29,10 +29,12 @@ export type CompanySettingsTab = {
 export const COMPANY_SETTINGS_TABS = [
     {
         key: "general", labelKey: "settings_tab_general", adminEligible: true,
-        fields: ["autoVerifyLocation", "cashAdvancesAllowed", "cashAdvancesOn"],
+        fields: ["autoVerifyLocation", "cashAdvancesAllowed", "cashAdvancesOn", "costNamesFromListOnly"],
         // Cash advances (CLIENTS_PLAN.md §7.6): the Super Admin allows them,
         // and the company's Admin switches them off and on again.
         superAdminOnly: ["cashAdvancesAllowed"],
+        // Cost names only from the saved list (CLIENTS_PLAN.md §6.9): the
+        // company's own Admin switches it, as it's the company's way of working.
     },
     // The logo has its own endpoint (app/api/companies/logo), which asks the
     // same question of this entry. The brand colour is saved here

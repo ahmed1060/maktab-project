@@ -53,7 +53,7 @@ export function TaskNotFound() {
  * decision; what needs saying about it; its details, notes and files; then
  * its costs, location history and what its assignee hands in.
  */
-export default function TaskDetailClient({ task: initialTask, now, userRole, userId, creatorName, isRestricted }: {
+export default function TaskDetailClient({ task: initialTask, now, userRole, userId, creatorName, isRestricted, costNamesFromList = false }: {
     task: any
     /** When the server drew it, so its deadline reads the same on the server and here. */
     now: number
@@ -62,6 +62,8 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
     creatorName: string | null
     currentUserName: string
     isRestricted: boolean
+    /** Its company names costs from the saved list only (CLIENTS_PLAN.md §6.9). */
+    costNamesFromList?: boolean
 }) {
     const { t, locale } = useLanguage()
     const modules = useModules()
@@ -370,13 +372,13 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
         setPendingFiles(prev => prev.filter((_, i) => i !== index))
     }
 
-    const handleAddCost = () => {
+    const handleAddCost = (name: PickedName = costName) => {
         if (!cost) return
         if (parseFloat(cost) < 0) {
             showToast(t('cost_negative_error'), 'error')
             return
         }
-        setCostEntries(prev => [...prev, { amount: parseFloat(cost), description: costName.text, nameEntryId: costName.entryId, receipt: costReceipt }])
+        setCostEntries(prev => [...prev, { amount: parseFloat(cost), description: name.text, nameEntryId: name.entryId, receipt: costReceipt }])
         setCost('')
         setCostName({ text: '', entryId: null })
         setCostReceipt(null)
@@ -1006,6 +1008,7 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
                             cost={cost}
                             setCost={setCost}
                             onAddCost={handleAddCost}
+                            listOnly={costNamesFromList}
                             costReceipt={costReceipt}
                             onCostReceipt={handleCostReceipt}
                             onClearCostReceipt={() => setCostReceipt(null)}

@@ -1,10 +1,12 @@
 'use client'
+import { useState } from 'react'
 import { MapPinIcon, PaperPlaneTiltIcon, PlusIcon, XIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { COST_DESCRIPTION_MAX, RECEIPT_ACCEPT } from '@/lib/task-costs'
 import AdvanceBalanceHint from '@/components/cash-advances/AdvanceBalanceHint'
 import { Button, Card, Field, FileChip, FileChips, FilePicker, NamePicker, TextArea, TextInput, type PickedName } from '@/components/ui'
 import { useListNames } from '@/components/lists/useListNames'
+import { nameOnList } from '@/lib/saved-lists'
 
 /** The files a task takes: images, PDF and Office, as the upload route does. */
 const TASK_FILE_ACCEPT = '.jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx'
@@ -27,7 +29,13 @@ interface TaskSubmissionFormProps {
     clientId: string | null
     cost: string
     setCost: (v: string) => void
-    onAddCost: () => void
+    /** Add, with the list's name where it was checked against the list. */
+    onAddCost: (name?: PickedName) => void
+    /**
+     * The company keeps cost names to its saved list (CLIENTS_PLAN.md §6.9;
+     * DESIGN.md §5.3): the field says so, and Add takes one of them.
+     */
+    listOnly?: boolean
     /** The next cost's receipt photo, if one was picked (CLIENTS_PLAN.md §6.2). */
     costReceipt: File | null
     onCostReceipt: (files: File[]) => void
@@ -54,10 +62,40 @@ export default function TaskSubmissionForm({
     costName, setCostName, companyId, taskId, clientId, cost, setCost, onAddCost, costReceipt, onCostReceipt, onClearCostReceipt, costEntries, onRemoveCostEntry,
     note, setNote,
     capturingLocation, locationStatus, onCaptureLocation,
-    onSaveDraft, onSubmitRequest, loadingType, locked = false
+    onSaveDraft, onSubmitRequest, loadingType, locked = false, listOnly = false
 }: TaskSubmissionFormProps) {
     const { t, locale } = useLanguage()
     const costNames = useListNames('COST_NAME', companyId)
+    // What's wrong with the name, said under the field until it's typed again.
+    const [nameProblem, setNameProblem] = useState<{ key: 'cost_name_needed' | 'cost_name_not_listed_add' | 'cost_name_not_listed_ask'; typed: string } | null>(null)
+    const [checking, setChecking] = useState(false)
+    // Said as it comes, with the focus left on Add: on the field, its
+    // suggestions would cover it.
+    const problem = nameProblem && <span role="alert">{t(nameProblem.key).replace('{name}', nameProblem.typed)}</span>
+    const nameLabel = t(listOnly ? 'cost_name_from_list_placeholder' : 'cost_description_placeholder')
+
+    // Where the company keeps cost names to its saved list, Add takes one of
+    // them, one typed in full as the list has it too; otherwise the field
+    // says why. If the list doesn't answer, the cost is added as it is, and
+    // the server checks it when the task is handed in.
+    const addCost = async () => {
+        if (!listOnly) { onAddCost(); return }
+        if (checking) return
+        setChecking(true)
+        try {
+            const checked = await nameOnList(costName, costNames.suggest)
+            if ('name' in checked) {
+                setNameProblem(null)
+                onAddCost(checked.name)
+                return
+            }
+            setNameProblem({ key: checked.problem === 'needed' ? 'cost_name_needed' : costNames.onAdd ? 'cost_name_not_listed_add' : 'cost_name_not_listed_ask', typed: checked.typed })
+        } catch {
+            onAddCost()
+        } finally {
+            setChecking(false)
+        }
+    }
     const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
     const money = (n: number) => `${n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${t('egp')}`
 
@@ -83,32 +121,36 @@ export default function TaskSubmissionForm({
                     <legend className="ui-label">{t('add_costs_label')}</legend>
                     {/* Their cash advance, which pays the costs they add first (CLIENTS_PLAN.md §7.2). */}
                     <AdvanceBalanceHint on={{ taskId, clientId }} />
-                    {/* On a phone the name takes the line, and the amount goes below: its suggestions need the width. */}
+                    {/* On a phone the name takes the line, and the amount goes below: its suggestions need the width.
+                        While Add checks the name, the cost's fields wait: Add takes what it
+                        was clicked with, then clears them (Codex on PR 238). */}
                     <div className="ui-cost-entry">
-                        <Field label={t('cost_description_placeholder')} hideLabel>{p => (
+                        <Field label={nameLabel} hideLabel error={problem}>{p => (
                             <NamePicker
                                 {...p}
-                                placeholder={t('cost_description_placeholder')}
+                                placeholder={nameLabel}
                                 value={costName}
-                                onChange={setCostName}
+                                onChange={v => { setNameProblem(null); setCostName(v) }}
                                 {...costNames}
                                 addLabel={t('lists_add_to_list')}
                                 failedLabel={t('lists_add_failed')}
                                 maxLength={COST_DESCRIPTION_MAX}
+                                disabled={checking}
                             />
                         )}</Field>
                         <Field label={t('cost_amount_placeholder')} hideLabel>{p => (
-                            <TextInput {...p} type="number" inputMode="decimal" name="cost-amount" autoComplete="off" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} disabled={locked} />
+                            <TextInput {...p} type="number" inputMode="decimal" name="cost-amount" autoComplete="off" placeholder={t('cost_amount_placeholder')} value={cost} onChange={e => setCost(e.target.value)} disabled={locked || checking} />
                         )}</Field>
-                        <Button icon={PlusIcon} onClick={onAddCost} disabled={!cost || locked}>{t('add_label')}</Button>
+                        {/* Busy, not disabled: a disabled button drops the focus. */}
+                        <Button icon={PlusIcon} onClick={() => { void addCost() }} aria-busy={checking || undefined} disabled={!cost || locked}>{t('add_label')}</Button>
                     </div>
                     {/* Its receipt, picked before Add, goes with the cost added next; picked again, it's replaced. */}
                     {costReceipt && (
                         <FileChips label={t('cost_receipt')}>
-                            <FileChip name={costReceipt.name} size={costReceipt.size} onRemove={locked ? undefined : onClearCostReceipt} />
+                            <FileChip name={costReceipt.name} size={costReceipt.size} onRemove={locked || checking ? undefined : onClearCostReceipt} />
                         </FileChips>
                     )}
-                    <FilePicker label={t('cost_receipt_attach')} hint={t('cost_receipt_hint')} accept={RECEIPT_ACCEPT} onFiles={onCostReceipt} disabled={uploading || locked} multiple={false} />
+                    <FilePicker label={t('cost_receipt_attach')} hint={t('cost_receipt_hint')} accept={RECEIPT_ACCEPT} onFiles={onCostReceipt} disabled={uploading || locked || checking} multiple={false} />
                     {costEntries.length > 0 && (
                         <ul className="ui-rows" aria-label={t('add_costs_label')}>
                             {costEntries.map((e, i) => (
@@ -148,11 +190,13 @@ export default function TaskSubmissionForm({
                     </div>
                 </div>
 
+                {/* While a cost's name is checked, nothing is saved or handed in:
+                    it would go without that cost (Codex on PR 238). */}
                 <div className="ui-form-actions">
-                    <Button variant="primary" icon={PaperPlaneTiltIcon} onClick={onSubmitRequest} disabled={uploading} busy={loadingType === 'SUBMIT'}>
+                    <Button variant="primary" icon={PaperPlaneTiltIcon} onClick={onSubmitRequest} disabled={uploading || checking} busy={loadingType === 'SUBMIT'}>
                         {loadingType === 'SUBMIT' ? t('submitting') : t('submit_task_button')}
                     </Button>
-                    <Button onClick={onSaveDraft} disabled={uploading || locked} busy={loadingType === 'DRAFT'}>
+                    <Button onClick={onSaveDraft} disabled={uploading || locked || checking} busy={loadingType === 'DRAFT'}>
                         {loadingType === 'DRAFT' ? t('saving') : t('save_draft_button')}
                     </Button>
                 </div>

@@ -195,6 +195,53 @@ describe("what whoever it's for hands in", () => {
     })
 })
 
+describe("a cost's name where the company keeps them to its saved list (CLIENTS_PLAN.md §6.9; DESIGN.md §5.3)", () => {
+    it("says so before anything is typed, and not otherwise", async () => {
+        expect(await form({ listOnly: true })).toContain('placeholder="cost_name_from_list_placeholder"')
+        expect(await form()).toContain('placeholder="cost_description_placeholder"')
+    })
+
+    it("checks the name on Add, says under the field what's wrong, and adds the cost under the list's name", () => {
+        const src = readFileSync("components/TaskSubmissionForm.tsx", "utf8")
+        expect(src).toContain("await nameOnList(costName, costNames.suggest)")
+        expect(src).toContain("onAddCost(checked.name)")
+        // Under the field, as the building blocks' field says a mistake.
+        expect(src).toMatch(/<Field[^>]*error=\{problem\}/)
+        expect(src).toContain("costNames.onAdd ? 'cost_name_not_listed_add' : 'cost_name_not_listed_ask'")
+        // Typing again clears it.
+        expect(src).toContain("onChange={v => { setNameProblem(null); setCostName(v) }}")
+        // Said as it comes, the focus left on Add: on the field, its suggestions would cover the error (found in the browser).
+        expect(src).toContain("const problem = nameProblem && <span role=\"alert\">{t(nameProblem.key).replace('{name}', nameProblem.typed)}</span>")
+        expect(src).not.toContain(".focus()")
+        // Busy, a button is disabled, which drops the focus: Add says it's busy and takes no second press instead (found in the browser).
+        expect(src).toContain("if (checking) return")
+        expect(src).toContain("aria-busy={checking || undefined}")
+        expect(src).not.toContain("busy={checking}")
+        // Saved or handed in while a name is being checked, the cost wasn't in it, or was cleared with what was (Codex on PR 238).
+        expect(src).toContain("onClick={onSubmitRequest} disabled={uploading || checking}")
+        expect(src).toContain("onClick={onSaveDraft} disabled={uploading || locked || checking}")
+        // Nor is the cost changed while its name is checked: Add takes what it was clicked with, and clears the fields (Codex on PR 238).
+        expect(src).toContain("maxLength={COST_DESCRIPTION_MAX}\n                                disabled={checking}")
+        expect(src).toContain("onChange={e => setCost(e.target.value)} disabled={locked || checking}")
+        expect(src).toContain("onRemove={locked || checking ? undefined : onClearCostReceipt}")
+        expect(src).toContain("onFiles={onCostReceipt} disabled={uploading || locked || checking}")
+        // The amount and Add stay level with the name, an error under it or not (found in the browser).
+        expect(readFileSync("components/ui/ui.css", "utf8")).toMatch(/\.ui-cost-entry \{[^}]*align-items: flex-start;/)
+    })
+
+    it("comes with the task, its company's, so Add knows at once, and the page adds what Add was given", () => {
+        // Asked of the side bar's settings after the page came, a cost added first wasn't checked (found in the browser).
+        const server = readFileSync("app/(dashboard)/dashboard/tasks/[id]/page.tsx", "utf8")
+        expect(server).toContain("company: { select: { costNamesFromListOnly: true } },")
+        expect(server).toContain("costNamesFromList={!!task.company?.costNamesFromListOnly}")
+        const src = readFileSync("app/(dashboard)/dashboard/tasks/[id]/client.tsx", "utf8")
+        expect(src).toContain("listOnly={costNamesFromList}")
+        expect(src).not.toContain("/api/company-settings/visible")
+        expect(src).toContain("const handleAddCost = (name: PickedName = costName) => {")
+        expect(src).toContain("description: name.text, nameEntryId: name.entryId")
+    })
+})
+
 describe("its edit window", () => {
     it("is a dialog of the building blocks, its fields labelled, with its counts", () => {
         const src = readFileSync("components/TaskEditDetailsModal.tsx", "utf8")

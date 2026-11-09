@@ -55,6 +55,8 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     CASH_ADVANCE_ALREADY_CONFIRMED: { status: 409, message: "You've already confirmed receiving this advance." },
     CASH_ADVANCE_CHANGED: { status: 409, message: "Their cash advance changed while the settlement was worked out. Look at the settlement again, then end the contract." },
     CASH_ADVANCE_STILL_HELD: { status: 409, message: "This person still holds cash advance money. Record its return before deleting them for good." },
+    COST_NAMES_NONE_SAVED: { status: 409, message: "Cost names can only be kept to the saved list once it has one. Add cost names on the Saved lists page first." },
+    COST_NAME_NOT_ON_LIST: { status: 400, message: "This company names costs from its saved list only. Pick a name from it." },
     CASH_ADVANCES_HELD: { status: 409, message: "Cash advances can't be switched off while anyone holds advance money. It must be spent or returned first." },
     TASK_HAS_CHARGES: { status: 409, message: "This task's costs are charged to its client, so it can't be deleted. Mark them not charged to the client first." },
     COST_RECEIPT_INVALID: { status: 400, message: "A cost's receipt couldn't be saved. Remove the cost, and add it again with its photo." },

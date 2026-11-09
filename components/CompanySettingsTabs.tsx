@@ -11,6 +11,7 @@ import CompanyRolesCard from '@/components/CompanyRolesCard'
 import CompanyModulesCard from '@/components/CompanyModulesCard'
 import CompanySettingsAccessCard from '@/components/CompanySettingsAccessCard'
 import CashAdvancesCard from '@/components/cash-advances/CashAdvancesCard'
+import CostNamesCard from '@/components/lists/CostNamesCard'
 import { Button, Dialog, Tabs } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { COMPANY_SETTINGS_TABS, type CompanySettingsTabKey } from '@/lib/company-settings-tabs'
@@ -41,6 +42,13 @@ export type CompanySettings = {
     cashAdvancesAllowed?: boolean
     cashAdvancesOn?: boolean
     cashAdvancesHeld?: number
+    /**
+     * Cost names only from the saved list (CLIENTS_PLAN.md §6.9): offered to
+     * a company with the Costs module, with how many names its list holds.
+     */
+    costNamesFromListOnly?: boolean
+    costNamesOffered?: boolean
+    costNamesSaved?: number
     moduleLabels: unknown
     moduleIcons: unknown
     logoUrl: string | null
@@ -130,6 +138,16 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
                                 allowed={!!company.cashAdvancesAllowed}
                                 on={company.cashAdvancesOn ?? true}
                                 held={company.cashAdvancesHeld ?? 0}
+                                superAdmin={superAdmin}
+                                readOnly={readOnly}
+                                onSaved={onSaved}
+                            />
+                        )}
+                        {company.costNamesOffered && (
+                            <CostNamesCard
+                                companyId={companyId}
+                                on={!!company.costNamesFromListOnly}
+                                saved={company.costNamesSaved ?? 0}
                                 superAdmin={superAdmin}
                                 readOnly={readOnly}
                                 onSaved={onSaved}

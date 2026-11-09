@@ -3428,6 +3428,20 @@ a.ui-row:focus-visible {
   color: inherit;
   text-decoration: none;
 }
+/* A link in a sentence, as DESIGN.md has them: the brand's text colour,
+   underlined, its name kept on one line, such as Saved lists under a
+   setting that waits for a name on it. */
+.ui-text-link {
+  color: var(--brand-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+.ui-text-link:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
 .ui-item-link:hover {
   color: var(--brand-text);
   text-decoration: underline;
@@ -3500,11 +3514,12 @@ a.ui-row:focus-visible {
   font-weight: 500;
 }
 /* A cost's name, its amount and Add on a line, the name taking what's
-   left; on a phone the name takes the line, its suggestions needing it. */
+   left; on a phone the name takes the line, its suggestions needing it.
+   Level at their tops: an error under the name pushed the others down. */
 .ui-cost-entry {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: var(--space-2);
 }
 .ui-cost-entry > :first-child {

@@ -596,7 +596,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      its first part (`CLIENTS_PLAN.md` §7.9, 7e), merged in #235 on
      2026-11-09; then costs spending it first (7f), merged in #236 on
      2026-11-09; then the client statement by cost name, beside every
-     charge (`CLIENTS_PLAN.md` §6.9), in #237;
+     charge (`CLIENTS_PLAN.md` §6.9), merged in #237 on 2026-11-09; then
+     cost names only from the saved list, a company setting (§6.9), in
+     #238;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5488,3 +5490,69 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     task over the receipts, breaks inside a long word, as a charge's does,
     rather than push the amounts out; the tabs name their panel only while
     there is one; the receipts' groups use the page's own directions.
+- **2026-11-09:** Cost names only from the saved list (#238;
+  `CLIENTS_PLAN.md` §6.9; `DESIGN.md` §5.3, a name typed or picked from a
+  saved list), as the product owner asked, so a company can keep a client
+  statement's lines by cost name exact.
+  - **Company settings, General tab:** a Cost names card, for a company
+    with the Costs module, on the building blocks as the Cash advances
+    card is: Only names from the saved list, On or Off, with Turn on or
+    Turn off, and how many names the saved list holds.
+    - Turn on waits for a name on the list, and the card says so, with a
+      link to Saved lists for the company's own people.
+    - Whoever can only look sees it without a button.
+    - The Super Admin's page for a company has it too (`/api/companies`).
+  - **A task's Add cost, where it's on:** the name field says "Cost name,
+    from the saved list" before anything is typed. On Add:
+    - a name picked is taken;
+    - a name typed in full as the list has it, capitals and the spaces
+      around it aside, is taken as that name (`nameOnList()` in `lib/saved-lists.ts`);
+    - anything else stays unadded, and the field says why under it, in the
+      error colour, until it's typed again: pick one, or add it from the
+      suggestions for whoever may add names, or ask whoever keeps the
+      saved lists. With no name, it says one is needed.
+  - **The server:** `costNamesFromListOnly` on the company, added by a
+    migration, false for every company. Turning it on with no names is
+    refused (`COST_NAMES_NONE_SAVED`). A cost's name that isn't the list's
+    is refused when the task is handed in (`COST_NAME_NOT_ON_LIST`), and
+    nothing of the submission is saved.
+  - **Found while building it:** a typed name was matched with Prisma's
+    case-insensitive `equals`, which runs as ILIKE, so "%" was taken as
+    any name. It's matched as typed now.
+  - **Also:** the Arabic for a name that couldn't be added to its list
+    asks with يُرجى, as the app's other requests do.
+  - **Found in the browser and fixed:**
+    - Add read the setting from the side bar's settings after the page
+      came, so a cost added first wasn't checked, and a Super Admin's
+      never was. It comes with the task now, its company's, from the
+      server;
+    - the focus went to the name field after an error, and its
+      suggestions covered the error. The error is said as it comes
+      (`role="alert"`), and the focus stays on Add;
+    - Add, busy while it checks, was disabled, which dropped the focus to
+      the page. It says it's busy and takes no second press instead;
+    - an error under the name pushed the amount and Add down below it.
+      The row lines them up at their tops.
+  - **From the web interface audit:** Saved lists, in the card's note, was
+    the browser's own blue. It's a link in a sentence as `DESIGN.md` has
+    them (`.ui-text-link`): the brand's text colour, underlined, its name
+    on one line. And the note says "turned on", as its button does.
+  - **Browser flows** against the scratch database, in English on a
+    computer and in Arabic on a phone (27 checks each): the card with no
+    names and with nine, turned on and audited; an employee's Add cost
+    refusing "taxi home" with the error under the field, taking
+    "  TRANSPORT " as Transport and a picked Parking, saying a name is
+    needed, and saving the draft with each linked to its name; the server
+    refusing a name sent past the page; turned off, any name again; and
+    the Super Admin's page for the company. Nothing scrolls sideways.
+  - **Codex's review, fixed:**
+    - saved or handed in while Add checked a cost's name, the task went
+      without that cost, which the save's clearing could then drop with its
+      receipt. Save draft and Submit wait for the check now;
+    - a saved name with two spaces inside it, "Taxi  home", was refused
+      typed exactly: the spaces inside what was typed were made one. A
+      typed name keeps its inside spaces now, on the page and on the
+      server, as the list does (`DESIGN.md` §5.3).
+    - while Add checked a name, the amount, the name and the receipt could
+      still be changed, and Add then took what it was clicked with and
+      cleared the change. The cost's fields wait for the check too.

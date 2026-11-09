@@ -253,6 +253,11 @@ model Company {
   /// while both are on. Neither goes off while anyone holds advance money.
   cashAdvancesAllowed  Boolean                   @default(false)
   cashAdvancesOn       Boolean                   @default(true)
+  /// Cost names only from the saved list (CLIENTS_PLAN.md §6.9): while on, a
+  /// cost added to a task is named from the company's saved cost names, so a
+  /// client statement by cost name adds it up under the same name. Off until
+  /// its Admin switches it on, which needs a name on the list.
+  costNamesFromListOnly Boolean                  @default(false)
   /// The letters before the number in a username Nizmo makes up for this
   /// company's people (ds0, ds1…), in lower case; no other company has them
   /// (lib/username.ts). Null for a company added before codes whose people's

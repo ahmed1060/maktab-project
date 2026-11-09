@@ -259,7 +259,7 @@ export class CompanyService {
     }
 
     static async update(input: UpdateCompanyInput, session: any) {
-        const { id, name, usernameCode, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs, brandColour, cashAdvancesAllowed, cashAdvancesOn } = input
+        const { id, name, usernameCode, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs, brandColour, cashAdvancesAllowed, cashAdvancesOn, costNamesFromListOnly } = input
         const existing = await prisma.company.findUnique({ where: { id } })
         if (!existing) throw new Error("COMPANY_NOT_FOUND")
 
@@ -271,6 +271,14 @@ export class CompanyService {
             if (await codeInUse(newCode, id)) throw new Error("COMPANY_CODE_TAKEN")
         }
         const codeStart = newCode !== undefined ? await firstNumber(newCode) : 0
+
+        // Cost names only from the saved list (CLIENTS_PLAN.md §6.9): with
+        // none on it, nobody could add a cost, so it's switched on only
+        // once the list has a name. Off, whatever the list holds.
+        if (costNamesFromListOnly === true && !existing.costNamesFromListOnly) {
+            const saved = await prisma.listEntry.count({ where: { companyId: id, kind: "COST_NAME", archivedAt: null } })
+            if (saved === 0) throw new Error("COST_NAMES_NONE_SAVED")
+        }
 
         // Both maps are stored the same way now that vendorsLabel is gone — see
         // planOverrideWrite for what undefined, null and a map each mean here.
@@ -303,6 +311,7 @@ export class CompanyService {
             // Cash advances (CLIENTS_PLAN.md §7.6).
             ...(cashAdvancesAllowed !== undefined && { cashAdvancesAllowed }),
             ...(cashAdvancesOn !== undefined && { cashAdvancesOn }),
+            ...(costNamesFromListOnly !== undefined && { costNamesFromListOnly }),
         }
         // Switching cash advances off waits for any advance being recorded,
         // and is refused while anyone holds advance money (§7.6).
@@ -377,6 +386,9 @@ export class CompanyService {
         }
         if (cashAdvancesOn !== undefined && cashAdvancesOn !== existing.cashAdvancesOn) {
             changes.cashAdvancesOn = { old: existing.cashAdvancesOn, new: cashAdvancesOn }
+        }
+        if (costNamesFromListOnly !== undefined && costNamesFromListOnly !== existing.costNamesFromListOnly) {
+            changes.costNamesFromListOnly = { old: existing.costNamesFromListOnly, new: costNamesFromListOnly }
         }
 
         if (Object.keys(changes).length > 0) {
