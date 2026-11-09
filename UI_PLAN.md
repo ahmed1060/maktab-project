@@ -5661,3 +5661,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - **From the web interface audit:** nothing to change. The buttons are
     the building blocks', turning off is asked first, the toast says it's
     saved, and the focus stays on the switch's button as it flips.
+  - **Codex's review, fixed:** the Super Admin's Company settings load the
+    company from `/api/companies`, which sent neither the company's switch
+    nor whether it's on for every company. So a company that had turned it
+    off read On, with only Turn off, and where it was off for every
+    company the switch was still offered. That endpoint sends both now,
+    and the browser flows open the Super Admin's view of the company too
+    (17 checks each).
