@@ -1036,6 +1036,53 @@ balance first, automatically:
     stays on the Cash advances tab for a return or a correction.
   - **The debt shows as a cash advance** where a person's debts are listed.
 
+### 7.9 An advance for a particular task or client (Decided)
+
+Decided on 2026-11-09: the product owner took the recommended answer to
+each question.
+
+- **Where it's tied:** to one task or to one client, or to neither, as
+  today.
+  - Give advance asks what it's for: **any cost** (the running balance,
+    as today), **a task**, or **a client**.
+  - An advance for a task goes only to someone on that task, since only
+    they add costs to it. One for a client goes to anyone at work in the
+    company.
+- **How costs spend it:** a cost on that task, or on any of that client's
+  tasks, is paid from the money for it first, then from the running
+  balance, and anything beyond both is owed to the employee (§7.2).
+  - Where a person holds money for the task and for its client, the task's
+    goes first: it's the narrower.
+  - A cost anywhere else never touches money given for a task or a client.
+  - There's still nothing for the employee to choose. Add cost says what
+    they hold for that task or client, and besides.
+- **What's left:**
+  - **For a task:** what's left joins the running balance when the task is
+    approved or deleted, and they carry on paying from it (§7.1). Reopened
+    after, it doesn't come back.
+  - **For a client:** it stays for that client until it's returned, or
+    moved to the running balance by whoever may settle advances, or the
+    client is archived, when it joins the running balance.
+  - Either way it's an entry of its own, Moved to the running balance, so
+    the history says where the money went.
+- **Who gives it:** whoever may give and settle cash advances (§7.7), with
+  two-factor sign-in, as any advance. Seeing it is See cash advances, and
+  one's own on My cash advance, as today. There's no new permission.
+- **Where it shows:** the person's balance is still one number, with what
+  of it is for a task or a client listed under it, on the Cash advances
+  tab, the person's own page and My cash advance. A return, a correction
+  or leaving the company (§7.3) takes from all of it, the money for a task
+  or a client included.
+- **Proposed:** it ships as three PRs:
+  - 7e: the ledger holds money for a task or a client: Give advance asks
+    what it's for, and each place a balance shows lists what's held for
+    each, with Record return and Correction able to say which;
+  - 7f: costs spend it: a cost on that task, or on that client's tasks,
+    takes from the money for it first, and Add cost says so;
+  - 7g: what's left moves to the running balance: on its own when the task
+    is approved or deleted or the client archived, and by hand for a
+    client.
+
 ---
 
 ## 8. Build order (Decided)
@@ -1147,8 +1194,8 @@ balance first, automatically:
 
 ## 9. Later (future enhancements)
 
-- **An advance for a particular task or client,** in addition to the general
-  running balance (§7).
+- Nothing waits here now. An advance for a particular task or client
+  moved to §7.9 on 2026-11-09.
 
 ---
 
