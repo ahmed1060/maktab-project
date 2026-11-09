@@ -594,7 +594,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      the building blocks draw drawn by them, not copied by hand, merged in
      #234 on 2026-11-09; then an advance for a particular task or client,
      its first part (`CLIENTS_PLAN.md` §7.9, 7e), merged in #235 on
-     2026-11-09; then costs spending it first (7f), in #236;
+     2026-11-09; then costs spending it first (7f), merged in #236 on
+     2026-11-09; then the client statement by cost name, beside every
+     charge (`CLIENTS_PLAN.md` §6.9), in #237;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5459,3 +5461,22 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     the task's money and 100 on Delta Foods'; nothing scrolls sideways. In
     English on a computer and in Arabic on a phone (11 checks each).
   - The web interface audit found nothing else to change.
+- **2026-11-09:** The client statement in two versions (#237;
+  `CLIENTS_PLAN.md` §6.9; `DESIGN.md` §5.5, Client statement), from the
+  mock-up the product owner approved
+  (https://claude.ai/artifact/RuPsgbZJXxa93nV2D4FTTm): a cost's name was
+  there to add costs up by, and the statement listed each charge only.
+  - Tabs above the sheet pick Every charge, as it opens, or By cost name,
+    with a line under them on what each shows, kept in the address
+    (`by=name`). The sheet says which it is under the company's name.
+  - By cost name: each name, how many charges, Paid, Service fee and
+    Total, highest total first; its foot counts the names and the charges.
+    The totals and the note under it are Every charge's.
+  - Which charges are under one name: `costNameKey()` and `byCostName()`
+    in `lib/client-statement.ts`. The server reads each charge's saved
+    name and the company's saved cost names with the charges, and sends
+    the names with the statement.
+  - The receipts are under each name, in the table's order, numbered that
+    way (`receiptsByName()`), with each one's day and task, and the name's
+    charges with no receipt said under them.
+  - "Receipts" is a count word, in both languages.

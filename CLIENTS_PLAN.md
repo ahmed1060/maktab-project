@@ -780,6 +780,33 @@ statement). Decided on 2026-11-08 from the mock-up
     sent would be one of its own, later.
   - **A Super Admin gets any client's,** from its page, as they get its
     charges (§6.8).
+- **By cost name too (Decided on 2026-11-09,** from the second mock-up,
+  https://claude.ai/artifact/RuPsgbZJXxa93nV2D4FTTm; built in #237). The
+  product owner: a cost's name was there to add costs up by. Tabs above the
+  sheet pick Every charge, as it was, or By cost name:
+  - **One line for each name:** how many charges, Paid, Service fee and
+    Total, highest total first. What's still due is left to the totals
+    under it, which are Every charge's.
+  - **Which charges are under one name:** one picked from the saved list
+    is under that name as the list has it now, so renaming it renames the
+    line. A typed one is under a saved name, or with other typed ones, that
+    it matches with capitals, spaces, Arabic's letter forms (أ إ آ ا, ة ه,
+    ى ي), its vowel marks and the stretch line set aside; typed only, it's
+    shown as it was typed most often. Nothing else is guessed: a typo is a
+    line of its own, as a wrong merge would put money under the wrong name
+    on a paper sent to the client. A charge with no name is under No name.
+  - **The receipts are under each name,** in the table's order, numbered
+    that way, with each one's day and task, and the name's charges with no
+    receipt said under them.
+  - **Printed or saved as a PDF only,** as Every charge is. Excel was
+    offered and not wanted.
+  - **Proposed, as #237 builds it:** a typed name is matched against the
+    company's own saved cost names, archived ones too, those in use first;
+    the pick is kept in the page's address (`by=name`), and it's how the
+    same statement is shown, so picking it fetches nothing.
+- **Cost names only from the saved list,** a company setting, so a company
+  that wants its lines exact can have them: decided on 2026-11-09, to be
+  built next (#238), off for every company until it's switched on.
 
 ---
 
@@ -2484,3 +2511,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   task, then its client, then the running balance, and goes back on the
   parts it came from as it's removed or its task deleted. Add cost says
   what pays a cost there, in order.
+- **2026-11-09:** A client statement by cost name (§6.9; #237 in
+  `UI_PLAN.md`), decided from its mock-up: beside every charge, the same
+  charges added up by what they're called, with the receipts under each
+  name. And a company setting for cost names only from the saved list,
+  decided, to be built in #238.
