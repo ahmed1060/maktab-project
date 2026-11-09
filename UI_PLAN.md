@@ -599,7 +599,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      charge (`CLIENTS_PLAN.md` §6.9), merged in #237 on 2026-11-09; then
      cost names only from the saved list, a company setting (§6.9),
      merged in #238 on 2026-11-09; then what's left of an advance for a
-     task or client moving to the running balance (§7.9, 7g), in #239;
+     task or client moving to the running balance (§7.9, 7g), merged in
+     #239 on 2026-11-09; then a switch to turn off the high-risk
+     confirmation, for every company or for one (`ROLES_PLAN.md` §6.15),
+     in #240;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5630,3 +5633,18 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     key only now, which waits for a deletion or an archive but not an
     approval; only an advance given holds it whole, to wait for an
     approval and find the task decided.
+- **2026-11-09:** A switch to turn off the high-risk confirmation (#240;
+  `ROLES_PLAN.md` §6.15), as the product owner decided.
+  - **On System settings,** the Super Admin turns it off or on for every
+    company. **On Company settings' General tab,** where it's on for all,
+    a company's Admin turns it off or on for their company, and the
+    Super Admin can for any company. Where it's off for all, the
+    company's card says so and offers nothing to turn.
+  - **Off, nothing extra is asked:** paying, approving payroll, giving
+    advances, ending contracts, deleting and the other high-risk actions
+    go through with no code, and need no two-factor sign-in.
+  - **Turning either one off or on asks for a code once,** and the audit
+    log says who did it, from what to what.
+  - **What it doesn't change:** a Super Admin follows the system's switch
+    only. Their own actions that aren't permissions, such as deleting a
+    company, still ask for a code, and so does turning a switch.

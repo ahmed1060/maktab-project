@@ -43,6 +43,7 @@ Settled during the attendance brainstorm (rounds 3–6 of `ATTENDANCE_PLAN.md`):
 | **Periodic access review adopted as a per-company setting, off by default**, toggled in the company's settings (§6.14) | Roles review |
 | **One salary permission** — `salary.view` covers salaries everywhere: profiles, payroll, payslips, history, adjustments, settlements, debts (§3.2) | Roles review |
 | **High-risk permissions adopted, with step-up MFA valid for 1 hour** (§6.15) | Roles review |
+| **The high-risk confirmation can be turned off:** for every company on System settings, and for one company on Company settings where it's on for all. Off, nothing extra is asked; turning it off or on asks for a code once and is audited (§6.15) | Product owner, 2026-11-09 |
 | **Part A is built now, as part of stabilising the website**, on its own branch and PR; Part B follows later (§1.1) | Roles review |
 | **An Admin approving their own leave is closed in Part B, not Part A.** Found while recording day-off access: today it is allowed. Part A changes nobody's access, so the record keeps it; Part B enforces §4.2 rule 5 for leave along with every other approval | Part A |
 | **Permission list draft 2 accepted** with: `tasks.penalize` as its own permission, labelled as affecting pay; deleting and archiving as separate permissions; waiving debts separate from seeing them (§3.2) | Roles review |
@@ -815,6 +816,45 @@ list the code checks.
   for the rest of that time (`step-up:` in `RateLimit`), and the prompt can't
   tell that from a wrong code, so a right one is called wrong until then
   (backlog).
+
+#### Turning it off: decided on 2026-11-09
+
+The product owner asked for a way to turn the confirmation off and on. They
+decided:
+
+- **Two switches, both on to begin with:**
+  - **On System settings, for every company:** the Super Admin's.
+  - **On Company settings, for one company:** where the system's is on, the
+    company's Admin can turn it off for their company. The Super Admin can
+    change a company's too.
+- **Off, nothing extra is asked.** High-risk actions go through like any
+  other: no code, and no need to have two-factor sign-in set up.
+- **Turning either one off or on asks for a code once,** and is written in
+  the audit log.
+
+Proposed, as the build does it (#240):
+
+- **Which switch counts:**
+  - For someone in a company, the confirmation is asked where both switches
+    are on.
+  - For a Super Admin, only the system's counts. A company's switch is
+    about its own people, so turning it off doesn't take the code away
+    from a Super Admin working in that company.
+- **Where the system's is off,** the company's card says so and can't be
+  changed: there's nothing for it to turn.
+- **Still asked whatever the switches say:**
+  - the Super Admin's own actions that aren't permissions: deleting a
+    company, face verification and its key, resetting points, and setting
+    an Admin's password;
+  - turning a switch itself. Whoever turns one needs two-factor sign-in,
+    even to turn it off.
+- **How long a code lasts** stays on System settings, as it still counts
+  for those and wherever the confirmation is on.
+- **The role editor** still marks these permissions high-risk, with the
+  reason: they still move money or can't be undone.
+- **The columns:** `SystemSettings.confirmHighRisk` and
+  `Company.confirmHighRisk`, true by default. The migration only adds them,
+  so nothing changes for anyone the day it ships.
 
 ---
 
