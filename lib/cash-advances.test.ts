@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { CASH_ADVANCE_MAX, balanceAfter, cashAdvancesInUse, dayOf, forOf, signedAmount } from "./cash-advances"
+import { CASH_ADVANCE_MAX, balanceAfter, cashAdvancesInUse, dayOf, forOf, paysFirst, signedAmount } from "./cash-advances"
 
 /** Cash advances' rules as the screens and the server both take them (CLIENTS_PLAN.md §7). */
 describe("cash advances", () => {
@@ -43,6 +43,24 @@ describe("cash advances", () => {
         expect(forOf({ forTaskId: "k1", forClientId: "c1" })).toBeNull()
         expect(forOf({ forTaskId: 7 })).toBeNull()
         expect(forOf({ forClientId: "x".repeat(65) })).toBeNull()
+    })
+
+    it("pay a cost from the money for its task, then its client, then the running balance, as Add cost says (§7.9)", () => {
+        const held = [
+            { forTask: { id: "k1", title: "Fix the gate" }, forClient: null, amount: 400 },
+            { forTask: { id: "k2", title: "Elsewhere" }, forClient: null, amount: 90 },
+            { forTask: null, forClient: { id: "c1", name: "Nile Foods" }, amount: 300 },
+            { forTask: null, forClient: { id: "c2", name: "Delta" }, amount: 70 },
+        ]
+        expect(paysFirst(held, 665, { taskId: "k1", clientId: "c1" })).toEqual([
+            { kind: "task", amount: 400 },
+            { kind: "client", name: "Nile Foods", amount: 300 },
+            { kind: "running", amount: 665 },
+        ])
+        // Another task or client's money never pays it; nothing held for this one, it isn't said.
+        expect(paysFirst(held, 665, { taskId: "k3", clientId: null })).toEqual([{ kind: "running", amount: 665 }])
+        expect(paysFirst(held, 0, { taskId: "k3", clientId: "c2" })).toEqual([{ kind: "client", name: "Delta", amount: 70 }])
+        expect(paysFirst([], 0, { taskId: "k1", clientId: "c1" })).toEqual([])
     })
 
     it("take a day only as a real day of the calendar", () => {
