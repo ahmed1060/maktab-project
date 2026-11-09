@@ -1097,7 +1097,7 @@ each question.
     zero.
   - **Until 7f, costs are paid from the running balance only.** Money for
     a task or a client waits for 7f to spend it; a cost beyond the running
-    balance is owed to the employee, as today.
+    balance is owed to the employee, as today. 7f spends it (below).
   - **Until 7g, a task or a client deleted** leaves its money on the
     person's balance, for nothing in particular: its entries stay, and
     join the running balance.
@@ -1109,6 +1109,27 @@ each question.
     much of it is for tasks or clients; on the person's page and My cash
     advance, the running balance beside the balance, a card of what's held
     for each task and client, and each entry saying what it was for.
+- **Proposed, as 7f builds it:**
+  - **A cost added on a task** is paid from what its author holds for
+    that task, then for the task's client, then the running balance, as
+    far as each goes; anything beyond them all is owed to the employee,
+    as today. A task with no client skips the client's money. Money for
+    any other task or client is never touched.
+  - **Each part a cost takes from is a Spent entry of its own,** on its
+    cost and task, saying which part it was. The cost's From advance is
+    them all together, as before.
+  - **Removing a cost, or deleting its task,** puts each part back where
+    it came from, as the cost's own entries say. A task deleted then takes
+    its own money to the running balance with it, until 7g. What a cost
+    from before 7f took named no part: it goes back on the running
+    balance, where it was taken from.
+  - **Add cost says what pays a cost there,** where the person holds money
+    for the task or its client: "400 EGP for this task, then 300 EGP for
+    Nile Foods, then 665 EGP from your running balance". Money for any
+    other task or client isn't counted, as it doesn't pay. Holding none
+    for a task or a client anywhere, it says the one balance, as before.
+  - **A person's cash advance** says which part a Spent entry took from,
+    unless it's the entry's own task, which its task line already says.
 
 ---
 
@@ -1204,7 +1225,8 @@ each question.
        steps 0–7.
      - An advance for a particular task or client (§7.9), decided on
        2026-11-09, adds three PRs to step 7, 7e to 7g. 7e, the ledger
-       holding money for a task or a client, in #235.
+       holding money for a task or a client, merged in #235 on
+       2026-11-09, and 7f, costs spending it first, in #236.
      - The new side bar groups land with step 0. 0a puts the Records item
        where the old Clients item was. Decided (2026-10-22): the groups come
        in a small PR straight after 0b, now that the Clients group (§2.1 of
@@ -2457,3 +2479,8 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   Correction which part they're on, and each place a balance shows says
   what of it is for tasks or clients. Costs still spend the running
   balance only, until 7f.
+- **2026-11-09:** 7f, costs spending the money held for them (§7.9), built
+  in #236 (`UI_PLAN.md`): a cost on a task takes from what's held for the
+  task, then its client, then the running balance, and goes back on the
+  parts it came from as it's removed or its task deleted. Add cost says
+  what pays a cost there, in order.

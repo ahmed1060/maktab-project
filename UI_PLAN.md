@@ -593,7 +593,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      icons one section at a time, merged in #233 on 2026-11-08; then what
      the building blocks draw drawn by them, not copied by hand, merged in
      #234 on 2026-11-09; then an advance for a particular task or client,
-     its first part (`CLIENTS_PLAN.md` §7.9, 7e), in #235;
+     its first part (`CLIENTS_PLAN.md` §7.9, 7e), merged in #235 on
+     2026-11-09; then costs spending it first (7f), in #236;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5430,4 +5431,31 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     advances tab says 550 of the balance is for tasks or clients; nothing
     scrolls sideways. In English on a computer and in Arabic on a phone
     (16 checks each).
+  - The web interface audit found nothing else to change.
+- **2026-11-09:** Costs spend the money held for them first (#236;
+  `CLIENTS_PLAN.md` §7.9, 7f). On the screens:
+  - **Add cost** says what pays a cost on this task, in order, where the
+    person holds money for it or its client: "400.00 EGP for this task,
+    then 300.00 EGP for Nile Foods, then 665.00 EGP from your running
+    balance", each amount in the number style and the client's name
+    isolated. Money for any other task or client isn't counted. It said
+    the whole balance, which, once part of it was for another task, a cost
+    here couldn't all spend. Holding none for a task or a client anywhere,
+    it says the one balance, as before.
+  - **A person's cash advance:** a Spent entry says which part it took
+    from, "For Nile Foods", unless it's the entry's own task, which its
+    task line already says. Each entry's lines, its task, its part and its
+    note, each have their icon, in the table and on a phone's card.
+  - **Found in the browser and fixed:** on a phone, in Arabic, an amount
+    in Add cost's line broke between its number and its currency at the
+    end of a line. Each stays on one line now.
+  - In the browser, against the scratch database, as the employee holding
+    400 for the task and 300 for its client beside 665: Add cost says the
+    task's 400, then Delta Foods' 300, then the running balance; a 500
+    cost takes 400 from the task's money and 100 from Delta Foods', the
+    running balance untouched, and Add cost then says Delta Foods' 200,
+    then the running balance; My cash advance names Delta Foods on the
+    100, and doesn't repeat the task on the 400; removed, 400 goes back on
+    the task's money and 100 on Delta Foods'; nothing scrolls sideways. In
+    English on a computer and in Arabic on a phone (11 checks each).
   - The web interface audit found nothing else to change.
