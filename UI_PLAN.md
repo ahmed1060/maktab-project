@@ -605,8 +605,11 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      merged in #240 on 2026-11-09; then what's held for a task following
      it when it's transferred (`CLIENTS_PLAN.md` §7.9, 7h), merged in #241
      on 2026-11-09; then a company's high-risk switch greyed, and refused
-     by the server, while the system's is off (`ROLES_PLAN.md` §6.15), in
-     #242;
+     by the server, while the system's is off (`ROLES_PLAN.md` §6.15),
+     merged in #242 on 2026-11-09; then the roles tests against Postgres
+     building their database with every column a company, a person and the
+     system's settings have, so the three of them that had failed on `main`
+     since the brand colour pass again, in #243;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5750,3 +5753,18 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     note's grey, with nothing to say it was a link; it's a link in a
     sentence now, in the brand's colour and underlined, as the cost names
     card has it.
+- **2026-11-09:** The roles tests against Postgres pass again (#243).
+  - **Why three failed:** `lib/roles.db.test.ts` builds its database from
+    the migrations it names, not all of them, and it named none of the
+    ones that have added a column to a company or the system's settings
+    since the brand colour (#80). Prisma reads and writes those rows
+    whole, so the three tests that saved a company (a company's default
+    role, copying roles, access reviews) failed on a missing column, on
+    `main` too. Production has every migration, and CI has no database,
+    so neither saw it.
+  - **Now:** the test also runs the brand colour, cash advance, cost
+    names and high-risk switch migrations, and a new test fails, naming
+    them, when a column a company, a person or the system's settings have
+    in the schema is missing from the database it builds. It failed
+    first, naming the seven columns.
+  - Only the test changes; no screen or rule does.
