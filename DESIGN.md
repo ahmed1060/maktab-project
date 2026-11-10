@@ -1538,6 +1538,14 @@ These are built once, in the building-blocks PR, and every page uses them
 - **Things move only when someone acts:** a menu or a dialog opening, the
   side bar sliding in, a toast saying what an action did. Nothing animates
   on page load, and cards don't lift on hover.
+- **What someone else changed appears in place, and still:** a task
+  assigned meanwhile is in the list, the bell has its notification, a
+  changed row reads as it now is (`REALTIME_PLAN.md`). No toast says so,
+  nothing slides or flashes, and the page isn't loaded again: what the
+  person was typing, their filters, where they'd scrolled to and an open
+  dialog all stay. Changes arriving close together are drawn once, a
+  second after the last, and a tab out of sight is drawn when it's shown
+  again.
 - **How each comes in** (with Emil Design Engineering, `UI_PLAN.md` §7.1):
   - **a menu or a panel opened from its button** (a row's menu, the
     account menu, the bell's panel, the company picker, and a date field's
@@ -2092,3 +2100,7 @@ changed:
   and `aria-disabled`, with why in a note beside it (§5.2), as a company's
   high-risk switch is while the Super Admin has it off for every company
   (`ROLES_PLAN.md` §6.15).
+- **2026-11-10:** What someone else changed appears in place, and still
+  (§8): no toast, no movement, no reload, and what the person was doing
+  stays, as live updates begin with tasks and the bell
+  (`REALTIME_PLAN.md`).
