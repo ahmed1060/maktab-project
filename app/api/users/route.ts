@@ -11,6 +11,7 @@ import { ownPasswordPausedUntil } from "@/lib/own-password"
 import { UserService } from "@/lib/services/user.service"
 import { parsePaging } from "@/lib/pagination"
 import { buildUserWhereClause, buildUserOrderBy } from "@/lib/services/user-query"
+import { presenceStatus } from "@/lib/presence"
 import { verifyResourceAccess } from "@/lib/security"
 import { can } from "@/lib/permissions/can"
 import { shapeUser } from "@/lib/permissions/shape"
@@ -166,11 +167,8 @@ export const GET = withStandardHandler(async (req, session) => {
     const paused = can(session.user, "employees.reset_password") ? await ownPasswordPausedUntil(users.map(u => u.id)) : null
 
     const usersWithStatus = users.map(user => {
-        let effectiveStatus = user.status
-        if (effectiveStatus === 'ACTIVE' && user.lastActivity) {
-            const diffMs = new Date().getTime() - new Date(user.lastActivity).getTime()
-            if (diffMs > 60000) effectiveStatus = 'OFFLINE'
-        }
+        // Online while seen within the heartbeat's window (lib/presence.ts).
+        const effectiveStatus = presenceStatus(user.status, user.lastActivity)
         return {
             ...user, status: effectiveStatus,
             ...(locks ? { signInLockedUntil: locks?.get(user.id)?.toISOString() ?? null } : {}),

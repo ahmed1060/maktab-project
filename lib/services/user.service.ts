@@ -721,8 +721,8 @@ export class UserService {
             }),
             // Live read, not the throttled session copy — this is the
             // heartbeat's whole job: catching a state change within its own
-            // 2-minute poll interval rather than waiting on the JWT's 60s
-            // staleness window on top of that.
+            // 90-second interval (lib/presence.ts) rather than waiting on the
+            // JWT's 60s staleness window on top of that.
             prisma.systemSettings.findUnique({ where: { id: 'default' }, select: { maintenanceMode: true, maintenanceMessage: true } })
         ])
 
