@@ -620,7 +620,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      as a suspended one is, which went on working, merged in #247 on
      2026-11-10; then live updates' third part, someone suspended, closed
      or deleted, or whose company is banned, signed out within seconds, not
-     at the heartbeat's next beat, merged in #248 on 2026-11-10;
+     at the heartbeat's next beat, merged in #248 on 2026-11-10; then the
+     account status route answering a company's Admin, whose audit entry
+     named them as a Super Admin and failed after the status was saved,
+     merged in #249 on 2026-11-10;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5832,3 +5835,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     heartbeat hears it, asks at once, and goes on asking every 90 seconds
     as the safety net.
   - Nothing on the screen changes but when it comes.
+- **2026-11-10:** The account status route answers a company's Admin
+  (#249). They may use it (`employees.change_status`, as for the status
+  field of an edit), but its audit entry named every caller as a Super
+  Admin. Named as one they aren't, the entry broke its foreign key after
+  the status was saved, and the route answered 500. A company's own people
+  are now named as themselves, as an edit and a delete already name them.
+  No screen calls the route, so nobody saw it.
