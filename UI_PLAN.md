@@ -613,7 +613,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      live updates (`REALTIME_PLAN.md`), in five parts, the first, tasks and
      the bell drawn again as what they show changes, merged in #244 on
      2026-11-10 and live since; the last, a little motion for what arrives
-     live;
+     live; then who shows as online on the Employees list and All users
+     following the heartbeat, online between its beats and in the Online
+     and Offline filters as the badges say, merged in #246 on 2026-11-10;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5792,3 +5794,16 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   At the product owner's request, a fifth part is planned last: a little
   motion for what arrives live (Proposed), which changes `DESIGN.md` §8
   first when it's built.
+- **2026-11-10:** Who shows as online follows the heartbeat (#246). On the
+  Employees list and the Super Admin's All users, someone counted as online
+  for 60 seconds after their tab's last beat, while a tab beats every 90,
+  so a person at work showed as Offline a third of the time.
+  - **The window:** online for two beats and 20 seconds after the last
+    (200 seconds), so one beat lost to a bad connection doesn't show them
+    offline. The window and the beat are read from one place,
+    `lib/presence.ts`.
+  - **The filters:** Online and Offline list who the badges say. Offline
+    listed only those who had signed out, and Online also those whose last
+    tab had closed without signing out.
+  - Someone who closes their last tab without signing out shows as online
+    for up to 200 seconds, where it was 60.

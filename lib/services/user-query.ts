@@ -1,4 +1,5 @@
 import { scopesToTeam, teamMemberWhere, and } from "@/lib/team-scope"
+import { presenceWhere } from "@/lib/presence"
 import type { UserRole, UserStatus } from "@prisma/client"
 
 /**
@@ -40,6 +41,8 @@ export function buildUserWhereClause(
     filterCompanyId: string | undefined,
     validRoles: readonly string[],
     validStatuses: readonly string[],
+    // When "lately" is, for the Online and Offline filters; the tests pin it.
+    now: Date = new Date(),
 ): UserWhereResult {
     const userRole = session.user.role
     const whereClause: any = { role: { not: 'SUPER_ADMIN' } }
@@ -114,7 +117,12 @@ export function buildUserWhereClause(
     const statusParam = searchParams.get('status')
     const includeDeleted = searchParams.get('includeDeleted') === 'true'
     if (statusParam) {
-        if (validStatuses.includes(statusParam)) {
+        if (statusParam === 'ACTIVE' || statusParam === 'OFFLINE') {
+            // Online and Offline ask what the list shows, not only what's
+            // stored: someone signed in and not seen lately is offline
+            // (lib/presence.ts).
+            and(whereClause, presenceWhere(statusParam, now))
+        } else if (validStatuses.includes(statusParam)) {
             whereClause.status = statusParam
         } else {
             // Not a real status — preserve the old String-column behaviour (a

@@ -8,6 +8,7 @@ import { SignOutIcon, WrenchIcon } from "@phosphor-icons/react/ssr"
 import { EmptyState, type PhosphorIcon } from "@/components/ui"
 import { useLanguage } from "@/context/LanguageContext"
 import { useDialog } from "@/lib/useDialog"
+import { HEARTBEAT_MS } from "@/lib/presence"
 
 // How long to give tasks/[id]/client.tsx or obligations/[id]/client.tsx to
 // finish an in-flight emergency save (upload + PUT) before giving up and
@@ -204,7 +205,7 @@ export default function UserHeartbeat() {
         const interval = setInterval(() => {
             if (document.visibilityState === 'hidden') return
             checkStatus()
-        }, 90000)
+        }, HEARTBEAT_MS)
 
         return () => { clearInterval(interval); checkStatusRef.current = null }
         // Deliberately keyed only on session — this interval must survive
