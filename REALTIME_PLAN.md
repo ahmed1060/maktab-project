@@ -53,7 +53,8 @@ Decided with the product owner on 2026-11-10.
 - **Private channels (Decided: the product owner's choice of two).**
   Supabase lets a browser listen to a channel only if a rule on
   `realtime.messages` lets its token in:
-  - `tasks:<company id>`: the company's people, and the Super Admin;
+  - `tasks:<company id>`: the company's people, and the Super Admin. It
+    says when the company's requests change too (part 2);
   - `notices:<person id>`: that person, or that Super Admin, alone.
   - The browser can send nothing on them: there's no rule for that.
   - The token is the app's own: `GET /api/realtime/token` signs one for
@@ -102,6 +103,9 @@ Decided with the product owner on 2026-11-10.
     day would use about 1.35 million a month. Supabase's usage page is
     checked after the first weeks; if it runs high, a tab joins a channel
     only while a screen that listens to it is open.
+  - Requests' signals (part 2) are heard as tasks' are, by every open tab
+    of the company, and by each Super Admin's. Requests change far less
+    often than tasks, and a check-in sends none.
 
 ---
 
@@ -110,7 +114,7 @@ Decided with the product owner on 2026-11-10.
 | Part | What it covers | PR |
 |---|---|---|
 | 1 | The token, the channels' rules and the triggers; one connection per tab; the task list, a task's page and the bell drawn again when what they show changes | #244, merged 2026-11-10 |
-| 2 | The Requests page, and the count on Requests in the side bar | |
+| 2 | The Requests page, and the count on Requests in the side bar | #250 |
 | 3 | A suspended, archived, deleted or banned person signed out within seconds, not 90; the heartbeat kept as the safety net | #248 |
 | 4 | Other screens, as they're wanted: cash advances, attendance, costs | |
 | 5 | A little motion for what arrives live: what changed is shown for a moment, so nobody has to hunt for it | |
@@ -122,6 +126,23 @@ Decided with the product owner on 2026-11-10.
   product owner checked it in production the same day: a task given to an
   employee appeared on their open Tasks page, and Supabase's Realtime logs
   showed no refused joins.
+- **Part 2 (#250):** the Requests page and the count on Requests in the
+  side bar draw themselves again when a request is asked for, decided or
+  withdrawn, through the same routes as any visit.
+  - **The signal** is `requests`, empty as the others are, on the
+    company's channel (`tasks:<id>`), and on each Super Admin's own
+    (`notices:<id>`): with no company in view, their page and count are
+    every company's, and they hear no company's channel then. No new
+    channel, and no change to who may listen
+    (`prisma/migrations/20261210000000_live_requests`).
+  - **Every kind on the page is covered,** from the table it's read from.
+    The attendance kinds signal only for the rows a request is made of: a
+    check-in flagged, reviewed, or withdrawn once flagged or reviewed; a
+    day whose overtime waits, is decided, or is worked out again while it
+    waits; a phone asked for or decided. A check-in writes a punch, works
+    its day out again and counts on its phone, and a signal for each would
+    draw every open Requests page and count in the company.
+  - **Joining a channel draws them once too,** as it draws the tasks.
 - **Part 3 (#248):** the screen of someone who can't go on asks the
   heartbeat at once, which signs it out as it does at its beat, saving the
   work open on it first.
@@ -194,3 +215,7 @@ Decided with the product owner on 2026-11-10.
   deleted, or whose company is banned, is signed out within seconds, by a
   signal on the channels part 1 already has. The heartbeat stays as the
   safety net.
+- **2026-11-10:** Part 2 built (#250): the Requests page and the count on
+  Requests in the side bar draw themselves again when a request changes,
+  for the company's people and each Super Admin. Check-ins send no signal
+  unless they make a request.
