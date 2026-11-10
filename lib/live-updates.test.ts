@@ -281,10 +281,50 @@ describe("a tab's connection", () => {
         expect(drawn).toEqual(["notices", "notices"])
     })
 
-    it("loads nothing while the token route says it's off", async () => {
+    it("loads nothing while the token route says it's off, and doesn't ask again", async () => {
         const load = vi.fn()
-        await new LiveConnection({ ask: async () => null, load, drawer }).start()
+        const ask = vi.fn(async () => "off" as const)
+        await new LiveConnection({ ask, load, drawer }).start()
         expect(load).not.toHaveBeenCalled()
+        await vi.advanceTimersByTimeAsync(HOUR)
+        expect(ask).toHaveBeenCalledTimes(1)
+    })
+
+    // Asked while offline, or as the server failed, the first token never
+    // came, and nothing asked again until the page was loaded again (Codex,
+    // on PR 244).
+    it("asks again a minute later when the first token doesn't come, and joins once it does", async () => {
+        const supabase = fakeSupabase()
+        const answers = [null, null, grant("t1")]
+        const ask = vi.fn(async () => answers.shift() ?? null)
+        await new LiveConnection({ ask, load: async () => supabase, drawer }).start()
+        expect(supabase.channels).toEqual([])
+        await vi.advanceTimersByTimeAsync(RETRY_MS - 1)
+        expect(ask).toHaveBeenCalledTimes(1)
+        await vi.advanceTimersByTimeAsync(1)
+        expect(ask).toHaveBeenCalledTimes(2)
+        await vi.advanceTimersByTimeAsync(RETRY_MS)
+        expect(ask).toHaveBeenCalledTimes(3)
+        expect(supabase.channels.map(c => c.topic)).toEqual(["tasks:c1", "notices:u1"])
+    })
+
+    it("tries again a minute later when Supabase's client doesn't load", async () => {
+        const supabase = fakeSupabase()
+        const load = vi.fn().mockRejectedValueOnce(new Error("offline")).mockResolvedValue(supabase)
+        await new LiveConnection({ ask: async () => grant("t1"), load, drawer }).start()
+        expect(supabase.channels).toEqual([])
+        await vi.advanceTimersByTimeAsync(RETRY_MS)
+        expect(load).toHaveBeenCalledTimes(2)
+        expect(supabase.channels.map(c => c.topic)).toEqual(["tasks:c1", "notices:u1"])
+    })
+
+    it("asks no more once it's stopped while waiting to ask again", async () => {
+        const ask = vi.fn(async () => null)
+        const connection = new LiveConnection({ ask, load: vi.fn(), drawer })
+        await connection.start()
+        connection.stop()
+        await vi.advanceTimersByTimeAsync(HOUR)
+        expect(ask).toHaveBeenCalledTimes(1)
     })
 
     it("asks for the next token five minutes before the one held ends, and a minute later again if that fails", async () => {
@@ -301,6 +341,17 @@ describe("a tab's connection", () => {
         expect(ask).toHaveBeenCalledTimes(3)
         expect(supabase.token()).toBe("t2")
         expect(supabase.log.at(-1)).toBe("auth t2")
+    })
+
+    it("stops renewing once the token route says it's off", async () => {
+        const supabase = fakeSupabase()
+        const answers: ("off" | ReturnType<typeof grant>)[] = [grant("t1"), "off"]
+        const ask = vi.fn(async () => answers.shift() ?? null)
+        await new LiveConnection({ ask, load: async () => supabase, drawer }).start()
+        await vi.advanceTimersByTimeAsync(HOUR)
+        expect(ask).toHaveBeenCalledTimes(2)
+        await vi.advanceTimersByTimeAsync(HOUR)
+        expect(ask).toHaveBeenCalledTimes(2)
     })
 
     it("leaves its channels, and forgets its token, as it stops", async () => {
@@ -338,6 +389,20 @@ describe("the screens that are drawn again", () => {
         expect(page).toContain("useLive('tasks', () => router.refresh())")
         expect(page).toContain("if (!isEditing) setEditForm(editFormFrom(initialTask))")
         expect(page).toContain("if (!isReviewModalOpen) setReviewDifficulty(initialTask.difficulty)")
+    })
+
+    // Kept while the dialog was open, its old assignees and files were sent
+    // with a title change, undoing a transfer or dropping a file added
+    // meanwhile (Codex, on PR 244).
+    it("a task's page saves its details with who it's assigned to now, and leaves its files alone", () => {
+        const page = read("app/(dashboard)/dashboard/tasks/[id]/client.tsx")
+        const form = page.slice(page.indexOf("const editFormFrom"), page.indexOf("})", page.indexOf("const editFormFrom")))
+        expect(form).not.toContain("assigneeIds")
+        expect(form).not.toContain("attachments")
+        const save = page.slice(page.indexOf("const handleSaveDetails"), page.indexOf("const handlePaymentStatusChange"))
+        expect(save).toContain("assigneeIds: task.assignees?.map((a: any) => a.id) ?? []")
+        expect(save).not.toContain("attachments")
+        expect(page).toContain("setEditForm(editFormFrom(task))")
     })
 
     it("the bell", () => {

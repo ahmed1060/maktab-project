@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useEffectEvent, useState, type ReactNode } from 'react'
 import { LiveDrawer, type LiveKind } from '@/lib/live-updates'
-import { LiveConnection, type Grant, type LiveClient } from '@/lib/live-connection'
+import { LiveConnection, type Answer, type LiveClient } from '@/lib/live-connection'
 import { fetchRetrying } from '@/lib/swr-fetcher'
 
 /**
@@ -18,12 +18,14 @@ import { fetchRetrying } from '@/lib/swr-fetcher'
 
 const LiveContext = createContext<LiveDrawer | null>(null)
 
-async function askForToken(): Promise<Grant | null> {
-    // Tried again, as anything loaded is (DESIGN.md §5.5); without one, the
-    // screens go on asking on their own schedule.
+async function askForToken(): Promise<Answer> {
+    // Tried again, as anything loaded is (DESIGN.md §5.5); without an answer,
+    // the connection asks again a minute later, and meanwhile the screens go
+    // on asking on their own schedule.
     const res = await fetchRetrying('/api/realtime/token', { cache: 'no-store' }).catch(() => null)
     if (!res?.ok) return null
     const data = (await res.json().catch(() => null))?.data
+    if (data?.off) return 'off'
     return data?.token ? data : null
 }
 

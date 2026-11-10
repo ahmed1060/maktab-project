@@ -14,11 +14,15 @@ import type { LiveDrawer, LiveTopic } from "./live-updates"
  *     there to hear it; and again, after a laptop slept or a phone lost its
  *     signal, for what was missed meanwhile.
  *   - Asks for the next token five minutes before the one held ends, as
- *     Supabase closes a channel whose token has ended; a failed renewal is
- *     tried again a minute later.
+ *     Supabase closes a channel whose token has ended.
+ *   - A token or Supabase's client that doesn't come, as when offline or
+ *     the server fails, is asked for again a minute later; while the token
+ *     route says it's off, nothing is.
  */
 
 export type Grant = { token: string; expiresAt: number; topics: LiveTopic[] }
+/** The token route's answer: a grant, "off" until the secret is set, or null when none came. */
+export type Answer = Grant | "off" | null
 
 /** The part of Supabase's client this uses (lib/supabase-browser.ts). */
 export type LiveChannel = {
@@ -36,24 +40,29 @@ export const RETRY_MS = 60_000
 
 export class LiveConnection {
     private stopped = false
-    private renewal: ReturnType<typeof setTimeout> | undefined
+    /** The next renewal, or the next try at starting. */
+    private timer: ReturnType<typeof setTimeout> | undefined
     private channels: LiveChannel[] = []
     private client: LiveClient | null = null
     private setToken: ((token: string | null) => void) | null = null
 
     constructor(private readonly deps: {
-        /** The token and channels, from /api/realtime/token; null when it's off or failed. */
-        ask: () => Promise<Grant | null>
+        /** The token and channels, from /api/realtime/token. */
+        ask: () => Promise<Answer>
         /** Supabase's client, loaded only once it's needed, and where its token is kept. */
         load: () => Promise<{ client: LiveClient | null; setToken: (token: string | null) => void }>
         drawer: LiveDrawer
     }) {}
 
     async start() {
-        const grant = await this.deps.ask()
-        if (!grant || this.stopped) return
-        const { client, setToken } = await this.deps.load()
-        if (!client || this.stopped) return
+        const grant = await this.deps.ask().catch(() => null)
+        if (this.stopped || grant === "off") return
+        if (!grant) return this.startAgainLater()
+        const loaded = await this.deps.load().catch(() => null)
+        if (this.stopped) return
+        if (!loaded) return this.startAgainLater()
+        const { client, setToken } = loaded
+        if (!client) return
         this.client = client
         this.setToken = setToken
         setToken(grant.token)
@@ -69,16 +78,20 @@ export class LiveConnection {
 
     stop() {
         this.stopped = true
-        clearTimeout(this.renewal)
+        clearTimeout(this.timer)
         for (const channel of this.channels) void this.client?.removeChannel(channel)
         this.channels = []
         this.setToken?.(null)
     }
 
+    private startAgainLater() {
+        this.timer = setTimeout(() => { this.start().catch(() => this.startAgainLater()) }, RETRY_MS)
+    }
+
     private renewBy(expiresAt: number) {
-        this.renewal = setTimeout(async () => {
+        this.timer = setTimeout(async () => {
             const next = await this.deps.ask().catch(() => null)
-            if (this.stopped) return
+            if (this.stopped || next === "off") return
             if (!next) return this.renewBy(Date.now() + RENEW_BEFORE_MS + RETRY_MS)
             this.setToken?.(next.token)
             void this.client?.realtime.setAuth()

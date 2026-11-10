@@ -89,17 +89,18 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
         } catch (e) { console.error('[MEMBER_PAYMENT_STATUS_PARSE_FAIL]', e); return {} }
     }
     const attachmentsOf = (src: any): any[] => Array.isArray(src.attachments) ? src.attachments : []
+    // What the edit dialog changes, and only that: who it's assigned to and
+    // its files are changed elsewhere, and kept here while the dialog was
+    // open, they'd undo a transfer or drop a file added meanwhile.
     const editFormFrom = (src: any) => ({
         title: src.title,
         // The name its title was picked as (CLIENTS_PLAN.md §5.5).
         titleEntryId: (src.titleEntryId ?? null) as string | null,
         description: src.description,
-        assigneeIds: src.assignees?.map((a: any) => a.id) || [],
         deadline: src.deadline,
         difficulty: src.difficulty,
         clientId: src.clientId ?? '',
         locationId: src.locationId ?? '',
-        attachments: attachmentsOf(src),
     })
     // Where it's done: its location as it is now, or, from before locations,
     // the text it was given.
@@ -694,17 +695,7 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
             showToast(t('cannot_edit_submitted_task'), 'error')
             return
         }
-        setEditForm({
-            title: task.title,
-            titleEntryId: task.titleEntryId ?? null,
-            description: task.description,
-            assigneeIds: task.assignees?.map((a: any) => a.id) || [],
-            deadline: task.deadline,
-            difficulty: task.difficulty,
-            clientId: task.clientId ?? '',
-            locationId: task.locationId ?? '',
-            attachments: existingAttachments
-        })
+        setEditForm(editFormFrom(task))
         setIsEditing(true)
     }
 
@@ -744,6 +735,9 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
                 method: 'PUT',
                 body: JSON.stringify({
                     ...details,
+                    // Who it's assigned to now, drawn again if it was moved
+                    // while the dialog was open: each is told of the edit.
+                    assigneeIds: task.assignees?.map((a: any) => a.id) ?? [],
                     ...(titleChanged ? { titleEntryId } : {}),
                     ...(clientChanged ? { clientId: clientId || null } : {}),
                     ...(locationId && locationId !== task.locationId ? { locationId } : {}),
