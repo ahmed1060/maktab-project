@@ -616,6 +616,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      live; then who shows as online on the Employees list and All users
      following the heartbeat, online between its beats and in the Online
      and Offline filters as the badges say, merged in #246 on 2026-11-10;
+     then an account deleted while it's signed in refused and signed out,
+     as a suspended one is, which went on working, merged in #247 on
+     2026-11-10;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5807,3 +5810,14 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     tab had closed without signing out.
   - Someone who closes their last tab without signing out shows as online
     for up to 200 seconds, where it was 60.
+- **2026-11-10:** An account deleted while it's signed in is refused and
+  signed out (#247). It went on working on the session it had: the server
+  refused only a suspended, closed or banned account, the heartbeat said a
+  deleted one was active, and a row deleted outright left a session that
+  matched nothing, which nothing ended.
+  - **Deleted, the row kept:** refused like a suspension, by the API and
+    by every page that reads the database (`lib/account-refusal.ts`), and
+    the heartbeat signs the browser out once the work open on it is saved,
+    under Account deleted (`DESIGN.md` §5.5).
+  - **Deleted outright:** its session ends at its next check, a minute at
+    most, and the browser is signed out.
