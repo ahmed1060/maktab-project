@@ -161,6 +161,71 @@ describe.skipIf(!ADMIN_URL)("live updates, in Postgres", () => {
         })
     })
 
+    // Part 3: the screen of someone who can't go on asks the heartbeat at
+    // once, which signs it out, rather than at the next beat, 90 seconds on.
+    describe("an account that can't go on", () => {
+        const account = (topic: string) => ({ topic, event: "account", payload: {}, private: true })
+
+        it("is signalled to the person, when they're suspended, closed or deleted", async () => {
+            for (const status of ["SUSPENDED", "ARCHIVED", "DELETED"]) {
+                await db.query(`UPDATE "User" SET status = 'ACTIVE' WHERE id = 'u2'`)
+                await sent()
+                await db.query(`UPDATE "User" SET status = $1::"UserStatus" WHERE id = 'u2'`, [status])
+                expect(await sent(), status).toEqual([account("notices:u2")])
+            }
+        })
+
+        it("to each of several at once, once each", async () => {
+            await db.query(`UPDATE "User" SET status = 'ACTIVE' WHERE id IN ('u1', 'u2')`)
+            await sent()
+            await db.query(`UPDATE "User" SET status = 'SUSPENDED' WHERE id IN ('u1', 'u2')`)
+            expect((await topics()).sort()).toEqual(["notices:u1", "notices:u2"])
+            await db.query(`UPDATE "User" SET status = 'ACTIVE' WHERE id IN ('u1', 'u2')`)
+            await sent()
+        })
+
+        it("but not for signing in or out, being let back in, or the heartbeat's beat", async () => {
+            await db.query(`UPDATE "User" SET status = 'OFFLINE' WHERE id = 'u2'`)
+            await db.query(`UPDATE "User" SET status = 'ACTIVE', "lastActivity" = now() WHERE id = 'u2'`)
+            await db.query(`UPDATE "User" SET "lastActivity" = now() WHERE id = 'u2'`)
+            await db.query(`UPDATE "User" SET status = 'SUSPENDED' WHERE id = 'u2'`)
+            await sent()
+            await db.query(`UPDATE "User" SET status = 'ACTIVE' WHERE id = 'u2'`)
+            // The same status again, as an edit that sends it unchanged does.
+            await db.query(`UPDATE "User" SET status = 'ACTIVE' WHERE id = 'u2'`)
+            expect(await sent()).toEqual([])
+        })
+
+        it("is signalled to the whole company when it's banned, and not when it's let back", async () => {
+            await db.query(`UPDATE "Company" SET "isBanned" = true WHERE id = 'c1'`)
+            expect(await sent()).toEqual([account("tasks:c1")])
+            await db.query(`UPDATE "Company" SET "isBanned" = false WHERE id = 'c1'`)
+            await db.query(`UPDATE "Company" SET name = 'One again' WHERE id = 'c1'`)
+            expect(await sent()).toEqual([])
+        })
+
+        it("and heard only by those it's for", async () => {
+            expect(await hears({ sub: "u2", role: "authenticated", company_id: "c1", super_admin: false }, "notices:u2")).toBe(true)
+            expect(await hears(HANA, "notices:u2")).toBe(false)
+            expect(await hears({ sub: "u3", role: "authenticated", company_id: "c2", super_admin: false }, "tasks:c1")).toBe(false)
+        })
+
+        it("never stopping the change it's for when it can't be sent", async () => {
+            await db.query("SET test.fail_send = 'on'")
+            try {
+                await db.query(`UPDATE "User" SET status = 'SUSPENDED' WHERE id = 'u2'`)
+                await db.query(`UPDATE "Company" SET "isBanned" = true WHERE id = 'c2'`)
+            } finally {
+                await db.query("RESET test.fail_send")
+            }
+            expect((await db.query(`SELECT status FROM "User" WHERE id = 'u2'`)).rows[0].status).toBe("SUSPENDED")
+            expect((await db.query(`SELECT "isBanned" FROM "Company" WHERE id = 'c2'`)).rows[0].isBanned).toBe(true)
+            expect(await sent()).toEqual([])
+            await db.query(`UPDATE "User" SET status = 'ACTIVE' WHERE id = 'u2'`)
+            await db.query(`UPDATE "Company" SET "isBanned" = false WHERE id = 'c2'`)
+        })
+    })
+
     describe("a signal that can't be sent", () => {
         it("never stops the change from being saved", async () => {
             await db.query("SET test.fail_send = 'on'")

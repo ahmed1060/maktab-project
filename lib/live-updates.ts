@@ -7,10 +7,16 @@
  * prisma/migrations/20261208000000_live_updates), and Supabase lets only the
  * right people hear each channel. A screen that hears one draws itself again
  * through its usual route, so what it shows is always what the server says.
+ *
+ * And, on the same channels, that the person's account can't go on: they're
+ * suspended, closed or deleted, or their company is banned (part 3,
+ * prisma/migrations/20261209000000_live_account). The heartbeat hears it and
+ * asks at once, rather than at its next beat.
  */
 
-export type LiveKind = 'tasks' | 'notices'
-export type LiveTopic = { kind: LiveKind; topic: string }
+export type LiveKind = 'tasks' | 'notices' | 'account'
+/** A channel, and what it's for; any of them may also say the account can't go on. */
+export type LiveTopic = { kind: Exclude<LiveKind, 'account'>; topic: string }
 
 type Viewer = { id: string; role: string; companyId?: string | null }
 

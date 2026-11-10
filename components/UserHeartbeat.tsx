@@ -9,6 +9,7 @@ import { EmptyState, type PhosphorIcon } from "@/components/ui"
 import { useLanguage } from "@/context/LanguageContext"
 import { useDialog } from "@/lib/useDialog"
 import { HEARTBEAT_MS } from "@/lib/presence"
+import { useLive } from "@/components/LiveUpdates"
 
 // How long to give tasks/[id]/client.tsx or obligations/[id]/client.tsx to
 // finish an in-flight emergency save (upload + PUT) before giving up and
@@ -64,6 +65,11 @@ export default function UserHeartbeat() {
     // The polling effect's check, for the Realtime path to run once it has
     // connected (see there).
     const checkStatusRef = useRef<(() => void) | null>(null)
+    // Live updates, part 3 (REALTIME_PLAN.md): the database says the account
+    // can't go on, suspended, closed, deleted or its company banned, and this
+    // asks at once rather than at the next beat, up to 90 seconds on. The beat
+    // stays, as the safety net.
+    useLive('account', () => { void checkStatusRef.current?.() })
 
     // Shared by both detection paths below (the fast Realtime broadcast and
     // the slow polling fallback) so activating maintenance behaves
