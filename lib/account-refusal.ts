@@ -2,7 +2,7 @@ import { isBlockedBySubscription, type SubscriptionState } from "@/lib/billing/s
 
 /**
  * Why this signed-in account may not read or act at all, or null when it
- * may: suspended or archived, its company banned, its subscription lapsed
+ * may: suspended, archived or deleted, its company banned, its subscription lapsed
  * (but never for the company's own Admin, who renews it), or the system
  * under maintenance (but never for the Super Admin).
  *
@@ -23,7 +23,8 @@ type SessionUser = {
 
 export function accountRefusal(user: SessionUser): AccountRefusal | null {
     const subscriptionLocked = isBlockedBySubscription((user.subscription?.state ?? "ACTIVE") as SubscriptionState, user.role)
-    const suspendedOrBanned = user.userStatus === "SUSPENDED" || user.userStatus === "ARCHIVED" || !!user.companyBanned
+    // Deleted too: deleting someone left the session they had working (PR 247).
+    const suspendedOrBanned = user.userStatus === "SUSPENDED" || user.userStatus === "ARCHIVED" || user.userStatus === "DELETED" || !!user.companyBanned
     // A suspension or lapsed subscription is said before maintenance, as the API says it.
     if (suspendedOrBanned || subscriptionLocked) return subscriptionLocked ? "SUBSCRIPTION" : "SUSPENDED"
     if (user.maintenanceMode && user.role !== "SUPER_ADMIN") return "MAINTENANCE"

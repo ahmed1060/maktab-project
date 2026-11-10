@@ -18,9 +18,11 @@ describe("an account's refusal", () => {
         expect(accountRefusal(user())).toBeNull()
     })
 
-    it("is a suspension for a suspended or archived account, or a banned company", () => {
+    it("is a suspension for a suspended, archived or deleted account, or a banned company", () => {
         expect(accountRefusal(user({ userStatus: "SUSPENDED" }))).toBe("SUSPENDED")
         expect(accountRefusal(user({ userStatus: "ARCHIVED" }))).toBe("SUSPENDED")
+        // A deleted one went on working on the session it had (PR 247).
+        expect(accountRefusal(user({ userStatus: "DELETED" }))).toBe("SUSPENDED")
         expect(accountRefusal(user({ companyBanned: true }))).toBe("SUSPENDED")
     })
 
