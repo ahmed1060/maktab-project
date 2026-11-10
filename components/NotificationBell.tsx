@@ -13,6 +13,7 @@ import { noticeTarget } from "@/lib/notice-target"
 import { noticeAge, noticeExactTime } from "@/lib/notice-age"
 import { noticeIcon } from "@/lib/notice-icon"
 import { useNow } from "@/lib/useNow"
+import { useLive } from "@/components/LiveUpdates"
 
 export interface Notice {
     id: string
@@ -133,6 +134,8 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
     // Polled every five minutes while the tab is visible (SWR skips hidden
     // tabs by default, which is what the visibility check here used to do).
     const { data, error, mutate } = useSWR<NoticeList>('/api/notifications', fetcher, { refreshInterval: 300_000 })
+    // And at once when one arrives or is read in another tab (REALTIME_PLAN.md).
+    useLive('notices', () => { void mutate() })
     const notices: Notice[] = data?.data || NO_NOTICES
     // The server-rendered count stands in until the first answer arrives.
     const unreadCount = data ? notices.filter(n => !n.read).length : initialUnreadCount
