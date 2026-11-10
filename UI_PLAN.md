@@ -609,7 +609,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      merged in #242 on 2026-11-09; then the roles tests against Postgres
      building their database with every column a company, a person and the
      system's settings have, so the three of them that had failed on `main`
-     since the brand colour pass again, in #243;
+     since the brand colour pass again, merged in #243 on 2026-11-09; then
+     live updates (`REALTIME_PLAN.md`), in four parts, the first, tasks and
+     the bell drawn again as what they show changes, in #244;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5768,3 +5770,17 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     in the schema is missing from the database it builds. It failed
     first, naming the seven columns.
   - Only the test changes; no screen or rule does.
+- **2026-11-10:** Live updates, decided with the product owner
+  (`REALTIME_PLAN.md`): what someone else changes appears on the screens
+  of the people it concerns, without a refresh, beginning with a task
+  assigned to someone appearing in their list and their bell.
+  - **Signals only:** the server says that a company's tasks changed, or
+    that a person has a notification, never what; each screen draws itself
+    again through its usual route and checks.
+  - **Sent by the database,** from triggers, in the same transaction as
+    the change, one per statement.
+  - **Private channels,** behind the app's own token, for an hour, signed
+    with the project's JWT secret, which the product owner adds to Vercel.
+  - **In four parts:** tasks and the bell (#244); the Requests page and
+    its count; an account suspended signed out within seconds; other
+    screens as they're wanted.
