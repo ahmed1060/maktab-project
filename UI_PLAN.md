@@ -618,7 +618,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      and Offline filters as the badges say, merged in #246 on 2026-11-10;
      then an account deleted while it's signed in refused and signed out,
      as a suspended one is, which went on working, merged in #247 on
-     2026-11-10;
+     2026-11-10; then live updates' third part, someone suspended, closed
+     or deleted, or whose company is banned, signed out within seconds, not
+     at the heartbeat's next beat, merged in #248 on 2026-11-10;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5821,3 +5823,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     under Account deleted (`DESIGN.md` §5.5).
   - **Deleted outright:** its session ends at its next check, a minute at
     most, and the browser is signed out.
+- **2026-11-10:** Live updates part 3 (`REALTIME_PLAN.md`, #248): someone
+  suspended, closed or deleted, or whose company is banned, sees the screen
+  over a page the app has to leave (`DESIGN.md` §5.5) within seconds, and
+  is signed out, where it waited for the heartbeat's next beat, up to 90
+  seconds on.
+  - The database signals it on the channels part 1 already has; the
+    heartbeat hears it, asks at once, and goes on asking every 90 seconds
+    as the safety net.
+  - Nothing on the screen changes but when it comes.

@@ -213,14 +213,14 @@ describe("a tab's connection", () => {
     /** Supabase's client, as far as the connection uses it. */
     function fakeSupabase() {
         const log: string[] = []
-        const channels: { topic: string; private: boolean; event?: string; broadcast?: () => void; status?: (s: string) => void; removed: boolean; handle: LiveChannel }[] = []
+        const channels: { topic: string; private: boolean; events: string[]; on: Record<string, () => void>; status?: (s: string) => void; removed: boolean; handle: LiveChannel }[] = []
         let token: string | null = null
         const client: LiveClient = {
             channel(topic, options) {
                 log.push(`join ${topic} with ${token}`)
-                const entry = { topic, private: options.config.private, removed: false } as (typeof channels)[number]
+                const entry = { topic, private: options.config.private, events: [], on: {}, removed: false } as unknown as (typeof channels)[number]
                 const handle: LiveChannel = {
-                    on(_type, filter, callback) { entry.event = filter.event; entry.broadcast = callback; return handle },
+                    on(_type, filter, callback) { entry.events.push(filter.event); entry.on[filter.event] = callback; return handle },
                     subscribe(callback) { entry.status = callback; return handle },
                 }
                 entry.handle = handle
@@ -242,6 +242,7 @@ describe("a tab's connection", () => {
         drawn = []
         drawer.on("tasks", () => drawn.push("tasks"))
         drawer.on("notices", () => drawn.push("notices"))
+        drawer.on("account", () => drawn.push("account"))
     })
     afterEach(() => vi.useRealTimers())
 
@@ -251,13 +252,14 @@ describe("a tab's connection", () => {
         const supabase = fakeSupabase()
         await new LiveConnection({ ask: async () => grant("t1"), load: async () => supabase, drawer }).start()
         expect(supabase.log).toEqual(["auth t1", "join tasks:c1 with t1", "join notices:u1 with t1"])
-        expect(supabase.channels.map(c => [c.topic, c.private, c.event])).toEqual([["tasks:c1", true, "changed"], ["notices:u1", true, "changed"]])
+        // What changed, and the person's own account (part 3), on each.
+        expect(supabase.channels.map(c => [c.topic, c.private, c.events])).toEqual([["tasks:c1", true, ["changed", "account"]], ["notices:u1", true, ["changed", "account"]]])
     })
 
     it("draws what a signal is for, a second later", async () => {
         const supabase = fakeSupabase()
         await new LiveConnection({ ask: async () => grant("t1"), load: async () => supabase, drawer }).start()
-        supabase.channels[0].broadcast!()
+        supabase.channels[0].on.changed!()
         await vi.advanceTimersByTimeAsync(1000)
         expect(drawn).toEqual(["tasks"])
     })
@@ -272,13 +274,29 @@ describe("a tab's connection", () => {
         expect(drawn).toEqual([])
         supabase.channels[1].status!("SUBSCRIBED")
         await vi.advanceTimersByTimeAsync(1000)
-        expect(drawn).toEqual(["notices"])
+        // And whether the account can go on, for a suspension missed the same way (part 3).
+        expect(drawn).toEqual(["notices", "account"])
         supabase.channels[1].status!("CHANNEL_ERROR")
         await vi.advanceTimersByTimeAsync(1000)
-        expect(drawn).toEqual(["notices"])
+        expect(drawn).toEqual(["notices", "account"])
         supabase.channels[1].status!("SUBSCRIBED")
         await vi.advanceTimersByTimeAsync(1000)
-        expect(drawn).toEqual(["notices", "notices"])
+        expect(drawn).toEqual(["notices", "account", "notices", "account"])
+    })
+
+    // Part 3: suspended, closed, deleted, or the company banned. On the
+    // person's own channel, or their company's for a ban, as the database
+    // sends it (the live_account_* triggers).
+    it("asks whether the account can go on when either channel says it can't, a second later", async () => {
+        const supabase = fakeSupabase()
+        await new LiveConnection({ ask: async () => grant("t1"), load: async () => supabase, drawer }).start()
+        supabase.channels[1].on.account!()
+        await vi.advanceTimersByTimeAsync(1000)
+        expect(drawn).toEqual(["account"])
+        supabase.channels[0].on.account!()
+        supabase.channels[1].on.account!()
+        await vi.advanceTimersByTimeAsync(1000)
+        expect(drawn).toEqual(["account", "account"])
     })
 
     it("loads nothing while the token route says it's off, and doesn't ask again", async () => {
@@ -407,5 +425,14 @@ describe("the screens that are drawn again", () => {
 
     it("the bell", () => {
         expect(read("components/NotificationBell.tsx")).toContain("useLive('notices', () => { void mutate() })")
+    })
+
+    // Part 3: the heartbeat asks at once, and signs the page out as it does
+    // at its beat: suspended, closed, deleted, or the company banned.
+    it("the heartbeat, when the account can't go on, inside the dashboard's connection", () => {
+        expect(read("components/UserHeartbeat.tsx")).toContain("useLive('account', () => { void checkStatusRef.current?.() })")
+        const layout = read("app/(dashboard)/layout.tsx")
+        expect(layout.indexOf("<UserHeartbeat />")).toBeGreaterThan(layout.indexOf("<LiveUpdates"))
+        expect(layout.indexOf("<UserHeartbeat />")).toBeLessThan(layout.indexOf("</LiveUpdates>"))
     })
 })
