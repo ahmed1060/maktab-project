@@ -774,11 +774,16 @@ export class UserService {
             createdById: session?.user?.id ?? null,
         })
 
-        // Audit Log (Centralized)
+        // Audit Log (Centralized). A company's Admin may use this route too
+        // (employees.change_status), and is named as themselves: named as a
+        // Super Admin, which they aren't, the entry broke its foreign key
+        // after the status was saved, and the route answered 500.
         if (existingUser.status !== status) {
             const { AuditLogService } = await import("./audit-log.service")
+            const bySuperAdmin = session.user.role === 'SUPER_ADMIN'
             await AuditLogService.log('UPDATE_USER_STATUS', 'USER', userId, {
-                superAdminId: session.user.id,
+                userId: bySuperAdmin ? null : session.user.id,
+                superAdminId: bySuperAdmin ? session.user.id : null,
                 details: { status: { old: existingUser.status, new: status } }
             })
         }
