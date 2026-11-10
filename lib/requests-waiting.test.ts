@@ -163,7 +163,11 @@ describe("asking for it again", () => {
         expect(requests).toContain("const { mutate } = useSWRConfig()")
         expect(requests).toContain("const refreshed = () => { router.refresh(); void mutate(WAITING_FOR_REVIEW_KEY) }")
         // Each of them refreshes the page through the one that asks again too.
-        expect(requests.match(/router\.refresh\(\)/g)).toHaveLength(1)
+        // Live updates' listener (REALTIME_PLAN.md, part 2) draws the page
+        // alone: the side bar's count listens for itself.
+        expect(requests).toContain("useLive('requests', () => router.refresh())")
+        const actions = requests.replace("useLive('requests', () => router.refresh())", "")
+        expect(actions.match(/router\.refresh\(\)/g)).toHaveLength(1)
         expect(requests.match(/refreshed\(\)/g)).toHaveLength(8)
     })
 })

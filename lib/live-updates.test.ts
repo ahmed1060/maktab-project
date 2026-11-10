@@ -243,6 +243,7 @@ describe("a tab's connection", () => {
         drawer.on("tasks", () => drawn.push("tasks"))
         drawer.on("notices", () => drawn.push("notices"))
         drawer.on("account", () => drawn.push("account"))
+        drawer.on("requests", () => drawn.push("requests"))
     })
     afterEach(() => vi.useRealTimers())
 
@@ -252,8 +253,11 @@ describe("a tab's connection", () => {
         const supabase = fakeSupabase()
         await new LiveConnection({ ask: async () => grant("t1"), load: async () => supabase, drawer }).start()
         expect(supabase.log).toEqual(["auth t1", "join tasks:c1 with t1", "join notices:u1 with t1"])
-        // What changed, and the person's own account (part 3), on each.
-        expect(supabase.channels.map(c => [c.topic, c.private, c.events])).toEqual([["tasks:c1", true, ["changed", "account"]], ["notices:u1", true, ["changed", "account"]]])
+        // What changed, the person's own account (part 3), and requests (part 2), on each.
+        expect(supabase.channels.map(c => [c.topic, c.private, c.events])).toEqual([
+            ["tasks:c1", true, ["changed", "account", "requests"]],
+            ["notices:u1", true, ["changed", "account", "requests"]],
+        ])
     })
 
     it("draws what a signal is for, a second later", async () => {
@@ -274,14 +278,15 @@ describe("a tab's connection", () => {
         expect(drawn).toEqual([])
         supabase.channels[1].status!("SUBSCRIBED")
         await vi.advanceTimersByTimeAsync(1000)
-        // And whether the account can go on, for a suspension missed the same way (part 3).
-        expect(drawn).toEqual(["notices", "account"])
+        // And whether the account can go on, for a suspension missed the same
+        // way (part 3), and the requests, for one asked for or decided (part 2).
+        expect(drawn).toEqual(["notices", "account", "requests"])
         supabase.channels[1].status!("CHANNEL_ERROR")
         await vi.advanceTimersByTimeAsync(1000)
-        expect(drawn).toEqual(["notices", "account"])
+        expect(drawn).toEqual(["notices", "account", "requests"])
         supabase.channels[1].status!("SUBSCRIBED")
         await vi.advanceTimersByTimeAsync(1000)
-        expect(drawn).toEqual(["notices", "account", "notices", "account"])
+        expect(drawn).toEqual(["notices", "account", "requests", "notices", "account", "requests"])
     })
 
     // Part 3: suspended, closed, deleted, or the company banned. On the
@@ -297,6 +302,21 @@ describe("a tab's connection", () => {
         supabase.channels[1].on.account!()
         await vi.advanceTimersByTimeAsync(1000)
         expect(drawn).toEqual(["account", "account"])
+    })
+
+    // Part 2: a request asked for, decided or withdrawn. On the company's
+    // channel, and on each Super Admin's own, as the database sends it (the
+    // live_requests_* triggers).
+    it("draws the Requests page and its count when either channel says requests changed, a second later", async () => {
+        const supabase = fakeSupabase()
+        await new LiveConnection({ ask: async () => grant("t1"), load: async () => supabase, drawer }).start()
+        supabase.channels[0].on.requests!()
+        await vi.advanceTimersByTimeAsync(1000)
+        expect(drawn).toEqual(["requests"])
+        supabase.channels[0].on.requests!()
+        supabase.channels[1].on.requests!()
+        await vi.advanceTimersByTimeAsync(1000)
+        expect(drawn).toEqual(["requests", "requests"])
     })
 
     it("loads nothing while the token route says it's off, and doesn't ask again", async () => {
@@ -425,6 +445,16 @@ describe("the screens that are drawn again", () => {
 
     it("the bell", () => {
         expect(read("components/NotificationBell.tsx")).toContain("useLive('notices', () => { void mutate() })")
+    })
+
+    // Part 2: the page keeps its tab, filters, search and dialogs, as a
+    // refresh does; the count is asked for again, as on every page.
+    it("the Requests page, and the count on Requests in the side bar, inside the dashboard's connection", () => {
+        expect(read("app/(dashboard)/dashboard/requests/RequestsClient.tsx")).toContain("useLive('requests', () => router.refresh())")
+        expect(read("components/DashboardShell.tsx")).toContain("useLive('requests', () => { if (waitingKey) void recheckWaiting() })")
+        const layout = read("app/(dashboard)/layout.tsx")
+        expect(layout.indexOf("<DashboardShell")).toBeGreaterThan(layout.indexOf("<LiveUpdates"))
+        expect(layout.indexOf("<DashboardShell")).toBeLessThan(layout.indexOf("</LiveUpdates>"))
     })
 
     // Part 3: the heartbeat asks at once, and signs the page out as it does

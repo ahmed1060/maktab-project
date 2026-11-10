@@ -10,11 +10,13 @@ import type { LiveDrawer, LiveTopic } from "./live-updates"
  *   - Joins them as private channels, once Supabase has the token.
  *   - Turns each signal into a screen drawn again, through the drawer.
  *   - Hears on every channel, too, that the account can't go on (part 3),
- *     which the heartbeat checks at once.
- *   - Draws what a channel is for once each time it's joined, and checks the
- *     account: first, for a change saved while the page was on its way,
- *     before the channel was there to hear it; and again, after a laptop
- *     slept or a phone lost its signal, for what was missed meanwhile.
+ *     which the heartbeat checks at once, and that requests changed
+ *     (part 2), which the Requests page and its count draw again.
+ *   - Draws what a channel is for once each time it's joined, the requests
+ *     with it, and checks the account: first, for a change saved while the
+ *     page was on its way, before the channel was there to hear it; and
+ *     again, after a laptop slept or a phone lost its signal, for what was
+ *     missed meanwhile.
  *   - Asks for the next token five minutes before the one held ends, as
  *     Supabase closes a channel whose token has ended.
  *   - A token or Supabase's client that doesn't come, as when offline or
@@ -76,10 +78,12 @@ export class LiveConnection {
             client.channel(topic, { config: { private: true } })
                 .on("broadcast", { event: "changed" }, () => drawer.signal(kind))
                 .on("broadcast", { event: "account" }, () => drawer.signal("account"))
+                .on("broadcast", { event: "requests" }, () => drawer.signal("requests"))
                 .subscribe(status => {
                     if (status !== "SUBSCRIBED") return
                     drawer.signal(kind)
                     drawer.signal("account")
+                    drawer.signal("requests")
                 }))
         this.renewBy(grant.expiresAt)
     }

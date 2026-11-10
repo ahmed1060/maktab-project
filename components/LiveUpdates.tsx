@@ -56,8 +56,9 @@ export function LiveUpdates({ scope, children }: { scope: string | null; childre
 
 /**
  * Calls `onChange` when what `kind` covers changes elsewhere: a company's
- * tasks, or the person's notifications. A screen passes how it draws itself
- * again, through its usual route: router.refresh(), or its data's mutate().
+ * tasks or requests, the person's notifications, or whether their account
+ * can go on. A screen passes how it draws itself again, through its usual
+ * route: router.refresh(), or its data's mutate().
  */
 export function useLive(kind: LiveKind, onChange: () => void) {
     const drawer = useContext(LiveContext)
