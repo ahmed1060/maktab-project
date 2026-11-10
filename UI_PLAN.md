@@ -610,8 +610,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      building their database with every column a company, a person and the
      system's settings have, so the three of them that had failed on `main`
      since the brand colour pass again, merged in #243 on 2026-11-09; then
-     live updates (`REALTIME_PLAN.md`), in four parts, the first, tasks and
-     the bell drawn again as what they show changes, in #244;
+     live updates (`REALTIME_PLAN.md`), in five parts, the first, tasks and
+     the bell drawn again as what they show changes, merged in #244 on
+     2026-11-10 and live since; the last, a little motion for what arrives
+     live;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5784,3 +5786,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - **In four parts:** tasks and the bell (#244); the Requests page and
     its count; an account suspended signed out within seconds; other
     screens as they're wanted.
+- **2026-11-10:** Live updates part 1 is live (`REALTIME_PLAN.md`), merged
+  in #244: the project's JWT secret was already in Vercel, from the
+  Supabase integration, and the product owner checked it in production.
+  At the product owner's request, a fifth part is planned last: a little
+  motion for what arrives live (Proposed), which changes `DESIGN.md` §8
+  first when it's built.
