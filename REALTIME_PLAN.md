@@ -88,6 +88,10 @@ Decided with the product owner on 2026-11-10.
 - **What still asks, as a safety net:** the bell every 5 minutes, and the
   heartbeat every 90 seconds. Either can be slowed once the live path has
   run in production for a while.
+  - The heartbeat also says who's online on the Employees list: a person
+    shows as online for two beats and 20 seconds after their last
+    (`lib/presence.ts`, #246). Slowing it widens that window with it, so
+    someone who closed their last tab shows as online for longer.
 - **Cost:** about one connection per open tab, and one signal per change
   per company. Supabase's free plan allows 200 connections at once and
   2 million messages a month; at 50 to 200 people, both are far off.
@@ -166,3 +170,5 @@ Decided with the product owner on 2026-11-10.
   a little motion for what arrives live (Proposed). Noted the legacy
   secret that the token depends on, what part 3's trigger listens to,
   and how the messages are counted.
+- **2026-11-10:** Noted that the Online window on the Employees list
+  follows the heartbeat (#246), so slowing the heartbeat widens it.
