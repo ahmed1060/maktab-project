@@ -576,6 +576,12 @@ export const authOptions: NextAuthOptions = {
                                 where: { id: userId },
                                 select: { sessionVersion: true, keptSession: true, isProtected: true, emailVerifiedAt: true, mfaEnabled: true, mustChangePassword: true }
                             })
+                            // Deleted outright: no account, so no session.
+                            // It matched nothing and went on working (PR 247).
+                            if (!sa) {
+                                console.log(`[AUTH] REVOKING session for super admin ${userId}: the account is gone`)
+                                return {} as any
+                            }
                             dbVersion = sa?.sessionVersion || 0
                             keptSession = sa?.keptSession ?? null
                             // A preview follows the role as it is edited, and
@@ -637,6 +643,14 @@ export const authOptions: NextAuthOptions = {
                                 }),
                                 prisma.systemSettings.findUnique({ where: { id: 'default' }, select: { maintenanceMode: true, maintenanceMessage: true } })
                             ])
+                            // Deleted outright: no account, so no session, as
+                            // for a Super Admin above (PR 247). Deleted with the
+                            // row kept is DELETED, refused like a suspension
+                            // (lib/account-refusal.ts).
+                            if (!u) {
+                                console.log(`[AUTH] REVOKING session for user ${userId}: the account is gone`)
+                                return {} as any
+                            }
                             dbVersion = u?.sessionVersion || 0
                             keptSession = u?.keptSession ?? null
                             token.userStatus = u?.status

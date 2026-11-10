@@ -54,6 +54,7 @@ export default function UserHeartbeat() {
     const [isSuspended, setIsSuspended] = useState(false)
     const [isCompanyBanned, setIsCompanyBanned] = useState(false)
     const [isArchived, setIsArchived] = useState(false)
+    const [isDeleted, setIsDeleted] = useState(false)
     const [showMaintenanceOverlay, setShowMaintenanceOverlay] = useState(false)
     const [maintenanceMessage, setMaintenanceMessage] = useState<string | null | undefined>(null)
     // Mirrors whether maintenance was already known active, without the
@@ -185,6 +186,12 @@ export default function UserHeartbeat() {
                     window.dispatchEvent(new CustomEvent('app:suspend-detected'))
                     setIsArchived(true)
                     waitForEmergencySave().then(() => signOut({ callbackUrl: '/login' }))
+                } else if (data.status === 'DELETED') {
+                    // Deleted while signed in: the same exit, its own screen
+                    // (PR 247). It went on working until then.
+                    window.dispatchEvent(new CustomEvent('app:suspend-detected'))
+                    setIsDeleted(true)
+                    waitForEmergencySave().then(() => signOut({ callbackUrl: '/login' }))
                 } else if (data.status === 'COMPANY_BANNED') {
                     window.dispatchEvent(new CustomEvent('app:suspend-detected'))
                     setIsCompanyBanned(true)
@@ -223,10 +230,11 @@ export default function UserHeartbeat() {
     // everything, while the emergency save above runs. It was a dark screen
     // with a turning ring, titled in Title Case, that screen readers weren't
     // told of (PR 217).
-    if (isSuspended || isCompanyBanned || isArchived) {
+    if (isSuspended || isCompanyBanned || isArchived || isDeleted) {
         const [title, why] = isArchived ? [t('account_archived'), t('archived_msg')]
-            : isSuspended ? [t('account_suspended'), t('suspension_msg')]
-                : [t('company_banned'), t('banned_msg')]
+            : isDeleted ? [t('account_deleted'), t('deleted_msg')]
+                : isSuspended ? [t('account_suspended'), t('suspension_msg')]
+                    : [t('company_banned'), t('banned_msg')]
         return createPortal(<LeavingCover icon={SignOutIcon} title={title} why={why} next={t('logging_out_msg')} />, document.body)
     }
 

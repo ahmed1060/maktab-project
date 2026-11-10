@@ -21,7 +21,7 @@ Decided with the product owner on 2026-11-10.
     after its own person's actions (`router.refresh()`);
   - the bell asks every 5 minutes (`components/NotificationBell.tsx`);
   - the heartbeat asks every 90 seconds, while the tab is shown, whether
-    the account was suspended, archived or banned, and whether maintenance
+    the account was suspended, archived, deleted or banned, and whether maintenance
     is on.
 - **The server refuses whatever the page no longer may do,** whatever the
   page shows: a suspended person's next request is refused, live or not.
@@ -60,7 +60,7 @@ Decided with the product owner on 2026-11-10.
     the person signed in, for an hour, with the project's JWT secret
     (`SUPABASE_JWT_SECRET`, in Vercel). It names the person, their company,
     and whether they're the Super Admin, and the browser asks for a new one
-    before it ends. A person suspended, archived or banned is given none.
+    before it ends. A person suspended, archived, deleted or banned is given none.
   - Turned down: public channels with names too long to guess. No set-up,
     but a name once known stays known, after its person has left, and
     anyone holding it could send false signals.
@@ -110,7 +110,7 @@ Decided with the product owner on 2026-11-10.
 |---|---|---|
 | 1 | The token, the channels' rules and the triggers; one connection per tab; the task list, a task's page and the bell drawn again when what they show changes | #244, merged 2026-11-10 |
 | 2 | The Requests page, and the count on Requests in the side bar | |
-| 3 | A suspended, archived or banned person signed out within seconds, not 90; the heartbeat kept as the safety net | |
+| 3 | A suspended, archived, deleted or banned person signed out within seconds, not 90; the heartbeat kept as the safety net | |
 | 4 | Other screens, as they're wanted: cash advances, attendance, costs | |
 | 5 | A little motion for what arrives live: what changed is shown for a moment, so nobody has to hunt for it | |
 
@@ -121,8 +121,8 @@ Decided with the product owner on 2026-11-10.
   product owner checked it in production the same day: a task given to an
   employee appeared on their open Tasks page, and Supabase's Realtime logs
   showed no refused joins.
-- **Part 3:** its trigger listens only to a person's status changing and
-  a company being banned (`AFTER UPDATE OF status` on `"User"`, and of
+- **Part 3:** its trigger listens only to a person's status changing (to
+  suspended, archived or deleted) and a company being banned (`AFTER UPDATE OF status` on `"User"`, and of
   `"isBanned"` on `"Company"`). The heartbeat writes `"User"` every 90
   seconds for each open tab (`lastActivity`), so a trigger on any update
   would signal with every heartbeat.
@@ -172,3 +172,5 @@ Decided with the product owner on 2026-11-10.
   and how the messages are counted.
 - **2026-11-10:** Noted that the Online window on the Employees list
   follows the heartbeat (#246), so slowing the heartbeat widens it.
+- **2026-11-10:** A deleted account is refused and signed out like a
+  suspended one (#247), so part 3 signals a person deleted too.

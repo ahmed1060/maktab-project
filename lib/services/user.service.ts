@@ -731,6 +731,9 @@ export class UserService {
         // is signed out either way, but the screen it shows on the way out
         // names the reason, and this is not a suspension.
         if (user.status === 'ARCHIVED') return { success: true, status: 'ARCHIVED' }
+        // Deleted while signed in: it was said to be active, and the session
+        // went on working (PR 247).
+        if (user.status === 'DELETED') return { success: true, status: 'DELETED' }
         if (user.company?.isBanned) return { success: true, status: 'COMPANY_BANNED' }
         if (settings?.maintenanceMode) return { success: true, status: 'MAINTENANCE', maintenanceMessage: settings.maintenanceMessage }
 

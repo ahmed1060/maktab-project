@@ -1136,8 +1136,8 @@ These are built once, in the building-blocks PR, and every page uses them
     check in the Good colour (§2.3): someone who thinks their records are
     gone doesn't renew.
 - **A page the app has to leave:** when the account can't go on, as when
-  it's suspended, closed or its company banned while it's open, or when
-  maintenance starts. The whole screen, in the page's colour, covers the
+  it's suspended, closed, deleted or its company banned while it's open,
+  or when maintenance starts. The whole screen, in the page's colour, covers the
   page while the work open on it is saved, as the language switch's does.
   - In its middle, as an empty state: its icon, what happened, why, and
     what happens next: signing out, or the maintenance page. Nothing
@@ -2104,3 +2104,6 @@ changed:
   (§8): no toast, no movement, no reload, and what the person was doing
   stays, as live updates begin with tasks and the bell
   (`REALTIME_PLAN.md`).
+- **2026-11-10:** A page the app has to leave (§5.5) also covers an
+  account deleted while it's open, which went on working until then, and
+  says so: Account deleted, by an administrator.
