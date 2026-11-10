@@ -1,0 +1,224 @@
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest"
+import { readFileSync, readdirSync } from "node:fs"
+import { Client } from "pg"
+
+/**
+ * Live updates' database side, against a real Postgres (REALTIME_PLAN.md):
+ * the triggers that send a signal when a company's tasks change or a person
+ * has a notification, and the rules on Supabase's realtime.messages that let
+ * only the right people hear each channel.
+ *
+ * Postgres here has no Supabase, so the part of it the migration uses is
+ * stood in for first, as Supabase has it: realtime.send(), which here only
+ * writes down what it was asked to send; realtime.topic() and auth.jwt(),
+ * read from the settings Realtime sets before it checks a listener; the
+ * messages table, with row level security on; and the authenticated role.
+ *
+ * Needs a Postgres it may create databases on: set ROLES_TEST_DATABASE_URL to
+ * its maintenance database. Skipped without it (CI has no database).
+ */
+
+const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
+const MIGRATIONS = readdirSync("prisma/migrations").filter(m => m !== "migration_lock.toml").sort((a, b) => (a === "0_init" ? -1 : b === "0_init" ? 1 : a.localeCompare(b)))
+const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
+
+const SUPABASE = `
+DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+CREATE SCHEMA realtime;
+CREATE SCHEMA auth;
+CREATE TABLE realtime.messages (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), topic text NOT NULL, extension text NOT NULL, payload jsonb, event text, private boolean DEFAULT true);
+ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY;
+GRANT USAGE ON SCHEMA realtime, auth TO authenticated;
+GRANT SELECT, INSERT ON realtime.messages TO authenticated;
+CREATE FUNCTION realtime.topic() RETURNS text LANGUAGE sql STABLE AS $f$ SELECT nullif(current_setting('realtime.topic', true), '') $f$;
+CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $f$
+    SELECT coalesce(nullif(current_setting('request.jwt.claim', true), ''), nullif(current_setting('request.jwt.claims', true), ''))::jsonb
+$f$;
+CREATE TABLE realtime.sent (n bigserial, topic text, event text, payload jsonb, private boolean);
+CREATE FUNCTION realtime.send(payload jsonb, event text, topic text, private boolean DEFAULT true) RETURNS void LANGUAGE plpgsql AS $f$
+BEGIN
+    IF current_setting('test.fail_send', true) = 'on' THEN RAISE EXCEPTION 'Realtime is down'; END IF;
+    INSERT INTO realtime.sent(topic, event, payload, private) VALUES (topic, event, payload, private);
+END
+$f$;
+`
+
+const PEOPLE = `
+INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now());
+INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId", "teamLeaderId") VALUES
+ ('u1', 'u1@x', 'p', 'Hana', 'One', 'ADMIN', 2026, 'u1', 'c1', NULL),
+ ('u2', 'u2@x', 'p', 'Youssef', 'One', 'EMPLOYEE', 2026, 'u2', 'c1', NULL),
+ ('u3', 'u3@x', 'p', 'Basma', 'Two', 'EMPLOYEE', 2026, 'u3', 'c2', NULL);
+`
+const SUPER = `INSERT INTO "SuperAdmin"(id, email, password, "firstName", "lastName", username, "updatedAt") VALUES ('sa1', 'sa1@x', 'p', 'Sara', 'Admin', 'sa1', now());`
+
+const task = (id: string, company: string | null) =>
+    `('${id}', 'Task ${id}', 'd', 'IN_PROGRESS', now() + interval '3 days', ${company ? `'${company}'` : "NULL"}, now())`
+const TASK_COLUMNS = `"Task"(id, title, description, status, deadline, "companyId", "updatedAt")`
+
+describe.skipIf(!ADMIN_URL)("live updates, in Postgres", () => {
+    const dbName = `live_updates_test_${Date.now()}`
+    let db: Client
+
+    /** What was sent since the last look, oldest first. */
+    const sent = async () => (await db.query(`DELETE FROM realtime.sent RETURNING topic, event, payload, private, n`)).rows
+        .sort((a, b) => Number(a.n) - Number(b.n))
+        .map(({ topic, event, payload, private: priv }) => ({ topic, event, payload, private: priv }))
+    const topics = async () => (await sent()).map(s => s.topic)
+
+    /** Whether someone with these claims may listen to a topic, as Realtime asks it. */
+    const hears = async (claims: Record<string, unknown> | null, topic: string, extension = "broadcast") => {
+        await db.query("BEGIN")
+        try {
+            await db.query(`INSERT INTO realtime.messages(topic, extension, payload, event) VALUES ($1, $2, '{}', 'changed')`, [topic, extension])
+            await db.query("SET LOCAL ROLE authenticated")
+            await db.query(`SELECT set_config('request.jwt.claims', $1, true), set_config('realtime.topic', $2, true)`, [claims ? JSON.stringify(claims) : "", topic])
+            const { rows } = await db.query(`SELECT count(*)::int AS n FROM realtime.messages WHERE topic = $1`, [topic])
+            return rows[0].n > 0
+        } finally {
+            await db.query("ROLLBACK")
+        }
+    }
+    const HANA = { sub: "u1", role: "authenticated", company_id: "c1", super_admin: false }
+    const SARA = { sub: "sa1", role: "authenticated", company_id: null, super_admin: true }
+
+    beforeAll(async () => {
+        const a = new Client({ connectionString: ADMIN_URL })
+        await a.connect()
+        await a.query(`CREATE DATABASE ${dbName}`)
+        await a.end()
+        const url = new URL(ADMIN_URL!)
+        url.pathname = `/${dbName}`
+        db = new Client({ connectionString: url.toString() })
+        await db.connect()
+        await db.query(SUPABASE)
+        for (const m of MIGRATIONS) {
+            await db.query(sql(m))
+            if (m === "20260920000000_team_leader") await db.query(PEOPLE)
+        }
+        await db.query(SUPER)
+    }, 120_000)
+
+    afterAll(async () => {
+        await db?.end()
+        const a = new Client({ connectionString: ADMIN_URL })
+        await a.connect()
+        await a.query(`DROP DATABASE IF EXISTS ${dbName}`)
+        await a.end()
+    })
+
+    beforeEach(async () => { await sent() })
+
+    describe("a company's tasks", () => {
+        it("are signalled once per change, for each company it touched, saying nothing of what", async () => {
+            await db.query(`INSERT INTO ${TASK_COLUMNS} VALUES ${task("t1", "c1")}, ${task("t2", "c1")}, ${task("t3", "c1")}, ${task("t4", "c2")}`)
+            expect(await sent()).toEqual([
+                { topic: "tasks:c1", event: "changed", payload: {}, private: true },
+                { topic: "tasks:c2", event: "changed", payload: {}, private: true },
+            ])
+        })
+
+        it("when one changes or goes", async () => {
+            await db.query(`UPDATE "Task" SET status = 'PENDING_CONFIRMATION' WHERE id = 't1'`)
+            expect(await topics()).toEqual(["tasks:c1"])
+            await db.query(`DELETE FROM "Task" WHERE id = 't3'`)
+            expect(await topics()).toEqual(["tasks:c1"])
+        })
+
+        it("when someone is put on one, or taken off it", async () => {
+            await db.query(`INSERT INTO "_MultipleAssignees"("A", "B") VALUES ('t1', 'u2'), ('t4', 'u3')`)
+            expect((await topics()).sort()).toEqual(["tasks:c1", "tasks:c2"])
+            await db.query(`DELETE FROM "_MultipleAssignees" WHERE "A" = 't1' AND "B" = 'u2'`)
+            expect(await topics()).toEqual(["tasks:c1"])
+        })
+
+        it("both before and after, when a task moves from one company to another", async () => {
+            await db.query(`UPDATE "Task" SET "companyId" = 'c2' WHERE id = 't2'`)
+            expect((await topics()).sort()).toEqual(["tasks:c1", "tasks:c2"])
+        })
+
+        it("not at all for a change that touched nothing, or a task of no company", async () => {
+            await db.query(`UPDATE "Task" SET status = 'IN_PROGRESS' WHERE id = 'nobody'`)
+            await db.query(`INSERT INTO ${TASK_COLUMNS} VALUES ${task("t9", null)}`)
+            expect(await topics()).toEqual([])
+        })
+    })
+
+    describe("a notification", () => {
+        it("is signalled to the person or Super Admin it's for, once each, saying nothing of what", async () => {
+            await db.query(`INSERT INTO "Notification"(id, "userId", type, message) VALUES ('n1', 'u2', 'TASK_ASSIGNED', 'x'), ('n2', 'u2', 'TASK_ASSIGNED', 'y'), ('n3', 'u1', 'TASK_ASSIGNED', 'z')`)
+            await db.query(`INSERT INTO "Notification"(id, "superAdminId", type, message) VALUES ('n4', 'sa1', 'X', 'w')`)
+            expect(await sent()).toEqual([
+                { topic: "notices:u1", event: "changed", payload: {}, private: true },
+                { topic: "notices:u2", event: "changed", payload: {}, private: true },
+                { topic: "notices:sa1", event: "changed", payload: {}, private: true },
+            ])
+        })
+
+        it("and when it's read, so every tab of theirs agrees", async () => {
+            await db.query(`UPDATE "Notification" SET read = true WHERE "userId" = 'u2'`)
+            expect(await topics()).toEqual(["notices:u2"])
+        })
+    })
+
+    describe("a signal that can't be sent", () => {
+        it("never stops the change from being saved", async () => {
+            await db.query("SET test.fail_send = 'on'")
+            try {
+                await db.query(`INSERT INTO ${TASK_COLUMNS} VALUES ${task("t5", "c1")}`)
+                await db.query(`INSERT INTO "Notification"(id, "userId", type, message) VALUES ('n5', 'u2', 'X', 'v')`)
+            } finally {
+                await db.query("RESET test.fail_send")
+            }
+            expect((await db.query(`SELECT count(*)::int AS n FROM "Task" WHERE id = 't5'`)).rows[0].n).toBe(1)
+            expect((await db.query(`SELECT count(*)::int AS n FROM "Notification" WHERE id = 'n5'`)).rows[0].n).toBe(1)
+            expect(await topics()).toEqual([])
+        })
+
+        it("nor does Supabase's Realtime missing altogether, as in the Postgres the other tests use", async () => {
+            await db.query(`ALTER FUNCTION realtime.send(jsonb, text, text, boolean) RENAME TO send_away`)
+            try {
+                await db.query(`INSERT INTO ${TASK_COLUMNS} VALUES ${task("t6", "c1")}`)
+                await db.query(`INSERT INTO "Notification"(id, "userId", type, message) VALUES ('n6', 'u2', 'X', 'u')`)
+            } finally {
+                await db.query(`ALTER FUNCTION realtime.send_away(jsonb, text, text, boolean) RENAME TO send`)
+            }
+            expect((await db.query(`SELECT count(*)::int AS n FROM "Task" WHERE id = 't6'`)).rows[0].n).toBe(1)
+        })
+    })
+
+    describe("who may listen", () => {
+        it("a company's person hears their company's tasks, and their own notices, only", async () => {
+            expect(await hears(HANA, "tasks:c1")).toBe(true)
+            expect(await hears(HANA, "notices:u1")).toBe(true)
+            expect(await hears(HANA, "tasks:c2")).toBe(false)
+            expect(await hears(HANA, "notices:u2")).toBe(false)
+        })
+
+        it("the Super Admin hears any company's tasks, and their own notices, only", async () => {
+            expect(await hears(SARA, "tasks:c1")).toBe(true)
+            expect(await hears(SARA, "tasks:c2")).toBe(true)
+            expect(await hears(SARA, "notices:sa1")).toBe(true)
+            expect(await hears(SARA, "notices:u1")).toBe(false)
+        })
+
+        it("nobody hears anything without a token, or a topic of another shape, or anything but broadcasts", async () => {
+            expect(await hears(null, "tasks:c1")).toBe(false)
+            expect(await hears({ sub: "u1", role: "authenticated" }, "tasks:c1")).toBe(false)
+            expect(await hears(HANA, "tasks:c1:x")).toBe(false)
+            expect(await hears(HANA, "tasks:")).toBe(false)
+            expect(await hears(HANA, "tasks:c1", "presence")).toBe(false)
+        })
+
+        it("and nobody may send on them: the browser only listens", async () => {
+            await db.query("BEGIN")
+            try {
+                await db.query("SET LOCAL ROLE authenticated")
+                await db.query(`SELECT set_config('request.jwt.claims', $1, true), set_config('realtime.topic', 'tasks:c1', true)`, [JSON.stringify(HANA)])
+                await expect(db.query(`INSERT INTO realtime.messages(topic, extension, payload, event) VALUES ('tasks:c1', 'broadcast', '{}', 'changed')`)).rejects.toThrow(/row-level security/)
+            } finally {
+                await db.query("ROLLBACK")
+            }
+        })
+    })
+})

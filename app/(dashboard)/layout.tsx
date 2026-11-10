@@ -18,6 +18,7 @@ import { cashAdvancesInUse } from "@/lib/cash-advances"
 import { Suspense } from "react"
 import DashboardErrorBoundary from "@/components/DashboardErrorBoundary"
 import { PageLoading } from "@/components/PageLoading"
+import { LiveUpdates } from "@/components/LiveUpdates"
 
 export const dynamic = 'force-dynamic'
 
@@ -90,6 +91,11 @@ export default async function DashboardLayout({
         {/* Who is looking, grants included, for every screen's useCan() on
             its first paint — before the session hook has loaded. */}
         <ViewerProvider viewer={user as any}>
+        {/* One connection for the tab, to what its person may hear, and every
+            screen in it drawn again as what it shows changes elsewhere, the
+            bell's top bar included (REALTIME_PLAN.md). For the company in
+            view, so the Super Admin's follows the picker. */}
+        <LiveUpdates scope={scopeId}>
         <DashboardShell user={user} showPoweredBy={showPoweredBy} poweredByName={poweredByName} showCompanySettings={showCompanySettings} cashAdvances={cashAdvances}>
             <UserHeartbeat />
             <DashboardErrorBoundary>
@@ -100,6 +106,7 @@ export default async function DashboardLayout({
                 </Suspense>
             </DashboardErrorBoundary>
         </DashboardShell>
+        </LiveUpdates>
         </ViewerProvider>
         </CompanyBrandingProvider>
         </>

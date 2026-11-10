@@ -71,8 +71,9 @@ Decided with the product owner on 2026-11-10.
   - signals arriving close together are drawn once, a second after the
     last;
   - a hidden tab draws nothing, and catches up when it's shown again;
-  - reconnecting, after a laptop sleeps or a phone loses its signal,
-    draws once, for whatever was missed;
+  - joining draws once: as the page opens, for a change saved while it
+    was on its way, and on reconnecting, after a laptop sleeps or a phone
+    loses its signal, for whatever was missed;
   - what someone else changed appears in place: no toast, no animation,
     and what the person was typing, their filters and where they'd
     scrolled to stay.

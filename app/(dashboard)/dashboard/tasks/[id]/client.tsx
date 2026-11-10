@@ -18,6 +18,7 @@ import { Button, Card, Details, Dialog, DueDate, EmptyState, FileChip, FileChips
 import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/session-expired'
 import SectionBoundary from '@/components/SectionBoundary'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { useLive } from '@/components/LiveUpdates'
 import { useCan } from '@/lib/useCan'
 import { useModules } from '@/lib/useModules'
 import { useBusyAction } from '@/lib/useBusyAction'
@@ -166,12 +167,18 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
 
     // Re-seed local state when the server sends a fresh task (after
     // router.refresh), in the same render rather than one render late.
+    // Drawn again by someone else's change while this person edits or reviews
+    // it, what they're doing stays as they left it (DESIGN.md §8).
     useAdjustOnChange([initialTask], () => {
         setTask(initialTask)
         setExistingAttachments(attachmentsOf(initialTask))
-        setEditForm(editFormFrom(initialTask))
-        setReviewDifficulty(initialTask.difficulty)
+        if (!isEditing) setEditForm(editFormFrom(initialTask))
+        if (!isReviewModalOpen) setReviewDifficulty(initialTask.difficulty)
     })
+
+    // Changed elsewhere, as by its being assigned, submitted or reviewed, it
+    // shows as it now is (REALTIME_PLAN.md).
+    useLive('tasks', () => router.refresh())
 
     // What the most recent edit changed, for the "edited" badges and the diff
     // viewer. task.comments arrives already parsed (F-12: Json, not a

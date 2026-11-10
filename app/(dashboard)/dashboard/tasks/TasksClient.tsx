@@ -1,6 +1,7 @@
 'use client'
 import { useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { CircleHalfIcon, ClipboardTextIcon, CoinsIcon, MapPinIcon, PlusIcon, SortAscendingIcon, UserCheckIcon, UserIcon, UsersThreeIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useModules } from '@/lib/useModules'
@@ -19,6 +20,7 @@ import { pickExtra } from '@/components/filters/extra-filters'
 import { withChanges } from '@/components/filters/address'
 import { useListAddress, useSearchField } from '@/components/filters/useListAddress'
 import { useEmployeeOptions } from '@/components/filters/useEmployeeOptions'
+import { useLive } from '@/components/LiveUpdates'
 import {
     Button, ButtonLink, DataList, DueDate, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, Person,
     SearchInput, Select, StatusBadge, TabLinks, taskStatusTone, visibleRow, type Column,
@@ -92,6 +94,11 @@ export default function TasksClient({ tasks, total, page, totalPages, currentUse
     const reach = scope('tasks.view')
     // Someone who sees only their own tasks has nobody else's to filter by.
     const ownTasksOnly = reach === null
+
+    // A task assigned, changed or done elsewhere appears as it is, with the
+    // filters and the page kept (REALTIME_PLAN.md, DESIGN.md §8).
+    const router = useRouter()
+    useLive('tasks', () => router.refresh())
 
     const { picked, go } = useListAddress('/dashboard/tasks')
     const filters = {
