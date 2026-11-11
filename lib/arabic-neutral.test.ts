@@ -12,7 +12,8 @@ import { en as english } from "./translations/en"
  * The screens move over in parts (`UI_PLAN.md` §5). This file checks what's
  * moved, across every string: part 1, searching, picking and trying again;
  * part 2, entering, typing, setting, adding, saying and leaving empty; part
- * 3, every other command in a hint, a message or a notice.
+ * 3, every other command in a hint, a message or a notice; part 4, "you" in
+ * the masculine.
  */
 
 const ar = arabic as Record<string, string>
@@ -156,5 +157,49 @@ describe("the app's Arabic, part 3: every other command", () => {
     it("changes nothing in English", () => {
         expect(en.exc_accept).toBe("Accept")
         expect(en.ci_key_failed).toBe("This phone's secure key couldn't be used. Register the phone again.")
+    })
+})
+
+describe("the app's Arabic, part 4: \"you\" in the masculine", () => {
+    // A verb with ت is "you" or "she": "تطلب شركة…" is the company asking,
+    // and stays. What's tested is the reader's own phrase.
+    it("says no 'you' in the masculine to the reader", () => {
+        const masculine = new RegExp([
+            "متأكد", "هل تريد", "أنك تريد", "تريد ", "تختاره", "تختار ", "ما تحتاجه", "تحتاجه",
+            "الذي تعرفه", "ماذا تطلب", "لم تطلب", "هل تطلب", "تسجّل حضورك", "لم تسجّل",
+            "لا تؤكد إلا", "^تؤكد أن", "لا تملك", "حتى تقرر", "صِف", "لن تتمكن",
+        ].join("|"))
+        for (const key of keys) expect([key, masculine.test(ar[key])], ar[key]).toEqual([key, false])
+    })
+
+    it("asks a confirmation with a verbal noun, as the rest of the app does", () => {
+        expect(ar.delete_task_warning).toBe("حذف هذه المهمة؟ لا يمكن التراجع عن هذا الإجراء.")
+        expect(ar.confirm_submission_msg).toBe("تسليم هذه المهمة؟ لا يمكن تعديلها بعد ذلك.")
+        expect(ar.sys_unsaved_message).toBe("في هذه الصفحة تغييرات لم تُحفظ بعد. مغادرتها وفقدانها؟")
+        expect(ar.ci_switch_confirm.startsWith("طلب أن يحل هذا الهاتف محل هاتفك الحالي؟")).toBe(true)
+    })
+
+    it("says the reader's own things with ك, and what happens to them in the passive", () => {
+        expect(ar.notice_att_checkin_reminder).toBe("لم يُسجَّل حضورك بعد. بدأ يومك في {time}.")
+        expect(ar.face_consent_body).toContain("ويُسجَّل حضورك دون تحقق بالوجه.")
+        expect(ar.face_ci_withdraw_confirm).toContain("ويُسجَّل حضورك دون التحقق من الوجه.")
+        expect(ar.doc_not_found).toBe("هذا المستند غير موجود، أو ليست لديك صلاحية الاطلاع عليه.")
+    })
+
+    it("names the new request window's fields without asking the reader in the masculine", () => {
+        expect(ar.requests_ask_for).toBe("نوع الطلب")
+        expect(ar.requests_title_placeholder).toBe("المطلوب في كلمات قليلة…")
+        expect(ar.requests_empty_mine).toBe("لا توجد طلبات بعد.")
+    })
+
+    it("keeps a company's own verbs, which are 'she', not 'you'", () => {
+        expect(ar.notice_role_change_asked).toBe("تطلب شركة {company} تغييرًا في {what}.")
+        expect(ar.face_unavailable_LEGAL_NOT_CONFIRMED).toContain("لم تؤكد الشركة")
+        expect(ar.role_changes_response_required).toBe("يُرجى ذكر السبب حتى تعرفه الشركة.")
+    })
+
+    it("changes nothing in English", () => {
+        expect(en.delete_task_warning).toBe("Are you sure you want to delete this task? This action cannot be undone.")
+        expect(en.requests_ask_for).toBe("What for")
     })
 })
