@@ -21,6 +21,7 @@ import DashboardHeader from './DashboardHeader'
 import { useLanguage } from '@/context/LanguageContext'
 import { permissionsOf } from '@/lib/useCan'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { useLive } from '@/components/LiveUpdates'
 import PreviewNote from '@/components/PreviewNote'
 
 interface DashboardShellProps {
@@ -107,6 +108,10 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
         { revalidateOnMount: false, revalidateOnFocus: true },
     )
     useEffect(() => { void recheckWaiting() }, [pathname, waitingKey, selectedCompanyId, recheckWaiting])
+    // And when a request changes elsewhere (REALTIME_PLAN.md, part 2): one
+    // asked for, decided or withdrawn, in the company, or in any company for
+    // the Super Admin.
+    useLive('requests', () => { if (waitingKey) void recheckWaiting() })
     // The mark follows the same scope as the names beside it — a Super Admin
     // looking at one company sees that company's logo, not a default mark over
     // that company's module names.

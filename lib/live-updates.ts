@@ -12,11 +12,17 @@
  * suspended, closed or deleted, or their company is banned (part 3,
  * prisma/migrations/20261209000000_live_account). The heartbeat hears it and
  * asks at once, rather than at its next beat.
+ *
+ * And that a company's requests changed (part 2,
+ * prisma/migrations/20261210000000_live_requests): the Requests page and the
+ * count on Requests in the side bar draw themselves again. On the company's
+ * channel, and on each Super Admin's own, as their count is every company's
+ * when none is in view.
  */
 
-export type LiveKind = 'tasks' | 'notices' | 'account'
-/** A channel, and what it's for; any of them may also say the account can't go on. */
-export type LiveTopic = { kind: Exclude<LiveKind, 'account'>; topic: string }
+export type LiveKind = 'tasks' | 'notices' | 'account' | 'requests'
+/** A channel, and what it's for; any of them may also say the account can't go on, or that requests changed. */
+export type LiveTopic = { kind: Exclude<LiveKind, 'account' | 'requests'>; topic: string }
 
 type Viewer = { id: string; role: string; companyId?: string | null }
 

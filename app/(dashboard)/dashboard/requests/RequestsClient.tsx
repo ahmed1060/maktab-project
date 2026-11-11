@@ -23,6 +23,7 @@ import { googleMapsLink } from '@/lib/attendance/geo'
 import { withChanges } from '@/components/filters/address'
 import { useListAddress, useSearchField } from '@/components/filters/useListAddress'
 import { useEmployeeOptions } from '@/components/filters/useEmployeeOptions'
+import { useLive } from '@/components/LiveUpdates'
 import {
     Button, Choice, DataList, Details, Dialog, DialogActions, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, Person,
     Row, Rows, RowMenu, SearchInput, Section, Select, StatusBadge, TabLinks, TextArea, TextInput, visibleRow, type Column, type StatusTone,
@@ -118,6 +119,10 @@ export default function RequestsClient({
     // revoked or asked for.
     const { mutate } = useSWRConfig()
     const refreshed = () => { router.refresh(); void mutate(WAITING_FOR_REVIEW_KEY) }
+    // Drawn again when a request changes elsewhere (REALTIME_PLAN.md, part 2),
+    // keeping the tab, filters and search, and what's typed in a dialog
+    // (DESIGN.md §8). The side bar's count listens for itself.
+    useLive('requests', () => router.refresh())
     const action = useBusyAction()
     const { picked, listed, go } = useListAddress('/dashboard/requests')
     const review = tab === 'review'

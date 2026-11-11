@@ -623,7 +623,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      at the heartbeat's next beat, merged in #248 on 2026-11-10; then the
      account status route answering a company's Admin, whose audit entry
      named them as a Super Admin and failed after the status was saved,
-     merged in #249 on 2026-11-10;
+     merged in #249 on 2026-11-10; then live updates' second part, the
+     Requests page and the count on Requests in the side bar drawn again
+     as a request is asked for, decided or withdrawn, merged in #250 on
+     2026-11-10;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5842,3 +5845,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   the status was saved, and the route answered 500. A company's own people
   are now named as themselves, as an edit and a delete already name them.
   No screen calls the route, so nobody saw it.
+- **2026-11-10:** Live updates part 2 (`REALTIME_PLAN.md`, #250): the
+  Requests page and the count on Requests in the side bar draw themselves
+  again as a request is asked for, decided or withdrawn, as the task list
+  does (`DESIGN.md` §8): in place, keeping the tab, filters, search and
+  what's typed in a dialog. The database signals it for every kind on the
+  page; a check-in signals nothing unless it makes a request.

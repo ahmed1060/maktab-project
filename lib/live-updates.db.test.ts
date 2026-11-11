@@ -226,6 +226,135 @@ describe.skipIf(!ADMIN_URL)("live updates, in Postgres", () => {
         })
     })
 
+    // Part 2: the Requests page and the count on Requests in the side bar,
+    // drawn again as a request is asked for, decided or withdrawn
+    // (prisma/migrations/20261210000000_live_requests).
+    describe("a company's requests", () => {
+        const requests = (topic: string) => ({ topic, event: "requests", payload: {}, private: true })
+        /** What one statement in a company sends: to its people, and to each Super Admin. */
+        const toCompany = (company: string) => [requests(`tasks:${company}`), requests("notices:sa1")]
+
+        beforeAll(async () => {
+            await db.query(`INSERT INTO "Role"(id, "companyId", name, "baseRole", "updatedAt") VALUES ('r-live', 'c1', 'Live', 'EMPLOYEE', now())`)
+            await sent()
+        })
+
+        // Each kind that carries its company, asked for, changed and withdrawn.
+        const KINDS: [string, string, string, string][] = [
+            ["internal requests", `INSERT INTO "Request"(id, title, details, "userId", "companyId", "updatedAt") VALUES ('rq1', 'Chairs', 'Two', 'u2', 'c1', now())`, `"Request"`, `status = 'IN_PROGRESS'`],
+            ["permission hours", `INSERT INTO "PermissionRequest"(id, "companyId", "userId", date, type, "startMinutes", "endMinutes", minutes, reason) VALUES ('pr1', 'c1', 'u2', '2026-11-10', 'EARLY_LEAVE', 900, 960, 60, 'Dentist')`, `"PermissionRequest"`, `status = 'APPROVED'`],
+            ["missing punches", `INSERT INTO "MissingPunchRequest"(id, "companyId", "userId", date, "claimedAt", reason) VALUES ('mp1', 'c1', 'u2', '2026-11-10', '2026-11-10 09:00', 'Forgot')`, `"MissingPunchRequest"`, `status = 'REJECTED'`],
+            ["overtime decisions", `INSERT INTO "OvertimeApproval"(id, "companyId", "userId", date, status, "approvedMinutes", "decidedById") VALUES ('oa1', 'c1', 'u2', '2026-11-10', 'APPROVED', 60, 'u1')`, `"OvertimeApproval"`, `note = 'An hour'`],
+            ["role requests", `INSERT INTO "RoleRequest"(id, "companyId", "userId", "roleId", "requestedById", "updatedAt") VALUES ('rr1', 'c1', 'u2', 'r-live', 'u1', now())`, `"RoleRequest"`, `"decisionNote" = 'Yes'`],
+        ]
+        for (const [name, insert, table, change] of KINDS) {
+            it(`${name}: asked for, changed and withdrawn, to the company and each Super Admin`, async () => {
+                await db.query(insert)
+                expect(await sent(), "asked for").toEqual(toCompany("c1"))
+                await db.query(`UPDATE ${table} SET ${change}`)
+                expect(await sent(), "changed").toEqual(toCompany("c1"))
+                await db.query(`DELETE FROM ${table}`)
+                expect(await sent(), "withdrawn").toEqual(toCompany("c1"))
+            })
+        }
+
+        it("day off and name changes, which carry only their person, to the person's company", async () => {
+            await db.query(`INSERT INTO "DayOffRequest"(id, "userId", type, date, "updatedAt") VALUES ('do1', 'u3', 'REGULAR', '2026-11-12', now())`)
+            expect(await sent()).toEqual(toCompany("c2"))
+            await db.query(`UPDATE "DayOffRequest" SET status = 'APPROVED' WHERE id = 'do1'`)
+            expect(await sent()).toEqual(toCompany("c2"))
+            await db.query(`DELETE FROM "DayOffRequest" WHERE id = 'do1'`)
+            expect(await sent()).toEqual(toCompany("c2"))
+            await db.query(`INSERT INTO "ProfileUpdateRequest"(id, "userId", "oldFirstName", "oldLastName", "newFirstName", "newLastName", "updatedAt") VALUES ('pu1', 'u2', 'Youssef', 'One', 'Yusuf', 'One', now())`)
+            expect(await sent()).toEqual(toCompany("c1"))
+            await db.query(`UPDATE "ProfileUpdateRequest" SET status = 'REJECTED' WHERE id = 'pu1'`)
+            expect(await sent()).toEqual(toCompany("c1"))
+            await db.query(`DELETE FROM "ProfileUpdateRequest" WHERE id = 'pu1'`)
+            expect(await sent()).toEqual(toCompany("c1"))
+        })
+
+        it("once for each company a statement touched, and once for each Super Admin", async () => {
+            await db.query(`INSERT INTO "Request"(id, title, details, "userId", "companyId", "updatedAt") VALUES
+                ('rq2', 'A', 'a', 'u2', 'c1', now()), ('rq3', 'B', 'b', 'u1', 'c1', now()), ('rq4', 'C', 'c', 'u3', 'c2', now())`)
+            expect(await sent()).toEqual([requests("tasks:c1"), requests("tasks:c2"), requests("notices:sa1")])
+            await db.query(`UPDATE "Request" SET status = 'DONE' WHERE id IN ('rq2', 'rq3')`)
+            expect(await sent()).toEqual(toCompany("c1"))
+            // Nothing changed, nothing to tell.
+            await db.query(`UPDATE "Request" SET status = 'DONE' WHERE id = 'nobody'`)
+            expect(await sent()).toEqual([])
+            await db.query(`DELETE FROM "Request"`)
+            await sent()
+        })
+
+        it("overtime: a day's waiting, worked out again or decided, and not every day worked out", async () => {
+            const day = (set: string) => db.query(`UPDATE "AttendanceDay" SET ${set} WHERE id = 'ad1'`)
+            await db.query(`INSERT INTO "AttendanceDay"(id, "companyId", "userId", date, status, breakdown, "inputsHash") VALUES ('ad1', 'c1', 'u2', '2026-11-10', 'PRESENT', '{}', 'h1')`)
+            await day(`"inputsHash" = 'h2', "lastOutAt" = '2026-11-10 17:00'`)
+            expect(await sent(), "a day without overtime, worked out").toEqual([])
+            await day(`"overtimeStatus" = 'PENDING', "overtimeMinutes" = 60`)
+            expect(await sent(), "its overtime waits").toEqual(toCompany("c1"))
+            await day(`"overtimeMinutes" = 75, "lastOutAt" = '2026-11-10 18:15'`)
+            expect(await sent(), "and is worked out again").toEqual(toCompany("c1"))
+            await day(`"inputsHash" = 'h3'`)
+            expect(await sent(), "nothing the row shows").toEqual([])
+            await day(`"overtimeStatus" = 'APPROVED'`)
+            expect(await sent(), "decided").toEqual(toCompany("c1"))
+            await day(`"overtimeMinutes" = 90`)
+            expect(await sent(), "worked out again once decided").toEqual([])
+            await db.query(`DELETE FROM "AttendanceDay" WHERE id = 'ad1'`)
+            expect(await sent(), "a decided day gone").toEqual([])
+        })
+
+        it("flagged check-ins: flagged, reviewed or withdrawn, and not every check-in", async () => {
+            const punch = (id: string, status: string) => db.query(
+                `INSERT INTO "AttendancePunch"(id, "companyId", "userId", source, "sourceKey", "punchAtLocal", "punchAt", "resolvedWithTimeZone", status)
+                 VALUES ($1, 'c1', 'u2', 'MOBILE', $1, '2026-11-10 09:00', '2026-11-10 07:00', 'Africa/Cairo', $2::"PunchStatus")`, [id, status])
+            await punch("ap1", "ACCEPTED")
+            const withdraw = (id: string) => db.query(`UPDATE "AttendancePunch" SET "voidedAt" = now(), "voidedById" = 'u1', "voidReason" = 'Wrong' WHERE id = $1`, [id])
+            await withdraw("ap1")
+            expect(await sent(), "a check-in, and one withdrawn").toEqual([])
+            await punch("ap2", "FLAGGED")
+            expect(await sent(), "flagged").toEqual(toCompany("c1"))
+            await db.query(`UPDATE "AttendancePunch" SET status = 'ACCEPTED', "reviewedAt" = now() WHERE id = 'ap2'`)
+            expect(await sent(), "reviewed").toEqual(toCompany("c1"))
+            await withdraw("ap2")
+            expect(await sent(), "a reviewed one withdrawn").toEqual(toCompany("c1"))
+            await db.query(`DELETE FROM "AttendancePunch" WHERE id = 'ap1'`)
+            expect(await sent(), "a check-in gone").toEqual([])
+        })
+
+        it("check-in phones: asked for and decided, and not used", async () => {
+            await db.query(`INSERT INTO "CheckInPhone"(id, "companyId", "userId", "publicKey", "keyFingerprint", platform) VALUES ('ph1', 'c1', 'u2', 'k', 'f1', 'IOS')`)
+            expect(await sent(), "asked for").toEqual(toCompany("c1"))
+            await db.query(`UPDATE "CheckInPhone" SET "appAttestCounter" = "appAttestCounter" + 1, "pushToken" = 'tok', "pushTokenAt" = now() WHERE id = 'ph1'`)
+            expect(await sent(), "used").toEqual([])
+            await db.query(`UPDATE "CheckInPhone" SET status = 'ACTIVE', "decidedAt" = now() WHERE id = 'ph1'`)
+            expect(await sent(), "decided").toEqual(toCompany("c1"))
+            await db.query(`DELETE FROM "CheckInPhone" WHERE id = 'ph1'`)
+            expect(await sent(), "gone").toEqual(toCompany("c1"))
+        })
+
+        it("heard by the company's people and each Super Admin, and by nobody else", async () => {
+            expect(await hears(HANA, "tasks:c1")).toBe(true)
+            expect(await hears({ sub: "u3", role: "authenticated", company_id: "c2", super_admin: false }, "tasks:c1")).toBe(false)
+            expect(await hears(SARA, "notices:sa1")).toBe(true)
+            expect(await hears(HANA, "notices:sa1")).toBe(false)
+        })
+
+        it("never stopping the request it's for when it can't be sent", async () => {
+            await db.query("SET test.fail_send = 'on'")
+            try {
+                await db.query(`INSERT INTO "Request"(id, title, details, "userId", "companyId", "updatedAt") VALUES ('rq9', 'Desk', 'One', 'u2', 'c1', now())`)
+            } finally {
+                await db.query("RESET test.fail_send")
+            }
+            expect((await db.query(`SELECT count(*)::int AS n FROM "Request" WHERE id = 'rq9'`)).rows[0].n).toBe(1)
+            expect(await sent()).toEqual([])
+            await db.query(`DELETE FROM "Request" WHERE id = 'rq9'`)
+            await sent()
+        })
+    })
+
     describe("a signal that can't be sent", () => {
         it("never stops the change from being saved", async () => {
             await db.query("SET test.fail_send = 'on'")
