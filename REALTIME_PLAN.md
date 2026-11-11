@@ -76,10 +76,10 @@ Decided with the product owner on 2026-11-10.
   - joining draws once: as the page opens, for a change saved while it
     was on its way, and on reconnecting, after a laptop sleeps or a phone
     loses its signal, for whatever was missed;
-  - what someone else changed appears in place: no toast, no animation,
-    and what the person was typing, their filters and where they'd
-    scrolled to stay. Part 5 adds a little motion to show what arrived
-    (§3).
+  - what someone else changed appears in place: no toast, nothing
+    slides, and what the person was typing, their filters and where
+    they'd scrolled to stay. Since part 5, it's tinted for a moment, so
+    it's found (§3).
 - **The secret it's signed with** is Supabase's legacy JWT secret. The
   project has moved to Supabase's newer signing keys, and Supabase still
   accepts tokens signed with the old secret: its dashboard calls it
@@ -117,7 +117,7 @@ Decided with the product owner on 2026-11-10.
 | 2 | The Requests page, and the count on Requests in the side bar | #250 |
 | 3 | A suspended, archived, deleted or banned person signed out within seconds, not 90; the heartbeat kept as the safety net | #248 |
 | 4 | Other screens, as they're wanted: cash advances, attendance, costs | |
-| 5 | A little motion for what arrives live: what changed is shown for a moment, so nobody has to hunt for it | |
+| 5 | A little motion for what arrives live: what changed is shown for a moment, so nobody has to hunt for it | #251 |
 
 - Each part is its own PR, merged on the product owner's word.
 - **Part 1 has been live since it merged.** `SUPABASE_JWT_SECRET` was
@@ -163,23 +163,40 @@ Decided with the product owner on 2026-11-10.
   - **A row deleted outright** sends nothing: its session ends at its next
     check, a minute at most, and the next beat signs the browser out
     (#247).
-- **Part 5, motion (Proposed; decided with the product owner when it's
-  built):** what someone else changed is shown arriving, briefly, and
-  then the screen is still again. `DESIGN.md` §8 says now that nothing
-  slides or flashes; it's changed first, in its own commit.
-  - **A row that arrives or changes** (a task given to the person, its
-    title or deadline changed) takes a soft tint of the accent colour
-    that fades over about two seconds. It doesn't slide, and the rows
-    around it don't move.
-  - **The bell's count, as it rises,** grows once a little and settles
-    back, in about a quarter of a second.
+- **Part 5, motion (#251), as the product owner chose:** what someone
+  else changed is shown arriving, briefly, and then the screen is still
+  again (`DESIGN.md` §8, changed first, in its own commit).
+  - **A row that arrives or changes,** on the task list and the Requests
+    page, takes the brand tint (`--brand-tint`). It holds for half a
+    second, so it's seen, and fades evenly back to the row's own colour,
+    an overdue row's too, within 2 seconds. Only its colour changes: it
+    doesn't slide, and the rows around it don't move. On a phone, the
+    card is tinted.
+  - **The bell's count, as it rises,** grows to 115% and settles back, in
+    250ms on `--ease-out`.
   - **A row that goes simply goes:** showing it leaving would mean
     keeping on screen what the server says is gone.
-  - **Only for what someone else did:** not for the person's own changes,
-    which they know of, and not on the first draw as a page opens. What
-    changed while a tab was out of sight is shown as it comes back.
-  - **With reduced motion,** the tint shows and goes without fading, and
-    the count doesn't grow.
+  - **Only for what someone else did** (`components/useArrivals.ts`):
+    - each draw of a list is compared with the one before it, row by row,
+      and only the draw that follows a signal is marked;
+    - not as a page opens, which has nothing before it, and not when the
+      person looks at another tab, filter or page, which is another list;
+    - not for the person's own changes: the Requests page says when it's
+      drawing itself after their action, and their change's own signal,
+      which comes after, finds nothing new. The task list has no actions
+      of its own: a task is changed on its page, and the list is drawn
+      afresh as the person comes back to it;
+    - a signal whose draw changed nothing is forgotten after 10 seconds,
+      so it can't claim a change the person makes later;
+    - what changed while a tab was out of sight is shown as it comes back,
+      as the tab is drawn then;
+    - the bell's count grows as it rises from one answer to the next: not
+      as a page opens, and not as it falls.
+  - **One case the page can't tell:** a change the person makes in
+    another tab of theirs reaches this one as anyone's would, and is
+    tinted here.
+  - **With "reduce motion",** the tint shows for its 2 seconds and goes
+    without fading, and the count doesn't grow.
   - In both languages and both themes, from the colour tokens, with
     Emil Design Engineering's motion guidance (`UI_PLAN.md` §7.1).
 
@@ -219,3 +236,10 @@ Decided with the product owner on 2026-11-10.
   Requests in the side bar draw themselves again when a request changes,
   for the company's people and each Super Admin. Check-ins send no signal
   unless they make a request.
+- **2026-11-11:** Part 5 built (#251), as the product owner chose: a row
+  someone else added or changed, on the task list and the Requests page,
+  takes the brand tint, which fades over 2 seconds, and the bell's count
+  grows a little as it rises. Not for the person's own changes, not as a
+  page opens, and not on another tab, filter or page. `DESIGN.md` §8
+  changed first. Noted the one case the page can't tell: the person's own
+  change, made in another tab of theirs.
