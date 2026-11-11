@@ -2661,3 +2661,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-11:** §7.5 says the cash advance screens draw themselves again
   as the ledger changes elsewhere: live updates' part 4a
   (`REALTIME_PLAN.md`, #252).
+- **2026-11-11:** The cash advance screens' Arabic is neutral as to who
+  reads it and who holds the advance (#254); the English and what each
+  screen does don't change.
