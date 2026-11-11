@@ -628,7 +628,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      as a request is asked for, decided or withdrawn, merged in #250 on
      2026-11-10; then live updates' fifth part, what someone else added
      or changed tinted for a moment on the task list and the Requests
-     page, and the bell's count growing as it rises (#251);
+     page, and the bell's count growing as it rises, merged in #251 on
+     2026-11-11; then live updates' part 4a, the cash advance screens
+     drawn again as the ledger changes, the person's own action theirs
+     for as long as it's on its way (#252);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5863,3 +5866,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   With "reduce motion", the tint shows and goes without fading, and the
   count doesn't grow. DataList takes the rows to mark (`arrived`), from
   `components/useArrivals.ts`.
+- **2026-11-11:** Live updates part 4a (`REALTIME_PLAN.md`, #252): the
+  Costs page's Cash advances tab, a person's cash advance and My cash
+  advance, Add cost's line about the advance, and an open Give advance,
+  Record return or Correction window draw themselves again as the ledger
+  changes (`DESIGN.md` §8), keeping the search, filter, page and what's
+  typed. What someone else changed is tinted on the two lists, as part 5
+  does. The person's own action counts as theirs for as long as it's on its
+  way, as a two-factor code can hold it longer than a signal is waited
+  for, on the Requests page too.

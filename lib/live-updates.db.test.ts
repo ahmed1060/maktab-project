@@ -355,6 +355,70 @@ describe.skipIf(!ADMIN_URL)("live updates, in Postgres", () => {
         })
     })
 
+    // Part 4a: the cash advance screens, drawn again as the ledger changes
+    // (prisma/migrations/20261211000000_live_advances).
+    describe("a company's cash advances", () => {
+        const advances = (topic: string) => ({ topic, event: "advances", payload: {}, private: true })
+        /** What one statement in a company sends: to its people, and to each Super Admin. */
+        const toCompany = (company: string) => [advances(`tasks:${company}`), advances("notices:sa1")]
+        const entry = (id: string, company: string, user: string, kind: string, amount: number, task: string | null = null) =>
+            `('${id}', '${company}', '${user}', '${kind}', ${amount}, '2026-11-11', 'u1', ${task ? `'${task}'` : "NULL"})`
+        const ENTRY_COLUMNS = `"CashAdvanceEntry"(id, "companyId", "userId", kind, amount, date, "recordedById", "taskId")`
+
+        it("an advance given, confirmed and gone, to the company and each Super Admin, saying nothing of what", async () => {
+            await db.query(`INSERT INTO ${ENTRY_COLUMNS} VALUES ${entry("ca1", "c1", "u2", "GIVEN", 1000)}`)
+            expect(await sent(), "given").toEqual(toCompany("c1"))
+            await db.query(`UPDATE "CashAdvanceEntry" SET "confirmedAt" = now() WHERE id = 'ca1'`)
+            expect(await sent(), "confirmed").toEqual(toCompany("c1"))
+            await db.query(`DELETE FROM "CashAdvanceEntry" WHERE id = 'ca1'`)
+            expect(await sent(), "gone").toEqual(toCompany("c1"))
+        })
+
+        it("once for each company a statement touched, and once for each Super Admin", async () => {
+            await db.query(`INSERT INTO ${ENTRY_COLUMNS} VALUES
+                ${entry("ca2", "c1", "u2", "GIVEN", 500)}, ${entry("ca3", "c1", "u1", "GIVEN", 200)}, ${entry("ca4", "c2", "u3", "GIVEN", 300)}`)
+            expect(await sent()).toEqual([advances("tasks:c1"), advances("tasks:c2"), advances("notices:sa1")])
+            // Nothing changed, nothing to tell.
+            await db.query(`UPDATE "CashAdvanceEntry" SET "confirmedAt" = now() WHERE id = 'nobody'`)
+            expect(await sent()).toEqual([])
+            await db.query(`DELETE FROM "CashAdvanceEntry" WHERE id IN ('ca2', 'ca3', 'ca4')`)
+            await sent()
+        })
+
+        // The history line says the task is gone: the entry's link to it is
+        // cleared by the database, as the task is deleted.
+        it("when an entry's task is deleted, as its history line changes", async () => {
+            await db.query(`INSERT INTO ${TASK_COLUMNS} VALUES ${task("t-adv", "c1")}`)
+            await db.query(`INSERT INTO ${ENTRY_COLUMNS} VALUES ${entry("ca5", "c1", "u2", "SPENT", -150, "t-adv")}`)
+            await sent()
+            await db.query(`DELETE FROM "Task" WHERE id = 't-adv'`)
+            expect((await sent()).filter(s => s.event === "advances")).toEqual(toCompany("c1"))
+            expect((await db.query(`SELECT "taskId" FROM "CashAdvanceEntry" WHERE id = 'ca5'`)).rows[0].taskId).toBeNull()
+            await db.query(`DELETE FROM "CashAdvanceEntry" WHERE id = 'ca5'`)
+            await sent()
+        })
+
+        it("heard by the company's people and each Super Admin, and by nobody else", async () => {
+            expect(await hears(HANA, "tasks:c1")).toBe(true)
+            expect(await hears({ sub: "u3", role: "authenticated", company_id: "c2", super_admin: false }, "tasks:c1")).toBe(false)
+            expect(await hears(SARA, "notices:sa1")).toBe(true)
+            expect(await hears(HANA, "notices:sa1")).toBe(false)
+        })
+
+        it("never stopping the entry it's for when it can't be sent", async () => {
+            await db.query("SET test.fail_send = 'on'")
+            try {
+                await db.query(`INSERT INTO ${ENTRY_COLUMNS} VALUES ${entry("ca9", "c1", "u2", "GIVEN", 50)}`)
+            } finally {
+                await db.query("RESET test.fail_send")
+            }
+            expect((await db.query(`SELECT count(*)::int AS n FROM "CashAdvanceEntry" WHERE id = 'ca9'`)).rows[0].n).toBe(1)
+            expect(await sent()).toEqual([])
+            await db.query(`DELETE FROM "CashAdvanceEntry" WHERE id = 'ca9'`)
+            await sent()
+        })
+    })
+
     describe("a signal that can't be sent", () => {
         it("never stops the change from being saved", async () => {
             await db.query("SET test.fail_send = 'on'")

@@ -7,9 +7,11 @@ import { useToast } from '@/context/ToastContext'
 import DatePickerSingle from '@/components/DatePickerSingle'
 import { Button, Choice, Details, Dialog, Field, FileChip, FileChips, FilePicker, Select, TextArea, TextInput } from '@/components/ui'
 import {
-    CASH_ADVANCE_NOTE_MAX, HANDOVER_ACCEPT, HANDOVER_FOLDER, balanceAfter, refusalText, signedAmount, todayHere, type RecordedKind,
+    CASH_ADVANCE_NOTE_MAX, HANDOVER_ACCEPT, HANDOVER_FOLDER, balanceAfter, heldPartKey, partsToPick, refusalText, signedAmount, todayHere, type RecordedKind,
 } from '@/lib/cash-advances'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { useBusyAction } from '@/lib/useBusyAction'
+import { useLive } from '@/components/LiveUpdates'
 import type { TranslationKey } from '@/lib/translations'
 import { fetcher } from '@/lib/swr-fetcher'
 import type { AdvancePerson, HeldFor, Owed } from './types'
@@ -30,11 +32,13 @@ const DONE: Record<RecordedKind, TranslationKey> = { GIVEN: 'advances_given_done
  * return or a correction says which part of the advance it's on, where
  * they hold money for a task or a client, and never takes that part below
  * zero.
+ *
+ * What they hold is drawn again as it changes elsewhere while it's open
+ * (REALTIME_PLAN.md, part 4a), and what's typed stays. Saving is the
+ * person's own change, said to the list behind it as it starts (ActionStarts),
+ * so it isn't tinted there.
  */
 
-/** A part of a person's advance, as the From field picks it: "" for the running balance. */
-const partKey = (part: { forTask: { id: string } | null; forClient: { id: string } | null }) =>
-    part.forTask ? `task:${part.forTask.id}` : part.forClient ? `client:${part.forClient.id}` : ''
 export default function CashAdvanceDialog({ person, kind, today: companyToday, onClose, onSaved }: {
     person: AdvancePerson | null
     kind: RecordedKind
@@ -52,7 +56,8 @@ export default function CashAdvanceDialog({ person, kind, today: companyToday, o
     const [date, setDate] = useState(today)
     const [note, setNote] = useState('')
     const [photo, setPhoto] = useState<File | null>(null)
-    const [saving, setSaving] = useState(false)
+    const action = useBusyAction()
+    const saving = action.running
     // The photo, once uploaded: a try again after a refusal sends the same file.
     const [uploaded, setUploaded] = useState<{ file: File; url: string } | null>(null)
     // What the company owes them, offered with the advance (CLIENTS_PLAN.md §7.3): asked for as it opens.
@@ -61,7 +66,10 @@ export default function CashAdvanceDialog({ person, kind, today: companyToday, o
     const [forKind, setForKind] = useState<'any' | 'task' | 'client'>('any')
     const [forId, setForId] = useState('')
     const [from, setFrom] = useState('')
-    const { data: about, mutate: refreshAbout } = useSWR<{ data: { owed: Owed | null; running: number; held: HeldFor[] } }>(person ? `/api/cash-advances/${encodeURIComponent(person.id)}?limit=1` : null, fetcher)
+    // The part picked, as it was when picked: still listed, holding nothing, should it go while this is open.
+    const [chosen, setChosen] = useState<HeldFor | null>(null)
+    const { data: about, mutate: refreshAbout } = useSWR<{ data: { balance: number; owed: Owed | null; running: number; held: HeldFor[] } }>(person ? `/api/cash-advances/${encodeURIComponent(person.id)}?limit=1` : null, fetcher)
+    useLive('advances', () => { void refreshAbout() })
     const owed = kind === 'GIVEN' ? about?.data?.owed ?? null : null
     const held = about?.data?.held ?? []
     const { data: offered } = useSWR<{ data: { tasks: { id: string; title: string }[]; clients: { id: string; name: string }[] } }>(
@@ -72,13 +80,15 @@ export default function CashAdvanceDialog({ person, kind, today: companyToday, o
 
     useAdjustOnChange([person?.id, kind], () => {
         setAmount(''); setDirection('add'); setDate(today); setNote(''); setPhoto(null); setUploaded(null); setPayOwed('no')
-        setForKind('any'); setForId(''); setFrom('')
+        setForKind('any'); setForId(''); setFrom(''); setChosen(null)
     })
 
     // A return or a correction is on the part picked: the running balance, or what's for a task or a client.
-    const picked = held.find(part => partKey(part) === from)
-    const balance = kind === 'GIVEN' ? person?.balance ?? 0 : picked ? picked.amount : about?.data?.running ?? person?.balance ?? 0
-    const balanceLabel = kind === 'GIVEN' || held.length === 0 ? t('advances_col_balance')
+    const parts = partsToPick(held, from, chosen)
+    const picked = parts.find(part => heldPartKey(part) === from)
+    // As the server says now, once it's answered: the list's row may be older.
+    const balance = kind === 'GIVEN' ? about?.data?.balance ?? person?.balance ?? 0 : picked ? picked.amount : about?.data?.running ?? person?.balance ?? 0
+    const balanceLabel = kind === 'GIVEN' || parts.length === 0 ? t('advances_col_balance')
         : picked ? t('advances_for_name').replace('{name}', picked.forTask?.title ?? picked.forClient?.name ?? '') : t('advances_running')
     const typed = direction === 'take' && kind === 'CORRECTION' ? `-${amount.trim()}` : amount
     const signed = amount.trim() === '' ? null : signedAmount(kind, typed)
@@ -108,10 +118,13 @@ export default function CashAdvanceDialog({ person, kind, today: companyToday, o
         return result.data.url as string
     }
 
-    const save = async (e?: { preventDefault: () => void }) => {
+    const save = (e?: { preventDefault: () => void }) => {
         e?.preventDefault()
-        if (!person || !ready || saving) return
-        setSaving(true)
+        if (!person || !ready) return
+        void action.run('save', () => send(person))
+    }
+
+    const send = async (person: AdvancePerson) => {
         try {
             const res = await fetch(`/api/cash-advances/${encodeURIComponent(person.id)}`, {
                 method: 'POST',
@@ -147,8 +160,6 @@ export default function CashAdvanceDialog({ person, kind, today: companyToday, o
             onClose()
         } catch (error) {
             showToast(error instanceof Error && error.message ? error.message : t('error_generic'), 'error')
-        } finally {
-            setSaving(false)
         }
     }
 
@@ -164,12 +175,12 @@ export default function CashAdvanceDialog({ person, kind, today: companyToday, o
         >
             <form id={formId} onSubmit={save} className="ui-dialog-body" noValidate>
                 <p className="ui-hint">{t(kind === 'GIVEN' ? 'advances_give_hint' : kind === 'RETURNED' ? 'advances_return_hint' : 'advances_correct_hint')}</p>
-                {kind !== 'GIVEN' && held.length > 0 && (
+                {kind !== 'GIVEN' && parts.length > 0 && (
                     <Field label={t('advances_from')}>{p => (
-                        <Select {...p} name="from" value={from} onChange={e => setFrom(e.target.value)} options={[
+                        <Select {...p} name="from" value={from} onChange={e => { setFrom(e.target.value); setChosen(parts.find(part => heldPartKey(part) === e.target.value) ?? null) }} options={[
                             { value: '', label: `${t('advances_running')}: ${money(about?.data?.running ?? 0)}` },
                             // The name isolated, so a name in the other script keeps its place beside the amount.
-                            ...held.map(part => ({ value: partKey(part), label: `\u2068${part.forTask?.title ?? part.forClient?.name ?? ''}\u2069: ${money(part.amount)}` })),
+                            ...parts.map(part => ({ value: heldPartKey(part), label: `\u2068${part.forTask?.title ?? part.forClient?.name ?? ''}\u2069: ${money(part.amount)}` })),
                         ]} />
                     )}</Field>
                 )}

@@ -106,6 +106,9 @@ Decided with the product owner on 2026-11-10.
   - Requests' signals (part 2) are heard as tasks' are, by every open tab
     of the company, and by each Super Admin's. Requests change far less
     often than tasks, and a check-in sends none.
+  - Cash advances' signals (part 4a) are heard the same way. The ledger
+    changes far less often than tasks: an advance given, returned,
+    confirmed or spent on a cost.
 
 ---
 
@@ -116,8 +119,10 @@ Decided with the product owner on 2026-11-10.
 | 1 | The token, the channels' rules and the triggers; one connection per tab; the task list, a task's page and the bell drawn again when what they show changes | #244, merged 2026-11-10 |
 | 2 | The Requests page, and the count on Requests in the side bar | #250 |
 | 3 | A suspended, archived, deleted or banned person signed out within seconds, not 90; the heartbeat kept as the safety net | #248 |
-| 4 | Other screens, as they're wanted: cash advances, attendance, costs | |
-| 5 | A little motion for what arrives live: what changed is shown for a moment, so nobody has to hunt for it | #251 |
+| 4a | Cash advances: the Cash advances tab, a person's cash advance and My cash advance, Add cost's line about the advance, and an open Give advance, Record return or Correction window | #252 |
+| 4b | Costs and charges: the Employee costs and Charged to clients tabs, and a client's charges | |
+| 4c | Attendance | |
+| 5 | A little motion for what arrives live: what changed is shown for a moment, so nobody has to hunt for it | #251, merged 2026-11-11 |
 
 - Each part is its own PR, merged on the product owner's word.
 - **Part 1 has been live since it merged.** `SUPABASE_JWT_SECRET` was
@@ -163,11 +168,63 @@ Decided with the product owner on 2026-11-10.
   - **A row deleted outright** sends nothing: its session ends at its next
     check, a minute at most, and the next beat signs the browser out
     (#247).
+- **Part 4, other screens,** in three PRs, the product owner choosing
+  cash advances first: 4a cash advances, 4b costs and charges, 4c
+  attendance. Attendance's waits for a decision on what a check-in
+  signals, as a signal for each would draw every open attendance page in
+  the company with every check-in (part 2 sends none for them).
+- **Part 4a, cash advances (#252):** the screens that show a cash advance
+  draw themselves again as the ledger changes, through the same routes as
+  any visit:
+  - the Costs page's Cash advances tab, keeping its search, filter and
+    page;
+  - a person's cash advance, and My cash advance: the balance, what's
+    held for a task or a client, what awaits confirmation, and the
+    history;
+  - Add cost's line about the person's advance on a task's page, keeping
+    the cost being typed;
+  - an open Give advance, Record return or Correction window: what the
+    person holds, and what they'd hold after, keeping what's typed. An
+    advance given is weighed against the balance as the server says it
+    now, not as the row said when the window opened. A task or client
+    picked under From, then spent or moved elsewhere, stays picked,
+    holding nothing, so the amount typed is refused as more than they hold
+    rather than saved against the running balance (found by Codex on
+    #252).
+  - **The signal** is `advances`, empty as the others are, on the
+    company's channel (`tasks:<id>`), and on each Super Admin's own
+    (`notices:<id>`): a Super Admin opens anyone's cash advance with
+    another company in view, or none, and hears no company's channel then.
+    No new channel, and no change to who may listen
+    (`prisma/migrations/20261211000000_live_advances`).
+  - **Every way the ledger changes is covered,** from its one table: an
+    advance given, returned or corrected, a receipt confirmed, a cost paid
+    from it or put back, money moved to the running balance or passed on
+    with a transfer, a balance turned into a debt as a contract ends, and
+    an entry's task, cost or client deleted, which its history line says.
+    One signal per statement for each company it touched.
+  - **The helper it's sent with,** `live_company_signal(event,
+    companies)`, signals a statement's companies and every Super Admin,
+    for parts 4b and 4c to use too.
+  - **Joining a channel draws them once too,** as it draws the requests.
+  - **Part 5's tint** marks a row of either list that someone else added
+    or changed. Their search, filter and page aren't in the page's
+    address, so each list is told apart by the address it's loaded from
+    (`useArrivalsIn`).
+  - **Giving, returning, correcting, confirming and moving are the
+    person's own,** and aren't tinted. All but Confirm receipt are
+    high-risk, and a two-factor code asked for on the way holds the action
+    for as long as the code takes to type, longer than a signal is waited
+    for (10 seconds). So the person's own action now counts as theirs for
+    as long as it's on its way, and the 10 seconds start once it's
+    answered; whatever is drawn meanwhile is taken as theirs. On the
+    Requests page too.
 - **Part 5, motion (#251), as the product owner chose:** what someone
   else changed is shown arriving, briefly, and then the screen is still
   again (`DESIGN.md` §8, changed first, in its own commit).
   - **A row that arrives or changes,** on the task list and the Requests
-    page, takes the brand tint (`--brand-tint`). It holds for half a
+    page, and since part 4a on the cash advance lists, takes the brand
+    tint (`--brand-tint`). It holds for half a
     second, so it's seen, and fades evenly back to the row's own colour,
     an overdue row's too, within 2 seconds. Only its colour changes: it
     doesn't slide, and the rows around it don't move. On a phone, the
@@ -183,12 +240,13 @@ Decided with the product owner on 2026-11-10.
       person looks at another tab, filter or page, which is another list;
     - not for the person's own changes: each action on the Requests page,
       its dialogs' too, says as it starts, before it sends anything, that
-      the next draw is theirs (`ActionStarts`, `lib/useBusyAction.ts`).
-      Their change's own signal can come before their answer, if the
-      server goes on working after saving it, and the draw it brings is
-      still theirs. The task list has no actions of its own: a task is
-      changed on its page, and the list is drawn afresh as the person comes
-      back to it;
+      the next draw is theirs (`ActionStarts`, `lib/useBusyAction.ts`),
+      and says when it's answered. Their change's own signal can come
+      before their answer, if the server goes on working after saving it,
+      and the draw it brings is still theirs; so is every draw while the
+      action is on its way (part 4a). The task list has no actions of its
+      own: a task is changed on its page, and the list is drawn afresh as
+      the person comes back to it;
     - a signal whose draw changed nothing is forgotten after 10 seconds,
       so it can't claim a change the person makes later;
     - each draw's rows are unmarked 2 seconds after it, whatever draws
@@ -256,3 +314,18 @@ Decided with the product owner on 2026-11-10.
   are unmarked after their own 2 seconds, where a later draw used to keep
   every marked row marked, which with "reduce motion" could keep rows
   tinted while changes kept coming.
+- **2026-11-11:** Part 4 split into three PRs, the product owner choosing
+  cash advances first: 4a cash advances, 4b costs and charges, 4c
+  attendance. Part 4a built (#252): the Cash advances tab, a person's cash
+  advance and My cash advance, Add cost's line about the advance, and an
+  open Give advance, Record return or Correction window draw themselves
+  again as the ledger changes, for the company's people and each Super
+  Admin, and part 5's tint marks what someone else changed on the two
+  lists. The person's own action now counts as theirs for as long as it's
+  on its way, as a two-factor code can hold it longer than a signal is
+  waited for; the Requests page's actions too.
+- **2026-11-11:** A finding by Codex on #252, fixed in it: Record return
+  or Correction, drawn again while open, lost a task or client picked
+  under From once it was spent or moved elsewhere, and would have saved
+  the amount typed against the running balance. The part picked now
+  stays, holding nothing, until another is picked.

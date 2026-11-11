@@ -244,6 +244,7 @@ describe("a tab's connection", () => {
         drawer.on("notices", () => drawn.push("notices"))
         drawer.on("account", () => drawn.push("account"))
         drawer.on("requests", () => drawn.push("requests"))
+        drawer.on("advances", () => drawn.push("advances"))
     })
     afterEach(() => vi.useRealTimers())
 
@@ -253,10 +254,11 @@ describe("a tab's connection", () => {
         const supabase = fakeSupabase()
         await new LiveConnection({ ask: async () => grant("t1"), load: async () => supabase, drawer }).start()
         expect(supabase.log).toEqual(["auth t1", "join tasks:c1 with t1", "join notices:u1 with t1"])
-        // What changed, the person's own account (part 3), and requests (part 2), on each.
+        // What changed, the person's own account (part 3), requests (part 2)
+        // and cash advances (part 4a), on each.
         expect(supabase.channels.map(c => [c.topic, c.private, c.events])).toEqual([
-            ["tasks:c1", true, ["changed", "account", "requests"]],
-            ["notices:u1", true, ["changed", "account", "requests"]],
+            ["tasks:c1", true, ["changed", "account", "requests", "advances"]],
+            ["notices:u1", true, ["changed", "account", "requests", "advances"]],
         ])
     })
 
@@ -279,14 +281,16 @@ describe("a tab's connection", () => {
         supabase.channels[1].status!("SUBSCRIBED")
         await vi.advanceTimersByTimeAsync(1000)
         // And whether the account can go on, for a suspension missed the same
-        // way (part 3), and the requests, for one asked for or decided (part 2).
-        expect(drawn).toEqual(["notices", "account", "requests"])
+        // way (part 3), the requests, for one asked for or decided (part 2),
+        // and the cash advances, for an advance given or confirmed (part 4a).
+        const joined = ["notices", "account", "requests", "advances"]
+        expect(drawn).toEqual(joined)
         supabase.channels[1].status!("CHANNEL_ERROR")
         await vi.advanceTimersByTimeAsync(1000)
-        expect(drawn).toEqual(["notices", "account", "requests"])
+        expect(drawn).toEqual(joined)
         supabase.channels[1].status!("SUBSCRIBED")
         await vi.advanceTimersByTimeAsync(1000)
-        expect(drawn).toEqual(["notices", "account", "requests", "notices", "account", "requests"])
+        expect(drawn).toEqual([...joined, ...joined])
     })
 
     // Part 3: suspended, closed, deleted, or the company banned. On the
@@ -317,6 +321,21 @@ describe("a tab's connection", () => {
         supabase.channels[1].on.requests!()
         await vi.advanceTimersByTimeAsync(1000)
         expect(drawn).toEqual(["requests", "requests"])
+    })
+
+    // Part 4a: an advance given, returned, confirmed or spent on a cost. On
+    // the company's channel, and on each Super Admin's own, as the database
+    // sends it (the live_advances_* triggers).
+    it("draws the cash advance screens when either channel says cash advances changed, a second later", async () => {
+        const supabase = fakeSupabase()
+        await new LiveConnection({ ask: async () => grant("t1"), load: async () => supabase, drawer }).start()
+        supabase.channels[0].on.advances!()
+        await vi.advanceTimersByTimeAsync(1000)
+        expect(drawn).toEqual(["advances"])
+        supabase.channels[0].on.advances!()
+        supabase.channels[1].on.advances!()
+        await vi.advanceTimersByTimeAsync(1000)
+        expect(drawn).toEqual(["advances", "advances"])
     })
 
     it("loads nothing while the token route says it's off, and doesn't ask again", async () => {
@@ -455,6 +474,23 @@ describe("the screens that are drawn again", () => {
         const layout = read("app/(dashboard)/layout.tsx")
         expect(layout.indexOf("<DashboardShell")).toBeGreaterThan(layout.indexOf("<LiveUpdates"))
         expect(layout.indexOf("<DashboardShell")).toBeLessThan(layout.indexOf("</LiveUpdates>"))
+    })
+
+    // Part 4a: each through its own route, keeping what's typed, the
+    // search, the filter and the page.
+    it("the cash advance screens: the Cash advances tab, a person's, Add cost's line about it, and an open Give advance window", () => {
+        expect(read("components/cash-advances/CashAdvancesList.tsx")).toContain("useLive('advances', () => { void mutate() })")
+        expect(read("components/cash-advances/CashAdvanceHistory.tsx")).toContain("useLive('advances', () => { void mutate() })")
+        expect(read("components/cash-advances/AdvanceBalanceHint.tsx")).toContain("useLive('advances', () => { void mutate() })")
+        const dialog = read("components/cash-advances/CashAdvanceDialog.tsx")
+        expect(dialog).toContain("useLive('advances', () => { void refreshAbout() })")
+        // An advance given is weighed against the balance as the server says it now.
+        expect(dialog).toContain("const balance = kind === 'GIVEN' ? about?.data?.balance ?? person?.balance ?? 0")
+        // A part picked, then gone elsewhere, stays picked, holding nothing (found by Codex on PR 252).
+        expect(dialog).toContain("const parts = partsToPick(held, from, chosen)")
+        expect(dialog).toContain("const picked = parts.find(part => heldPartKey(part) === from)")
+        expect(dialog).toContain("onChange={e => { setFrom(e.target.value); setChosen(parts.find(part => heldPartKey(part) === e.target.value) ?? null) }}")
+        expect(dialog).toContain("...parts.map(part => ({ value: heldPartKey(part)")
     })
 
     // Part 3: the heartbeat asks at once, and signs the page out as it does
