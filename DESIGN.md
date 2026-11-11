@@ -256,7 +256,12 @@ One scale. Every size in the app is one of these.
   search box says "البحث في…" or "البحث عن…"; and a button, or a picker's
   prompt, is a verbal noun ("إعادة المحاولة", "اختيار عميل"). Someone
   else is spoken of through what's theirs, or in the passive ("الرصيد",
-  not "رصيده"; "يُؤكَّد استلامها", not "يؤكّد"). The screens move over in
+  not "رصيده"; "يُؤكَّد استلامها", not "يؤكّد"). A person a screen is about
+  is "this person" or "this account", or isn't the subject at all
+  ("أُضيف بواسطة {name}", not "أضافه {name}"; "تمت إضافة موقع", not "أضاف
+  موقعًا"). A generic "من" or "أحد" (whoever, anyone) keeps Arabic's usual
+  agreement ("من يحق له"، "لم يغادر أحد"), and so do a role's name and a
+  thing ("يوافق المسؤول"، "العميل لديه مهام"). The screens move over in
   parts, listed in `UI_PLAN.md` §5.
 
 ---
