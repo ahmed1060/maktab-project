@@ -10,7 +10,8 @@ import { en as english } from "./translations/en"
  * is a verbal noun.
  *
  * The screens move over in parts (`UI_PLAN.md` §5). This file checks what's
- * moved, across every string: part 1, searching, picking and trying again.
+ * moved, across every string: part 1, searching, picking and trying again;
+ * part 2, entering, typing, setting, adding, saying and leaving empty.
  */
 
 const ar = arabic as Record<string, string>
@@ -65,5 +66,47 @@ describe("the app's Arabic, part 1: searching, picking and trying again", () => 
         expect(en.try_again).toBe("Try again")
         expect(en.select_company_placeholder).toBe("Select a company…")
         expect(en.tasks_search).toBe("Search tasks")
+    })
+})
+
+describe("the app's Arabic, part 2: entering, typing, setting and adding", () => {
+    it("asks no one to enter, type, set, add, say or leave empty in the masculine", () => {
+        const masculine = word("(?:أدخل|ادخل|اكتب|حدد|حدّد|أضف|اذكر|اترك|الصق|ألصق)(?:ه|ها|هم)?")
+        for (const key of keys) expect([key, masculine.test(ar[key])], ar[key]).toEqual([key, false])
+    })
+
+    it("asks with يُرجى and a verbal noun where a field is wrong or missing", () => {
+        expect(ar.payments_amount_required).toBe("يُرجى إدخال المبلغ.")
+        expect(ar.number_whole_between_or_empty).toBe("يُرجى كتابة عدد صحيح من {min} إلى {max}، أو تركه فارغًا.")
+        expect(ar.requests_role_reason_required).toBe("يُرجى ذكر سبب الرفض.")
+        expect(ar.points_required).toBe("يُرجى تحديد نقاطها، من ٠ إلى ١٠")
+        expect(ar.health_type_word).toBe("يُرجى كتابة {word} للتأكيد.")
+    })
+
+    it("says a field may be left empty in the passive", () => {
+        expect(ar.attendance_no_cap_hint).toBe("يُترك فارغًا بلا حد.")
+        expect(ar.packages_lifetime_hint).toBe("يُترك فارغًا إن لم تكن تُباع مدى الحياة.")
+    })
+
+    it("names a placeholder and an audit entry with a verbal noun", () => {
+        expect(ar.note_placeholder).toBe("إضافة ملاحظة عن العمل…")
+        expect(ar.username_placeholder).toBe("إدخال اسم المستخدم...")
+        expect(ar.audit_action_SET_SERVICE_FEE).toBe("تحديد رسوم الخدمة لمستحق")
+        expect(ar.audit_action_COLLECT_CHARGES).toBe("تحديد مستحقات عميل كمحصّلة")
+    })
+
+    it("leaves no other masculine command, 'you' or 'his' in the sentences it changed", () => {
+        const changed = [
+            "obligation_assignee_deleted_msg", "payroll_cannot_compute", "requests_details_placeholder",
+            "verified_unclear_hint", "punch_withdraw_import_hint", "punch_numbers_waiting_hint",
+            "att_term_code_hint", "sod_acknowledge_required", "who_can_more_people",
+        ]
+        const masculine = word("أعد|احذفه|راجعها|افتح|استخدمه|ألغِ|تحتاجه|لتجد|مكلفًا|بصماته")
+        for (const key of changed) expect([key, masculine.test(ar[key])], ar[key]).toEqual([key, false])
+    })
+
+    it("changes nothing in English", () => {
+        expect(en.payments_amount_required).toBe("Enter the amount.")
+        expect(en.attendance_no_cap_hint).toBe("Leave it empty for no limit.")
     })
 })
