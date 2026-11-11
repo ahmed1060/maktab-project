@@ -181,13 +181,20 @@ Decided with the product owner on 2026-11-10.
       and only the draw that follows a signal is marked;
     - not as a page opens, which has nothing before it, and not when the
       person looks at another tab, filter or page, which is another list;
-    - not for the person's own changes: the Requests page says when it's
-      drawing itself after their action, and their change's own signal,
-      which comes after, finds nothing new. The task list has no actions
-      of its own: a task is changed on its page, and the list is drawn
-      afresh as the person comes back to it;
+    - not for the person's own changes: each action on the Requests page,
+      its dialogs' too, says as it starts, before it sends anything, that
+      the next draw is theirs (`ActionStarts`, `lib/useBusyAction.ts`).
+      Their change's own signal can come before their answer, if the
+      server goes on working after saving it, and the draw it brings is
+      still theirs. The task list has no actions of its own: a task is
+      changed on its page, and the list is drawn afresh as the person comes
+      back to it;
     - a signal whose draw changed nothing is forgotten after 10 seconds,
       so it can't claim a change the person makes later;
+    - each draw's rows are unmarked 2 seconds after it, whatever draws
+      come after, so a steady stream of changes doesn't keep earlier rows
+      tinted; a row that changes again is marked for the later draw's 2
+      seconds;
     - what changed while a tab was out of sight is shown as it comes back,
       as the tab is drawn then;
     - the bell's count grows as it rises from one answer to the next: not
@@ -243,3 +250,9 @@ Decided with the product owner on 2026-11-10.
   page opens, and not on another tab, filter or page. `DESIGN.md` §8
   changed first. Noted the one case the page can't tell: the person's own
   change, made in another tab of theirs.
+- **2026-11-11:** Two findings by Codex on #251, both fixed in it: the
+  person's own action now says it's theirs as it starts, not once its
+  answer comes, as its live signal can come first; and each draw's rows
+  are unmarked after their own 2 seconds, where a later draw used to keep
+  every marked row marked, which with "reduce motion" could keep rows
+  tinted while changes kept coming.

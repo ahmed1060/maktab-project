@@ -3,7 +3,7 @@ import { createElement as h } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { readFileSync } from "node:fs"
 import { stripComments } from "./strip-comments"
-import { ARRIVAL_MS, EXPECT_MS, arrivedBetween, arrivedOnDraw, drawn, expectNext, rose, type Expecting } from "./arrivals"
+import { ARRIVAL_MS, EXPECT_MS, arrivedBetween, arrivedOnDraw, drawn, expectNext, mark, rose, unmark, type Expecting, type Marks } from "./arrivals"
 
 /**
  * Live updates, part 5 (REALTIME_PLAN.md; DESIGN.md §8; PR 251).
@@ -106,6 +106,9 @@ describe("a list drawn again after someone else's change", () => {
 })
 
 describe("the person's own change", () => {
+    // Said as the action starts, before it sends anything: the server can go
+    // on working after it saves, so the change's signal, and the draw after
+    // it, can come before the answer (found by Codex on PR 251).
     it("is never marked, whether their draw or their change's signal comes first", () => {
         const first = list([A])
         first.own()
@@ -139,12 +142,35 @@ describe("the person's own change", () => {
     })
 })
 
+describe("each row's mark", () => {
+    const none: Marks = new Map()
+
+    it("goes 2 seconds after the draw that marked it, whatever draws come after", () => {
+        const first = mark(none, ["a"], 1)
+        const second = mark(first, ["b"], 2)
+        const left = unmark(second, 1)
+        expect([...left.keys()]).toEqual(["b"])
+        expect(unmark(left, 2).size).toBe(0)
+    })
+
+    it("stays for the later draw's 2 seconds when the row changes again", () => {
+        const again = mark(mark(none, ["a", "b"], 1), ["a"], 2)
+        expect([...unmark(again, 1).keys()]).toEqual(["a"])
+        expect(unmark(unmark(again, 1), 2).size).toBe(0)
+    })
+
+    it("leaves the marks as they are when that draw's rows are all marked again", () => {
+        const again = mark(mark(none, ["a"], 1), ["a"], 2)
+        expect(unmark(again, 1)).toBe(again)
+    })
+})
+
 describe("the hook (components/useArrivals.ts)", () => {
     const hook = stripComments(readFileSync("components/useArrivals.ts", "utf8"))
 
     it("compares each draw with the one before it, where the list is and what each row holds", () => {
         expect(hook).toContain("const now = drawn(`${usePathname()}?${useSearchParams().toString()}`, rows, rowKey)")
-        expect(hook).toMatch(/useAdjustOnChange\(\[now\], \(\) => \{\s*const keys = arrivedOnDraw\(expecting, before, now\)\s*if \(keys\.length > 0\) setArrived\(was => new Set\(\[\.\.\.was, \.\.\.keys\]\)\)\s*setExpecting\(null\)\s*setBefore\(now\)\s*\}\)/)
+        expect(hook).toMatch(/useAdjustOnChange\(\[now\], \(\) => \{\s*const keys = arrivedOnDraw\(expecting, before, now\)\s*if \(keys\.length > 0\) \{\s*setArrived\(was => mark\(was, keys, marked \+ 1\)\)\s*setMarked\(marked \+ 1\)\s*\}\s*setExpecting\(null\)\s*setBefore\(now\)\s*\}\)/)
     })
 
     it("marks nothing as the page opens: the first draw has none before it", () => {
@@ -158,9 +184,10 @@ describe("the hook (components/useArrivals.ts)", () => {
         expect(hook).toContain("return { arrived, own: () => expect('own') }")
     })
 
-    it("forgets what it waited for after EXPECT_MS, and marks each row for ARRIVAL_MS, 2 seconds", () => {
+    it("forgets what it waited for after EXPECT_MS, and marks each draw's rows for their own ARRIVAL_MS, 2 seconds", () => {
         expect(hook).toContain("const forget = setTimeout(() => setExpecting(null), EXPECT_MS)")
-        expect(hook).toContain("const done = setTimeout(() => setArrived(NONE), ARRIVAL_MS)")
+        // Not cleared as the next draw comes, which would keep every row marked.
+        expect(hook).toMatch(/useEffect\(\(\) => \{\s*if \(marked === 0\) return\s*setTimeout\(\(\) => setArrived\(was => unmark\(was, marked\)\), ARRIVAL_MS\)\s*\}, \[marked\]\)/)
         expect(ARRIVAL_MS).toBe(2000)
     })
 })
@@ -186,11 +213,32 @@ describe("the lists", () => {
         expect(tasks).not.toContain("arrivals.own()")
     })
 
-    it("and the requests, whose own draw after an action isn't marked", () => {
+    it("and the requests, where each action, the dialogs' too, says as it starts that the next draw is the person's own", () => {
         const requests = stripComments(readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8"))
         expect(requests).toContain("const arrivals = useArrivals('requests', rows, r => r.id)")
-        expect(requests).toContain("const refreshed = () => { arrivals.own(); router.refresh(); void mutate(WAITING_FOR_REVIEW_KEY) }")
         expect(requests).toContain("arrived={arrivals.arrived}")
+        // The page's own actions, and every dialog's.
+        expect(requests).toContain("const action = useBusyAction(arrivals.own)")
+        const from = requests.indexOf("<ActionStarts.Provider value={arrivals.own}>")
+        const to = requests.indexOf("</ActionStarts.Provider>")
+        expect(from).toBeGreaterThan(-1)
+        for (const dialog of ["<DecideDayOff", "<RejectRequest", "<WithdrawAttendance", "<RevokePhone", "<NewRequest"]) {
+            const at = requests.indexOf(dialog)
+            expect([dialog, at > from && at < to]).toEqual([dialog, true])
+        }
+        // Every write on the page and in its dialogs goes through a busy action.
+        for (const file of ["RequestsClient", "DayOffDialogs", "AttendanceDialogs"]) {
+            const source = stripComments(readFileSync(`app/(dashboard)/dashboard/requests/${file}.tsx`, "utf8"))
+            const writes = source.match(/method: '(POST|PATCH|PUT|DELETE)'/g)?.length ?? 0
+            expect([file, writes > 0, source.includes("useBusyAction(")]).toEqual([file, true, true])
+        }
+    })
+
+    it("hear an action starting before it sends anything (lib/useBusyAction.ts)", () => {
+        const busy = stripComments(readFileSync("lib/useBusyAction.ts", "utf8"))
+        expect(busy).toContain("export const ActionStarts = createContext<(() => void) | null>(null)")
+        expect(busy).toContain("const start = onStart ?? told")
+        expect(busy).toMatch(/if \(inFlight\.current\) return undefined\s*inFlight\.current = key\s*start\?\.\(\)\s*setCurrent\(key\)\s*try \{\s*return await work\(\)/)
     })
 })
 

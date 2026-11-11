@@ -53,7 +53,7 @@ export function DataList<T>({ caption, columns, rows, rowKey, card, tone, arrive
     card: (row: T) => ReactNode
     tone?: (row: T) => RowTone | undefined
     /** The keys of the rows someone else just added or changed (components/useArrivals.ts). */
-    arrived?: ReadonlySet<string>
+    arrived?: { has: (key: string) => boolean }
     /** Usually the Pager. */
     footer?: ReactNode
     /** Shown instead of the list when there are no rows, usually an EmptyState. */

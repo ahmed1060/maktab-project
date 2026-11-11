@@ -69,6 +69,26 @@ export function arrivedOnDraw(expecting: Expecting, before: string, now: string)
 }
 
 /**
+ * The rows marked as arrived, each with the draw that marked it last
+ * (counted from 1), so that each draw's rows are unmarked 2 seconds after
+ * it, whatever draws come after (found by Codex on PR 251).
+ */
+export type Marks = ReadonlyMap<string, number>
+
+/** Marks `keys` as arrived in draw `n`. A row marked before, that changed again, is now this draw's. */
+export function mark(was: Marks, keys: readonly string[], n: number): Marks {
+    const next = new Map(was)
+    for (const key of keys) next.set(key, n)
+    return next
+}
+
+/** Unmarks the rows draw `n` marked, leaving those a later draw marked again. */
+export function unmark(was: Marks, n: number): Marks {
+    const next = new Map([...was].filter(([, by]) => by !== n))
+    return next.size === was.size ? was : next
+}
+
+/**
  * Whether a count rose from one answer to the next. Not from the count the
  * server drew the page with to the first answer (`before` is null then): a
  * page opening grows nothing.
