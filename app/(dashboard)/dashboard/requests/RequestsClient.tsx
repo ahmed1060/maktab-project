@@ -7,7 +7,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
 import { useModules } from '@/lib/useModules'
-import { useBusyAction } from '@/lib/useBusyAction'
+import { ActionStarts, useBusyAction } from '@/lib/useBusyAction'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import { countOf } from '@/lib/plural'
 import { spansDays, workDays } from '@/lib/day-off-range'
@@ -24,6 +24,7 @@ import { withChanges } from '@/components/filters/address'
 import { useListAddress, useSearchField } from '@/components/filters/useListAddress'
 import { useEmployeeOptions } from '@/components/filters/useEmployeeOptions'
 import { useLive } from '@/components/LiveUpdates'
+import { useArrivals } from '@/components/useArrivals'
 import {
     Button, Choice, DataList, Details, Dialog, DialogActions, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, Person,
     Row, Rows, RowMenu, SearchInput, Section, Select, StatusBadge, TabLinks, TextArea, TextInput, visibleRow, type Column, type StatusTone,
@@ -114,6 +115,11 @@ export default function RequestsClient({
     const { showToast } = useToast()
     const modules = useModules()
     const router = useRouter()
+    // What someone else asked for or decided is shown for a moment
+    // (DESIGN.md §8; REALTIME_PLAN.md, part 5), and what this person did
+    // isn't: each of the page's actions, the dialogs' too, says so as it
+    // starts (ActionStarts).
+    const arrivals = useArrivals('requests', rows, r => r.id)
     // The page again, and with it the count on Requests in the side bar
     // (DESIGN.md §5.1), once something here is decided, deleted, withdrawn,
     // revoked or asked for.
@@ -123,7 +129,7 @@ export default function RequestsClient({
     // keeping the tab, filters and search, and what's typed in a dialog
     // (DESIGN.md §8). The side bar's count listens for itself.
     useLive('requests', () => router.refresh())
-    const action = useBusyAction()
+    const action = useBusyAction(arrivals.own)
     const { picked, listed, go } = useListAddress('/dashboard/requests')
     const review = tab === 'review'
     const employeeOptions = useEmployeeOptions(review)
@@ -458,6 +464,7 @@ export default function RequestsClient({
                 rows={rows}
                 rowKey={r => r.id}
                 tone={r => highlighted === r.id ? 'selected' : undefined}
+                arrived={arrivals.arrived}
                 card={r => (
                     <ListCard
                         title={title(r)}
@@ -564,39 +571,41 @@ export default function RequestsClient({
                 <p>{t('requests_delete_body').replace('{title}', deleting ? name(deleting) : '')}</p>
             </Dialog>
 
-            {deciding && (
-                <DecideDayOff key={`${deciding.row.id}-${deciding.decision}`} request={deciding.row} decision={deciding.decision}
-                    onClose={() => setDeciding(null)} onDecided={() => { setDeciding(null); refreshed() }} />
-            )}
-            {rejecting && (
-                <RejectRequest key={rejecting.id} request={rejecting} question={rejectQuestion(rejecting)}
-                    placeholder={t(rejecting.missingPunch ? 'requests_missing_reject_placeholder' : rejecting.overtime ? 'requests_overtime_reject_placeholder'
-                        : rejecting.phone ? 'requests_phone_reject_placeholder' : rejecting.flagged ? 'requests_flagged_reject_placeholder'
-                            : rejecting.nameChange ? 'requests_name_change_reject_placeholder'
-                                : rejecting.role ? 'requests_role_reject_placeholder' : 'requests_permission_reject_placeholder')}
-                    reasonRequired={rejecting.kind === 'role'}
-                    onClose={() => setRejecting(null)} onDecided={() => { setRejecting(null); refreshed() }} />
-            )}
-            {withdrawing && (
-                <WithdrawAttendance key={withdrawing.id} request={withdrawing}
-                    title={t(withdrawing.overtime ? 'requests_overtime_withdraw_title' : 'requests_withdraw_title')}
-                    hint={t(withdrawing.missingPunch ? 'requests_missing_withdraw_hint' : withdrawing.overtime ? 'requests_overtime_withdraw_hint'
-                        : withdrawing.role ? 'requests_role_withdraw_hint' : 'req_withdraw_hint')}
-                    onClose={() => setWithdrawing(null)} onWithdrawn={() => { setWithdrawing(null); setViewing(null); refreshed() }} />
-            )}
+            <ActionStarts.Provider value={arrivals.own}>
+                {deciding && (
+                    <DecideDayOff key={`${deciding.row.id}-${deciding.decision}`} request={deciding.row} decision={deciding.decision}
+                        onClose={() => setDeciding(null)} onDecided={() => { setDeciding(null); refreshed() }} />
+                )}
+                {rejecting && (
+                    <RejectRequest key={rejecting.id} request={rejecting} question={rejectQuestion(rejecting)}
+                        placeholder={t(rejecting.missingPunch ? 'requests_missing_reject_placeholder' : rejecting.overtime ? 'requests_overtime_reject_placeholder'
+                            : rejecting.phone ? 'requests_phone_reject_placeholder' : rejecting.flagged ? 'requests_flagged_reject_placeholder'
+                                : rejecting.nameChange ? 'requests_name_change_reject_placeholder'
+                                    : rejecting.role ? 'requests_role_reject_placeholder' : 'requests_permission_reject_placeholder')}
+                        reasonRequired={rejecting.kind === 'role'}
+                        onClose={() => setRejecting(null)} onDecided={() => { setRejecting(null); refreshed() }} />
+                )}
+                {withdrawing && (
+                    <WithdrawAttendance key={withdrawing.id} request={withdrawing}
+                        title={t(withdrawing.overtime ? 'requests_overtime_withdraw_title' : 'requests_withdraw_title')}
+                        hint={t(withdrawing.missingPunch ? 'requests_missing_withdraw_hint' : withdrawing.overtime ? 'requests_overtime_withdraw_hint'
+                            : withdrawing.role ? 'requests_role_withdraw_hint' : 'req_withdraw_hint')}
+                        onClose={() => setWithdrawing(null)} onWithdrawn={() => { setWithdrawing(null); setViewing(null); refreshed() }} />
+                )}
 
-            {faceOf && <FlaggedFaceDialog punchId={faceOf.id} name={faceOf.who.name} onClose={() => setFaceOf(null)} />}
-            {revoking && (
-                <RevokePhone key={revoking.id} request={revoking}
-                    onClose={() => setRevoking(null)} onRevoked={() => { setRevoking(null); setViewing(null); refreshed() }} />
-            )}
+                {faceOf && <FlaggedFaceDialog punchId={faceOf.id} name={faceOf.who.name} onClose={() => setFaceOf(null)} />}
+                {revoking && (
+                    <RevokePhone key={revoking.id} request={revoking}
+                        onClose={() => setRevoking(null)} onRevoked={() => { setRevoking(null); setViewing(null); refreshed() }} />
+                )}
 
-            <NewRequest open={asking} mayAskDayOff={mayAskDayOff} today={mayAskAttendance ? attendanceToday : null} onClose={() => setAsking(false)} onAsked={() => {
-                setAsking(false)
-                // Theirs, waiting: where it now is.
-                if (tab === 'mine' && show === 'waiting') refreshed()
-                else go({ tab: 'mine', show: 'waiting', kind: '', employeeId: '', search: '', highlight: '' })
-            }} />
+                <NewRequest open={asking} mayAskDayOff={mayAskDayOff} today={mayAskAttendance ? attendanceToday : null} onClose={() => setAsking(false)} onAsked={() => {
+                    setAsking(false)
+                    // Theirs, waiting: where it now is.
+                    if (tab === 'mine' && show === 'waiting') refreshed()
+                    else go({ tab: 'mine', show: 'waiting', kind: '', employeeId: '', search: '', highlight: '' })
+                }} />
+            </ActionStarts.Provider>
         </Page>
     )
 }

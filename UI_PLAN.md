@@ -626,7 +626,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      merged in #249 on 2026-11-10; then live updates' second part, the
      Requests page and the count on Requests in the side bar drawn again
      as a request is asked for, decided or withdrawn, merged in #250 on
-     2026-11-10;
+     2026-11-10; then live updates' fifth part, what someone else added
+     or changed tinted for a moment on the task list and the Requests
+     page, and the bell's count growing as it rises (#251);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5851,3 +5853,13 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   does (`DESIGN.md` §8): in place, keeping the tab, filters, search and
   what's typed in a dialog. The database signals it for every kind on the
   page; a check-in signals nothing unless it makes a request.
+- **2026-11-11:** Live updates part 5 (`REALTIME_PLAN.md`, #251): what
+  someone else added or changed is shown for a moment (`DESIGN.md` §8). A
+  row on the task list or the Requests page takes the brand tint, which
+  holds for half a second and fades to the row's own colour within 2
+  seconds, and the bell's count grows to 115% and settles as it rises. Not
+  for the person's own changes, not as a page opens, and not when they look
+  at another tab, filter or page; a hidden tab shows it as it comes back.
+  With "reduce motion", the tint shows and goes without fading, and the
+  count doesn't grow. DataList takes the rows to mark (`arrived`), from
+  `components/useArrivals.ts`.

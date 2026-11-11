@@ -1536,16 +1536,28 @@ These are built once, in the building-blocks PR, and every page uses them
 ## 8. Motion
 
 - **Things move only when someone acts:** a menu or a dialog opening, the
-  side bar sliding in, a toast saying what an action did. Nothing animates
-  on page load, and cards don't lift on hover.
-- **What someone else changed appears in place, and still:** a task
-  assigned meanwhile is in the list, the bell has its notification, a
-  changed row reads as it now is (`REALTIME_PLAN.md`). No toast says so,
-  nothing slides or flashes, and the page isn't loaded again: what the
-  person was typing, their filters, where they'd scrolled to and an open
-  dialog all stay. Changes arriving close together are drawn once, a
-  second after the last, and a tab out of sight is drawn when it's shown
-  again.
+  side bar sliding in, a toast saying what an action did, and for a moment
+  what someone else did (below). Nothing animates on page load, and cards
+  don't lift on hover.
+- **What someone else changed appears in place:** a task assigned
+  meanwhile is in the list, the bell has its notification, a changed row
+  reads as it now is (`REALTIME_PLAN.md`). No toast says so, and the page
+  isn't loaded again: what the person was typing, their filters, where
+  they'd scrolled to and an open dialog all stay. Changes arriving close
+  together are drawn once, a second after the last, and a tab out of sight
+  is drawn when it's shown again.
+- **And it's shown for a moment, so nobody has to hunt for it**
+  (`REALTIME_PLAN.md`, part 5):
+  - **a row that arrives or changes,** in a list such as the tasks or the
+    requests, takes the soft brand tint (`--brand-tint`), which fades back
+    to the row's own colour. Nothing slides, and the rows around it don't
+    move;
+  - **the bell's count, as it rises,** grows a little and settles back;
+  - **a row that goes simply goes:** showing it leave would keep on screen
+    what's gone;
+  - **only for what someone else did:** not for the person's own changes,
+    which they know of, and not as a page opens. What changed while a tab
+    was out of sight is shown as it comes back.
 - **How each comes in** (with Emil Design Engineering, `UI_PLAN.md` §7.1):
   - **a menu or a panel opened from its button** (a row's menu, the
     account menu, the bell's panel, the company picker, and a date field's
@@ -1575,14 +1587,21 @@ These are built once, in the building-blocks PR, and every page uses them
   - 150ms ease-out for colour changes on hover and press;
   - 150ms for a menu or a panel opening, as they open many times a day;
   - 200ms for a dialog, a toast, and the side bar coming in;
-  - 150ms for the side bar going.
+  - 150ms for the side bar going;
+  - 2 seconds for a row's tint: it holds for half a second, so it's seen,
+    then fades evenly over the rest, as it's there to be noticed, not to
+    answer a tap;
+  - 250ms for the bell's count growing to 115% and settling back, on
+    `--ease-out`.
 - **Not animated:** what comes as someone types, such as a saved name's
   suggestions or the place search's results, and tabs. They change many
   times a minute, and a move would only slow them down.
 - **The device's "reduce motion" setting is respected:** movement becomes an
   instant change, and so do fades (`app/globals.css`), as none says
   anything the still screen doesn't. Emil Design Engineering keeps fades;
-  here, this rule wins (`UI_PLAN.md` §7.3).
+  here, this rule wins (`UI_PLAN.md` §7.3). A row's tint is the one that
+  says something: it shows for its 2 seconds and goes without fading, and
+  the bell's count doesn't grow.
 
 ---
 
@@ -2107,3 +2126,9 @@ changed:
 - **2026-11-10:** A page the app has to leave (§5.5) also covers an
   account deleted while it's open, which went on working until then, and
   says so: Account deleted, by an administrator.
+- **2026-11-11:** What someone else changed is shown for a moment (§8), as
+  the product owner chose for live updates' part 5: a row that arrives or
+  changes takes the brand tint, which fades over 2 seconds, and the bell's
+  count grows a little as it rises. Not for the person's own changes, not
+  as a page opens, and with "reduce motion" the tint shows and goes
+  without fading.

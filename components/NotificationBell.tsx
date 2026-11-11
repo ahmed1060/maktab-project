@@ -14,6 +14,8 @@ import { noticeAge, noticeExactTime } from "@/lib/notice-age"
 import { noticeIcon } from "@/lib/notice-icon"
 import { useNow } from "@/lib/useNow"
 import { useLive } from "@/components/LiveUpdates"
+import { useAdjustOnChange } from "@/lib/useAdjustOnChange"
+import { rose } from "@/lib/arrivals"
 
 export interface Notice {
     id: string
@@ -139,6 +141,17 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
     const notices: Notice[] = data?.data || NO_NOTICES
     // The server-rendered count stands in until the first answer arrives.
     const unreadCount = data ? notices.filter(n => !n.read).length : initialUnreadCount
+    // It grows a little as it rises (DESIGN.md §8; REALTIME_PLAN.md, part 5),
+    // drawn again for each rise: not from the server's count to the first
+    // answer, as the page opens, and not as it falls.
+    const answered = data ? unreadCount : null
+    const [counted, setCounted] = useState(answered)
+    const [rises, setRises] = useState(0)
+    useAdjustOnChange([answered], () => {
+        if (answered === null) return
+        if (rose(counted, answered)) setRises(n => n + 1)
+        setCounted(answered)
+    })
 
     const close = () => { setIsOpen(false); bellRef.current?.focus() }
 
@@ -181,7 +194,7 @@ export default function NotificationBell({ initialUnreadCount = 0 }: { initialUn
                 aria-label={unreadCount > 0 ? `${t('notifications')}${t('top_bar_unread').replace('{count}', num(unreadCount))}` : t('notifications')}
                 aria-expanded={isOpen} aria-controls={isOpen ? panelId : undefined} onClick={() => setIsOpen(open => !open)}>
                 <Icon icon={BellIcon} className="ui-topbar-icon" />
-                {unreadCount > 0 && <span className="ui-topbar-count" aria-hidden="true">{num(unreadCount)}</span>}
+                {unreadCount > 0 && <span key={rises} className="ui-topbar-count" data-rising={rises > 0 || undefined} aria-hidden="true">{num(unreadCount)}</span>}
             </button>
             {isOpen && (
                 <NotificationsPanel id={panelId} notices={notices} status={data ? 'ready' : error ? 'failed' : 'loading'} now={now}

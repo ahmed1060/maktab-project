@@ -21,6 +21,7 @@ import { withChanges } from '@/components/filters/address'
 import { useListAddress, useSearchField } from '@/components/filters/useListAddress'
 import { useEmployeeOptions } from '@/components/filters/useEmployeeOptions'
 import { useLive } from '@/components/LiveUpdates'
+import { useArrivals } from '@/components/useArrivals'
 import {
     Button, ButtonLink, DataList, DueDate, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, Person,
     SearchInput, Select, StatusBadge, TabLinks, taskStatusTone, visibleRow, type Column,
@@ -142,6 +143,11 @@ export default function TasksClient({ tasks, total, page, totalPages, currentUse
                     : time(a.createdAt) - time(b.createdAt)
         return sortOrder === 'asc' || sortBy === 'smart' ? comparison : -comparison
     })
+    // What someone else assigned, changed or did is shown for a moment
+    // (DESIGN.md §8; REALTIME_PLAN.md, part 5). Nothing on this list changes
+    // a task: the person's own changes are made on its page, and the list
+    // is drawn afresh as they come back to it.
+    const arrivals = useArrivals('tasks', sorted, task => task.id)
 
     // The task a notification opened, brought into view while it's on the
     // page shown. The list has it twice, as a table row and as a phone card,
@@ -274,6 +280,7 @@ export default function TasksClient({ tasks, total, page, totalPages, currentUse
                 rows={sorted}
                 rowKey={task => task.id}
                 tone={task => highlighted === task.id ? 'selected' : overdue(task) ? 'overdue' : undefined}
+                arrived={arrivals.arrived}
                 card={task => (
                     <ListCard
                         title={title(task)}

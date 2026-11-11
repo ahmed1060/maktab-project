@@ -12,6 +12,8 @@ import { stripComments } from "./strip-comments"
 // Just enough of React's state for the hook's own logic: one component, one render.
 const state: unknown[] = []
 let slot = 0
+// What an ActionStarts around the component says, if there's one.
+const around: { told: (() => void) | null } = { told: null }
 vi.mock("react", () => ({
     useState: (initial: unknown) => {
         const i = slot++
@@ -20,11 +22,13 @@ vi.mock("react", () => ({
     },
     useRef: (initial: unknown) => ({ current: initial }),
     useCallback: (fn: unknown) => fn,
+    createContext: (initial: unknown) => ({ initial }),
+    useContext: () => around.told,
 }))
 const { useBusyAction } = await import("./useBusyAction")
 // One render of a component that calls the hook (React itself is stood in for above).
 // eslint-disable-next-line react-hooks/rules-of-hooks
-const render = () => { slot = 0; return useBusyAction() }
+const render = (onStart?: () => void) => { slot = 0; return useBusyAction(onStart) }
 
 describe("useBusyAction", () => {
     it("runs one action at a time and says which", async () => {
@@ -54,6 +58,36 @@ describe("useBusyAction", () => {
         expect(render().running).toBe(false)
         const again = vi.fn(async () => "ok")
         expect(await action.run("save", again)).toBe("ok")
+    })
+    // So a list that shows what someone else changed takes the next draw as
+    // the person's own, though their change's live signal comes before the
+    // answer (components/useArrivals.ts; found by Codex on PR 251).
+    it("says it's starting before it sends anything, once for each action it runs", async () => {
+        const said: string[] = []
+        const action = render(() => said.push("starts"))
+        let finish!: () => void
+        const first = action.run("approve", () => { said.push("sends"); return new Promise<void>(r => { finish = r }) })
+        expect(said).toEqual(["starts", "sends"])
+        // A second click, ignored, says nothing.
+        await action.run("approve", async () => { said.push("sends again") })
+        expect(said).toEqual(["starts", "sends"])
+        finish()
+        await first
+    })
+
+    it("hears it from an ActionStarts around it, as a dialog's does, unless it's given its own", async () => {
+        const said: string[] = []
+        around.told = () => said.push("around")
+        try {
+            await render().run("ask", async () => {})
+            await render(() => said.push("own")).run("ask", async () => {})
+        } finally {
+            around.told = null
+        }
+        expect(said).toEqual(["around", "own"])
+        // And nothing to say it to, on any other screen.
+        await render().run("save", async () => {})
+        expect(said).toEqual(["around", "own"])
     })
 })
 
