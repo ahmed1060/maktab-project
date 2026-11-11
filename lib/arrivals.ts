@@ -44,9 +44,10 @@ export function arrivedBetween(before: string, after: string): string[] {
 /**
  * What the next draw of a list follows: someone else's change, as a live
  * signal says, or the person's own, as their page draws itself again after
- * it. Null once a draw has come, or after EXPECT_MS.
+ * it; and how many of the person's own actions are still on their way.
+ * Null once a draw has come and none is, or EXPECT_MS after.
  */
-export type Expecting = { from: 'live' | 'own' } | null
+export type Expecting = { from: 'live' | 'own'; acting: number } | null
 
 /**
  * What the next draw follows once a signal or the person's own action
@@ -55,7 +56,38 @@ export type Expecting = { from: 'live' | 'own' } | null
  * wait starts again.
  */
 export function expectNext(was: Expecting, from: 'live' | 'own'): NonNullable<Expecting> {
-    return { from: was?.from === 'own' ? 'own' : from }
+    return { from: was?.from === 'own' ? 'own' : from, acting: was?.acting ?? 0 }
+}
+
+/**
+ * The person's own action starting, before it sends anything: what's drawn
+ * is theirs while it's on its way, however long that is. A two-factor code
+ * asked for on the way holds it for as long as the code takes to type, and
+ * their change, and its signal, come only after (PR 252).
+ */
+export function actionStarts(was: Expecting): NonNullable<Expecting> {
+    return { from: 'own', acting: (was?.acting ?? 0) + 1 }
+}
+
+/**
+ * The person's own action answered, saved or not: the draw that follows is
+ * still theirs, and once none is on its way, it's waited for EXPECT_MS.
+ */
+export function actionAnswered(was: Expecting): Expecting {
+    return was && { from: was.from, acting: Math.max(0, was.acting - 1) }
+}
+
+/**
+ * What a draw leaves waiting: nothing, unless an action of the person's own
+ * is still on its way, whose change can come in a later draw.
+ */
+export function afterDraw(was: Expecting): Expecting {
+    return was !== null && was.acting > 0 ? was : null
+}
+
+/** Whether what's waited for is forgotten after EXPECT_MS: not while an action is on its way. */
+export function forgets(was: Expecting): boolean {
+    return was !== null && was.acting === 0
 }
 
 /**

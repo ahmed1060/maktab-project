@@ -17,6 +17,9 @@ import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped
 import { useCan, useViewer } from '@/lib/useCan'
 import { countOf } from '@/lib/plural'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { ActionStarts } from '@/lib/useBusyAction'
+import { useLive } from '@/components/LiveUpdates'
+import { useArrivalsIn } from '@/components/useArrivals'
 import { dayLabel, type RecordedKind } from '@/lib/cash-advances'
 import CashAdvanceDialog from './CashAdvanceDialog'
 import type { AdvanceHolder } from './types'
@@ -30,6 +33,11 @@ const LIMIT = 20
  * what they all hold. Whoever gives and settles advances gives one, records
  * a return or corrects a balance from each person's menu; their history is
  * on their own page.
+ *
+ * Drawn again as anyone's advance changes elsewhere, and what someone else
+ * changed is tinted for a moment (REALTIME_PLAN.md, part 4a; DESIGN.md §8).
+ * The search, the filter and the page are the list's own, so the address
+ * it's loaded from says which list is drawn.
  */
 export default function CashAdvancesList() {
     const { t, locale } = useLanguage()
@@ -67,6 +75,8 @@ export default function CashAdvancesList() {
     const totalPages = result?.data?.totalPages || 0
     const total = result?.data?.total || 0
     const totals = result?.data?.totals
+    useLive('advances', () => { void mutate() })
+    const arrivals = useArrivalsIn('advances', listUrl ?? '', holders, h => h.id)
 
     useAdjustOnChange([selectedCompanyId], () => { setPage(1); setRecording(null) })
     useAdjustOnChange([totalPages], () => setPage(p => pageInRange(p, totalPages)))
@@ -148,6 +158,7 @@ export default function CashAdvancesList() {
                         columns={columns}
                         rows={holders}
                         rowKey={h => h.id}
+                        arrived={arrivals.arrived}
                         card={h => (
                             <ListCard
                                 title={<Link href={href(h)} prefetch={false} className="ui-item-link"><bdi>{h.name}</bdi></Link>}
@@ -166,13 +177,16 @@ export default function CashAdvancesList() {
                     />
                 )}
 
-            <CashAdvanceDialog
-                person={recording ? { id: recording.holder.id, name: recording.holder.name, balance: recording.holder.balance } : null}
-                kind={recording?.kind ?? 'GIVEN'}
-                today={result?.data?.today}
-                onClose={() => setRecording(null)}
-                onSaved={() => { void mutate() }}
-            />
+            {/* What's recorded here is the person's own change: not tinted. */}
+            <ActionStarts.Provider value={arrivals.own}>
+                <CashAdvanceDialog
+                    person={recording ? { id: recording.holder.id, name: recording.holder.name, balance: recording.holder.balance } : null}
+                    kind={recording?.kind ?? 'GIVEN'}
+                    today={result?.data?.today}
+                    onClose={() => setRecording(null)}
+                    onSaved={() => { void mutate() }}
+                />
+            </ActionStarts.Provider>
         </>
     )
 }

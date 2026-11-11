@@ -8,6 +8,7 @@ import { Icon } from '@/components/ui'
 import { fill } from '@/components/attendance-calendar/fill'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useViewer } from '@/lib/useCan'
+import { useLive } from '@/components/LiveUpdates'
 import { paysFirst, type HeldPart } from '@/lib/cash-advances'
 
 /**
@@ -20,13 +21,17 @@ import { paysFirst, type HeldPart } from '@/lib/cash-advances'
  * pays a cost here, in order: "400 EGP for this task, then 300 EGP for Nile
  * Foods, then 665 EGP from your running balance". Money for any other task
  * or client never does, so it isn't counted.
+ *
+ * Drawn again as their advance changes elsewhere while the form is open
+ * (REALTIME_PLAN.md, part 4a): what's typed stays.
  */
 export default function AdvanceBalanceHint({ on }: { on: { taskId: string; clientId: string | null } }) {
     const { t, locale } = useLanguage()
     const viewer = useViewer()
     const { data: shell } = useSWR<{ data: { cashAdvances?: boolean } }>(viewer?.id && viewer.role !== 'SUPER_ADMIN' ? '/api/company-settings/visible' : null, fetcher)
     const uses = !!shell?.data?.cashAdvances
-    const { data } = useSWR<{ data: { balance: number; running: number; held: HeldPart[] } }>(uses && viewer?.id ? `/api/cash-advances/${encodeURIComponent(viewer.id)}?limit=1` : null, fetcher)
+    const { data, mutate } = useSWR<{ data: { balance: number; running: number; held: HeldPart[] } }>(uses && viewer?.id ? `/api/cash-advances/${encodeURIComponent(viewer.id)}?limit=1` : null, fetcher)
+    useLive('advances', () => { void mutate() })
     if (!uses || !data?.data) return null
     const { balance, running, held } = data.data
     const money = (n: number) => `${n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${t('egp')}`

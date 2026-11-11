@@ -15,6 +15,9 @@ import {
 import { fetcher } from '@/lib/swr-fetcher'
 import { countOf } from '@/lib/plural'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { ActionStarts, useBusyAction } from '@/lib/useBusyAction'
+import { useLive } from '@/components/LiveUpdates'
+import { useArrivalsIn } from '@/components/useArrivals'
 import { dayLabel, refusalText, type EntryKind, type RecordedKind } from '@/lib/cash-advances'
 import type { TranslationKey } from '@/lib/translations'
 import { fill } from '@/components/attendance-calendar/fill'
@@ -49,6 +52,11 @@ type Advance = {
  * recorded it. On My cash advance, their own, with Confirm receipt on each
  * advance given them (§7.3). For whoever gives and settles advances, Give
  * advance, Record return and Correction.
+ *
+ * Drawn again as the ledger changes elsewhere, and an entry someone else
+ * added or changed is tinted for a moment (REALTIME_PLAN.md, part 4a;
+ * DESIGN.md §8). The page of the history is its own, so the address it's
+ * loaded from says which list is drawn.
  */
 export default function CashAdvanceHistory({ userId, mine = false }: { userId: string; mine?: boolean }) {
     const { t, locale } = useLanguage()
@@ -63,6 +71,10 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
     const advance = data?.data
     const code = (error as { info?: { code?: string }; status?: number } | undefined)
     useAdjustOnChange([advance?.totalPages ?? 0], () => setPage(p => pageInRange(p, advance?.totalPages ?? 0)))
+    useLive('advances', () => { void mutate() })
+    const arrivals = useArrivalsIn('advances', url, advance?.data ?? [], e => e.id)
+    // Confirm receipt and Move to running balance: the person's own change, not tinted.
+    const action = useBusyAction(arrivals.own)
 
     const money = (n: number) => `${n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${t('egp')}`
     const signed = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${money(Math.abs(n))}`
@@ -224,6 +236,7 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
                 columns={columns}
                 rows={advance.data}
                 rowKey={e => e.id}
+                arrived={arrivals.arrived}
                 card={e => (
                     <ListCard
                         title={kindOf(e)}
@@ -245,13 +258,15 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
                 empty={<EmptyState icon={WalletIcon} title={t(mine ? 'advances_mine_none' : 'advances_person_none')} />}
             />
 
-            <CashAdvanceDialog
-                person={recording ? { id: advance.person.id, name: advance.person.name, balance: advance.balance } : null}
-                kind={recording ?? 'GIVEN'}
-                today={advance.today}
-                onClose={() => setRecording(null)}
-                onSaved={() => { void mutate() }}
-            />
+            <ActionStarts.Provider value={arrivals.own}>
+                <CashAdvanceDialog
+                    person={recording ? { id: advance.person.id, name: advance.person.name, balance: advance.balance } : null}
+                    kind={recording ?? 'GIVEN'}
+                    today={advance.today}
+                    onClose={() => setRecording(null)}
+                    onSaved={() => { void mutate() }}
+                />
+            </ActionStarts.Provider>
             {/* Saying it arrived deletes nothing: the main button, where it was the old window's red. */}
             {/* Moving keeps every pound theirs: the main button, not red. */}
             <ConfirmDialog
@@ -259,7 +274,7 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
                 title={t('advances_move_title')}
                 body={moving ? fill(t('advances_move_body'), { amount: money(moving.amount), name: <bdi>{partName(moving)}</bdi>, person: <bdi>{advance.person.name}</bdi> }) : ''}
                 confirmLabel={fill(t('advances_move_button'), { amount: moving ? money(moving.amount) : '' })}
-                onConfirm={move}
+                onConfirm={() => action.run('move', move)}
                 onCancel={() => setMoving(null)}
             />
             <ConfirmDialog
@@ -269,7 +284,7 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
                     ? fill(t('advances_confirm_passed_question'), { amount: money(confirming.amount), name: <bdi>{confirming.counterpartName}</bdi> })
                     : t('advances_confirm_question').replace('{amount}', confirming ? money(confirming.amount) : '').replace('{date}', confirming ? dayLabel(confirming.date, locale) : '')}
                 confirmLabel={t('advances_confirm_button').replace('{amount}', confirming ? money(confirming.amount) : '')}
-                onConfirm={confirm}
+                onConfirm={() => action.run('confirm', confirm)}
                 onCancel={() => setConfirming(null)}
             />
         </Page>

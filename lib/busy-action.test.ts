@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest"
 import { readFileSync } from "node:fs"
 import { stripComments } from "./strip-comments"
+import type { ActionStart } from "./useBusyAction"
 
 /**
  * A button that changes data shows it is working and can't be clicked again
@@ -13,7 +14,7 @@ import { stripComments } from "./strip-comments"
 const state: unknown[] = []
 let slot = 0
 // What an ActionStarts around the component says, if there's one.
-const around: { told: (() => void) | null } = { told: null }
+const around: { told: ActionStart | null } = { told: null }
 vi.mock("react", () => ({
     useState: (initial: unknown) => {
         const i = slot++
@@ -28,7 +29,9 @@ vi.mock("react", () => ({
 const { useBusyAction } = await import("./useBusyAction")
 // One render of a component that calls the hook (React itself is stood in for above).
 // eslint-disable-next-line react-hooks/rules-of-hooks
-const render = (onStart?: () => void) => { slot = 0; return useBusyAction(onStart) }
+const render = (onStart?: ActionStart) => { slot = 0; return useBusyAction(onStart) }
+/** An ActionStart that writes down what it hears, as `name`. */
+const saying = (said: string[], name: string): ActionStart => () => { said.push(name); return () => { said.push(`${name} answered`) } }
 
 describe("useBusyAction", () => {
     it("runs one action at a time and says which", async () => {
@@ -64,7 +67,7 @@ describe("useBusyAction", () => {
     // answer (components/useArrivals.ts; found by Codex on PR 251).
     it("says it's starting before it sends anything, once for each action it runs", async () => {
         const said: string[] = []
-        const action = render(() => said.push("starts"))
+        const action = render(saying(said, "starts"))
         let finish!: () => void
         const first = action.run("approve", () => { said.push("sends"); return new Promise<void>(r => { finish = r }) })
         expect(said).toEqual(["starts", "sends"])
@@ -73,21 +76,37 @@ describe("useBusyAction", () => {
         expect(said).toEqual(["starts", "sends"])
         finish()
         await first
+        expect(said).toEqual(["starts", "sends", "starts answered"])
+    })
+
+    // So what's drawn while it's on its way stays the person's own, however
+    // long a two-factor code asked for on the way takes (PR 252).
+    it("says once it's answered, and only then, saved or refused", async () => {
+        const said: string[] = []
+        const action = render(saying(said, "starts"))
+        let finish!: () => void
+        const first = action.run("give", () => new Promise<void>(r => { finish = r }))
+        expect(said).toEqual(["starts"])
+        finish()
+        await first
+        expect(said).toEqual(["starts", "starts answered"])
+        await expect(render(saying(said, "again")).run("give", async () => { throw new Error("refused") })).rejects.toThrow("refused")
+        expect(said).toEqual(["starts", "starts answered", "again", "again answered"])
     })
 
     it("hears it from an ActionStarts around it, as a dialog's does, unless it's given its own", async () => {
         const said: string[] = []
-        around.told = () => said.push("around")
+        around.told = saying(said, "around")
         try {
             await render().run("ask", async () => {})
-            await render(() => said.push("own")).run("ask", async () => {})
+            await render(saying(said, "own")).run("ask", async () => {})
         } finally {
             around.told = null
         }
-        expect(said).toEqual(["around", "own"])
+        expect(said).toEqual(["around", "around answered", "own", "own answered"])
         // And nothing to say it to, on any other screen.
         await render().run("save", async () => {})
-        expect(said).toEqual(["around", "own"])
+        expect(said).toEqual(["around", "around answered", "own", "own answered"])
     })
 })
 

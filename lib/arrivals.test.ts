@@ -3,7 +3,10 @@ import { createElement as h } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { readFileSync } from "node:fs"
 import { stripComments } from "./strip-comments"
-import { ARRIVAL_MS, EXPECT_MS, arrivedBetween, arrivedOnDraw, drawn, expectNext, mark, rose, unmark, type Expecting, type Marks } from "./arrivals"
+import {
+    ARRIVAL_MS, EXPECT_MS, actionAnswered, actionStarts, afterDraw, arrivedBetween, arrivedOnDraw, drawn, expectNext, forgets, mark, rose, unmark,
+    type Expecting, type Marks,
+} from "./arrivals"
 
 /**
  * Live updates, part 5 (REALTIME_PLAN.md; DESIGN.md §8; PR 251).
@@ -44,12 +47,19 @@ function list(rows: Row[]) {
     let expecting: Expecting = null
     return {
         signal: () => { expecting = expectNext(expecting, "live") },
-        own: () => { expecting = expectNext(expecting, "own") },
-        forget: () => { expecting = null },
+        /** The person's own action starting; what it returns, its answer. */
+        start: () => {
+            expecting = actionStarts(expecting)
+            return () => { expecting = actionAnswered(expecting) }
+        },
+        /** An action of their own that's answered at once. */
+        own() { this.start()() },
+        /** EXPECT_MS gone by, if anything is forgotten then. */
+        forget: () => { if (forgets(expecting)) expecting = null },
         draw(now: string): string[] | "no draw" {
             if (now === before) return "no draw"
             const keys = arrivedOnDraw(expecting, before, now)
-            expecting = null
+            expecting = afterDraw(expecting)
             before = now
             return keys
         },
@@ -135,10 +145,63 @@ describe("the person's own change", () => {
 
     it("waits anew with each signal or action, so each gets its 10 seconds", () => {
         const was = expectNext(null, "live")
-        expect(was).toEqual({ from: "live" })
+        expect(was).toEqual({ from: "live", acting: 0 })
         expect(expectNext(was, "live")).not.toBe(was)
-        expect(expectNext(was, "own")).toEqual({ from: "own" })
-        expect(expectNext({ from: "own" }, "live")).toEqual({ from: "own" })
+        expect(expectNext(was, "own")).toEqual({ from: "own", acting: 0 })
+        expect(expectNext({ from: "own", acting: 0 }, "live")).toEqual({ from: "own", acting: 0 })
+        const answered = actionAnswered(actionStarts(was))
+        expect(answered).toEqual({ from: "own", acting: 0 })
+        expect(actionAnswered(answered)).not.toBe(answered)
+    })
+
+    // Every cash advance write is high-risk: a two-factor code can be asked
+    // for on the way, and the action is sent again once it's typed. Typing
+    // it can take longer than a signal is waited for, and the change, and
+    // its signal, come only after (PR 252).
+    it("is never marked however long it's on its way, and isn't forgotten meanwhile", () => {
+        const page = list([A])
+        const answered = page.start()
+        // The code takes its time: 10 seconds and more go by.
+        page.forget()
+        page.forget()
+        // Their change is saved, and its signal comes before their answer.
+        page.signal()
+        expect(page.draw(at([A, { ...C, status: "COMPLETED" }]))).toEqual([])
+        answered()
+        // Their page draws itself again after the answer: nothing new.
+        expect(page.draw(at([A, { ...C, status: "COMPLETED" }]))).toBe("no draw")
+        // Its wait over, someone else's change is marked again.
+        page.forget()
+        page.signal()
+        expect(page.draw(at([A, B, { ...C, status: "COMPLETED" }]))).toEqual(["b"])
+    })
+
+    it("takes every draw while it's on its way as theirs, as one of them is, and the one after its answer", () => {
+        const page = list([A])
+        const answered = page.start()
+        page.signal()
+        expect(page.draw(at([A, B]))).toEqual([])
+        page.signal()
+        expect(page.draw(at([A, B, C]))).toEqual([])
+        answered()
+        expect(page.draw(at([{ ...A, status: "COMPLETED" }, B, C]))).toEqual([])
+        page.signal()
+        expect(page.draw(at([{ ...A, status: "COMPLETED" }, { ...B, status: "COMPLETED" }, C]))).toEqual(["b"])
+    })
+
+    it("waits for every action of theirs on its way, and is forgotten 10 seconds after the last answer", () => {
+        let was = actionStarts(actionStarts(null))
+        expect(was).toEqual({ from: "own", acting: 2 })
+        expect(afterDraw(was)).toBe(was)
+        expect(forgets(was)).toBe(false)
+        was = actionAnswered(was)!
+        expect(forgets(was)).toBe(false)
+        was = actionAnswered(was)!
+        expect(was).toEqual({ from: "own", acting: 0 })
+        expect(forgets(was)).toBe(true)
+        expect(afterDraw(was)).toBeNull()
+        expect(forgets(null)).toBe(false)
+        expect(actionAnswered(null)).toBeNull()
     })
 })
 
@@ -169,8 +232,9 @@ describe("the hook (components/useArrivals.ts)", () => {
     const hook = stripComments(readFileSync("components/useArrivals.ts", "utf8"))
 
     it("compares each draw with the one before it, where the list is and what each row holds", () => {
-        expect(hook).toContain("const now = drawn(`${usePathname()}?${useSearchParams().toString()}`, rows, rowKey)")
-        expect(hook).toMatch(/useAdjustOnChange\(\[now\], \(\) => \{\s*const keys = arrivedOnDraw\(expecting, before, now\)\s*if \(keys\.length > 0\) \{\s*setArrived\(was => mark\(was, keys, marked \+ 1\)\)\s*setMarked\(marked \+ 1\)\s*\}\s*setExpecting\(null\)\s*setBefore\(now\)\s*\}\)/)
+        expect(hook).toContain("return useArrivalsIn(kind, `${usePathname()}?${useSearchParams().toString()}`, rows, rowKey)")
+        expect(hook).toContain("const now = drawn(scope, rows, rowKey)")
+        expect(hook).toMatch(/useAdjustOnChange\(\[now\], \(\) => \{\s*const keys = arrivedOnDraw\(expecting, before, now\)\s*if \(keys\.length > 0\) \{\s*setArrived\(was => mark\(was, keys, marked \+ 1\)\)\s*setMarked\(marked \+ 1\)\s*\}\s*setExpecting\(afterDraw\)\s*setBefore\(now\)\s*\}\)/)
     })
 
     it("marks nothing as the page opens: the first draw has none before it", () => {
@@ -178,14 +242,14 @@ describe("the hook (components/useArrivals.ts)", () => {
         expect(readFileSync("lib/useAdjustOnChange.ts", "utf8")).toContain("Deliberately does nothing on the first render")
     })
 
-    it("hears the list's signal, and the page says when the draw is its own", () => {
-        expect(hook).toContain("const expect = (from: 'live' | 'own') => setExpecting(was => expectNext(was, from))")
-        expect(hook).toContain("useLive(kind, () => expect('live'))")
-        expect(hook).toContain("return { arrived, own: () => expect('own') }")
+    it("hears the list's signal, and the page says when the draw is its own, and when its action is answered", () => {
+        expect(hook).toContain("useLive(kind, () => setExpecting(was => expectNext(was, 'live')))")
+        expect(hook).toMatch(/const own = \(\) => \{\s*setExpecting\(actionStarts\)\s*let answered = false\s*return \(\) => \{\s*if \(answered\) return\s*answered = true\s*setExpecting\(actionAnswered\)\s*\}\s*\}/)
+        expect(hook).toContain("return { arrived, own }")
     })
 
-    it("forgets what it waited for after EXPECT_MS, and marks each draw's rows for their own ARRIVAL_MS, 2 seconds", () => {
-        expect(hook).toContain("const forget = setTimeout(() => setExpecting(null), EXPECT_MS)")
+    it("forgets what it waited for after EXPECT_MS, not while an action is on its way, and marks each draw's rows for their own ARRIVAL_MS, 2 seconds", () => {
+        expect(hook).toMatch(/if \(!forgets\(expecting\)\) return\s*const forget = setTimeout\(\(\) => setExpecting\(null\), EXPECT_MS\)/)
         // Not cleared as the next draw comes, which would keep every row marked.
         expect(hook).toMatch(/useEffect\(\(\) => \{\s*if \(marked === 0\) return\s*setTimeout\(\(\) => setArrived\(was => unmark\(was, marked\)\), ARRIVAL_MS\)\s*\}, \[marked\]\)/)
         expect(ARRIVAL_MS).toBe(2000)
@@ -234,11 +298,35 @@ describe("the lists", () => {
         }
     })
 
+    // Part 4a (PR 252): their search, filter and page are their own, so the
+    // address each is loaded from says which list is drawn.
+    it("and a company's cash advances and a person's, where giving, returning, correcting, confirming and moving are the person's own", () => {
+        const advances = stripComments(readFileSync("components/cash-advances/CashAdvancesList.tsx", "utf8"))
+        expect(advances).toContain("const arrivals = useArrivalsIn('advances', listUrl ?? '', holders, h => h.id)")
+        expect(advances).toContain("arrived={arrivals.arrived}")
+        expect(advances).toMatch(/<ActionStarts\.Provider value=\{arrivals\.own\}>\s*<CashAdvanceDialog/)
+        const history = stripComments(readFileSync("components/cash-advances/CashAdvanceHistory.tsx", "utf8"))
+        expect(history).toContain("const arrivals = useArrivalsIn('advances', url, advance?.data ?? [], e => e.id)")
+        expect(history).toContain("arrived={arrivals.arrived}")
+        expect(history).toContain("const action = useBusyAction(arrivals.own)")
+        expect(history).toContain("onConfirm={() => action.run('move', move)}")
+        expect(history).toContain("onConfirm={() => action.run('confirm', confirm)}")
+        expect(history).toMatch(/<ActionStarts\.Provider value=\{arrivals\.own\}>\s*<CashAdvanceDialog/)
+        // Its window's save is a busy action, so it hears the ActionStarts around it.
+        const dialog = stripComments(readFileSync("components/cash-advances/CashAdvanceDialog.tsx", "utf8"))
+        expect(dialog).toContain("const action = useBusyAction()")
+        expect(dialog).toContain("void action.run('save', () => send(person))")
+        // The hooks come before the pages' early returns: a hook can't be skipped.
+        expect(advances.indexOf("useArrivalsIn(")).toBeLessThan(advances.indexOf("if (!listUrl) return"))
+        expect(history.indexOf("useArrivalsIn(")).toBeLessThan(history.indexOf("if (!advance) {"))
+    })
+
     it("hear an action starting before it sends anything (lib/useBusyAction.ts)", () => {
         const busy = stripComments(readFileSync("lib/useBusyAction.ts", "utf8"))
-        expect(busy).toContain("export const ActionStarts = createContext<(() => void) | null>(null)")
+        expect(busy).toContain("export type ActionStart = () => () => void")
+        expect(busy).toContain("export const ActionStarts = createContext<ActionStart | null>(null)")
         expect(busy).toContain("const start = onStart ?? told")
-        expect(busy).toMatch(/if \(inFlight\.current\) return undefined\s*inFlight\.current = key\s*start\?\.\(\)\s*setCurrent\(key\)\s*try \{\s*return await work\(\)/)
+        expect(busy).toMatch(/if \(inFlight\.current\) return undefined\s*inFlight\.current = key\s*const answered = start\?\.\(\)\s*setCurrent\(key\)\s*try \{\s*return await work\(\)\s*\} finally \{\s*answered\?\.\(\)/)
     })
 })
 

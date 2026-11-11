@@ -18,11 +18,16 @@
  * count on Requests in the side bar draw themselves again. On the company's
  * channel, and on each Super Admin's own, as their count is every company's
  * when none is in view.
+ *
+ * And that a company's cash advances changed (part 4a,
+ * prisma/migrations/20261211000000_live_advances): the Cash advances tab, a
+ * person's cash advance, Add cost's line about it and an open Give advance
+ * window draw themselves again. On the same channels as the requests.
  */
 
-export type LiveKind = 'tasks' | 'notices' | 'account' | 'requests'
-/** A channel, and what it's for; any of them may also say the account can't go on, or that requests changed. */
-export type LiveTopic = { kind: Exclude<LiveKind, 'account' | 'requests'>; topic: string }
+export type LiveKind = 'tasks' | 'notices' | 'account' | 'requests' | 'advances'
+/** A channel, and what it's for; any of them may also say the account can't go on, or that requests or cash advances changed. */
+export type LiveTopic = { kind: Exclude<LiveKind, 'account' | 'requests' | 'advances'>; topic: string }
 
 type Viewer = { id: string; role: string; companyId?: string | null }
 
