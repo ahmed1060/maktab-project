@@ -5761,6 +5761,32 @@ a.ui-notice:focus-visible {
   }
 }
 
+/* What someone else added or changed, shown for a moment (§8; REALTIME_PLAN.md,
+   part 5): the row takes the brand's tint, holds it for half a second, and
+   fades evenly to its own colour, an overdue row's too, within 2 seconds.
+   Only its colour changes: nothing moves, and it keeps its place.
+   components/useArrivals.ts marks it for those 2 seconds. */
+.ui-table tr[data-arrived] td,
+.ui-cards > li[data-arrived] .ui-list-card {
+  animation: ui-arrived 2s linear;
+}
+@keyframes ui-arrived {
+  from,
+  25% {
+    background-color: var(--brand-tint);
+  }
+}
+
+/* The bell's count grows to 115% as it rises, and settles back, in 250ms. */
+.ui-topbar-count[data-rising] {
+  animation: ui-count-rise 250ms var(--ease-out);
+}
+@keyframes ui-count-rise {
+  40% {
+    transform: scale(1.15);
+  }
+}
+
 /* With "reduce motion", all of it is at once, fades too (§8); app/globals.css
    ends any animation at once besides. */
 @media (prefers-reduced-motion: reduce) {
@@ -5772,8 +5798,16 @@ a.ui-notice:focus-visible {
   .ui-calendar-layer,
   .ui-dialog-backdrop,
   .ui-dialog,
-  .ui-side-scrim {
+  .ui-side-scrim,
+  .ui-topbar-count[data-rising] {
     animation: none;
+  }
+  /* The tint is the one that says something: it shows for its 2 seconds
+     and goes, without fading. */
+  .ui-table tr[data-arrived] td,
+  .ui-cards > li[data-arrived] .ui-list-card {
+    animation: none;
+    background-color: var(--brand-tint);
   }
 }
 /* end of the motion */

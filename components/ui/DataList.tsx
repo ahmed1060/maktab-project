@@ -14,6 +14,10 @@ import { cx } from './cx'
  *
  * Each row and card carries `data-key`, its row key, for a page that scrolls
  * to one (`visibleRow`): an id would be on the page twice.
+ *
+ * The rows someone else just added or changed carry `data-arrived`, and are
+ * tinted for a moment (DESIGN.md §8): `arrived` holds their keys, from
+ * useArrivals.
  */
 
 /** The row or card for this key that's showing at this width, to scroll to. */
@@ -39,7 +43,7 @@ export type Column<T> = {
  */
 export type RowTone = 'overdue' | 'problem' | 'selected'
 
-export function DataList<T>({ caption, columns, rows, rowKey, card, tone, footer, empty }: {
+export function DataList<T>({ caption, columns, rows, rowKey, card, tone, arrived, footer, empty }: {
     /** What the list is, for screen readers ("Tasks"). */
     caption: string
     columns: Column<T>[]
@@ -48,6 +52,8 @@ export function DataList<T>({ caption, columns, rows, rowKey, card, tone, footer
     /** The item as a phone card, usually a ListCard. */
     card: (row: T) => ReactNode
     tone?: (row: T) => RowTone | undefined
+    /** The keys of the rows someone else just added or changed (components/useArrivals.ts). */
+    arrived?: ReadonlySet<string>
     /** Usually the Pager. */
     footer?: ReactNode
     /** Shown instead of the list when there are no rows, usually an EmptyState. */
@@ -70,7 +76,7 @@ export function DataList<T>({ caption, columns, rows, rowKey, card, tone, footer
                     </thead>
                     <tbody>
                         {rows.map(row => (
-                            <tr key={rowKey(row)} data-key={rowKey(row)} data-tone={tone?.(row)}>
+                            <tr key={rowKey(row)} data-key={rowKey(row)} data-tone={tone?.(row)} data-arrived={arrived?.has(rowKey(row)) || undefined}>
                                 {columns.map(c => <td key={c.key} className={c.align === 'end' ? 'ui-end' : undefined}>{c.cell(row)}</td>)}
                             </tr>
                         ))}
@@ -78,7 +84,7 @@ export function DataList<T>({ caption, columns, rows, rowKey, card, tone, footer
                 </table>
             </div>
             <ul className="ui-cards" aria-label={caption}>
-                {rows.map(row => <li key={rowKey(row)} data-key={rowKey(row)} data-tone={tone?.(row)}>{card(row)}</li>)}
+                {rows.map(row => <li key={rowKey(row)} data-key={rowKey(row)} data-tone={tone?.(row)} data-arrived={arrived?.has(rowKey(row)) || undefined}>{card(row)}</li>)}
             </ul>
             {footer}
         </div>

@@ -228,7 +228,8 @@ describe("the bell", () => {
     })
 
     it("has its count in a --brand pill, in the page's digits, hidden from screen readers, and no emoji", () => {
-        expect(opener).toContain('{unreadCount > 0 && <span className="ui-topbar-count" aria-hidden="true">{num(unreadCount)}</span>}')
+        // Keyed by how many times it rose, so it grows again each time (lib/arrivals.test.ts).
+        expect(opener).toContain('{unreadCount > 0 && <span key={rises} className="ui-topbar-count" data-rising={rises > 0 || undefined} aria-hidden="true">{num(unreadCount)}</span>}')
         expect(opener).not.toMatch(EMOJI)
         expect(opener).not.toContain("--danger-fill")
         const count = rule(".ui-topbar-count")

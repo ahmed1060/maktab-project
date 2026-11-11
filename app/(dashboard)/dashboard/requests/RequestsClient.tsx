@@ -24,6 +24,7 @@ import { withChanges } from '@/components/filters/address'
 import { useListAddress, useSearchField } from '@/components/filters/useListAddress'
 import { useEmployeeOptions } from '@/components/filters/useEmployeeOptions'
 import { useLive } from '@/components/LiveUpdates'
+import { useArrivals } from '@/components/useArrivals'
 import {
     Button, Choice, DataList, Details, Dialog, DialogActions, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, Person,
     Row, Rows, RowMenu, SearchInput, Section, Select, StatusBadge, TabLinks, TextArea, TextInput, visibleRow, type Column, type StatusTone,
@@ -114,11 +115,15 @@ export default function RequestsClient({
     const { showToast } = useToast()
     const modules = useModules()
     const router = useRouter()
+    // What someone else asked for or decided is shown for a moment
+    // (DESIGN.md §8; REALTIME_PLAN.md, part 5), and what this person did
+    // isn't.
+    const arrivals = useArrivals('requests', rows, r => r.id)
     // The page again, and with it the count on Requests in the side bar
     // (DESIGN.md §5.1), once something here is decided, deleted, withdrawn,
     // revoked or asked for.
     const { mutate } = useSWRConfig()
-    const refreshed = () => { router.refresh(); void mutate(WAITING_FOR_REVIEW_KEY) }
+    const refreshed = () => { arrivals.own(); router.refresh(); void mutate(WAITING_FOR_REVIEW_KEY) }
     // Drawn again when a request changes elsewhere (REALTIME_PLAN.md, part 2),
     // keeping the tab, filters and search, and what's typed in a dialog
     // (DESIGN.md §8). The side bar's count listens for itself.
@@ -458,6 +463,7 @@ export default function RequestsClient({
                 rows={rows}
                 rowKey={r => r.id}
                 tone={r => highlighted === r.id ? 'selected' : undefined}
+                arrived={arrivals.arrived}
                 card={r => (
                     <ListCard
                         title={title(r)}
