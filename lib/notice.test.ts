@@ -16,7 +16,7 @@ describe("a notification's message, in either language", () => {
         expect(englishNotice({ key: "notice_role_request_asked", params: { by: "Huda Ali", person: "Omar Said", role: roleParam({ name: "Admin", builtIn: "ADMIN" }) } }))
             .toBe("Huda Ali asks to give Omar Said the role Admin.")
         expect(arabic({ key: "notice_role_request_asked", params: { by: "Huda Ali", person: "Omar Said", role: roleParam({ name: "Admin", builtIn: "ADMIN" }) } }))
-            .toBe("يطلب Huda Ali منح Omar Said الدور مسؤول.")
+            .toBe("طلب من Huda Ali: منح Omar Said الدور مسؤول.")
         // A role the Super Admin made is named as they named it, in both.
         expect(arabic({ key: "notice_role_now", params: { role: roleParam({ name: "HR Officer", builtIn: null }) } })).toBe("دورك الآن HR Officer.")
     })
@@ -34,7 +34,7 @@ describe("a notification's message, in either language", () => {
 
     it("names an account's kind as a word", () => {
         expect(englishNotice({ key: "notice_task_updated", params: { title: "Audit", role: roleKindParam("TEAM_LEADER"), name: "Karim" } })).toBe("Task \"Audit\" updated by Team Leader Karim.")
-        expect(arabic({ key: "notice_task_updated", params: { title: "Audit", role: roleKindParam("SUPER_ADMIN"), name: "Karim" } })).toBe("حدّث مسؤول عام Karim المهمة \"Audit\".")
+        expect(arabic({ key: "notice_task_updated", params: { title: "Audit", role: roleKindParam("SUPER_ADMIN"), name: "Karim" } })).toBe("تم تحديث المهمة \"Audit\" بواسطة مسؤول عام Karim.")
     })
 
     it("stores the key, the details and the English", () => {

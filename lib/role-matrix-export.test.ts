@@ -43,7 +43,7 @@ describe("the role matrix for the contract", () => {
     it("reads right to left in Arabic, in Arabic", async () => {
         const { sheet, rows } = await read(await buildRoleMatrix({ companyName: "Acme", roles, locale: "ar", at: new Date() }))
         expect(sheet.views[0].rightToLeft).toBe(true)
-        expect(rows.find(r => r[0] === "الموافقة على الإجازات")!.slice(2, 4)).toEqual(["الشركة كاملة", "فريقه"])
+        expect(rows.find(r => r[0] === "الموافقة على الإجازات")!.slice(2, 4)).toEqual(["الشركة كاملة", "الفريق"])
     })
 
     it("names a built-in role in the sheet's language, and any other as it was named", async () => {
