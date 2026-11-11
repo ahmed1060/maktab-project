@@ -19,6 +19,8 @@ const address = { query: "" }
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ push: () => {}, refresh: () => {} }),
     useSearchParams: () => new URLSearchParams(address.query),
+    // Where the list is, for what's shown arriving (components/useArrivals.ts).
+    usePathname: () => "/dashboard/requests",
 }))
 vi.mock("next-auth/react", () => ({ useSession: () => ({ data: null }) }))
 vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en", t: (key: string) => key }) }))

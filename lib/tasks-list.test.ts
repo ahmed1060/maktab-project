@@ -15,6 +15,8 @@ const viewer = { reach: "COMPANY" as string | null, creates: true }
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ push: () => {}, refresh: () => {} }),
     useSearchParams: () => new URLSearchParams(address.query),
+    // Where the list is, for what's shown arriving (components/useArrivals.ts).
+    usePathname: () => "/dashboard/tasks",
 }))
 vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en", t: (key: string) => key }) }))
 vi.mock("@/lib/useModules", () => ({ useModules: () => ({ label: () => "Tasks" }) }))
