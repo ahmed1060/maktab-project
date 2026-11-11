@@ -634,7 +634,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      for as long as it's on its way, merged in #252 on 2026-11-11; then
      Codex's two findings on #251, after the merge: a row changed again
      starts its tint again, and the person's own action, refused, hides
-     nobody else's change (#253);
+     nobody else's change, merged in #253 on 2026-11-11; then the cash
+     advance screens' Arabic, neutral as to who reads it and who holds the
+     advance (#254);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5887,3 +5889,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   `useArrivals` gives pages `saved()`, which the Requests page and the cash
   advance screens call once their change is saved; only then is the draw
   after the answer theirs.
+- **2026-11-11:** The cash advance screens' Arabic is neutral as to who
+  reads it and who holds the advance, as the product owner asked (#254).
+  It said the holder in the masculine (معه، رصيده، عهدته، لديه، يستطيع،
+  يؤكّد), addressed the reader in the masculine (حاول، أرفقه، اختر،
+  ادفعه، ما تضيفه), and named whoever recorded an entry with a masculine
+  verb (سجّلها). As the rest of the app does, it now asks with "يُرجى" and
+  verbal nouns, says the balance rather than theirs, and uses the passive
+  where it said who does what. 26 strings of 155; the English doesn't
+  change. `lib/cash-advances-arabic.test.ts` checks every one of them.
