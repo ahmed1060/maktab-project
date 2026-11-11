@@ -924,6 +924,10 @@ balance first, automatically:
 - **The employee's own page:** My cash advance, in the side bar's Me group
   (`UI_PLAN.md` §2.1), with the balance and its history (given, spent on
   which task, returned).
+- **Each of them draws itself again** as an advance is given, returned,
+  confirmed or spent elsewhere, as do Add cost's line about the advance
+  and an open Give advance, Record return or Correction window
+  (`REALTIME_PLAN.md`, part 4a, #252).
 
 ### 7.6 Turning it on (Decided)
 
@@ -2654,3 +2658,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   joins the left-off person's running balance, as for one they may not.
 - **2026-11-09:** §8 says 7h was merged in #241, rather than to be built
   there (#243).
+- **2026-11-11:** §7.5 says the cash advance screens draw themselves again
+  as the ledger changes elsewhere: live updates' part 4a
+  (`REALTIME_PLAN.md`, #252).
