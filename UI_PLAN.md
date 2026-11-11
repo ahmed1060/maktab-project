@@ -638,9 +638,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      advance screens' Arabic, neutral as to who reads it and who holds the
      advance, merged in #254 on 2026-11-11; then the rest of the app's
      Arabic, speaking to no one in the masculine (`DESIGN.md` §3.4), in
-     five parts: searching, picking and trying again (#255); entering
-     ("أدخل"، "اكتب"، "حدد"، "أضف"); the other commands in hints and
-     notices; "you" in the masculine ("تريد"، "تحتاج"، "متأكد"); and
+     five parts: searching, picking and trying again, merged in #255 on
+     2026-11-11; entering ("أدخل"، "اكتب"، "حدد"، "أضف") (#256); the
+     other commands in hints and notices; "you" in the masculine
+     ("تريد"، "تحتاج"، "متأكد"); and
      someone else spoken of as "he", the audit log's actions included;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
@@ -5913,3 +5914,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   ("انتقل"، "اسمح"، "فعّله"، "لترى"، "تريد"). 92 strings; the English
   doesn't change. `lib/arabic-neutral.test.ts` checks every string in the
   app, and each part adds its words to it.
+- **2026-11-11:** The app's Arabic speaks to no one in the masculine, part
+  2 of 5 (`DESIGN.md` §3.4, #256): entering, typing, setting and adding.
+  Every message that said "أدخل"، "اكتب"، "حدد"، "أضف"، "اذكر" or "الصق"
+  asks with "يُرجى" and a verbal noun ("يُرجى إدخال المبلغ."); a field
+  that may be left empty says so in the passive ("يُترك فارغًا"); two
+  placeholders and two audit entries are verbal nouns ("إضافة ملاحظة…"،
+  "تحديد رسوم الخدمة لمستحق"). A sentence it changed lost its other
+  masculine words too ("أعد"، "راجعها"، "افتح"، "تحتاجه"، "مكلفًا"). 84
+  strings; the English doesn't change.
