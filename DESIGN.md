@@ -249,6 +249,15 @@ One scale. Every size in the app is one of these.
   to create one.
 - **No decorative separators in text,** such as "A · B · C", "→" after a
   button label, or a label line above every heading.
+- **Arabic speaks to no one in the masculine,** whoever reads it (the
+  product owner, 2026-11-11). Arabic has no neutral "you" for a command:
+  "اختر" asks a man and "اختاري" a woman. So the app asks with "يُرجى" and
+  a verbal noun ("يُرجى اختيار شركة", "يُرجى المحاولة مرة أخرى"); a
+  search box says "البحث في…" or "البحث عن…"; and a button, or a picker's
+  prompt, is a verbal noun ("إعادة المحاولة", "اختيار عميل"). Someone
+  else is spoken of through what's theirs, or in the passive ("الرصيد",
+  not "رصيده"; "يُؤكَّد استلامها", not "يؤكّد"). The screens move over in
+  parts, listed in `UI_PLAN.md` §5.
 
 ---
 
