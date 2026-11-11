@@ -640,9 +640,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      Arabic, speaking to no one in the masculine (`DESIGN.md` §3.4), in
      five parts: searching, picking and trying again, merged in #255 on
      2026-11-11; entering ("أدخل"، "اكتب"، "حدد"، "أضف"), merged in #256
-     on 2026-11-11; the other commands in hints and notices (#257); "you"
-     in the masculine ("تريد"، "تحتاج"، "متأكد"); and someone else
-     spoken of as "he", the audit log's actions included;
+     on 2026-11-11; the other commands in hints and notices, merged in
+     #257 on 2026-11-11; "you" in the masculine ("تريد"، "تحتاج"، "متأكد")
+     (#258); and someone else spoken of as "he", the audit log's actions
+     included;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5934,3 +5935,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   audit log's past-tense entries said of someone else ("أكّد"، "وافق"،
   "أرسل"، "عدّل") are left for part 5, one aside: "سجّل ردّ عهدة" is
   "تسجيل ردّ عهدة". 75 strings; the English doesn't change.
+- **2026-11-11:** The app's Arabic speaks to no one in the masculine, part
+  4 of 5 (`DESIGN.md` §3.4, #258): "you". Confirmations ask with a verbal
+  noun, as the rest of the app does ("حذف هذه المهمة؟" for "هل أنت متأكد
+  أنك تريد حذف…"); the reader's own things are said with "ك", and what
+  happens to them in the passive ("لم يُسجَّل حضورك بعد"); "الذي تختاره" is
+  "المختار"; and the new request window asks "نوع الطلب" and "المطلوب في
+  كلمات قليلة…". A verb with "ت" is "you" or "she": a company's own verbs
+  ("تطلب شركة…") stay. 34 strings; the English doesn't change.
