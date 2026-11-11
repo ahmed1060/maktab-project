@@ -341,3 +341,8 @@ Decided with the product owner on 2026-11-10.
   refused, took the next draw as theirs, so what someone else changed in
   the next 10 seconds wasn't tinted: their page now says when their
   change is saved, and only then is the draw after it theirs.
+- **2026-11-11:** A finding by Codex on #253, fixed in it: a change of the
+  person's own, saved while another action of theirs was on its way, was
+  kept past its own draw. That other action, refused, then left it to hide
+  what someone else changed next. A draw now spends the change saved, as
+  it spends a signal; only actions still on their way carry over.

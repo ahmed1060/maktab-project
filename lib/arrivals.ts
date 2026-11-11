@@ -87,12 +87,15 @@ export function actionAnswered(was: Expecting): Expecting {
 
 /**
  * What a draw leaves waiting: nothing, unless an action of the person's own
- * is still on its way, whose change can come in a later draw; and, if
- * their change is saved, that the next draw is theirs. A signal is spent
- * on the draw it brought.
+ * is still on its way, whose change can come in a later draw. A signal, or
+ * a change of theirs saved, is spent on the draw that follows it: kept, a
+ * change saved would claim the draw after another action of theirs that's
+ * refused, and hide what someone else changed (found by Codex on PR 253).
+ * Each page says its change is saved just as its action ends, with nothing
+ * awaited between, so no draw comes between the two.
  */
 export function afterDraw(was: Expecting): Expecting {
-    return was !== null && was.acting > 0 ? { from: was.from === 'own' ? 'own' : null, acting: was.acting } : null
+    return was !== null && was.acting > 0 ? { from: null, acting: was.acting } : null
 }
 
 /** Whether what's waited for is forgotten after EXPECT_MS: not while an action is on its way. */

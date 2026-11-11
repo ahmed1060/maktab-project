@@ -205,7 +205,8 @@ describe("the person's own change", () => {
         expect(forgets(was)).toBe(false)
         was = expectNext(actionAnswered(was), "own")
         expect(was).toEqual({ from: "own", acting: 1 })
-        expect(afterDraw(was)).toEqual(was)
+        // A draw spends the change saved; only the action on its way is left.
+        expect(afterDraw(was)).toEqual({ from: null, acting: 1 })
         expect(forgets(was)).toBe(false)
         was = actionAnswered(was)!
         expect(was).toEqual({ from: "own", acting: 0 })
@@ -242,6 +243,21 @@ describe("the person's own change", () => {
         refused()
         page.signal()
         expect(page.draw(at([{ ...A, status: "COMPLETED" }]))).toEqual([])
+    })
+
+    // Found by Codex on PR 253: the change saved was kept past its own draw
+    // while another action was on its way, and that one, refused, left it
+    // to hide what someone else changed next.
+    it("saved, is spent by its draw, so another of theirs refused after it hides nobody else's change", () => {
+        const page = list([A])
+        const saved = page.start()
+        const refused = page.start()
+        page.saved()
+        saved()
+        expect(page.draw(at([{ ...A, status: "COMPLETED" }]))).toEqual([])
+        refused()
+        page.signal()
+        expect(page.draw(at([{ ...A, status: "COMPLETED" }, B]))).toEqual(["b"])
     })
 
     it("waits for nothing once all of theirs are refused", () => {
