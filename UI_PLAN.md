@@ -639,10 +639,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      advance, merged in #254 on 2026-11-11; then the rest of the app's
      Arabic, speaking to no one in the masculine (`DESIGN.md` §3.4), in
      five parts: searching, picking and trying again, merged in #255 on
-     2026-11-11; entering ("أدخل"، "اكتب"، "حدد"، "أضف") (#256); the
-     other commands in hints and notices; "you" in the masculine
-     ("تريد"، "تحتاج"، "متأكد"); and
-     someone else spoken of as "he", the audit log's actions included;
+     2026-11-11; entering ("أدخل"، "اكتب"، "حدد"، "أضف"), merged in #256
+     on 2026-11-11; the other commands in hints and notices (#257); "you"
+     in the masculine ("تريد"، "تحتاج"، "متأكد"); and someone else
+     spoken of as "he", the audit log's actions included;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5923,3 +5923,14 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   "تحديد رسوم الخدمة لمستحق"). A sentence it changed lost its other
   masculine words too ("أعد"، "راجعها"، "افتح"، "تحتاجه"، "مكلفًا"). 84
   strings; the English doesn't change.
+- **2026-11-11:** The app's Arabic speaks to no one in the masculine, part
+  3 of 5 (`DESIGN.md` §3.4, #257): every other command in a hint, a
+  message or a notice. "سجّل الهاتف من جديد"، "افتح أيًا منها"، "راجع
+  تبويب GitHub Actions"، "أبلغ عن الوقت"… ask with "يُرجى" and a verbal
+  noun, say what can be done ("يمكن فتح أي منها"), or use the passive
+  ("يُستخدم أثناء عمل…"); buttons are verbal nouns ("قبول"، "قبول العذر"،
+  "فحص الملف"). Strings that only looked like commands were reworded so
+  they can't be read as one ("أُنشئ بواسطة", "آخر اتصال"). The
+  audit log's past-tense entries said of someone else ("أكّد"، "وافق"،
+  "أرسل"، "عدّل") are left for part 5, one aside: "سجّل ردّ عهدة" is
+  "تسجيل ردّ عهدة". 75 strings; the English doesn't change.

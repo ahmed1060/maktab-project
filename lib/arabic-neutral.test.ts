@@ -11,7 +11,8 @@ import { en as english } from "./translations/en"
  *
  * The screens move over in parts (`UI_PLAN.md` §5). This file checks what's
  * moved, across every string: part 1, searching, picking and trying again;
- * part 2, entering, typing, setting, adding, saying and leaving empty.
+ * part 2, entering, typing, setting, adding, saying and leaving empty; part
+ * 3, every other command in a hint, a message or a notice.
  */
 
 const ar = arabic as Record<string, string>
@@ -108,5 +109,52 @@ describe("the app's Arabic, part 2: entering, typing, setting and adding", () =>
     it("changes nothing in English", () => {
         expect(en.payments_amount_required).toBe("Enter the amount.")
         expect(en.attendance_no_cap_hint).toBe("Leave it empty for no limit.")
+    })
+})
+
+describe("the app's Arabic, part 3: every other command", () => {
+    // Past-tense verbs said of someone else (أكّد، وافق، أرسل، عدّل، غيّر،
+    // أوقف، حدّث، حمّل، صحّح) are written like commands; they're part 5's.
+    const commands = "أرفق|ارفع|اضغط|انقر|تأكد|تأكّد|انتظر|أعد|راجع|استخدم|اطلب|احذف|افتح|اتصل|تواصل|سجّل|ادفع|اسحب|امسح|انسخ|شارك|اطبع|احفظ|ألغِ|ارجع|تابع|جرّب|جرب|خفّض|ثبّت|فعّل|اسمح|انتقل|ابدأ|شغّل|اضبط|اقرأ|انظر|اجعل|أكمل|قم|أغلق|أبقِ|اسأل|أنشئ|اربط|اعرض|اعتمد|ارفض|انقل|أعطِ|اتبع|اختبر|خصّص|استعد|قارن|أبلغ|اقبل|ذكّر|افحص|اعذر"
+
+    it("asks no one in the masculine to do anything else", () => {
+        const masculine = word(`(?:${commands})(?:ه|ها|هم)?|تحقق من|لا تفعّل(?:ه|ها)?`)
+        for (const key of keys) expect([key, masculine.test(ar[key])], ar[key]).toEqual([key, false])
+    })
+
+    it("asks with يُرجى, or says what can be done, in a hint or a notice", () => {
+        expect(ar.ci_key_failed).toBe("تعذّر استخدام المفتاح الآمن لهذا الهاتف. يُرجى تسجيل الهاتف من جديد.")
+        expect(ar.notice_att_day_incomplete).toBe("هناك بصمة ناقصة يوم {date}. يُرجى الإبلاغ عن الوقت المنسي ليُحسب اليوم.")
+        expect(ar.my_payslips_hint).toBe("كل قسيمة راتب صدرت لك، الأحدث أولاً. يمكن فتح أي منها لقراءتها أو طباعتها.")
+        expect(ar.maintenance_mode_description).toContain("يُستخدم أثناء عمل قد يعطّل المنصة")
+    })
+
+    it("names a button with a verbal noun", () => {
+        expect(ar.exc_accept).toBe("قبول")
+        expect(ar.exc_excuse).toBe("قبول العذر")
+        expect(ar.punch_check_file).toBe("فحص الملف")
+        expect(ar.face_rekey_run).toBe("إعادة التشفير بالمفتاح الجديد")
+        expect(ar.attendance_make_default).toBe("جعله افتراضيًا")
+    })
+
+    it("leaves no other masculine command, 'you' or 'his' in the sentences it changed", () => {
+        const changed = [
+            "task_assignee_deleted_msg", "costs_pay_by_name", "requests_role_leads_team", "punch_import_hint",
+            "ci_other_phone", "face_queue_hint", "face_overdue_hint", "face_people_hint", "face_sys_hint",
+            "face_ci_needs_app", "confirm_maintenance_on_msg", "notice_att_day_absent", "notice_face_review",
+        ]
+        const masculine = word("لتدفع|تختار|تضغط|تعرفه|تسجّل|غيّر|أوقف|أوقفه|حدّث|أرسل|مكلفًا|غائبًا|دوره|ملفه|فريقه|بصورته|وجهه")
+        for (const key of changed) expect([key, masculine.test(ar[key])], ar[key]).toEqual([key, false])
+    })
+
+    it("keeps the direction marks and the names of keys and files as they were", () => {
+        expect(ar.punch_import_hint).toContain("(\u200E.xlsx أو \u200E.csv)")
+        expect(ar.face_rekey_same_key).toContain("FACE_PHOTO_KEY على Vercel")
+        expect(ar.face_sys_hint).toContain("(يُنظر ATTENDANCE_PLAN.md §10)")
+    })
+
+    it("changes nothing in English", () => {
+        expect(en.exc_accept).toBe("Accept")
+        expect(en.ci_key_failed).toBe("This phone's secure key couldn't be used. Register the phone again.")
     })
 })
