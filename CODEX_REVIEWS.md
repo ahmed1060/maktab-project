@@ -4,7 +4,7 @@ Which pull requests Codex has reviewed, and which commits it hasn't seen
 yet. When Codex's usage limit stops a review, work goes on; this file is
 the list of what to send Codex once the limit resets.
 
-Last checked: 2026-10-30 11:11 UTC, against GitHub.
+Last checked: 2026-11-11 12:55 UTC, against GitHub.
 
 ## When the limit resets
 
@@ -17,7 +17,8 @@ Last checked: 2026-10-30 11:11 UTC, against GitHub.
    in `vercel.json`, so Vercel builds no preview of old code against the
    live database. Close the PR once Codex has reviewed it.
 3. Fix each real finding against today's code, in its own commit, with a
-   test that fails on the old code. Reply on each thread and resolve it.
+   test that fails on the old code. Reply on each thread and resolve it,
+   then post `@codex review` again: the fix gets its own review.
 4. Move the PR to **Reviewed** here, with the commit Codex reviewed.
 
 ## How a PR counts as reviewed
@@ -35,18 +36,30 @@ same PR. One of these on GitHub shows it:
 A request that Codex answers with "You have reached your Codex usage
 limits" reviews nothing.
 
+A fix pushed after Codex's review, for one of its findings or anything
+else, is a commit Codex hasn't seen. It gets its own `@codex review`, and
+counts as reviewed only once Codex has reviewed it, or a later commit
+(product owner, 2026-11-11).
+
 ## Waiting for Codex
 
 Nothing is waiting: every open and merged PR has been reviewed.
 
 ## Reviewed
 
-Every merged PR, #1 to #251, has been reviewed in full.
+Every merged PR, #1 to #252, has been reviewed in full. Codex's two
+findings on #251, from its review after the merge, are being fixed in the
+next PR, which gets its own review.
+
+On 2026-11-11, every merged PR from #79 to #250 was checked against GitHub
+for a last commit Codex hadn't seen: a fix pushed after its last review.
+Two had one, #102 (d0d145e) and #244 (495903c). Codex reviewed both after
+merging, on main at 50e4723 and 124721a, and found nothing.
 
 | PR | How |
 | --- | --- |
-| #4, #7, #8, #30–#32, #34, #39–#44, #46, #47, #49, #72, #79–#251 | At its last commit |
-| #1, #28, #29, #33, #35–#38, #45, #48, #73–#78 | After merging, on main containing its last commit |
+| #4, #7, #8, #30–#32, #34, #39–#44, #46, #47, #49, #72, #79–#101, #103–#240, #242, #243, #245–#250, #252 | At its last commit |
+| #1, #28, #29, #33, #35–#38, #45, #48, #73–#78, #102, #241, #244, #251 | After merging, on main containing its last commit |
 | #2 | Review-only #71 |
 | #3 | Review-only #69 |
 | #5 | Review-only #68 |

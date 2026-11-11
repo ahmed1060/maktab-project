@@ -5770,7 +5770,20 @@ a.ui-notice:focus-visible {
 .ui-cards > li[data-arrived] .ui-list-card {
   animation: ui-arrived 2s linear;
 }
+/* Marked again while marked, a row takes the same tint under another name,
+   so it starts again: under the same name it would carry on where it was
+   (lib/arrivals.ts, arrivedAs; found by Codex on PR 251). */
+.ui-table tr[data-arrived="again"] td,
+.ui-cards > li[data-arrived="again"] .ui-list-card {
+  animation-name: ui-arrived-again;
+}
 @keyframes ui-arrived {
+  from,
+  25% {
+    background-color: var(--brand-tint);
+  }
+}
+@keyframes ui-arrived-again {
   from,
   25% {
     background-color: var(--brand-tint);

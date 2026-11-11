@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import { WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
+import { arrivedAs, type Mark } from '@/lib/arrivals'
 import { Icon, type PhosphorIcon } from './Icon'
 import { cx } from './cx'
 
@@ -16,8 +17,9 @@ import { cx } from './cx'
  * to one (`visibleRow`): an id would be on the page twice.
  *
  * The rows someone else just added or changed carry `data-arrived`, and are
- * tinted for a moment (DESIGN.md §8): `arrived` holds their keys, from
- * useArrivals.
+ * tinted for a moment (DESIGN.md §8): `arrived` holds their marks, from
+ * useArrivals. Its value, `once` or `again`, changes as a row is marked
+ * again while marked, so its tint starts again (lib/arrivals.ts, arrivedAs).
  */
 
 /** The row or card for this key that's showing at this width, to scroll to. */
@@ -52,8 +54,8 @@ export function DataList<T>({ caption, columns, rows, rowKey, card, tone, arrive
     /** The item as a phone card, usually a ListCard. */
     card: (row: T) => ReactNode
     tone?: (row: T) => RowTone | undefined
-    /** The keys of the rows someone else just added or changed (components/useArrivals.ts). */
-    arrived?: { has: (key: string) => boolean }
+    /** The marks of the rows someone else just added or changed, by key (components/useArrivals.ts). */
+    arrived?: { get: (key: string) => Mark | undefined }
     /** Usually the Pager. */
     footer?: ReactNode
     /** Shown instead of the list when there are no rows, usually an EmptyState. */
@@ -76,7 +78,7 @@ export function DataList<T>({ caption, columns, rows, rowKey, card, tone, arrive
                     </thead>
                     <tbody>
                         {rows.map(row => (
-                            <tr key={rowKey(row)} data-key={rowKey(row)} data-tone={tone?.(row)} data-arrived={arrived?.has(rowKey(row)) || undefined}>
+                            <tr key={rowKey(row)} data-key={rowKey(row)} data-tone={tone?.(row)} data-arrived={arrivedAs(arrived, rowKey(row))}>
                                 {columns.map(c => <td key={c.key} className={c.align === 'end' ? 'ui-end' : undefined}>{c.cell(row)}</td>)}
                             </tr>
                         ))}
@@ -84,7 +86,7 @@ export function DataList<T>({ caption, columns, rows, rowKey, card, tone, arrive
                 </table>
             </div>
             <ul className="ui-cards" aria-label={caption}>
-                {rows.map(row => <li key={rowKey(row)} data-key={rowKey(row)} data-tone={tone?.(row)} data-arrived={arrived?.has(rowKey(row)) || undefined}>{card(row)}</li>)}
+                {rows.map(row => <li key={rowKey(row)} data-key={rowKey(row)} data-tone={tone?.(row)} data-arrived={arrivedAs(arrived, rowKey(row))}>{card(row)}</li>)}
             </ul>
             {footer}
         </div>

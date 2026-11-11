@@ -73,7 +73,8 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
     useAdjustOnChange([advance?.totalPages ?? 0], () => setPage(p => pageInRange(p, advance?.totalPages ?? 0)))
     useLive('advances', () => { void mutate() })
     const arrivals = useArrivalsIn('advances', url, advance?.data ?? [], e => e.id)
-    // Confirm receipt and Move to running balance: the person's own change, not tinted.
+    // Confirm receipt and Move to running balance: the person's own change,
+    // not tinted once it's saved (arrivals.saved).
     const action = useBusyAction(arrivals.own)
 
     const money = (n: number) => `${n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${t('egp')}`
@@ -89,7 +90,10 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
             const res = await fetch(`/api/cash-advances/entries/${encodeURIComponent(entry.id)}/confirm`, { method: 'POST' })
             const answer = await res.json().catch(() => null)
             if (!res.ok) showToast(refusalText(t, answer), 'error')
-            else showToast(t('advances_confirmed_done'), 'success')
+            else {
+                arrivals.saved()
+                showToast(t('advances_confirmed_done'), 'success')
+            }
             void mutate()
         } catch {
             showToast(t('error_generic'), 'error')
@@ -114,7 +118,10 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
             })
             const answer = await res.json().catch(() => null)
             if (!res.ok) showToast(refusalText(t, answer), 'error')
-            else showToast(t('advances_moved_done'), 'success')
+            else {
+                arrivals.saved()
+                showToast(t('advances_moved_done'), 'success')
+            }
             void mutate()
         } catch {
             showToast(t('error_generic'), 'error')
@@ -264,7 +271,7 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
                     kind={recording ?? 'GIVEN'}
                     today={advance.today}
                     onClose={() => setRecording(null)}
-                    onSaved={() => { void mutate() }}
+                    onSaved={() => { arrivals.saved(); void mutate() }}
                 />
             </ActionStarts.Provider>
             {/* Saying it arrived deletes nothing: the main button, where it was the old window's red. */}

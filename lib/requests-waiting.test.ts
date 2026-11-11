@@ -161,7 +161,8 @@ describe("asking for it again", () => {
 
     it("once something is decided, deleted, withdrawn, revoked or asked for on the Requests page", () => {
         expect(requests).toContain("const { mutate } = useSWRConfig()")
-        expect(requests).toContain("const refreshed = () => { router.refresh(); void mutate(WAITING_FOR_REVIEW_KEY) }")
+        // Saved, so what's drawn next is the person's own, not tinted (PR 251's Codex findings).
+        expect(requests).toContain("const refreshed = () => { arrivals.saved(); router.refresh(); void mutate(WAITING_FOR_REVIEW_KEY) }")
         // Each of them refreshes the page through the one that asks again too.
         // Live updates' listener (REALTIME_PLAN.md, part 2) draws the page
         // alone: the side bar's count listens for itself.

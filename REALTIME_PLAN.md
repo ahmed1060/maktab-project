@@ -122,7 +122,7 @@ Decided with the product owner on 2026-11-10.
 | 4a | Cash advances: the Cash advances tab, a person's cash advance and My cash advance, Add cost's line about the advance, and an open Give advance, Record return or Correction window | #252 |
 | 4b | Costs and charges: the Employee costs and Charged to clients tabs, and a client's charges | |
 | 4c | Attendance | |
-| 5 | A little motion for what arrives live: what changed is shown for a moment, so nobody has to hunt for it | #251, merged 2026-11-11 |
+| 5 | A little motion for what arrives live: what changed is shown for a moment, so nobody has to hunt for it | #251, merged 2026-11-11; Codex's two findings after the merge, fixed in #253 |
 
 - Each part is its own PR, merged on the product owner's word.
 - **Part 1 has been live since it merged.** `SUPABASE_JWT_SECRET` was
@@ -218,7 +218,8 @@ Decided with the product owner on 2026-11-10.
     for (10 seconds). So the person's own action now counts as theirs for
     as long as it's on its way, and the 10 seconds start once it's
     answered; whatever is drawn meanwhile is taken as theirs. On the
-    Requests page too.
+    Requests page too. Since #253, the draw after the answer is theirs
+    only once their page says the change is saved.
 - **Part 5, motion (#251), as the product owner chose:** what someone
   else changed is shown arriving, briefly, and then the screen is still
   again (`DESIGN.md` §8, changed first, in its own commit).
@@ -239,20 +240,24 @@ Decided with the product owner on 2026-11-10.
     - not as a page opens, which has nothing before it, and not when the
       person looks at another tab, filter or page, which is another list;
     - not for the person's own changes: each action on the Requests page,
-      its dialogs' too, says as it starts, before it sends anything, that
-      the next draw is theirs (`ActionStarts`, `lib/useBusyAction.ts`),
-      and says when it's answered. Their change's own signal can come
-      before their answer, if the server goes on working after saving it,
-      and the draw it brings is still theirs; so is every draw while the
-      action is on its way (part 4a). The task list has no actions of its
-      own: a task is changed on its page, and the list is drawn afresh as
-      the person comes back to it;
+      its dialogs' too, says as it starts, before it sends anything, and
+      as it's answered (`ActionStarts`, `lib/useBusyAction.ts`), and every
+      draw while it's on its way is taken as theirs (part 4a). Once their
+      change is saved, the page says so (`saved()`), and the draw after it
+      is theirs too: their change's own signal can come before their
+      answer, if the server goes on working after saving it. Refused, it
+      saved nothing, and what someone else changed meanwhile is tinted
+      (#253, found by Codex on #251 after the merge). The task list has
+      no actions of its own: a task is changed on its page, and the list
+      is drawn afresh as the person comes back to it;
     - a signal whose draw changed nothing is forgotten after 10 seconds,
       so it can't claim a change the person makes later;
     - each draw's rows are unmarked 2 seconds after it, whatever draws
       come after, so a steady stream of changes doesn't keep earlier rows
       tinted; a row that changes again is marked for the later draw's 2
-      seconds;
+      seconds, and its tint starts again: it takes the same tint under
+      another name, as an animation whose name stays carries on where it
+      was (#253, found by Codex on #251 after the merge);
     - what changed while a tab was out of sight is shown as it comes back,
       as the tab is drawn then;
     - the bell's count grows as it rises from one answer to the next: not
@@ -329,3 +334,15 @@ Decided with the product owner on 2026-11-10.
   under From once it was spent or moved elsewhere, and would have saved
   the amount typed against the running balance. The part picked now
   stays, holding nothing, until another is picked.
+- **2026-11-11:** Two findings by Codex on #251, from its review after the
+  merge, fixed in #253. A row that changed again within 2 seconds of the
+  last showed only the end of its first fade: it now takes the same tint
+  under another name, so it starts again. And the person's own action,
+  refused, took the next draw as theirs, so what someone else changed in
+  the next 10 seconds wasn't tinted: their page now says when their
+  change is saved, and only then is the draw after it theirs.
+- **2026-11-11:** A finding by Codex on #253, fixed in it: a change of the
+  person's own, saved while another action of theirs was on its way, was
+  kept past its own draw. That other action, refused, then left it to hide
+  what someone else changed next. A draw now spends the change saved, as
+  it spends a signal; only actions still on their way carry over.

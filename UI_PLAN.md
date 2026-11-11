@@ -631,7 +631,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      page, and the bell's count growing as it rises, merged in #251 on
      2026-11-11; then live updates' part 4a, the cash advance screens
      drawn again as the ledger changes, the person's own action theirs
-     for as long as it's on its way (#252);
+     for as long as it's on its way, merged in #252 on 2026-11-11; then
+     Codex's two findings on #251, after the merge: a row changed again
+     starts its tint again, and the person's own action, refused, hides
+     nobody else's change (#253);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5875,3 +5878,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   does. The person's own action counts as theirs for as long as it's on its
   way, as a two-factor code can hold it longer than a signal is waited
   for, on the Requests page too.
+- **2026-11-11:** Codex's two findings on #251, from its review after the
+  merge (`REALTIME_PLAN.md`, #253). A row that changed again within 2
+  seconds starts its tint again: DataList's `data-arrived` says `once` or
+  `again`, flipping each time the row is marked while marked, and
+  `ui.css` gives the two the same tint under two names. And the person's
+  own action, refused, no longer hides what someone else changes next:
+  `useArrivals` gives pages `saved()`, which the Requests page and the cash
+  advance screens call once their change is saved; only then is the draw
+  after the answer theirs.

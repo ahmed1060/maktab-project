@@ -13,19 +13,22 @@ const NONE: Marks = new Map()
 
 /**
  * The rows of a list that someone else just added or changed (DESIGN.md §8;
- * REALTIME_PLAN.md, part 5), for DataList's `arrived`: the keys of the rows
- * new, or holding something new, in the draw that follows a `kind` signal,
+ * REALTIME_PLAN.md, part 5), for DataList's `arrived`: the marks of the
+ * rows new, or holding something new, in the draw that follows a `kind` signal,
  * for ARRIVAL_MS.
  *
  * Not as the page opens, which has no draw before it. Not when the person
  * looks at another tab, filter or page: that's another list. And not for
  * their own changes: a page calls `own()` as each of its actions starts,
  * before it sends anything, and what it returns once it's answered (through
- * useBusyAction). Their change sends a signal too, which can come before
- * their answer, if the server goes on working after saving it; the draw
- * that follows is taken as theirs (found by Codex on PR 251). So is every
- * draw while their action is on its way, as a two-factor code asked for on
- * the way can hold it for longer than a signal is waited for (PR 252).
+ * useBusyAction); and `saved()` once its change is saved, before it draws
+ * itself again. Every draw while their action is on its way is taken as
+ * theirs, as a two-factor code asked for on the way can hold it for longer
+ * than a signal is waited for (PR 252), and so is the draw after it's
+ * saved: their change sends a signal too, which can come before their
+ * answer, if the server goes on working after saving it (found by Codex on
+ * PR 251). Refused, it saved nothing, and what someone else changed
+ * meanwhile is marked (found by Codex on PR 251 too).
  *
  * The list is told apart by the page's address, with its tab, filters and
  * page: for a list that keeps them there.
@@ -78,7 +81,7 @@ export function useArrivalsIn<T>(kind: LiveKind, scope: string, rows: readonly T
         setTimeout(() => setArrived(was => unmark(was, marked)), ARRIVAL_MS)
     }, [marked])
 
-    /** The person's own action starting; what it returns says it was answered, once. */
+    /** The person's own action starting; what it returns says it was answered, saved or refused, once. */
     const own = () => {
         setExpecting(actionStarts)
         let answered = false
@@ -89,5 +92,8 @@ export function useArrivalsIn<T>(kind: LiveKind, scope: string, rows: readonly T
         }
     }
 
-    return { arrived, own }
+    /** The person's own change saved: what's drawn next is theirs. */
+    const saved = () => setExpecting(was => expectNext(was, 'own'))
+
+    return { arrived, own, saved }
 }
