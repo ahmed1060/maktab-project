@@ -242,7 +242,8 @@ describe("System health, found in the interface audit", () => {
     it("says what to do next when a backup, a restore or maintenance mode didn't start", () => {
         for (const key of ["backup_trigger_failed", "restore_trigger_failed", "maintenance_toggle_failed"] as const) {
             expect(en[key], key).toMatch(/Try again/)
-            expect(ar[key], key).toMatch(/حاول مرة أخرى/)
+            // Asked with يُرجى, not حاول in the masculine (DESIGN.md §3.4).
+            expect(ar[key], key).toMatch(/يُرجى المحاولة مرة أخرى/)
         }
     })
 })
