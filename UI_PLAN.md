@@ -636,7 +636,12 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      starts its tint again, and the person's own action, refused, hides
      nobody else's change, merged in #253 on 2026-11-11; then the cash
      advance screens' Arabic, neutral as to who reads it and who holds the
-     advance (#254);
+     advance, merged in #254 on 2026-11-11; then the rest of the app's
+     Arabic, speaking to no one in the masculine (`DESIGN.md` §3.4), in
+     five parts: searching, picking and trying again (#255); entering
+     ("أدخل"، "اكتب"، "حدد"، "أضف"); the other commands in hints and
+     notices; "you" in the masculine ("تريد"، "تحتاج"، "متأكد"); and
+     someone else spoken of as "he", the audit log's actions included;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5898,3 +5903,13 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   verbal nouns, says the balance rather than theirs, and uses the passive
   where it said who does what. 26 strings of 155; the English doesn't
   change. `lib/cash-advances-arabic.test.ts` checks every one of them.
+- **2026-11-11:** The app's Arabic speaks to no one in the masculine, part
+  1 of 5 (`DESIGN.md` §3.4, #255). A command has no neutral form in
+  Arabic: "اختر" asks a man. Every search box now says "البحث في…" or
+  "البحث عن…" where it said "ابحث"; a picker's prompt and the Try again
+  button are verbal nouns ("اختيار شركة…"، "إعادة المحاولة"); and every
+  message that said "اختر" or "حاول" asks with "يُرجى اختيار" or "يُرجى
+  المحاولة". A sentence it changed lost its other masculine words too
+  ("انتقل"، "اسمح"، "فعّله"، "لترى"، "تريد"). 92 strings; the English
+  doesn't change. `lib/arabic-neutral.test.ts` checks every string in the
+  app, and each part adds its words to it.
