@@ -9,12 +9,13 @@ import { createContext, useCallback, useContext, useRef, useState } from "react"
 export type ActionStart = () => () => void
 
 /**
- * Told as each action starts, and as it's answered, by every busy action
- * inside it: a list showing what someone else changed takes what's drawn
- * meanwhile, and the next draw, as the person's own
+ * Told as each action starts, and as it's answered, saved or refused, by
+ * every busy action inside it: a list showing what someone else changed
+ * takes what's drawn meanwhile as the person's own
  * (components/useArrivals.ts), though their change's live signal comes
  * before the answer (found by Codex on PR 251), or a two-factor code holds
- * it on the way (PR 252).
+ * it on the way (PR 252). Whether the draw after the answer is theirs too,
+ * their page says, as only it knows whether the change was saved.
  */
 export const ActionStarts = createContext<ActionStart | null>(null)
 

@@ -184,7 +184,7 @@ export default function CashAdvancesList() {
                     kind={recording?.kind ?? 'GIVEN'}
                     today={result?.data?.today}
                     onClose={() => setRecording(null)}
-                    onSaved={() => { void mutate() }}
+                    onSaved={() => { arrivals.saved(); void mutate() }}
                 />
             </ActionStarts.Provider>
         </>

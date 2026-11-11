@@ -122,9 +122,11 @@ export default function RequestsClient({
     const arrivals = useArrivals('requests', rows, r => r.id)
     // The page again, and with it the count on Requests in the side bar
     // (DESIGN.md §5.1), once something here is decided, deleted, withdrawn,
-    // revoked or asked for.
+    // revoked or asked for: saved, so what's drawn next is this person's own,
+    // not tinted. Refused, nothing is, and what someone else changes
+    // meanwhile is tinted (found by Codex on PR 251).
     const { mutate } = useSWRConfig()
-    const refreshed = () => { router.refresh(); void mutate(WAITING_FOR_REVIEW_KEY) }
+    const refreshed = () => { arrivals.saved(); router.refresh(); void mutate(WAITING_FOR_REVIEW_KEY) }
     // Drawn again when a request changes elsewhere (REALTIME_PLAN.md, part 2),
     // keeping the tab, filters and search, and what's typed in a dialog
     // (DESIGN.md §8). The side bar's count listens for itself.

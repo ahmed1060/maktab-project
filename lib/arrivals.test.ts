@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { readFileSync } from "node:fs"
 import { stripComments } from "./strip-comments"
 import {
-    ARRIVAL_MS, EXPECT_MS, actionAnswered, actionStarts, afterDraw, arrivedBetween, arrivedOnDraw, drawn, expectNext, forgets, mark, rose, unmark,
+    ARRIVAL_MS, EXPECT_MS, actionAnswered, actionStarts, afterDraw, arrivedAs, arrivedBetween, arrivedOnDraw, drawn, expectNext, forgets, mark, rose, unmark,
     type Expecting, type Marks,
 } from "./arrivals"
 
@@ -47,13 +47,19 @@ function list(rows: Row[]) {
     let expecting: Expecting = null
     return {
         signal: () => { expecting = expectNext(expecting, "live") },
-        /** The person's own action starting; what it returns, its answer. */
+        /** The person's own action starting; what it returns, its answer, saved or refused. */
         start: () => {
             expecting = actionStarts(expecting)
             return () => { expecting = actionAnswered(expecting) }
         },
-        /** An action of their own that's answered at once. */
-        own() { this.start()() },
+        /** Their page saying their change is saved, before it draws itself again. */
+        saved: () => { expecting = expectNext(expecting, "own") },
+        /** An action of their own, saved and answered at once. */
+        own() {
+            const answered = this.start()
+            this.saved()
+            answered()
+        },
         /** EXPECT_MS gone by, if anything is forgotten then. */
         forget: () => { if (forgets(expecting)) expecting = null },
         draw(now: string): string[] | "no draw" {
@@ -149,7 +155,7 @@ describe("the person's own change", () => {
         expect(expectNext(was, "live")).not.toBe(was)
         expect(expectNext(was, "own")).toEqual({ from: "own", acting: 0 })
         expect(expectNext({ from: "own", acting: 0 }, "live")).toEqual({ from: "own", acting: 0 })
-        const answered = actionAnswered(actionStarts(was))
+        const answered = actionAnswered(expectNext(actionStarts(was), "own"))
         expect(answered).toEqual({ from: "own", acting: 0 })
         expect(actionAnswered(answered)).not.toBe(answered)
     })
@@ -167,6 +173,7 @@ describe("the person's own change", () => {
         // Their change is saved, and its signal comes before their answer.
         page.signal()
         expect(page.draw(at([A, { ...C, status: "COMPLETED" }]))).toEqual([])
+        page.saved()
         answered()
         // Their page draws itself again after the answer: nothing new.
         expect(page.draw(at([A, { ...C, status: "COMPLETED" }]))).toBe("no draw")
@@ -176,13 +183,15 @@ describe("the person's own change", () => {
         expect(page.draw(at([A, B, { ...C, status: "COMPLETED" }]))).toEqual(["b"])
     })
 
-    it("takes every draw while it's on its way as theirs, as one of them is, and the one after its answer", () => {
+    it("takes every draw while it's on its way as theirs, as one of them is, and the one after its answer once it's saved", () => {
         const page = list([A])
         const answered = page.start()
         page.signal()
         expect(page.draw(at([A, B]))).toEqual([])
         page.signal()
         expect(page.draw(at([A, B, C]))).toEqual([])
+        page.signal()
+        page.saved()
         answered()
         expect(page.draw(at([{ ...A, status: "COMPLETED" }, B, C]))).toEqual([])
         page.signal()
@@ -191,10 +200,12 @@ describe("the person's own change", () => {
 
     it("waits for every action of theirs on its way, and is forgotten 10 seconds after the last answer", () => {
         let was = actionStarts(actionStarts(null))
-        expect(was).toEqual({ from: "own", acting: 2 })
-        expect(afterDraw(was)).toBe(was)
+        expect(was).toEqual({ from: null, acting: 2 })
+        expect(afterDraw(was)).toEqual(was)
         expect(forgets(was)).toBe(false)
-        was = actionAnswered(was)!
+        was = expectNext(actionAnswered(was), "own")
+        expect(was).toEqual({ from: "own", acting: 1 })
+        expect(afterDraw(was)).toEqual(was)
         expect(forgets(was)).toBe(false)
         was = actionAnswered(was)!
         expect(was).toEqual({ from: "own", acting: 0 })
@@ -202,6 +213,40 @@ describe("the person's own change", () => {
         expect(afterDraw(was)).toBeNull()
         expect(forgets(null)).toBe(false)
         expect(actionAnswered(null)).toBeNull()
+    })
+
+    // Found by Codex on PR 251: an action refused, a request decided by
+    // someone else meanwhile, say, saved nothing, and nothing of the
+    // person's own is drawn after it.
+    it("refused, leaves the next change someone else makes to be marked", () => {
+        const page = list([A])
+        page.start()()
+        page.signal()
+        expect(page.draw(at([A, B]))).toEqual(["b"])
+    })
+
+    it("refused, leaves a signal heard while it was on its way to be marked, as it's someone else's", () => {
+        const page = list([A])
+        const answered = page.start()
+        page.signal()
+        answered()
+        expect(page.draw(at([A, B]))).toEqual(["b"])
+    })
+
+    it("refused, as another of theirs is saved, takes the next draw as theirs", () => {
+        const page = list([A])
+        const refused = page.start()
+        const saved = page.start()
+        page.saved()
+        saved()
+        refused()
+        page.signal()
+        expect(page.draw(at([{ ...A, status: "COMPLETED" }]))).toEqual([])
+    })
+
+    it("waits for nothing once all of theirs are refused", () => {
+        expect(actionAnswered(actionStarts(null))).toBeNull()
+        expect(actionAnswered(actionAnswered(actionStarts(actionStarts(null))))).toBeNull()
     })
 })
 
@@ -226,6 +271,26 @@ describe("each row's mark", () => {
         const again = mark(mark(none, ["a"], 1), ["a"], 2)
         expect(unmark(again, 1)).toBe(again)
     })
+
+    // Found by Codex on PR 251: the same animation, its name unchanged,
+    // carries on where it was, so a row that changed again 1.5 seconds in
+    // got only the end of its first fade.
+    it("takes the other of the two tints each time the row is marked again while marked, so its tint starts again", () => {
+        const once = mark(none, ["a", "b"], 1)
+        expect(arrivedAs(once, "a")).toBe("once")
+        const twice = mark(once, ["a"], 2)
+        expect(arrivedAs(twice, "a")).toBe("again")
+        expect(arrivedAs(twice, "b")).toBe("once")
+        expect(arrivedAs(mark(twice, ["a"], 3), "a")).toBe("once")
+        expect(arrivedAs(twice, "c")).toBeUndefined()
+        expect(arrivedAs(undefined, "a")).toBeUndefined()
+    })
+
+    it("starts from the first again once the row's mark has gone", () => {
+        const gone = unmark(mark(mark(none, ["a"], 1), ["a"], 2), 2)
+        expect(arrivedAs(gone, "a")).toBeUndefined()
+        expect(arrivedAs(mark(gone, ["a"], 3), "a")).toBe("once")
+    })
 })
 
 describe("the hook (components/useArrivals.ts)", () => {
@@ -242,10 +307,11 @@ describe("the hook (components/useArrivals.ts)", () => {
         expect(readFileSync("lib/useAdjustOnChange.ts", "utf8")).toContain("Deliberately does nothing on the first render")
     })
 
-    it("hears the list's signal, and the page says when the draw is its own, and when its action is answered", () => {
+    it("hears the list's signal, and the page says when its action starts, when it's answered, and when its change is saved", () => {
         expect(hook).toContain("useLive(kind, () => setExpecting(was => expectNext(was, 'live')))")
         expect(hook).toMatch(/const own = \(\) => \{\s*setExpecting\(actionStarts\)\s*let answered = false\s*return \(\) => \{\s*if \(answered\) return\s*answered = true\s*setExpecting\(actionAnswered\)\s*\}\s*\}/)
-        expect(hook).toContain("return { arrived, own }")
+        expect(hook).toContain("const saved = () => setExpecting(was => expectNext(was, 'own'))")
+        expect(hook).toContain("return { arrived, own, saved }")
     })
 
     it("forgets what it waited for after EXPECT_MS, not while an action is on its way, and marks each draw's rows for their own ARRIVAL_MS, 2 seconds", () => {
@@ -259,14 +325,18 @@ describe("the hook (components/useArrivals.ts)", () => {
 describe("the lists", () => {
     it("mark the rows on the table and on the phone's cards alike", async () => {
         const { DataList } = await import("@/components/ui/DataList")
+        const marks = mark(mark(new Map(), ["b", "c"], 1), ["c"], 2)
         const html = renderToStaticMarkup(h(DataList<Row>, {
-            caption: "Tasks", rows: [A, B], rowKey: key, arrived: new Set(["b"]),
+            caption: "Tasks", rows: [A, B, C], rowKey: key, arrived: marks,
             columns: [{ key: "title", header: "Title", cell: r => r.title }], card: r => r.title,
         }))
         expect(html).toContain('<tr data-key="a">')
-        expect(html).toContain('<tr data-key="b" data-arrived="true">')
+        expect(html).toContain('<tr data-key="b" data-arrived="once">')
         expect(html).toContain('<li data-key="a">')
-        expect(html).toContain('<li data-key="b" data-arrived="true">')
+        expect(html).toContain('<li data-key="b" data-arrived="once">')
+        // Marked again while marked: the other tint, so it starts again.
+        expect(html).toContain('<tr data-key="c" data-arrived="again">')
+        expect(html).toContain('<li data-key="c" data-arrived="again">')
         expect(renderToStaticMarkup(h(DataList<Row>, { caption: "Tasks", rows: [A], rowKey: key, columns: [], card: r => r.title }))).not.toContain("data-arrived")
     })
 
@@ -283,6 +353,12 @@ describe("the lists", () => {
         expect(requests).toContain("arrived={arrivals.arrived}")
         // The page's own actions, and every dialog's.
         expect(requests).toContain("const action = useBusyAction(arrivals.own)")
+        // Saved, what's drawn next is theirs; refused, it isn't, and what
+        // someone else changes meanwhile is marked (found by Codex on PR 251).
+        // Every action and dialog calls refreshed once it's saved, and only then.
+        expect(requests).toContain("const refreshed = () => { arrivals.saved(); router.refresh(); void mutate(WAITING_FOR_REVIEW_KEY) }")
+        expect(requests).not.toMatch(/if \(!res\.ok\) \{[^}]*refreshed\(\)/)
+        expect(requests).not.toMatch(/if \(refused\) \{[^}]*refreshed\(\)/)
         const from = requests.indexOf("<ActionStarts.Provider value={arrivals.own}>")
         const to = requests.indexOf("</ActionStarts.Provider>")
         expect(from).toBeGreaterThan(-1)
@@ -312,6 +388,11 @@ describe("the lists", () => {
         expect(history).toContain("onConfirm={() => action.run('move', move)}")
         expect(history).toContain("onConfirm={() => action.run('confirm', confirm)}")
         expect(history).toMatch(/<ActionStarts\.Provider value=\{arrivals\.own\}>\s*<CashAdvanceDialog/)
+        // Saved, what's drawn next is theirs; refused, it isn't (found by Codex on PR 251).
+        expect(history).toMatch(/if \(!res\.ok\) showToast\(refusalText\(t, answer\), 'error'\)\s*else \{\s*arrivals\.saved\(\)\s*showToast\(t\('advances_confirmed_done'\), 'success'\)\s*\}/)
+        expect(history).toMatch(/if \(!res\.ok\) showToast\(refusalText\(t, answer\), 'error'\)\s*else \{\s*arrivals\.saved\(\)\s*showToast\(t\('advances_moved_done'\), 'success'\)\s*\}/)
+        expect(history).toContain("onSaved={() => { arrivals.saved(); void mutate() }}")
+        expect(advances).toContain("onSaved={() => { arrivals.saved(); void mutate() }}")
         // Its window's save is a busy action, so it hears the ActionStarts around it.
         const dialog = stripComments(readFileSync("components/cash-advances/CashAdvanceDialog.tsx", "utf8"))
         expect(dialog).toContain("const action = useBusyAction()")
@@ -367,6 +448,15 @@ describe("the motion (components/ui/ui.css)", () => {
         expect(rows).toBeLessThan(reduce)
         expect(body(rows)).toBe("animation: ui-arrived 2s linear;")
         expect(ARRIVAL_MS).toBe(2 * 1000)
+    })
+
+    // Found by Codex on PR 251: an animation whose name stays carries on.
+    it("starts a row's tint again when it's marked again while marked: the same tint, under another name", () => {
+        const again = css.indexOf('.ui-table tr[data-arrived="again"] td,\n.ui-cards > li[data-arrived="again"] .ui-list-card {')
+        expect(again).toBeGreaterThan(css.indexOf(ROWS))
+        expect(again).toBeLessThan(reduce)
+        expect(body(again)).toBe("animation-name: ui-arrived-again;")
+        expect(keyframes("ui-arrived-again")).toBe(keyframes("ui-arrived").replace("ui-arrived", "ui-arrived-again"))
     })
 
     it("holds the tint for half a second, then fades to the row's own colour, overdue's too, changing nothing else", () => {
