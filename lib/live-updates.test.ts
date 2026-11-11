@@ -486,6 +486,11 @@ describe("the screens that are drawn again", () => {
         expect(dialog).toContain("useLive('advances', () => { void refreshAbout() })")
         // An advance given is weighed against the balance as the server says it now.
         expect(dialog).toContain("const balance = kind === 'GIVEN' ? about?.data?.balance ?? person?.balance ?? 0")
+        // A part picked, then gone elsewhere, stays picked, holding nothing (found by Codex on PR 252).
+        expect(dialog).toContain("const parts = partsToPick(held, from, chosen)")
+        expect(dialog).toContain("const picked = parts.find(part => heldPartKey(part) === from)")
+        expect(dialog).toContain("onChange={e => { setFrom(e.target.value); setChosen(parts.find(part => heldPartKey(part) === e.target.value) ?? null) }}")
+        expect(dialog).toContain("...parts.map(part => ({ value: heldPartKey(part)")
     })
 
     // Part 3: the heartbeat asks at once, and signs the page out as it does

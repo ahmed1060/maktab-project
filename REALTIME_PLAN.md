@@ -186,7 +186,11 @@ Decided with the product owner on 2026-11-10.
   - an open Give advance, Record return or Correction window: what the
     person holds, and what they'd hold after, keeping what's typed. An
     advance given is weighed against the balance as the server says it
-    now, not as the row said when the window opened.
+    now, not as the row said when the window opened. A task or client
+    picked under From, then spent or moved elsewhere, stays picked,
+    holding nothing, so the amount typed is refused as more than they hold
+    rather than saved against the running balance (found by Codex on
+    #252).
   - **The signal** is `advances`, empty as the others are, on the
     company's channel (`tasks:<id>`), and on each Super Admin's own
     (`notices:<id>`): a Super Admin opens anyone's cash advance with
@@ -320,3 +324,8 @@ Decided with the product owner on 2026-11-10.
   lists. The person's own action now counts as theirs for as long as it's
   on its way, as a two-factor code can hold it longer than a signal is
   waited for; the Requests page's actions too.
+- **2026-11-11:** A finding by Codex on #252, fixed in it: Record return
+  or Correction, drawn again while open, lost a task or client picked
+  under From once it was spent or moved elsewhere, and would have saved
+  the amount typed against the running balance. The part picked now
+  stays, holding nothing, until another is picked.

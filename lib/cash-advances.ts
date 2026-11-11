@@ -33,6 +33,26 @@ export function forOf(input: { forTaskId?: unknown; forClientId?: unknown }): Ad
 /** What a person holds for one task or one client (§7.9), as their advance's page reads it. */
 export type HeldPart = { forTask: { id: string; title: string } | null; forClient: { id: string; name: string } | null; amount: number }
 
+/** A part of a person's advance, as the From field picks it: "" for the running balance (§7.9). */
+export function heldPartKey(part: { forTask: { id: string } | null; forClient: { id: string } | null }): string {
+    return part.forTask ? `task:${part.forTask.id}` : part.forClient ? `client:${part.forClient.id}` : ''
+}
+
+/**
+ * The parts a return or a correction can be on, as Record return's and
+ * Correction's From field lists them (§7.9): what's held for each task and
+ * client, and the one picked, holding nothing now, if it has gone since.
+ * The window is drawn again while it's open (REALTIME_PLAN.md, part 4a), and
+ * a part spent or moved elsewhere leaves what's held: the amount typed would
+ * otherwise be saved against the running balance instead. Kept, holding
+ * nothing, it's refused as more than they hold until another is picked
+ * (found by Codex on PR 252).
+ */
+export function partsToPick<P extends HeldPart>(held: readonly P[], from: string, picked: P | null): P[] {
+    if (!from || !picked || heldPartKey(picked) !== from || held.some(part => heldPartKey(part) === from)) return [...held]
+    return [...held, { ...picked, amount: 0 }]
+}
+
 /** One part of an advance a cost here is paid from, in the order it pays (§7.9). */
 export type PaysFrom = { kind: "task"; amount: number } | { kind: "client"; name: string; amount: number } | { kind: "running"; amount: number }
 

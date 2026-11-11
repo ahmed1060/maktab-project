@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { CASH_ADVANCE_MAX, balanceAfter, cashAdvancesInUse, dayOf, forOf, paysFirst, signedAmount } from "./cash-advances"
+import { CASH_ADVANCE_MAX, balanceAfter, cashAdvancesInUse, dayOf, forOf, heldPartKey, partsToPick, paysFirst, signedAmount, type HeldPart } from "./cash-advances"
 
 /** Cash advances' rules as the screens and the server both take them (CLIENTS_PLAN.md §7). */
 describe("cash advances", () => {
@@ -67,5 +67,36 @@ describe("cash advances", () => {
         expect(dayOf("2026-10-30")).toBe("2026-10-30")
         expect(dayOf("2028-02-29")).toBe("2028-02-29")
         for (const raw of ["2026-02-30", "2026-13-01", "30/10/2026", "2026-10-30T00:00", "", null, 20261030]) expect(dayOf(raw), String(raw)).toBeNull()
+    })
+
+    // Record return and Correction are drawn again while open (REALTIME_PLAN.md,
+    // part 4a). A part picked there, then spent or moved elsewhere, leaves
+    // what's held; the amount typed was then saved against the running
+    // balance instead (found by Codex on PR 252).
+    describe("the parts a return or a correction can be on (§7.9)", () => {
+        const gate: HeldPart = { forTask: { id: "t1", title: "Fix the gate" }, forClient: null, amount: 400 }
+        const nile: HeldPart = { forTask: null, forClient: { id: "c1", name: "Nile Foods" }, amount: 300 }
+
+        it("are told apart as the From field picks them, the running balance as nothing", () => {
+            expect(heldPartKey(gate)).toBe("task:t1")
+            expect(heldPartKey(nile)).toBe("client:c1")
+            expect(heldPartKey({ forTask: null, forClient: null })).toBe("")
+        })
+
+        it("are what's held, while the one picked is among them, or none is", () => {
+            expect(partsToPick([gate, nile], "", null)).toEqual([gate, nile])
+            expect(partsToPick([gate, nile], "task:t1", gate)).toEqual([gate, nile])
+            // Held for less now: as it's held, not as it was picked.
+            expect(partsToPick([{ ...gate, amount: 150 }, nile], "task:t1", gate)).toEqual([{ ...gate, amount: 150 }, nile])
+        })
+
+        it("keep the one picked, holding nothing, once it's gone, so no amount can be saved against it", () => {
+            const parts = partsToPick([nile], "task:t1", gate)
+            expect(parts).toEqual([nile, { ...gate, amount: 0 }])
+            const picked = parts.find(part => heldPartKey(part) === "task:t1")!
+            expect(balanceAfter(picked.amount, signedAmount("RETURNED", 10)!)).toBeNull()
+            // The last part held, gone: the field is still there to pick another.
+            expect(partsToPick([], "client:c1", nile)).toEqual([{ ...nile, amount: 0 }])
+        })
     })
 })
