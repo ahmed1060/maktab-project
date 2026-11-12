@@ -1559,7 +1559,9 @@ These are built once, in the building-blocks PR, and every page uses them
   isn't loaded again: what the person was typing, their filters, where
   they'd scrolled to and an open dialog all stay. Changes arriving close
   together are drawn once, a second after the last, and a tab out of sight
-  is drawn when it's shown again.
+  is drawn when it's shown again. Attendance, where check-ins pour in each
+  morning, is drawn at most every 30 seconds while they keep coming
+  (`REALTIME_PLAN.md`, part 4c).
 - **And it's shown for a moment, so nobody has to hunt for it**
   (`REALTIME_PLAN.md`, part 5):
   - **a row that arrives or changes,** in a list such as the tasks or the
@@ -2153,3 +2155,7 @@ changed:
 - **2026-11-12:** Who's online is not tinted (§8), as the product owner
   chose for live updates' part 6b: someone coming or going changes only
   their badge on the Employees list and All users, in place.
+- **2026-11-12:** Attendance is drawn again at most every 30 seconds while
+  check-ins keep coming (§8), as the product owner chose for live updates'
+  part 4c: a company's morning arrivals would otherwise draw an open list
+  every few seconds for an hour.
