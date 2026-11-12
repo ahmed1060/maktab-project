@@ -80,8 +80,9 @@ export function calculateDistance(coord1: Coordinates, coord2: Coordinates): num
  * marked people wrong with no idea whether the reading was worth ten metres or
  * ten kilometres.
  *
- * Returns null for every position recorded before this was kept. That is a
- * meaningful answer, not a missing one: see verifyLocation.
+ * Returns null for every position recorded before this was kept, and for one
+ * sent without it. That is a meaningful answer, not a missing one: see
+ * locationVerdict.
  */
 export function extractAccuracy(locationStr: string | null | undefined): number | null {
     if (!locationStr || !locationStr.trim().startsWith('{')) return null;
@@ -119,9 +120,12 @@ export type VerificationStatus = 'CORRECT' | 'WRONG' | 'UNVERIFIED';
  * a reviewer overriding a verdict by hand. Two of those under one name in the
  * same file is a mistake waiting for whoever reads it next.
  *
- * A reading with no recorded accuracy is treated as exact. Every position taken
- * before accuracy was captured has none, and callers must not re-decide those:
- * they were judged under the old rule and in some cases already acted on.
+ * A reading with no accuracy can't decide either (CLIENTS_PLAN.md §2.5). It
+ * used to be taken as exact, meant for positions taken before accuracy was
+ * captured, but that held for new ones too: the task page always sends it, so
+ * one without it was made by hand or broken, and it was CORRECT wherever it
+ * claimed to be. Positions from before were judged under the old rule and in
+ * some cases already acted on, so callers must not re-decide those.
  */
 export function locationVerdict(
     target: Coordinates,
@@ -129,10 +133,10 @@ export function locationVerdict(
     radiusMeters: number,
     accuracyMeters: number | null,
 ): VerificationStatus {
+    if (accuracyMeters === null) return 'UNVERIFIED';
     const distance = calculateDistance(target, submitted);
-    const accuracy = accuracyMeters ?? 0;
 
-    if (distance + accuracy <= radiusMeters) return 'CORRECT';
-    if (distance - accuracy > radiusMeters) return 'WRONG';
+    if (distance + accuracyMeters <= radiusMeters) return 'CORRECT';
+    if (distance - accuracyMeters > radiusMeters) return 'WRONG';
     return 'UNVERIFIED';
 }

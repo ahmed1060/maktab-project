@@ -146,10 +146,37 @@ describe.skipIf(!ADMIN_URL)("tasks at locations, in Postgres", () => {
     })
 
     describe("the employee's location check", () => {
-        const check = async (id: string) => {
-            await Tasks.submit(id, "e1", employee, { isDraft: true, location: NORTH_100M })
+        const check = async (id: string, location = NORTH_100M) => {
+            await Tasks.submit(id, "e1", employee, { isDraft: true, location })
             return (await row(id)).comments.filter((c: any) => c.type === "LOCATION_ADDED").at(-1).verificationStatus
         }
+        const atAcme = async () => (await Tasks.create(task({ clientId: "k1", locationId: "acme-hq" }) as any, admin)).id
+
+        it("won't mark a location correct or wrong when it doesn't say how precise it is (CLIENTS_PLAN.md §2.5)", async () => {
+            // Right on the pin, sent by hand with no accuracy: it was CORRECT.
+            expect(await check(await atAcme(), JSON.stringify({ latitude: 30.0444, longitude: 31.2357 }))).toBe("UNVERIFIED")
+            expect(await check(await atAcme(), "30.0444,31.2357")).toBe("UNVERIFIED")
+            // An accuracy of zero isn't exact, it's broken.
+            expect(await check(await atAcme(), JSON.stringify({ latitude: 30.0444, longitude: 31.2357, accuracy: 0 }))).toBe("UNVERIFIED")
+            // 10 km away in Maadi, with none: it was WRONG.
+            expect(await check(await atAcme(), JSON.stringify({ latitude: 29.9602, longitude: 31.2569 }))).toBe("UNVERIFIED")
+        })
+
+        it("when its task's location changes, keeps a decided check and won't decide one without accuracy", async () => {
+            const id = (await Tasks.create(task({ clientId: "k1", locationId: "acme-site" }) as any, admin)).id
+            const onThePin = JSON.stringify({ latitude: 30.0444, longitude: 31.2357 })
+            await db.query(`UPDATE "Task" SET comments = COALESCE(comments, '[]'::jsonb) || $1::jsonb WHERE id = $2`, [JSON.stringify([
+                // From before the accuracy was kept, decided then: it may have been acted on.
+                { type: "LOCATION_ADDED", authorId: "e1", date: "decided", location: onThePin, verificationStatus: "WRONG", autoVerified: true },
+                // Never decided (the company's own check was off then): nothing to keep.
+                { type: "LOCATION_ADDED", authorId: "e1", date: "undecided", location: onThePin },
+                // With its accuracy: measured again from the new pin.
+                { type: "LOCATION_ADDED", authorId: "e1", date: "measured", location: NORTH_100M, verificationStatus: "WRONG", autoVerified: true },
+            ]), id])
+            await Tasks.updateDetails(id, { id, locationId: "acme-hq" } as any, admin)
+            const checks = (await row(id)).comments.filter((c: any) => c.type === "LOCATION_ADDED")
+            expect(Object.fromEntries(checks.map((c: any) => [c.date, c.verificationStatus]))).toEqual({ decided: "WRONG", undecided: "UNVERIFIED", measured: "CORRECT" })
+        })
 
         it("measures from the location's pin, within its own radius, or the system's 70 m without one", async () => {
             // 100 m out, within 10 m: inside 150 m, outside 70 m.

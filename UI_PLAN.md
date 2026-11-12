@@ -643,7 +643,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      on 2026-11-11; the other commands in hints and notices, merged in
      #257 on 2026-11-11; "you" in the masculine ("تريد"، "تحتاج"، "متأكد"),
      merged in #258 on 2026-11-11; and someone else spoken of as "he", the
-     audit log's actions included (#259);
+     audit log's actions included, merged in #259 on 2026-11-12; then a
+     task's location sent without its accuracy marked Needs review, not
+     taken as exact, its line for a reviewer saying so
+     (`CLIENTS_PLAN.md` §2.5, #260);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5953,3 +5956,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   "أحد", a role's name and a thing keep their agreement, which `DESIGN.md`
   §3.4 now says. Four commands and two "you"s the earlier parts missed go
   too. 89 strings; the English doesn't change.
+- **2026-11-12:** A task's location history (`CLIENTS_PLAN.md` §2.5,
+  #260): a location sent without its accuracy is Needs review, as one
+  that wasn't precise enough already is. A reviewer's line under it says
+  why, in words of its own: the reading didn't say how precise it was. The
+  badge and the Mark correct and Mark wrong buttons don't change.

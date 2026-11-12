@@ -54,12 +54,22 @@ describe("a reading is judged as a circle, not a point", () => {
         expect(locationVerdict(TARGET, farAway, 5000, 3000)).toBe("UNVERIFIED")
     })
 
-    it("treats a reading with no recorded accuracy as exact", () => {
-        // Every position taken before accuracy was kept has none. Without this
-        // they would all become UNVERIFIED, which is why callers must also not
-        // re-decide them — see the guard below.
-        expect(locationVerdict(TARGET, M111, 200, null)).toBe("CORRECT")
-        expect(locationVerdict(TARGET, M111, 50, null)).toBe("WRONG")
+    it("won't decide a reading that doesn't say how precise it is (CLIENTS_PLAN.md §2.5)", () => {
+        // Taken as exact, a location typed into a request by hand, with no
+        // accuracy, was CORRECT wherever it claimed to be. The task page
+        // always sends one, so a reading without it is made by hand or broken.
+        expect(locationVerdict(TARGET, TARGET, 200, null)).toBe("UNVERIFIED")
+        expect(locationVerdict(TARGET, M111, 200, null)).toBe("UNVERIFIED")
+        expect(locationVerdict(TARGET, M111, 50, null)).toBe("UNVERIFIED")
+    })
+
+    it("won't decide one whose accuracy isn't a number above zero, which reads as none", () => {
+        // Zero, negative, not a number or too big to be one: each was null,
+        // and null was exact, so the worst readings were the most trusted.
+        for (const accuracy of [0, -5, '"nonsense"', "1e999"]) {
+            const stored = `{"latitude":30,"longitude":31,"accuracy":${accuracy}}`
+            expect(locationVerdict(TARGET, TARGET, 200, extractAccuracy(stored)), stored).toBe("UNVERIFIED")
+        }
     })
 })
 
@@ -78,6 +88,7 @@ describe("accuracy is read back from what was stored", () => {
         expect(extractAccuracy('{"accuracy":0}')).toBeNull()
         expect(extractAccuracy('{"accuracy":-5}')).toBeNull()
         expect(extractAccuracy('{"accuracy":"nonsense"}')).toBeNull()
+        expect(extractAccuracy('{"accuracy":1e999}')).toBeNull()
     })
 
     it("survives the formats this column actually holds", () => {
@@ -127,6 +138,13 @@ describe("historical verdicts are left alone", () => {
         // already acted on, and filling the queue with cases no person can
         // resolve, because the reading that would settle them no longer exists.
         expect(service).toContain("if (accuracy === null && c.verificationStatus) return c")
+    })
+
+    it("lets the rule, not the caller, say what a reading with no accuracy is", () => {
+        // Neither site may stand in a number for a missing accuracy: that is
+        // how a reading made by hand became exact.
+        expect(service, "a site gives a missing accuracy a value of its own").not.toMatch(/extractAccuracy\([^)]*\)\s*(\?\?|\|\|)/)
+        expect(readFileSync("lib/location.ts", "utf8"), "the rule takes a missing accuracy as exact again").not.toMatch(/accuracyMeters\s*(\?\?|\|\|)\s*0/)
     })
 
     it("routes both verification sites through the same rule", () => {

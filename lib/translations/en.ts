@@ -1753,6 +1753,7 @@ export const en = {
         powered_by: "Powered by",
         verified_unclear_title: "Needs review",
         verified_unclear_hint: "The reading was not precise enough to decide. Check it and set the result.",
+        verified_no_accuracy_hint: "The reading didn't say how precise it was. Check it and set the result.",
         location_failed_denied: "Location permission was refused. Allow it in your browser settings, then try again.",
         location_failed_unavailable: "No location could be read. Move somewhere with a clearer view of the sky and try again.",
         location_searching: "Searching for a signal…",

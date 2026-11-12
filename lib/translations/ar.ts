@@ -1693,6 +1693,7 @@ export const ar = {
         powered_by: "بدعم من",
         verified_unclear_title: "يحتاج مراجعة",
         verified_unclear_hint: "لم تكن القراءة دقيقة بما يكفي للحكم. يُرجى مراجعتها وتحديد النتيجة.",
+        verified_no_accuracy_hint: "لم تذكر القراءة مدى دقتها. يُرجى مراجعتها وتحديد النتيجة.",
         location_failed_denied: "تم رفض إذن الموقع. يُرجى السماح به من إعدادات المتصفح ثم المحاولة مرة أخرى.",
         location_failed_unavailable: "تعذر قراءة الموقع. يُرجى الانتقال إلى مكان أكثر انفتاحًا ثم المحاولة مرة أخرى.",
         location_searching: "جارٍ البحث عن إشارة…",
