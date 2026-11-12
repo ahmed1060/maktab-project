@@ -170,6 +170,10 @@ reminder endpoints.
 Only when face verification will actually be used (mobile/README.md, Face
 verification).
 
+**Postponed** (decided with the product owner on 2026-11-12): until Nizmo
+is live and stable. Until then face checks stay switched off for companies,
+and the face check for testing (FACE_CHECK.md) stays for testing only.
+
 - [ ] **Choose the SDK.** It must match **on the phone**: no face may go to
       the SDK's maker or a cloud service. Shortlist (October 2026; prices
       come from sales, and most offer a free trial licence):

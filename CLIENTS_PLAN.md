@@ -378,6 +378,14 @@ needs no data change.
 - **A check radius per location.** Each location can have its own radius.
   When it's left empty, the default of 70 m is used. The map shows the
   radius as a circle around the pin.
+- **A location that doesn't say how precise it is decides nothing.** A
+  submitted location is a circle: the point, and the accuracy the phone or
+  browser gave with it. It's Correct only when the whole circle is inside
+  the radius, Wrong only when the whole circle is outside, and Needs review
+  otherwise, for a person to settle. A location sent without its accuracy,
+  or with one that isn't a number above zero, is Needs review too; it's
+  never taken as exact. The task page always sends the accuracy, so only a
+  request made by hand, or a broken reading, comes without it (#260).
 - **A pin corrected later applies to open tasks.** Tasks link to the
   location, so they use the corrected pin and radius. Location checks
   already done keep their result. Old tasks with typed locations keep
@@ -2664,3 +2672,9 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-11:** The cash advance screens' Arabic is neutral as to who
   reads it and who holds the advance (#254); the English and what each
   screen does don't change.
+- **2026-11-12:** §2.5 says a location sent without its accuracy is Needs
+  review, never taken as exact (#260). Taking it as exact was meant only
+  for checks made before the accuracy was kept, but it held for new ones
+  too, so a location typed into a request by hand could be marked Correct.
+  Checks already decided keep their result; one never decided gets Needs
+  review when its task's location changes.
