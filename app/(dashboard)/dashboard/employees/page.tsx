@@ -27,6 +27,8 @@ import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import type { TranslationKey } from '@/lib/translations'
 import { employeesListUrl, type EmployeesQuery } from './list-query'
 import { fetchRetrying } from '@/lib/swr-fetcher'
+import { useLiveOnline } from '@/components/LiveUpdates'
+import { onlineTopics } from '@/lib/live-updates'
 
 interface Employee {
     id: string
@@ -42,6 +44,9 @@ interface Employee {
     // relation, so a colleague's whole row does not ride along in a list that
     // only prints a name.
     teamLeader?: { id: string; firstName: string; lastName: string } | null
+    // Its id: a Super Admin with no company in view hears who comes and goes
+    // in each company on the page (part 6b).
+    company?: { id: string; name: string } | null
     // When they can sign in again, if they're locked out now; only for whoever may unlock (lib/sign-in-lock.ts).
     signInLockedUntil?: string | null
     ownPasswordPausedUntil?: string | null
@@ -130,6 +135,10 @@ export default function EmployeesPage() {
     const employees: Employee[] = failed ? [] : result?.data?.data || []
     const totalPages: number = result?.data?.totalPages || 0
     const total: number = result?.data?.total || 0
+    // The badge as people come and go, in place, untinted (REALTIME_PLAN.md
+    // part 6b, DESIGN.md §8): what's typed, the filters and the page stay.
+    // Only for whoever may see the list: the channel lets nobody else in.
+    useLiveOnline(viewer && can('employees.view') ? onlineTopics(viewer, selectedCompanyId, employees.map(e => e.company?.id)) : [], () => { void mutate() }, result?.data?.onlineRunsOutInMs)
 
     // Another company: its first page, without a team or picks from the last
     // one. Fewer pages, as when the last person on the last page is deleted:

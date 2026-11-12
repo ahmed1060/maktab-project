@@ -43,6 +43,23 @@ export function presenceStatus(status: string, lastSeen: Date | string | null, n
     return now.getTime() - new Date(lastSeen).getTime() > ONLINE_WINDOW_MS ? "OFFLINE" : "ACTIVE"
 }
 
+/**
+ * How long until the first person a list shows online would show offline,
+ * if nothing is heard from them first; null with nobody online. A tab whose
+ * leaving wasn't heard runs out with nothing written, so no live signal says
+ * so (part 6b, REALTIME_PLAN.md §3): the list is drawn again then. One
+ * millisecond past the window, as presenceStatus counts it.
+ */
+export function onlineRunsOutIn(people: { status: string; lastSeen: Date | string | null }[], now: Date = new Date()): number | null {
+    let first: number | null = null
+    for (const { status, lastSeen } of people) {
+        if (lastSeen === null || presenceStatus(status, lastSeen, now) !== "ACTIVE") continue
+        const left = new Date(lastSeen).getTime() + ONLINE_WINDOW_MS + 1 - now.getTime()
+        if (first === null || left < first) first = left
+    }
+    return first
+}
+
 /** The list's Online and Offline filters, asking what presenceStatus shows. */
 export function presenceWhere(filter: "ACTIVE" | "OFFLINE", now: Date = new Date()) {
     // A tab's row stays as it goes, marked gone, so a report sent before that,

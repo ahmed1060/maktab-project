@@ -11,7 +11,7 @@ import { ownPasswordPausedUntil } from "@/lib/own-password"
 import { UserService } from "@/lib/services/user.service"
 import { parsePaging } from "@/lib/pagination"
 import { buildUserWhereClause, buildUserOrderBy } from "@/lib/services/user-query"
-import { presenceStatus } from "@/lib/presence"
+import { onlineRunsOutIn, presenceStatus } from "@/lib/presence"
 import { verifyResourceAccess } from "@/lib/security"
 import { can } from "@/lib/permissions/can"
 import { shapeUser } from "@/lib/permissions/shape"
@@ -169,9 +169,10 @@ export const GET = withStandardHandler(async (req, session) => {
     const paused = can(session.user, "employees.reset_password") ? await ownPasswordPausedUntil(users.map(u => u.id)) : null
 
     // Each one's newest tab stays here: it says nothing the badge doesn't.
+    const now = new Date()
     const usersWithStatus = users.map(({ openTabs, ...user }) => {
         // Online while a tab of theirs is open (lib/presence.ts).
-        const effectiveStatus = presenceStatus(user.status, openTabs[0]?.seenAt ?? null)
+        const effectiveStatus = presenceStatus(user.status, openTabs[0]?.seenAt ?? null, now)
         return {
             ...user, status: effectiveStatus,
             ...(locks ? { signInLockedUntil: locks?.get(user.id)?.toISOString() ?? null } : {}),
@@ -180,7 +181,11 @@ export const GET = withStandardHandler(async (req, session) => {
     })
 
     return ApiResponse.success({
-        data: usersWithStatus, total, page, totalPages: Math.ceil(total / limit)
+        data: usersWithStatus, total, page, totalPages: Math.ceil(total / limit),
+        // When the list is drawn again with nothing heard, as the first person
+        // on it online would run out (part 6b): a tab whose leaving wasn't
+        // heard runs out with nothing written, so no live signal says so.
+        onlineRunsOutInMs: onlineRunsOutIn(users.map(u => ({ status: u.status, lastSeen: u.openTabs[0]?.seenAt ?? null })), now),
     })
 })
 

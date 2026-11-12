@@ -1,4 +1,4 @@
-import type { LiveDrawer, LiveTopic } from "./live-updates"
+import type { LiveDrawer, LiveTopic, LiveWants } from "./live-updates"
 
 /**
  * A tab's connection to its live-update channels (REALTIME_PLAN.md), apart
@@ -18,6 +18,9 @@ import type { LiveDrawer, LiveTopic } from "./live-updates"
  *     change saved while the page was on its way, before the channel was
  *     there to hear it; and again, after a laptop slept or a phone lost its
  *     signal, for what was missed meanwhile.
+ *   - Joins, too, the channels the screens open want heard (part 6b, who's
+ *     online), once it has its token, and leaves each as no screen wants it
+ *     any more; each is drawn once as it's joined, as its own are.
  *   - Asks for the next token five minutes before the one held ends, as
  *     Supabase closes a channel whose token has ended.
  *   - A token or Supabase's client that doesn't come, as when offline or
@@ -48,6 +51,9 @@ export class LiveConnection {
     /** The next renewal, or the next try at starting. */
     private timer: ReturnType<typeof setTimeout> | undefined
     private channels: LiveChannel[] = []
+    /** The channels screens want, beyond its own, by topic. */
+    private readonly wanted = new Map<string, LiveChannel>()
+    private stopWatching: (() => void) | null = null
     private client: LiveClient | null = null
     private setToken: ((token: string | null) => void) | null = null
 
@@ -57,6 +63,8 @@ export class LiveConnection {
         /** Supabase's client, loaded only once it's needed, and where its token is kept. */
         load: () => Promise<{ client: LiveClient | null; setToken: (token: string | null) => void }>
         drawer: LiveDrawer
+        /** The channels the screens open want heard (part 6b). */
+        wants?: LiveWants
     }) {}
 
     async start() {
@@ -88,14 +96,41 @@ export class LiveConnection {
                     drawer.signal("requests")
                     drawer.signal("advances")
                 }))
+        const { wants } = this.deps
+        if (wants) {
+            for (const topic of wants.topics()) this.join(client, topic)
+            this.stopWatching = wants.watch((topic, wanted) => {
+                if (wanted) this.join(client, topic)
+                else this.leave(topic)
+            })
+        }
         this.renewBy(grant.expiresAt)
+    }
+
+    /** Who's online (part 6b): heard only that someone came or went. */
+    private join(client: LiveClient, topic: string) {
+        if (this.wanted.has(topic)) return
+        const { drawer } = this.deps
+        this.wanted.set(topic, client.channel(topic, { config: { private: true } })
+            .on("broadcast", { event: "changed" }, () => drawer.signal("online"))
+            .subscribe(status => { if (status === "SUBSCRIBED") drawer.signal("online") }))
+    }
+
+    private leave(topic: string) {
+        const channel = this.wanted.get(topic)
+        if (!channel) return
+        this.wanted.delete(topic)
+        void this.client?.removeChannel(channel)
     }
 
     stop() {
         this.stopped = true
         clearTimeout(this.timer)
-        for (const channel of this.channels) void this.client?.removeChannel(channel)
+        this.stopWatching?.()
+        this.stopWatching = null
+        for (const channel of [...this.channels, ...this.wanted.values()]) void this.client?.removeChannel(channel)
         this.channels = []
+        this.wanted.clear()
         this.setToken?.(null)
     }
 

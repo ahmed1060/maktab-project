@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useEffectEvent, useState, type ReactNode } from 'react'
-import { LiveDrawer, type LiveKind } from '@/lib/live-updates'
+import { LiveDrawer, LiveWants, type LiveKind } from '@/lib/live-updates'
 import { LiveConnection, type Answer, type LiveClient } from '@/lib/live-connection'
 import { fetchRetrying } from '@/lib/swr-fetcher'
 
@@ -16,7 +16,7 @@ import { fetchRetrying } from '@/lib/swr-fetcher'
  * nothing connects, and every screen goes on as today.
  */
 
-const LiveContext = createContext<LiveDrawer | null>(null)
+const LiveContext = createContext<{ drawer: LiveDrawer; wants: LiveWants } | null>(null)
 
 async function askForToken(): Promise<Answer> {
     // Tried again, as anything loaded is (DESIGN.md §5.5); without an answer,
@@ -36,6 +36,10 @@ async function loadClient() {
 
 export function LiveUpdates({ scope, children }: { scope: string | null; children: ReactNode }) {
     const [drawer] = useState(() => new LiveDrawer({ hidden: () => document.visibilityState === 'hidden' }))
+    // The channels the screens open want heard (part 6b), kept across the
+    // connections made for each company in view.
+    const [wants] = useState(() => new LiveWants())
+    const [live] = useState(() => ({ drawer, wants }))
 
     // What waited while the tab was hidden is drawn as it's shown again.
     useEffect(() => {
@@ -46,12 +50,12 @@ export function LiveUpdates({ scope, children }: { scope: string | null; childre
 
     // Joined again for the company in view, when the Super Admin picks another.
     useEffect(() => {
-        const connection = new LiveConnection({ ask: askForToken, load: loadClient, drawer })
+        const connection = new LiveConnection({ ask: askForToken, load: loadClient, drawer, wants })
         connection.start().catch(error => console.error('[live] could not connect', error))
         return () => connection.stop()
-    }, [drawer, scope])
+    }, [drawer, wants, scope])
 
-    return <LiveContext.Provider value={drawer}>{children}</LiveContext.Provider>
+    return <LiveContext.Provider value={live}>{children}</LiveContext.Provider>
 }
 
 /**
@@ -61,7 +65,33 @@ export function LiveUpdates({ scope, children }: { scope: string | null; childre
  * route: router.refresh(), or its data's mutate().
  */
 export function useLive(kind: LiveKind, onChange: () => void) {
-    const drawer = useContext(LiveContext)
+    const live = useContext(LiveContext)
     const draw = useEffectEvent(onChange)
-    useEffect(() => drawer?.on(kind, () => draw()), [drawer, kind])
+    useEffect(() => live?.drawer.on(kind, () => draw()), [live, kind])
+}
+
+/**
+ * Who's online (part 6b): while a list showing the badge is open, it hears
+ * when someone in the companies it shows comes or goes (`topics`, from
+ * onlineTopics), and calls `onChange` to draw itself again, untinted
+ * (DESIGN.md §8). And again as its first person online would run out with
+ * nothing heard (`runsOutInMs`, from the list's answer): a tab whose leaving
+ * wasn't heard runs out with nothing written, so no signal says so. Both
+ * wait for the tab to be shown, as every signal does.
+ */
+export function useLiveOnline(topics: string[], onChange: () => void, runsOutInMs: number | null | undefined) {
+    const live = useContext(LiveContext)
+    useLive('online', onChange)
+    // By value: the list makes a new array on every draw.
+    const wanted = topics.join(' ')
+    useEffect(() => {
+        if (!live || !wanted) return
+        const releases = wanted.split(' ').map(topic => live.wants.want(topic))
+        return () => { for (const release of releases) release() }
+    }, [live, wanted])
+    useEffect(() => {
+        if (!live || runsOutInMs == null) return
+        const timer = setTimeout(() => live.drawer.signal('online'), runsOutInMs)
+        return () => clearTimeout(timer)
+    }, [live, runsOutInMs])
 }

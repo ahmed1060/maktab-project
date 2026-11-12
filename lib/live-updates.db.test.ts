@@ -419,6 +419,114 @@ describe.skipIf(!ADMIN_URL)("live updates, in Postgres", () => {
         })
     })
 
+    // Part 6b: who's online, from each tab's row (part 6a). Written as the
+    // app writes it (UserService.tabSeen): one statement that keeps a report
+    // only if none after it has arrived.
+    describe("who's online", () => {
+        const online = (company: string) => ({ topic: `online:${company}`, event: "changed", payload: {}, private: true })
+        const AT = Date.parse("2026-11-12T09:00:00Z")
+        const minutes = (n: number) => new Date(AT + n * 60_000).toISOString()
+        const report = (user: string, tab: string, here: boolean, seq: number, at: string, sid = "s1") => db.query(`
+            INSERT INTO "OpenTab" ("userId", "tabId", "seenAt", "seq", "here", "sid")
+            VALUES ($1, $2, ($3::timestamptz AT TIME ZONE 'UTC'), $4, $5, $6)
+            ON CONFLICT ("userId", "tabId") DO UPDATE
+            SET "seenAt" = EXCLUDED."seenAt", "seq" = EXCLUDED."seq", "here" = EXCLUDED."here", "sid" = EXCLUDED."sid"
+            WHERE "OpenTab"."seq" <= EXCLUDED."seq" OR "OpenTab"."sid" IS DISTINCT FROM EXCLUDED."sid"`, [user, tab, at, seq, here, sid])
+
+        beforeEach(async () => {
+            await db.query(`DELETE FROM "OpenTab"`)
+            await sent()
+        })
+
+        it("a tab here for the first time, gone, and here again, to its person's company, saying nothing of who", async () => {
+            await report("u2", "tab-a", true, 1, minutes(0))
+            expect(await sent(), "here").toEqual([online("c1")])
+            await report("u2", "tab-a", false, 2, minutes(1))
+            expect(await sent(), "gone").toEqual([online("c1")])
+            await report("u2", "tab-a", true, 3, minutes(2))
+            expect(await sent(), "here again").toEqual([online("c1")])
+        })
+
+        it("not the heartbeat's beat, which keeps a tab here as it was, nor a report kept out by the order", async () => {
+            await report("u2", "tab-a", true, 1, minutes(0))
+            await sent()
+            await report("u2", "tab-a", true, 2, minutes(15))
+            await report("u2", "tab-a", true, 3, minutes(30))
+            expect(await sent(), "beats").toEqual([])
+            await report("u2", "tab-a", false, 1, minutes(31))
+            expect(await sent(), "a report from before the last").toEqual([])
+            expect((await db.query(`SELECT here FROM "OpenTab" WHERE "tabId" = 'tab-a'`)).rows[0].here).toBe(true)
+        })
+
+        // A phone pauses the page out of sight, and the tab's row runs out
+        // with nothing written: coming back is a coming, though the row says
+        // here throughout.
+        it("a tab here again after its row ran out, as a phone wakes the app", async () => {
+            await report("u2", "tab-a", true, 1, minutes(0))
+            await sent()
+            await report("u2", "tab-a", true, 2, minutes(32))
+            expect(await sent(), "within the window").toEqual([])
+            await report("u2", "tab-a", true, 3, minutes(65))
+            expect(await sent(), "after it ran out").toEqual([online("c1")])
+        })
+
+        it("signing out, once for the statement however many tabs it closed", async () => {
+            await report("u2", "tab-a", true, 1, minutes(0))
+            await report("u2", "tab-b", true, 1, minutes(0))
+            await report("u2", "tab-c", false, 2, minutes(0))
+            await sent()
+            // As UserService.closeSessionTabs writes it.
+            await db.query(`UPDATE "OpenTab" SET here = false, "seenAt" = $1::timestamp, seq = 2147483647
+                WHERE "userId" = 'u2' AND sid = 's1' AND (here OR seq < 2147483647)`, [minutes(1)])
+            expect(await sent()).toEqual([online("c1")])
+        })
+
+        it("once for each company a statement touched", async () => {
+            await db.query(`INSERT INTO "OpenTab" ("userId", "tabId", "seenAt", seq, here, sid) VALUES
+                ('u1', 'tab-1', now(), 1, true, 's'), ('u2', 'tab-2', now(), 1, true, 's'), ('u3', 'tab-3', now(), 1, true, 's')`)
+            expect(await sent()).toEqual([online("c1"), online("c2")])
+            // Nothing changed, nothing to tell.
+            await db.query(`UPDATE "OpenTab" SET seq = 2 WHERE "tabId" = 'nobody'`)
+            expect(await sent()).toEqual([])
+        })
+
+        it("not a tab that arrives already gone, nor the daily sweep of rows that ran out", async () => {
+            await report("u2", "tab-a", false, 1, minutes(0))
+            expect(await sent(), "arrives gone").toEqual([])
+            await report("u2", "tab-b", true, 1, minutes(0))
+            await sent()
+            await db.query(`DELETE FROM "OpenTab" WHERE "seenAt" < $1::timestamp`, [minutes(40)])
+            expect(await sent(), "swept").toEqual([])
+        })
+
+        it("heard by those of the company who may see the Employees list, and each Super Admin, and nobody else", async () => {
+            const LISTS = { ...HANA, sees_online: true }
+            expect(await hears(LISTS, "online:c1")).toBe(true)
+            expect(await hears(LISTS, "online:c2")).toBe(false)
+            expect(await hears(HANA, "online:c1"), "without the Employees list").toBe(false)
+            expect(await hears({ ...LISTS, company_id: null }, "online:")).toBe(false)
+            expect(await hears(SARA, "online:c1")).toBe(true)
+            expect(await hears(SARA, "online:c2")).toBe(true)
+            expect(await hears(SARA, "online:c1:x")).toBe(false)
+            expect(await hears(LISTS, "online:c1", "presence")).toBe(false)
+            expect(await hears(null, "online:c1")).toBe(false)
+            // And the list's channel opens no other.
+            expect(await hears(LISTS, "tasks:c1")).toBe(true)
+            expect(await hears(LISTS, "notices:u2")).toBe(false)
+        })
+
+        it("never stopping the report it's for when it can't be sent", async () => {
+            await db.query("SET test.fail_send = 'on'")
+            try {
+                await report("u2", "tab-z", true, 1, minutes(0))
+            } finally {
+                await db.query("RESET test.fail_send")
+            }
+            expect((await db.query(`SELECT count(*)::int AS n FROM "OpenTab" WHERE "tabId" = 'tab-z'`)).rows[0].n).toBe(1)
+            expect(await sent()).toEqual([])
+        })
+    })
+
     describe("a signal that can't be sent", () => {
         it("never stops the change from being saved", async () => {
             await db.query("SET test.fail_send = 'on'")

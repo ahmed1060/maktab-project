@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
-import { AWAY_AFTER_MS, HEARTBEAT_MS, ONLINE_WINDOW_MS, presenceStatus, presenceWhere } from "./presence"
+import { AWAY_AFTER_MS, HEARTBEAT_MS, ONLINE_WINDOW_MS, onlineRunsOutIn, presenceStatus, presenceWhere } from "./presence"
 import { buildUserWhereClause } from "./services/user-query"
 import { withGrants } from "@/lib/permissions/test-actors"
 
@@ -58,9 +58,47 @@ describe("a person's status as the list shows it", () => {
 
     it("is what the people list sends, from each person's newest tab", () => {
         const route = read("app/api/users/route.ts")
-        expect(route).toContain("presenceStatus(user.status, openTabs[0]?.seenAt ?? null)")
+        expect(route).toContain("presenceStatus(user.status, openTabs[0]?.seenAt ?? null, now)")
         expect(route).toMatch(/openTabs: \{ where: \{ here: true \}, orderBy: \{ seenAt: "desc" \}, take: 1, select: \{ seenAt: true \} \}/)
         expect(route).not.toContain("presenceStatus(user.status, user.lastActivity)")
+    })
+})
+
+// Part 6b: a tab whose leaving wasn't heard runs out with nothing written,
+// so no signal says so. The list is drawn again as the first person it shows
+// online would run out, by the server's clock.
+describe("when the list is drawn again, with nothing heard", () => {
+    it("is as the first person it shows online would run out", () => {
+        expect(onlineRunsOutIn([
+            { status: "ACTIVE", lastSeen: ago(60_000) },
+            { status: "ACTIVE", lastSeen: ago(10 * 60_000) },
+            { status: "ACTIVE", lastSeen: null },
+        ], NOW)).toBe(ONLINE_WINDOW_MS - 10 * 60_000 + 1)
+    })
+
+    it("is never, with nobody shown online", () => {
+        expect(onlineRunsOutIn([], NOW)).toBeNull()
+        expect(onlineRunsOutIn([{ status: "ACTIVE", lastSeen: null }, { status: "SUSPENDED", lastSeen: ago(1_000) }], NOW)).toBeNull()
+        expect(onlineRunsOutIn([{ status: "ACTIVE", lastSeen: ago(ONLINE_WINDOW_MS + 1) }], NOW)).toBeNull()
+    })
+
+    it("is a moment on for someone on the edge, once they'd show offline", () => {
+        expect(onlineRunsOutIn([{ status: "ACTIVE", lastSeen: ago(ONLINE_WINDOW_MS) }], NOW)).toBe(1)
+        expect(presenceStatus("ACTIVE", ago(ONLINE_WINDOW_MS), new Date(NOW.getTime() + 1))).toBe("OFFLINE")
+    })
+
+    it("is what the people list sends with its page, from the same moment as each badge", () => {
+        const route = read("app/api/users/route.ts")
+        expect(route).toContain("const now = new Date()")
+        expect(route).toContain("presenceStatus(user.status, openTabs[0]?.seenAt ?? null, now)")
+        expect(route).toContain("onlineRunsOutInMs: onlineRunsOutIn(users.map(u => ({ status: u.status, lastSeen: u.openTabs[0]?.seenAt ?? null })), now),")
+    })
+
+    // The database signals a tab here again after its row ran out: it reads
+    // the window as this file does.
+    it("and the database's own reading of a row that ran out is the same window", () => {
+        const migration = read("prisma/migrations/20261214000000_live_online/migration.sql")
+        expect(migration).toContain(`interval '${ONLINE_WINDOW_MS / 60_000} minutes'`)
     })
 })
 

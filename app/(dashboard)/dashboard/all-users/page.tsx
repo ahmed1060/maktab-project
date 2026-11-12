@@ -25,6 +25,8 @@ import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped
 import type { TranslationKey } from '@/lib/translations'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useViewer } from '@/lib/useCan'
+import { useLiveOnline } from '@/components/LiveUpdates'
+import { onlineTopics } from '@/lib/live-updates'
 
 /**
  * All users (the Super Admin's pages part 3c, UI_PLAN.md §5 step 5): everyone
@@ -49,7 +51,7 @@ type Person = {
     signInLockedUntil?: string | null
     ownPasswordPausedUntil?: string | null
 }
-type Listed = { data: Person[]; total: number; page: number; totalPages: number }
+type Listed = { data: Person[]; total: number; page: number; totalPages: number; onlineRunsOutInMs?: number | null }
 const LIMIT = 10
 
 /** The email someone had: deleting someone keeps it under a suffix, so the address is free again. */
@@ -102,6 +104,10 @@ export default function AllUsersPage() {
     // deleted for good: the last page there is now.
     const pageCount = listed?.totalPages
     useAdjustOnChange([pageCount], () => { if (pageCount !== undefined) setPage(p => pageInRange(p, pageCount)) })
+    // The badge as people come and go, in place, untinted (REALTIME_PLAN.md
+    // part 6b, DESIGN.md §8): the company picked, or each on the page.
+    // Nobody who has left is online.
+    useLiveOnline(viewer && isSuperAdmin && !left ? onlineTopics(viewer, companyId || null, (listed?.data ?? []).map(p => p.company?.id)) : [], () => { void mutate() }, listed?.onlineRunsOutInMs)
 
     if (!isSuperAdmin) return <AccessDenied superAdmins />
 
