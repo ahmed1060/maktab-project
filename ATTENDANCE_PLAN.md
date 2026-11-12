@@ -123,7 +123,7 @@ by then, and this plan names real models and files that may have changed.
 
 ### Round 9 — terminals that connect straight to Nizmo
 
-Decisions 1, 2, 9, 10 and 11 are the owner's (12 November 2026). The rest are proposed
+Decisions 1, 2, 9, 10, 11 and 12 are the owner's (12 November 2026). The rest are proposed
 with the plan (#269), for the owner to confirm or change before part 2 starts.
 
 | # | Topic | Decision |
@@ -139,7 +139,7 @@ with the plan (#269), for the owner to confirm or change before part 2 starts.
 | 9 | Brands | **A list kept from the screen, not written into the code**, with Convoy on it from the start beside ZKTeco and Hikvision. A brand is what is printed on a terminal; each speaks one of the protocols Nizmo knows. A brand speaking a known protocol is added from the screen; one speaking another needs that protocol built first (§17.9). |
 | 10 | Who keeps the list | **The Super Admin only, one list for every company**, on a Terminal brands page under Templates. A company's Admin picks from it and can't add, change or retire a brand (§17.9). |
 | 11 | Who sets terminals up | **A permission of its own, "Set up fingerprint terminals"**, since it decides whose scans count as attendance. Someone who can open the Attendance settings tab but doesn't hold it never sees the Fingerprint terminals section (§17.10). |
-| 12 | *Proposed:* the company's Admin | **The Super Admin decides, company by company, with a switch only they can change, off to start.** Off: only the Super Admin sets the company's terminals up. On: those holding the permission do, the built-in Admin among them. The permission is high-risk: its changes ask for the step-up code (§17.10). |
+| 12 | The company's Admin | **The Super Admin decides, company by company, with a switch only they can change, off to start.** Off: only the Super Admin sets the company's terminals up. On: those holding the permission do, the built-in Admin among them. The permission is high-risk: its changes ask for the step-up code (§17.10). |
 
 ---
 
@@ -1691,6 +1691,18 @@ the trial on real terminals (§17.8) unless they say otherwise.
    installed at a customer, not in the trial). A terminal is set by hand, so
    moving Nizmo to its own domain later means visiting every terminal. The
    address in the setup card is a setting, not written into the code.
+7. **Signing the agent** (the owner's purchase, not the trial). The Attendance
+   agent workflow signs with a `.pfx` file from GitHub secrets, but since June
+   2023 a code signing key must live on a hardware token or a certificate
+   authority's cloud HSM, so no new certificate comes as a `.pfx`. Microsoft's
+   own signing service takes organizations in the US, Canada, the EU and the
+   UK only. So a certificate bought now is an OV certificate from a CA that
+   signs from its cloud (SSL.com's eSigner, for one), and the workflow's
+   signing step changes to that CA's tool, its credentials in GitHub secrets.
+   Signing names the publisher in place of "Unknown publisher", but Windows
+   SmartScreen warns about a new file until it has built a reputation, signed
+   or not, so until then whoever installs the agent chooses Run anyway, as
+   they do unsigned.
 
 ---
 
