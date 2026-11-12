@@ -419,6 +419,126 @@ describe.skipIf(!ADMIN_URL)("live updates, in Postgres", () => {
         })
     })
 
+    // Part 4b: costs and charges. A cost added or removed comes with its
+    // task's own change, in the same transaction (its total and shares),
+    // which part 1 already tells the company; so does a share paid. What
+    // changes a cost without its task, its charge, is told to the company
+    // with a signal of its own. The Super Admin hears every change to costs
+    // on their own channel, as they hear no company's with none in view.
+    describe("a company's costs and charges", () => {
+        const costs = (topic: string) => ({ topic, event: "costs", payload: {}, private: true })
+        const changed = (topic: string) => ({ topic, event: "changed", payload: {}, private: true })
+        const COST_COLUMNS = `"TaskCost"(id, "taskId", "authorId", amount)`
+
+        beforeAll(async () => {
+            await db.query(`INSERT INTO ${TASK_COLUMNS} VALUES ${task("t-cost1", "c1")}, ${task("t-cost2", "c2")}, ${task("t-plain", "c1")}`)
+        })
+
+        it("a cost added or removed, to each Super Admin alone: the company hears its task change with it", async () => {
+            await db.query(`INSERT INTO ${COST_COLUMNS} VALUES ('k1', 't-cost1', 'u2', 100), ('k2', 't-cost1', 'u2', 50), ('k3', 't-cost2', 'u3', 70)`)
+            expect(await sent(), "added").toEqual([costs("notices:sa1")])
+            await db.query(`DELETE FROM "TaskCost" WHERE id = 'k2'`)
+            expect(await sent(), "removed").toEqual([costs("notices:sa1")])
+            // Nothing removed, nothing to tell.
+            await db.query(`DELETE FROM "TaskCost" WHERE id = 'nobody'`)
+            expect(await sent()).toEqual([])
+        })
+
+        // As the app adds one (TaskService.submit): its task first, then the cost.
+        it("a cost added with its task, as the app adds it: the company hears the task, each Super Admin the cost", async () => {
+            await db.query("BEGIN")
+            try {
+                await db.query(`UPDATE "Task" SET "totalCost" = 30, status = 'PENDING_CONFIRMATION' WHERE id = 't-plain'`)
+                await db.query(`INSERT INTO ${COST_COLUMNS} VALUES ('k4', 't-plain', 'u2', 30)`)
+                await db.query("COMMIT")
+            } catch (error) {
+                await db.query("ROLLBACK")
+                throw error
+            }
+            expect(await sent()).toEqual([changed("tasks:c1"), costs("notices:sa1")])
+            await db.query(`DELETE FROM "TaskCost" WHERE id = 'k4'`)
+            await db.query(`UPDATE "Task" SET "totalCost" = 0, status = 'IN_PROGRESS' WHERE id = 't-plain'`)
+            await sent()
+        })
+
+        it("a charge changing, to the company and each Super Admin, saying nothing of what", async () => {
+            await db.query(`UPDATE "TaskCost" SET "serviceFee" = 10 WHERE id = 'k1'`)
+            expect(await sent(), "a fee").toEqual([costs("tasks:c1"), costs("notices:sa1")])
+            await db.query(`UPDATE "TaskCost" SET "notCharged" = true WHERE id = 'k1'`)
+            expect(await sent(), "left off").toEqual([costs("tasks:c1"), costs("notices:sa1")])
+            await db.query(`UPDATE "TaskCost" SET "notCharged" = false WHERE id = 'k1'`)
+            expect(await sent(), "charged again").toEqual([costs("tasks:c1"), costs("notices:sa1")])
+            await db.query(`UPDATE "TaskCost" SET "collectedAt" = now(), "collectedById" = 'u1' WHERE id = 'k1'`)
+            expect(await sent(), "collected").toEqual([costs("tasks:c1"), costs("notices:sa1")])
+            await db.query(`UPDATE "TaskCost" SET "collectedAt" = NULL, "collectedById" = NULL WHERE id = 'k1'`)
+            expect(await sent(), "uncollected").toEqual([costs("tasks:c1"), costs("notices:sa1")])
+        })
+
+        it("once for each company a statement touched, and once for each Super Admin", async () => {
+            await db.query(`UPDATE "TaskCost" SET "collectedAt" = now() WHERE id IN ('k1', 'k3')`)
+            expect(await sent()).toEqual([costs("tasks:c1"), costs("tasks:c2"), costs("notices:sa1")])
+            // Nothing changed, nothing to tell.
+            await db.query(`UPDATE "TaskCost" SET "collectedAt" = NULL WHERE id = 'nobody'`)
+            expect(await sent()).toEqual([])
+            await db.query(`UPDATE "TaskCost" SET "collectedAt" = NULL WHERE id IN ('k1', 'k3')`)
+            await sent()
+        })
+
+        // The lists filter by a cost's name from the saved list (CLIENTS_PLAN.md §5.9).
+        it("a cost's name merged into another or deleted, as the lists filter by it", async () => {
+            await db.query(`INSERT INTO "ListEntry"(id, "companyId", kind, name, "updatedAt") VALUES ('le1', 'c1', 'COST_NAME', 'Fuel', now()), ('le2', 'c1', 'COST_NAME', 'Petrol', now())`)
+            await db.query(`UPDATE "TaskCost" SET "nameEntryId" = 'le1' WHERE id = 'k1'`)
+            await sent()
+            await db.query(`UPDATE "TaskCost" SET "nameEntryId" = 'le2' WHERE "nameEntryId" = 'le1'`)
+            expect(await sent(), "merged").toEqual([costs("tasks:c1"), costs("notices:sa1")])
+            await db.query(`DELETE FROM "ListEntry" WHERE id = 'le2'`)
+            expect(await sent(), "deleted").toEqual([costs("tasks:c1"), costs("notices:sa1")])
+            expect((await db.query(`SELECT "nameEntryId" FROM "TaskCost" WHERE id = 'k1'`)).rows[0].nameEntryId).toBeNull()
+            await db.query(`DELETE FROM "ListEntry" WHERE id = 'le1'`)
+            await sent()
+        })
+
+        it("a task with costs changing, to each Super Admin too; one without, to its company alone, as before", async () => {
+            await db.query(`UPDATE "Task" SET "memberPaymentStatus" = '{"u2": "PAID"}' WHERE id = 't-cost1'`)
+            expect(await sent(), "paid").toEqual([costs("notices:sa1"), changed("tasks:c1")])
+            await db.query(`UPDATE "Task" SET title = 'Renamed' WHERE id IN ('t-cost1', 't-cost2')`)
+            expect(await sent(), "two companies, one statement").toEqual([costs("notices:sa1"), changed("tasks:c1"), changed("tasks:c2")])
+            await db.query(`UPDATE "Task" SET title = 'Renamed' WHERE id = 't-plain'`)
+            expect(await sent(), "no costs").toEqual([changed("tasks:c1")])
+        })
+
+        // Its costs go with it, before its own trigger could find them.
+        it("a task deleted with its costs, to each Super Admin as its costs go, and to its company as before", async () => {
+            await db.query(`DELETE FROM "Task" WHERE id = 't-cost2'`)
+            const told = await sent()
+            expect(told.filter(s => s.event === "costs")).toEqual([costs("notices:sa1")])
+            expect(told.filter(s => s.event === "changed")).toEqual([changed("tasks:c2")])
+            expect((await db.query(`SELECT count(*)::int AS n FROM "TaskCost" WHERE "taskId" = 't-cost2'`)).rows[0].n).toBe(0)
+        })
+
+        it("heard by the company's people and each Super Admin, and by nobody else", async () => {
+            expect(await hears(HANA, "tasks:c1")).toBe(true)
+            expect(await hears({ sub: "u3", role: "authenticated", company_id: "c2", super_admin: false }, "tasks:c1")).toBe(false)
+            expect(await hears(SARA, "notices:sa1")).toBe(true)
+            expect(await hears(HANA, "notices:sa1")).toBe(false)
+        })
+
+        it("never stopping the change it's for when it can't be sent", async () => {
+            await db.query("SET test.fail_send = 'on'")
+            try {
+                await db.query(`UPDATE "TaskCost" SET "serviceFee" = 25 WHERE id = 'k1'`)
+                await db.query(`INSERT INTO ${COST_COLUMNS} VALUES ('k9', 't-cost1', 'u2', 5)`)
+            } finally {
+                await db.query("RESET test.fail_send")
+            }
+            expect((await db.query(`SELECT "serviceFee"::float AS fee FROM "TaskCost" WHERE id = 'k1'`)).rows[0].fee).toBe(25)
+            expect((await db.query(`SELECT count(*)::int AS n FROM "TaskCost" WHERE id = 'k9'`)).rows[0].n).toBe(1)
+            expect(await sent()).toEqual([])
+            await db.query(`DELETE FROM "Task" WHERE id IN ('t-cost1', 't-plain')`)
+            await sent()
+        })
+    })
+
     // Part 6b: who's online, from each tab's row (part 6a). Written as the
     // app writes it (UserService.tabSeen): one statement that keeps a report
     // only if none after it has arrived.

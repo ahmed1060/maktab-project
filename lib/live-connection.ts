@@ -11,10 +11,11 @@ import type { LiveDrawer, LiveTopic, LiveWants } from "./live-updates"
  *   - Turns each signal into a screen drawn again, through the drawer.
  *   - Hears on every channel, too, that the account can't go on (part 3),
  *     which the heartbeat checks at once, that requests changed (part 2),
- *     which the Requests page and its count draw again, and that cash
- *     advances changed (part 4a), which their screens draw again.
- *   - Draws what a channel is for once each time it's joined, the requests
- *     and cash advances with it, and checks the account: first, for a
+ *     which the Requests page and its count draw again, that cash
+ *     advances changed (part 4a), and that costs did (part 4b), which
+ *     their screens draw again.
+ *   - Draws what a channel is for once each time it's joined, the requests,
+ *     cash advances and costs with it, and checks the account: first, for a
  *     change saved while the page was on its way, before the channel was
  *     there to hear it; and again, after a laptop slept or a phone lost its
  *     signal, for what was missed meanwhile.
@@ -89,12 +90,14 @@ export class LiveConnection {
                 .on("broadcast", { event: "account" }, () => drawer.signal("account"))
                 .on("broadcast", { event: "requests" }, () => drawer.signal("requests"))
                 .on("broadcast", { event: "advances" }, () => drawer.signal("advances"))
+                .on("broadcast", { event: "costs" }, () => drawer.signal("costs"))
                 .subscribe(status => {
                     if (status !== "SUBSCRIBED") return
                     drawer.signal(kind)
                     drawer.signal("account")
                     drawer.signal("requests")
                     drawer.signal("advances")
+                    drawer.signal("costs")
                 }))
         const { wants } = this.deps
         if (wants) {

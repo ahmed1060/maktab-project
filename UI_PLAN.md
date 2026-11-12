@@ -653,7 +653,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      heartbeat slowed to every 15 minutes (`REALTIME_PLAN.md` part 6a),
      merged in #262 on 2026-11-12; then the Online badge on the Employees
      list and All users changing as people come and go, untinted
-     (`REALTIME_PLAN.md` part 6b, #263);
+     (`REALTIME_PLAN.md` part 6b), merged in #263 on 2026-11-12; then the
+     Costs page's Employee costs and Charged to clients tabs, and a
+     client's charges, drawn again as costs are added, paid and charged
+     (`REALTIME_PLAN.md` part 4b, #264);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5982,3 +5985,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   without the list being loaded again: what's typed, the filters and the
   page stay. Only the badge changes, untinted (`DESIGN.md` §8), and someone
   whose leaving wasn't heard turns Offline as their 32 minutes run out.
+- **2026-11-12:** The Costs page's Employee costs and Charged to clients
+  tabs, and a client's charges on their page, draw themselves again as
+  costs are added, removed, paid and charged (`REALTIME_PLAN.md` part 4b,
+  #264), keeping the search, filters and page. What someone else changed
+  is tinted, as part 5 does; Mark all as paid and the charges' own actions
+  are the person's own, and aren't.

@@ -6,12 +6,16 @@ import { useToast } from '@/context/ToastContext'
 import { Button, Details, Dialog, Field, TextInput } from '@/components/ui'
 import { feeFor, totalFor } from '@/lib/charges'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { useBusyAction } from '@/lib/useBusyAction'
 import type { ChargeRow } from './types'
 
 /**
  * A charge's service fee (CLIENTS_PLAN.md §6.3): Paid | Service fee | Total.
  * Typing the fee works out the total, and typing the total works out the
  * fee. The server works the total out itself, from the fee.
+ *
+ * Saving is the person's own change, said to the list behind it as it
+ * starts (ActionStarts), so it isn't tinted there (REALTIME_PLAN.md, part 4b).
  */
 export default function ChargeFeeDialog({ charge, onClose, onSaved }: {
     charge: ChargeRow | null
@@ -24,7 +28,8 @@ export default function ChargeFeeDialog({ charge, onClose, onSaved }: {
     const [total, setTotal] = useState('')
     // Which one was typed last, and is sent: the other is worked out.
     const [typed, setTyped] = useState<'fee' | 'total'>('fee')
-    const [saving, setSaving] = useState(false)
+    const action = useBusyAction()
+    const saving = action.running
     const formId = useId()
 
     const paid = charge?.amount ?? 0
@@ -53,29 +58,28 @@ export default function ChargeFeeDialog({ charge, onClose, onSaved }: {
         if (worked !== null) setFee(String(worked))
     }
 
-    const save = async (e?: { preventDefault: () => void }) => {
+    const save = (e?: { preventDefault: () => void }) => {
         e?.preventDefault()
         if (!charge || !ready || saving) return
-        setSaving(true)
-        try {
-            const res = await fetch(`/api/charges/${encodeURIComponent(charge.id)}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(typed === 'fee' ? { serviceFee: feeValue } : { total: totalValue }),
-            })
-            const answer = await res.json().catch(() => null)
-            if (!res.ok) {
-                showToast(answer?.error || t('error_generic'), 'error')
-                return
+        void action.run('save', async () => {
+            try {
+                const res = await fetch(`/api/charges/${encodeURIComponent(charge.id)}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(typed === 'fee' ? { serviceFee: feeValue } : { total: totalValue }),
+                })
+                const answer = await res.json().catch(() => null)
+                if (!res.ok) {
+                    showToast(answer?.error || t('error_generic'), 'error')
+                    return
+                }
+                showToast(t('charges_fee_saved'), 'success')
+                onSaved()
+                onClose()
+            } catch {
+                showToast(t('error_generic'), 'error')
             }
-            showToast(t('charges_fee_saved'), 'success')
-            onSaved()
-            onClose()
-        } catch {
-            showToast(t('error_generic'), 'error')
-        } finally {
-            setSaving(false)
-        }
+        })
     }
 
     const money = (n: number) => `${n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${t('egp')}`

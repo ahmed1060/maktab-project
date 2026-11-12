@@ -14,8 +14,8 @@ const NONE: Marks = new Map()
 /**
  * The rows of a list that someone else just added or changed (DESIGN.md §8;
  * REALTIME_PLAN.md, part 5), for DataList's `arrived`: the marks of the
- * rows new, or holding something new, in the draw that follows a `kind` signal,
- * for ARRIVAL_MS.
+ * rows new, or holding something new, in the draw that follows a signal of
+ * `kinds`, for ARRIVAL_MS.
  *
  * Not as the page opens, which has no draw before it. Not when the person
  * looks at another tab, filter or page: that's another list. And not for
@@ -33,8 +33,8 @@ const NONE: Marks = new Map()
  * The list is told apart by the page's address, with its tab, filters and
  * page: for a list that keeps them there.
  */
-export function useArrivals<T>(kind: LiveKind, rows: readonly T[], rowKey: (row: T) => string) {
-    return useArrivalsIn(kind, `${usePathname()}?${useSearchParams().toString()}`, rows, rowKey)
+export function useArrivals<T>(kinds: LiveKind | readonly LiveKind[], rows: readonly T[], rowKey: (row: T) => string) {
+    return useArrivalsIn(kinds, `${usePathname()}?${useSearchParams().toString()}`, rows, rowKey)
 }
 
 /**
@@ -43,7 +43,7 @@ export function useArrivals<T>(kind: LiveKind, rows: readonly T[], rowKey: (row:
  * the address it's loaded from does (REALTIME_PLAN.md, part 4a). A draw of
  * another scope marks nothing.
  */
-export function useArrivalsIn<T>(kind: LiveKind, scope: string, rows: readonly T[], rowKey: (row: T) => string) {
+export function useArrivalsIn<T>(kinds: LiveKind | readonly LiveKind[], scope: string, rows: readonly T[], rowKey: (row: T) => string) {
     const now = drawn(scope, rows, rowKey)
     const [before, setBefore] = useState(now)
     const [expecting, setExpecting] = useState<Expecting>(null)
@@ -51,7 +51,7 @@ export function useArrivalsIn<T>(kind: LiveKind, scope: string, rows: readonly T
     // How many draws have marked rows: the last one's number.
     const [marked, setMarked] = useState(0)
 
-    useLive(kind, () => setExpecting(was => expectNext(was, 'live')))
+    useLive(kinds, () => setExpecting(was => expectNext(was, 'live')))
 
     // Each draw is compared with the one before it, and waits for no other.
     useAdjustOnChange([now], () => {

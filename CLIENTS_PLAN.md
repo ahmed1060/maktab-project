@@ -633,6 +633,9 @@ The company never buys on credit, so nothing is tracked as owed to shops.
   - each charge: what was bought, on which task, with the receipt;
   - **Mark collected** for exactly the charges shown, for example "Collect 7
     charges, 3,450 EGP from Al Noor".
+- **Both draw themselves again,** with the Employee costs tab, as costs
+  are added, removed, paid and charged elsewhere (`REALTIME_PLAN.md`,
+  part 4b, #264).
 
 ### 6.5 Rules (Decided)
 
@@ -2678,3 +2681,6 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   too, so a location typed into a request by hand could be marked Correct.
   Checks already decided keep their result; one never decided gets Needs
   review when its task's location changes.
+- **2026-11-12:** §6.4 says the Charged to clients tab and a client's
+  charges draw themselves again, with the Employee costs tab, as costs
+  change elsewhere: live updates' part 4b (`REALTIME_PLAN.md`, #264).

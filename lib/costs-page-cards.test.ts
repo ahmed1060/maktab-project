@@ -16,6 +16,8 @@ const address = { query: "" }
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ push: () => {}, refresh: () => {} }),
     useSearchParams: () => new URLSearchParams(address.query),
+    // The tab tints what someone else changed, told apart by its address (REALTIME_PLAN.md, part 4b).
+    usePathname: () => "/dashboard/costs",
 }))
 vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en", t: (key: string) => key }) }))
 vi.mock("@/lib/useModules", () => ({ useModules: () => ({ label: () => "Costs" }) }))

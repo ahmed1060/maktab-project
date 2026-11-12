@@ -24,6 +24,9 @@ import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped
 import { useCan } from '@/lib/useCan'
 import { countOf } from '@/lib/plural'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
+import { ActionStarts, useBusyAction } from '@/lib/useBusyAction'
+import { useLive } from '@/components/LiveUpdates'
+import { useArrivalsIn } from '@/components/useArrivals'
 import type { TranslationKey } from '@/lib/translations'
 import ChargeFeeDialog from './ChargeFeeDialog'
 import type { ChargeRow } from './types'
@@ -46,6 +49,9 @@ type Offer = { count: number; amount: number; digest: string }
  * On a client's page, its charges only, with what is Due and Collected, and
  * Mark collected for the Due ones listed, for whoever may (§6.4). Whoever may
  * marks a collected one uncollected again, here and on the tab (§6.5).
+ *
+ * Drawn again as costs change elsewhere (REALTIME_PLAN.md, part 4b), what
+ * someone else changed tinted for a moment (part 5).
  */
 export default function ChargesList({ client: onPage }: { client?: { id: string; name: string } } = {}) {
     const { t, locale } = useLanguage()
@@ -95,6 +101,16 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
     const summary = result?.data?.summary
     const offer = failed ? null : result?.data?.collect ?? null
 
+    // Drawn again as the company's tasks change, which a cost added, removed
+    // or paid changes, and as its charges do; the search, filters and page
+    // stay (REALTIME_PLAN.md, part 4b). A row someone else added or changed
+    // is tinted: the list keeps its filters to itself, so it's told apart by
+    // the address it's loaded from.
+    useLive(['tasks', 'costs'], () => { void mutate() })
+    const arrivals = useArrivalsIn(['tasks', 'costs'], listUrl, charges, c => c.id)
+    // The person's own actions, theirs for as long as they're on their way.
+    const action = useBusyAction(arrivals.own)
+
     const clients = useClientOptions(can('clients.view') && !onPage, true)
 
     useAdjustOnChange([selectedCompanyId], () => { setPage(1); setClientId(''); setEditing(null); setConfirming(null); setUncollecting(null) })
@@ -107,7 +123,7 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
     const canCollect = can('charges.collect')
 
     /** "Not charged to client", or charged again, from the row's menu (§6.2). */
-    const setCharged = async (c: ChargeRow, notCharged: boolean) => {
+    const setCharged = (c: ChargeRow, notCharged: boolean) => action.run('charge', async () => {
         try {
             const res = await fetch(`/api/charges/${encodeURIComponent(c.id)}`, {
                 method: 'PATCH',
@@ -120,17 +136,18 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
                 return
             }
             showToast(t(notCharged ? 'charges_left_off' : 'charges_charged_again'), 'success')
+            arrivals.saved()
             void mutate()
         } catch {
             showToast(t('error_generic'), 'error')
         }
-    }
+    })
 
     /**
      * Mark collected: exactly the Due ones listed, as the confirmation said,
      * or none, shown again, if they changed meanwhile (§6.4).
      */
-    const collect = async () => {
+    const collect = () => action.run('collect', async () => {
         if (!confirming) return
         try {
             const res = await fetch('/api/charges/collect', {
@@ -141,31 +158,37 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
             const answer = await res.json().catch(() => null)
             if (res.status === 409) showToast(t('charges_collect_changed'), 'warning')
             else if (!res.ok) showToast(answer?.error || t('error_generic'), 'error')
-            else showToast(t('charges_collected_done'), 'success')
+            else {
+                showToast(t('charges_collected_done'), 'success')
+                arrivals.saved()
+            }
             void mutate()
         } catch {
             showToast(t('error_generic'), 'error')
         } finally {
             setConfirming(null)
         }
-    }
+    })
 
     /** Mark uncollected: due again, so it can be corrected (§6.5). */
-    const uncollect = async () => {
+    const uncollect = () => action.run('uncollect', async () => {
         const c = uncollecting
         if (!c) return
         try {
             const res = await fetch(`/api/charges/${encodeURIComponent(c.id)}/uncollect`, { method: 'POST' })
             const answer = await res.json().catch(() => null)
             if (!res.ok) showToast(answer?.error || t('error_generic'), 'error')
-            else showToast(t('charges_uncollected_done'), 'success')
+            else {
+                showToast(t('charges_uncollected_done'), 'success')
+                arrivals.saved()
+            }
             void mutate()
         } catch {
             showToast(t('error_generic'), 'error')
         } finally {
             setUncollecting(null)
         }
-    }
+    })
 
     const money = (n: number) => `${n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${t('egp')}`
     const name = (c: ChargeRow) => c.description || t('no_description')
@@ -276,6 +299,7 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
                         columns={columns}
                         rows={charges}
                         rowKey={c => c.id}
+                        arrived={arrivals.arrived}
                         card={c => (
                             <ListCard
                                 title={<bdi>{name(c)}</bdi>}
@@ -296,7 +320,10 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
                     />
                 )}
 
-            <ChargeFeeDialog charge={editing} onClose={() => setEditing(null)} onSaved={() => { void mutate() }} />
+            {/* Its Save is the person's own, said to the list as it starts. */}
+            <ActionStarts.Provider value={arrivals.own}>
+                <ChargeFeeDialog charge={editing} onClose={() => setEditing(null)} onSaved={() => { arrivals.saved(); void mutate() }} />
+            </ActionStarts.Provider>
             <ConfirmDialog
                 open={!!uncollecting}
                 title={t('charges_uncollect_title').replace('{name}', uncollecting ? name(uncollecting) : '')}
