@@ -5,21 +5,24 @@ import { useLanguage } from '@/context/LanguageContext'
 import { waitText } from '@/lib/login-errors'
 import type { TranslationKey } from '@/lib/translations'
 
-/** What's waited for: signing in after five wrong tries or ten, or resetting a password after too many. */
-export type WaitKind = 'pause' | 'lock' | 'reset'
+/** What's waited for: signing in after five wrong tries or ten, resetting a password after too many, or the code a high-risk action asks for after five. */
+export type WaitKind = 'pause' | 'lock' | 'reset' | 'code'
 
 const SAID: Record<WaitKind, TranslationKey> = {
     pause: 'sign_in_paused_wait',
     lock: 'sign_in_locked_wait',
     reset: 'forgot_wait',
+    code: 'step_up_paused_wait',
 }
 
 /**
  * Held back from signing in after wrong tries (lib/sign-in-lock.ts): the 30
  * seconds after five, or the fifteen minutes after ten, counted down as they
  * pass (decided 2026-11-03). So is Forgot your password after too many tries
- * (lib/password-reset.ts). The time is a timer, so a screen reader says the
- * sentence once rather than every second. Once it's over, onOver.
+ * (lib/password-reset.ts), and the code a high-risk action asks for after
+ * five in fifteen minutes (components/StepUpInterceptor.tsx). The time is a
+ * timer, so a screen reader says the sentence once rather than every second.
+ * Once it's over, onOver.
  */
 export function SignInWait({ kind, until, onOver }: { kind: WaitKind; until: number; onOver: () => void }) {
     const { t, locale } = useLanguage()

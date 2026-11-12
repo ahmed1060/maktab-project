@@ -660,7 +660,11 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      Attendance page's Exceptions, Days and Punches tabs, and the Super
      Admin's Check-ins page, drawn again as check-ins come in, at most
      every 30 seconds (`REALTIME_PLAN.md` part 4c), merged in #265 on
-     2026-11-12; then a tidy-up of part 4c (#266);
+     2026-11-12; then a tidy-up of part 4c, merged in #266 on 2026-11-12;
+     then the code a high-risk action asks for saying when the server has
+     stopped checking codes, after five in fifteen minutes, and counting
+     down, where it called a right code wrong (`ROLES_PLAN.md` §6.15,
+     #267);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6013,3 +6017,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   screen it holds as no draw of the other spaced kinds it hears, and the
   Super Admin's Check-ins page's limit of about 95 companies, one channel
   for each, is written down (`REALTIME_PLAN.md` part 4c).
+- **2026-11-12:** The code a high-risk action asks for says when the
+  server has stopped checking codes, after five in fifteen minutes, and
+  counts down until it checks again (#267; `DESIGN.md` §5.5, Dialog;
+  `ROLES_PLAN.md` §6.15). It called a right code wrong meanwhile.
