@@ -10,7 +10,9 @@ import { useCan } from '@/lib/useCan'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import type { TranslationKey } from '@/lib/translations'
-import { useBusyAction } from '@/lib/useBusyAction'
+import { ActionStarts, useBusyAction } from '@/lib/useBusyAction'
+import { useLive, useWantedChannels } from '@/components/LiveUpdates'
+import { useArrivalsIn } from '@/components/useArrivals'
 import AddPunchDialog from './AddPunchDialog'
 import { checkoutDate } from '@/lib/attendance/checkout-date'
 import { send, json } from './send'
@@ -57,7 +59,7 @@ const KINDS: Kind[] = ['lateEarly', 'absent', 'incomplete', 'overtime', 'decided
 const KIND_LABEL: Record<Kind, TranslationKey> = { lateEarly: 'exc_tab_late', absent: 'exc_tab_absent', incomplete: 'exc_tab_incomplete', overtime: 'exc_tab_overtime', decided: 'exc_tab_decided' }
 const NOTE_KEY: Record<string, TranslationKey> = { FREE_OCCURRENCE: 'day_note_free', ESCALATED: 'day_note_escalated', CAPPED: 'day_note_capped' }
 
-export default function ExceptionsTab({ q, companyId, today }: { q: string; companyId: string | null; today: string }) {
+export default function ExceptionsTab({ q, companyId, today, topics }: { q: string; companyId: string | null; today: string; topics: string[] }) {
     const { t } = useLanguage()
     const { num, amount, minutes: minutesText, days: daysWord, clock, date } = useFigures()
     const { showToast } = useToast()
@@ -99,18 +101,36 @@ export default function ExceptionsTab({ q, companyId, today }: { q: string; comp
     const [reason, setReason] = useState('')
     const [reasonError, setReasonError] = useState<string | undefined>()
     const [adding, setAdding] = useState<Row | null>(null)
-    const action = useBusyAction()
 
-    const { data: body, error, isValidating, mutate } = useSWR(over ? `/api/attendance/exceptions?${q}from=${from}&to=${to}` : null, fetcher)
+    const listUrl = over ? `/api/attendance/exceptions?${q}from=${from}&to=${to}` : null
+    const { data: body, error, isValidating, mutate } = useSWR(listUrl, fetcher)
     const { data: peopleBody } = useSWR(`/api/attendance/people?${q}`, fetcher)
     const people: Person[] = useMemo(() => peopleBody?.data?.people ?? [], [peopleBody])
     const data: Data | undefined = body?.data
     const companyField = companyId ? { companyId } : {}
 
+    const lateEarly: LateEarly[] = data ? [
+        ...data.late.map(r => ({ key: `${r.id}:LATENESS`, r, subject: 'LATENESS' as const, minutes: r.lateMinutes, rule: r.breakdown.lateness })),
+        ...data.early.map(r => ({ key: `${r.id}:EARLY_LEAVE`, r, subject: 'EARLY_LEAVE' as const, minutes: r.earlyLeaveMinutes, rule: r.breakdown.earlyLeave })),
+    ].sort((a, b) => b.r.date.localeCompare(a.r.date) || a.r.name.localeCompare(b.r.name)) : []
+
+    // Drawn again as attendance changes, and as the requests it counts do (part 2), while open
+    // (REALTIME_PLAN.md, part 4c). A row someone else added or changed in the list shown is tinted, by
+    // the list's own key; the person's own decisions aren't.
+    useWantedChannels(topics)
+    useLive(['attendance', 'requests'], () => { void mutate() })
+    const shown: { key: string; row: unknown }[] = !data ? []
+        : kind === 'lateEarly' ? lateEarly.map(x => ({ key: x.key, row: x }))
+        : kind === 'decided' ? data.decided.map(d => ({ key: d.id, row: d }))
+        : data[kind].map(r => ({ key: r.id, row: r }))
+    const arrivals = useArrivalsIn(['attendance', 'requests'], `${listUrl}#${kind}`, shown, x => x.key)
+    const action = useBusyAction(arrivals.own)
+
     const act = (key: string, url: string, init: RequestInit, done: TranslationKey) => action.run(key, async () => {
         const r = await send(url, init, t('punch_failed'))
         if (!r.ok) { showToast(r.error, 'error'); return false }
         showToast(t(done), 'success')
+        arrivals.saved()
         await mutate()
         return true
     })
@@ -181,10 +201,6 @@ export default function ExceptionsTab({ q, companyId, today }: { q: string; comp
     ) : null
     const actionsColumn = <T,>(cell: (row: T) => React.ReactNode): Column<T> => ({ key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end', cell })
 
-    const lateEarly: LateEarly[] = data ? [
-        ...data.late.map(r => ({ key: `${r.id}:LATENESS`, r, subject: 'LATENESS' as const, minutes: r.lateMinutes, rule: r.breakdown.lateness })),
-        ...data.early.map(r => ({ key: `${r.id}:EARLY_LEAVE`, r, subject: 'EARLY_LEAVE' as const, minutes: r.earlyLeaveMinutes, rule: r.breakdown.earlyLeave })),
-    ].sort((a, b) => b.r.date.localeCompare(a.r.date) || a.r.name.localeCompare(b.r.name)) : []
     const lateWhat = (x: LateEarly) => t(x.subject === 'LATENESS' ? 'exc_late_n' : 'exc_early_n').replace('{n}', num(x.minutes))
     const ruleDays = (rule: RuleOutcome) => (rule.days > 0 ? daysWord(rule.days) : '—')
 
@@ -193,7 +209,7 @@ export default function ExceptionsTab({ q, companyId, today }: { q: string; comp
         if (!data) return null
         const label = t(KIND_LABEL[kind])
         if (kind === 'lateEarly') return (
-            <DataList<LateEarly> caption={label} rows={lateEarly} rowKey={x => x.key} empty={empty}
+            <DataList<LateEarly> caption={label} rows={lateEarly} rowKey={x => x.key} arrived={arrivals.arrived} empty={empty}
                 columns={[
                     { key: 'date', header: t('punch_date'), cell: x => who(x.r) },
                     { key: 'what', header: t('exc_what'), cell: x => <>{lateWhat(x)}{times(x.r) && <div className="ui-item-detail">{times(x.r)}</div>}{note(x.rule) && <div className="ui-item-detail">{note(x.rule)}</div>}</> },
@@ -208,7 +224,7 @@ export default function ExceptionsTab({ q, companyId, today }: { q: string; comp
                 ]} foot={decisionButtons(x.r, x.subject) ?? undefined} />} />
         )
         if (kind === 'absent') return (
-            <DataList<Row> caption={label} rows={data.absent} rowKey={r => r.id} empty={empty}
+            <DataList<Row> caption={label} rows={data.absent} rowKey={r => r.id} arrived={arrivals.arrived} empty={empty}
                 columns={[
                     { key: 'date', header: t('punch_date'), cell: who },
                     { key: 'deduction', header: t('day_deduction'), align: 'end', cell: r => (r.deductionMinor ? <bdi>{amount(r.deductionMinor)}</bdi> : '—') },
@@ -222,7 +238,7 @@ export default function ExceptionsTab({ q, companyId, today }: { q: string; comp
         if (kind === 'incomplete') {
             const add = (r: Row) => (corrects(r) ? <Button variant="primary" size="sm" onClick={() => setAdding(r)}>{t('punch_add')}</Button> : null)
             return (
-                <DataList<Row> caption={label} rows={data.incomplete} rowKey={r => r.id} empty={empty}
+                <DataList<Row> caption={label} rows={data.incomplete} rowKey={r => r.id} arrived={arrivals.arrived} empty={empty}
                     columns={[
                         { key: 'date', header: t('punch_date'), cell: who },
                         { key: 'punched', header: t('exc_punched'), cell: r => <><bdi>{r.firstIn ? clock(r.firstIn) : '—'}</bdi><div className="ui-item-detail">{t('day_unpriced_incomplete')}</div></> },
@@ -243,7 +259,7 @@ export default function ExceptionsTab({ q, companyId, today }: { q: string; comp
                 </span>
             ) : null)
             return (
-                <DataList<Row> caption={label} rows={data.overtime} rowKey={r => r.id} empty={empty}
+                <DataList<Row> caption={label} rows={data.overtime} rowKey={r => r.id} arrived={arrivals.arrived} empty={empty}
                     columns={[
                         { key: 'date', header: t('punch_date'), cell: who },
                         { key: 'overtime', header: t('day_overtime'), cell: r => <>{minutesText(r.overtimeMinutes)}{times(r) && <div className="ui-item-detail">{times(r)}</div>}</> },
@@ -260,7 +276,7 @@ export default function ExceptionsTab({ q, companyId, today }: { q: string; comp
             <Button size="sm" disabled={action.running} busy={busyKey(`undo:${d.id}`)} onClick={() => { void act(`undo:${d.id}`, `/api/attendance/decisions/${d.id}`, { method: 'DELETE' }, 'exc_undone') }}>{t('exc_undo')}</Button>
         ) : null)
         return (
-            <DataList<Decided> caption={label} rows={data.decided} rowKey={d => d.id} empty={empty}
+            <DataList<Decided> caption={label} rows={data.decided} rowKey={d => d.id} arrived={arrivals.arrived} empty={empty}
                 columns={[
                     { key: 'date', header: t('punch_date'), cell: who },
                     { key: 'what', header: t('exc_what'), cell: d => t(`audit_value_${d.subject}` as TranslationKey) },
@@ -316,16 +332,19 @@ export default function ExceptionsTab({ q, companyId, today }: { q: string; comp
                 )}
             </Section>
 
-            {adding && (
-                <AddPunchDialog
-                    today={today}
-                    companyId={companyId}
-                    people={people.filter(x => x.id === adding.userId)}
-                    initial={{ userId: adding.userId, date: checkoutDate(adding.date, adding.expectedEndMinutes), direction: 'OUT' }}
-                    onClose={() => setAdding(null)}
-                    onAdded={() => { setAdding(null); void mutate() }}
-                />
-            )}
+            {/* Adding the punch that's missing is the person's own, said to the list as it starts. */}
+            <ActionStarts.Provider value={arrivals.own}>
+                {adding && (
+                    <AddPunchDialog
+                        today={today}
+                        companyId={companyId}
+                        people={people.filter(x => x.id === adding.userId)}
+                        initial={{ userId: adding.userId, date: checkoutDate(adding.date, adding.expectedEndMinutes), direction: 'OUT' }}
+                        onClose={() => setAdding(null)}
+                        onAdded={() => { setAdding(null); arrivals.saved(); void mutate() }}
+                    />
+                )}
+            </ActionStarts.Provider>
 
             {/* Excused, it isn't charged: it asks why, kept with the day and in the audit log. */}
             <Dialog open={excusing !== null} onClose={closeExcuse} title={t('exc_excuse')}>

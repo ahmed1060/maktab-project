@@ -81,6 +81,24 @@ export function useLive(kinds: LiveKind | readonly LiveKind[], onChange: () => v
 }
 
 /**
+ * The channels a screen wants heard while it's open, beyond the tab's own
+ * (parts 6b and 4c, who's online and attendance): each joined once however
+ * many screens want it, and left a few seconds after the last lets go
+ * (LiveWants). What each says is drawn as its name says: useLive('online')
+ * or useLive('attendance').
+ */
+export function useWantedChannels(topics: string[]) {
+    const live = useContext(LiveContext)
+    // By value: the list makes a new array on every draw.
+    const wanted = topics.join(' ')
+    useEffect(() => {
+        if (!live || !wanted) return
+        const releases = wanted.split(' ').map(topic => live.wants.want(topic))
+        return () => { for (const release of releases) release() }
+    }, [live, wanted])
+}
+
+/**
  * Who's online (part 6b): while a list showing the badge is open, it hears
  * when someone in the companies it shows comes or goes (`topics`, from
  * onlineTopics), and calls `onChange` to draw itself again, untinted
@@ -92,13 +110,7 @@ export function useLive(kinds: LiveKind | readonly LiveKind[], onChange: () => v
 export function useLiveOnline(topics: string[], onChange: () => void, runsOutInMs: number | null | undefined) {
     const live = useContext(LiveContext)
     useLive('online', onChange)
-    // By value: the list makes a new array on every draw.
-    const wanted = topics.join(' ')
-    useEffect(() => {
-        if (!live || !wanted) return
-        const releases = wanted.split(' ').map(topic => live.wants.want(topic))
-        return () => { for (const release of releases) release() }
-    }, [live, wanted])
+    useWantedChannels(topics)
     useEffect(() => {
         if (!live || runsOutInMs == null) return
         const timer = setTimeout(() => live.drawer.signal('online'), runsOutInMs)

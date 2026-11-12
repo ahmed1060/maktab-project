@@ -22,7 +22,10 @@ import ExceptionsTab from './ExceptionsTab'
 import ImportTab from './ImportTab'
 import NumbersTab from './NumbersTab'
 import type { TranslationKey } from '@/lib/translations'
-import { useBusyAction } from '@/lib/useBusyAction'
+import { ActionStarts, useBusyAction } from '@/lib/useBusyAction'
+import { useLive, useWantedChannels } from '@/components/LiveUpdates'
+import { useArrivalsIn } from '@/components/useArrivals'
+import { attendanceTopics } from '@/lib/live-updates'
 
 /**
  * Punches (ATTENDANCE_PLAN.md Phase 0): what came in, from a terminal's
@@ -39,6 +42,10 @@ import { useBusyAction } from '@/lib/useBusyAction'
  * On the building blocks in parts (UI_PLAN.md §5 step 5), the frame first:
  * the page header, the tabs, and what the page says before them. What each
  * tab holds follows, one or two tabs at a time.
+ *
+ * Exceptions, Days and Punches draw themselves again as attendance changes
+ * elsewhere, for whoever sees other people's (REALTIME_PLAN.md, part 4c),
+ * at most every 30 seconds while check-ins keep coming (DESIGN.md §8).
  */
 
 type Punch = {
@@ -77,6 +84,10 @@ export default function AttendancePage() {
     const today: string | undefined = peopleBody?.data?.today
     // Whoever sees other people's attendance starts on what needs a decision (§13.1).
     const seesOthers = p.can('attendance.view_team')
+    // Attendance as it changes, on the company's channel of its own (part 4c), the company in view's for
+    // the Super Admin: only for whoever sees other people's, as the channel lets nobody else in.
+    const viewer = session?.user ?? null
+    const topics = viewer && seesOthers ? attendanceTopics(viewer, companyId, []) : []
     const tabs: Tab[] = [
         ...(seesOthers ? ['exceptions' as const] : []),
         'days', 'punches', 'requests',
@@ -130,9 +141,9 @@ export default function AttendancePage() {
                 company's, from its own calendar, and a file chosen for import was meant for it (review on #13). */}
             <div role="tabpanel" id="attendance-panel" className="ui-tab-panel" aria-labelledby={`attendance-tab-${tab}`}>
                 <Fragment key={companyId ?? ''}>
-                    {tab === 'exceptions' && today && seesOthers && <ExceptionsTab q={q} companyId={companyId} today={today} />}
-                    {tab === 'days' && today && <DaysTab q={q} companyId={companyId} today={today} />}
-                    {tab === 'punches' && today && <PunchesTab q={q} companyId={companyId} today={today} />}
+                    {tab === 'exceptions' && today && seesOthers && <ExceptionsTab q={q} companyId={companyId} today={today} topics={topics} />}
+                    {tab === 'days' && today && <DaysTab q={q} companyId={companyId} today={today} topics={topics} />}
+                    {tab === 'punches' && today && <PunchesTab q={q} companyId={companyId} today={today} topics={topics} />}
                     {tab === 'requests' && today && <RequestsTab q={q} companyId={companyId} today={today} />}
                     {tab === 'face' && <FaceTab q={q} />}
                     {tab === 'import' && correctsCompany && <ImportTab q={q} companyId={companyId} />}
@@ -170,7 +181,7 @@ const STATUS_TONE: Record<string, StatusTone> = {
  * and the days as a list, a table on computers and a card for each on phones
  * (§5.4), in the page's language throughout.
  */
-function DaysTab({ q, companyId, today }: { q: string; companyId: string | null; today: string }) {
+function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string | null; today: string; topics: string[] }) {
     const { t } = useLanguage()
     const { digits, num, amount, minutes, days: daysWord, clock } = useFigures()
     const { showToast } = useToast()
@@ -179,13 +190,18 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
     const correctsCompany = p.companyWide('attendance.correct')
     const { year, monthNumber, month, monthName, setPeriod, months, years } = useMonthInAddress(today)
     const [who, setWho] = useState('')
-    const action = useBusyAction()
     const { data: peopleBody } = useSWR(seesOthers ? `/api/attendance/people?${q}` : null, fetcher)
     const people: Person[] = useMemo(() => peopleBody?.data?.people ?? [], [peopleBody])
     const url = `/api/attendance/days?${q}from=${month}-01&to=${lastDayOf(month)}${who ? `&userId=${encodeURIComponent(who)}` : ''}`
     const { data: body, error, isValidating, mutate } = useSWR(url, fetcher)
     const days: Day[] | null = body ? body.data?.days ?? [] : null
     const daysTruncated: boolean = !!body?.data?.truncated
+    // Drawn again as attendance changes, while open (part 4c). A day someone else changed is tinted;
+    // working the month out again is the person's own.
+    useWantedChannels(topics)
+    useLive('attendance', () => { void mutate() })
+    const arrivals = useArrivalsIn('attendance', url, days ?? [], d => d.id)
+    const action = useBusyAction(arrivals.own)
     const rules: Rules | null = body?.data?.rules ?? null
     const { data: session } = useSession()
     const me = session?.user?.id
@@ -202,6 +218,7 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
         const r = await send('/api/attendance/recompute', json('POST', { ...(companyId ? { companyId } : {}), month }), t('punch_failed'))
         if (!r.ok) return showToast(r.error, 'error')
         showToast(r.body?.locked ? t('day_recompute_locked') : t('day_recomputed'), r.body?.locked ? 'info' : 'success')
+        arrivals.saved()
         void mutate()
     })
 
@@ -318,7 +335,7 @@ function DaysTab({ q, companyId, today }: { q: string; companyId: string | null;
                 ) : days === null ? (
                     <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
                 ) : (
-                    <DataList caption={listTitle} columns={columns} rows={days} rowKey={d => d.id} card={card}
+                    <DataList caption={listTitle} columns={columns} rows={days} rowKey={d => d.id} arrived={arrivals.arrived} card={card}
                         empty={<EmptyState icon={CalendarBlankIcon} title={t('day_none')} />} />
                 )}
             </Section>
@@ -381,7 +398,7 @@ const PUNCH_BADGE: Record<string, { tone: StatusTone; label: TranslationKey }> =
  * a table on computers and a card for each on phones (§5.4); and withdrawing
  * one in the building blocks' dialog, which asks why.
  */
-function PunchesTab({ q, companyId, today }: { q: string; companyId: string | null; today: string }) {
+function PunchesTab({ q, companyId, today, topics }: { q: string; companyId: string | null; today: string; topics: string[] }) {
     const { t } = useLanguage()
     const { digits, num } = useFigures()
     const { showToast } = useToast()
@@ -401,7 +418,6 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
     const [reason, setReason] = useState('')
     const [reasonError, setReasonError] = useState<string | undefined>()
     const [adding, setAdding] = useState(false)
-    const action = useBusyAction()
 
     const { data: peopleBody } = useSWR(seesOthers || p.can('attendance.correct') ? `/api/attendance/people?${q}` : null, fetcher)
     const people: Person[] = useMemo(() => peopleBody?.data?.people ?? [], [peopleBody])
@@ -411,6 +427,12 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
     const { data: body, error, isValidating, mutate } = useSWR(listUrl, fetcher)
     const punches: Punch[] | null = body ? body.data?.punches ?? [] : null
     const truncated: boolean = !!body?.data?.truncated
+    // Drawn again as attendance changes, while open (part 4c). A punch someone else added or changed is
+    // tinted; adding or withdrawing one is the person's own.
+    useWantedChannels(topics)
+    useLive('attendance', () => { void mutate() })
+    const arrivals = useArrivalsIn('attendance', listUrl, punches ?? [], x => x.id)
+    const action = useBusyAction(arrivals.own)
 
     const leaderOf = useMemo(() => new Map(people.map(x => [x.id, x.teamLeaderId])), [people])
     const mayCorrect = (punch: Punch) => !punch.voidedAt && (punch.userId
@@ -439,6 +461,7 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
             if (!r.ok) return showToast(r.error, 'error')
             showToast(t('punch_withdrawn'), 'success')
             setWithdrawing(null)
+            arrivals.saved()
             await mutate()
         })
     }
@@ -521,20 +544,23 @@ function PunchesTab({ q, companyId, today }: { q: string; companyId: string | nu
                 ) : punches === null ? (
                     <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
                 ) : (
-                    <DataList caption={listTitle} columns={columns} rows={punches} rowKey={x => x.id} card={card}
+                    <DataList caption={listTitle} columns={columns} rows={punches} rowKey={x => x.id} arrived={arrivals.arrived} card={card}
                         empty={<EmptyState icon={FingerprintIcon} title={day ? t('punch_none_day') : t('punch_none')} />} />
                 )}
             </Section>
 
-            {adding && (
-                <AddPunchDialog
-                    today={today}
-                    companyId={companyId}
-                    people={people.filter(x => x.id !== me && p.canFor('attendance.correct', x.id, x.teamLeaderId))}
-                    onClose={() => setAdding(false)}
-                    onAdded={() => { setAdding(false); void mutate() }}
-                />
-            )}
+            {/* Adding one is the person's own, said to the list as it starts. */}
+            <ActionStarts.Provider value={arrivals.own}>
+                {adding && (
+                    <AddPunchDialog
+                        today={today}
+                        companyId={companyId}
+                        people={people.filter(x => x.id !== me && p.canFor('attendance.correct', x.id, x.teamLeaderId))}
+                        onClose={() => setAdding(false)}
+                        onAdded={() => { setAdding(false); arrivals.saved(); void mutate() }}
+                    />
+                )}
+            </ActionStarts.Provider>
 
             {/* Withdrawing asks why: the punch stays on record, with its reason. */}
             <Dialog open={withdrawing !== null} onClose={closeWithdraw} title={t('punch_withdraw')}>

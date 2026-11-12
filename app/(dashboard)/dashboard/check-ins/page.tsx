@@ -16,7 +16,10 @@ import { useToast } from '@/context/ToastContext'
 import { googleMapsLink } from '@/lib/attendance/geo'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import type { TranslationKey } from '@/lib/translations'
-import { useBusyAction } from '@/lib/useBusyAction'
+import { ActionStarts, useBusyAction } from '@/lib/useBusyAction'
+import { useLive, useWantedChannels } from '@/components/LiveUpdates'
+import { useArrivalsIn } from '@/components/useArrivals'
+import { attendanceTopics } from '@/lib/live-updates'
 import { useViewer } from '@/lib/useCan'
 import { RejectRequest, decideRequest, punchDay, punchTime } from '../requests/AttendanceDialogs'
 
@@ -32,6 +35,9 @@ import { RejectRequest, decideRequest, punchDay, punchTime } from '../requests/A
  * Then, across every company over the last 30 days, what came in, what was
  * flagged and what was refused, and why. A company with a sudden run of
  * refusals is under attack or has a broken app release.
+ *
+ * Both draw themselves again as the companies it lists check in, at most
+ * every 30 seconds while they keep coming (REALTIME_PLAN.md, part 4c).
  */
 
 type Waiting = {
@@ -51,7 +57,13 @@ export default function CheckInReviewPage() {
     const isSuperAdmin = viewer?.role === 'SUPER_ADMIN'
     const { data, error, isValidating, mutate } = useSWR(isSuperAdmin ? '/api/admin/check-ins' : null, fetcher)
     const review: Review | null = data?.data ?? null
-    const action = useBusyAction()
+    // Drawn again as attendance changes in each company it lists, on a channel for each, once each (part 4c).
+    useWantedChannels(isSuperAdmin && viewer ? attendanceTopics(viewer, null, (review?.integrity ?? []).map(r => r.companyId)) : [])
+    useLive('attendance', () => { void mutate() })
+    // A check-in waiting, or a company's counts, that changed elsewhere is tinted; accepting or rejecting is their own.
+    const shown = [...(review?.queue ?? []).map(w => ({ key: w.id, row: w })), ...(review?.integrity ?? []).map(r => ({ key: r.companyId, row: r }))]
+    const arrivals = useArrivalsIn('attendance', '/api/admin/check-ins', shown, x => x.key)
+    const action = useBusyAction(arrivals.own)
     const [rejecting, setRejecting] = useState<Waiting | null>(null)
     const [faceOf, setFaceOf] = useState<Waiting | null>(null)
 
@@ -66,6 +78,7 @@ export default function CheckInReviewPage() {
         const refused = await decideRequest({ id: w.id, kind: 'flagged' }, true, null)
         if (refused) return showToast(t(refused), 'error')
         showToast(t('chk_accepted_toast'), 'success')
+        arrivals.saved()
         await mutate()
     })
 
@@ -170,6 +183,7 @@ export default function CheckInReviewPage() {
                     columns={waitingColumns}
                     rows={review.queue}
                     rowKey={w => w.id}
+                    arrived={arrivals.arrived}
                     empty={<EmptyState icon={CheckCircleIcon} title={t('chk_queue_none')} />}
                     card={w => (
                         <ListCard
@@ -194,6 +208,7 @@ export default function CheckInReviewPage() {
                     columns={countColumns}
                     rows={review.integrity}
                     rowKey={r => r.companyId}
+                    arrived={arrivals.arrived}
                     empty={<EmptyState icon={DeviceMobileIcon} title={t('chk_integrity_none')} />}
                     card={r => (
                         <ListCard
@@ -217,18 +232,21 @@ export default function CheckInReviewPage() {
             <PageHeader title={t('chk_title')} subtitle={t('chk_hint')} />
             {body}
 
-            {rejecting && (
-                <RejectRequest
-                    key={rejecting.id}
-                    request={{ id: rejecting.id, kind: 'flagged' }}
-                    question={t('requests_flagged_reject_question').replace('{name}', rejecting.name)
-                        .replace('{time}', punchTime(rejecting.at, locale)).replace('{date}', punchDay(rejecting.at, locale))}
-                    placeholder={t('requests_flagged_reject_placeholder')}
-                    done={t('chk_rejected_toast')}
-                    onClose={() => setRejecting(null)}
-                    onDecided={() => { setRejecting(null); void mutate() }}
-                />
-            )}
+            {/* Rejecting is the Super Admin's own, said to the lists as it starts. */}
+            <ActionStarts.Provider value={arrivals.own}>
+                {rejecting && (
+                    <RejectRequest
+                        key={rejecting.id}
+                        request={{ id: rejecting.id, kind: 'flagged' }}
+                        question={t('requests_flagged_reject_question').replace('{name}', rejecting.name)
+                            .replace('{time}', punchTime(rejecting.at, locale)).replace('{date}', punchDay(rejecting.at, locale))}
+                        placeholder={t('requests_flagged_reject_placeholder')}
+                        done={t('chk_rejected_toast')}
+                        onClose={() => setRejecting(null)}
+                        onDecided={() => { setRejecting(null); arrivals.saved(); void mutate() }}
+                    />
+                )}
+            </ActionStarts.Provider>
             {faceOf && <FlaggedFaceDialog punchId={faceOf.id} name={faceOf.name} onClose={() => setFaceOf(null)} />}
         </Page>
     )

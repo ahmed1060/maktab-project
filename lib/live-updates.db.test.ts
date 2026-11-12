@@ -231,6 +231,8 @@ describe.skipIf(!ADMIN_URL)("live updates, in Postgres", () => {
     // (prisma/migrations/20261210000000_live_requests).
     describe("a company's requests", () => {
         const requests = (topic: string) => ({ topic, event: "requests", payload: {}, private: true })
+        /** What reaches the requests' channels: not part 4c's attendance channel, which the same rows signal. */
+        const requestsSent = async () => (await sent()).filter(s => !s.topic.startsWith("attendance:"))
         /** What one statement in a company sends: to its people, and to each Super Admin. */
         const toCompany = (company: string) => [requests(`tasks:${company}`), requests("notices:sa1")]
 
@@ -250,38 +252,38 @@ describe.skipIf(!ADMIN_URL)("live updates, in Postgres", () => {
         for (const [name, insert, table, change] of KINDS) {
             it(`${name}: asked for, changed and withdrawn, to the company and each Super Admin`, async () => {
                 await db.query(insert)
-                expect(await sent(), "asked for").toEqual(toCompany("c1"))
+                expect(await requestsSent(), "asked for").toEqual(toCompany("c1"))
                 await db.query(`UPDATE ${table} SET ${change}`)
-                expect(await sent(), "changed").toEqual(toCompany("c1"))
+                expect(await requestsSent(), "changed").toEqual(toCompany("c1"))
                 await db.query(`DELETE FROM ${table}`)
-                expect(await sent(), "withdrawn").toEqual(toCompany("c1"))
+                expect(await requestsSent(), "withdrawn").toEqual(toCompany("c1"))
             })
         }
 
         it("day off and name changes, which carry only their person, to the person's company", async () => {
             await db.query(`INSERT INTO "DayOffRequest"(id, "userId", type, date, "updatedAt") VALUES ('do1', 'u3', 'REGULAR', '2026-11-12', now())`)
-            expect(await sent()).toEqual(toCompany("c2"))
+            expect(await requestsSent()).toEqual(toCompany("c2"))
             await db.query(`UPDATE "DayOffRequest" SET status = 'APPROVED' WHERE id = 'do1'`)
-            expect(await sent()).toEqual(toCompany("c2"))
+            expect(await requestsSent()).toEqual(toCompany("c2"))
             await db.query(`DELETE FROM "DayOffRequest" WHERE id = 'do1'`)
-            expect(await sent()).toEqual(toCompany("c2"))
+            expect(await requestsSent()).toEqual(toCompany("c2"))
             await db.query(`INSERT INTO "ProfileUpdateRequest"(id, "userId", "oldFirstName", "oldLastName", "newFirstName", "newLastName", "updatedAt") VALUES ('pu1', 'u2', 'Youssef', 'One', 'Yusuf', 'One', now())`)
-            expect(await sent()).toEqual(toCompany("c1"))
+            expect(await requestsSent()).toEqual(toCompany("c1"))
             await db.query(`UPDATE "ProfileUpdateRequest" SET status = 'REJECTED' WHERE id = 'pu1'`)
-            expect(await sent()).toEqual(toCompany("c1"))
+            expect(await requestsSent()).toEqual(toCompany("c1"))
             await db.query(`DELETE FROM "ProfileUpdateRequest" WHERE id = 'pu1'`)
-            expect(await sent()).toEqual(toCompany("c1"))
+            expect(await requestsSent()).toEqual(toCompany("c1"))
         })
 
         it("once for each company a statement touched, and once for each Super Admin", async () => {
             await db.query(`INSERT INTO "Request"(id, title, details, "userId", "companyId", "updatedAt") VALUES
                 ('rq2', 'A', 'a', 'u2', 'c1', now()), ('rq3', 'B', 'b', 'u1', 'c1', now()), ('rq4', 'C', 'c', 'u3', 'c2', now())`)
-            expect(await sent()).toEqual([requests("tasks:c1"), requests("tasks:c2"), requests("notices:sa1")])
+            expect(await requestsSent()).toEqual([requests("tasks:c1"), requests("tasks:c2"), requests("notices:sa1")])
             await db.query(`UPDATE "Request" SET status = 'DONE' WHERE id IN ('rq2', 'rq3')`)
-            expect(await sent()).toEqual(toCompany("c1"))
+            expect(await requestsSent()).toEqual(toCompany("c1"))
             // Nothing changed, nothing to tell.
             await db.query(`UPDATE "Request" SET status = 'DONE' WHERE id = 'nobody'`)
-            expect(await sent()).toEqual([])
+            expect(await requestsSent()).toEqual([])
             await db.query(`DELETE FROM "Request"`)
             await sent()
         })
@@ -290,19 +292,19 @@ describe.skipIf(!ADMIN_URL)("live updates, in Postgres", () => {
             const day = (set: string) => db.query(`UPDATE "AttendanceDay" SET ${set} WHERE id = 'ad1'`)
             await db.query(`INSERT INTO "AttendanceDay"(id, "companyId", "userId", date, status, breakdown, "inputsHash") VALUES ('ad1', 'c1', 'u2', '2026-11-10', 'PRESENT', '{}', 'h1')`)
             await day(`"inputsHash" = 'h2', "lastOutAt" = '2026-11-10 17:00'`)
-            expect(await sent(), "a day without overtime, worked out").toEqual([])
+            expect(await requestsSent(), "a day without overtime, worked out").toEqual([])
             await day(`"overtimeStatus" = 'PENDING', "overtimeMinutes" = 60`)
-            expect(await sent(), "its overtime waits").toEqual(toCompany("c1"))
+            expect(await requestsSent(), "its overtime waits").toEqual(toCompany("c1"))
             await day(`"overtimeMinutes" = 75, "lastOutAt" = '2026-11-10 18:15'`)
-            expect(await sent(), "and is worked out again").toEqual(toCompany("c1"))
+            expect(await requestsSent(), "and is worked out again").toEqual(toCompany("c1"))
             await day(`"inputsHash" = 'h3'`)
-            expect(await sent(), "nothing the row shows").toEqual([])
+            expect(await requestsSent(), "nothing the row shows").toEqual([])
             await day(`"overtimeStatus" = 'APPROVED'`)
-            expect(await sent(), "decided").toEqual(toCompany("c1"))
+            expect(await requestsSent(), "decided").toEqual(toCompany("c1"))
             await day(`"overtimeMinutes" = 90`)
-            expect(await sent(), "worked out again once decided").toEqual([])
+            expect(await requestsSent(), "worked out again once decided").toEqual([])
             await db.query(`DELETE FROM "AttendanceDay" WHERE id = 'ad1'`)
-            expect(await sent(), "a decided day gone").toEqual([])
+            expect(await requestsSent(), "a decided day gone").toEqual([])
         })
 
         it("flagged check-ins: flagged, reviewed or withdrawn, and not every check-in", async () => {
@@ -312,26 +314,26 @@ describe.skipIf(!ADMIN_URL)("live updates, in Postgres", () => {
             await punch("ap1", "ACCEPTED")
             const withdraw = (id: string) => db.query(`UPDATE "AttendancePunch" SET "voidedAt" = now(), "voidedById" = 'u1', "voidReason" = 'Wrong' WHERE id = $1`, [id])
             await withdraw("ap1")
-            expect(await sent(), "a check-in, and one withdrawn").toEqual([])
+            expect(await requestsSent(), "a check-in, and one withdrawn").toEqual([])
             await punch("ap2", "FLAGGED")
-            expect(await sent(), "flagged").toEqual(toCompany("c1"))
+            expect(await requestsSent(), "flagged").toEqual(toCompany("c1"))
             await db.query(`UPDATE "AttendancePunch" SET status = 'ACCEPTED', "reviewedAt" = now() WHERE id = 'ap2'`)
-            expect(await sent(), "reviewed").toEqual(toCompany("c1"))
+            expect(await requestsSent(), "reviewed").toEqual(toCompany("c1"))
             await withdraw("ap2")
-            expect(await sent(), "a reviewed one withdrawn").toEqual(toCompany("c1"))
+            expect(await requestsSent(), "a reviewed one withdrawn").toEqual(toCompany("c1"))
             await db.query(`DELETE FROM "AttendancePunch" WHERE id = 'ap1'`)
-            expect(await sent(), "a check-in gone").toEqual([])
+            expect(await requestsSent(), "a check-in gone").toEqual([])
         })
 
         it("check-in phones: asked for and decided, and not used", async () => {
             await db.query(`INSERT INTO "CheckInPhone"(id, "companyId", "userId", "publicKey", "keyFingerprint", platform) VALUES ('ph1', 'c1', 'u2', 'k', 'f1', 'IOS')`)
-            expect(await sent(), "asked for").toEqual(toCompany("c1"))
+            expect(await requestsSent(), "asked for").toEqual(toCompany("c1"))
             await db.query(`UPDATE "CheckInPhone" SET "appAttestCounter" = "appAttestCounter" + 1, "pushToken" = 'tok', "pushTokenAt" = now() WHERE id = 'ph1'`)
-            expect(await sent(), "used").toEqual([])
+            expect(await requestsSent(), "used").toEqual([])
             await db.query(`UPDATE "CheckInPhone" SET status = 'ACTIVE', "decidedAt" = now() WHERE id = 'ph1'`)
-            expect(await sent(), "decided").toEqual(toCompany("c1"))
+            expect(await requestsSent(), "decided").toEqual(toCompany("c1"))
             await db.query(`DELETE FROM "CheckInPhone" WHERE id = 'ph1'`)
-            expect(await sent(), "gone").toEqual(toCompany("c1"))
+            expect(await requestsSent(), "gone").toEqual(toCompany("c1"))
         })
 
         it("heard by the company's people and each Super Admin, and by nobody else", async () => {
@@ -349,7 +351,7 @@ describe.skipIf(!ADMIN_URL)("live updates, in Postgres", () => {
                 await db.query("RESET test.fail_send")
             }
             expect((await db.query(`SELECT count(*)::int AS n FROM "Request" WHERE id = 'rq9'`)).rows[0].n).toBe(1)
-            expect(await sent()).toEqual([])
+            expect(await requestsSent()).toEqual([])
             await db.query(`DELETE FROM "Request" WHERE id = 'rq9'`)
             await sent()
         })
@@ -535,6 +537,103 @@ describe.skipIf(!ADMIN_URL)("live updates, in Postgres", () => {
             expect((await db.query(`SELECT count(*)::int AS n FROM "TaskCost" WHERE id = 'k9'`)).rows[0].n).toBe(1)
             expect(await sent()).toEqual([])
             await db.query(`DELETE FROM "Task" WHERE id IN ('t-cost1', 't-plain')`)
+            await sent()
+        })
+    })
+
+    // Part 4c: attendance, on a channel of its own for each company, which
+    // only the attendance lists join (as who's online's is, part 6b): a
+    // company's morning check-ins would otherwise reach every open tab.
+    describe("a company's attendance", () => {
+        const attendance = (company: string) => ({ topic: `attendance:${company}`, event: "changed", payload: {}, private: true })
+        /** Only the attendance channels: a flagged punch is a request too (part 2). */
+        const heard = async () => (await sent()).filter(s => s.topic.startsWith("attendance:"))
+        const PUNCH_COLUMNS = `"AttendancePunch"(id, "companyId", "userId", source, "sourceKey", "punchAtLocal", "punchAt", "resolvedWithTimeZone")`
+        const punch = (id: string, company: string, user: string) => `('${id}', '${company}', '${user}', 'MOBILE', '${id}', '2026-11-12 08:00', '2026-11-12 06:00', 'Africa/Cairo')`
+        const DAY_COLUMNS = `"AttendanceDay"(id, "companyId", "userId", date, status, breakdown, "inputsHash")`
+        const day = (id: string, company: string, user: string, date: string) => `('${id}', '${company}', '${user}', '${date}', 'PRESENT', '{}', 'h1')`
+
+        it("a check-in's punch, to its company's own channel only, saying nothing of what", async () => {
+            await db.query(`INSERT INTO ${PUNCH_COLUMNS} VALUES ${punch("lap1", "c1", "u2")}`)
+            const told = await sent()
+            expect(told.filter(s => s.topic.startsWith("attendance:"))).toEqual([attendance("c1")])
+            // Not the company's channel, which every open tab hears.
+            expect(told.filter(s => s.topic === "tasks:c1")).toEqual([])
+        })
+
+        it("once per statement for each company it touched", async () => {
+            await db.query(`INSERT INTO ${PUNCH_COLUMNS} VALUES ${punch("lap2", "c1", "u1")}, ${punch("lap3", "c1", "u2")}, ${punch("lap4", "c2", "u3")}`)
+            expect(await heard()).toEqual([attendance("c1"), attendance("c2")])
+        })
+
+        it("a punch withdrawn, its flag decided, or gone", async () => {
+            await db.query(`UPDATE "AttendancePunch" SET "voidedAt" = now(), "voidedById" = 'u1', "voidReason" = 'Twice' WHERE id = 'lap2'`)
+            expect(await heard(), "withdrawn").toEqual([attendance("c1")])
+            await db.query(`UPDATE "AttendancePunch" SET status = 'REJECTED', "reviewedAt" = now() WHERE id = 'lap3'`)
+            expect(await heard(), "decided").toEqual([attendance("c1")])
+            await db.query(`DELETE FROM "AttendancePunch" WHERE id = 'lap4'`)
+            expect(await heard(), "gone").toEqual([attendance("c2")])
+        })
+
+        it("not for a change that changed nothing", async () => {
+            await db.query(`UPDATE "AttendancePunch" SET note = note WHERE id = 'lap1'`)
+            await db.query(`UPDATE "AttendancePunch" SET note = 'x' WHERE id = 'nobody'`)
+            expect(await heard()).toEqual([])
+        })
+
+        it("a day worked out, and worked out again with other figures, or gone", async () => {
+            await db.query(`INSERT INTO ${DAY_COLUMNS} VALUES ${day("lad1", "c1", "u2", "2026-11-12")}, ${day("lad2", "c2", "u3", "2026-11-12")}`)
+            expect(await heard(), "worked out").toEqual([attendance("c1"), attendance("c2")])
+            await db.query(`UPDATE "AttendanceDay" SET "punchCount" = 2, "lateMinutes" = 12, "inputsHash" = 'h2', "derivedAt" = now() WHERE id = 'lad1'`)
+            expect(await heard(), "other figures").toEqual([attendance("c1")])
+            await db.query(`DELETE FROM "AttendanceDay" WHERE id = 'lad2'`)
+            expect(await heard(), "gone").toEqual([attendance("c2")])
+        })
+
+        // The nightly run works out whole months again: only the time it did so changes.
+        it("not for a day worked out again with the same figures", async () => {
+            await db.query(`UPDATE "AttendanceDay" SET "punchCount" = 2, "lateMinutes" = 12, "inputsHash" = 'h2', "derivedAt" = now() + interval '1 day' WHERE id = 'lad1'`)
+            expect(await heard()).toEqual([])
+        })
+
+        it("a decision on a day's exception made or undone", async () => {
+            await db.query(`INSERT INTO "AttendanceDayDecision"(id, "companyId", "userId", date, subject, outcome, "decidedById") VALUES ('ldd1', 'c1', 'u2', '2026-11-12', 'LATENESS', 'EXCUSED', 'u1')`)
+            expect(await heard(), "made").toEqual([attendance("c1")])
+            await db.query(`DELETE FROM "AttendanceDayDecision" WHERE id = 'ldd1'`)
+            expect(await heard(), "undone").toEqual([attendance("c1")])
+        })
+
+        it("a check-in refused, which the Super Admin's Check-ins page counts", async () => {
+            await db.query(`INSERT INTO "CheckInRefusal"(id, "companyId", "userId", reason) VALUES ('lcr1', 'c2', 'u3', 'MOCKED_LOCATION')`)
+            expect(await heard()).toEqual([attendance("c2")])
+            await db.query(`DELETE FROM "CheckInRefusal" WHERE id = 'lcr1'`)
+            await db.query(`DELETE FROM "AttendanceDay" WHERE id = 'lad1'`)
+            await db.query(`DELETE FROM "AttendancePunch" WHERE id IN ('lap1', 'lap2', 'lap3')`)
+            await sent()
+        })
+
+        it("heard by those who may see other people's attendance, their own company's only, and the Super Admin, any company's", async () => {
+            const sees = { ...HANA, sees_attendance: true }
+            expect(await hears(sees, "attendance:c1")).toBe(true)
+            expect(await hears(sees, "attendance:c2")).toBe(false)
+            expect(await hears({ ...HANA, sees_attendance: false }, "attendance:c1")).toBe(false)
+            expect(await hears(HANA, "attendance:c1")).toBe(false)
+            expect(await hears(SARA, "attendance:c1")).toBe(true)
+            expect(await hears(SARA, "attendance:c2")).toBe(true)
+            expect(await hears(SARA, "attendance:c1:x")).toBe(false)
+            expect(await hears(sees, "attendance:c1", "presence")).toBe(false)
+        })
+
+        it("never stopping the change it's for when it can't be sent", async () => {
+            await db.query("SET test.fail_send = 'on'")
+            try {
+                await db.query(`INSERT INTO ${PUNCH_COLUMNS} VALUES ${punch("lap9", "c1", "u2")}`)
+            } finally {
+                await db.query("RESET test.fail_send")
+            }
+            expect((await db.query(`SELECT count(*)::int AS n FROM "AttendancePunch" WHERE id = 'lap9'`)).rows[0].n).toBe(1)
+            expect(await heard()).toEqual([])
+            await db.query(`DELETE FROM "AttendancePunch" WHERE id = 'lap9'`)
             await sent()
         })
     })
