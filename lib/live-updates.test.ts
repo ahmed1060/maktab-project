@@ -305,6 +305,34 @@ describe("a screen drawn again", () => {
         expect(exceptions).toHaveBeenCalledTimes(4)
     })
 
+    // A screen held for one spaced kind isn't drawn, so it counts as no
+    // draw of the others it hears: a screen that hears only one of those is
+    // drawn at once, its 30 seconds untouched (PR 266).
+    it("a screen held for one spaced kind counts as no draw of another", () => {
+        const spaced = new LiveDrawer({ hidden: () => false, spacing: { attendance: 30_000, online: 30_000 } })
+        const attendanceOnly = vi.fn()
+        const both = vi.fn()
+        const onlineOnly = vi.fn()
+        spaced.on("attendance", attendanceOnly)
+        spaced.signal("attendance")
+        vi.advanceTimersByTime(1000)
+        expect(attendanceOnly).toHaveBeenCalledTimes(1)
+        spaced.on("attendance", both)
+        spaced.on("online", both)
+        spaced.on("requests", both)
+        spaced.on("online", onlineOnly)
+        // A request inside attendance's 30 seconds: the screen hearing both waits.
+        vi.advanceTimersByTime(4000)
+        spaced.signal("requests")
+        vi.advanceTimersByTime(1000)
+        expect(both).not.toHaveBeenCalled()
+        // Who's online straight after: drawn a second later, not held as though drawn.
+        spaced.signal("online")
+        vi.advanceTimersByTime(1000)
+        expect(onlineOnly).toHaveBeenCalledTimes(1)
+        expect(both).not.toHaveBeenCalled()
+    })
+
     it("not while the tab is hidden, and at once when it's shown", () => {
         const draw = vi.fn()
         drawer.on("tasks", draw)
