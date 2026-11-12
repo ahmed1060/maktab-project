@@ -1521,9 +1521,10 @@ The agent learns Hikvision's ISAPI beside the ZKTeco protocol it speaks:
 
 ### 17.7 Setting a terminal up
 
-On **Fingerprint terminals**, in the Attendance tab of Company settings,
-behind its own permission and the company's switch (§17.10) and the
-**Attendance — Terminals** add-on (§16):
+On **Fingerprint terminals**, in the Attendance tab of the company's options
+(the Company Options page, §5, titled "Company settings" on screen), behind
+its own permission and the company's switch (§17.10) and the **Attendance —
+Terminals** add-on (§16):
 
 - **Add a terminal** asks for its name, brand (from the Super Admin's list,
   §17.9), serial number, mode (entrance, exit or either, above), and how it
@@ -1623,8 +1624,10 @@ pay. So it stops being part of the Attendance settings tab's own access
   Admin, who alone builds roles (`ROLES_PLAN.md` round 5), grants it.
 - **The company's switch, the Super Admin's alone:** "The company sets up its
   own fingerprint terminals" (`Company.terminalsSetupByCompany`, §8.6), off to
-  start, a field only the Super Admin may change on the Attendance tab, as the
-  cash advances switch is (`lib/company-settings-tabs.ts`, `superAdminOnly`).
+  start. It sits on the same Attendance tab of the company's options, beside
+  the Fingerprint terminals section, as a field only the Super Admin may
+  change, as the cash advances switch is (`lib/company-settings-tabs.ts`,
+  `superAdminOnly`). The company's own people never see it.
   - **Off:** nobody in the company sees the section, its Admin included; the
     Super Admin sets the company's terminals up, from its settings.
   - **On:** those holding the permission do.
