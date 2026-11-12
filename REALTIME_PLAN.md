@@ -321,7 +321,8 @@ Decided with the product owner on 2026-11-10.
     drawn a second later, as the other lists are; those after it wait
     until 30 seconds have passed since the last draw. A company's morning
     arrivals would otherwise draw an open list every few seconds for an
-    hour.
+    hour. Joining the channel draws the list too, so a change in a list's
+    first 30 seconds open waits until they've passed.
   - **Joining a channel draws them once too,** as it does the others.
   - **Part 5's tint** marks a row of any of the lists that someone else
     added or changed. Each list is told apart by the address it's loaded
