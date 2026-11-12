@@ -646,7 +646,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      audit log's actions included, merged in #259 on 2026-11-12; then a
      task's location sent without its accuracy marked Needs review, not
      taken as exact, its line for a reviewer saying so
-     (`CLIENTS_PLAN.md` §2.5, #260);
+     (`CLIENTS_PLAN.md` §2.5), merged in #260 on 2026-11-12; then the
+     server's functions moved from Frankfurt to Dublin, next to the
+     database in Ireland (`TECH_STACK.md`, #261);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5961,3 +5963,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   that wasn't precise enough already is. A reviewer's line under it says
   why, in words of its own: the reading didn't say how precise it was. The
   badge and the Mark correct and Mark wrong buttons don't change.
+- **2026-11-12:** Every page answers sooner (`TECH_STACK.md`, #261): the
+  server's functions run in Dublin, next to the database in Ireland, rather
+  than in Frankfurt, so a page's database queries no longer each cross
+  Europe. No screen changes.
