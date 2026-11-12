@@ -812,10 +812,12 @@ list the code checks.
   (decided in the build).
 - **What the prompt says** (`UI_PLAN.md`, #217): what's wrong with the code is
   said under it, and a check that couldn't be made says so, never that the code
-  is wrong. Not yet: five codes in fifteen minutes stop the server checking them
-  for the rest of that time (`step-up:` in `RateLimit`), and the prompt can't
-  tell that from a wrong code, so a right one is called wrong until then
-  (backlog).
+  is wrong. Five codes in fifteen minutes stop the server checking them for the
+  rest of that time (`step-up:` in `RateLimit`). The prompt says so, counting
+  down until it checks again, where it called a right code wrong (#267). The
+  session tells it how long is left, worked out by the server, so the
+  browser's clock doesn't matter; the time it was paused until is kept in the
+  signed token, and a code it checks clears it.
 
 #### Turning it off: decided on 2026-11-09
 
