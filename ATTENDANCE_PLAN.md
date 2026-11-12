@@ -1126,6 +1126,11 @@ permission scope:
 
 Every action is audited.
 
+The Exceptions, Days and Punches tabs, and the Super Admin's integrity
+view (§13.7), draw themselves again as check-ins come in, for whoever may
+see other people's attendance, at most every 30 seconds while they keep
+coming (`REALTIME_PLAN.md` part 4c, #265).
+
 ### 13.2 Device health on System Health
 
 Terminals and agents join the `JobHeartbeat` cards: last seen, last sync, clock
