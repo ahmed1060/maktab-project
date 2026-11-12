@@ -46,7 +46,7 @@ const rule = (selector: string) => {
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;")
 const noop = () => {}
 
-async function codeDialog(props: Partial<{ minutes: number; code: string; error: "invalid" | "wrong" | "unchecked" | null; checking: boolean }> = {}) {
+async function codeDialog(props: Partial<{ minutes: number; code: string; error: "invalid" | "wrong" | "unchecked" | null; checking: boolean; pausedUntil: number | null; again: boolean }> = {}) {
     const { StepUpCodeDialog } = await import("@/components/StepUpInterceptor")
     return renderToStaticMarkup(h(StepUpCodeDialog, { minutes: 60, code: "", error: null, checking: false, onCode: noop, onSubmit: noop, onCancel: noop, ...props }))
 }
@@ -141,6 +141,71 @@ describe("the code a high-risk action asks for", () => {
         expect(src).toContain("stepUpCheck(session, previousRef.current)")
         // The old Confirm was off until six digits, without saying why.
         expect(src).not.toContain("code.trim().length < 6")
+    })
+
+    /**
+     * After five codes in fifteen minutes the server checks no more until
+     * they're over, and the prompt called a right code wrong meanwhile
+     * (ROLES_PLAN.md §6.15, PR 267). The session says how long is left, as
+     * the server counts it.
+     */
+    it("tells a pause from a wrong code, whatever the code was", async () => {
+        const { stepUpCheck, stepUpWait } = await import("@/lib/step-up-check")
+        expect(stepUpCheck({ user: { stepUpAt: 1, stepUpWait: 600 } }, 1)).toBe("paused")
+        expect(stepUpCheck({ user: { stepUpAt: null, stepUpWait: 1 } }, null)).toBe("paused")
+        // A pause that's over, or none, is a wrong code, as before.
+        expect(stepUpCheck({ user: { stepUpAt: 1, stepUpWait: 0 } }, 1)).toBe("wrong")
+        expect(stepUpCheck({ user: { stepUpAt: 1, stepUpWait: null } }, 1)).toBe("wrong")
+        // A new time is confirmed, whatever else it says.
+        expect(stepUpCheck({ user: { stepUpAt: 2, stepUpWait: 600 } }, 1)).toBe("confirmed")
+        expect(stepUpWait({ user: { stepUpWait: 600 } })).toBe(600)
+        expect(stepUpWait({ user: { stepUpWait: 0 } })).toBeNull()
+        expect(stepUpWait({ user: {} })).toBeNull()
+        expect(stepUpWait(null)).toBeNull()
+    })
+
+    it("counts the pause down under the code, in even-width digits, then says a code can be tried again", async () => {
+        const html = await codeDialog({ code: "123456", pausedUntil: Date.now() + 15 * 60_000 })
+        const [before, after] = en.step_up_paused_wait.split("{time}")
+        expect(html).toMatch(new RegExp(`<span id="[^"]+-error" class="ui-error"><span class="ui-num">${esc(before)}<span role="timer" aria-live="off">(15:00|14:59)</span>${esc(after).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}</span></span>`))
+        expect(html).toContain('aria-invalid="true"')
+        // Never said as a wrong code: it wasn't checked.
+        expect(html).not.toContain(esc(en.security_mfa_code_wrong))
+        // Confirm can still be pressed: the server says how long is left.
+        expect(html).toMatch(/<button type="submit" class="ui-btn ui-btn-primary">Confirm<\/button>/)
+        // The pause wins over a mistake said before it.
+        expect(await codeDialog({ error: "wrong", pausedUntil: Date.now() + 60_000 })).not.toContain(esc(en.security_mfa_code_wrong))
+
+        const again = await codeDialog({ again: true })
+        // Heard when it comes, as the sign-in page's line that a hold is over is.
+        expect(again).toMatch(new RegExp(`<span id="[^"]+-hint" class="ui-hint"><span role="status">${esc(en.step_up_wait_over)}</span></span>`))
+        expect(again).not.toContain("aria-invalid")
+        // A mistake said after it wins over the line that it's over.
+        expect(await codeDialog({ again: true, error: "wrong" })).not.toContain(esc(en.step_up_wait_over))
+    })
+
+    it("says the pause in Arabic to anyone, in the page's digits", async () => {
+        state.locale = "ar"
+        const html = await codeDialog({ pausedUntil: Date.now() + 15 * 60_000 })
+        expect(html).toMatch(/<span role="timer" aria-live="off">(١٥:٠٠|١٤:٥٩)<\/span>/)
+        for (const words of [en.step_up_paused_wait, ar.step_up_paused_wait]) expect(words).toContain("{time}")
+        for (const words of [ar.step_up_paused_wait, ar.step_up_wait_over]) {
+            expect(words).toContain("يمكن")
+            // As whole words: «حاول» is inside «محاولات» and «المحاولة», which say it to anyone.
+            for (const masculine of ["حاول", "أدخل", "انتظر"]) expect(words, masculine).not.toMatch(new RegExp(`(^|\\s)${masculine}(\\s|$)`))
+        }
+        // The app never says "we", and says what happened in the active voice.
+        for (const words of [en.step_up_paused_wait, en.step_up_wait_over]) expect(words.toLowerCase()).not.toMatch(/\bwe\b|\bour\b|\bwere\b/)
+    })
+
+    it("asks the session how long is left, and counts it from this browser's own now", async () => {
+        const src = source("components/StepUpInterceptor.tsx")
+        expect(src).toContain("if (check === 'paused')")
+        expect(src).toContain("Date.now() + (stepUpWait(session) ?? 0) * 1000")
+        // What was waited for goes as the prompt closes, as what was typed does.
+        const close = src.slice(src.indexOf("const close = "), src.indexOf("const cancel = "))
+        for (const reset of ["setPausedUntil(null)", "setAgain(false)"]) expect(close, reset).toContain(reset)
+        expect(source("components/SignInWait.tsx")).toContain("code: 'step_up_paused_wait'")
     })
 
     it("for an account without two-factor sign-in, says it's needed, with Cancel and a link to set it up", async () => {

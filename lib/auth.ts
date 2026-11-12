@@ -427,6 +427,10 @@ export const authOptions: NextAuthOptions = {
                 session.user.subscription = token.subscription as any
                 // When this session last confirmed a high-risk action (§6.15).
                 session.user.stepUpAt = token.stepUpAt ?? null
+                // How many seconds until codes are checked again, after too
+                // many: counted here, by the server's clock, not the browser's.
+                const pausedFor = typeof token.stepUpPausedUntil === 'number' ? Math.ceil((token.stepUpPausedUntil - Date.now()) / 1000) : 0
+                session.user.stepUpWait = pausedFor > 0 ? pausedFor : null
 
                 // Previewing a role (ROLES_PLAN.md §6.6): the Super Admin is
                 // presented as a holder of it in its company — its kind, its
@@ -752,10 +756,16 @@ export const authOptions: NextAuthOptions = {
             // time written into the signed token — the browser can ask, never
             // tell. Fixed from this moment; nothing else extends it. Attempts
             // are limited in the database, not the token, since an older
-            // cookie could be replayed to reset a count kept in it.
+            // cookie could be replayed to reset a count kept in it. When
+            // they're over, the token keeps until when, so the prompt can
+            // say so rather than call a code it didn't check wrong (PR 267);
+            // a code checked clears it.
             if (trigger === 'update' && session && typeof session.stepUpCode === 'string' && token.sub) {
-                const { limited } = await RateLimiter.getLimitData(`step-up:${token.sub}`, 5, 15 * 60 * 1000)
-                if (!limited) {
+                const { limited, resetAt } = await RateLimiter.getLimitData(`step-up:${token.sub}`, 5, 15 * 60 * 1000)
+                if (limited) {
+                    token.stepUpPausedUntil = resetAt
+                } else {
+                    delete token.stepUpPausedUntil
                     const select = { mfaEnabled: true, mfaSecret: true } as const
                     const row = token.role === 'SUPER_ADMIN'
                         ? await prisma.superAdmin.findUnique({ where: { id: token.sub as string }, select })

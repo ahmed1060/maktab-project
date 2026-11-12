@@ -16,6 +16,9 @@ declare module "next-auth" {
             // When this session last entered a step-up code (ROLES_PLAN.md
             // §6.15), in ms; set only by the jwt() callback after checking it.
             stepUpAt?: number | null
+            // Seconds until step-up codes are checked again, after too many,
+            // by the server's clock (PR 267); null when they're checked.
+            stepUpWait?: number | null
             firstName: string
             lastName: string
             gender?: string
@@ -125,6 +128,8 @@ declare module "next-auth/jwt" {
         actingEnded?: true
         preview?: import("@/lib/services/role.service").RolePreview | null
         stepUpAt?: number | null
+        /** When step-up codes are checked again, after too many (PR 267), in ms; a code checked clears it. */
+        stepUpPausedUntil?: number
         firstName: string
         lastName: string
         gender?: string

@@ -3543,6 +3543,8 @@ export const en = {
         step_up_hint: "This action moves money or cannot be undone. Enter the code from your authenticator app. You won't be asked again for {minutes} on this device.",
         step_up_code: "Authenticator code",
         step_up_unchecked: "The code couldn't be checked. Please try again.",
+        step_up_paused_wait: "Too many codes in a short time. You can try again in {time}.",
+        step_up_wait_over: "You can try a code again.",
         step_up_confirm: "Confirm",
         step_up_enrol_title: "Two-factor authentication needed",
         step_up_enrol_hint: "This action moves money or cannot be undone, so it needs two-factor authentication. Set it up in Security settings, then try again.",

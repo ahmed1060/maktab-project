@@ -156,4 +156,45 @@ describe("confirming a high-risk action with a code", () => {
         for (let i = 0; i < 5; i++) await ask("000000")
         expect((await ask("123456")).stepUpAt).toBeUndefined()
     })
+
+    /**
+     * The prompt couldn't tell that from a wrong code, so a right one was
+     * called wrong for the rest of the fifteen minutes (PR 267). The token
+     * keeps when the pause ends; the session says how long is left, as the
+     * server counts it, so the browser's clock doesn't matter.
+     */
+    it("says when it stopped checking codes, and how long is left, as the server counts it", async () => {
+        db.users.a1 = withMfa
+        let token: any = fresh({ sub: "a1", role: "ADMIN", companyId: "c1" })
+        for (let i = 0; i < 5; i++) token = await jwt({ token, trigger: "update", session: { stepUpCode: "000000" } })
+        expect(token.stepUpPausedUntil).toBeUndefined()
+        expect((await session(token)).user.stepUpWait).toBeNull()
+
+        token = await jwt({ token, trigger: "update", session: { stepUpCode: "123456" } })
+        expect(token.stepUpAt).toBeUndefined()
+        expect(token.stepUpPausedUntil).toBe(db.limits["step-up:a1"].resetAt.getTime())
+        const wait = (await session(token)).user.stepUpWait
+        expect(wait).toBeGreaterThan(14 * 60)
+        expect(wait).toBeLessThanOrEqual(15 * 60)
+    })
+
+    it("a code it checks clears the pause, and a pause that's over says nothing", async () => {
+        db.users.a1 = withMfa
+        // Over: the session says nothing, though the token still has it.
+        const over = fresh({ sub: "a1", role: "ADMIN", companyId: "c1", stepUpPausedUntil: Date.now() - 1000 })
+        expect((await session(over)).user.stepUpWait).toBeNull()
+        // A new window: the code is checked, and the pause goes.
+        const token = await jwt({ token: over, trigger: "update", session: { stepUpCode: "000000" } })
+        expect(token.stepUpPausedUntil).toBeUndefined()
+        const right = await jwt({ token: { ...over }, trigger: "update", session: { stepUpCode: "123456" } })
+        expect(right.stepUpAt).toBeGreaterThan(0)
+        expect(right.stepUpPausedUntil).toBeUndefined()
+    })
+
+    it("the browser cannot write the pause itself", async () => {
+        db.users.a1 = withMfa
+        const token = await jwt({ token: fresh({ sub: "a1", role: "ADMIN" }), trigger: "update", session: { stepUpPausedUntil: Date.now() + 60_000, stepUpWait: 60 } })
+        expect(token.stepUpPausedUntil).toBeUndefined()
+        expect((await session(token)).user.stepUpWait).toBeNull()
+    })
 })

@@ -4,8 +4,9 @@ import { useEffect, useRef, useState, type FormEvent, type Ref } from 'react'
 import { useSession } from 'next-auth/react'
 import { Button, ButtonLink, Dialog, DialogActions, Field, TextInput } from '@/components/ui'
 import { stepUpWaiting } from '@/lib/step-up-waiting'
-import { stepUpCheck } from '@/lib/step-up-check'
+import { stepUpCheck, stepUpWait } from '@/lib/step-up-check'
 import { codeDigits, isCode } from '@/lib/security-forms'
+import { SignInWait } from '@/components/SignInWait'
 import { countOf } from '@/lib/plural'
 import { useLanguage } from '@/context/LanguageContext'
 
@@ -19,7 +20,10 @@ import { useLanguage } from '@/context/LanguageContext'
  * writes the time into the signed token, never the browser), and sends the
  * original request again; the screen that asked gets that second answer and
  * never knows. Cancelling hands it the refusal. `MFA_ENROL_REQUIRED` says to
- * set up two-factor authentication first.
+ * set up two-factor authentication first. After five codes in fifteen
+ * minutes the server checks none until they're over, and the session says
+ * how long is left: that's counted down under the code, never said as a
+ * wrong code (PR 267).
  *
  * On the building blocks' dialog, above every other one (DESIGN.md §5.5,
  * Dialog; PR 217): it was the last of the older pages' windows.
@@ -38,6 +42,10 @@ export default function StepUpInterceptor() {
     const [waiting] = useState(stepUpWaiting)
     const [code, setCode] = useState('')
     const [error, setError] = useState<CodeError | null>(null)
+    // When codes are checked again, after too many, by this browser's clock;
+    // then, once that's past, that a code can be tried again.
+    const [pausedUntil, setPausedUntil] = useState<number | null>(null)
+    const [again, setAgain] = useState(false)
     const [checking, setChecking] = useState(false)
     // The code's field, to go back to with what's wrong under it.
     const field = useRef<HTMLInputElement>(null)
@@ -76,11 +84,16 @@ export default function StepUpInterceptor() {
         setAsk(null)
         setCode('')
         setError(null)
+        setPausedUntil(null)
+        setAgain(false)
     }
     // Not while the code is checked: its answer decides.
     const cancel = () => { if (!checking) close(false) }
+    // The latest thing said under the code is the one shown.
     const wrongly = (problem: CodeError) => {
         setError(problem)
+        setPausedUntil(null)
+        setAgain(false)
         field.current?.focus()
     }
 
@@ -95,7 +108,12 @@ export default function StepUpInterceptor() {
             const session = await updateRef.current({ stepUpCode: code.trim() })
             const check = stepUpCheck(session, previousRef.current)
             if (check === 'confirmed') close(true)
-            else wrongly(check)
+            else if (check === 'paused') {
+                // How long, as the server counted it, from this browser's own now.
+                setPausedUntil(Date.now() + (stepUpWait(session) ?? 0) * 1000)
+                setAgain(false)
+                field.current?.focus()
+            } else wrongly(check)
         } finally {
             setChecking(false)
         }
@@ -105,6 +123,7 @@ export default function StepUpInterceptor() {
     if (ask.kind === 'enrol') return <StepUpEnrolDialog onClose={() => close(false)} />
     return (
         <StepUpCodeDialog minutes={ask.minutes} code={code} error={error} checking={checking} field={field}
+            pausedUntil={pausedUntil} again={again} onPauseOver={() => { setPausedUntil(null); setAgain(true) }}
             onCode={value => setCode(codeDigits(value))} onSubmit={confirm} onCancel={cancel} />
     )
 }
@@ -114,13 +133,19 @@ export default function StepUpInterceptor() {
  * the action, which waits, open, for its answer. Why, and for how long it
  * won't be asked again, in the page's digits; the code's six digits left to
  * right, what's wrong said under them; then Cancel and Confirm, in the form.
+ * After too many codes, the time until they're checked again is counted
+ * down there instead, in even-width digits, then that a code can be tried
+ * again. Confirm can still be pressed: the server says how long is left.
  */
-export function StepUpCodeDialog({ minutes, code, error, checking, field, onCode, onSubmit, onCancel }: {
+export function StepUpCodeDialog({ minutes, code, error, checking, field, pausedUntil = null, again = false, onPauseOver, onCode, onSubmit, onCancel }: {
     minutes: number
     code: string
     error: CodeError | null
     checking: boolean
     field?: Ref<HTMLInputElement>
+    pausedUntil?: number | null
+    again?: boolean
+    onPauseOver?: () => void
     onCode: (value: string) => void
     onSubmit: (e: FormEvent<HTMLFormElement>) => void
     onCancel: () => void
@@ -130,7 +155,9 @@ export function StepUpCodeDialog({ minutes, code, error, checking, field, onCode
         <Dialog open onClose={onCancel} title={t('step_up_title')} aboveAll>
             <form className="ui-form" noValidate onSubmit={onSubmit}>
                 <p>{t('step_up_hint').replace('{minutes}', countOf(t, locale, minutes, 'minutes'))}</p>
-                <Field label={t('step_up_code')} error={error ? t(ERROR_TEXT[error]) : undefined}>{p => (
+                <Field label={t('step_up_code')} hint={again ? <span role="status">{t('step_up_wait_over')}</span> : undefined} error={pausedUntil
+                    ? <span className="ui-num"><SignInWait kind="code" until={pausedUntil} onOver={() => onPauseOver?.()} /></span>
+                    : error ? t(ERROR_TEXT[error]) : undefined}>{p => (
                     // The one thing it asks for, so it takes the focus as it opens. Six digits at most by
                     // what's kept (codeDigits), not by the field: cut at six, "123 456" pasted lost its 6.
                     <TextInput {...p} ref={field} name="code" inputMode="numeric" autoComplete="one-time-code" spellCheck={false} dir="ltr" autoFocus
