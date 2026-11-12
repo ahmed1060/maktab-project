@@ -124,6 +124,9 @@ permissions allow, as today.
 
 - **They come after the company's groups,** which the Super Admin sees for
   the company they've picked, as today.
+- **Terminal brands joins Templates** when it's built: the list of
+  fingerprint terminal brands companies pick from (`ATTENDANCE_PLAN.md`
+  §17.9, round 9, #269).
 - **Their Arabic names (Decided on 2026-10-22):** المشتركون (Customers), القوالب
   (Templates), الصلاحيات (Access) and التشغيل (Operations). العملاء, the
   word for a company's clients, would name two groups in the same side bar.
@@ -670,8 +673,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      given its queries one at a time (`TROUBLESHOOTING.md`), merged in #268
      on 2026-11-12; then the plan for fingerprint terminals connecting
      through the office agent or straight to Nizmo over HTTPS, chosen for
-     each terminal, ZKTeco and Hikvision alike (`ATTENDANCE_PLAN.md` §17.1
-     to §17.9, Phase 4), #269;
+     each terminal, ZKTeco and Hikvision alike, their brands a list the
+     Super Admin keeps (`ATTENDANCE_PLAN.md` §17.1 to §17.10, Phase 4),
+     #269;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6039,8 +6043,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-11-12:** The plan for fingerprint terminals that connect straight
   to Nizmo over HTTPS, without the office agent, as well as through it,
   chosen for each terminal, ZKTeco and Hikvision alike (#269;
-  `ATTENDANCE_PLAN.md` round 9, §17.1 to §17.9, Phase 4). A ZKTeco terminal
+  `ATTENDANCE_PLAN.md` round 9, §17.1 to §17.10, Phase 4). A ZKTeco terminal
   straight to Nizmo is accepted only from the office's fixed internet
-  address, since it sends nothing secret. The first customer's terminal, a
-  Convoy that most likely speaks ZKTeco's protocol, is tried with the agent
-  first. Plans only; no screen changes yet.
+  address, since it sends nothing secret. Brands are a list the Super Admin
+  keeps on a Terminal brands page under Templates (§2.2), each speaking a
+  protocol Nizmo knows, with Convoy on it from the start. The first
+  customer's terminal, a Convoy that most likely speaks ZKTeco's protocol, is
+  tried with the agent first. Plans only; no screen changes yet.
