@@ -296,6 +296,13 @@ Decided with the product owner on 2026-11-10.
       instant. A tab coming back into view asks them too.
     - A tab whose old script hasn't loaded the new one yet still beats as
       before: its beat stands for the person's one tab until it's reloaded.
+    - Signing out from the top bar says the tab is gone first: asked after,
+      the session is over and the server refuses it, and the person would
+      show as online for 32 minutes after leaving.
+    - The heartbeat started again each time the session was fetched again,
+      every 5 minutes, and called the server as it did, from every tab,
+      shown or not. Found while building 6a: it now starts only as someone
+      signs in.
     - Rows are swept daily, with the other old records (`/api/cron/prune`).
   - **6b: the badge is live.** The Employees list and All users are drawn
     again as someone comes or goes, on a channel only those screens join,
