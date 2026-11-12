@@ -845,6 +845,12 @@ These are built once, in the building-blocks PR, and every page uses them
     couldn't be made says so, to try again, never that the code is wrong.
     While it's checked, Cancel is off and Confirm is busy. Cancel, or
     Escape, gives the action its refusal, and what was typed isn't kept.
+  - After five codes in fifteen minutes, the server checks no more until
+    those fifteen minutes are over. The prompt says so under the code,
+    counting down in even-width digits as the sign-in page does, and never
+    calls a code it didn't check wrong. Once the time is up, it says a
+    code can be tried again. Confirm can still be pressed meanwhile: it
+    asks the server again, which says how long is left.
   - For an account without two-factor sign-in, the same place says the
     action needs it, with Cancel and a link to set it up.
   - One that asks for the viewer's own password before an action, such as
@@ -2159,3 +2165,7 @@ changed:
   check-ins keep coming (§8), as the product owner chose for live updates'
   part 4c: a company's morning arrivals would otherwise draw an open list
   every few seconds for an hour.
+- **2026-11-12:** The code a high-risk action asks for (§5.5, Dialog)
+  says when the server has stopped checking codes, after five in fifteen
+  minutes, and counts down until it checks again, where it called a right
+  code wrong.
