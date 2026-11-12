@@ -77,6 +77,39 @@ The project is configured to automatically generate the Prisma Client using a `p
 - **Do not** "fix" this with `rejectUnauthorized: false`. That restores the old
   behaviour by switching verification off entirely.
 
+### "(EAUTHTIMEOUT) timeout while waiting for message" (code 08006)
+- **Cause**: Supabase's pooler logs it as "ClientHandler: Timeout while
+  waiting for message in state SCRAM final": it sent its half of the
+  password handshake, and the function never answered. Vercel freezes a
+  function once its response is sent, and nothing still running then is
+  finished unless Next.js handed it to `waitUntil`. A connection opened at
+  that moment stops mid-handshake, and its error is logged later, by the
+  next request that wakes the same function, on whatever page that was.
+- **Where it came from (#268)**: the Super Admin's overview on the dashboard
+  home was cached for 30 seconds (`unstable_cache`). Stale, it served the old
+  counts and refreshed them in the background. The home page sits behind
+  `loading.tsx`, so Next.js had already sent the page's first part, and
+  handed what was pending to `waitUntil`, before the overview was read: the
+  refresh it started then was never waited for.
+- **Fix**: the overview is read fresh, in one batch transaction, which is one
+  connection and one snapshot. Don't cache a read on a page behind a loading
+  boundary with `unstable_cache`, nor start any work a response doesn't wait
+  for.
+
+### "Calling client.query() when the client is already executing a query"
+- **Cause**: a query sent on a connection while another is still on its
+  way. A transaction is one connection, and node-postgres queues such a query
+  itself, with a warning that pg 9 will refuse it. Prisma 7 does this on its
+  own: a read that includes several relations fetches them at once, and inside
+  a transaction they all go to its one connection. So did our own
+  `Promise.all` over a transaction's queries. Submitting a task with a cost
+  paid from a cash advance warned in production (#268).
+- **Fix**: every connection Prisma's pool opens is a `OneAtATimeClient`
+  (`lib/one-at-a-time-client.ts`): it sends its queries one after another,
+  as node-postgres's own queue did, so pg is never handed one while another
+  is on its way. Nothing else changes: on one connection they were one at a
+  time anyway.
+
 ### Authentication Errors (500 or "Invalid Secret")
 - **Cause**: `NEXTAUTH_SECRET` is missing in production.
 - **Fix**: Add a unique secret string to Vercel and redeploy.
