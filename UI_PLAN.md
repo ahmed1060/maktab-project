@@ -663,8 +663,11 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      2026-11-12; then a tidy-up of part 4c, merged in #266 on 2026-11-12;
      then the code a high-risk action asks for saying when the server has
      stopped checking codes, after five in fifteen minutes, and counting
-     down, where it called a right code wrong (`ROLES_PLAN.md` §6.15,
-     #267);
+     down, where it called a right code wrong (`ROLES_PLAN.md` §6.15),
+     merged in #267 on 2026-11-12; then the Super Admin's overview read
+     fresh, not refreshed after its page was sent, which a frozen function
+     left mid-handshake with the database, and each database connection
+     given its queries one at a time (`TROUBLESHOOTING.md`, #268);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6021,3 +6024,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   server has stopped checking codes, after five in fifteen minutes, and
   counts down until it checks again (#267; `DESIGN.md` §5.5, Dialog;
   `ROLES_PLAN.md` §6.15). It called a right code wrong meanwhile.
+- **2026-11-12:** Two database fixes from production's logs (#268;
+  `TROUBLESHOOTING.md`). The Super Admin's overview is read fresh, in one
+  batch transaction: its 30-second cache refreshed after the page was sent,
+  and Vercel froze the function mid-handshake with the database. And each
+  database connection is given its queries one at a time: inside a
+  transaction, Prisma's reads of several relations, and our own reads at
+  once, were queued by the driver, with a warning that its next version
+  refuses them.
