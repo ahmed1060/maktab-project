@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { poolConfigFrom } from './postgres-ssl'
+import { OneAtATimeClient } from './one-at-a-time-client'
 
 /**
  * The one Prisma client.
@@ -66,8 +67,10 @@ function createClient(): PrismaClient {
 
     // poolConfigFrom rather than the raw string: see lib/postgres-ssl.ts for
     // why handing the URL straight to node-postgres breaks TLS against Supabase.
+    // Each connection the pool opens is given its queries one at a time, as a
+    // transaction's are (lib/one-at-a-time-client.ts, PR 268).
     const client = new PrismaClient({
-        adapter: new PrismaPg(poolConfigFrom(connectionString, { max: 5 })),
+        adapter: new PrismaPg(poolConfigFrom(connectionString, { max: 5, Client: OneAtATimeClient })),
     })
 
     globalForPrisma.prisma = client

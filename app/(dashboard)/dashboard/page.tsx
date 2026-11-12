@@ -126,9 +126,9 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
         if (userRole === 'SUPER_ADMIN' && !companyId) {
             // "Needs Attention" — the things a super admin would otherwise
             // only find by opening each page individually. Recomputed here
-            // (not read from the cached stats below) only for the audit-log
-            // link's date boundary — a few seconds' difference from the
-            // cached query's own internal snapshot doesn't matter for that.
+            // (not returned with the stats below) only for the audit-log
+            // link's date boundary — a moment's difference from the query's
+            // own doesn't matter for that.
             // A Server Component: this renders once per request and never
             // again, so there is no later render for the clock to disagree
             // with — which is what the purity rule guards against, and why it
@@ -137,11 +137,9 @@ export default async function DashboardPage(props: { searchParams: Promise<{ com
             // eslint-disable-next-line react-hooks/purity -- server-rendered once per request
             const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
-            // Cached 30s — this is the same read for every super admin
-            // regardless of who's looking, unlike the company/employee views
-            // below which stay uncached since people expect those to reflect
-            // their own just-taken action immediately. See
-            // lib/services/dashboard-stats.service.ts for why.
+            // Read fresh, in one batch transaction: its 30-second cache was
+            // read again after the page was sent, which Vercel froze mid-way
+            // (PR 268; lib/services/dashboard-stats.service.ts).
             const { totalCompanies, totalUsers, totalTasks, totalClients, taskStats, systemErrors24h, expiringSubscriptions, bannedCompanies } = await getSuperAdminOverviewStats()
 
             return (

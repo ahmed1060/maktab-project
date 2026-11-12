@@ -227,6 +227,35 @@ describe.skipIf(!ADMIN_URL)("costs paid from cash advances, in Postgres", () => 
         expect(await balance("e2")).toBe(0)
     }, 60_000)
 
+    /**
+     * A transaction is one connection, and node-postgres sends one query at a
+     * time on it: a query given it while another is on its way was queued,
+     * with a warning that pg 9 refuses it. Submitting a task warned so in
+     * production, through the company's time zone, read for the Spent
+     * entries' date (PR 268).
+     */
+    it("records a cost paid from the advance one query at a time on its transaction", async () => {
+        const query = Client.prototype.query
+        const overlaps: string[] = []
+        Client.prototype.query = function (this: Client & { _activeQuery?: unknown; _queryQueue?: unknown[] }, ...args: unknown[]) {
+            if (this !== db && (this._activeQuery || (this._queryQueue?.length ?? 0) > 0)) {
+                const sent = args[0] as { text?: string } | string
+                overlaps.push(String(typeof sent === "string" ? sent : sent?.text).slice(0, 80))
+            }
+            return (query as (...a: unknown[]) => unknown).apply(this, args)
+        } as typeof Client.prototype.query
+        await db.query(`INSERT INTO "Task"(id, title, description, status, deadline, "companyId", "locationId", "updatedAt") VALUES ('k12', 'Fix the lock', 'd', 'IN_PROGRESS', now() + interval '2 days', 'c1', 'port', now())`)
+        await db.query(`INSERT INTO "_MultipleAssignees"("A", "B") VALUES ('k12', 'e1')`)
+        await Advances.record(admin, "e1", { kind: "GIVEN", amount: 100, date: "2026-10-04" })
+        try {
+            await add("k12", ehab, 60)
+        } finally {
+            Client.prototype.query = query
+        }
+        expect(overlaps).toEqual([])
+        expect((await costs("k12")).map(c => [c.amount, c.advance])).toEqual([[60, 60]])
+    })
+
     it("holds a cost's part to the cost, in the database too", async () => {
         const [row] = (await db.query(`SELECT id FROM "TaskCost" WHERE "taskId" = 'k2' LIMIT 1`)).rows
         await expect(db.query(`UPDATE "TaskCost" SET "fromAdvance" = amount + 1 WHERE id = '${row.id}'`)).rejects.toThrow(/TaskCost_fromAdvance_check/)
