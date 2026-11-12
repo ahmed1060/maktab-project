@@ -2236,6 +2236,9 @@ model AttendancePunch {
   @@index([phoneId])
   @@index([companyId, status])
   @@index([companyId, reviewedAt])
+  // Whether a company checked in from the phone app in the last 30 days, in
+  // one step on every check-in (REALTIME_PLAN.md part 4c, live_attendance_found).
+  @@index([companyId, source, receivedAt])
 }
 
 /// A spreadsheet of punches brought in, and what became of its rows.

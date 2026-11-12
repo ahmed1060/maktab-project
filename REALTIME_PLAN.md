@@ -117,6 +117,13 @@ Decided with the product owner on 2026-11-10.
     set, a cost left off a bill or charged again, a charge collected or
     uncollected. Each Super Admin's own channel hears every change to
     costs.
+  - Attendance (part 4c) has a channel of its own for each company,
+    joined only while an attendance list is open, as who's online has.
+    A company of 200 makes about 400 check-ins a working day, each
+    writing a punch and changing a day: about 20,000 signals a month,
+    each counted once as it's sent and once for each list listening. On
+    the company's channel, every open tab would have heard each, about
+    1.3 million a month for that one company.
 
 ---
 
@@ -129,7 +136,7 @@ Decided with the product owner on 2026-11-10.
 | 3 | A suspended, archived, deleted or banned person signed out within seconds, not 90; the heartbeat kept as the safety net | #248 |
 | 4a | Cash advances: the Cash advances tab, a person's cash advance and My cash advance, Add cost's line about the advance, and an open Give advance, Record return or Correction window | #252 |
 | 4b | Costs and charges: the Employee costs and Charged to clients tabs, and a client's charges | #264 |
-| 4c | Attendance | |
+| 4c | Attendance: the Exceptions, Days and Punches tabs, and the Super Admin's Check-ins page | #265 |
 | 5 | A little motion for what arrives live: what changed is shown for a moment, so nobody has to hunt for it | #251, merged 2026-11-11; Codex's two findings after the merge, fixed in #253 |
 | 6a | Who's online: each tab says when it's shown and when it goes, and the heartbeat slows to every 15 minutes, as the safety net | #262 |
 | 6b | The Online badge on the Employees list and All users drawn again as people come and go | #263 |
@@ -180,7 +187,7 @@ Decided with the product owner on 2026-11-10.
     (#247).
 - **Part 4, other screens,** in three PRs, the product owner choosing
   cash advances first: 4a cash advances, 4b costs and charges, 4c
-  attendance. Attendance's waits for a decision on what a check-in
+  attendance. Attendance's waited for a decision on what a check-in
   signals, as a signal for each would draw every open attendance page in
   the company with every check-in (part 2 sends none for them).
 - **Part 4a, cash advances (#252):** the screens that show a cash advance
@@ -272,6 +279,75 @@ Decided with the product owner on 2026-11-10.
     aren't tinted, as in part 4a.
   - **Not heard:** a client, or someone on a task, renamed. The lists show
     the new name as they're next drawn.
+- **Part 4c, attendance (#265), as the product owner chose on
+  2026-11-12:** the attendance lists draw themselves again as check-ins
+  come in and attendance is corrected, through the same routes as any
+  visit, keeping the period, filters and what's open:
+  - the Attendance page's Exceptions, Days and Punches tabs;
+  - the Super Admin's Check-ins page: the check-ins waiting for them, and
+    each company's counts.
+  - **A channel of its own for each company,** `attendance:<company id>`,
+    joined only while one of those lists is open, as who's online's is
+    (part 6b). Every other tab stays off it. The Attendance page joins its
+    company's, the company in view's for the Super Admin; the Check-ins
+    page joins the channel of each company it lists.
+    - Turned down: the company's channel, which every open tab of the
+      company hears. A company of 200 makes about 400 check-ins a working
+      day, and each heard by every tab is about 1.3 million messages a
+      month for that one company.
+    - Turned down: signalling only what needs a decision, which leaves
+      Days and Punches still for every check-in on time; and the lists
+      reloading on a timer.
+  - **Who may listen:** a company's people who may see other people's
+    attendance (`attendance.view_team`), their own company's channel
+    only; and the Super Admin, any company's. The token says whether its
+    person may (`sees_attendance`). Someone who sees only their own
+    attendance reloads to see their own check-in, which they've just made
+    on their phone.
+  - **The signal** is `changed`, empty as the others are, sent by the
+    database once per statement for each company it touched
+    (`prisma/migrations/20261216000000_live_attendance`):
+    - a punch added, by a check-in, by hand or from a file, withdrawn, or
+      its flag decided;
+    - a day worked out again whose figures changed. Not one whose figures
+      stayed as they were: the nightly run works out whole months again,
+      and only the time it did so changes;
+    - a decision on a day's exception made or undone;
+    - a check-in refused, which the Check-ins page counts.
+    - The Exceptions tab hears part 2's `requests` too, for the
+      missing-punch and permission-hour requests it shows.
+    - The Check-ins page hears part 2's `requests` too, which each Super
+      Admin hears for every company's flagged check-ins: those waiting for
+      them come in, and are decided, wherever their company is (found by
+      Codex on #265).
+  - **A company found checking in** (found by Codex on #265): the
+    Check-ins page lists, and hears the channels of, only the companies
+    that checked in or were refused in the last 30 days. A company's
+    first check-in from the app, or first refusal, in 30 days says so on
+    each Super Admin's own channel, with `attendance`
+    (`prisma/migrations/20261217000000_live_attendance_found`). The page
+    then lists it and hears its channel. Rare: once for a company
+    starting, or coming back after 30 days. An index on the check-ins
+    by company, source and when they came in keeps the question to one
+    step on every check-in.
+  - **At most every 30 seconds while they keep coming** (`DESIGN.md` §8,
+    changed first, in its own commit). The first after a quiet spell is
+    drawn a second later, as the other lists are; those after it wait
+    until 30 seconds have passed since the last draw. A company's morning
+    arrivals would otherwise draw an open list every few seconds for an
+    hour. Joining the channel draws the list too, so a change in a list's
+    first 30 seconds open waits until they've passed. A list that hears
+    something else too keeps to its 30 seconds, whatever it hears: a
+    flagged check-in sends `requests` as well, and the Exceptions tab
+    heard it at once (found by Codex on #265).
+  - **Joining a channel draws them once too,** as it does the others.
+  - **Part 5's tint** marks a row of any of the lists that someone else
+    added or changed. Each list is told apart by the address it's loaded
+    from (`useArrivalsIn`).
+  - **The person's own actions aren't tinted:** adding or withdrawing a
+    punch, working a month out again, excusing, accepting, approving or
+    rejecting, undoing a decision, and the Super Admin's accept and
+    reject, as in part 4a.
 - **Part 5, motion (#251), as the product owner chose:** what someone
   else changed is shown arriving, briefly, and then the screen is still
   again (`DESIGN.md` §8, changed first, in its own commit).
@@ -291,6 +367,11 @@ Decided with the product owner on 2026-11-10.
       and only the draw that follows a signal is marked;
     - not as a page opens, which has nothing before it, and not when the
       person looks at another tab, filter or page, which is another list;
+    - not as a list first loads, though a signal came while it loaded
+      (#265): a list still loading is told apart from an empty one, and
+      its first draw marks nothing. Joining a channel draws the lists
+      that hear it, so a list opened as its channel was joined was
+      otherwise tinted throughout;
     - not for the person's own changes: each action on the Requests page,
       its dialogs' too, says as it starts, before it sends anything, and
       as it's answered (`ActionStarts`, `lib/useBusyAction.ts`), and every
@@ -531,3 +612,25 @@ Decided with the product owner on 2026-11-10.
   changing without its task. The Super Admin's own channel says `costs`
   for every change to costs. A signal of costs' own for every cost added
   was turned down: every open tab of the company would hear it again.
+- **2026-11-12:** Part 4b merged in #264. Part 4c planned (#265), as the
+  product owner chose: a channel of its own for each company's attendance,
+  `attendance:<company id>`, joined only while the Exceptions, Days or
+  Punches tab, or the Super Admin's Check-ins page, is open, and heard
+  only by those who may see other people's attendance and the Super
+  Admin. A punch, a day whose figures changed, a decision and a refused
+  check-in each signal it. The lists are drawn at most every 30 seconds
+  while check-ins keep coming (`DESIGN.md` §8). The company's channel was
+  turned down for what it would cost, and signalling only what needs a
+  decision, or a timer, for leaving the lists still.
+- **2026-11-12:** Found building part 4c, fixed in #265: a list whose
+  first load came after a signal, as the one joining its channel sends,
+  tinted every row it showed. A list still loading is now told apart from
+  an empty one, and its first draw marks nothing. The cash advance and
+  charges lists take the same fix.
+- **2026-11-12:** Two findings by Codex on #265, fixed in it. The
+  Exceptions tab, hearing `requests` too, was drawn at once for each
+  flagged check-in: a screen that hears attendance now keeps to its 30
+  seconds, whatever it hears. And the Super Admin's Check-ins page never
+  heard a company it didn't list yet: a company's first check-in or
+  refusal in 30 days now says so on each Super Admin's own channel, and
+  the page hears `requests` too, for the check-ins waiting for them.

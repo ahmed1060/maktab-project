@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { readFileSync } from "node:fs"
 import { createHmac } from "node:crypto"
-import { liveTopics, onlineTopics, LiveDrawer, LiveWants, LEAVE_AFTER_MS, type LiveTopic } from "./live-updates"
+import { liveTopics, onlineTopics, attendanceTopics, LiveDrawer, LiveWants, LEAVE_AFTER_MS, ATTENDANCE_SPACING_MS, type LiveTopic } from "./live-updates"
 import { LiveConnection, RENEW_BEFORE_MS, RETRY_MS, type LiveChannel, type LiveClient } from "./live-connection"
 import { realtimeClaims, signRealtimeToken, REALTIME_TOKEN_SECONDS } from "./realtime-token"
 
@@ -59,6 +59,22 @@ describe("whose comings and goings a list hears", () => {
     it("is each company on the page for the Super Admin's lists of everyone, once each", () => {
         expect(onlineTopics({ id: "sa1", role: "SUPER_ADMIN", companyId: null }, null, ["c2", "c1", null, undefined, "c2"])).toEqual(["online:c1", "online:c2"])
         expect(onlineTopics({ id: "sa1", role: "SUPER_ADMIN", companyId: null }, null, [])).toEqual([])
+    })
+})
+
+// Part 4c: attendance, on a channel of its own for each company, joined
+// only while an attendance list is open (REALTIME_PLAN.md).
+describe("whose attendance a list hears", () => {
+    it("is their own company's for anyone but the Super Admin, whatever company is in view", () => {
+        expect(attendanceTopics({ id: "a1", role: "ADMIN", companyId: "c1" }, null, [])).toEqual(["attendance:c1"])
+        expect(attendanceTopics({ id: "a1", role: "ADMIN", companyId: "c1" }, "c2", ["c3"])).toEqual(["attendance:c1"])
+        expect(attendanceTopics({ id: "u9", role: "EMPLOYEE", companyId: null }, null, [])).toEqual([])
+    })
+
+    it("is the company in view's for the Super Admin, or each company the Check-ins page lists, once each", () => {
+        expect(attendanceTopics({ id: "sa1", role: "SUPER_ADMIN", companyId: null }, "c2", [])).toEqual(["attendance:c2"])
+        expect(attendanceTopics({ id: "sa1", role: "SUPER_ADMIN", companyId: null }, null, ["c2", "c1", null, "c2"])).toEqual(["attendance:c1", "attendance:c2"])
+        expect(attendanceTopics({ id: "sa1", role: "SUPER_ADMIN", companyId: null }, null, [])).toEqual([])
     })
 })
 
@@ -122,7 +138,7 @@ describe("the token", () => {
     it("names the person, their company and whether they're the Super Admin, for an hour", () => {
         expect(REALTIME_TOKEN_SECONDS).toBe(3600)
         expect(realtimeClaims({ id: "u1", role: "EMPLOYEE", companyId: "c1" }, NOW)).toEqual({
-            sub: "u1", role: "authenticated", aud: "authenticated", iat: NOW, exp: NOW + 3600, company_id: "c1", super_admin: false, sees_online: false,
+            sub: "u1", role: "authenticated", aud: "authenticated", iat: NOW, exp: NOW + 3600, company_id: "c1", super_admin: false, sees_online: false, sees_attendance: false,
         })
         expect(realtimeClaims({ id: "sa1", role: "SUPER_ADMIN", companyId: null }, NOW)).toMatchObject({ sub: "sa1", company_id: null, super_admin: true })
     })
@@ -131,6 +147,12 @@ describe("the token", () => {
     it("and whether its person may see who's online, as the Employees list shows it", () => {
         expect(realtimeClaims({ id: "a1", role: "ADMIN", companyId: "c1" }, NOW, true)).toMatchObject({ company_id: "c1", sees_online: true })
         expect(realtimeClaims({ id: "u1", role: "EMPLOYEE", companyId: "c1" }, NOW, false)).toMatchObject({ sees_online: false })
+    })
+
+    // Part 4c: whether its person may see other people's attendance.
+    it("and whether its person may see other people's attendance", () => {
+        expect(realtimeClaims({ id: "a1", role: "ADMIN", companyId: "c1" }, NOW, true, true)).toMatchObject({ sees_online: true, sees_attendance: true })
+        expect(realtimeClaims({ id: "u1", role: "EMPLOYEE", companyId: "c1" }, NOW, false, false)).toMatchObject({ sees_attendance: false })
     })
 
     it("is signed with the project's JWT secret, as Supabase checks it", () => {
@@ -214,6 +236,75 @@ describe("a screen drawn again", () => {
         expect(draw).toHaveBeenCalledTimes(2)
     })
 
+    // Part 4c (DESIGN.md §8): a company's morning check-ins would draw an
+    // open attendance list every few seconds for an hour.
+    it("attendance at most every 30 seconds while signals keep coming, the first a second after it", () => {
+        expect(ATTENDANCE_SPACING_MS).toBe(30_000)
+        const attendance = vi.fn()
+        const tasks = vi.fn()
+        drawer.on("attendance", attendance)
+        drawer.on("tasks", tasks)
+        drawer.signal("attendance")
+        vi.advanceTimersByTime(1000)
+        expect(attendance).toHaveBeenCalledTimes(1)
+        // Another at once, and more while it waits: one draw, 30 seconds after the last.
+        drawer.signal("attendance")
+        vi.advanceTimersByTime(5000)
+        drawer.signal("attendance")
+        drawer.signal("tasks")
+        vi.advanceTimersByTime(1000)
+        // Other screens aren't held with it.
+        expect(tasks).toHaveBeenCalledTimes(1)
+        vi.advanceTimersByTime(30_000 - 6000 + 999)
+        expect(attendance).toHaveBeenCalledTimes(1)
+        vi.advanceTimersByTime(1)
+        expect(attendance).toHaveBeenCalledTimes(2)
+        // Quiet for 30 seconds, the next is drawn a second after it, as before.
+        vi.advanceTimersByTime(30_000)
+        drawer.signal("attendance")
+        vi.advanceTimersByTime(1000)
+        expect(attendance).toHaveBeenCalledTimes(3)
+    })
+
+    // Found by Codex on PR 265: the Exceptions tab hears part 2's requests
+    // too, and a flagged check-in sends one with its punch's attendance, so
+    // the morning's flagged arrivals drew it every few seconds still.
+    it("a screen that hears attendance keeps to its 30 seconds, whatever else it hears", () => {
+        const exceptions = vi.fn()
+        const requests = vi.fn()
+        drawer.on("attendance", exceptions)
+        drawer.on("requests", exceptions)
+        drawer.on("requests", requests)
+        drawer.signal("attendance")
+        vi.advanceTimersByTime(1000)
+        expect(exceptions).toHaveBeenCalledTimes(1)
+        // A request a few seconds after: the Requests page's screen is drawn
+        // at once; the one that hears attendance waits for its 30 seconds,
+        // and is drawn then once, however many came.
+        vi.advanceTimersByTime(4000)
+        drawer.signal("requests")
+        vi.advanceTimersByTime(1000)
+        expect(requests).toHaveBeenCalledTimes(1)
+        expect(exceptions).toHaveBeenCalledTimes(1)
+        drawer.signal("requests")
+        drawer.signal("attendance")
+        vi.advanceTimersByTime(30_000 - 5000 + 999)
+        expect(exceptions).toHaveBeenCalledTimes(1)
+        vi.advanceTimersByTime(1)
+        expect(exceptions).toHaveBeenCalledTimes(2)
+        // Drawn for a request after a quiet spell, it counts as its draw:
+        // attendance straight after waits for the 30 seconds.
+        vi.advanceTimersByTime(30_000)
+        drawer.signal("requests")
+        vi.advanceTimersByTime(1000)
+        expect(exceptions).toHaveBeenCalledTimes(3)
+        drawer.signal("attendance")
+        vi.advanceTimersByTime(10_000)
+        expect(exceptions).toHaveBeenCalledTimes(3)
+        vi.advanceTimersByTime(21_000)
+        expect(exceptions).toHaveBeenCalledTimes(4)
+    })
+
     it("not while the tab is hidden, and at once when it's shown", () => {
         const draw = vi.fn()
         drawer.on("tasks", draw)
@@ -271,8 +362,14 @@ describe("the token route", () => {
     })
 
     it("says whether its person may see who's online, by the permission the Employees list asks", () => {
-        expect(route).toContain('const claims = realtimeClaims(session.user, Math.floor(Date.now() / 1000), can(session.user, "employees.view"))')
+        expect(route).toContain('const claims = realtimeClaims(session.user, Math.floor(Date.now() / 1000), can(session.user, "employees.view"), can(session.user, "attendance.view_team"))')
         expect(read("app/api/users/route.ts")).toContain('if (!can(session.user, "employees.view")) {')
+    })
+
+    // Part 4c: as the Attendance page's other people's attendance asks it.
+    it("says whether its person may see other people's attendance, by the permission the attendance lists ask", () => {
+        expect(route).toContain('can(session.user, "attendance.view_team"))')
+        expect(read("app/(dashboard)/dashboard/attendance/page.tsx")).toContain("const seesOthers = p.can('attendance.view_team')")
     })
 
     it("says it's off until the secret is in Vercel, and every screen goes on as today", () => {
@@ -359,10 +456,11 @@ describe("a tab's connection", () => {
         await new LiveConnection({ ask: async () => grant("t1"), load: async () => supabase, drawer }).start()
         expect(supabase.log).toEqual(["auth t1", "join tasks:c1 with t1", "join notices:u1 with t1"])
         // What changed, the person's own account (part 3), requests (part 2),
-        // cash advances (part 4a) and costs (part 4b), on each.
+        // cash advances (part 4a), costs (part 4b) and a company found
+        // checking in (part 4c), on each.
         expect(supabase.channels.map(c => [c.topic, c.private, c.events])).toEqual([
-            ["tasks:c1", true, ["changed", "account", "requests", "advances", "costs"]],
-            ["notices:u1", true, ["changed", "account", "requests", "advances", "costs"]],
+            ["tasks:c1", true, ["changed", "account", "requests", "advances", "costs", "attendance"]],
+            ["notices:u1", true, ["changed", "account", "requests", "advances", "costs", "attendance"]],
         ])
     })
 
@@ -456,6 +554,19 @@ describe("a tab's connection", () => {
         supabase.channels[1].on.costs!()
         await vi.advanceTimersByTimeAsync(1000)
         expect(drawn).toEqual(["costs", "costs"])
+    })
+
+    // Found by Codex on PR 265: the Super Admin's Check-ins page hears only
+    // the companies it lists, so one checking in for the first time in 30
+    // days, which it doesn't list yet, says so on each Super Admin's own
+    // channel (the live_attendance_found trigger).
+    it("draws the attendance lists when a Super Admin's own channel says a company was found checking in", async () => {
+        drawer.on("attendance", () => drawn.push("attendance"))
+        const supabase = fakeSupabase()
+        await new LiveConnection({ ask: async () => grant("t1"), load: async () => supabase, drawer }).start()
+        supabase.channels[1].on.attendance!()
+        await vi.advanceTimersByTimeAsync(1000)
+        expect(drawn).toEqual(["attendance"])
     })
 
     it("loads nothing while the token route says it's off, and doesn't ask again", async () => {
@@ -585,6 +696,22 @@ describe("a tab's connection", () => {
             expect(drawn).toEqual(["online", "online"])
         })
 
+        // Part 4c: attendance, heard as attendance, on a channel of its own.
+        it("draws the attendance lists when their company's attendance changes, and once on joining", async () => {
+            drawer.on("attendance", () => drawn.push("attendance"))
+            const wants = new LiveWants()
+            wants.want("attendance:c1")
+            const { supabase } = await start(wants)
+            const channel = wanted(supabase, "attendance:c1")[0]
+            expect([channel.private, channel.events]).toEqual([true, ["changed"]])
+            channel.status!("SUBSCRIBED")
+            await vi.advanceTimersByTimeAsync(1000)
+            expect(drawn).toEqual(["attendance"])
+            channel.on.changed!()
+            await vi.advanceTimersByTimeAsync(ATTENDANCE_SPACING_MS + 1000)
+            expect(drawn).toEqual(["attendance", "attendance"])
+        })
+
         it("leaves them, and listens for no more, as it stops", async () => {
             const wants = new LiveWants()
             wants.want("online:c1")
@@ -685,7 +812,7 @@ describe("the screens that are drawn again", () => {
     it("the cost screens: the Employee costs tab, the Charged to clients tab and a client's charges", () => {
         const live = read("components/LiveUpdates.tsx")
         expect(live).toContain("export function useLive(kinds: LiveKind | readonly LiveKind[], onChange: () => void) {")
-        expect(read("components/useArrivals.ts")).toContain("export function useArrivalsIn<T>(kinds: LiveKind | readonly LiveKind[], scope: string, rows: readonly T[], rowKey: (row: T) => string) {")
+        expect(read("components/useArrivals.ts")).toContain("export function useArrivalsIn<T>(kinds: LiveKind | readonly LiveKind[], scope: string, rows: readonly T[] | null, rowKey: (row: T) => string) {")
 
         const employee = read("app/(dashboard)/dashboard/costs/CostsClient.tsx")
         expect(employee).toContain("useLive(['tasks', 'costs'], () => router.refresh())")
@@ -705,7 +832,8 @@ describe("the screens that are drawn again", () => {
 
         const charges = read("components/charges/ChargesList.tsx")
         expect(charges).toContain("useLive(['tasks', 'costs'], () => { void mutate() })")
-        expect(charges).toContain("const arrivals = useArrivalsIn(['tasks', 'costs'], listUrl, charges, c => c.id)")
+        // Not loaded yet, it says so: its first rows aren't taken as arrived.
+        expect(charges).toContain("const arrivals = useArrivalsIn(['tasks', 'costs'], listUrl, result || failed ? charges : null, c => c.id)")
         expect(charges).toContain("arrived={arrivals.arrived}")
         // Not charged, Charge again, Mark collected and Mark uncollected; the fee window's Save too.
         expect(charges).toContain("const action = useBusyAction(arrivals.own)")
@@ -716,6 +844,58 @@ describe("the screens that are drawn again", () => {
         const fee = read("components/charges/ChargeFeeDialog.tsx")
         expect(fee).toContain("const action = useBusyAction()")
         expect(fee).toContain("void action.run('save',")
+    })
+
+    // Part 4c: while one of them is open, for whoever sees other people's
+    // attendance, each through its own route, keeping the period, filters
+    // and what's open; what someone else changed is tinted, and the
+    // person's own actions aren't.
+    it("the attendance lists: the Exceptions, Days and Punches tabs, and the Super Admin's Check-ins page", () => {
+        expect(read("components/LiveUpdates.tsx")).toContain("export function useWantedChannels(topics: string[]) {")
+        const page = read("app/(dashboard)/dashboard/attendance/page.tsx")
+        // The company's channel, the company in view's for the Super Admin, only for whoever sees others'.
+        expect(page).toContain("const topics = viewer && seesOthers ? attendanceTopics(viewer, companyId, []) : []")
+        const days = page.slice(page.indexOf("function DaysTab"), page.indexOf("function PunchesTab"))
+        expect(days).toContain("useWantedChannels(topics)")
+        expect(days).toContain("useLive('attendance', () => { void mutate() })")
+        expect(days).toContain("const arrivals = useArrivalsIn('attendance', url, days, d => d.id)")
+        expect(days).toContain("const action = useBusyAction(arrivals.own)")
+        expect(days).toContain("arrived={arrivals.arrived}")
+        // Working the month out again is the person's own.
+        expect(days.slice(days.indexOf("const recompute"))).toMatch(/arrivals\.saved\(\)\s+void mutate\(\)/)
+        const punches = page.slice(page.indexOf("function PunchesTab"))
+        expect(punches).toContain("useWantedChannels(topics)")
+        expect(punches).toContain("useLive('attendance', () => { void mutate() })")
+        expect(punches).toContain("const arrivals = useArrivalsIn('attendance', listUrl, punches, x => x.id)")
+        expect(punches).toContain("const action = useBusyAction(arrivals.own)")
+        expect(punches).toContain("arrived={arrivals.arrived}")
+        expect(punches).toMatch(/arrivals\.saved\(\)\s+await mutate\(\)/)
+        expect(punches).toContain("<ActionStarts.Provider value={arrivals.own}>")
+        expect(punches).toContain("onAdded={() => { setAdding(false); arrivals.saved(); void mutate() }}")
+
+        const exceptions = read("app/(dashboard)/dashboard/attendance/ExceptionsTab.tsx")
+        expect(exceptions).toContain("useWantedChannels(topics)")
+        // And the requests it shows, which part 2 signals.
+        expect(exceptions).toContain("useLive(['attendance', 'requests'], () => { void mutate() })")
+        expect(exceptions).toContain("const arrivals = useArrivalsIn(['attendance', 'requests'], `${listUrl}#${kind}`, shown, x => x.key)")
+        expect(exceptions).toContain("const action = useBusyAction(arrivals.own)")
+        expect(exceptions.match(/arrived=\{arrivals\.arrived\}/g)?.length).toBe(5)
+        expect(exceptions).toMatch(/arrivals\.saved\(\)\s+await mutate\(\)/)
+        expect(exceptions).toContain("<ActionStarts.Provider value={arrivals.own}>")
+        expect(exceptions).toContain("onAdded={() => { setAdding(null); arrivals.saved(); void mutate() }}")
+
+        const checkIns = read("app/(dashboard)/dashboard/check-ins/page.tsx")
+        // Each company it lists, once each.
+        expect(checkIns).toContain("useWantedChannels(isSuperAdmin && viewer ? attendanceTopics(viewer, null, (review?.integrity ?? []).map(r => r.companyId)) : [])")
+        // And part 2's requests, which each Super Admin hears for every
+        // company's flagged check-ins: those waiting for them come in, and
+        // are decided, wherever their company is (found by Codex on PR 265).
+        expect(checkIns).toContain("useLive(['attendance', 'requests'], () => { void mutate() })")
+        expect(checkIns).toContain("const arrivals = useArrivalsIn(['attendance', 'requests'], '/api/admin/check-ins', shown, x => x.key)")
+        expect(checkIns).toContain("const action = useBusyAction(arrivals.own)")
+        expect(checkIns.match(/arrived=\{arrivals\.arrived\}/g)?.length).toBe(2)
+        expect(checkIns).toMatch(/arrivals\.saved\(\)\s+await mutate\(\)/)
+        expect(checkIns).toContain("onDecided={() => { setRejecting(null); arrivals.saved(); void mutate() }}")
     })
 
     // Part 6b: only the badge changes, untinted (DESIGN.md §8), and the

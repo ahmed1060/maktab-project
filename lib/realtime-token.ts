@@ -8,7 +8,9 @@ import { createHmac } from "node:crypto"
  * company_id and super_admin, and sees_online: whether its person may see
  * who's online, as the Employees list shows it, which the rule for that
  * channel can't read from the app's permissions
- * (prisma/migrations/20261214000000_live_online).
+ * (prisma/migrations/20261214000000_live_online); and sees_attendance:
+ * whether its person may see other people's attendance, for the attendance
+ * channel's rule (prisma/migrations/20261216000000_live_attendance).
  *
  * It opens nothing but the channels: the signals on them say only that
  * something changed, and every read still goes through the app's own routes.
@@ -30,9 +32,10 @@ export type RealtimeClaims = {
     company_id: string | null
     super_admin: boolean
     sees_online: boolean
+    sees_attendance: boolean
 }
 
-export function realtimeClaims(viewer: Viewer, nowSeconds: number, seesOnline = false): RealtimeClaims {
+export function realtimeClaims(viewer: Viewer, nowSeconds: number, seesOnline = false, seesAttendance = false): RealtimeClaims {
     return {
         sub: viewer.id,
         role: "authenticated",
@@ -42,6 +45,7 @@ export function realtimeClaims(viewer: Viewer, nowSeconds: number, seesOnline = 
         company_id: viewer.companyId ?? null,
         super_admin: viewer.role === "SUPER_ADMIN",
         sees_online: seesOnline,
+        sees_attendance: seesAttendance,
     }
 }
 

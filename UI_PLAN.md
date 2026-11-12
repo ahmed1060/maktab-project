@@ -656,7 +656,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      (`REALTIME_PLAN.md` part 6b), merged in #263 on 2026-11-12; then the
      Costs page's Employee costs and Charged to clients tabs, and a
      client's charges, drawn again as costs are added, paid and charged
-     (`REALTIME_PLAN.md` part 4b, #264);
+     (`REALTIME_PLAN.md` part 4b), merged in #264 on 2026-11-12; then the
+     Attendance page's Exceptions, Days and Punches tabs, and the Super
+     Admin's Check-ins page, drawn again as check-ins come in, at most
+     every 30 seconds (`REALTIME_PLAN.md` part 4c, #265);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5991,3 +5994,17 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   #264), keeping the search, filters and page. What someone else changed
   is tinted, as part 5 does; Mark all as paid and the charges' own actions
   are the person's own, and aren't.
+- **2026-11-12:** The Attendance page's Exceptions, Days and Punches tabs,
+  and the Super Admin's Check-ins page, draw themselves again as check-ins
+  come in and attendance is corrected (`REALTIME_PLAN.md` part 4c, #265),
+  at most every 30 seconds while check-ins keep coming (`DESIGN.md` §8).
+  The period, filters and what's open stay. What someone else changed is
+  tinted, as part 5 does; the person's own actions aren't. A list's first
+  draw is never tinted, though a signal came while it loaded; before, a
+  list opened as its channel was joined was tinted throughout.
+- **2026-11-12:** Two findings by Codex on #265, fixed in it. The
+  Exceptions tab is drawn at most every 30 seconds whatever it hears, as
+  a flagged check-in sends a request too. And the Super Admin's Check-ins
+  page finds a company checking in for the first time in 30 days, and
+  hears the check-ins waiting for them wherever their company is
+  (`REALTIME_PLAN.md` part 4c).

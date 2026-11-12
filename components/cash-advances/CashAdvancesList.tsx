@@ -76,7 +76,7 @@ export default function CashAdvancesList() {
     const total = result?.data?.total || 0
     const totals = result?.data?.totals
     useLive('advances', () => { void mutate() })
-    const arrivals = useArrivalsIn('advances', listUrl ?? '', holders, h => h.id)
+    const arrivals = useArrivalsIn('advances', listUrl ?? '', result || failed ? holders : null, h => h.id)
 
     useAdjustOnChange([selectedCompanyId], () => { setPage(1); setRecording(null) })
     useAdjustOnChange([totalPages], () => setPage(p => pageInRange(p, totalPages)))

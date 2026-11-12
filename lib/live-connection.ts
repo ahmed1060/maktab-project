@@ -1,4 +1,4 @@
-import type { LiveDrawer, LiveTopic, LiveWants } from "./live-updates"
+import { wantedKind, type LiveDrawer, type LiveTopic, type LiveWants } from "./live-updates"
 
 /**
  * A tab's connection to its live-update channels (REALTIME_PLAN.md), apart
@@ -20,8 +20,9 @@ import type { LiveDrawer, LiveTopic, LiveWants } from "./live-updates"
  *     there to hear it; and again, after a laptop slept or a phone lost its
  *     signal, for what was missed meanwhile.
  *   - Joins, too, the channels the screens open want heard (part 6b, who's
- *     online), once it has its token, and leaves each as no screen wants it
- *     any more; each is drawn once as it's joined, as its own are.
+ *     online; part 4c, attendance), once it has its token, and leaves each
+ *     as no screen wants it any more; each is drawn once as it's joined, as
+ *     its own are.
  *   - Asks for the next token five minutes before the one held ends, as
  *     Supabase closes a channel whose token has ended.
  *   - A token or Supabase's client that doesn't come, as when offline or
@@ -91,6 +92,8 @@ export class LiveConnection {
                 .on("broadcast", { event: "requests" }, () => drawer.signal("requests"))
                 .on("broadcast", { event: "advances" }, () => drawer.signal("advances"))
                 .on("broadcast", { event: "costs" }, () => drawer.signal("costs"))
+                // A company found checking in, on each Super Admin's own (part 4c).
+                .on("broadcast", { event: "attendance" }, () => drawer.signal("attendance"))
                 .subscribe(status => {
                     if (status !== "SUBSCRIBED") return
                     drawer.signal(kind)
@@ -110,13 +113,14 @@ export class LiveConnection {
         this.renewBy(grant.expiresAt)
     }
 
-    /** Who's online (part 6b): heard only that someone came or went. */
+    /** Who's online (part 6b) or attendance (part 4c): heard only that something changed, as its name says what. */
     private join(client: LiveClient, topic: string) {
         if (this.wanted.has(topic)) return
         const { drawer } = this.deps
+        const kind = wantedKind(topic)
         this.wanted.set(topic, client.channel(topic, { config: { private: true } })
-            .on("broadcast", { event: "changed" }, () => drawer.signal("online"))
-            .subscribe(status => { if (status === "SUBSCRIBED") drawer.signal("online") }))
+            .on("broadcast", { event: "changed" }, () => drawer.signal(kind))
+            .subscribe(status => { if (status === "SUBSCRIBED") drawer.signal(kind) }))
     }
 
     private leave(topic: string) {
