@@ -266,6 +266,45 @@ describe("a screen drawn again", () => {
         expect(attendance).toHaveBeenCalledTimes(3)
     })
 
+    // Found by Codex on PR 265: the Exceptions tab hears part 2's requests
+    // too, and a flagged check-in sends one with its punch's attendance, so
+    // the morning's flagged arrivals drew it every few seconds still.
+    it("a screen that hears attendance keeps to its 30 seconds, whatever else it hears", () => {
+        const exceptions = vi.fn()
+        const requests = vi.fn()
+        drawer.on("attendance", exceptions)
+        drawer.on("requests", exceptions)
+        drawer.on("requests", requests)
+        drawer.signal("attendance")
+        vi.advanceTimersByTime(1000)
+        expect(exceptions).toHaveBeenCalledTimes(1)
+        // A request a few seconds after: the Requests page's screen is drawn
+        // at once; the one that hears attendance waits for its 30 seconds,
+        // and is drawn then once, however many came.
+        vi.advanceTimersByTime(4000)
+        drawer.signal("requests")
+        vi.advanceTimersByTime(1000)
+        expect(requests).toHaveBeenCalledTimes(1)
+        expect(exceptions).toHaveBeenCalledTimes(1)
+        drawer.signal("requests")
+        drawer.signal("attendance")
+        vi.advanceTimersByTime(30_000 - 5000 + 999)
+        expect(exceptions).toHaveBeenCalledTimes(1)
+        vi.advanceTimersByTime(1)
+        expect(exceptions).toHaveBeenCalledTimes(2)
+        // Drawn for a request after a quiet spell, it counts as its draw:
+        // attendance straight after waits for the 30 seconds.
+        vi.advanceTimersByTime(30_000)
+        drawer.signal("requests")
+        vi.advanceTimersByTime(1000)
+        expect(exceptions).toHaveBeenCalledTimes(3)
+        drawer.signal("attendance")
+        vi.advanceTimersByTime(10_000)
+        expect(exceptions).toHaveBeenCalledTimes(3)
+        vi.advanceTimersByTime(21_000)
+        expect(exceptions).toHaveBeenCalledTimes(4)
+    })
+
     it("not while the tab is hidden, and at once when it's shown", () => {
         const draw = vi.fn()
         drawer.on("tasks", draw)
@@ -417,10 +456,11 @@ describe("a tab's connection", () => {
         await new LiveConnection({ ask: async () => grant("t1"), load: async () => supabase, drawer }).start()
         expect(supabase.log).toEqual(["auth t1", "join tasks:c1 with t1", "join notices:u1 with t1"])
         // What changed, the person's own account (part 3), requests (part 2),
-        // cash advances (part 4a) and costs (part 4b), on each.
+        // cash advances (part 4a), costs (part 4b) and a company found
+        // checking in (part 4c), on each.
         expect(supabase.channels.map(c => [c.topic, c.private, c.events])).toEqual([
-            ["tasks:c1", true, ["changed", "account", "requests", "advances", "costs"]],
-            ["notices:u1", true, ["changed", "account", "requests", "advances", "costs"]],
+            ["tasks:c1", true, ["changed", "account", "requests", "advances", "costs", "attendance"]],
+            ["notices:u1", true, ["changed", "account", "requests", "advances", "costs", "attendance"]],
         ])
     })
 
@@ -514,6 +554,19 @@ describe("a tab's connection", () => {
         supabase.channels[1].on.costs!()
         await vi.advanceTimersByTimeAsync(1000)
         expect(drawn).toEqual(["costs", "costs"])
+    })
+
+    // Found by Codex on PR 265: the Super Admin's Check-ins page hears only
+    // the companies it lists, so one checking in for the first time in 30
+    // days, which it doesn't list yet, says so on each Super Admin's own
+    // channel (the live_attendance_found trigger).
+    it("draws the attendance lists when a Super Admin's own channel says a company was found checking in", async () => {
+        drawer.on("attendance", () => drawn.push("attendance"))
+        const supabase = fakeSupabase()
+        await new LiveConnection({ ask: async () => grant("t1"), load: async () => supabase, drawer }).start()
+        supabase.channels[1].on.attendance!()
+        await vi.advanceTimersByTimeAsync(1000)
+        expect(drawn).toEqual(["attendance"])
     })
 
     it("loads nothing while the token route says it's off, and doesn't ask again", async () => {
@@ -834,7 +887,11 @@ describe("the screens that are drawn again", () => {
         const checkIns = read("app/(dashboard)/dashboard/check-ins/page.tsx")
         // Each company it lists, once each.
         expect(checkIns).toContain("useWantedChannels(isSuperAdmin && viewer ? attendanceTopics(viewer, null, (review?.integrity ?? []).map(r => r.companyId)) : [])")
-        expect(checkIns).toContain("useLive('attendance', () => { void mutate() })")
+        // And part 2's requests, which each Super Admin hears for every
+        // company's flagged check-ins: those waiting for them come in, and
+        // are decided, wherever their company is (found by Codex on PR 265).
+        expect(checkIns).toContain("useLive(['attendance', 'requests'], () => { void mutate() })")
+        expect(checkIns).toContain("const arrivals = useArrivalsIn(['attendance', 'requests'], '/api/admin/check-ins', shown, x => x.key)")
         expect(checkIns).toContain("const action = useBusyAction(arrivals.own)")
         expect(checkIns.match(/arrived=\{arrivals\.arrived\}/g)?.length).toBe(2)
         expect(checkIns).toMatch(/arrivals\.saved\(\)\s+await mutate\(\)/)

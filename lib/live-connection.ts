@@ -92,6 +92,8 @@ export class LiveConnection {
                 .on("broadcast", { event: "requests" }, () => drawer.signal("requests"))
                 .on("broadcast", { event: "advances" }, () => drawer.signal("advances"))
                 .on("broadcast", { event: "costs" }, () => drawer.signal("costs"))
+                // A company found checking in, on each Super Admin's own (part 4c).
+                .on("broadcast", { event: "attendance" }, () => drawer.signal("attendance"))
                 .subscribe(status => {
                     if (status !== "SUBSCRIBED") return
                     drawer.signal(kind)

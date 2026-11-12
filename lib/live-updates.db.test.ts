@@ -232,7 +232,7 @@ describe.skipIf(!ADMIN_URL)("live updates, in Postgres", () => {
     describe("a company's requests", () => {
         const requests = (topic: string) => ({ topic, event: "requests", payload: {}, private: true })
         /** What reaches the requests' channels: not part 4c's attendance channel, which the same rows signal. */
-        const requestsSent = async () => (await sent()).filter(s => !s.topic.startsWith("attendance:"))
+        const requestsSent = async () => (await sent()).filter(s => !s.topic.startsWith("attendance:") && s.event !== "attendance")
         /** What one statement in a company sends: to its people, and to each Super Admin. */
         const toCompany = (company: string) => [requests(`tasks:${company}`), requests("notices:sa1")]
 
@@ -635,6 +635,58 @@ describe.skipIf(!ADMIN_URL)("live updates, in Postgres", () => {
             expect(await heard()).toEqual([])
             await db.query(`DELETE FROM "AttendancePunch" WHERE id = 'lap9'`)
             await sent()
+        })
+
+        // Found by Codex on PR 265: the Super Admin's Check-ins page lists,
+        // and hears, only the companies that checked in or were refused in
+        // the last 30 days. One doing so for the first time in 30 days says
+        // so on each Super Admin's own channel, so the page finds it.
+        describe("a company found checking in", () => {
+            const found = { topic: "notices:sa1", event: "attendance", payload: {}, private: true }
+            const told = async () => (await sent()).filter(s => s.event === "attendance")
+            const fromPhone = (id: string, company: string, user: string, came = "now()") =>
+                `INSERT INTO "AttendancePunch"(id, "companyId", "userId", source, "sourceKey", "punchAtLocal", "punchAt", "resolvedWithTimeZone", "receivedAt")
+                 VALUES ('${id}', '${company}', '${user}', 'MOBILE', '${id}', '2026-11-12 08:00', '2026-11-12 06:00', 'Africa/Cairo', ${came})`
+            const refused = (id: string, company: string, user: string) =>
+                `INSERT INTO "CheckInRefusal"(id, "companyId", "userId", reason) VALUES ('${id}', '${company}', '${user}', 'MOCKED_LOCATION')`
+            const forget = async () => {
+                await db.query(`DELETE FROM "AttendancePunch" WHERE "companyId" IN ('c1', 'c2')`)
+                await db.query(`DELETE FROM "CheckInRefusal" WHERE "companyId" IN ('c1', 'c2')`)
+                await sent()
+            }
+
+            it("its first check-in from the phone app in 30 days, to each Super Admin's own channel, once", async () => {
+                await forget()
+                // Older than 30 days, or not from the app: the page counts neither.
+                await db.query(fromPhone("laf1", "c2", "u3", "now() - interval '31 days'"))
+                await db.query(`INSERT INTO "AttendancePunch"(id, "companyId", "userId", source, "sourceKey", "punchAtLocal", "punchAt", "resolvedWithTimeZone")
+                    VALUES ('laf2', 'c2', 'u3', 'MANUAL', 'laf2', '2026-11-12 08:00', '2026-11-12 06:00', 'Africa/Cairo')`)
+                expect(await told(), "old, or by hand").toEqual([])
+                await db.query(fromPhone("laf3", "c2", "u3"))
+                expect(await told(), "the first").toEqual([found])
+                // Listed from then on: its check-ins go on its own channel.
+                await db.query(fromPhone("laf4", "c2", "u3"))
+                await db.query(refused("lfr1", "c2", "u3"))
+                expect(await told(), "after it").toEqual([])
+            })
+
+            it("its first refusal in 30 days, and not a check-in after it", async () => {
+                await forget()
+                await db.query(refused("lfr2", "c2", "u3"))
+                expect(await told(), "the first").toEqual([found])
+                await db.query(fromPhone("laf5", "c2", "u3"))
+                expect(await told(), "after it").toEqual([])
+            })
+
+            it("once for a statement that found several", async () => {
+                await forget()
+                await db.query(`INSERT INTO "AttendancePunch"(id, "companyId", "userId", source, "sourceKey", "punchAtLocal", "punchAt", "resolvedWithTimeZone") VALUES
+                    ('laf6', 'c1', 'u2', 'MOBILE', 'laf6', '2026-11-12 08:00', '2026-11-12 06:00', 'Africa/Cairo'),
+                    ('laf7', 'c1', 'u1', 'MOBILE', 'laf7', '2026-11-12 08:00', '2026-11-12 06:00', 'Africa/Cairo'),
+                    ('laf8', 'c2', 'u3', 'MOBILE', 'laf8', '2026-11-12 08:00', '2026-11-12 06:00', 'Africa/Cairo')`)
+                expect(await told()).toEqual([found])
+                await forget()
+            })
         })
     })
 

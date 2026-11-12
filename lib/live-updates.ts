@@ -170,7 +170,8 @@ export class LiveWants {
  *   - once for a screen that hears several kinds, when they come together
  *     (part 4b, the cost screens);
  *   - attendance at most every 30 seconds while its signals keep coming,
- *     the first after a quiet spell a second after it (part 4c);
+ *     the first after a quiet spell a second after it (part 4c); and a
+ *     screen that hears it too, whatever else it hears;
  *   - not while the tab is hidden: it's drawn at once when it's shown again;
  *   - once for everything after joining again, for whatever was missed.
  */
@@ -240,7 +241,6 @@ export class LiveDrawer {
         const kinds = [...this.pending]
         this.pending.clear()
         const now = Date.now()
-        for (const kind of kinds) if (this.spacing[kind] !== undefined) this.lastDrawn.set(kind, now)
         // Each screen once, though it hears more than one of them.
         const draws = new Map<() => void, LiveKind>()
         for (const kind of kinds) {
@@ -248,6 +248,25 @@ export class LiveDrawer {
                 if (!draws.has(draw)) draws.set(draw, kind)
             }
         }
+        // A screen that hears a spaced kind keeps to its spacing, whatever
+        // else it hears: drawn too lately, it waits, and is drawn with that
+        // kind once it may be (found by Codex on PR 265: the Exceptions tab
+        // hears requests too, which a flagged check-in sends). Drawn now, it
+        // counts as that kind's draw.
+        const spacedNow = new Set<LiveKind>(kinds.filter(kind => this.spacing[kind] !== undefined))
+        for (const [draw] of draws) {
+            for (const spaced of Object.keys(this.spacing) as LiveKind[]) {
+                if (spacedNow.has(spaced) || !this.listeners.get(spaced)?.has(draw)) continue
+                const last = this.lastDrawn.get(spaced)
+                if (last !== undefined && now - last < this.spacing[spaced]!) {
+                    draws.delete(draw)
+                    this.signal(spaced)
+                } else {
+                    spacedNow.add(spaced)
+                }
+            }
+        }
+        for (const kind of spacedNow) this.lastDrawn.set(kind, now)
         for (const [draw, kind] of draws) {
             try {
                 draw()

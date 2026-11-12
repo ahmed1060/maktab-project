@@ -115,8 +115,9 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
     ].sort((a, b) => b.r.date.localeCompare(a.r.date) || a.r.name.localeCompare(b.r.name)) : []
 
     // Drawn again as attendance changes, and as the requests it counts do (part 2), while open
-    // (REALTIME_PLAN.md, part 4c). A row someone else added or changed in the list shown is tinted, by
-    // the list's own key; the person's own decisions aren't.
+    // (REALTIME_PLAN.md, part 4c): at most every 30 seconds, whichever it hears, as a flagged
+    // check-in sends both (found by Codex on PR 265). A row someone else added or changed in the
+    // list shown is tinted, by the list's own key; the person's own decisions aren't.
     useWantedChannels(topics)
     useLive(['attendance', 'requests'], () => { void mutate() })
     const shown: { key: string; row: unknown }[] | null = !data ? null

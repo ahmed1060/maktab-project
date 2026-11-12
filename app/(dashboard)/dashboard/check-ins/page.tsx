@@ -36,8 +36,9 @@ import { RejectRequest, decideRequest, punchDay, punchTime } from '../requests/A
  * flagged and what was refused, and why. A company with a sudden run of
  * refusals is under attack or has a broken app release.
  *
- * Both draw themselves again as the companies it lists check in, at most
- * every 30 seconds while they keep coming (REALTIME_PLAN.md, part 4c).
+ * Both draw themselves again as the companies it lists check in, or one
+ * not listed yet checks in for the first time in 30 days, at most every 30
+ * seconds while they keep coming (REALTIME_PLAN.md, part 4c).
  */
 
 type Waiting = {
@@ -59,10 +60,15 @@ export default function CheckInReviewPage() {
     const review: Review | null = data?.data ?? null
     // Drawn again as attendance changes in each company it lists, on a channel for each, once each (part 4c).
     useWantedChannels(isSuperAdmin && viewer ? attendanceTopics(viewer, null, (review?.integrity ?? []).map(r => r.companyId)) : [])
-    useLive('attendance', () => { void mutate() })
+    // And part 2's requests, which each Super Admin hears for every company's
+    // flagged check-ins: those waiting for them come in, and are decided,
+    // wherever their company is. A company checking in for the first time in
+    // 30 days, which isn't listed yet, says so on their own channel (found by
+    // Codex on PR 265).
+    useLive(['attendance', 'requests'], () => { void mutate() })
     // A check-in waiting, or a company's counts, that changed elsewhere is tinted; accepting or rejecting is their own.
     const shown = review ? [...review.queue.map(w => ({ key: w.id, row: w })), ...review.integrity.map(r => ({ key: r.companyId, row: r }))] : null
-    const arrivals = useArrivalsIn('attendance', '/api/admin/check-ins', shown, x => x.key)
+    const arrivals = useArrivalsIn(['attendance', 'requests'], '/api/admin/check-ins', shown, x => x.key)
     const action = useBusyAction(arrivals.own)
     const [rejecting, setRejecting] = useState<Waiting | null>(null)
     const [faceOf, setFaceOf] = useState<Waiting | null>(null)
