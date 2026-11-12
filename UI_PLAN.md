@@ -641,9 +641,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      five parts: searching, picking and trying again, merged in #255 on
      2026-11-11; entering ("أدخل"، "اكتب"، "حدد"، "أضف"), merged in #256
      on 2026-11-11; the other commands in hints and notices, merged in
-     #257 on 2026-11-11; "you" in the masculine ("تريد"، "تحتاج"، "متأكد")
-     (#258); and someone else spoken of as "he", the audit log's actions
-     included;
+     #257 on 2026-11-11; "you" in the masculine ("تريد"، "تحتاج"، "متأكد"),
+     merged in #258 on 2026-11-11; and someone else spoken of as "he", the
+     audit log's actions included (#259);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5943,3 +5943,13 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   "المختار"; and the new request window asks "نوع الطلب" and "المطلوب في
   كلمات قليلة…". A verb with "ت" is "you" or "she": a company's own verbs
   ("تطلب شركة…") stay. 34 strings; the English doesn't change.
+- **2026-11-11:** The app's Arabic speaks to no one in the masculine, part
+  5 of 5 (`DESIGN.md` §3.4, #259): someone else spoken of as "he". The audit
+  log says what was done ("تمت إضافة موقع" for "أضاف موقعًا"); who did
+  something is said with "بواسطة" ("أُضيف بواسطة" for "أضافه"), or in a
+  noun phrase ("انتهت عضوية {who} في فريقك" for "غادر {who} فريقك"); a
+  person a screen is about is "this account" or "this person"; a day is
+  "حضور" or "غياب", and a scope "الفريق" or "الشخص نفسه". A generic "من" or
+  "أحد", a role's name and a thing keep their agreement, which `DESIGN.md`
+  §3.4 now says. Four commands and two "you"s the earlier parts missed go
+  too. 89 strings; the English doesn't change.

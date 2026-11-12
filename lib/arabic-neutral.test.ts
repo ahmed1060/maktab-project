@@ -13,7 +13,8 @@ import { en as english } from "./translations/en"
  * moved, across every string: part 1, searching, picking and trying again;
  * part 2, entering, typing, setting, adding, saying and leaving empty; part
  * 3, every other command in a hint, a message or a notice; part 4, "you" in
- * the masculine.
+ * the masculine; part 5, someone else spoken of as "he", the audit log's
+ * actions included.
  */
 
 const ar = arabic as Record<string, string>
@@ -201,5 +202,77 @@ describe("the app's Arabic, part 4: \"you\" in the masculine", () => {
     it("changes nothing in English", () => {
         expect(en.delete_task_warning).toBe("Are you sure you want to delete this task? This action cannot be undone.")
         expect(en.requests_ask_for).toBe("What for")
+    })
+})
+
+describe("the app's Arabic, part 5: someone else spoken of as \"he\"", () => {
+    // A generic "من" or "أحد" (whoever, anyone) keeps Arabic's usual
+    // agreement, and so do a role's name and a thing (DESIGN.md §3.4). A
+    // person a screen is about is "this person" or "this account", or isn't
+    // the subject.
+    it("names no audit log action with a masculine past verb", () => {
+        const past = /^(أضاف|عدّل|أرشف|استعاد|عيّن|حمّل|أعاد|صرف|صحّح|أكّد|أكد|نقل|دمج|غيّر|سحب|طلب|أوقف|وافق|أرسل|اطّلع|رفض)\s/
+        for (const key of keys.filter(k => k.startsWith("audit_action_"))) expect([key, past.test(ar[key])], ar[key]).toEqual([key, false])
+    })
+
+    it("says an audit log action as what was done", () => {
+        expect(ar.audit_action_CREATE_LOCATION).toBe("تمت إضافة موقع")
+        expect(ar.audit_action_CONFIRM_CASH_ADVANCE).toBe("تم تأكيد استلام عهدة")
+        expect(ar.audit_action_WITHDRAW_FACE_CONSENT).toBe("تم سحب الموافقة على التحقق بالوجه")
+        expect(ar.audit_action_PURGE_FACE_VERIFICATION).toBe("تم إيقاف التحقق بالوجه ومحو بيانات الوجه")
+    })
+
+    it("says no 'he' of a person a screen is about", () => {
+        const masculine = new RegExp([
+            "مُسنَدة إليه", "مُسنَد إليه", "تكليفه لغيره", "يُحذف حسابه", "^أضافه$", "^أنشأه$", "آخر من عدّله", "أضافها \\{",
+            "لن يتمكن من", "وسيحتاج", "من وجهه", "حضوره التالي", "متوقفاً له", "حتى يعيد", "ويُبلَّغ", "وسيُبلَّغ",
+            "ليس هاتفه", "مطلوب منه", "^وافق$", "^فريقه$", "الخاص به$", "الخاصة به$", "^غادر$", "غادر \\{", "وغادره",
+            "انضم \\{", "حدّث \\{", "سلّم \\{", "يطلب \\{", "^طلب \\{name\\}", "إلا صاحبه", "مستحقة له$", "مستحقة عليه$",
+            "^حاضر$", "^غائب$", "^معذور$", "لم يعد على الكشف", "أنه لم يكن", "أن يبدأه", "مقدم الطلب", "نسي بصمة",
+            "وأكد ذلك مديره", "المنسوبة إليه", "تعود بصماته", "يقود فريقًا", "مسموح له", "يسجل كل موظف حضوره",
+        ].join("|"))
+        for (const key of keys) expect([key, masculine.test(ar[key])], ar[key]).toEqual([key, false])
+    })
+
+    it("says who did something with بواسطة, or as a noun", () => {
+        expect(ar.clients_col_added).toBe("أُضيف بواسطة")
+        expect(ar.records_col_added).toBe("أُضيف بواسطة")
+        expect(ar.audit_field_createdBy).toBe("أُنشئ بواسطة")
+        expect(ar.records_edited_by).toBe("آخر تعديل بواسطة")
+        expect(ar.charges_added).toBe("أُضيفت بواسطة {name}، {date}")
+        expect(ar.notice_task_submitted).toBe("تم تسليم المهمة \"{title}\" بواسطة {name}")
+        expect(ar.notice_dayoff_requested).toBe("طلب إجازة {type} من {name}: {when}.")
+        expect(ar.notice_team_left).toBe("انتهت عضوية {who} في فريقك.")
+    })
+
+    it("names a day, a scope or a status without describing a man", () => {
+        expect(ar.audit_value_PRESENT).toBe("حضور")
+        expect(ar.audit_value_ABSENT).toBe("غياب")
+        expect(ar.audit_value_EXCUSED).toBe("بعذر")
+        expect(ar.scope_OWN).toBe("الشخص نفسه")
+        expect(ar.scope_TEAM).toBe("الفريق")
+        expect(ar.face_consent).toBe("الموافقة")
+        expect(ar.payroll_variance_GONE).toBe("خارج الكشف")
+    })
+
+    it("leaves no masculine command or 'you' that the earlier parts missed", () => {
+        const masculine = new RegExp([word("نفّذ|علّمه|قرّر|قرر").source, "^صف ", "أنت متأخر", "أنت غير"].join("|"))
+        for (const key of keys) expect([key, masculine.test(ar[key])], ar[key]).toEqual([key, false])
+        expect(ar.ci_late).toBe("التأخير: {n} دقيقة. يبدأ يومك في {start}.")
+        expect(ar.role_changes_description_required).toBe("يُرجى وصف المطلوب في كلمات قليلة.")
+    })
+
+    it("keeps a generic من or أحد, a role's name and a thing as they are", () => {
+        expect(ar.audit_logs_subtitle).toContain("ومن قام به")
+        expect(ar.all_users_left_none).toBe("لم يغادر أحد")
+        expect(ar.client_hq_locked).toContain("من يحق له")
+        expect(ar.profile_role_ask_body).toContain("حتى يوافق المسؤول")
+        expect(ar.clients_archived_done).toBe("تمت الأرشفة: لديه مهام أو سجلات")
+    })
+
+    it("changes nothing in English", () => {
+        expect(en.audit_action_CREATE_LOCATION).toBe("Added location")
+        expect(en.clients_col_added).toBe("Added by")
+        expect(en.notice_team_left).toBe("{who} left your team.")
     })
 })
