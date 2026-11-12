@@ -296,9 +296,18 @@ Decided with the product owner on 2026-11-10.
       instant. A tab coming back into view asks them too.
     - A tab whose old script hasn't loaded the new one yet still beats as
       before: its beat stands for the person's one tab until it's reloaded.
-    - Signing out from the top bar says the tab is gone first: asked after,
-      the session is over and the server refuses it, and the person would
-      show as online for 32 minutes after leaving.
+    - Two reports from one tab can reach the server either way round, as a
+      closing tab's beacon overtaking the beat it sent just before. Each
+      carries its place in the tab's order, and the row keeps a report only
+      if none after it has arrived. A tab that goes is marked gone rather
+      than deleted, so a report sent before, arriving after, can't bring it
+      back (Codex on #262).
+    - Signing out closes, on the server, every tab of that browser's
+      session (the id its token is given at sign-in), and none of the
+      person's other devices. The tabs can't say so themselves: the session
+      ends before they hear of it, and the server refuses them after. Left
+      to them, the person showed as online for 32 minutes after leaving
+      (Codex on #262).
     - The heartbeat started again each time the session was fetched again,
       every 5 minutes, and called the server as it did, from every tab,
       shown or not. Found while building 6a: it now starts only as someone
