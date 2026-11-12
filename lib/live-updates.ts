@@ -184,14 +184,17 @@ export class LiveDrawer {
     private readonly maxWaitMs: number
     private readonly hidden: () => boolean
     /** The kinds drawn no sooner than this after they were last drawn. */
-    private readonly spacing: Partial<Record<LiveKind, number>> = { attendance: ATTENDANCE_SPACING_MS }
+    private readonly spacing: Partial<Record<LiveKind, number>>
     private readonly lastDrawn = new Map<LiveKind, number>()
     private readonly held = new Map<LiveKind, ReturnType<typeof setTimeout>>()
 
-    constructor({ delayMs = 1000, maxWaitMs = 5000, hidden }: { delayMs?: number; maxWaitMs?: number; hidden: () => boolean }) {
+    constructor({ delayMs = 1000, maxWaitMs = 5000, hidden, spacing = { attendance: ATTENDANCE_SPACING_MS } }: {
+        delayMs?: number; maxWaitMs?: number; hidden: () => boolean; spacing?: Partial<Record<LiveKind, number>>
+    }) {
         this.delayMs = delayMs
         this.maxWaitMs = maxWaitMs
         this.hidden = hidden
+        this.spacing = spacing
     }
 
     /** Draws `draw` when `kind` changes; returns how to stop. */
@@ -252,18 +255,20 @@ export class LiveDrawer {
         // else it hears: drawn too lately, it waits, and is drawn with that
         // kind once it may be (found by Codex on PR 265: the Exceptions tab
         // hears requests too, which a flagged check-in sends). Drawn now, it
-        // counts as that kind's draw.
+        // counts as a draw of each spaced kind it hears; held, as none, so
+        // a screen hearing only one of those isn't held for it (PR 266).
         const spacedNow = new Set<LiveKind>(kinds.filter(kind => this.spacing[kind] !== undefined))
         for (const [draw] of draws) {
-            for (const spaced of Object.keys(this.spacing) as LiveKind[]) {
-                if (spacedNow.has(spaced) || !this.listeners.get(spaced)?.has(draw)) continue
-                const last = this.lastDrawn.get(spaced)
-                if (last !== undefined && now - last < this.spacing[spaced]!) {
-                    draws.delete(draw)
-                    this.signal(spaced)
-                } else {
-                    spacedNow.add(spaced)
-                }
+            const alsoSpaced = (Object.keys(this.spacing) as LiveKind[]).filter(kind => !spacedNow.has(kind) && this.listeners.get(kind)?.has(draw))
+            const holding = alsoSpaced.find(kind => {
+                const last = this.lastDrawn.get(kind)
+                return last !== undefined && now - last < this.spacing[kind]!
+            })
+            if (holding) {
+                draws.delete(draw)
+                this.signal(holding)
+            } else {
+                for (const kind of alsoSpaced) spacedNow.add(kind)
             }
         }
         for (const kind of spacedNow) this.lastDrawn.set(kind, now)
