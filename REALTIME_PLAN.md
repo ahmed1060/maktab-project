@@ -291,6 +291,11 @@ Decided with the product owner on 2026-11-10.
     (part 6b). Every other tab stays off it. The Attendance page joins its
     company's, the company in view's for the Super Admin; the Check-ins
     page joins the channel of each company it lists.
+    - **A known limit:** Supabase lets one connection hold 100 channels on
+      most plans. With about 95 companies checking in within 30 days, the
+      Check-ins page could no longer join a channel for each, and would
+      stop hearing the rest. Before that, it should hear one signal for
+      every company on the Super Admin's own channel instead (#266).
     - Turned down: the company's channel, which every open tab of the
       company hears. A company of 200 makes about 400 check-ins a working
       day, and each heard by every tab is about 1.3 million messages a
@@ -634,3 +639,8 @@ Decided with the product owner on 2026-11-10.
   heard a company it didn't list yet: a company's first check-in or
   refusal in 30 days now says so on each Super Admin's own channel, and
   the page hears `requests` too, for the check-ins waiting for them.
+- **2026-11-12:** A tidy-up of part 4c, in #266. A screen held for one
+  spaced kind no longer counts as drawn for another it hears. Only
+  attendance is spaced today, so nothing behaved differently yet. And the
+  Check-ins page's limit is written down: one channel for each company it
+  lists, against Supabase's 100 for each connection.

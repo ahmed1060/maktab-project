@@ -659,7 +659,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      (`REALTIME_PLAN.md` part 4b), merged in #264 on 2026-11-12; then the
      Attendance page's Exceptions, Days and Punches tabs, and the Super
      Admin's Check-ins page, drawn again as check-ins come in, at most
-     every 30 seconds (`REALTIME_PLAN.md` part 4c, #265);
+     every 30 seconds (`REALTIME_PLAN.md` part 4c), merged in #265 on
+     2026-11-12; then a tidy-up of part 4c (#266);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6008,3 +6009,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   page finds a company checking in for the first time in 30 days, and
   hears the check-ins waiting for them wherever their company is
   (`REALTIME_PLAN.md` part 4c).
+- **2026-11-12:** A tidy-up of part 4c (#266): the live drawer counts a
+  screen it holds as no draw of the other spaced kinds it hears, and the
+  Super Admin's Check-ins page's limit of about 95 companies, one channel
+  for each, is written down (`REALTIME_PLAN.md` part 4c).
