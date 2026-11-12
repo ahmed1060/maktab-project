@@ -316,13 +316,30 @@ Decided with the product owner on 2026-11-10.
     - a check-in refused, which the Check-ins page counts.
     - The Exceptions tab hears part 2's `requests` too, for the
       missing-punch and permission-hour requests it shows.
+    - The Check-ins page hears part 2's `requests` too, which each Super
+      Admin hears for every company's flagged check-ins: those waiting for
+      them come in, and are decided, wherever their company is (found by
+      Codex on #265).
+  - **A company found checking in** (found by Codex on #265): the
+    Check-ins page lists, and hears the channels of, only the companies
+    that checked in or were refused in the last 30 days. A company's
+    first check-in from the app, or first refusal, in 30 days says so on
+    each Super Admin's own channel, with `attendance`
+    (`prisma/migrations/20261217000000_live_attendance_found`). The page
+    then lists it and hears its channel. Rare: once for a company
+    starting, or coming back after 30 days. An index on the check-ins
+    by company, source and when they came in keeps the question to one
+    step on every check-in.
   - **At most every 30 seconds while they keep coming** (`DESIGN.md` §8,
     changed first, in its own commit). The first after a quiet spell is
     drawn a second later, as the other lists are; those after it wait
     until 30 seconds have passed since the last draw. A company's morning
     arrivals would otherwise draw an open list every few seconds for an
     hour. Joining the channel draws the list too, so a change in a list's
-    first 30 seconds open waits until they've passed.
+    first 30 seconds open waits until they've passed. A list that hears
+    something else too keeps to its 30 seconds, whatever it hears: a
+    flagged check-in sends `requests` as well, and the Exceptions tab
+    heard it at once (found by Codex on #265).
   - **Joining a channel draws them once too,** as it does the others.
   - **Part 5's tint** marks a row of any of the lists that someone else
     added or changed. Each list is told apart by the address it's loaded
@@ -610,3 +627,10 @@ Decided with the product owner on 2026-11-10.
   tinted every row it showed. A list still loading is now told apart from
   an empty one, and its first draw marks nothing. The cash advance and
   charges lists take the same fix.
+- **2026-11-12:** Two findings by Codex on #265, fixed in it. The
+  Exceptions tab, hearing `requests` too, was drawn at once for each
+  flagged check-in: a screen that hears attendance now keeps to its 30
+  seconds, whatever it hears. And the Super Admin's Check-ins page never
+  heard a company it didn't list yet: a company's first check-in or
+  refusal in 30 days now says so on each Super Admin's own channel, and
+  the page hears `requests` too, for the check-ins waiting for them.
