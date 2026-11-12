@@ -792,12 +792,14 @@ export class UserService {
      * session marked gone, and none of the person's other devices. The
      * session ends before its tabs hear of it, and their own reports are
      * refused after. Each goes to the end of its order, so a report the tab
-     * sent before, arriving after, can't bring it back. How many it closed.
+     * sent before, arriving after, can't bring it back: those already gone
+     * too, whose here may be on its way as another tab signs out (Codex on
+     * #262). How many it closed, none closed before among them.
      */
     static async closeSessionTabs(userId: string, sid: string) {
         if (!userId || !sid) return 0
         const { count } = await prisma.openTab.updateMany({
-            where: { userId, sid, here: true },
+            where: { userId, sid, OR: [{ here: true }, { seq: { lt: SEQ_MAX } }] },
             data: { here: false, seenAt: new Date(), seq: SEQ_MAX },
         })
         return count

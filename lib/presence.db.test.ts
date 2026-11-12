@@ -233,7 +233,8 @@ describe.skipIf(!ADMIN_URL)("who shows as online, in Postgres", () => {
             await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(110), state: "here", seq: 1 }, "laptop")
             await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(111), state: "here", seq: 1 }, "laptop")
             await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(112), state: "here", seq: 1 }, "phone")
-            expect(await Users.closeSessionTabs("gone", "laptop")).toBe(2)
+            // Its two tabs here, and the rows it marked gone earlier on.
+            expect(await Users.closeSessionTabs("gone", "laptop")).toBeGreaterThanOrEqual(2)
             expect((await tabs("gone")).map(t => t.tabId)).toEqual([TAB(112)])
             expect(ids(await listed("status=ACTIVE"))).toContain("gone")
 
@@ -241,7 +242,17 @@ describe.skipIf(!ADMIN_URL)("who shows as online, in Postgres", () => {
             expect(ids(await listed("status=OFFLINE"))).toContain("gone")
         })
 
-        it("and asks nothing of a session without a name, or someone else's", async () => {
+        it("and a tab of it already gone stays gone, its here still on the way as another signs out", async () => {
+            // Out of sight, it said away; shown again, its here is sent; and
+            // before it arrives another tab signs the browser out (Codex on #262).
+            await Users.updateActivity("lost", "EMPLOYEE", { tab: TAB(120), state: "away", seq: 3 }, "desk")
+            await Users.closeSessionTabs("lost", "desk")
+            await Users.updateActivity("lost", "EMPLOYEE", { tab: TAB(120), state: "here", seq: 4 }, "desk")
+            expect((await tabs("lost")).map(t => t.tabId)).not.toContain(TAB(120))
+        })
+
+        it("and asks nothing of a session without a name, or someone else's, or one already closed", async () => {
+            expect(await Users.closeSessionTabs("lost", "desk")).toBe(0)
             await Users.updateActivity("lost", "EMPLOYEE", { tab: TAB(113), state: "here", seq: 1 }, "laptop")
             expect(await Users.closeSessionTabs("gone", "laptop")).toBe(0)
             expect(await Users.closeSessionTabs("lost", "")).toBe(0)
