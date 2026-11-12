@@ -101,6 +101,8 @@ export function createTabReporter({ isVisible, send, beacon }: Ways) {
     // out of sight, which has no row until it's looked at.
     let said: TabState | null = null
     let saidAt = 0
+    // Whether the closing beacon has gone since the tab was last here.
+    let beaconed = false
     let awayTimer: ReturnType<typeof setTimeout> | null = null
 
     const cancelAway = () => {
@@ -110,6 +112,7 @@ export function createTabReporter({ isVisible, send, beacon }: Ways) {
     const here = () => {
         said = "here"
         saidAt = Date.now()
+        beaconed = false
         send("here")
     }
 
@@ -137,9 +140,15 @@ export function createTabReporter({ isVisible, send, beacon }: Ways) {
         },
         closed() {
             cancelAway()
-            if (said !== "here") return
+            // Said away already, after 2 minutes out of sight, it says so
+            // again: that was an ordinary request, which a page closing as
+            // it's sent can cancel, and a beacon still goes as the page does
+            // (Codex on #262). The server keeps the later of the two. A tab
+            // never looked at has no row to close.
+            if (said === null || beaconed) return
             said = "away"
             saidAt = Date.now()
+            beaconed = true
             beacon("away")
         },
         beat() {

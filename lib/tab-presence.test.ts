@@ -117,14 +117,32 @@ describe("a tab says it's gone", () => {
         expect(sent).toEqual([{ via: "fetch", state: "here" }, { via: "beacon", state: "away" }])
     })
 
-    it("only once, closing a tab already gone", () => {
+    it("closing a tab already gone, again with a beacon, as the away before may not have gone", () => {
+        // Its away after 2 minutes out of sight is an ordinary request, which
+        // a page closing as it's sent can cancel (Codex on #262). A second
+        // away is harmless: the server keeps the later.
         const { sent, page, reporter } = setup()
         reporter.shown()
         page.visible = false
         reporter.hidden()
         vi.advanceTimersByTime(AWAY_AFTER_MS)
         reporter.closed()
-        expect(sent.map(s => s.state)).toEqual(["here", "away"])
+        expect(sent).toEqual([{ via: "fetch", state: "here" }, { via: "fetch", state: "away" }, { via: "beacon", state: "away" }])
+    })
+
+    it("but only once, however often the page says it's closing", () => {
+        const { sent, reporter } = setup()
+        reporter.shown()
+        reporter.closed()
+        reporter.closed()
+        expect(sent.map(s => s.via)).toEqual(["fetch", "beacon"])
+    })
+
+    it("and nothing for a tab never looked at, which has no row", () => {
+        const { sent, reporter } = setup(false)
+        reporter.hidden()
+        reporter.closed()
+        expect(sent).toEqual([])
     })
 
     it("not twice, closing while it waits out the 2 minutes", () => {
