@@ -1,4 +1,5 @@
 {
+  "regions": ["dub1"],
   "crons": [
     { "path": "/api/cron/reset-day-off", "schedule": "0 1 1 1 *" },
     { "path": "/api/cron/salary-init", "schedule": "0 2 * * *" },
