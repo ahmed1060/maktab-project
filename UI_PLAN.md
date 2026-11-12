@@ -5999,4 +5999,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   come in and attendance is corrected (`REALTIME_PLAN.md` part 4c, #265),
   at most every 30 seconds while check-ins keep coming (`DESIGN.md` §8).
   The period, filters and what's open stay. What someone else changed is
-  tinted, as part 5 does; the person's own actions aren't.
+  tinted, as part 5 does; the person's own actions aren't. A list's first
+  draw is never tinted, though a signal came while it loaded; before, a
+  list opened as its channel was joined was tinted throughout.

@@ -349,6 +349,11 @@ Decided with the product owner on 2026-11-10.
       and only the draw that follows a signal is marked;
     - not as a page opens, which has nothing before it, and not when the
       person looks at another tab, filter or page, which is another list;
+    - not as a list first loads, though a signal came while it loaded
+      (#265): a list still loading is told apart from an empty one, and
+      its first draw marks nothing. Joining a channel draws the lists
+      that hear it, so a list opened as its channel was joined was
+      otherwise tinted throughout;
     - not for the person's own changes: each action on the Requests page,
       its dialogs' too, says as it starts, before it sends anything, and
       as it's answered (`ActionStarts`, `lib/useBusyAction.ts`), and every
@@ -599,3 +604,8 @@ Decided with the product owner on 2026-11-10.
   while check-ins keep coming (`DESIGN.md` §8). The company's channel was
   turned down for what it would cost, and signalling only what needs a
   decision, or a timer, for leaving the lists still.
+- **2026-11-12:** Found building part 4c, fixed in #265: a list whose
+  first load came after a signal, as the one joining its channel sends,
+  tinted every row it showed. A list still loading is now told apart from
+  an empty one, and its first draw marks nothing. The cash advance and
+  charges lists take the same fix.
