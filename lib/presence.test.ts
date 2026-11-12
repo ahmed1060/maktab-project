@@ -1,29 +1,32 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
-import { HEARTBEAT_MS, ONLINE_WINDOW_MS, presenceStatus, presenceWhere } from "./presence"
+import { AWAY_AFTER_MS, HEARTBEAT_MS, ONLINE_WINDOW_MS, presenceStatus, presenceWhere } from "./presence"
 import { buildUserWhereClause } from "./services/user-query"
 import { withGrants } from "@/lib/permissions/test-actors"
 
 /**
  * Who shows as online on the Employees list and the Super Admin's All users.
  *
- * A person counted as online for 60 seconds after their last beat, but a tab
- * beats every 90: someone at work showed as Offline for a third of every
- * minute and a half, and in the list's Online filter while their badge said
- * Offline. Now the window is the beat's, twice and a little, so a lost beat
- * doesn't show them offline either, and the filter asks what the badge shows.
+ * Until part 6a (REALTIME_PLAN.md §3) it was whoever's heartbeat had come
+ * within two beats and a little, so someone who'd closed the app showed as
+ * online for minutes after, and the heartbeat ran every 90 seconds for it.
+ * Now each open tab has a row of its own, there while the tab is shown and
+ * taken away as it goes (lib/tab-presence.ts): a person is online while any
+ * tab of theirs has a fresh one. The heartbeat, every 15 minutes, keeps a
+ * shown tab's row fresh, and a row whose tab left unheard runs out after two
+ * beats and the 2 minutes a tab may be out of sight.
  */
 
 const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8")
-const NOW = new Date("2026-11-10T12:00:00Z")
+const NOW = new Date("2026-11-12T12:00:00Z")
 const ago = (ms: number) => new Date(NOW.getTime() - ms)
 
-describe("the window a person shows as online in", () => {
-    it("is two beats and a little, so one lost beat or a slow answer doesn't show them offline", () => {
-        expect(HEARTBEAT_MS).toBe(90_000)
-        expect(ONLINE_WINDOW_MS).toBeGreaterThan(2 * HEARTBEAT_MS)
-        expect(ONLINE_WINDOW_MS).toBeLessThanOrEqual(2 * HEARTBEAT_MS + 30_000)
+describe("the window a tab's row stays fresh in", () => {
+    it("is two beats and the 2 minutes out of sight, so one lost beat doesn't show anyone offline", () => {
+        expect(HEARTBEAT_MS).toBe(15 * 60_000)
+        expect(AWAY_AFTER_MS).toBe(2 * 60_000)
+        expect(ONLINE_WINDOW_MS).toBe(2 * HEARTBEAT_MS + AWAY_AFTER_MS)
     })
 
     it("is the heartbeat's own interval, read from the same place", () => {
@@ -35,29 +38,29 @@ describe("the window a person shows as online in", () => {
 })
 
 describe("a person's status as the list shows it", () => {
-    it("is online until just before their next beat, where it was offline after 60 seconds", () => {
-        expect(presenceStatus("ACTIVE", ago(61_000), NOW)).toBe("ACTIVE")
-        expect(presenceStatus("ACTIVE", ago(HEARTBEAT_MS - 1_000), NOW)).toBe("ACTIVE")
-    })
-
-    it("is online still when one beat was lost", () => {
+    it("is online while their newest tab was seen within the window", () => {
+        expect(presenceStatus("ACTIVE", ago(60_000), NOW)).toBe("ACTIVE")
         expect(presenceStatus("ACTIVE", ago(2 * HEARTBEAT_MS - 1_000), NOW)).toBe("ACTIVE")
+        expect(presenceStatus("ACTIVE", ago(ONLINE_WINDOW_MS), NOW)).toBe("ACTIVE")
     })
 
-    it("is offline once the window has passed", () => {
+    it("is offline once it's run out, and at once with no tab open", () => {
         expect(presenceStatus("ACTIVE", ago(ONLINE_WINDOW_MS + 1), NOW)).toBe("OFFLINE")
+        expect(presenceStatus("ACTIVE", null, NOW)).toBe("OFFLINE")
     })
 
     it("is left as it is for anyone not signed in as active", () => {
         for (const status of ["OFFLINE", "SUSPENDED", "ARCHIVED", "INACTIVE"]) {
             expect(presenceStatus(status, ago(1_000), NOW)).toBe(status)
+            expect(presenceStatus(status, null, NOW)).toBe(status)
         }
     })
 
-    it("is what the people list sends, in one place", () => {
+    it("is what the people list sends, from each person's newest tab", () => {
         const route = read("app/api/users/route.ts")
-        expect(route).toContain("presenceStatus(user.status, user.lastActivity)")
-        expect(route).not.toMatch(/diffMs > \d+/)
+        expect(route).toContain("presenceStatus(user.status, openTabs[0]?.seenAt ?? null)")
+        expect(route).toMatch(/openTabs: \{ orderBy: \{ seenAt: "desc" \}, take: 1, select: \{ seenAt: true \} \}/)
+        expect(route).not.toContain("presenceStatus(user.status, user.lastActivity)")
     })
 })
 
@@ -69,20 +72,20 @@ describe("the list's Online and Offline filters", () => {
         expect(r.empty).toBe(false)
         return (r as any).whereClause
     }
-    const cutoff = ago(ONLINE_WINDOW_MS)
+    const fresh = { seenAt: { gte: ago(ONLINE_WINDOW_MS) } }
 
-    it("Online is someone signed in and seen within the window", () => {
-        expect(presenceWhere("ACTIVE", NOW)).toEqual({ status: "ACTIVE", lastActivity: { gte: cutoff } })
+    it("Online is someone signed in with a fresh tab", () => {
+        expect(presenceWhere("ACTIVE", NOW)).toEqual({ status: "ACTIVE", openTabs: { some: fresh } })
         const where = build("status=ACTIVE")
         expect(where.AND).toContainEqual(presenceWhere("ACTIVE", NOW))
         expect(where.status).toBeUndefined()
     })
 
-    it("Offline is someone signed out, or signed in and not seen within it", () => {
+    it("Offline is someone signed out, or signed in with no fresh tab", () => {
         expect(presenceWhere("OFFLINE", NOW)).toEqual({
             OR: [
                 { status: "OFFLINE" },
-                { status: "ACTIVE", lastActivity: { lt: cutoff } },
+                { status: "ACTIVE", openTabs: { none: fresh } },
             ],
         })
         expect(build("status=OFFLINE").AND).toContainEqual(presenceWhere("OFFLINE", NOW))

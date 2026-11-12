@@ -99,7 +99,7 @@ describe("the pages", () => {
     // said "Heartbeat failed: TypeError" as the page signed out (browser flows).
     it("say nothing of a heartbeat refused, which signs them out", () => {
         // Not reached at all, as when the page is left mid-request, it says nothing either (PR 217).
-        expect(source("components/UserHeartbeat.tsx")).toMatch(/const res = await fetch\('\/api\/user\/activity', \{ method: 'POST' \}\)\.catch\(\(\) => null\)\s*(\/\/[^\n]*\n\s*)*if \(!res\?\.ok\) return\s*(\/\/[^\n]*\n\s*)*const data = \(await res\.json\(\)\.catch\(\(\) => null\)\)\?\.data/)
+        expect(source("components/UserHeartbeat.tsx")).toMatch(/const res = await fetch\('\/api\/user\/activity', \{[^}]*method: 'POST'[\s\S]*?\}\)\.catch\(\(\) => null\)\s*(\/\/[^\n]*\n\s*)*if \(!res\?\.ok\) return\s*(\/\/[^\n]*\n\s*)*const data = \(await res\.json\(\)\.catch\(\(\) => null\)\)\?\.data/)
     })
 })
 

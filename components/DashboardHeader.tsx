@@ -282,6 +282,9 @@ export default function DashboardHeader({ user, company, onMenuClick, menuOpen =
     }
 
     const handleLogout = async () => {
+        // This tab's row for who's online goes first (UserHeartbeat): asked
+        // after, the session is already over and the server refuses it.
+        window.dispatchEvent(new CustomEvent('app:signing-out'))
         await signOut({ redirect: false })
         router.push('/login')
     }

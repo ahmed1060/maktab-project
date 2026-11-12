@@ -2,13 +2,14 @@
 
 import { useSession, signOut } from "next-auth/react"
 import { useRouter, usePathname } from "next/navigation"
-import { useEffect, useId, useRef, useState, useCallback } from "react"
+import { useEffect, useEffectEvent, useId, useRef, useState, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { SignOutIcon, WrenchIcon } from "@phosphor-icons/react/ssr"
 import { EmptyState, type PhosphorIcon } from "@/components/ui"
 import { useLanguage } from "@/context/LanguageContext"
 import { useDialog } from "@/lib/useDialog"
 import { HEARTBEAT_MS } from "@/lib/presence"
+import { createTabReporter, newTabId, type TabState } from "@/lib/tab-presence"
 import { useLive } from "@/components/LiveUpdates"
 
 // How long to give tasks/[id]/client.tsx or obligations/[id]/client.tsx to
@@ -62,13 +63,13 @@ export default function UserHeartbeat() {
     // stale-closure problem a state read inside a callback recreated only
     // when `session` changes would have.
     const wasMaintenanceActive = useRef(false)
-    // The polling effect's check, for the Realtime path to run once it has
-    // connected (see there).
+    // The account check below, for the Realtime path to run once it has
+    // connected (see there), and for a live signal about the account.
     const checkStatusRef = useRef<(() => void) | null>(null)
     // Live updates, part 3 (REALTIME_PLAN.md): the database says the account
     // can't go on, suspended, closed, deleted or its company banned, and this
-    // asks at once rather than at the next beat, up to 90 seconds on. The beat
-    // stays, as the safety net.
+    // asks at once rather than at the next beat. The beat stays, as the
+    // safety net.
     useLive('account', () => { void checkStatusRef.current?.() })
 
     // Shared by both detection paths below (the fast Realtime broadcast and
@@ -153,84 +154,139 @@ export default function UserHeartbeat() {
         return () => { cancelled = true; cleanup?.() }
     }, [session, handleMaintenanceDetected, handleMaintenanceEnded])
 
-    // Polling path: suspension/ban detection, plus a slow safety net for
-    // maintenance mode in case the WebSocket above ever drops silently.
-    // Suspension/ban were never expected to feel instant — an admin doesn't
-    // ban people continuously the way "is maintenance on" gets checked by
-    // every idle tab — so this stays at the original, low-cost cadence
-    // rather than the 15s this briefly used only to compensate for
-    // maintenance mode before Realtime existed.
-    useEffect(() => {
-        if (!session?.user) return
+    // What the server answers about the account, read with this render's
+    // handlers: the reporter below lasts as long as the person is signed in,
+    // and the page's address changes under it, which the handlers read.
+    const onAccountState = useEffectEvent((data: { status?: string; maintenanceMessage?: string | null }) => {
+        try {
+            if (data.status === 'SUSPENDED') {
+                window.dispatchEvent(new CustomEvent('app:suspend-detected'))
+                setIsSuspended(true)
+                // Waits for the save (or the grace period) instead of a
+                // flat delay — a fixed 4s here is what raced a real
+                // save (upload + PUT) and lost it: signOut() cleared the
+                // session before the request that persists the work had
+                // even gone out. See waitForEmergencySave's comment.
+                waitForEmergencySave().then(() => signOut({ callbackUrl: '/login' }))
+            } else if (data.status === 'ARCHIVED') {
+                // Same exit as a suspension — the emergency save still has
+                // to run, because a person whose last day this is may have
+                // unsaved work open — but a different screen. "Suspended"
+                // would read as a punishment to somebody who simply left.
+                window.dispatchEvent(new CustomEvent('app:suspend-detected'))
+                setIsArchived(true)
+                waitForEmergencySave().then(() => signOut({ callbackUrl: '/login' }))
+            } else if (data.status === 'DELETED') {
+                // Deleted while signed in: the same exit, its own screen
+                // (PR 247). It went on working until then.
+                window.dispatchEvent(new CustomEvent('app:suspend-detected'))
+                setIsDeleted(true)
+                waitForEmergencySave().then(() => signOut({ callbackUrl: '/login' }))
+            } else if (data.status === 'COMPANY_BANNED') {
+                window.dispatchEvent(new CustomEvent('app:suspend-detected'))
+                setIsCompanyBanned(true)
+                waitForEmergencySave().then(() => signOut({ callbackUrl: '/login' }))
+            } else if (data.status === 'MAINTENANCE') {
+                handleMaintenanceDetected(data.maintenanceMessage)
+            } else {
+                handleMaintenanceEnded()
+            }
+        } catch (error) {
+            console.error('Heartbeat failed', error)
+        }
+    })
 
-        const checkStatus = async () => {
+    // Who's online, part 6a (REALTIME_PLAN.md §3): this tab's own id, made as
+    // its page loads and kept for that page only (lib/tab-presence.ts).
+    const [tabId] = useState(newTabId)
+    // Signed in as whom: the session itself is fetched again every 5 minutes,
+    // each time a new object, and the reporter below mustn't start again with
+    // it, saying "here" as it starts.
+    const userId = session?.user?.id
+
+    // This tab says when it's shown and when it goes (lib/tab-presence.ts),
+    // and each answer says the account's state: suspension and ban detection,
+    // and a slow safety net for maintenance mode in case the WebSocket above
+    // ever drops silently. Part 3 and the maintenance channel make both
+    // instant; the beat, every 15 minutes while the tab is shown, is the
+    // safety net for them and for a tab whose leaving wasn't heard.
+    useEffect(() => {
+        if (!userId) return
+
+        const report = async (state?: TabState) => {
             // Offline, or the page left mid-request, as on a page change: no
             // answer, so nothing to say, and the next beat asks again. It was
             // logged as "Heartbeat failed: TypeError: Failed to fetch" (PR 217).
-            const res = await fetch('/api/user/activity', { method: 'POST' }).catch(() => null)
+            const res = await fetch('/api/user/activity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                // Without a state, as a live signal about the account asks,
+                // it only asks, and the tab's row is left as it is.
+                body: JSON.stringify({ tab: tabId, state }),
+            }).catch(() => null)
             // Refused, it has no answer to read: a 401 signs the page out
             // (AuthInterceptor), as a session the server ended gets.
             if (!res?.ok) return
             // Its answer cut off as the page is left: the same, nothing to say.
             const data = (await res.json().catch(() => null))?.data
-            if (!data) return
-            try {
-                if (data.status === 'SUSPENDED') {
-                    window.dispatchEvent(new CustomEvent('app:suspend-detected'))
-                    setIsSuspended(true)
-                    // Waits for the save (or the grace period) instead of a
-                    // flat delay — a fixed 4s here is what raced a real
-                    // save (upload + PUT) and lost it: signOut() cleared the
-                    // session before the request that persists the work had
-                    // even gone out. See waitForEmergencySave's comment.
-                    waitForEmergencySave().then(() => signOut({ callbackUrl: '/login' }))
-                } else if (data.status === 'ARCHIVED') {
-                    // Same exit as a suspension — the emergency save still has
-                    // to run, because a person whose last day this is may have
-                    // unsaved work open — but a different screen. "Suspended"
-                    // would read as a punishment to somebody who simply left.
-                    window.dispatchEvent(new CustomEvent('app:suspend-detected'))
-                    setIsArchived(true)
-                    waitForEmergencySave().then(() => signOut({ callbackUrl: '/login' }))
-                } else if (data.status === 'DELETED') {
-                    // Deleted while signed in: the same exit, its own screen
-                    // (PR 247). It went on working until then.
-                    window.dispatchEvent(new CustomEvent('app:suspend-detected'))
-                    setIsDeleted(true)
-                    waitForEmergencySave().then(() => signOut({ callbackUrl: '/login' }))
-                } else if (data.status === 'COMPANY_BANNED') {
-                    window.dispatchEvent(new CustomEvent('app:suspend-detected'))
-                    setIsCompanyBanned(true)
-                    waitForEmergencySave().then(() => signOut({ callbackUrl: '/login' }))
-                } else if (data.status === 'MAINTENANCE') {
-                    handleMaintenanceDetected(data.maintenanceMessage)
-                } else {
-                    handleMaintenanceEnded()
-                }
-            } catch (error) {
-                console.error('Heartbeat failed', error)
-            }
+            if (data) onAccountState(data)
         }
 
+        const reporter = createTabReporter({
+            isVisible: () => document.visibilityState === 'visible',
+            send: (state) => { void report(state) },
+            // Sent as text, which every browser's beacon takes and sends as the
+            // page closes; the route reads it.
+            beacon: (state) => { navigator.sendBeacon('/api/user/activity', JSON.stringify({ tab: tabId, state })) },
+        })
+
+        // Asks only the account's state, leaving the tab's row as it is.
+        const checkStatus = () => { void report() }
         checkStatusRef.current = checkStatus
-        checkStatus()
+        // A tab opened out of sight has no row until it's looked at, and asks
+        // only the account's state.
+        if (document.visibilityState === 'visible') reporter.shown()
+        else void report()
+
+        const onVisibility = () => {
+            if (document.visibilityState === 'visible') reporter.shown()
+            else reporter.hidden()
+        }
+        // Closing, reloading, or going to another site. A page kept to come
+        // back to (the browser's back and forward) says it's here again as
+        // it's shown.
+        const onPageHide = () => { reporter.closed() }
+        const onPageShow = (event: PageTransitionEvent) => {
+            if (event.persisted && document.visibilityState === 'visible') reporter.shown()
+        }
+        // Signing out ends the session before this page notices, and a report
+        // sent after that is refused: DashboardHeader says so first.
+        const onSigningOut = () => { reporter.closed() }
+        document.addEventListener('visibilitychange', onVisibility)
+        window.addEventListener('pagehide', onPageHide)
+        window.addEventListener('pageshow', onPageShow)
+        window.addEventListener('app:signing-out', onSigningOut)
 
         const interval = setInterval(() => {
-            if (document.visibilityState === 'hidden') return
-            checkStatus()
+            reporter.beat()
         }, HEARTBEAT_MS)
 
-        return () => { clearInterval(interval); checkStatusRef.current = null }
-        // Deliberately keyed only on session — this interval must survive
-        // route changes rather than being torn down and restarted on every
-        // click. handleMaintenanceDetected/Ended are stable enough in
-        // practice (only change with pathname) that omitting them here
-        // just means this interval keeps using whichever pathname closure
-        // it started with between session refreshes — harmless, since
-        // middleware.ts is the actual enforcement and checks the JWT fresh
-        // on every request regardless of this component's state.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [session])
+        return () => {
+            clearInterval(interval)
+            document.removeEventListener('visibilitychange', onVisibility)
+            window.removeEventListener('pagehide', onPageHide)
+            window.removeEventListener('pageshow', onPageShow)
+            window.removeEventListener('app:signing-out', onSigningOut)
+            // The page leaving the dashboard, or signed in as someone else:
+            // this tab's row goes with it.
+            reporter.closed()
+            reporter.stop()
+            checkStatusRef.current = null
+        }
+        // Keyed on who's signed in, and the tab's id, which never changes: it
+        // survives route changes and the session's refresh every 5 minutes
+        // rather than starting again with each.
+    }, [userId, tabId])
 
     // The screen over a page the app has to leave (DESIGN.md §5.5), over
     // everything, while the emergency save above runs. It was a dark screen

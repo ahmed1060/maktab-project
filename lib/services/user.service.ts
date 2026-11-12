@@ -25,6 +25,8 @@ import { assertStepUp, assertRecentStepUp } from "@/lib/step-up"
 import { sessionHasModule } from "@/lib/features/require"
 import { keepAfterChange } from "@/lib/session-kept"
 import { confirmOwnPassword, ownPasswordMatches } from "@/lib/own-password"
+import { ONLINE_WINDOW_MS } from "@/lib/presence"
+import type { TabReport } from "@/lib/tab-presence"
 
 /**
  * The account statuses a status write may set. ARCHIVED and DELETED come only
@@ -705,25 +707,40 @@ export class UserService {
         })
     }
 
-    static async updateActivity(userId: string, role: string) {
+    /**
+     * A tab's report (lib/tab-presence.ts), and the account's state in
+     * answer: the heartbeat, and since part 6a who's online (REALTIME_PLAN.md
+     * §3). Here adds the tab's row, or brings it up to date; away takes it
+     * away. A report with neither only asks the account's state, as a live
+     * signal about the account does, and writes nothing. With no report at
+     * all, from a page still on the script before part 6a, the beat stands for
+     * the person's one tab until it's reloaded.
+     *
+     * A row is the person's own, keyed by their id with the tab's: whatever
+     * id a report names, it reaches no one else's.
+     */
+    static async updateActivity(userId: string, role: string, report?: TabReport) {
         if (role === 'SUPER_ADMIN') {
             return { success: true, status: 'ACTIVE' }
         }
 
+        const { tab, state } = report ?? { tab: 'legacy', state: 'here' as const }
         const [user, settings] = await Promise.all([
-            prisma.user.update({
+            prisma.user.findUniqueOrThrow({
                 where: { id: userId },
-                data: { lastActivity: new Date() },
                 select: {
                     status: true,
                     company: { select: { isBanned: true } }
                 }
             }),
             // Live read, not the throttled session copy — this is the
-            // heartbeat's whole job: catching a state change within its own
-            // 90-second interval (lib/presence.ts) rather than waiting on the
-            // JWT's 60s staleness window on top of that.
-            prisma.systemSettings.findUnique({ where: { id: 'default' }, select: { maintenanceMode: true, maintenanceMessage: true } })
+            // heartbeat's whole job: catching a state change at its own beat
+            // rather than waiting on the JWT's 60s staleness window on top of
+            // that.
+            prisma.systemSettings.findUnique({ where: { id: 'default' }, select: { maintenanceMode: true, maintenanceMessage: true } }),
+            state === 'here' ? UserService.tabHere(userId, tab)
+                : state === 'away' ? prisma.openTab.deleteMany({ where: { userId, tabId: tab } })
+                    : null,
         ])
 
         if (user.status === 'SUSPENDED') return { success: true, status: 'SUSPENDED' }
@@ -738,6 +755,32 @@ export class UserService {
         if (settings?.maintenanceMode) return { success: true, status: 'MAINTENANCE', maintenanceMessage: settings.maintenanceMessage }
 
         return { success: true, status: 'ACTIVE' }
+    }
+
+    /** A tab shown: its row, added or brought up to date, and the person seen. */
+    private static async tabHere(userId: string, tabId: string) {
+        // Side by side, not in a transaction: neither needs the other, and
+        // a transaction is two more trips to the database on the app's most
+        // frequent call.
+        const now = new Date()
+        await Promise.all([
+            prisma.openTab.upsert({
+                where: { userId_tabId: { userId, tabId } },
+                create: { userId, tabId, seenAt: now },
+                update: { seenAt: now },
+            }),
+            prisma.user.update({ where: { id: userId }, data: { lastActivity: now }, select: { id: true } }),
+        ])
+    }
+
+    /**
+     * Rows past the window, from tabs that left unheard: swept daily with the
+     * other old records (/api/cron/prune). They show no one as online, so the
+     * sweep only keeps the table small. How many went.
+     */
+    static async pruneOpenTabs(now: Date = new Date()) {
+        const { count } = await prisma.openTab.deleteMany({ where: { seenAt: { lt: new Date(now.getTime() - ONLINE_WINDOW_MS) } } })
+        return count
     }
 
     static async updateStatus(userId: string, status: string, session: any) {
