@@ -123,7 +123,7 @@ by then, and this plan names real models and files that may have changed.
 
 ### Round 9 — terminals that connect straight to Nizmo
 
-Decisions 1, 2 and 9 are the owner's (12 November 2026). The rest are proposed
+Decisions 1, 2, 9 and 10 are the owner's (12 November 2026). The rest are proposed
 with the plan (#269), for the owner to confirm or change before part 2 starts.
 
 | # | Topic | Decision |
@@ -137,7 +137,7 @@ with the plan (#269), for the owner to confirm or change before part 2 starts.
 | 7 | *Proposed:* switched off to start | **Turned on for each company by the Super Admin**, after a week's trial with a real terminal for each protocol (§17.8). |
 | 8 | *Proposed:* order | **Hikvision straight to Nizmo, then ZKTeco, then the agent reading Hikvision**, unless the terminal on hand for the trial is a ZKTeco, which then goes first (§20, Phase 4). |
 | 9 | Brands | **A list kept from the screen, not written into the code**, with Convoy on it from the start beside ZKTeco and Hikvision. A brand is what is printed on a terminal; each speaks one of the protocols Nizmo knows. A brand speaking a known protocol is added from the screen; one speaking another needs that protocol built first (§17.9). |
-| 10 | *Proposed:* who keeps the list | **The Super Admin, for every company**, on a Terminal brands page under Templates. A company's Admin picks from it (§17.9). |
+| 10 | Who keeps the list | **The Super Admin only, one list for every company**, on a Terminal brands page under Templates. A company's Admin picks from it and can't add, change or retire a brand (§17.9). |
 
 ---
 
@@ -1571,11 +1571,12 @@ protocol. The first customer's Convoy most likely speaks ZKTeco's (§20).
   over the office network (above) and a terminal pushes to Nizmo (§17.3); and
   Hikvision's ISAPI (§17.2, §17.4). Another protocol is added by building it,
   with its own plan and PRs.
-- **Brands are data.** The Super Admin keeps the list on a **Terminal
-  brands** page, under Templates (`UI_PLAN.md` §2.2): each brand's name, the
-  protocol its terminals speak, and optional notes in English and Arabic,
-  such as where its settings are in its menu. It starts with ZKTeco,
-  Hikvision and Convoy (ZKTeco's protocol, until the trial says otherwise).
+- **Brands are data.** Only the Super Admin keeps the list, one for every
+  company, on a **Terminal brands** page under Templates (`UI_PLAN.md`
+  §2.2; round 9, decision 10): each brand's name, the protocol its
+  terminals speak, and optional notes in English and Arabic, such as where
+  its settings are in its menu. It starts with ZKTeco, Hikvision and Convoy
+  (ZKTeco's protocol, until the trial says otherwise).
 - **Adding a brand** takes its name and picks its protocol from the ones
   Nizmo knows. A brand that speaks another can't be added: the page says so,
   rather than offering a brand that will never connect.
@@ -1591,8 +1592,8 @@ protocol. The first customer's Convoy most likely speaks ZKTeco's (§20).
   speaking that protocol. A terminal added by hand takes its brand's
   protocol.
 - **A company's Admin** sees the brand on each terminal's card and picks it in
-  Add a terminal (§17.7). A brand that isn't listed is asked of the Super
-  Admin.
+  Add a terminal (§17.7), but can't add, change or retire one. A brand that
+  isn't listed is asked of the Super Admin.
 - Adding, changing and retiring a brand are written to the audit log, as role
   and policy templates are.
 

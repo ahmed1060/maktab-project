@@ -6045,8 +6045,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   chosen for each terminal, ZKTeco and Hikvision alike (#269;
   `ATTENDANCE_PLAN.md` round 9, §17.1 to §17.10, Phase 4). A ZKTeco terminal
   straight to Nizmo is accepted only from the office's fixed internet
-  address, since it sends nothing secret. Brands are a list the Super Admin
-  keeps on a Terminal brands page under Templates (§2.2), each speaking a
-  protocol Nizmo knows, with Convoy on it from the start. The first
+  address, since it sends nothing secret. Brands are a list only the Super
+  Admin keeps, on a Terminal brands page under Templates (§2.2), each
+  speaking a protocol Nizmo knows, with Convoy on it from the start. The first
   customer's terminal, a Convoy that most likely speaks ZKTeco's protocol, is
   tried with the agent first. Plans only; no screen changes yet.
