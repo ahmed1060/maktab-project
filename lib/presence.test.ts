@@ -59,7 +59,7 @@ describe("a person's status as the list shows it", () => {
     it("is what the people list sends, from each person's newest tab", () => {
         const route = read("app/api/users/route.ts")
         expect(route).toContain("presenceStatus(user.status, openTabs[0]?.seenAt ?? null)")
-        expect(route).toMatch(/openTabs: \{ orderBy: \{ seenAt: "desc" \}, take: 1, select: \{ seenAt: true \} \}/)
+        expect(route).toMatch(/openTabs: \{ where: \{ here: true \}, orderBy: \{ seenAt: "desc" \}, take: 1, select: \{ seenAt: true \} \}/)
         expect(route).not.toContain("presenceStatus(user.status, user.lastActivity)")
     })
 })
@@ -72,7 +72,9 @@ describe("the list's Online and Offline filters", () => {
         expect(r.empty).toBe(false)
         return (r as any).whereClause
     }
-    const fresh = { seenAt: { gte: ago(ONLINE_WINDOW_MS) } }
+    // A tab's row stays as it goes, marked gone, so a report sent before
+    // that, arriving after, can't bring it back (PR 262).
+    const fresh = { here: true, seenAt: { gte: ago(ONLINE_WINDOW_MS) } }
 
     it("Online is someone signed in with a fresh tab", () => {
         expect(presenceWhere("ACTIVE", NOW)).toEqual({ status: "ACTIVE", openTabs: { some: fresh } })

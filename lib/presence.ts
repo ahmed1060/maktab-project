@@ -6,12 +6,12 @@
  * third of the time (PR 246).
  *
  * Since part 6a (REALTIME_PLAN.md §3, PR 262) each open tab has a row of its
- * own (OpenTab), added as it's shown and taken away as it closes or has been
+ * own (OpenTab), here as it's shown and marked gone as it closes or has been
  * out of sight for 2 minutes (lib/tab-presence.ts). A person signed in
- * (ACTIVE) is online while any tab of theirs has a fresh row. Until then it
- * was whoever had beaten within two beats and 20 seconds, so someone who'd
- * closed the app showed as online for minutes after, and the heartbeat ran
- * every 90 seconds for it.
+ * (ACTIVE) is online while any tab of theirs is here, in a fresh row. Until
+ * then it was whoever had beaten within two beats and 20 seconds, so someone
+ * who'd closed the app showed as online for minutes after, and the heartbeat
+ * ran every 90 seconds for it.
  */
 
 /**
@@ -45,7 +45,9 @@ export function presenceStatus(status: string, lastSeen: Date | string | null, n
 
 /** The list's Online and Offline filters, asking what presenceStatus shows. */
 export function presenceWhere(filter: "ACTIVE" | "OFFLINE", now: Date = new Date()) {
-    const fresh = { seenAt: { gte: new Date(now.getTime() - ONLINE_WINDOW_MS) } }
+    // A tab's row stays as it goes, marked gone, so a report sent before that,
+    // arriving after, can't bring it back (UserService.updateActivity).
+    const fresh = { here: true, seenAt: { gte: new Date(now.getTime() - ONLINE_WINDOW_MS) } }
     if (filter === "ACTIVE") return { status: "ACTIVE", openTabs: { some: fresh } }
     return {
         OR: [

@@ -15,8 +15,17 @@ import { AWAY_AFTER_MS, HEARTBEAT_MS } from "./presence"
 /** Here: the tab is shown. Away: it's closed, or out of sight for 2 minutes. */
 export type TabState = "here" | "away"
 
-/** What a tab sends: its id, and here or away, or neither to ask only the account's state. */
-export type TabReport = { tab: string; state?: TabState }
+/**
+ * What a tab sends: its id, and here or away with its place in the tab's
+ * order (nextSeq), or neither, to ask only the account's state.
+ */
+export type TabReport = { tab: string } | { tab: string; state: TabState; seq: number }
+
+/**
+ * The end of every tab's order (a Postgres integer's largest), where signing
+ * out puts a session's tabs: a report's place is below it.
+ */
+export const SEQ_MAX = 2 ** 31 - 1
 
 /**
  * A tab's id, made for it as its page loads, and kept only for that page:
@@ -30,6 +39,21 @@ export function newTabId(): string {
     return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("")
 }
 
+// The last place given in this page's order: its tabs' reports, one after
+// another (a tab's id lasts only as long as its page).
+let lastSeq = 0
+
+/**
+ * A report's place in its tab's order. Two requests from one tab can reach
+ * the server either way round, as a closing tab's beacon overtaking the beat
+ * it sent just before, and the server keeps a report only if none after it
+ * has arrived (UserService.updateActivity, PR 262).
+ */
+export function nextSeq(): number {
+    lastSeq += 1
+    return lastSeq
+}
+
 /** An id the server keeps a row for: letters, digits and dashes, 16 to 64 of them. */
 export function isTabId(value: unknown): value is string {
     return typeof value === "string" && /^[A-Za-z0-9-]{16,64}$/.test(value)
@@ -37,8 +61,9 @@ export function isTabId(value: unknown): value is string {
 
 /**
  * The report in a request's body: undefined for none, as a page still on the
- * old script sends, and "bad" for anything that isn't one. A closing tab's
- * beacon comes as text, which every browser sends as the page closes.
+ * old script sends, and "bad" for anything that isn't one, here or away
+ * without its place in the order among them. A closing tab's beacon comes as
+ * text, which every browser sends as the page closes.
  */
 export function readTabReport(body: unknown): TabReport | undefined | "bad" {
     if (body === null || body === undefined || body === "") return undefined
@@ -50,11 +75,12 @@ export function readTabReport(body: unknown): TabReport | undefined | "bad" {
         }
     }
     if (typeof body !== "object" || body === null || Array.isArray(body)) return "bad"
-    const { tab, state } = body as { tab?: unknown; state?: unknown }
+    const { tab, state, seq } = body as { tab?: unknown; state?: unknown; seq?: unknown }
     if (!isTabId(tab)) return "bad"
     if (state === undefined) return { tab }
     if (state !== "here" && state !== "away") return "bad"
-    return { tab, state }
+    if (typeof seq !== "number" || !Number.isInteger(seq) || seq < 1 || seq >= SEQ_MAX) return "bad"
+    return { tab, state, seq }
 }
 
 type Ways = {

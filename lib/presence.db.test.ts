@@ -103,7 +103,7 @@ describe.skipIf(!ADMIN_URL)("who shows as online, in Postgres", () => {
         if (built.empty) throw new Error("no clause")
         return prisma.user.findMany({
             where: built.whereClause,
-            select: { id: true, status: true, openTabs: { orderBy: { seenAt: "desc" }, take: 1, select: { seenAt: true } } },
+            select: { id: true, status: true, openTabs: { where: { here: true }, orderBy: { seenAt: "desc" }, take: 1, select: { seenAt: true } } },
             orderBy: { id: "asc" },
         })
     }
@@ -137,66 +137,115 @@ describe.skipIf(!ADMIN_URL)("who shows as online, in Postgres", () => {
     })
 
     describe("a tab coming and going (UserService.updateActivity)", () => {
-        const tabs = async (userId: string) => (await db.query(`SELECT "tabId", "seenAt" FROM "OpenTab" WHERE "userId" = $1 ORDER BY "tabId"`, [userId])).rows
+        /** A person's tabs that are here, and every row of theirs, gone ones too. */
+        const tabs = async (userId: string) => (await db.query(`SELECT "tabId", "seenAt" FROM "OpenTab" WHERE "userId" = $1 AND here ORDER BY "tabId"`, [userId])).rows
+        const rows = async (userId: string) => (await db.query(`SELECT "tabId", here, seq, sid FROM "OpenTab" WHERE "userId" = $1 ORDER BY "tabId"`, [userId])).rows
 
         it("shown, adds its row, and the person is online at once", async () => {
-            await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(100), state: "here" })
+            await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(100), state: "here", seq: 1 }, "laptop")
             expect((await tabs("gone")).map(t => t.tabId)).toEqual([TAB(100)])
             expect(ids(await listed("status=ACTIVE"))).toContain("gone")
         })
 
         it("shown again, brings the same row up to date rather than adding one", async () => {
             await db.query(`UPDATE "OpenTab" SET "seenAt" = $1 WHERE "tabId" = $2`, [ago(20 * 60_000), TAB(100)])
-            await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(100), state: "here" })
-            const rows = await tabs("gone")
-            expect(rows).toHaveLength(1)
-            expect(Date.now() - new Date(rows[0].seenAt).getTime()).toBeLessThan(60_000)
+            await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(100), state: "here", seq: 2 }, "laptop")
+            const here = await tabs("gone")
+            expect(here).toHaveLength(1)
+            expect(Date.now() - new Date(here[0].seenAt).getTime()).toBeLessThan(60_000)
         })
 
-        it("gone, takes its row away, and with no other tab the person is offline at once", async () => {
-            await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(100), state: "away" })
+        it("gone, its row says so, and with no other tab the person is offline at once", async () => {
+            await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(100), state: "away", seq: 3 }, "laptop")
             expect(await tabs("gone")).toEqual([])
             expect(ids(await listed("status=OFFLINE"))).toContain("gone")
         })
 
+        it("a here sent before it went, arriving after, doesn't bring it back", async () => {
+            // A tab closed while its last beat was still on its way: the
+            // beacon overtook it.
+            await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(100), state: "here", seq: 2 }, "laptop")
+            expect(await tabs("gone")).toEqual([])
+            expect(ids(await listed("status=OFFLINE"))).toContain("gone")
+        })
+
+        it("nor does an away sent before it came back take it away again", async () => {
+            await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(100), state: "here", seq: 5 }, "laptop")
+            await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(100), state: "away", seq: 4 }, "laptop")
+            expect((await tabs("gone")).map(t => t.tabId)).toEqual([TAB(100)])
+            await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(100), state: "away", seq: 6 }, "laptop")
+        })
+
+        it("an away for a tab never seen leaves it gone, should its here arrive after", async () => {
+            await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(104), state: "away", seq: 2 }, "laptop")
+            await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(104), state: "here", seq: 1 }, "laptop")
+            expect(await tabs("gone")).toEqual([])
+        })
+
         it("gone from one device, leaves the other's: a laptop still shown keeps them online", async () => {
             const [stalePhone] = (await tabs("two")).map(t => t.tabId)
-            await Users.updateActivity("two", "EMPLOYEE", { tab: stalePhone, state: "away" })
+            await Users.updateActivity("two", "EMPLOYEE", { tab: stalePhone, state: "away", seq: 1 }, "phone")
             expect(await tabs("two")).toHaveLength(1)
             expect(ids(await listed("status=ACTIVE"))).toContain("two")
         })
 
         it("can't touch another person's tab, whatever id it names", async () => {
             const [theirs] = (await tabs("here")).map(t => t.tabId)
-            await Users.updateActivity("gone", "EMPLOYEE", { tab: theirs, state: "away" })
-            await Users.updateActivity("gone", "EMPLOYEE", { tab: theirs, state: "here" })
+            await Users.updateActivity("gone", "EMPLOYEE", { tab: theirs, state: "away", seq: 9 }, "laptop")
+            await Users.updateActivity("gone", "EMPLOYEE", { tab: theirs, state: "here", seq: 10 }, "laptop")
             expect((await tabs("here")).map(t => t.tabId)).toEqual([theirs])
-            await Users.updateActivity("gone", "EMPLOYEE", { tab: theirs, state: "away" })
+            await Users.updateActivity("gone", "EMPLOYEE", { tab: theirs, state: "away", seq: 11 }, "laptop")
         })
 
         it("asked only for the account's state, as live updates ask, writes nothing", async () => {
-            const result = await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(101) })
+            const before = await rows("gone")
+            const result = await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(101) }, "laptop")
             expect(result.status).toBe("ACTIVE")
-            expect(await tabs("gone")).toEqual([])
+            expect(await rows("gone")).toEqual(before)
         })
 
         it("from a page still on the old script, beats for the person's one tab until it's reloaded", async () => {
-            await Users.updateActivity("out", "EMPLOYEE")
+            await Users.updateActivity("out", "EMPLOYEE", undefined, "old")
             expect((await tabs("out")).map(t => t.tabId)).toEqual(["legacy"])
-            await Users.updateActivity("out", "EMPLOYEE")
-            expect(await tabs("out")).toHaveLength(1)
+            await db.query(`UPDATE "OpenTab" SET "seenAt" = $1 WHERE "userId" = 'out'`, [ago(20 * 60_000)])
+            await Users.updateActivity("out", "EMPLOYEE", undefined, "old")
+            const here = await tabs("out")
+            expect(here).toHaveLength(1)
+            expect(Date.now() - new Date(here[0].seenAt).getTime()).toBeLessThan(60_000)
             await db.query(`DELETE FROM "OpenTab" WHERE "userId" = 'out'`)
         })
 
         it("still tells a suspended person's page so, as the heartbeat always has", async () => {
-            const result = await Users.updateActivity("held", "EMPLOYEE", { tab: TAB(102), state: "here" })
+            const result = await Users.updateActivity("held", "EMPLOYEE", { tab: TAB(102), state: "here", seq: 1 }, "x")
             expect(result.status).toBe("SUSPENDED")
         })
 
         it("asks nothing of a Super Admin, who has no row", async () => {
-            const result = await Users.updateActivity("sa-1", "SUPER_ADMIN", { tab: TAB(103), state: "here" })
+            const result = await Users.updateActivity("sa-1", "SUPER_ADMIN", { tab: TAB(103), state: "here", seq: 1 }, "x")
             expect(result.status).toBe("ACTIVE")
             expect((await db.query(`SELECT count(*)::int AS n FROM "OpenTab" WHERE "userId" = 'sa-1'`)).rows[0].n).toBe(0)
+        })
+
+        it("signing out closes every tab of that browser's session, and leaves the person's other devices", async () => {
+            // Two tabs in the laptop's browser and one on the phone. Signing
+            // out ends the session the laptop's tabs share, and their own
+            // reports would be refused after it.
+            await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(110), state: "here", seq: 1 }, "laptop")
+            await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(111), state: "here", seq: 1 }, "laptop")
+            await Users.updateActivity("gone", "EMPLOYEE", { tab: TAB(112), state: "here", seq: 1 }, "phone")
+            expect(await Users.closeSessionTabs("gone", "laptop")).toBe(2)
+            expect((await tabs("gone")).map(t => t.tabId)).toEqual([TAB(112)])
+            expect(ids(await listed("status=ACTIVE"))).toContain("gone")
+
+            await Users.closeSessionTabs("gone", "phone")
+            expect(ids(await listed("status=OFFLINE"))).toContain("gone")
+        })
+
+        it("and asks nothing of a session without a name, or someone else's", async () => {
+            await Users.updateActivity("lost", "EMPLOYEE", { tab: TAB(113), state: "here", seq: 1 }, "laptop")
+            expect(await Users.closeSessionTabs("gone", "laptop")).toBe(0)
+            expect(await Users.closeSessionTabs("lost", "")).toBe(0)
+            expect((await tabs("lost")).map(t => t.tabId)).toContain(TAB(113))
         })
     })
 

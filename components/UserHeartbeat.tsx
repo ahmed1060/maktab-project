@@ -9,7 +9,7 @@ import { EmptyState, type PhosphorIcon } from "@/components/ui"
 import { useLanguage } from "@/context/LanguageContext"
 import { useDialog } from "@/lib/useDialog"
 import { HEARTBEAT_MS } from "@/lib/presence"
-import { createTabReporter, newTabId, type TabState } from "@/lib/tab-presence"
+import { createTabReporter, newTabId, nextSeq, type TabState } from "@/lib/tab-presence"
 import { useLive } from "@/components/LiveUpdates"
 
 // How long to give tasks/[id]/client.tsx or obligations/[id]/client.tsx to
@@ -221,8 +221,9 @@ export default function UserHeartbeat() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 // Without a state, as a live signal about the account asks,
-                // it only asks, and the tab's row is left as it is.
-                body: JSON.stringify({ tab: tabId, state }),
+                // it only asks, and the tab's row is left as it is. Each is
+                // numbered, so the server can tell one arriving late.
+                body: JSON.stringify({ tab: tabId, state, seq: nextSeq() }),
             }).catch(() => null)
             // Refused, it has no answer to read: a 401 signs the page out
             // (AuthInterceptor), as a session the server ended gets.
@@ -237,7 +238,7 @@ export default function UserHeartbeat() {
             send: (state) => { void report(state) },
             // Sent as text, which every browser's beacon takes and sends as the
             // page closes; the route reads it.
-            beacon: (state) => { navigator.sendBeacon('/api/user/activity', JSON.stringify({ tab: tabId, state })) },
+            beacon: (state) => { navigator.sendBeacon('/api/user/activity', JSON.stringify({ tab: tabId, state, seq: nextSeq() })) },
         })
 
         // Asks only the account's state, leaving the tab's row as it is.
@@ -259,13 +260,9 @@ export default function UserHeartbeat() {
         const onPageShow = (event: PageTransitionEvent) => {
             if (event.persisted && document.visibilityState === 'visible') reporter.shown()
         }
-        // Signing out ends the session before this page notices, and a report
-        // sent after that is refused: DashboardHeader says so first.
-        const onSigningOut = () => { reporter.closed() }
         document.addEventListener('visibilitychange', onVisibility)
         window.addEventListener('pagehide', onPageHide)
         window.addEventListener('pageshow', onPageShow)
-        window.addEventListener('app:signing-out', onSigningOut)
 
         const interval = setInterval(() => {
             reporter.beat()
@@ -276,9 +273,9 @@ export default function UserHeartbeat() {
             document.removeEventListener('visibilitychange', onVisibility)
             window.removeEventListener('pagehide', onPageHide)
             window.removeEventListener('pageshow', onPageShow)
-            window.removeEventListener('app:signing-out', onSigningOut)
             // The page leaving the dashboard, or signed in as someone else:
-            // this tab's row goes with it.
+            // this tab's row goes with it. Signing out is closed on the
+            // server, as the session ends (lib/auth.ts, events.signOut).
             reporter.closed()
             reporter.stop()
             checkStatusRef.current = null

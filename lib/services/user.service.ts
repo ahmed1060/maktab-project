@@ -26,7 +26,7 @@ import { sessionHasModule } from "@/lib/features/require"
 import { keepAfterChange } from "@/lib/session-kept"
 import { confirmOwnPassword, ownPasswordMatches } from "@/lib/own-password"
 import { ONLINE_WINDOW_MS } from "@/lib/presence"
-import type { TabReport } from "@/lib/tab-presence"
+import { SEQ_MAX, type TabReport, type TabState } from "@/lib/tab-presence"
 
 /**
  * The account statuses a status write may set. ARCHIVED and DELETED come only
@@ -710,21 +710,22 @@ export class UserService {
     /**
      * A tab's report (lib/tab-presence.ts), and the account's state in
      * answer: the heartbeat, and since part 6a who's online (REALTIME_PLAN.md
-     * §3). Here adds the tab's row, or brings it up to date; away takes it
-     * away. A report with neither only asks the account's state, as a live
+     * §3). Here marks the tab's row here, adding it if need be; away marks it
+     * gone. A report with neither only asks the account's state, as a live
      * signal about the account does, and writes nothing. With no report at
      * all, from a page still on the script before part 6a, the beat stands for
      * the person's one tab until it's reloaded.
      *
      * A row is the person's own, keyed by their id with the tab's: whatever
-     * id a report names, it reaches no one else's.
+     * id a report names, it reaches no one else's. `sid` is the browser's
+     * session (the token's), which signing out closes (closeSessionTabs).
      */
-    static async updateActivity(userId: string, role: string, report?: TabReport) {
+    static async updateActivity(userId: string, role: string, report?: TabReport, sid: string | null = null) {
         if (role === 'SUPER_ADMIN') {
             return { success: true, status: 'ACTIVE' }
         }
 
-        const { tab, state } = report ?? { tab: 'legacy', state: 'here' as const }
+        const tab = report ?? { tab: 'legacy', state: 'here' as const, seq: 0 }
         const [user, settings] = await Promise.all([
             prisma.user.findUniqueOrThrow({
                 where: { id: userId },
@@ -738,9 +739,7 @@ export class UserService {
             // rather than waiting on the JWT's 60s staleness window on top of
             // that.
             prisma.systemSettings.findUnique({ where: { id: 'default' }, select: { maintenanceMode: true, maintenanceMessage: true } }),
-            state === 'here' ? UserService.tabHere(userId, tab)
-                : state === 'away' ? prisma.openTab.deleteMany({ where: { userId, tabId: tab } })
-                    : null,
+            'state' in tab ? UserService.tabSeen(userId, tab.tab, tab.state, tab.seq, sid) : null,
         ])
 
         if (user.status === 'SUSPENDED') return { success: true, status: 'SUSPENDED' }
@@ -757,26 +756,57 @@ export class UserService {
         return { success: true, status: 'ACTIVE' }
     }
 
-    /** A tab shown: its row, added or brought up to date, and the person seen. */
-    private static async tabHere(userId: string, tabId: string) {
+    /**
+     * A tab's row marked here or gone, and the person seen as they're here.
+     *
+     * One statement, which keeps the report only if none after it in the
+     * tab's order has arrived: two from one tab can reach the server either
+     * way round, as a closing tab's beacon overtaking the beat it sent just
+     * before, which would otherwise bring the tab back for 32 minutes (Codex
+     * on #262). A report from another session than the row's is kept
+     * whatever its place: the tab was signed out and in again, and its order
+     * goes on from where the page had it, past a closed session's.
+     *
+     * The time is written as UTC, as Prisma writes it, whatever the
+     * connection's time zone.
+     */
+    private static async tabSeen(userId: string, tabId: string, state: TabState, seq: number, sid: string | null) {
+        const now = new Date()
+        const here = state === 'here'
         // Side by side, not in a transaction: neither needs the other, and
         // a transaction is two more trips to the database on the app's most
         // frequent call.
-        const now = new Date()
         await Promise.all([
-            prisma.openTab.upsert({
-                where: { userId_tabId: { userId, tabId } },
-                create: { userId, tabId, seenAt: now },
-                update: { seenAt: now },
-            }),
-            prisma.user.update({ where: { id: userId }, data: { lastActivity: now }, select: { id: true } }),
+            prisma.$executeRaw`
+                INSERT INTO "OpenTab" ("userId", "tabId", "seenAt", "seq", "here", "sid")
+                VALUES (${userId}, ${tabId}, (${now.toISOString()}::timestamptz AT TIME ZONE 'UTC'), ${seq}, ${here}, ${sid})
+                ON CONFLICT ("userId", "tabId") DO UPDATE
+                SET "seenAt" = EXCLUDED."seenAt", "seq" = EXCLUDED."seq", "here" = EXCLUDED."here", "sid" = EXCLUDED."sid"
+                WHERE "OpenTab"."seq" <= EXCLUDED."seq" OR "OpenTab"."sid" IS DISTINCT FROM EXCLUDED."sid"`,
+            here ? prisma.user.update({ where: { id: userId }, data: { lastActivity: now }, select: { id: true } }) : null,
         ])
     }
 
     /**
-     * Rows past the window, from tabs that left unheard: swept daily with the
-     * other old records (/api/cron/prune). They show no one as online, so the
-     * sweep only keeps the table small. How many went.
+     * Signing out (lib/auth.ts, events.signOut): every tab of that browser's
+     * session marked gone, and none of the person's other devices. The
+     * session ends before its tabs hear of it, and their own reports are
+     * refused after. Each goes to the end of its order, so a report the tab
+     * sent before, arriving after, can't bring it back. How many it closed.
+     */
+    static async closeSessionTabs(userId: string, sid: string) {
+        if (!userId || !sid) return 0
+        const { count } = await prisma.openTab.updateMany({
+            where: { userId, sid, here: true },
+            data: { here: false, seenAt: new Date(), seq: SEQ_MAX },
+        })
+        return count
+    }
+
+    /**
+     * Rows past the window, from tabs that left unheard or went: swept daily
+     * with the other old records (/api/cron/prune). They show no one as
+     * online, so the sweep only keeps the table small. How many went.
      */
     static async pruneOpenTabs(now: Date = new Date()) {
         const { count } = await prisma.openTab.deleteMany({ where: { seenAt: { lt: new Date(now.getTime() - ONLINE_WINDOW_MS) } } })

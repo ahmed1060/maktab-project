@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { readFileSync } from "node:fs"
 import { AWAY_AFTER_MS, HEARTBEAT_MS } from "./presence"
-import { createTabReporter, isTabId, newTabId, readTabReport } from "./tab-presence"
+import { createTabReporter, isTabId, newTabId, nextSeq, readTabReport } from "./tab-presence"
 
 /**
  * Who's online, part 6a (REALTIME_PLAN.md §3): each tab says when it's shown
@@ -177,9 +177,9 @@ describe("a tab's own id", () => {
 describe("what the server reads of a tab's report", () => {
     const tab = newTabId()
 
-    it("its id, and here or away", () => {
-        expect(readTabReport({ tab, state: "here" })).toEqual({ tab, state: "here" })
-        expect(readTabReport({ tab, state: "away" })).toEqual({ tab, state: "away" })
+    it("its id, here or away, and where it comes in the tab's order", () => {
+        expect(readTabReport({ tab, state: "here", seq: 1 })).toEqual({ tab, state: "here", seq: 1 })
+        expect(readTabReport({ tab, state: "away", seq: 7 })).toEqual({ tab, state: "away", seq: 7 })
     })
 
     it("its id alone, asking only the account's state", () => {
@@ -192,14 +192,30 @@ describe("what the server reads of a tab's report", () => {
     })
 
     it("a closing tab's beacon, which comes as text", () => {
-        expect(readTabReport(JSON.stringify({ tab, state: "away" }))).toEqual({ tab, state: "away" })
+        expect(readTabReport(JSON.stringify({ tab, state: "away", seq: 2 }))).toEqual({ tab, state: "away", seq: 2 })
         expect(readTabReport("")).toBeUndefined()
     })
 
-    it("refuses anything else", () => {
-        for (const bad of [{}, { tab: "x" }, { tab, state: "gone" }, { tab, state: 1 }, [tab], "not json", "5", 5, true]) {
+    it("refuses anything else, and here or away without its place in the order", () => {
+        for (const bad of [
+            {}, { tab: "x" }, { tab, state: "gone", seq: 1 }, { tab, state: 1, seq: 1 }, [tab], "not json", "5", 5, true,
+            { tab, state: "here" }, { tab, state: "away", seq: 0 }, { tab, state: "here", seq: -1 },
+            { tab, state: "here", seq: 1.5 }, { tab, state: "here", seq: 2 ** 31 - 1 }, { tab, state: "here", seq: "3" },
+        ]) {
             expect(readTabReport(bad), JSON.stringify(bad)).toBe("bad")
         }
+    })
+})
+
+describe("a tab's reports, in order", () => {
+    it("are numbered one after another, so the server can tell an older one arriving late", () => {
+        // Two requests from one tab can reach the server either way round: a
+        // closing tab's away overtaking the here it sent just before, or a here
+        // overtaking the away before it. The number says which was sent last.
+        const a = nextSeq(), b = nextSeq(), c = nextSeq()
+        expect(a).toBeGreaterThan(0)
+        expect(b).toBe(a + 1)
+        expect(c).toBe(b + 1)
     })
 })
 
@@ -218,12 +234,9 @@ describe("the page passes it the events", () => {
         expect(heartbeat).toMatch(/JSON\.stringify\(\{ tab: tabId/)
     })
 
-    it("and is told of signing out before the session ends, which would refuse it after", () => {
-        expect(heartbeat).toContain("'app:signing-out'")
-        const header = readFileSync("components/DashboardHeader.tsx", "utf8")
-        const told = header.indexOf("new CustomEvent('app:signing-out')")
-        expect(told).toBeGreaterThan(-1)
-        expect(told).toBeLessThan(header.indexOf("await signOut("))
+    it("and numbers each, the closing beacon too", () => {
+        expect(heartbeat).toContain("JSON.stringify({ tab: tabId, state, seq: nextSeq() })")
+        expect(heartbeat.match(/seq: nextSeq\(\)/g)).toHaveLength(2)
     })
 
     it("keeps one reporter while signed in: the session, refreshed every 5 minutes, doesn't start another", () => {

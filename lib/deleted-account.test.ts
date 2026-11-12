@@ -27,7 +27,7 @@ vi.mock("@/lib/prisma", () => ({
             update: async ({ where }: any) => { db.updated.push(where.id); return db.users[where.id] },
         },
         // The heartbeat's tab, for who's online (PR 262).
-        openTab: { upsert: async () => ({}), deleteMany: async () => ({ count: 0 }) },
+        $executeRaw: async () => 1,
         superAdmin: { findUnique: async ({ where }: any) => db.superAdmins[where.id] ?? null },
         role: { findUnique: async () => null },
         systemSettings: { findUnique: async () => null },

@@ -2747,16 +2747,25 @@ model CheckInPhone {
 /// A one-time number the server gives a phone to sign (§9.2): a captured
 /// request cannot be sent again. Used once, within minutes; kept only as a hash.
 /// An open tab of someone's, for who's online (REALTIME_PLAN.md §3, part 6a):
-/// added, or brought up to date, as the tab is shown, and taken away as it
-/// closes or has been out of sight for 2 minutes (UserService.updateActivity).
-/// A row not seen within the window is from a tab that left unheard, and is
-/// swept daily (/api/cron/prune).
+/// here as the tab is shown, and marked gone as it closes or has been out of
+/// sight for 2 minutes (UserService.updateActivity). A row not seen within the
+/// window is from a tab that left unheard, or one gone, and is swept daily
+/// (/api/cron/prune).
 model OpenTab {
   userId String
   /// Made by the tab for itself as its page loads (lib/tab-presence.ts), or
   /// "legacy" for a tab still on the script before part 6a.
   tabId  String
   seenAt DateTime @default(now())
+  /// The place in the tab's order of the last report kept: one that arrives
+  /// after a later one is ignored (lib/tab-presence.ts, nextSeq).
+  seq    Int      @default(0)
+  /// False once the tab has gone. Kept, rather than deleted, so a report sent
+  /// before it went, arriving after, can't bring it back.
+  here   Boolean  @default(true)
+  /// The browser session it came from (the token's sid): signing out closes
+  /// that session's tabs (UserService.closeSessionTabs).
+  sid    String?
   user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, tabId])

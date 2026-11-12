@@ -145,8 +145,8 @@ export const GET = withStandardHandler(async (req, session) => {
             select: {
                 id: true, firstName: true, lastName: true, email: true, status: true,
                 lastActivity: true, role: true, gender: true, username: true,
-                // Their newest tab, for whether they're online (lib/presence.ts).
-                openTabs: { orderBy: { seenAt: "desc" }, take: 1, select: { seenAt: true } },
+                // Their newest tab that's here, for whether they're online (lib/presence.ts).
+                openTabs: { where: { here: true }, orderBy: { seenAt: "desc" }, take: 1, select: { seenAt: true } },
                 company: { select: { id: true, name: true } },
                 totalDifficultyPoints: true,
                 teamLeaderId: true,

@@ -810,6 +810,22 @@ export const authOptions: NextAuthOptions = {
             return token
         }
     },
+    events: {
+        // Who's online (REALTIME_PLAN.md §3, part 6a): the tabs of the session
+        // this ends, every one in the browser and none of the person's other
+        // devices. The session ends before the tabs hear of it, and their own
+        // reports are refused after, which left the person online for 32
+        // minutes (Codex on #262). Never in the way of signing out.
+        async signOut({ token }) {
+            if (!token?.sub || typeof token.sid !== 'string' || !token.sid || token.role === 'SUPER_ADMIN') return
+            try {
+                const { UserService } = await import("@/lib/services/user.service")
+                await UserService.closeSessionTabs(token.sub, token.sid)
+            } catch (error) {
+                console.error('[AUTH] Closing the tabs of a session signed out of failed', error)
+            }
+        },
+    },
     pages: {
         signIn: '/login',
     },
