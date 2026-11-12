@@ -308,6 +308,14 @@ Decided with the product owner on 2026-11-10.
       ends before they hear of it, and the server refuses them after. Left
       to them, the person showed as online for 32 minutes after leaving
       (Codex on #262).
+    - **Known limit:** a tab opened just as another tab of the same browser
+      signs out can still show the person as online, for up to 32 minutes.
+      Its first report, let in before the sign-out, can add its row a
+      moment after the sign-out closed the others. Closing that gap needs a
+      table of ended sessions, checked on every report, the app's most
+      frequent call, for a race of milliseconds that touches only the
+      Online badge. The product owner chose to leave it, and to look at it
+      again with 6b if it's ever seen (Codex on #262).
     - The heartbeat started again each time the session was fetched again,
       every 5 minutes, and called the server as it did, from every tab,
       shown or not. Found while building 6a: it now starts only as someone
@@ -410,3 +418,9 @@ Decided with the product owner on 2026-11-10.
   badge is drawn again live (6b, Proposed). The heartbeat slows to every 15
   minutes with 6a. Supabase Presence was turned down for what it would
   cost as companies grow.
+- **2026-11-12:** Part 6a merged in #262. Codex found five things in it.
+  Four were fixed there: reports kept in order; signing out closing the
+  browser's tabs on the server, then those already gone too; and a
+  closing tab saying away even after an earlier away. The fifth, a new
+  tab's first report racing another tab's sign-out, is left as a known
+  limit, as the product owner chose.
