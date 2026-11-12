@@ -110,6 +110,13 @@ Decided with the product owner on 2026-11-10.
   - Cash advances' signals (part 4a) are heard the same way. The ledger
     changes far less often than tasks: an advance given, returned,
     confirmed or spent on a cost.
+  - Costs and charges (part 4b) add almost nothing to a company's
+    channel. Their screens draw again with the company's tasks' signals,
+    which a cost added, removed or paid already sends, and a signal of
+    their own goes out only as a charge changes without its task: a fee
+    set, a cost left off a bill or charged again, a charge collected or
+    uncollected. Each Super Admin's own channel hears every change to
+    costs.
 
 ---
 
@@ -121,7 +128,7 @@ Decided with the product owner on 2026-11-10.
 | 2 | The Requests page, and the count on Requests in the side bar | #250 |
 | 3 | A suspended, archived, deleted or banned person signed out within seconds, not 90; the heartbeat kept as the safety net | #248 |
 | 4a | Cash advances: the Cash advances tab, a person's cash advance and My cash advance, Add cost's line about the advance, and an open Give advance, Record return or Correction window | #252 |
-| 4b | Costs and charges: the Employee costs and Charged to clients tabs, and a client's charges | |
+| 4b | Costs and charges: the Employee costs and Charged to clients tabs, and a client's charges | #264 |
 | 4c | Attendance | |
 | 5 | A little motion for what arrives live: what changed is shown for a moment, so nobody has to hunt for it | #251, merged 2026-11-11; Codex's two findings after the merge, fixed in #253 |
 | 6a | Who's online: each tab says when it's shown and when it goes, and the heartbeat slows to every 15 minutes, as the safety net | #262 |
@@ -223,6 +230,48 @@ Decided with the product owner on 2026-11-10.
     answered; whatever is drawn meanwhile is taken as theirs. On the
     Requests page too. Since #253, the draw after the answer is theirs
     only once their page says the change is saved.
+- **Part 4b, costs and charges (#264):** the screens that show costs
+  draw themselves again as they change, through the same routes as any
+  visit:
+  - the Costs page's Employee costs tab, keeping its search, filters and
+    page, which are in its address;
+  - its Charged to clients tab, and a client's charges on their page,
+    keeping the search, filters and page.
+  - **What they hear:**
+    - **The company's tasks' signal** (part 1). A cost is added or removed
+      with its task, whose total and shares change in the same
+      transaction, and a share is paid on the task itself. Every open tab
+      of the company hears that already, so the screens draw again with
+      it, for any change to the company's tasks, as the task list does;
+      only what changed is tinted. A signal of costs' own for each would
+      be heard by every tab again: for a company of 200 adding 100 costs a
+      working day, with 150 tabs open, about 330,000 messages a month
+      more.
+    - **`costs`, a signal of their own,** empty as the others are, for what
+      changes a cost without its task: its service fee set, left off its
+      client's bill or charged again, collected or uncollected, or its
+      cost name merged into another or deleted. On the company's channel
+      (`tasks:<id>`), and on each Super Admin's own (`notices:<id>`).
+    - **The Super Admin** hears no company's channel with no company in
+      view, and opens any client's page from wherever they are, so their
+      own channel says `costs` for every change the screens show: a cost
+      added, changed or removed, a task deleted with its costs, and any
+      change to a task with costs. One signal per statement
+      (`prisma/migrations/20261215000000_live_costs`).
+    - No new channel, and no change to who may listen.
+  - **Joining a channel draws them once too,** as it draws the cash
+    advances.
+  - **A screen hearing both,** as a Super Admin's with a company in view
+    does when that company's task changes, is drawn once for both.
+  - **Part 5's tint** marks a row of either list that someone else added
+    or changed. The Charged to clients list keeps its filters to itself,
+    so it's told apart by the address it's loaded from, as the cash
+    advance lists are (`useArrivalsIn`).
+  - **Mark all as paid, a service fee, Not charged to client, Charge
+    again, Mark collected and Mark uncollected are the person's own,** and
+    aren't tinted, as in part 4a.
+  - **Not heard:** a client, or someone on a task, renamed. The lists show
+    the new name as they're next drawn.
 - **Part 5, motion (#251), as the product owner chose:** what someone
   else changed is shown arriving, briefly, and then the screen is still
   again (`DESIGN.md` §8, changed first, in its own commit).
@@ -474,3 +523,11 @@ Decided with the product owner on 2026-11-10.
   its first person online would run out unheard. The rows aren't tinted,
   as the product owner chose (`DESIGN.md` §8). One channel for every
   company was turned down for what it would cost.
+- **2026-11-12:** Part 6b merged in #263. Part 4b planned (#264): the
+  Costs page's Employee costs and Charged to clients tabs, and a client's
+  charges, draw themselves again as costs change. They draw with the
+  company's tasks' signals, which a cost added, removed or paid already
+  sends, and with `costs`, a signal of their own only for a charge
+  changing without its task. The Super Admin's own channel says `costs`
+  for every change to costs. A signal of costs' own for every cost added
+  was turned down: every open tab of the company would hear it again.
