@@ -125,7 +125,7 @@ Decided with the product owner on 2026-11-10.
 | 4c | Attendance | |
 | 5 | A little motion for what arrives live: what changed is shown for a moment, so nobody has to hunt for it | #251, merged 2026-11-11; Codex's two findings after the merge, fixed in #253 |
 | 6a | Who's online: each tab says when it's shown and when it goes, and the heartbeat slows to every 15 minutes, as the safety net | #262 |
-| 6b | The Online badge on the Employees list and All users drawn again as people come and go | |
+| 6b | The Online badge on the Employees list and All users drawn again as people come and go | #263 |
 
 - Each part is its own PR, merged on the product owner's word.
 - **Part 1 has been live since it merged.** `SUPABASE_JWT_SECRET` was
@@ -321,10 +321,49 @@ Decided with the product owner on 2026-11-10.
       shown or not. Found while building 6a: it now starts only as someone
       signs in.
     - Rows are swept daily, with the other old records (`/api/cron/prune`).
-  - **6b: the badge is live.** The Employees list and All users are drawn
-    again as someone comes or goes, on a channel only those screens join,
-    so a coming or going is heard by the one to three people looking, not
-    by every tab. Proposed; its own PR.
+  - **6b (#263): the badge is live.** The Employees list and All users are
+    drawn again as someone comes or goes, on a channel only those screens
+    join, so a coming or going is heard by the one to three people looking,
+    not by every tab.
+    - **The channel** is `online:<company id>`, one for each company,
+      joined only while a screen that shows the badge is open. The
+      Employees list joins its company's, the company in view's for the
+      Super Admin. All users, and the Employees list for a Super Admin with
+      no company in view, join the channel of each company on the page
+      shown. Every other tab stays off them.
+      - Turned down: one channel for every company, for the Super Admin's
+        lists of everyone. Supabase counts a signal once as it's sent,
+        whoever listens, so each coming and going in every company would
+        have cost a message more, for screens open a few minutes a week.
+    - **Who may listen:** a company's people who may see the Employees list
+      (`employees.view`), their own company's channel only; and the Super
+      Admin, any company's. The rule on Supabase's side can't read the
+      app's permissions, so the token says whether its person may see the
+      list. A signal says only that someone in the company came or went,
+      never who.
+    - **The signal** is `changed`, empty as the others are, sent by the
+      database: a trigger on `"OpenTab"`, once per statement for each
+      company it touched (`prisma/migrations/20261214000000_live_online`):
+      - a tab here for the first time, or here again after it went;
+      - a tab gone: closed, out of sight for 2 minutes, or signed out;
+      - a tab here again after its row had run out, as a phone that paused
+        the app for over 32 minutes wakes it;
+      - not the heartbeat's beat, which keeps a tab here as it was, and not
+        the daily sweep, which removes only rows that had run out already.
+      - A tab's coming or going is signalled even while another tab of the
+        person's keeps them online, and the list is drawn the same. Telling
+        the two apart would mean the trigger reading the person's other
+        tabs, as their own reports change them.
+    - **A tab whose leaving wasn't heard** runs out with nothing written, so
+      no signal says so. The list is drawn again, too, as the first person
+      it shows online would run out if nothing is heard from them first.
+      The server says how long that is, by its own clock.
+    - **On the screen:** the badge, and the Online and Offline filters, show
+      what the server says now. What the person typed, their filters, page
+      and where they'd scrolled stay. The rows aren't tinted
+      (`DESIGN.md` §8, changed first, as the product owner chose): people
+      come and go dozens of times a morning, and nobody changed the list.
+      Joining draws once, as the other channels do.
   - **Turned down: Supabase Presence.** It needs no table, but a tab is seen
     only by joining the company's channel, and every tab there hears every
     other come and go, so a company's messages grow with the square of its
@@ -335,7 +374,10 @@ Decided with the product owner on 2026-11-10.
     the morning's arrivals would pass.
   - **What it costs, a company of 200 with a tab each:** about 200,000
     calls a month to the server, where the 90-second heartbeat made about
-    1.6 million; with 6b, about 90,000 messages a month.
+    1.6 million; with 6b, about 90,000 messages a month. That's about 10
+    comings and goings a person a working day, 44,000 signals a month,
+    each counted once as it's sent and once for each screen listening:
+    about 90,000 with one person watching all day.
 
 ---
 
@@ -424,3 +466,11 @@ Decided with the product owner on 2026-11-10.
   closing tab saying away even after an earlier away. The fifth, a new
   tab's first report racing another tab's sign-out, is left as a known
   limit, as the product owner chose.
+- **2026-11-12:** Part 6b planned (#263): a channel for each company's
+  comings and goings, `online:<company id>`, joined only while the
+  Employees list or All users is open, and heard only by those who may see
+  the list and the Super Admin. The database signals a tab coming, going,
+  or coming back after its row ran out. The list is drawn again, too, as
+  its first person online would run out unheard. The rows aren't tinted,
+  as the product owner chose (`DESIGN.md` §8). One channel for every
+  company was turned down for what it would cost.

@@ -650,8 +650,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      server's functions moved from Frankfurt to Dublin, next to the
      database in Ireland (`TECH_STACK.md`), merged in #261 on 2026-11-12;
      then who's online from each tab saying when it comes and goes, the
-     heartbeat slowed to every 15 minutes (`REALTIME_PLAN.md` part 6a,
-     #262);
+     heartbeat slowed to every 15 minutes (`REALTIME_PLAN.md` part 6a),
+     merged in #262 on 2026-11-12; then the Online badge on the Employees
+     list and All users changing as people come and go, untinted
+     (`REALTIME_PLAN.md` part 6b, #263);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5975,3 +5977,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   it goes, so someone who closes the app shows as offline at once, not up
   to 3 minutes 20 seconds later, and a phone and a laptop don't make each
   other look gone. The badge looks as before.
+- **2026-11-12:** The Online badge on the Employees list and All users
+  changes as people come and go (`REALTIME_PLAN.md` part 6b, #263),
+  without the list being loaded again: what's typed, the filters and the
+  page stay. Only the badge changes, untinted (`DESIGN.md` §8), and someone
+  whose leaving wasn't heard turns Offline as their 32 minutes run out.
