@@ -200,7 +200,7 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
     // working the month out again is the person's own.
     useWantedChannels(topics)
     useLive('attendance', () => { void mutate() })
-    const arrivals = useArrivalsIn('attendance', url, days ?? [], d => d.id)
+    const arrivals = useArrivalsIn('attendance', url, days, d => d.id)
     const action = useBusyAction(arrivals.own)
     const rules: Rules | null = body?.data?.rules ?? null
     const { data: session } = useSession()
@@ -431,7 +431,7 @@ function PunchesTab({ q, companyId, today, topics }: { q: string; companyId: str
     // tinted; adding or withdrawing one is the person's own.
     useWantedChannels(topics)
     useLive('attendance', () => { void mutate() })
-    const arrivals = useArrivalsIn('attendance', listUrl, punches ?? [], x => x.id)
+    const arrivals = useArrivalsIn('attendance', listUrl, punches, x => x.id)
     const action = useBusyAction(arrivals.own)
 
     const leaderOf = useMemo(() => new Map(people.map(x => [x.id, x.teamLeaderId])), [people])

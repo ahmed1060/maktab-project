@@ -72,7 +72,7 @@ export default function CashAdvanceHistory({ userId, mine = false }: { userId: s
     const code = (error as { info?: { code?: string }; status?: number } | undefined)
     useAdjustOnChange([advance?.totalPages ?? 0], () => setPage(p => pageInRange(p, advance?.totalPages ?? 0)))
     useLive('advances', () => { void mutate() })
-    const arrivals = useArrivalsIn('advances', url, advance?.data ?? [], e => e.id)
+    const arrivals = useArrivalsIn('advances', url, advance?.data ?? null, e => e.id)
     // Confirm receipt and Move to running balance: the person's own change,
     // not tinted once it's saved (arrivals.saved).
     const action = useBusyAction(arrivals.own)

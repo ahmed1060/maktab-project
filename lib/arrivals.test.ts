@@ -92,6 +92,15 @@ describe("a list drawn again after someone else's change", () => {
         expect(arrivedBetween(at([A]), at([A, C], "/dashboard/tasks?page=2"))).toEqual([])
     })
 
+    // Found testing part 4c: a list joining its channel as it opens heard the
+    // join's signal before its rows came, and took them all as arrived.
+    it("marks nothing as a list loads, though a signal came while it loaded", () => {
+        const loading = drawn(LIST, null, key)
+        expect(arrivedBetween(loading, at([A, B]))).toEqual([])
+        expect(arrivedBetween(at([A]), loading)).toEqual([])
+        expect(loading).not.toBe(at([]))
+    })
+
     it("marks nothing for a draw no signal announced", () => {
         const page = list([A])
         expect(page.draw(at([A, C]))).toEqual([])
@@ -320,6 +329,8 @@ describe("the hook (components/useArrivals.ts)", () => {
 
     it("marks nothing as the page opens: the first draw has none before it", () => {
         expect(hook).toContain("const [before, setBefore] = useState(now)")
+        // Nor as its rows first come: a list still loading says so, rather than that it's empty.
+        expect(hook).toContain("export function useArrivalsIn<T>(kinds: LiveKind | readonly LiveKind[], scope: string, rows: readonly T[] | null, rowKey: (row: T) => string) {")
         expect(readFileSync("lib/useAdjustOnChange.ts", "utf8")).toContain("Deliberately does nothing on the first render")
     })
 
@@ -394,11 +405,12 @@ describe("the lists", () => {
     // address each is loaded from says which list is drawn.
     it("and a company's cash advances and a person's, where giving, returning, correcting, confirming and moving are the person's own", () => {
         const advances = stripComments(readFileSync("components/cash-advances/CashAdvancesList.tsx", "utf8"))
-        expect(advances).toContain("const arrivals = useArrivalsIn('advances', listUrl ?? '', holders, h => h.id)")
+        // Not loaded yet, each says so: its first rows aren't taken as arrived (found testing part 4c).
+        expect(advances).toContain("const arrivals = useArrivalsIn('advances', listUrl ?? '', result || failed ? holders : null, h => h.id)")
         expect(advances).toContain("arrived={arrivals.arrived}")
         expect(advances).toMatch(/<ActionStarts\.Provider value=\{arrivals\.own\}>\s*<CashAdvanceDialog/)
         const history = stripComments(readFileSync("components/cash-advances/CashAdvanceHistory.tsx", "utf8"))
-        expect(history).toContain("const arrivals = useArrivalsIn('advances', url, advance?.data ?? [], e => e.id)")
+        expect(history).toContain("const arrivals = useArrivalsIn('advances', url, advance?.data ?? null, e => e.id)")
         expect(history).toContain("arrived={arrivals.arrived}")
         expect(history).toContain("const action = useBusyAction(arrivals.own)")
         expect(history).toContain("onConfirm={() => action.run('move', move)}")

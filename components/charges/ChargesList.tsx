@@ -107,7 +107,7 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
     // is tinted: the list keeps its filters to itself, so it's told apart by
     // the address it's loaded from.
     useLive(['tasks', 'costs'], () => { void mutate() })
-    const arrivals = useArrivalsIn(['tasks', 'costs'], listUrl, charges, c => c.id)
+    const arrivals = useArrivalsIn(['tasks', 'costs'], listUrl, result || failed ? charges : null, c => c.id)
     // The person's own actions, theirs for as long as they're on their way.
     const action = useBusyAction(arrivals.own)
 

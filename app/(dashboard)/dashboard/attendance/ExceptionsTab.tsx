@@ -119,7 +119,7 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
     // the list's own key; the person's own decisions aren't.
     useWantedChannels(topics)
     useLive(['attendance', 'requests'], () => { void mutate() })
-    const shown: { key: string; row: unknown }[] = !data ? []
+    const shown: { key: string; row: unknown }[] | null = !data ? null
         : kind === 'lateEarly' ? lateEarly.map(x => ({ key: x.key, row: x }))
         : kind === 'decided' ? data.decided.map(d => ({ key: d.id, row: d }))
         : data[kind].map(r => ({ key: r.id, row: r }))

@@ -20,11 +20,12 @@ export const EXPECT_MS = 10_000
 
 /**
  * A list as drawn: where it is (the page and its address, with its tab,
- * filters and page) and what each row holds, by its key. A string, so two
+ * filters and page) and what each row holds, by its key; or, while it's
+ * still loading, that it is (null), not that it's empty. A string, so two
  * draws compare by value.
  */
-export function drawn<T>(scope: string, rows: readonly T[], rowKey: (row: T) => string): string {
-    return JSON.stringify([scope, rows.map(row => [rowKey(row), JSON.stringify(row)])])
+export function drawn<T>(scope: string, rows: readonly T[] | null, rowKey: (row: T) => string): string {
+    return JSON.stringify([scope, rows === null ? null : rows.map(row => [rowKey(row), JSON.stringify(row)])])
 }
 
 /**
@@ -34,9 +35,13 @@ export function drawn<T>(scope: string, rows: readonly T[], rowKey: (row: T) => 
  * asked for others.
  */
 export function arrivedBetween(before: string, after: string): string[] {
-    const [scopeBefore, rowsBefore] = JSON.parse(before) as [string, [string, string][]]
-    const [scopeAfter, rowsAfter] = JSON.parse(after) as [string, [string, string][]]
+    const [scopeBefore, rowsBefore] = JSON.parse(before) as [string, [string, string][] | null]
+    const [scopeAfter, rowsAfter] = JSON.parse(after) as [string, [string, string][] | null]
     if (scopeBefore !== scopeAfter) return []
+    // A list loading, or loaded for the first time, is a list opening: its
+    // channel's own signal, as it's joined, can come before its rows (found
+    // testing REALTIME_PLAN.md part 4c).
+    if (rowsBefore === null || rowsAfter === null) return []
     const was = new Map(rowsBefore)
     return rowsAfter.filter(([key, row]) => was.get(key) !== row).map(([key]) => key)
 }

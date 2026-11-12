@@ -33,7 +33,7 @@ const NONE: Marks = new Map()
  * The list is told apart by the page's address, with its tab, filters and
  * page: for a list that keeps them there.
  */
-export function useArrivals<T>(kinds: LiveKind | readonly LiveKind[], rows: readonly T[], rowKey: (row: T) => string) {
+export function useArrivals<T>(kinds: LiveKind | readonly LiveKind[], rows: readonly T[] | null, rowKey: (row: T) => string) {
     return useArrivalsIn(kinds, `${usePathname()}?${useSearchParams().toString()}`, rows, rowKey)
 }
 
@@ -41,9 +41,10 @@ export function useArrivals<T>(kinds: LiveKind | readonly LiveKind[], rows: read
  * As useArrivals, for a list that keeps its filters and page to itself
  * rather than in the page's address: `scope` says which list is drawn, as
  * the address it's loaded from does (REALTIME_PLAN.md, part 4a). A draw of
- * another scope marks nothing.
+ * another scope marks nothing, and nor do a list's first rows: `rows` is
+ * null while it's still loading.
  */
-export function useArrivalsIn<T>(kinds: LiveKind | readonly LiveKind[], scope: string, rows: readonly T[], rowKey: (row: T) => string) {
+export function useArrivalsIn<T>(kinds: LiveKind | readonly LiveKind[], scope: string, rows: readonly T[] | null, rowKey: (row: T) => string) {
     const now = drawn(scope, rows, rowKey)
     const [before, setBefore] = useState(now)
     const [expecting, setExpecting] = useState<Expecting>(null)

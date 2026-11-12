@@ -61,7 +61,7 @@ export default function CheckInReviewPage() {
     useWantedChannels(isSuperAdmin && viewer ? attendanceTopics(viewer, null, (review?.integrity ?? []).map(r => r.companyId)) : [])
     useLive('attendance', () => { void mutate() })
     // A check-in waiting, or a company's counts, that changed elsewhere is tinted; accepting or rejecting is their own.
-    const shown = [...(review?.queue ?? []).map(w => ({ key: w.id, row: w })), ...(review?.integrity ?? []).map(r => ({ key: r.companyId, row: r }))]
+    const shown = review ? [...review.queue.map(w => ({ key: w.id, row: w })), ...review.integrity.map(r => ({ key: r.companyId, row: r }))] : null
     const arrivals = useArrivalsIn('attendance', '/api/admin/check-ins', shown, x => x.key)
     const action = useBusyAction(arrivals.own)
     const [rejecting, setRejecting] = useState<Waiting | null>(null)

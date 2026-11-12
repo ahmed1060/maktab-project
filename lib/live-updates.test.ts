@@ -759,7 +759,7 @@ describe("the screens that are drawn again", () => {
     it("the cost screens: the Employee costs tab, the Charged to clients tab and a client's charges", () => {
         const live = read("components/LiveUpdates.tsx")
         expect(live).toContain("export function useLive(kinds: LiveKind | readonly LiveKind[], onChange: () => void) {")
-        expect(read("components/useArrivals.ts")).toContain("export function useArrivalsIn<T>(kinds: LiveKind | readonly LiveKind[], scope: string, rows: readonly T[], rowKey: (row: T) => string) {")
+        expect(read("components/useArrivals.ts")).toContain("export function useArrivalsIn<T>(kinds: LiveKind | readonly LiveKind[], scope: string, rows: readonly T[] | null, rowKey: (row: T) => string) {")
 
         const employee = read("app/(dashboard)/dashboard/costs/CostsClient.tsx")
         expect(employee).toContain("useLive(['tasks', 'costs'], () => router.refresh())")
@@ -779,7 +779,8 @@ describe("the screens that are drawn again", () => {
 
         const charges = read("components/charges/ChargesList.tsx")
         expect(charges).toContain("useLive(['tasks', 'costs'], () => { void mutate() })")
-        expect(charges).toContain("const arrivals = useArrivalsIn(['tasks', 'costs'], listUrl, charges, c => c.id)")
+        // Not loaded yet, it says so: its first rows aren't taken as arrived.
+        expect(charges).toContain("const arrivals = useArrivalsIn(['tasks', 'costs'], listUrl, result || failed ? charges : null, c => c.id)")
         expect(charges).toContain("arrived={arrivals.arrived}")
         // Not charged, Charge again, Mark collected and Mark uncollected; the fee window's Save too.
         expect(charges).toContain("const action = useBusyAction(arrivals.own)")
@@ -804,7 +805,7 @@ describe("the screens that are drawn again", () => {
         const days = page.slice(page.indexOf("function DaysTab"), page.indexOf("function PunchesTab"))
         expect(days).toContain("useWantedChannels(topics)")
         expect(days).toContain("useLive('attendance', () => { void mutate() })")
-        expect(days).toContain("const arrivals = useArrivalsIn('attendance', url, days ?? [], d => d.id)")
+        expect(days).toContain("const arrivals = useArrivalsIn('attendance', url, days, d => d.id)")
         expect(days).toContain("const action = useBusyAction(arrivals.own)")
         expect(days).toContain("arrived={arrivals.arrived}")
         // Working the month out again is the person's own.
@@ -812,7 +813,7 @@ describe("the screens that are drawn again", () => {
         const punches = page.slice(page.indexOf("function PunchesTab"))
         expect(punches).toContain("useWantedChannels(topics)")
         expect(punches).toContain("useLive('attendance', () => { void mutate() })")
-        expect(punches).toContain("const arrivals = useArrivalsIn('attendance', listUrl, punches ?? [], x => x.id)")
+        expect(punches).toContain("const arrivals = useArrivalsIn('attendance', listUrl, punches, x => x.id)")
         expect(punches).toContain("const action = useBusyAction(arrivals.own)")
         expect(punches).toContain("arrived={arrivals.arrived}")
         expect(punches).toMatch(/arrivals\.saved\(\)\s+await mutate\(\)/)
