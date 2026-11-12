@@ -260,7 +260,9 @@ export class TaskService {
                         // the old point-to-point rule and may already have
                         // justified a penalty; re-opening it would turn every
                         // historical verdict into review work and put nothing
-                        // in the queue a person could actually resolve.
+                        // in the queue a person could actually resolve. One
+                        // never decided has nothing to keep, and without its
+                        // accuracy the rule says Needs review.
                         if (accuracy === null && c.verificationStatus) return c
 
                         c.verificationStatus = locationVerdict(

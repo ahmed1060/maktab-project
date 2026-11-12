@@ -9,6 +9,7 @@ import { useFeatures } from '@/lib/features/useFeatures'
 import SectionBoundary from './SectionBoundary'
 import { useCan } from '@/lib/useCan'
 import { Button, Card, Choice, Dialog, StatusBadge, type StatusTone } from '@/components/ui'
+import { extractAccuracy } from '@/lib/location'
 import type { TranslationKey } from '@/lib/translations'
 
 // Where whoever does a task checked in, as a card of the building blocks.
@@ -137,6 +138,10 @@ function TaskLocationHistorySectionBody({ task, setTask, userId, setLocationToDe
                         }
                     } catch { }
                     const verified = loc.verificationStatus ? VERIFIED[loc.verificationStatus] : undefined
+                    // Why it needs review: too rough to decide, or no word of how
+                    // precise it was, which only a reading made by hand or a broken
+                    // one leaves out (CLIENTS_PLAN.md §2.5).
+                    const why: TranslationKey = extractAccuracy(loc.location) === null ? 'verified_no_accuracy_hint' : 'verified_unclear_hint'
                     return (
                         <li key={`${loc.date}-${i}`}>
                             <div className="ui-row">
@@ -149,11 +154,11 @@ function TaskLocationHistorySectionBody({ task, setTask, userId, setLocationToDe
                                     {/* One span: a detail line lays its children side by side, so each part would wrap as a column of its own. */}
                                     <span className="ui-item-detail"><span><bdi>{loc.author}</bdi> · <SafeDate date={loc.date} locale={locale} /></span></span>
                                     {/* Why, for whoever settles it: a title is only read on hover, never on a phone. */}
-                                    {canVerify && loc.verificationStatus === 'UNVERIFIED' && <span className="ui-item-detail">{t('verified_unclear_hint')}</span>}
+                                    {canVerify && loc.verificationStatus === 'UNVERIFIED' && <span className="ui-item-detail">{t(why)}</span>}
                                 </span>
                                 <span className="ui-row-end">
                                     {verified && (
-                                        <span title={loc.verificationStatus === 'UNVERIFIED' ? t('verified_unclear_hint') : undefined}>
+                                        <span title={loc.verificationStatus === 'UNVERIFIED' ? t(why) : undefined}>
                                             <StatusBadge tone={verified.tone}>{t(verified.label)}</StatusBadge>
                                         </span>
                                     )}

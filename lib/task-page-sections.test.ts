@@ -128,6 +128,14 @@ describe("a task's location history", () => {
         // Why one needs review is read, not only hovered (web interface audit).
         const unclear = await places(task({ status: "PENDING_CONFIRMATION", comments: [checkIn({ verificationStatus: "UNVERIFIED" })] }), { userId: "admin" })
         expect(unclear).toMatch(/class="ui-item-detail"[^>]*>verified_unclear_hint</)
+        // One that didn't say how precise it was says that, not that it wasn't
+        // precise enough (CLIENTS_PLAN.md §2.5), in the line and the badge's title.
+        for (const location of [JSON.stringify({ latitude: 30.05, longitude: 31.23, address: "Tahrir Square" }), "30.05,31.23"]) {
+            const unsaid = await places(task({ status: "PENDING_CONFIRMATION", comments: [checkIn({ verificationStatus: "UNVERIFIED", location })] }), { userId: "admin" })
+            expect(unsaid).toMatch(/class="ui-item-detail"[^>]*>verified_no_accuracy_hint</)
+            expect(unsaid).toContain('title="verified_no_accuracy_hint"')
+            expect(unsaid).not.toContain("verified_unclear_hint")
+        }
     })
 
     it("offers a lateness penalty, in a dialog, once the task is handed in", async () => {
