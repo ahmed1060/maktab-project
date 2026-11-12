@@ -23,8 +23,11 @@ vi.mock("@/lib/prisma", () => ({
     prisma: {
         user: {
             findUnique: async ({ where }: any) => db.users[where.id] ?? null,
+            findUniqueOrThrow: async ({ where }: any) => db.users[where.id],
             update: async ({ where }: any) => { db.updated.push(where.id); return db.users[where.id] },
         },
+        // The heartbeat's tab, for who's online (PR 262).
+        $executeRaw: async () => 1,
         superAdmin: { findUnique: async ({ where }: any) => db.superAdmins[where.id] ?? null },
         role: { findUnique: async () => null },
         systemSettings: { findUnique: async () => null },

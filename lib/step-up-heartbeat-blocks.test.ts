@@ -218,6 +218,6 @@ describe("a page the app has to leave", () => {
     it("says nothing of a beat that couldn't reach the server, as when the page is left mid-request", () => {
         const heartbeat = source("components/UserHeartbeat.tsx")
         // "Heartbeat failed: TypeError: Failed to fetch" was logged on every page change: the next beat asks again.
-        expect(heartbeat).toMatch(/const res = await fetch\('\/api\/user\/activity', \{ method: 'POST' \}\)\.catch\(\(\) => null\)\s*(\/\/[^\n]*\n\s*)*if \(!res\?\.ok\) return/)
+        expect(heartbeat).toMatch(/const res = await fetch\('\/api\/user\/activity', \{[^}]*method: 'POST'[\s\S]*?\}\)\.catch\(\(\) => null\)\s*(\/\/[^\n]*\n\s*)*if \(!res\?\.ok\) return/)
     })
 })

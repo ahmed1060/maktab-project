@@ -648,7 +648,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      taken as exact, its line for a reviewer saying so
      (`CLIENTS_PLAN.md` §2.5), merged in #260 on 2026-11-12; then the
      server's functions moved from Frankfurt to Dublin, next to the
-     database in Ireland (`TECH_STACK.md`, #261);
+     database in Ireland (`TECH_STACK.md`), merged in #261 on 2026-11-12;
+     then who's online from each tab saying when it comes and goes, the
+     heartbeat slowed to every 15 minutes (`REALTIME_PLAN.md` part 6a,
+     #262);
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -5967,3 +5970,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   server's functions run in Dublin, next to the database in Ireland, rather
   than in Frankfurt, so a page's database queries no longer each cross
   Europe. No screen changes.
+- **2026-11-12:** Who's online on the Employees list and All users
+  (`REALTIME_PLAN.md` part 6a, #262): each tab says when it's shown and when
+  it goes, so someone who closes the app shows as offline at once, not up
+  to 3 minutes 20 seconds later, and a phone and a laptop don't make each
+  other look gone. The badge looks as before.

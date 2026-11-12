@@ -88,12 +88,13 @@ Decided with the product owner on 2026-11-10.
   updates off too, and the app's public key with them. Either is done
   only after the token is signed another way.
 - **What still asks, as a safety net:** the bell every 5 minutes, and the
-  heartbeat every 90 seconds. Either can be slowed once the live path has
-  run in production for a while.
-  - The heartbeat also says who's online on the Employees list: a person
-    shows as online for two beats and 20 seconds after their last
-    (`lib/presence.ts`, #246). Slowing it widens that window with it, so
-    someone who closed their last tab shows as online for longer.
+  heartbeat. The heartbeat ran every 90 seconds; since part 6a it runs every
+  15 minutes while a tab is shown, and as a tab comes back into view.
+  - Until part 6a the heartbeat also said who's online on the Employees
+    list: a person showed as online for two beats and 20 seconds after
+    their last (`lib/presence.ts`, #246). Since part 6a each tab says when
+    it comes and goes, so the heartbeat could slow without the badge going
+    stale (§3).
 - **Cost:** about one connection per open tab, and one signal per change
   per company. Supabase's free plan allows 200 connections at once and
   2 million messages a month; at 50 to 200 people, both are far off.
@@ -123,6 +124,8 @@ Decided with the product owner on 2026-11-10.
 | 4b | Costs and charges: the Employee costs and Charged to clients tabs, and a client's charges | |
 | 4c | Attendance | |
 | 5 | A little motion for what arrives live: what changed is shown for a moment, so nobody has to hunt for it | #251, merged 2026-11-11; Codex's two findings after the merge, fixed in #253 |
+| 6a | Who's online: each tab says when it's shown and when it goes, and the heartbeat slows to every 15 minutes, as the safety net | #262 |
+| 6b | The Online badge on the Employees list and All users drawn again as people come and go | |
 
 - Each part is its own PR, merged on the product owner's word.
 - **Part 1 has been live since it merged.** `SUPABASE_JWT_SECRET` was
@@ -270,6 +273,62 @@ Decided with the product owner on 2026-11-10.
   - In both languages and both themes, from the colour tokens, with
     Emil Design Engineering's motion guidance (`UI_PLAN.md` §7.1).
 
+- **Part 6: who's online (decided with the product owner on 2026-11-12).**
+  The Employees list and All users show who's online. It came from the
+  heartbeat: a person was online for two beats and 20 seconds after their
+  last, so someone who'd closed the app showed as online for up to 3
+  minutes 20 seconds, and the heartbeat ran every 90 seconds, the app's
+  busiest call, for that above all.
+  - **6a (#262): each tab says when it comes and goes.**
+    - Each open tab has a row of its own (`OpenTab`: the person, and an id
+      the tab makes for itself). It's added, or brought up to date, as the
+      tab is shown, and taken away as the tab is closed or has been out of
+      sight for 2 minutes. A tab closing says so with
+      `navigator.sendBeacon`, which still goes as the page closes.
+    - A person is online while any tab of theirs has a fresh row, so a
+      laptop and a phone, or two tabs, don't make each other look gone. A
+      tab looked at again within the 2 minutes sends nothing at all.
+    - The heartbeat stays, every 15 minutes while a tab is shown, as the
+      safety net: for a tab whose leaving wasn't heard, such as a phone's
+      app closed by the phone in the background, whose row is left to run
+      out after two beats and 2 minutes (32 minutes); and for the account
+      and maintenance checks, which part 3 and the maintenance channel made
+      instant. A tab coming back into view asks them too.
+    - A tab whose old script hasn't loaded the new one yet still beats as
+      before: its beat stands for the person's one tab until it's reloaded.
+    - Two reports from one tab can reach the server either way round, as a
+      closing tab's beacon overtaking the beat it sent just before. Each
+      carries its place in the tab's order, and the row keeps a report only
+      if none after it has arrived. A tab that goes is marked gone rather
+      than deleted, so a report sent before, arriving after, can't bring it
+      back (Codex on #262).
+    - Signing out closes, on the server, every tab of that browser's
+      session (the id its token is given at sign-in), and none of the
+      person's other devices. The tabs can't say so themselves: the session
+      ends before they hear of it, and the server refuses them after. Left
+      to them, the person showed as online for 32 minutes after leaving
+      (Codex on #262).
+    - The heartbeat started again each time the session was fetched again,
+      every 5 minutes, and called the server as it did, from every tab,
+      shown or not. Found while building 6a: it now starts only as someone
+      signs in.
+    - Rows are swept daily, with the other old records (`/api/cron/prune`).
+  - **6b: the badge is live.** The Employees list and All users are drawn
+    again as someone comes or goes, on a channel only those screens join,
+    so a coming or going is heard by the one to three people looking, not
+    by every tab. Proposed; its own PR.
+  - **Turned down: Supabase Presence.** It needs no table, but a tab is seen
+    only by joining the company's channel, and every tab there hears every
+    other come and go, so a company's messages grow with the square of its
+    size. At about 10 comings and goings a person a working day, that's
+    about 550,000 messages a month for 50 people, 2.2 million for 100 and
+    8.8 million for 200, against the free plan's 2 million a month for
+    every company together, and its 20 Presence messages a second, which
+    the morning's arrivals would pass.
+  - **What it costs, a company of 200 with a tab each:** about 200,000
+    calls a month to the server, where the 90-second heartbeat made about
+    1.6 million; with 6b, about 90,000 messages a month.
+
 ---
 
 ## 4. Not covered here
@@ -346,3 +405,8 @@ Decided with the product owner on 2026-11-10.
   kept past its own draw. That other action, refused, then left it to hide
   what someone else changed next. A draw now spends the change saved, as
   it spends a signal; only actions still on their way carry over.
+- **2026-11-12:** Part 6, decided with the product owner: who's online
+  comes from each tab saying when it comes and goes (6a, #262), and the
+  badge is drawn again live (6b, Proposed). The heartbeat slows to every 15
+  minutes with 6a. Supabase Presence was turned down for what it would
+  cost as companies grow.

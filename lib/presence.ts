@@ -1,46 +1,58 @@
 /**
  * Who shows as online, on the Employees list and the Super Admin's All users,
- * and how often a tab says its person is there. One place for both, so they
- * can't drift apart: a person counted as online for 60 seconds after their
- * last beat while a tab beat every 90, and someone at work showed as Offline
- * for a third of the time (PR 246).
+ * and how often a shown tab beats. One place for both, so they can't drift
+ * apart: a person counted as online for 60 seconds after their last beat
+ * while a tab beat every 90, and someone at work showed as Offline for a
+ * third of the time (PR 246).
  *
- * Signing in marks a person ACTIVE and seen (lib/auth.ts); each open tab that
- * is shown beats while it's open (components/UserHeartbeat.tsx), which marks
- * them seen again (UserService.updateActivity). A tab out of sight doesn't
- * beat, so a person whose only tab is hidden shows as offline, as before.
+ * Since part 6a (REALTIME_PLAN.md §3, PR 262) each open tab has a row of its
+ * own (OpenTab), here as it's shown and marked gone as it closes or has been
+ * out of sight for 2 minutes (lib/tab-presence.ts). A person signed in
+ * (ACTIVE) is online while any tab of theirs is here, in a fresh row. Until
+ * then it was whoever had beaten within two beats and 20 seconds, so someone
+ * who'd closed the app showed as online for minutes after, and the heartbeat
+ * ran every 90 seconds for it.
  */
-
-/** How often an open, shown tab tells the server its person is there. */
-export const HEARTBEAT_MS = 90_000
 
 /**
- * How long after their last beat a person still shows as online: two beats
- * and a little, so one beat lost to a bad connection, or a slow answer,
- * doesn't show them offline.
+ * How often a shown tab says it's still here: the safety net, for a tab whose
+ * leaving wasn't heard, such as a phone's app closed in the background.
  */
-export const ONLINE_WINDOW_MS = 2 * HEARTBEAT_MS + 20_000
+export const HEARTBEAT_MS = 15 * 60_000
+
+/** How long a tab may be out of sight before it says it's gone. */
+export const AWAY_AFTER_MS = 2 * 60_000
 
 /**
- * A person's status as the list shows it: someone signed in (ACTIVE) and seen
- * within the window is online, and signed in and not seen within it is
- * offline. Every other status is as it's stored. Everyone has been seen at
- * some time: the column is never empty, and starts at the moment they were
- * added.
+ * How long a tab's row stays fresh after it was last seen: two beats, so one
+ * lost to a bad connection doesn't show anyone offline, and the 2 minutes a
+ * tab may be out of sight. A row older than this is from a tab that left
+ * unheard.
  */
-export function presenceStatus(status: string, lastActivity: Date | string, now: Date = new Date()): string {
+export const ONLINE_WINDOW_MS = 2 * HEARTBEAT_MS + AWAY_AFTER_MS
+
+/**
+ * A person's status as the list shows it, from when their newest tab was last
+ * seen (null for none open): someone signed in (ACTIVE) is online while it's
+ * within the window, and offline once it isn't, or with no tab open. Every
+ * other status is as it's stored.
+ */
+export function presenceStatus(status: string, lastSeen: Date | string | null, now: Date = new Date()): string {
     if (status !== "ACTIVE") return status
-    return now.getTime() - new Date(lastActivity).getTime() > ONLINE_WINDOW_MS ? "OFFLINE" : "ACTIVE"
+    if (lastSeen === null) return "OFFLINE"
+    return now.getTime() - new Date(lastSeen).getTime() > ONLINE_WINDOW_MS ? "OFFLINE" : "ACTIVE"
 }
 
 /** The list's Online and Offline filters, asking what presenceStatus shows. */
 export function presenceWhere(filter: "ACTIVE" | "OFFLINE", now: Date = new Date()) {
-    const cutoff = new Date(now.getTime() - ONLINE_WINDOW_MS)
-    if (filter === "ACTIVE") return { status: "ACTIVE", lastActivity: { gte: cutoff } }
+    // A tab's row stays as it goes, marked gone, so a report sent before that,
+    // arriving after, can't bring it back (UserService.updateActivity).
+    const fresh = { here: true, seenAt: { gte: new Date(now.getTime() - ONLINE_WINDOW_MS) } }
+    if (filter === "ACTIVE") return { status: "ACTIVE", openTabs: { some: fresh } }
     return {
         OR: [
             { status: "OFFLINE" },
-            { status: "ACTIVE", lastActivity: { lt: cutoff } },
+            { status: "ACTIVE", openTabs: { none: fresh } },
         ],
     }
 }

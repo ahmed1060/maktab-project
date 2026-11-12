@@ -145,6 +145,8 @@ export const GET = withStandardHandler(async (req, session) => {
             select: {
                 id: true, firstName: true, lastName: true, email: true, status: true,
                 lastActivity: true, role: true, gender: true, username: true,
+                // Their newest tab that's here, for whether they're online (lib/presence.ts).
+                openTabs: { where: { here: true }, orderBy: { seenAt: "desc" }, take: 1, select: { seenAt: true } },
                 company: { select: { id: true, name: true } },
                 totalDifficultyPoints: true,
                 teamLeaderId: true,
@@ -166,9 +168,10 @@ export const GET = withStandardHandler(async (req, session) => {
     // And whose password tries are paused, which Unlock lifts too (lib/own-password.ts).
     const paused = can(session.user, "employees.reset_password") ? await ownPasswordPausedUntil(users.map(u => u.id)) : null
 
-    const usersWithStatus = users.map(user => {
-        // Online while seen within the heartbeat's window (lib/presence.ts).
-        const effectiveStatus = presenceStatus(user.status, user.lastActivity)
+    // Each one's newest tab stays here: it says nothing the badge doesn't.
+    const usersWithStatus = users.map(({ openTabs, ...user }) => {
+        // Online while a tab of theirs is open (lib/presence.ts).
+        const effectiveStatus = presenceStatus(user.status, openTabs[0]?.seenAt ?? null)
         return {
             ...user, status: effectiveStatus,
             ...(locks ? { signInLockedUntil: locks?.get(user.id)?.toISOString() ?? null } : {}),
