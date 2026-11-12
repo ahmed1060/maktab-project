@@ -783,6 +783,12 @@ A few permissions move money, give it away, or cannot be undone: `tasks.pay`,
 advances (`CLIENTS_PLAN.md` §7.7). The catalogue (`lib/permissions/catalogue.ts`, `highRisk`) is the
 list the code checks.
 
+Planned, not built: `attendance.manage_terminals`, setting up fingerprint
+terminals, joins the list when it is built (`ATTENDANCE_PLAN.md` §17.10,
+round 9; Phase 4, part 2). An agent's code or a terminal's address lets
+punches into attendance, and so into pay. The built-in Admin holds it, but
+only in a company whose setup switch the Super Admin has turned on.
+
 - **Marked in the catalogue as high-risk**, with the reason ("moves money",
   "cannot be undone"). The role editor shows the label — the "affects pay" label
   decided for `tasks.penalize` is this, applied consistently.

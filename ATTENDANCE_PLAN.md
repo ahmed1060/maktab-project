@@ -123,14 +123,14 @@ by then, and this plan names real models and files that may have changed.
 
 ### Round 9 — terminals that connect straight to Nizmo
 
-Decisions 1, 2, 9 and 10 are the owner's (12 November 2026). The rest are proposed
+Decisions 1, 2, 9, 10 and 11 are the owner's (12 November 2026). The rest are proposed
 with the plan (#269), for the owner to confirm or change before part 2 starts.
 
 | # | Topic | Decision |
 |---|---|---|
 | 1 | How a terminal connects | **Two options, chosen for each terminal: through the office agent, or straight to Nizmo over HTTPS** (§17.1). For terminals that push over HTTPS, this replaces round 1's "direct device push is last". |
 | 2 | Protocols | **ZKTeco's and Hikvision's, both ways** (§17.2–§17.4), whatever brand is printed on the terminal (§17.9). |
-| 3 | *Proposed:* plain HTTP | **Never over the internet.** A terminal that pushes only plain HTTP connects through the agent (§17.1; Phase 4, part 7). |
+| 3 | *Proposed:* plain HTTP | **Never over the internet.** A terminal that pushes only plain HTTP connects through the agent (§17.1; Phase 4, part 8). |
 | 4 | *Proposed:* a Hikvision terminal's credential | **A secret in the address it sends to**, shown once, kept hashed, replaced on demand (§17.2). |
 | 5 | *Proposed:* a ZKTeco terminal's credential | **Its serial number, accepted only from the office's fixed internet address.** An office without one connects its ZKTeco terminals through the agent (§17.3). |
 | 6 | *Proposed:* one terminal, one count | **A terminal is one record whichever way it connects, and uses one way at a time; a scan is counted once across both** (§17.6). |
@@ -138,6 +138,8 @@ with the plan (#269), for the owner to confirm or change before part 2 starts.
 | 8 | *Proposed:* order | **Hikvision straight to Nizmo, then ZKTeco, then the agent reading Hikvision**, unless the terminal on hand for the trial is a ZKTeco, which then goes first (§20, Phase 4). |
 | 9 | Brands | **A list kept from the screen, not written into the code**, with Convoy on it from the start beside ZKTeco and Hikvision. A brand is what is printed on a terminal; each speaks one of the protocols Nizmo knows. A brand speaking a known protocol is added from the screen; one speaking another needs that protocol built first (§17.9). |
 | 10 | Who keeps the list | **The Super Admin only, one list for every company**, on a Terminal brands page under Templates. A company's Admin picks from it and can't add, change or retire a brand (§17.9). |
+| 11 | Who sets terminals up | **A permission of its own, "Set up fingerprint terminals"**, since it decides whose scans count as attendance. Someone who can open the Attendance settings tab but doesn't hold it never sees the Fingerprint terminals section (§17.10). |
+| 12 | *Proposed:* the company's Admin | **The Super Admin decides, company by company, with a switch only they can change, off to start.** Off: only the Super Admin sets the company's terminals up. On: those holding the permission do, the built-in Admin among them. The permission is high-risk: its changes ask for the step-up code (§17.10). |
 
 ---
 
@@ -596,6 +598,8 @@ model AttendanceDevice, DeviceCredential, UserDeviceMapping   // terminals, §17
 //   addedById        String?                 who added it by hand
 // lastSeenAt, already there, is its last contact of any kind, scans or not.
 // On Company: terminalsDirectAllowed Boolean, the Super Admin's switch (§17.8).
+// On Company: terminalsSetupByCompany Boolean, default false: the Super Admin's
+//   switch letting the company set its own terminals up (§17.10).
 // model TerminalBrand: the Super Admin's list of brands (§17.9)
 //   id, name (unique, case aside), protocol ZKTECO | HIKVISION,
 //   notesEn?, notesAr? (where its settings are in its menu),
@@ -1340,7 +1344,7 @@ when the terminal is added, and can change it later:
 Whichever way a terminal connects:
 
 - **HTTPS only over the internet.** A terminal that pushes only plain HTTP
-  connects through the agent (§20, Phase 4, part 7), never straight. Vercel
+  connects through the agent (§20, Phase 4, part 8), never straight. Vercel
   redirects plain HTTP, and terminals don't follow redirects, so this is also
   simply what works.
 - **Nizmo never reaches into the office.** A terminal straight to Nizmo
@@ -1518,8 +1522,8 @@ The agent learns Hikvision's ISAPI beside the ZKTeco protocol it speaks:
 ### 17.7 Setting a terminal up
 
 On **Fingerprint terminals**, in the Attendance tab of Company settings,
-behind the access agents have today (`lib/attendance/terminals-access.ts`)
-and the **Attendance — Terminals** add-on (§16):
+behind its own permission and the company's switch (§17.10) and the
+**Attendance — Terminals** add-on (§16):
 
 - **Add a terminal** asks for its name, brand (from the Super Admin's list,
   §17.9), serial number, mode (entrance, exit or either, above), and how it
@@ -1597,7 +1601,48 @@ protocol. The first customer's Convoy most likely speaks ZKTeco's (§20).
 - Adding, changing and retiring a brand are written to the audit log, as role
   and policy templates are.
 
-### 17.10 Sources
+### 17.10 Who may set terminals up (round 9)
+
+Setting terminals up decides whose scans count as attendance: an agent's code
+or a terminal's address lets punches in for any employee number, and so into
+pay. So it stops being part of the Attendance settings tab's own access
+(`lib/attendance/terminals-access.ts` asks the tab's question today):
+
+- **A permission of its own,** `attendance.manage_terminals`, "Set up
+  fingerprint terminals", at company scope: seeing and changing everything
+  under Fingerprint terminals (agents and their codes; terminals, their brand,
+  mode and connection; a Hikvision terminal's address; a ZKTeco terminal's
+  office address; clearing a terminal's memory; retiring). Without it the
+  section isn't shown at all, and its routes answer as if it weren't there
+  (404), whatever else the person may do on the Attendance tab.
+- **High-risk** (`ROLES_PLAN.md` §6.15), since it adds to attendance and so to
+  pay: issuing an agent's code, issuing a terminal's address, changing a
+  terminal's connection or the office address, and retiring a terminal ask
+  for the step-up code. Seeing the section doesn't.
+- **The built-in Admin role holds it**, and another role only if the Super
+  Admin, who alone builds roles (`ROLES_PLAN.md` round 5), grants it.
+- **The company's switch, the Super Admin's alone:** "The company sets up its
+  own fingerprint terminals" (`Company.terminalsSetupByCompany`, §8.6), off to
+  start, a field only the Super Admin may change on the Attendance tab, as the
+  cash advances switch is (`lib/company-settings-tabs.ts`, `superAdminOnly`).
+  - **Off:** nobody in the company sees the section, its Admin included; the
+    Super Admin sets the company's terminals up, from its settings.
+  - **On:** those holding the permission do.
+  - The built-in Admin role is locked for every company (`ROLES_PLAN.md` §4.3,
+    rule 7), so the switch is how the Super Admin decides, company by
+    company, whether its Admin may.
+  - Turning it off stops nothing already set up: scans keep coming, and only
+    the screens and changes are the Super Admin's again. Turning it on or off
+    is written to the audit log.
+- **Alerts** about a silent agent or terminal in working hours go to those
+  holding the permission while the switch is on, and to the Super Admin
+  otherwise, in place of everyone holding `settings.view` today.
+- **Companies already there:** production has no terminals, and two agents
+  created but never connected (checked 12 November 2026). With the switch off
+  to start, those two are the Super Admin's to finish or remove; nobody loses
+  a working setup.
+
+### 17.11 Sources
 
 Checked on 12 November 2026. Vendor documents vary by model and firmware,
 and some of these are integrators' notes, so the trial (§17.8) has the last
@@ -1716,39 +1761,46 @@ matching with liveness, fallback to flagged.
 
 ### Phase 4 — Terminals through the agent or straight to Nizmo — not built
 
-Planned in #269, for ZKTeco and Hikvision alike (§17.1–§17.10). It replaces
+Planned in #269, for ZKTeco and Hikvision alike (§17.1–§17.11). It replaces
 the earlier Phase 4, a listener for pushes on the agent and nothing else,
-which becomes part 7 below. Each part is its own PR:
+which becomes part 8 below. Each part is its own PR:
 
 1. **The plan** (#269).
-2. **Terminal brands** (§17.9): the migration (`TerminalBrand`, starting with
+2. **Who may set terminals up** (§17.10): the permission, high-risk, held by
+   the built-in Admin; the company's setup switch, the Super Admin's, off to
+   start;
+   the Fingerprint terminals section and its routes behind both; alerts to
+   those holding it. The roles tests and `ROLES_PLAN.md` §6.15's list gain
+   it.
+3. **Terminal brands** (§17.9): the migration (`TerminalBrand`, starting with
    ZKTeco, Hikvision and Convoy; a terminal's `protocol` and `brandId`), the
    Super Admin's Terminal brands page under Templates, with `DESIGN.md`
    first, and the brand on each terminal's card, picked by an Admin. Useful
    at once with the agent, and needs none of the rest.
-3. **One terminal whichever way** (§17.6): the migration (connection, the
+4. **One terminal whichever way** (§17.6): the migration (connection, the
    columns for terminals straight to Nizmo, the index across both sources,
-   the company's switch), the ingest taking a terminal as well as an agent,
+   the straight-to-Nizmo switch, §17.8), the ingest taking a terminal as well
+   as an agent,
    and the agent told to skip a terminal set straight to Nizmo. No screen
    changes.
-4. **Hikvision straight to Nizmo** (§17.2): `DESIGN.md` first; Add a terminal
+5. **Hikvision straight to Nizmo** (§17.2): `DESIGN.md` first; Add a terminal
    with its connection, the secret address shown once, Issue a new address;
-   the receiving route; first contacts kept (§17.8); the Super Admin's switch
-   for each company.
-5. **ZKTeco straight to Nizmo** (§17.3): the `/iclock` routes, outside the
+   the receiving route; first contacts kept (§17.8); the straight-to-Nizmo
+   switch on the company's Attendance tab.
+6. **ZKTeco straight to Nizmo** (§17.3): the `/iclock` routes, outside the
    proxy; the options answer, scans, and `getrequest` as its heartbeat; the
    office address check; ZKTeco's protocol in Add a terminal.
-6. **The agent reads Hikvision** (§17.4): ISAPI beside the ZKTeco protocol,
+7. **The agent reads Hikvision** (§17.4): ISAPI beside the ZKTeco protocol,
    `probe`, `agent.json`; a new agent release.
-7. **Only when a customer needs it: the agent listens on the office network**,
+8. **Only when a customer needs it: the agent listens on the office network**,
    for terminals that push only plain HTTP. The terminal pushes to the agent's
    address on the office network, and the agent sends on over HTTPS, as for
    scans it reads. Plaintext never leaves the building.
 
 Hikvision goes first because its secret address is the safer first step;
-parts 4 and 5 share the screen, so whichever comes second adds its protocol
-to it. If the terminal on hand for the trial speaks ZKTeco's, part 5 goes
-first. The trial (§17.8) follows parts 4 and 5, before the switch is turned
+parts 5 and 6 share the screen, so whichever comes second adds its protocol
+to it. If the terminal on hand for the trial speaks ZKTeco's, part 6 goes
+first. The trial (§17.8) follows parts 5 and 6, before the switch is turned
 on for anyone else.
 
 **The first customer's terminal comes before all of it.** It is a Convoy, an
@@ -1759,9 +1811,10 @@ protocol and has no HTTPS push. Its model, firmware and communication menu
 are being checked on the device. If it is on the network, it connects
 through the agent, built in Phase 2 and never yet tried on a real terminal:
 that trial comes first (`nizmo-agent.exe probe`, then a week of scans), ahead
-of the parts above but part 2, which puts Convoy on its card and can go
-beside it. If it has USB only, its scans come in through the Excel and CSV
-import (Phase 0), from the file it saves to a USB stick.
+of the parts above but parts 2 and 3. Part 2 comes before the terminal is set
+up, so that only those meant to see the setup do; part 3 puts Convoy on its
+card. If it has USB only, its scans come in through the Excel and CSV import
+(Phase 0), from the file it saves to a USB stick.
 
 ---
 
