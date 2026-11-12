@@ -1572,6 +1572,10 @@ These are built once, in the building-blocks PR, and every page uses them
   - **only for what someone else did:** not for the person's own changes,
     which they know of, and not as a page opens. What changed while a tab
     was out of sight is shown as it comes back.
+  - **not for who's online:** someone coming or going changes only their
+    badge on the Employees list and All users, in place, untinted. People
+    come and go dozens of times a morning, and nobody changed the list
+    (`REALTIME_PLAN.md`, part 6b).
 - **How each comes in** (with Emil Design Engineering, `UI_PLAN.md` §7.1):
   - **a menu or a panel opened from its button** (a row's menu, the
     account menu, the bell's panel, the company picker, and a date field's
@@ -2146,3 +2150,6 @@ changed:
   count grows a little as it rises. Not for the person's own changes, not
   as a page opens, and with "reduce motion" the tint shows and goes
   without fading.
+- **2026-11-12:** Who's online is not tinted (§8), as the product owner
+  chose for live updates' part 6b: someone coming or going changes only
+  their badge on the Employees list and All users, in place.

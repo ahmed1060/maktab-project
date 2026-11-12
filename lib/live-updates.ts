@@ -23,11 +23,17 @@
  * prisma/migrations/20261211000000_live_advances): the Cash advances tab, a
  * person's cash advance, Add cost's line about it and an open Give advance
  * window draw themselves again. On the same channels as the requests.
+ *
+ * And that someone in a company came or went (part 6b,
+ * prisma/migrations/20261214000000_live_online): the Employees list and All
+ * users draw the Online badge again. On a channel of its own for each
+ * company, which a tab joins only while one of them is open, so a coming or
+ * going is heard by the few people looking, not by every tab (LiveWants).
  */
 
-export type LiveKind = 'tasks' | 'notices' | 'account' | 'requests' | 'advances'
+export type LiveKind = 'tasks' | 'notices' | 'account' | 'requests' | 'advances' | 'online'
 /** A channel, and what it's for; any of them may also say the account can't go on, or that requests or cash advances changed. */
-export type LiveTopic = { kind: Exclude<LiveKind, 'account' | 'requests' | 'advances'>; topic: string }
+export type LiveTopic = { kind: Exclude<LiveKind, 'account' | 'requests' | 'advances' | 'online'>; topic: string }
 
 type Viewer = { id: string; role: string; companyId?: string | null }
 
@@ -42,6 +48,81 @@ export function liveTopics(viewer: Viewer, scopedCompanyId: string | null): Live
         ...(company ? [{ kind: 'tasks' as const, topic: `tasks:${company}` }] : []),
         { kind: 'notices', topic: `notices:${viewer.id}` },
     ]
+}
+
+/**
+ * The channels a list showing who's online hears (part 6b): its company's,
+ * for anyone but the Super Admin; the company in view's, or the one picked,
+ * for the Super Admin; and with neither, each company on the page shown,
+ * once each. Supabase counts a signal as it's sent, whoever listens, so
+ * there's no channel for every company's comings and goings.
+ */
+export function onlineTopics(viewer: Viewer, shownCompanyId: string | null, listed: (string | null | undefined)[]): string[] {
+    if (viewer.role !== 'SUPER_ADMIN') return viewer.companyId ? [`online:${viewer.companyId}`] : []
+    if (shownCompanyId) return [`online:${shownCompanyId}`]
+    const companies = new Set<string>()
+    for (const company of listed) if (company) companies.add(company)
+    return [...companies].sort().map(company => `online:${company}`)
+}
+
+/** How long a channel no screen wants any more is kept, in case one wants it again. */
+export const LEAVE_AFTER_MS = 5_000
+
+/**
+ * The channels the screens open now want heard, beyond the tab's own
+ * (part 6b): each joined once, however many screens want it, and left a few
+ * seconds after the last lets go. React mounts a screen twice in
+ * development, letting go between, and a list's next page may want the same
+ * company: a channel being left can't be joined again until Supabase has
+ * closed it. The tab's connection watches them (lib/live-connection.ts),
+ * and outlives none of them: another connection, for another company in
+ * view, joins the same.
+ */
+export class LiveWants {
+    private readonly counts = new Map<string, number>()
+    private readonly leaving = new Map<string, ReturnType<typeof setTimeout>>()
+    private readonly watchers = new Set<(topic: string, wanted: boolean) => void>()
+
+    /** `topic` is heard while it's wanted; returns how to let it go. */
+    want(topic: string): () => void {
+        const count = this.counts.get(topic) ?? 0
+        this.counts.set(topic, count + 1)
+        const leaving = this.leaving.get(topic)
+        if (leaving !== undefined) {
+            clearTimeout(leaving)
+            this.leaving.delete(topic)
+        } else if (count === 0) {
+            this.tell(topic, true)
+        }
+        let released = false
+        return () => {
+            if (released) return
+            released = true
+            const left = (this.counts.get(topic) ?? 1) - 1
+            this.counts.set(topic, left)
+            if (left > 0) return
+            this.leaving.set(topic, setTimeout(() => {
+                this.leaving.delete(topic)
+                this.counts.delete(topic)
+                this.tell(topic, false)
+            }, LEAVE_AFTER_MS))
+        }
+    }
+
+    /** What's joined now: wanted, or let go of within the last few seconds. */
+    topics(): string[] {
+        return [...this.counts.keys()]
+    }
+
+    /** Told as each topic is joined or left; returns how to stop. */
+    watch(watcher: (topic: string, wanted: boolean) => void): () => void {
+        this.watchers.add(watcher)
+        return () => { this.watchers.delete(watcher) }
+    }
+
+    private tell(topic: string, wanted: boolean) {
+        for (const watcher of this.watchers) watcher(topic, wanted)
+    }
 }
 
 /**

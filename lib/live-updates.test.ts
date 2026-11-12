@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { readFileSync } from "node:fs"
 import { createHmac } from "node:crypto"
-import { liveTopics, LiveDrawer, type LiveTopic } from "./live-updates"
+import { liveTopics, onlineTopics, LiveDrawer, LiveWants, LEAVE_AFTER_MS, type LiveTopic } from "./live-updates"
 import { LiveConnection, RENEW_BEFORE_MS, RETRY_MS, type LiveChannel, type LiveClient } from "./live-connection"
 import { realtimeClaims, signRealtimeToken, REALTIME_TOKEN_SECONDS } from "./realtime-token"
 
@@ -40,15 +40,97 @@ describe("what a person may hear", () => {
     })
 })
 
+// Part 6b: who's online is heard only while a screen that shows it is open,
+// on a channel for each company, so a coming or going is heard by the one to
+// three people looking, not by every tab.
+describe("whose comings and goings a list hears", () => {
+    it("is their own company's for anyone but the Super Admin, whoever is listed", () => {
+        expect(onlineTopics({ id: "a1", role: "ADMIN", companyId: "c1" }, null, ["c1", "c1"])).toEqual(["online:c1"])
+        expect(onlineTopics({ id: "a1", role: "ADMIN", companyId: "c1" }, "c2", [])).toEqual(["online:c1"])
+        expect(onlineTopics({ id: "u9", role: "EMPLOYEE", companyId: null }, null, [])).toEqual([])
+    })
+
+    it("is the company shown's for the Super Admin, so an empty Online filter still hears someone come", () => {
+        expect(onlineTopics({ id: "sa1", role: "SUPER_ADMIN", companyId: null }, "c2", [])).toEqual(["online:c2"])
+    })
+
+    // One channel for every company was turned down: each signal is counted
+    // as it's sent, listened to or not (REALTIME_PLAN.md, part 6b).
+    it("is each company on the page for the Super Admin's lists of everyone, once each", () => {
+        expect(onlineTopics({ id: "sa1", role: "SUPER_ADMIN", companyId: null }, null, ["c2", "c1", null, undefined, "c2"])).toEqual(["online:c1", "online:c2"])
+        expect(onlineTopics({ id: "sa1", role: "SUPER_ADMIN", companyId: null }, null, [])).toEqual([])
+    })
+})
+
+describe("the channels screens want", () => {
+    beforeEach(() => vi.useFakeTimers())
+    afterEach(() => vi.useRealTimers())
+
+    const watching = (wants: LiveWants) => {
+        const seen: string[] = []
+        wants.watch((topic, wanted) => seen.push(`${wanted ? "join" : "leave"} ${topic}`))
+        return seen
+    }
+
+    it("are joined once each, however many screens want them, and left a few seconds after the last lets go", () => {
+        const wants = new LiveWants()
+        const seen = watching(wants)
+        const first = wants.want("online:c1")
+        const second = wants.want("online:c1")
+        expect(seen).toEqual(["join online:c1"])
+        expect(wants.topics()).toEqual(["online:c1"])
+        first()
+        first()
+        vi.advanceTimersByTime(LEAVE_AFTER_MS)
+        expect(seen).toEqual(["join online:c1"])
+        second()
+        vi.advanceTimersByTime(LEAVE_AFTER_MS - 1)
+        expect(seen).toEqual(["join online:c1"])
+        vi.advanceTimersByTime(1)
+        expect(seen).toEqual(["join online:c1", "leave online:c1"])
+        expect(wants.topics()).toEqual([])
+    })
+
+    // React mounts a screen twice in development, letting go between, and a
+    // list's next page may want the same company: a channel being left
+    // can't be joined again until Supabase has closed it.
+    it("are kept when wanted again before they're left", () => {
+        const wants = new LiveWants()
+        const seen = watching(wants)
+        wants.want("online:c1")()
+        const again = wants.want("online:c1")
+        vi.advanceTimersByTime(LEAVE_AFTER_MS * 2)
+        expect(seen).toEqual(["join online:c1"])
+        again()
+        vi.advanceTimersByTime(LEAVE_AFTER_MS)
+        expect(seen).toEqual(["join online:c1", "leave online:c1"])
+    })
+
+    it("are told to no watcher once it's stopped watching", () => {
+        const wants = new LiveWants()
+        const seen: string[] = []
+        const stop = wants.watch(topic => seen.push(topic))
+        stop()
+        wants.want("online:c1")
+        expect(seen).toEqual([])
+    })
+})
+
 describe("the token", () => {
     const NOW = 1_800_000_000
 
     it("names the person, their company and whether they're the Super Admin, for an hour", () => {
         expect(REALTIME_TOKEN_SECONDS).toBe(3600)
         expect(realtimeClaims({ id: "u1", role: "EMPLOYEE", companyId: "c1" }, NOW)).toEqual({
-            sub: "u1", role: "authenticated", aud: "authenticated", iat: NOW, exp: NOW + 3600, company_id: "c1", super_admin: false,
+            sub: "u1", role: "authenticated", aud: "authenticated", iat: NOW, exp: NOW + 3600, company_id: "c1", super_admin: false, sees_online: false,
         })
         expect(realtimeClaims({ id: "sa1", role: "SUPER_ADMIN", companyId: null }, NOW)).toMatchObject({ sub: "sa1", company_id: null, super_admin: true })
+    })
+
+    // Part 6b: the rule on Supabase's side can't read the app's permissions.
+    it("and whether its person may see who's online, as the Employees list shows it", () => {
+        expect(realtimeClaims({ id: "a1", role: "ADMIN", companyId: "c1" }, NOW, true)).toMatchObject({ company_id: "c1", sees_online: true })
+        expect(realtimeClaims({ id: "u1", role: "EMPLOYEE", companyId: "c1" }, NOW, false)).toMatchObject({ sees_online: false })
     })
 
     it("is signed with the project's JWT secret, as Supabase checks it", () => {
@@ -172,6 +254,11 @@ describe("the token route", () => {
         expect(route).toContain("topics: liveTopics(session.user, scopedCompanyId(session.user.role, cookieStore.get(SCOPED_COMPANY_COOKIE)?.value)),")
     })
 
+    it("says whether its person may see who's online, by the permission the Employees list asks", () => {
+        expect(route).toContain('const claims = realtimeClaims(session.user, Math.floor(Date.now() / 1000), can(session.user, "employees.view"))')
+        expect(read("app/api/users/route.ts")).toContain('if (!can(session.user, "employees.view")) {')
+    })
+
     it("says it's off until the secret is in Vercel, and every screen goes on as today", () => {
         expect(route).toContain("if (!secret) return ApiResponse.success({ off: true })")
     })
@@ -192,9 +279,9 @@ describe("the browser's connection", () => {
     })
 
     it("is one per tab, joined again for the company in view, and left as the dashboard goes", () => {
-        expect(live).toContain("const connection = new LiveConnection({ ask: askForToken, load: loadClient, drawer })")
+        expect(live).toContain("const connection = new LiveConnection({ ask: askForToken, load: loadClient, drawer, wants })")
         expect(live).toContain("return () => connection.stop()")
-        expect(live).toContain("}, [drawer, scope])")
+        expect(live).toContain("}, [drawer, wants, scope])")
     })
 
     it("draws a hidden tab when it's shown again", () => {
@@ -424,6 +511,71 @@ describe("a tab's connection", () => {
         expect(supabase.log.length).toBe(before)
     })
 
+    // Part 6b: a channel for who's online, joined only while a screen wants it.
+    describe("and the channels screens want", () => {
+        const wanted = (supabase: ReturnType<typeof fakeSupabase>, topic: string) => supabase.channels.filter(c => c.topic === topic)
+        const start = async (wants: LiveWants, supabase = fakeSupabase()) => {
+            const connection = new LiveConnection({ ask: async () => grant("t1"), load: async () => supabase, drawer, wants })
+            await connection.start()
+            return { connection, supabase }
+        }
+        beforeEach(() => { drawer.on("online", () => drawn.push("online")) })
+
+        it("joins those wanted before it started, as private ones, after its own, hearing only that someone came or went", async () => {
+            const wants = new LiveWants()
+            wants.want("online:c1")
+            const { supabase } = await start(wants)
+            expect(supabase.log).toEqual(["auth t1", "join tasks:c1 with t1", "join notices:u1 with t1", "join online:c1 with t1"])
+            expect(wanted(supabase, "online:c1").map(c => [c.private, c.events])).toEqual([[true, ["changed"]]])
+        })
+
+        it("joins one wanted once it's started, and leaves it once no screen wants it", async () => {
+            const wants = new LiveWants()
+            const { supabase } = await start(wants)
+            const release = wants.want("online:c2")
+            expect(wanted(supabase, "online:c2")).toHaveLength(1)
+            release()
+            await vi.advanceTimersByTimeAsync(LEAVE_AFTER_MS)
+            expect(wanted(supabase, "online:c2")[0].removed).toBe(true)
+        })
+
+        it("draws the screens that show who's online when someone comes or goes, a second later, and once on joining", async () => {
+            const wants = new LiveWants()
+            wants.want("online:c1")
+            const { supabase } = await start(wants)
+            const channel = wanted(supabase, "online:c1")[0]
+            channel.status!("SUBSCRIBED")
+            await vi.advanceTimersByTimeAsync(1000)
+            expect(drawn).toEqual(["online"])
+            channel.on.changed!()
+            await vi.advanceTimersByTimeAsync(1000)
+            expect(drawn).toEqual(["online", "online"])
+        })
+
+        it("leaves them, and listens for no more, as it stops", async () => {
+            const wants = new LiveWants()
+            wants.want("online:c1")
+            const { connection, supabase } = await start(wants)
+            connection.stop()
+            expect(wanted(supabase, "online:c1")[0].removed).toBe(true)
+            wants.want("online:c3")
+            expect(wanted(supabase, "online:c3")).toEqual([])
+        })
+
+        it("joins none before its token came", async () => {
+            const wants = new LiveWants()
+            let answer!: (given: ReturnType<typeof grant>) => void
+            const supabase = fakeSupabase()
+            const connection = new LiveConnection({ ask: () => new Promise(resolve => { answer = resolve }), load: async () => supabase, drawer, wants })
+            const started = connection.start()
+            wants.want("online:c1")
+            expect(supabase.channels).toEqual([])
+            answer(grant("t1"))
+            await started
+            expect(supabase.log).toEqual(["auth t1", "join tasks:c1 with t1", "join notices:u1 with t1", "join online:c1 with t1"])
+        })
+    })
+
     it("joins nothing when it's stopped before its token came", async () => {
         const supabase = fakeSupabase()
         let answer!: (g: ReturnType<typeof grant>) => void
@@ -491,6 +643,23 @@ describe("the screens that are drawn again", () => {
         expect(dialog).toContain("const picked = parts.find(part => heldPartKey(part) === from)")
         expect(dialog).toContain("onChange={e => { setFrom(e.target.value); setChosen(parts.find(part => heldPartKey(part) === e.target.value) ?? null) }}")
         expect(dialog).toContain("...parts.map(part => ({ value: heldPartKey(part)")
+    })
+
+    // Part 6b: only the badge changes, untinted (DESIGN.md §8), and the
+    // search, filters and page stay. Each list hears the companies it shows,
+    // and is drawn again, too, as its first person online would run out.
+    it("the Employees list and All users, while they show who's online", () => {
+        const employees = read("app/(dashboard)/dashboard/employees/page.tsx")
+        // Only for whoever may see the list: the channel lets nobody else in.
+        expect(employees).toContain("useLiveOnline(viewer && can('employees.view') ? onlineTopics(viewer, selectedCompanyId, employees.map(e => e.company?.id)) : [], () => { void mutate() }, result?.data?.onlineRunsOutInMs)")
+        expect(employees).not.toContain("useArrivals")
+        // The company picked, or each on the page; nobody who has left is online.
+        const allUsers = read("app/(dashboard)/dashboard/all-users/page.tsx")
+        expect(allUsers).toContain("useLiveOnline(viewer && isSuperAdmin && !left ? onlineTopics(viewer, companyId || null, (listed?.data ?? []).map(p => p.company?.id)) : [], () => { void mutate() }, listed?.onlineRunsOutInMs)")
+        expect(allUsers).not.toContain("useArrivals")
+        const live = read("components/LiveUpdates.tsx")
+        expect(live).toContain("export function useLiveOnline(topics: string[], onChange: () => void, runsOutInMs: number | null | undefined) {")
+        expect(live).toContain("const timer = setTimeout(() => live.drawer.signal('online'), runsOutInMs)")
     })
 
     // Part 3: the heartbeat asks at once, and signs the page out as it does
