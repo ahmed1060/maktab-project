@@ -59,15 +59,25 @@ export function LiveUpdates({ scope, children }: { scope: string | null; childre
 }
 
 /**
- * Calls `onChange` when what `kind` covers changes elsewhere: a company's
- * tasks or requests, the person's notifications, or whether their account
- * can go on. A screen passes how it draws itself again, through its usual
- * route: router.refresh(), or its data's mutate().
+ * Calls `onChange` when what `kinds` cover changes elsewhere: a company's
+ * tasks, requests, cash advances or costs, the person's notifications, or
+ * whether their account can go on. A screen passes how it draws itself
+ * again, through its usual route: router.refresh(), or its data's mutate().
+ * A screen hearing several kinds is drawn once when they come together
+ * (part 4b, the cost screens: the company's tasks and costs).
  */
-export function useLive(kind: LiveKind, onChange: () => void) {
+export function useLive(kinds: LiveKind | readonly LiveKind[], onChange: () => void) {
     const live = useContext(LiveContext)
     const draw = useEffectEvent(onChange)
-    useEffect(() => live?.drawer.on(kind, () => draw()), [live, kind])
+    // By value: a screen hearing several names them in a new array each draw.
+    const heard = (typeof kinds === 'string' ? [kinds] : kinds).join(' ')
+    useEffect(() => {
+        if (!live) return
+        // One function for them all, which the drawer calls once however many came.
+        const once = () => draw()
+        const stops = heard.split(' ').map(kind => live.drawer.on(kind as LiveKind, once))
+        return () => { for (const stop of stops) stop() }
+    }, [live, heard])
 }
 
 /**

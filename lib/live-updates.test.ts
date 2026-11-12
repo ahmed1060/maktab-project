@@ -198,6 +198,22 @@ describe("a screen drawn again", () => {
         expect(notices).not.toHaveBeenCalled()
     })
 
+    // Part 4b: the cost screens hear the company's tasks and costs both, and
+    // a Super Admin with a company in view hears both as that company's task
+    // changes.
+    it("once for a screen hearing several kinds, when they come together", () => {
+        const draw = vi.fn()
+        drawer.on("tasks", draw)
+        drawer.on("costs", draw)
+        drawer.signal("tasks")
+        drawer.signal("costs")
+        vi.advanceTimersByTime(1000)
+        expect(draw).toHaveBeenCalledTimes(1)
+        drawer.signal("costs")
+        vi.advanceTimersByTime(1000)
+        expect(draw).toHaveBeenCalledTimes(2)
+    })
+
     it("not while the tab is hidden, and at once when it's shown", () => {
         const draw = vi.fn()
         drawer.on("tasks", draw)
@@ -332,6 +348,7 @@ describe("a tab's connection", () => {
         drawer.on("account", () => drawn.push("account"))
         drawer.on("requests", () => drawn.push("requests"))
         drawer.on("advances", () => drawn.push("advances"))
+        drawer.on("costs", () => drawn.push("costs"))
     })
     afterEach(() => vi.useRealTimers())
 
@@ -341,11 +358,11 @@ describe("a tab's connection", () => {
         const supabase = fakeSupabase()
         await new LiveConnection({ ask: async () => grant("t1"), load: async () => supabase, drawer }).start()
         expect(supabase.log).toEqual(["auth t1", "join tasks:c1 with t1", "join notices:u1 with t1"])
-        // What changed, the person's own account (part 3), requests (part 2)
-        // and cash advances (part 4a), on each.
+        // What changed, the person's own account (part 3), requests (part 2),
+        // cash advances (part 4a) and costs (part 4b), on each.
         expect(supabase.channels.map(c => [c.topic, c.private, c.events])).toEqual([
-            ["tasks:c1", true, ["changed", "account", "requests", "advances"]],
-            ["notices:u1", true, ["changed", "account", "requests", "advances"]],
+            ["tasks:c1", true, ["changed", "account", "requests", "advances", "costs"]],
+            ["notices:u1", true, ["changed", "account", "requests", "advances", "costs"]],
         ])
     })
 
@@ -369,8 +386,9 @@ describe("a tab's connection", () => {
         await vi.advanceTimersByTimeAsync(1000)
         // And whether the account can go on, for a suspension missed the same
         // way (part 3), the requests, for one asked for or decided (part 2),
-        // and the cash advances, for an advance given or confirmed (part 4a).
-        const joined = ["notices", "account", "requests", "advances"]
+        // the cash advances, for an advance given or confirmed (part 4a), and
+        // the costs, for a charge collected (part 4b).
+        const joined = ["notices", "account", "requests", "advances", "costs"]
         expect(drawn).toEqual(joined)
         supabase.channels[1].status!("CHANNEL_ERROR")
         await vi.advanceTimersByTimeAsync(1000)
@@ -423,6 +441,21 @@ describe("a tab's connection", () => {
         supabase.channels[1].on.advances!()
         await vi.advanceTimersByTimeAsync(1000)
         expect(drawn).toEqual(["advances", "advances"])
+    })
+
+    // Part 4b: a charge changing without its task, on the company's channel
+    // and each Super Admin's own; and for a Super Admin, any change to
+    // costs (the live_costs_* triggers).
+    it("draws the cost screens when either channel says costs changed, a second later", async () => {
+        const supabase = fakeSupabase()
+        await new LiveConnection({ ask: async () => grant("t1"), load: async () => supabase, drawer }).start()
+        supabase.channels[0].on.costs!()
+        await vi.advanceTimersByTimeAsync(1000)
+        expect(drawn).toEqual(["costs"])
+        supabase.channels[0].on.costs!()
+        supabase.channels[1].on.costs!()
+        await vi.advanceTimersByTimeAsync(1000)
+        expect(drawn).toEqual(["costs", "costs"])
     })
 
     it("loads nothing while the token route says it's off, and doesn't ask again", async () => {
@@ -643,6 +676,46 @@ describe("the screens that are drawn again", () => {
         expect(dialog).toContain("const picked = parts.find(part => heldPartKey(part) === from)")
         expect(dialog).toContain("onChange={e => { setFrom(e.target.value); setChosen(parts.find(part => heldPartKey(part) === e.target.value) ?? null) }}")
         expect(dialog).toContain("...parts.map(part => ({ value: heldPartKey(part)")
+    })
+
+    // Part 4b: with the company's tasks, which a cost added, removed or paid
+    // changes, and the costs, which a charge changes without its task. Each
+    // through its own route, keeping the search, filters and page; what
+    // someone else changed is tinted, and the person's own actions aren't.
+    it("the cost screens: the Employee costs tab, the Charged to clients tab and a client's charges", () => {
+        const live = read("components/LiveUpdates.tsx")
+        expect(live).toContain("export function useLive(kinds: LiveKind | readonly LiveKind[], onChange: () => void) {")
+        expect(read("components/useArrivals.ts")).toContain("export function useArrivalsIn<T>(kinds: LiveKind | readonly LiveKind[], scope: string, rows: readonly T[], rowKey: (row: T) => string) {")
+
+        const employee = read("app/(dashboard)/dashboard/costs/CostsClient.tsx")
+        expect(employee).toContain("useLive(['tasks', 'costs'], () => router.refresh())")
+        // By what each row shows: another person's share of the same task paid doesn't tint it.
+        expect(employee).toContain("const arrivals = useArrivals(['tasks', 'costs'], sortedEntries.map(shownOf), row => row.key)")
+        const shown = employee.slice(employee.indexOf("const shownOf"), employee.indexOf("const arrivals"))
+        expect(shown).not.toContain("memberPaymentStatus")
+        expect(shown).not.toContain("updatedAt")
+        expect(employee).toContain("rowKey={rowKey}")
+        expect(employee).toContain("arrived={arrivals.arrived}")
+        // Mark all as paid is the person's own, from its start, and its draw once it's saved.
+        const pay = employee.slice(employee.indexOf("const handleMarkAllAsPaid"), employee.indexOf("const wording"))
+        expect(pay).toContain("const answered = arrivals.own()")
+        expect(pay).toContain("arrivals.saved()")
+        expect(pay.indexOf("arrivals.saved()")).toBeGreaterThan(pay.indexOf("else if (res.ok)"))
+        expect(pay).toContain("answered()")
+
+        const charges = read("components/charges/ChargesList.tsx")
+        expect(charges).toContain("useLive(['tasks', 'costs'], () => { void mutate() })")
+        expect(charges).toContain("const arrivals = useArrivalsIn(['tasks', 'costs'], listUrl, charges, c => c.id)")
+        expect(charges).toContain("arrived={arrivals.arrived}")
+        // Not charged, Charge again, Mark collected and Mark uncollected; the fee window's Save too.
+        expect(charges).toContain("const action = useBusyAction(arrivals.own)")
+        for (const key of ["charge", "collect", "uncollect"]) expect(charges).toContain(`action.run('${key}',`)
+        expect(charges.match(/arrivals\.saved\(\)/g)?.length).toBe(4)
+        expect(charges).toContain("<ActionStarts.Provider value={arrivals.own}>")
+        expect(charges).toContain("onSaved={() => { arrivals.saved(); void mutate() }}")
+        const fee = read("components/charges/ChargeFeeDialog.tsx")
+        expect(fee).toContain("const action = useBusyAction()")
+        expect(fee).toContain("void action.run('save',")
     })
 
     // Part 6b: only the badge changes, untinted (DESIGN.md §8), and the

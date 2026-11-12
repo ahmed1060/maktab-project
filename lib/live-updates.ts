@@ -24,6 +24,13 @@
  * person's cash advance, Add cost's line about it and an open Give advance
  * window draw themselves again. On the same channels as the requests.
  *
+ * And that a company's costs changed without its tasks (part 4b,
+ * prisma/migrations/20261215000000_live_costs): a charge's fee set, left off
+ * its client's bill, collected or uncollected. The cost screens draw
+ * themselves again, with the company's tasks, which a cost added, removed or
+ * paid changes. On the same channels as the requests; on each Super Admin's
+ * own, for any change to costs.
+ *
  * And that someone in a company came or went (part 6b,
  * prisma/migrations/20261214000000_live_online): the Employees list and All
  * users draw the Online badge again. On a channel of its own for each
@@ -31,9 +38,9 @@
  * going is heard by the few people looking, not by every tab (LiveWants).
  */
 
-export type LiveKind = 'tasks' | 'notices' | 'account' | 'requests' | 'advances' | 'online'
-/** A channel, and what it's for; any of them may also say the account can't go on, or that requests or cash advances changed. */
-export type LiveTopic = { kind: Exclude<LiveKind, 'account' | 'requests' | 'advances' | 'online'>; topic: string }
+export type LiveKind = 'tasks' | 'notices' | 'account' | 'requests' | 'advances' | 'costs' | 'online'
+/** A channel, and what it's for; any of them may also say the account can't go on, or that requests, cash advances or costs changed. */
+export type LiveTopic = { kind: Exclude<LiveKind, 'account' | 'requests' | 'advances' | 'costs' | 'online'>; topic: string }
 
 type Viewer = { id: string; role: string; companyId?: string | null }
 
@@ -129,6 +136,8 @@ export class LiveWants {
  * Turns signals into screens drawn again (DESIGN.md §8):
  *   - once for signals close together, a second after the last, and at
  *     least every five seconds while they keep coming;
+ *   - once for a screen that hears several kinds, when they come together
+ *     (part 4b, the cost screens);
  *   - not while the tab is hidden: it's drawn at once when it's shown again;
  *   - once for everything after joining again, for whatever was missed.
  */
@@ -181,13 +190,18 @@ export class LiveDrawer {
         if (this.hidden()) return
         const kinds = [...this.pending]
         this.pending.clear()
+        // Each screen once, though it hears more than one of them.
+        const draws = new Map<() => void, LiveKind>()
         for (const kind of kinds) {
             for (const draw of this.listeners.get(kind) ?? []) {
-                try {
-                    draw()
-                } catch (error) {
-                    console.error(`[live] drawing ${kind} again failed`, error)
-                }
+                if (!draws.has(draw)) draws.set(draw, kind)
+            }
+        }
+        for (const [draw, kind] of draws) {
+            try {
+                draw()
+            } catch (error) {
+                console.error(`[live] drawing ${kind} again failed`, error)
             }
         }
     }

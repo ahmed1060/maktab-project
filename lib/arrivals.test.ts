@@ -313,7 +313,7 @@ describe("the hook (components/useArrivals.ts)", () => {
     const hook = stripComments(readFileSync("components/useArrivals.ts", "utf8"))
 
     it("compares each draw with the one before it, where the list is and what each row holds", () => {
-        expect(hook).toContain("return useArrivalsIn(kind, `${usePathname()}?${useSearchParams().toString()}`, rows, rowKey)")
+        expect(hook).toContain("return useArrivalsIn(kinds, `${usePathname()}?${useSearchParams().toString()}`, rows, rowKey)")
         expect(hook).toContain("const now = drawn(scope, rows, rowKey)")
         expect(hook).toMatch(/useAdjustOnChange\(\[now\], \(\) => \{\s*const keys = arrivedOnDraw\(expecting, before, now\)\s*if \(keys\.length > 0\) \{\s*setArrived\(was => mark\(was, keys, marked \+ 1\)\)\s*setMarked\(marked \+ 1\)\s*\}\s*setExpecting\(afterDraw\)\s*setBefore\(now\)\s*\}\)/)
     })
@@ -324,7 +324,7 @@ describe("the hook (components/useArrivals.ts)", () => {
     })
 
     it("hears the list's signal, and the page says when its action starts, when it's answered, and when its change is saved", () => {
-        expect(hook).toContain("useLive(kind, () => setExpecting(was => expectNext(was, 'live')))")
+        expect(hook).toContain("useLive(kinds, () => setExpecting(was => expectNext(was, 'live')))")
         expect(hook).toMatch(/const own = \(\) => \{\s*setExpecting\(actionStarts\)\s*let answered = false\s*return \(\) => \{\s*if \(answered\) return\s*answered = true\s*setExpecting\(actionAnswered\)\s*\}\s*\}/)
         expect(hook).toContain("const saved = () => setExpecting(was => expectNext(was, 'own'))")
         expect(hook).toContain("return { arrived, own, saved }")

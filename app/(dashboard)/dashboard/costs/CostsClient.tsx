@@ -17,6 +17,8 @@ import CostsHeader from '@/components/charges/CostsHeader'
 import ExtraFilterSelects from '@/components/filters/ExtraFilterSelects'
 import { pickExtra } from '@/components/filters/extra-filters'
 import { useListAddress, useSearchField } from '@/components/filters/useListAddress'
+import { useLive } from '@/components/LiveUpdates'
+import { useArrivals } from '@/components/useArrivals'
 import { useEmployeeOptions } from '@/components/filters/useEmployeeOptions'
 import {
     Button, ConfirmDialog, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, Pager, SearchInput, Select, StatusBadge, TotalTiles,
@@ -65,6 +67,9 @@ type SortKey = keyof typeof SORTS
  * comes to and Mark all as paid for whoever pays across the company. The
  * list, its filters and its pages are in the address, which the server
  * reads; Mark all as paid pays exactly that list.
+ *
+ * Drawn again as costs change elsewhere (REALTIME_PLAN.md, part 4b), what
+ * someone else changed tinted for a moment (part 5).
  */
 export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPages, totalDue, toPay, costName }: CostsClientProps) {
     const { t, locale } = useLanguage()
@@ -153,6 +158,20 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
             : new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
         return sortOrder === 'asc' ? comparison : -comparison
     })
+    const rowKey = (e: Entry) => `${e.id}-${e.displayAssignee.id ?? 'task'}`
+
+    // Drawn again as the company's tasks change, which a cost added, removed
+    // or paid changes, and as its costs do; the search, filters and page are
+    // in the address, and stay (REALTIME_PLAN.md, part 4b).
+    useLive(['tasks', 'costs'], () => router.refresh())
+    // A row someone else added or changed is tinted, by what it shows: not as
+    // its task changes in a way it doesn't show, or as another person's
+    // share of the same task is paid.
+    const shownOf = (e: Entry) => ({
+        key: rowKey(e), title: e.title, status: e.status, cost: e.displayCost,
+        person: `${e.displayAssignee.firstName} ${e.displayAssignee.lastName}`, fromAdvance: listed.costNameId ? 0 : e.fromAdvance ?? 0,
+    })
+    const arrivals = useArrivals(['tasks', 'costs'], sortedEntries.map(shownOf), row => row.key)
 
     // Sent once typing pauses.
     const { query, setQuery, clear } = useSearchField(filters.search, go)
@@ -171,6 +190,8 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
     const handleMarkAllAsPaid = async () => {
         if (!toPay) return
         setIsUpdating(true)
+        // The person's own, for as long as it's on its way: a two-factor code may hold it.
+        const answered = arrivals.own()
         try {
             const res = await fetch('/api/tasks/payment/bulk', {
                 method: 'POST',
@@ -183,6 +204,7 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
                 router.refresh()
             } else if (res.ok) {
                 showToast(t('successfully_marked_paid'), 'success')
+                arrivals.saved()
                 router.refresh()
             } else {
                 showToast(t('failed_update_payment_status'), 'error')
@@ -191,6 +213,7 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
             console.error('Bulk payment update failed', error)
             showToast(t('error_generic'), 'error')
         } finally {
+            answered()
             setIsUpdating(false)
             setConfirming(false)
         }
@@ -269,7 +292,8 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
                 caption={t('costs_tab_employee')}
                 columns={columns}
                 rows={sortedEntries}
-                rowKey={e => `${e.id}-${e.displayAssignee.id ?? 'task'}`}
+                rowKey={rowKey}
+                arrived={arrivals.arrived}
                 card={e => (
                     <ListCard
                         title={task(e)}
