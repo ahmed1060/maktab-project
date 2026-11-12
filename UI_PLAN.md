@@ -667,7 +667,11 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      merged in #267 on 2026-11-12; then the Super Admin's overview read
      fresh, not refreshed after its page was sent, which a frozen function
      left mid-handshake with the database, and each database connection
-     given its queries one at a time (`TROUBLESHOOTING.md`, #268);
+     given its queries one at a time (`TROUBLESHOOTING.md`), merged in #268
+     on 2026-11-12; then the plan for fingerprint terminals connecting
+     through the office agent or straight to Nizmo over HTTPS, chosen for
+     each terminal, ZKTeco and Hikvision alike (`ATTENDANCE_PLAN.md` §17.1
+     to §17.9, Phase 4), #269;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6032,3 +6036,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   transaction, Prisma's reads of several relations, and our own reads at
   once, were queued by the driver, with a warning that its next version
   refuses them.
+- **2026-11-12:** The plan for fingerprint terminals that connect straight
+  to Nizmo over HTTPS, without the office agent, as well as through it,
+  chosen for each terminal, ZKTeco and Hikvision alike (#269;
+  `ATTENDANCE_PLAN.md` round 9, §17.1 to §17.9, Phase 4). A ZKTeco terminal
+  straight to Nizmo is accepted only from the office's fixed internet
+  address, since it sends nothing secret. The first customer's terminal, a
+  Convoy that most likely speaks ZKTeco's protocol, is tried with the agent
+  first. Plans only; no screen changes yet.
