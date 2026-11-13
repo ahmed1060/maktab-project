@@ -135,7 +135,8 @@ permissions allow, as today.
 
 - **Every kind of request in one place:** day off, permission hours,
   overtime, missing punch, role changes, name changes, and internal
-  requests.
+  requests. Missions (مأمورية) join them (`ATTENDANCE_PLAN.md` §6.10,
+  round 10, Phase 5, part 3).
 - **Two tabs: Mine and To review.** "To review" shows only what the person
   may decide.
 - **A filter by kind,** so a manager can look at day-off requests only, for
@@ -675,7 +676,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      through the office agent or straight to Nizmo over HTTPS, chosen for
      each terminal, ZKTeco and Hikvision alike, their brands a list the
      Super Admin keeps, setting them up a permission of its own
-     (`ATTENDANCE_PLAN.md` §17.1 to §17.11, Phase 4), #269;
+     (`ATTENDANCE_PLAN.md` §17.1 to §17.11, Phase 4), merged in #269 on
+     2026-11-13; then the plan for reading a day's scans first and last,
+     and for missions (مأمورية), by days or by hours, with their allowance
+     (`ATTENDANCE_PLAN.md` round 10, §6.9, §6.10, Phase 5), #270;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6054,3 +6058,21 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   section (§17.10). The first
   customer's terminal, a Convoy that most likely speaks ZKTeco's protocol, is
   tried with the agent first. Plans only; no screen changes yet.
+- **2026-11-13:** The plan for reading a day's scans first and last, and for
+  missions (مأمورية) (#270; `ATTENDANCE_PLAN.md` round 10, §6.9, §6.10,
+  Phase 5). A day's first scan is the arrival and its last the departure, so
+  a second scan on arriving no longer leaves the day incomplete. In pairs,
+  as built, is removed, and scans within 5 minutes of each other count as
+  one. An employee asks for a mission on the Requests page, by days or by
+  hours, and someone holding "Decide missions" approves it. Missions are on
+  to start, paying no allowance until the policy sets one. A mission by
+  hours covers any lateness and early leave that day, as long as the day
+  has an arrival and a departure. A mission never adds overtime. Its
+  allowance is paid with salary: the policy says what one day is worth, the
+  employee's own day's pay or an amount typed in, and what each kind pays,
+  from none to two days. Round 9's proposals 3 to 8 are the owner's now, as
+  written, and three notes to it ride along: a ZKTeco terminal's office
+  address must be the office's own, not one its provider shares; the first
+  customer's terminal is identified with `probe` at install; and it is the
+  first trial terminal, so ZKTeco straight to Nizmo goes first if it can
+  push over HTTPS. Plans only; no screen changes yet.

@@ -6,6 +6,8 @@ Phase 0 (engine, settings, import) is #9–#15; Phase 1 (payroll) is #16; Phase 
 #20–#26; Phase 3b (face verification) is #27, with later fixes and speed work in
 the PRs after it. Phase 4 (terminals through the agent or straight to Nizmo,
 ZKTeco and Hikvision alike, round 9) is planned in #269 and not built.
+Phase 5 (a day's scans read first and last, and missions, round 10) is
+planned in #270 and not built.
 This document is the design those PRs follow: what was decided, and why, so
 that whoever changes it is not re-arguing settled points. Where the build
 settled something left open here, its PR says so, and the code and
@@ -123,23 +125,42 @@ by then, and this plan names real models and files that may have changed.
 
 ### Round 9 — terminals that connect straight to Nizmo
 
-Decisions 1, 2, 9, 10, 11 and 12 are the owner's (12 November 2026). The rest are proposed
-with the plan (#269), for the owner to confirm or change before part 2 starts.
+All twelve are the owner's: 1, 2 and 9 to 12 on 12 November 2026, and 3 to
+8, proposed with the plan (#269), on 13 November 2026, when it merged.
 
 | # | Topic | Decision |
 |---|---|---|
 | 1 | How a terminal connects | **Two options, chosen for each terminal: through the office agent, or straight to Nizmo over HTTPS** (§17.1). For terminals that push over HTTPS, this replaces round 1's "direct device push is last". |
 | 2 | Protocols | **ZKTeco's and Hikvision's, both ways** (§17.2–§17.4), whatever brand is printed on the terminal (§17.9). |
-| 3 | *Proposed:* plain HTTP | **Never over the internet.** A terminal that pushes only plain HTTP connects through the agent (§17.1; Phase 4, part 8). |
-| 4 | *Proposed:* a Hikvision terminal's credential | **A secret in the address it sends to**, shown once, kept hashed, replaced on demand (§17.2). |
-| 5 | *Proposed:* a ZKTeco terminal's credential | **Its serial number, accepted only from the office's fixed internet address.** An office without one connects its ZKTeco terminals through the agent (§17.3). |
-| 6 | *Proposed:* one terminal, one count | **A terminal is one record whichever way it connects, and uses one way at a time; a scan is counted once across both** (§17.6). |
-| 7 | *Proposed:* switched off to start | **Turned on for each company by the Super Admin**, after a week's trial with a real terminal for each protocol (§17.8). |
-| 8 | *Proposed:* order | **Hikvision straight to Nizmo, then ZKTeco, then the agent reading Hikvision**, unless the terminal on hand for the trial is a ZKTeco, which then goes first (§20, Phase 4). |
+| 3 | plain HTTP | **Never over the internet.** A terminal that pushes only plain HTTP connects through the agent (§17.1; Phase 4, part 8). |
+| 4 | a Hikvision terminal's credential | **A secret in the address it sends to**, shown once, kept hashed, replaced on demand (§17.2). |
+| 5 | a ZKTeco terminal's credential | **Its serial number, accepted only from the office's fixed internet address.** An office without one connects its ZKTeco terminals through the agent (§17.3). |
+| 6 | one terminal, one count | **A terminal is one record whichever way it connects, and uses one way at a time; a scan is counted once across both** (§17.6). |
+| 7 | switched off to start | **Turned on for each company by the Super Admin**, after a week's trial with a real terminal for each protocol (§17.8). |
+| 8 | order | **Hikvision straight to Nizmo, then ZKTeco, then the agent reading Hikvision**, unless the terminal on hand for the trial is a ZKTeco, which then goes first (§20, Phase 4). |
 | 9 | Brands | **A list kept from the screen, not written into the code**, with Convoy on it from the start beside ZKTeco and Hikvision. A brand is what is printed on a terminal; each speaks one of the protocols Nizmo knows. A brand speaking a known protocol is added from the screen; one speaking another needs that protocol built first (§17.9). |
 | 10 | Who keeps the list | **The Super Admin only, one list for every company**, on a Terminal brands page under Templates. A company's Admin picks from it and can't add, change or retire a brand (§17.9). |
 | 11 | Who sets terminals up | **A permission of its own, "Set up fingerprint terminals"**, since it decides whose scans count as attendance. Someone who can open the Attendance settings tab but doesn't hold it never sees the Fingerprint terminals section (§17.10). |
 | 12 | The company's Admin | **The Super Admin decides, company by company, with a switch only they can change, off to start.** Off: only the Super Admin sets the company's terminals up. On: those holding the permission do, the built-in Admin among them. The permission is high-risk: its changes ask for the step-up code (§17.10). |
+
+### Round 10 — reading a day's scans, and missions
+
+All twelve are the owner's (12 and 13 November 2026), planned in #270.
+
+| # | Topic | Decision |
+|---|---|---|
+| 1 | Reading a day's scans | **First and last, the only way.** A day's first scan is the arrival and its last the departure; the scans between are left out, so breaks aren't measured (§6.9). |
+| 2 | Missions (مأمورية) | **A request of their own on the Requests page, by days or by hours** (§6.10). |
+| 3 | A mission by hours | **Not held to set hours: it covers any lateness and early leave that day, but the day must still have an arrival and a departure.** A day without both stays absent or incomplete (§6.10). |
+| 4 | Who decides a mission | **The employee asks, for themselves; someone holding "Decide missions" approves.** Never their own (§6.10). |
+| 5 | Overtime on a mission | **A mission never adds overtime.** Overtime from the day's own scans is approved as on any day (§6.4, §6.10). |
+| 6 | Mission allowance (بدل مأمورية) | **Paid with salary. Each company's policy says what one day is worth, the employee's own day's pay or an amount typed in, and what each kind of mission pays: none, ¼, ½, 1 or 2 days** (§6.10). |
+| 7 | In pairs | **Removed, for every company:** one extra scan left the day incomplete, which isn't practical. The attendance recorded so far is test data, so nothing real moves (§6.9). |
+| 8 | Scans close together | **Count as one, within a window the policy sets: 5 minutes to start, anything from 1 to 60** (§6.9). |
+| 9 | Rest days inside a mission | **A mission by days pays its allowance for every day in it, rest days and holidays included.** For attendance they stay rest days and holidays, and add no overtime (§6.10). |
+| 10 | When a mission is asked | **Before or after the day, until that month's payroll is approved** (§6.10, §12). |
+| 11 | On to start | **Missions are on in every policy, new or already saved, until its Admin turns them off** (§6.10). |
+| 12 | The allowance to start | **None for both kinds of mission until the Admin sets it**, so turning missions on pays nothing nobody chose (§6.10). |
 
 ---
 
@@ -437,6 +458,81 @@ a custom policy** from scratch.
 - Applying a template creates a new policy version and goes through the same
   "from when?" question as any other edit.
 
+### 6.9 Reading a day's scans (round 10, planned)
+
+**First and last, the only way** (round 10, decision 1). The day's first
+scan is the arrival and its last the departure; the scans between are left
+out. A break isn't measured, and scanning twice on arriving changes
+nothing. Lateness runs from the shift's start to the first scan, early
+leave from the last scan to the shift's end, the time worked from the first
+scan to the last, and overtime is the time past the shift's end up to the
+last scan.
+
+**In pairs is removed** (decision 7). Built in Phase 0 (§11), it took the
+first scan with the second and the third with the fourth, so one extra
+scan left an odd count and the day incomplete: not practical where people
+scan twice to be sure. Every company reads First and last, with no choice
+in the policy. The attendance recorded so far is test data, so nothing real
+moves.
+
+**Scans close together count as one** (decision 8). Two scans on arriving
+and none on leaving would otherwise read as a day from 08:55 to 08:57. A
+scan within the policy's window of the one kept before it is dropped from
+the reading, though it is still kept and shown on the Punches tab: 5
+minutes to start, anything from 1 to 60. A single scan left after that is
+an incomplete day, as now: a missing departure is never guessed.
+
+**The terminal's in/out key is still not read.** It is often left on the
+wrong state, and the order of the scans is surer.
+
+### 6.10 Missions — مأمورية (round 10, planned)
+
+An employee sent to work away from their desk (a client, another branch,
+another city) asks for a mission on the Requests page, so the day isn't
+charged as late, early or absent.
+
+| Kind | Asked for | What it does to the day |
+|---|---|---|
+| **By days** | A first and a last date | Each working day in it is a mission day: never absent, late or early, with no scans needed and no day off used. Scans that arrive on it are kept and shown, and change nothing. |
+| **By hours** | One date | It covers all of that day's lateness and early leave, whatever their hours (decision 3). The day must still have an arrival and a departure: two scans more than the window apart (§6.9). Without them it stays absent or incomplete, and the missing scan is reported as usual (§13.1). |
+
+- **Not from the allowance.** A mission is work, so it never draws on
+  permission hours (§6.6). Permission hours already approved for that day
+  stay drawn unless they are withdrawn.
+- **Overtime** (decision 5). A mission day adds none. On a mission by hours,
+  overtime from the day's own scans past the shift's end is counted and
+  approved as on any day (§6.4).
+- **Who asks and who decides** (decision 4). The employee asks, for
+  themselves, as for permission hours. Someone holding
+  `attendance.approve_missions`, "Decide missions", at team or company
+  scope, approves or rejects it; never their own. The built-in Admin holds
+  it.
+- **When** (decision 10). Before or after the day, until the
+  month's payroll is approved; after that the month is locked (§12.3). A
+  mission can't overlap a day off or another mission.
+- **On to start** (decision 11). Missions are on in every policy, new or
+  already saved, and its Admin can turn them off. Their allowance starts
+  at none for both kinds (decision 12), so nothing is paid until
+  the Admin sets it.
+
+**The mission allowance (بدل مأمورية)** is paid with salary (decision 6).
+The policy's Missions section sets:
+
+- **What one day is worth:** the employee's own day's pay, at the daily
+  rate deductions use on that date (§6.3), or an amount typed in, the same
+  for everyone, in the company's currency.
+- **What each kind pays:** a mission by days for every day in it, rest
+  days and holidays included (decision 9), and a mission by hours once. Each is none, ¼, ½, 1 or 2 days.
+
+For example, with one day worth 200 EGP, missions by days at 1 and missions
+by hours at ½, a three-day mission pays 600 EGP and a mission by hours pays
+100. A three-day mission from Thursday to Saturday pays for all three
+days, though Friday and Saturday stay rest days for attendance and add no
+overtime (decision 9).
+
+The allowance reaches the payslip as its own line, "Mission allowance",
+written at approval like the other attendance entries (§12.2).
+
 ---
 
 ## 7. Calendar
@@ -520,6 +616,7 @@ model AttendancePolicy        // one row per version, per company
   appliedTemplateId?          // informational only — never a live link
   workWeek Int[]
   lateness, earlyLeave, overtime, absence, permissionHours   Json
+  scanWindow, missions                                        Json   // round 10, planned (§6.9, §6.10)
   @@unique([companyId, effectiveFrom])
 ```
 
@@ -537,6 +634,11 @@ model OvertimeApproval
 model MissingPunchRequest
   userId, date, claimedInAt?, claimedOutAt?, reason, status, …
   updatedAt                   // reported, decided or withdrawn: the Requests page's Done order (UI_PLAN.md §2.3, #131)
+
+model MissionRequest          // مأمورية, round 10, planned (§6.10)
+  userId, kind DAYS | HOURS, startDate, endDate   // one date for HOURS
+  reason, status, reviewedById?, reviewedAt?, rejectionReason?
+  updatedAt
 ```
 
 ### 8.5 Locations and registered devices
@@ -1079,10 +1181,14 @@ Two things the research surfaced that concern more than attendance:
 **Grouping** by shift instance (override first, then base schedule), with a
 margin either side for early arrivals and overruns. **Debounce** repeats within
 60 seconds. **Pair** in/out by sequence — never earliest/latest. An odd count is
-`INCOMPLETE`; a missing punch is never guessed.
+`INCOMPLETE`; a missing punch is never guessed. Round 10 (planned, §6.9)
+replaces these pairs with first and last for every company, and makes the
+window the policy's.
 
 **Excusing** — approved permission hours are subtracted from late and
-early-leave minutes before pricing, and recorded as `excusedMinutes`.
+early-leave minutes before pricing, and recorded as `excusedMinutes`. An approved mission by hours (round 10, planned, §6.10)
+excuses the day's lateness and early leave outright, and a mission by days
+makes each working day in it a mission day.
 
 **Pricing** — measured facts and priced outcomes are stored separately. Monthly
 rules (allowance, escalation, cap, permission balance) depend on the order of
@@ -1131,8 +1237,8 @@ increments `SalaryRecord` and appends a row on every call, which would duplicate
 deductions. So attendance does **not** write adjustments as it goes. Instead:
 
 - Each entry has a **stable identity**: `(userId, year, month, source = ATTENDANCE,
-  category)`, where category is lateness, early leave, absence or overtime —
-  enforced by a unique index.
+  category)`, where category is lateness, early leave, absence or overtime, and with
+  round 10 the mission allowance (§6.10) — enforced by a unique index.
 - Entries are written **only inside the approval transaction** (§12.1), from the
   final recompute, as **money in minor units** (the sum of each day's priced
   amount, §6.3) — not as a day count revalued at a month-end rate.
@@ -1192,7 +1298,7 @@ Each day: status, punches, late minutes, excused minutes, deduction, overtime,
 and the rule that produced the deduction in the same words the payslip will use.
 The month so far: permission hours remaining, lates against the free allowance,
 deductions to date. Request permission hours or report a missing punch from the
-day itself.
+day itself, and, with round 10, ask for a mission (§6.10).
 
 ### 13.4 Notifications — in-app and push, never email
 
@@ -1432,6 +1538,10 @@ internet address**:
   terminal: one or more, or ranges, as `WorkLocation.officeIpRanges` takes
   them (§9.4). An Admin in the office is offered the address they are
   connecting from.
+- The address must be the office's own, not only fixed. Some providers,
+  4G routers especially, share one public address among many customers,
+  and any of them would pass. An office on a shared address connects its
+  ZKTeco terminals through the agent.
 - The address is read from Vercel's own header, `x-vercel-forwarded-for`,
   which a caller can't set and `getClientIp()` (`lib/api-utils.ts`) already
   prefers. A request without it is refused: the check fails closed.
@@ -1822,14 +1932,42 @@ on for anyone else.
 Egyptian brand that sells other makers' terminals under its own name. It
 looks like Convoy's CF-500, which retailers list with a network port, USB,
 and ZKTeco's own software (ZKTime 5), so it most likely speaks ZKTeco's
-protocol and has no HTTPS push. Its model, firmware and communication menu
-are being checked on the device. If it is on the network, it connects
+protocol and has no HTTPS push. Its model and firmware are read at install
+with `nizmo-agent.exe probe`, which answers only from a terminal speaking
+ZKTeco's protocol. If it is on the network, it connects
 through the agent, built in Phase 2 and never yet tried on a real terminal:
 that trial comes first (`nizmo-agent.exe probe`, then a week of scans), ahead
 of the parts above but parts 2 and 3. Part 2 comes before the terminal is set
 up, so that only those meant to see the setup do; part 3 puts Convoy on its
 card. If it has USB only, its scans come in through the Excel and CSV import
 (Phase 0), from the file it saves to a USB stick.
+
+It is also the first trial terminal (§17.8; the owner, 13 November 2026).
+If its Cloud Server Setting offers HTTPS, ZKTeco straight to Nizmo (part 6)
+goes before Hikvision (part 5). If it doesn't, it stays on the agent, and
+parts 5 to 7 wait (proposed) until there is a terminal they can be tried on.
+
+### Phase 5 — Reading scans first and last, and missions — not built
+
+Planned in #270 (round 10, §6.9, §6.10). Each part is its own PR:
+
+1. **The plan** (#270).
+2. **First and last** (§6.9): the engine reads every day first and last,
+   and In pairs is removed; the policy's window, 5 minutes to start, on the
+   policy panel; the simulator. No migration: a saved policy without the
+   window reads as 5 minutes.
+3. **Missions, asked and decided** (§6.10): `MissionRequest`, the
+   permission "Decide missions", given to the built-in Admin in every
+   company; missions on the Requests page, under Mine and To review and in
+   the kind filter; the mission day on the employee's own attendance; and
+   the notification of a decision. No money yet.
+4. **The mission allowance** (§6.10): the policy's Missions section, what
+   one day is worth and what each kind pays; each day priced at its date,
+   written at approval as its own entry (§12.2); the payslip's Mission
+   allowance line.
+
+Part 2 needs none of the rest, and helps the first customer at once: a
+second scan on arriving no longer leaves a day incomplete.
 
 ---
 
