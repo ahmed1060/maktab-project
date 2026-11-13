@@ -679,7 +679,11 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      (`ATTENDANCE_PLAN.md` §17.1 to §17.11, Phase 4), merged in #269 on
      2026-11-13; then the plan for reading a day's scans first and last,
      and for missions (مأمورية), by days or by hours, with their allowance
-     (`ATTENDANCE_PLAN.md` round 10, §6.9, §6.10, Phase 5), #270;
+     (`ATTENDANCE_PLAN.md` round 10, §6.9, §6.10, Phase 5), merged in
+     #270 on 2026-11-13; then the decisions from its review: departures to
+     confirm, the payroll run waiting for them, two kinds of mission by
+     hours, and a mission naming a task for its reviewer (round 10,
+     decisions 13 to 21), #271;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6076,3 +6080,14 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   customer's terminal is identified with `probe` at install; and it is the
   first trial terminal, so ZKTeco straight to Nizmo goes first if it can
   push over HTTPS. Plans only; no screen changes yet.
+- **2026-11-13:** The decisions from a review of round 10 (#271;
+  `ATTENDANCE_PLAN.md` round 10, decisions 13 to 21). Early leave of more
+  than 2 hours waits as a Departure to confirm, since it's most often a
+  forgotten last scan, until HR accepts it or adds the scan; and a month's
+  payroll can't be approved while such a day, or an incomplete one, is
+  unsettled, with a window listing them. A mission by hours is either until
+  the end of the day or from its start, and needs one scan only. A mission
+  may name one of the employee's open tasks, shown to whoever decides it
+  and linked to nothing else. The allowance is never a task's cost. Nizmo
+  stays at `nizmo.vercel.app` until the second customer. Plans only; no
+  screen changes yet.

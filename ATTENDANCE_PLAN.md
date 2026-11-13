@@ -7,7 +7,7 @@ Phase 0 (engine, settings, import) is #9–#15; Phase 1 (payroll) is #16; Phase 
 the PRs after it. Phase 4 (terminals through the agent or straight to Nizmo,
 ZKTeco and Hikvision alike, round 9) is planned in #269 and not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
-planned in #270 and not built.
+planned in #270 and #271 and not built.
 This document is the design those PRs follow: what was decided, and why, so
 that whoever changes it is not re-arguing settled points. Where the build
 settled something left open here, its PR says so, and the code and
@@ -145,22 +145,34 @@ All twelve are the owner's: 1, 2 and 9 to 12 on 12 November 2026, and 3 to
 
 ### Round 10 — reading a day's scans, and missions
 
-All twelve are the owner's (12 and 13 November 2026), planned in #270.
+Decisions 1 to 12 are the owner's (12 and 13 November 2026), planned in #270.
+Decisions 13 to 21 come from a review of that plan, in #271: all are the
+owner's (13 November 2026) but 20, proposed for the owner to confirm or
+change before Phase 5, part 4 starts.
 
 | # | Topic | Decision |
 |---|---|---|
 | 1 | Reading a day's scans | **First and last, the only way.** A day's first scan is the arrival and its last the departure; the scans between are left out, so breaks aren't measured (§6.9). |
 | 2 | Missions (مأمورية) | **A request of their own on the Requests page, by days or by hours** (§6.10). |
-| 3 | A mission by hours | **Not held to set hours: it covers any lateness and early leave that day, but the day must still have an arrival and a departure.** A day without both stays absent or incomplete (§6.10). |
+| 3 | A mission by hours | **Replaced by decision 15** (13 November 2026). It covered any lateness and early leave that day, and needed an arrival and a departure. |
 | 4 | Who decides a mission | **The employee asks, for themselves; someone holding "Decide missions" approves.** Never their own (§6.10). |
 | 5 | Overtime on a mission | **A mission never adds overtime.** Overtime from the day's own scans is approved as on any day (§6.4, §6.10). |
 | 6 | Mission allowance (بدل مأمورية) | **Paid with salary. Each company's policy says what one day is worth, the employee's own day's pay or an amount typed in, and what each kind of mission pays: none, ¼, ½, 1 or 2 days** (§6.10). |
 | 7 | In pairs | **Removed, for every company:** one extra scan left the day incomplete, which isn't practical. The attendance recorded so far is test data, so nothing real moves (§6.9). |
 | 8 | Scans close together | **Count as one, within a window the policy sets: 5 minutes to start, anything from 1 to 60** (§6.9). |
 | 9 | Rest days inside a mission | **A mission by days pays its allowance for every day in it, rest days and holidays included.** For attendance they stay rest days and holidays, and add no overtime (§6.10). |
-| 10 | When a mission is asked | **Before or after the day, until that month's payroll is approved** (§6.10, §12). |
+| 10 | When a mission is asked | **Before or after the day.** A day in a month whose payroll is already approved is handled by decision 16 (§6.10, §12). |
 | 11 | On to start | **Missions are on in every policy, new or already saved, until its Admin turns them off** (§6.10). |
 | 12 | The allowance to start | **None for both kinds of mission until the Admin sets it**, so turning missions on pays nothing nobody chose (§6.10). |
+| 13 | Departure to confirm | **Early leave of more than the policy's threshold, 2 hours to start, isn't charged as it stands: the day waits as Departure to confirm** until HR accepts the early leave or adds the missing scan. Early leave of the threshold or less is charged by the policy as always (§6.9). |
+| 14 | Payroll waits | **A month's payroll can't be approved while any day in it is a Departure to confirm or incomplete.** A window lists them, each with a link to settle it (§6.9, §12.1). |
+| 15 | Two kinds of mission by hours | **Until the end of the day: one scan is enough, read as the arrival; lateness is charged, early leave isn't. From the start of the day: one scan is enough, read as the departure; early leave is charged, lateness isn't.** The employee picks one. Replaces decision 3 (§6.10). |
+| 16 | A mission across a closed month | **Accepted.** Its days in a month whose payroll is approved become discrepancies, settled on the next payslip (§6.10, §12.3). |
+| 17 | Reminders on a mission day | **The no-check-in reminder skips a mission by days and a mission from the start of the day; the absent and incomplete notices skip mission days**, as they skip leave (§6.10, §13.4). |
+| 18 | A mission's task | **Optional: one of the employee's open tasks, shown to whoever decides the mission**, to make it easier to review. Nothing else links them: check-ins aren't judged by the task's place, and the task's page doesn't change (§6.10). |
+| 19 | The allowance and tasks | **Never added to a task's costs or charged to a client** (§6.10, §19). |
+| 20 | *Proposed:* deciding a mission | **Beside the request: the employee's missions this month and how many had no task, the day's scans, and the task named or "No task".** No monthly limit (§6.10). |
+| 21 | Nizmo's address | **`nizmo.vercel.app` until the second customer, then the owner's own domain.** The old address keeps working beside it, so the first customer's agent needn't change (§18). |
 
 ---
 
@@ -482,6 +494,22 @@ the reading, though it is still kept and shown on the Punches tab: 5
 minutes to start, anything from 1 to 60. A single scan left after that is
 an incomplete day, as now: a missing departure is never guessed.
 
+**Departure to confirm** (decision 13). A forgotten last scan would
+otherwise read as leaving early: 08:55, 12:00 and 12:40 with nothing at
+17:00 is a departure at 12:40. So early leave of more than the policy's
+threshold, 2 hours to start, isn't charged as it stands. The day waits as
+*Departure to confirm*, and the employee is told the next day, as for an
+incomplete day (§13.4). Someone with `attendance.correct` settles it on the
+Exceptions screen (§13.1): accepting the early leave, which the policy then
+charges, or adding the missing scan, from the employee's report or by hand.
+Early leave of the threshold or less is charged by the policy as always.
+
+**Payroll waits for both** (decision 14). While any day in the month is a
+Departure to confirm or incomplete, the payroll run can't be approved: its
+Approve opens a window listing them, each with its employee, date, scans
+and a link to settle it (§12.1). An incomplete day would otherwise be
+charged nothing.
+
 **The terminal's in/out key is still not read.** It is often left on the
 wrong state, and the order of the scans is surer.
 
@@ -494,7 +522,8 @@ charged as late, early or absent.
 | Kind | Asked for | What it does to the day |
 |---|---|---|
 | **By days** | A first and a last date | Each working day in it is a mission day: never absent, late or early, with no scans needed and no day off used. Scans that arrive on it are kept and shown, and change nothing. |
-| **By hours** | One date | It covers all of that day's lateness and early leave, whatever their hours (decision 3). The day must still have an arrival and a departure: two scans more than the window apart (§6.9). Without them it stays absent or incomplete, and the missing scan is reported as usual (§13.1). |
+| **By hours, until the end of the day** | One date | Early leave isn't charged; lateness is. One scan is enough, read as the arrival: the employee may go from the mission straight home (decision 15). |
+| **By hours, from the start of the day** | One date | Lateness isn't charged; early leave is. One scan is enough, read as the departure: the employee may go to the mission straight from home (decision 15). |
 
 - **Not from the allowance.** A mission is work, so it never draws on
   permission hours (§6.6). Permission hours already approved for that day
@@ -507,9 +536,18 @@ charged as late, early or absent.
   `attendance.approve_missions`, "Decide missions", at team or company
   scope, approves or rejects it; never their own. The built-in Admin holds
   it.
-- **When** (decision 10). Before or after the day, until the
-  month's payroll is approved; after that the month is locked (§12.3). A
-  mission can't overlap a day off or another mission.
+- **When** (decision 10). Before or after the day. A mission can't
+  overlap a day off or another mission. A day of a mission by hours with
+  no scan at all stays absent.
+- **Across a closed month** (decision 16). A mission is accepted even when
+  part of it falls in a month whose payroll is approved. Its days in the
+  open month count as usual; those in the closed month become discrepancies
+  (§12.3), which HR settles on the next payslip: the deductions refunded
+  and the allowance paid.
+- **Reminders and notices** (decision 17). The no-check-in reminder
+  (§13.4) skips a mission by days and a mission from the start of the day,
+  when no arrival is due; the absent and incomplete notices skip mission
+  days. Both already skip leave.
 - **On to start** (decision 11). Missions are on in every policy, new or
   already saved, and its Admin can turn them off. Their allowance starts
   at none for both kinds (decision 12), so nothing is paid until
@@ -532,6 +570,21 @@ overtime (decision 9).
 
 The allowance reaches the payslip as its own line, "Mission allowance",
 written at approval like the other attendance entries (§12.2).
+
+**A mission's task** (decision 18). Asking for a mission, the employee may
+name one of their open tasks; a trip to a bank or a government office has
+none. It is there for whoever decides the mission, shown beside the
+request, and for nothing else: check-ins aren't judged by the task's place,
+and the task's page doesn't change. A deleted task leaves its title on the
+mission as text.
+
+**Never a task's cost** (decision 19). The allowance is salary. It is never
+added to a task's costs or charged to a client (§19).
+
+**Deciding a mission** (proposed, decision 20). Beside the request, the
+approver sees the employee's missions this month and how many had no task,
+the day's scans so far, and the task named or "No task". There is no
+monthly limit.
 
 ---
 
@@ -616,7 +669,7 @@ model AttendancePolicy        // one row per version, per company
   appliedTemplateId?          // informational only — never a live link
   workWeek Int[]
   lateness, earlyLeave, overtime, absence, permissionHours   Json
-  scanWindow, missions                                        Json   // round 10, planned (§6.9, §6.10)
+  scanReading, missions                                       Json   // round 10, planned: the window and the threshold (§6.9), missions (§6.10)
   @@unique([companyId, effectiveFrom])
 ```
 
@@ -637,6 +690,8 @@ model MissingPunchRequest
 
 model MissionRequest          // مأمورية, round 10, planned (§6.10)
   userId, kind DAYS | HOURS, startDate, endDate   // one date for HOURS
+  hoursPart FROM_START | TO_END?                  // HOURS only (decision 15)
+  taskId?, taskTitle?                             // optional (decision 18); the title kept as text
   reason, status, reviewedById?, reviewedAt?, rejectionReason?
   updatedAt
 ```
@@ -1187,8 +1242,9 @@ window the policy's.
 
 **Excusing** — approved permission hours are subtracted from late and
 early-leave minutes before pricing, and recorded as `excusedMinutes`. An approved mission by hours (round 10, planned, §6.10)
-excuses the day's lateness and early leave outright, and a mission by days
-makes each working day in it a mission day.
+excuses the day's early leave or its lateness, as its kind says, and a
+mission by days makes each working day in it a mission day. A day whose
+early leave passes the policy's threshold waits as `TO_CONFIRM` (§6.9).
 
 **Pricing** — measured facts and priced outcomes are stored separately. Monthly
 rules (allowance, escalation, cap, permission balance) depend on the order of
@@ -1219,6 +1275,8 @@ So approval and locking are serialized:
   request approval that touches a date take the same Postgres advisory lock for
   that company and month (`pg_advisory_xact_lock`) before writing. They cannot
   interleave.
+- **Before it** (round 10, planned, §6.9): approval is refused while any day in
+  the month is `INCOMPLETE` or `TO_CONFIRM`, and the screen lists them.
 - **Inside approval's transaction, in order:** take the lock → resolve pending
   overtime in the month as rejected → run the final recompute of the month's
   attendance → write the attendance payroll entries (§12.2) → compute and save the
@@ -1311,7 +1369,8 @@ day itself, and, with round 10, ask for a mission (§6.10).
   approval, a terminal offline during working hours, an integrity spike. If
   ordinary events are critical too, people learn to ignore red, and the one that
   matters is missed.
-- Sent when: a day becomes `INCOMPLETE` or `ABSENT`; a check-in is flagged; a
+- Sent when: a day becomes `INCOMPLETE` or `ABSENT`, or with round 10
+  `TO_CONFIRM`, though not on a mission day (§6.10); a check-in is flagged; a
   request is approved or rejected; **no check-in has arrived N minutes after the
   shift starts** (reminder, adopted in round 4 — N configurable in the policy,
   suggest 15).
@@ -1801,6 +1860,9 @@ the trial on real terminals (§17.8) unless they say otherwise.
    installed at a customer, not in the trial). A terminal is set by hand, so
    moving Nizmo to its own domain later means visiting every terminal. The
    address in the setup card is a setting, not written into the code.
+   Decided in round 10 (decision 21): `nizmo.vercel.app` until the second
+   customer, then the owner's own domain. `nizmo.vercel.app` keeps working
+   beside it, so the first customer's agent needn't change.
 7. **Signing the agent** (the owner's purchase, not the trial). The Attendance
    agent workflow signs with a `.pfx` file from GitHub secrets, but since June
    2023 a code signing key must live on a hardware token or a certificate
@@ -1830,6 +1892,8 @@ the trial on real terminals (§17.8) unless they say otherwise.
   only listened to (§17.3).
 - Keeping the pictures a terminal attaches to its events (§17.5).
 - Shift planning and rota building.
+- Adding the mission allowance to a task's costs, or charging it to a client
+  (round 10, decision 19).
 - Check-in from a browser. Check-in is native-app only; the web product stays as
   it is for everything else.
 
@@ -1949,19 +2013,26 @@ parts 5 to 7 wait (proposed) until there is a terminal they can be tried on.
 
 ### Phase 5 — Reading scans first and last, and missions — not built
 
-Planned in #270 (round 10, §6.9, §6.10). Each part is its own PR:
+Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
 
-1. **The plan** (#270).
+1. **The plan** (#270), and the decisions from its review (#271).
 2. **First and last** (§6.9): the engine reads every day first and last,
    and In pairs is removed; the policy's window, 5 minutes to start, on the
    policy panel; the simulator. No migration: a saved policy without the
    window reads as 5 minutes.
-3. **Missions, asked and decided** (§6.10): `MissionRequest`, the
-   permission "Decide missions", given to the built-in Admin in every
-   company; missions on the Requests page, under Mine and To review and in
-   the kind filter; the mission day on the employee's own attendance; and
-   the notification of a decision. No money yet.
-4. **The mission allowance** (§6.10): the policy's Missions section, what
+3. **Departures to confirm** (§6.9): the policy's threshold, 2 hours to
+   start; the waiting day, its notice and its settling on the Exceptions
+   screen; and the payroll run waiting for it and for incomplete days, with
+   the window that lists them.
+4. **Missions, asked and decided** (§6.10): `MissionRequest`, with the two
+   kinds of mission by hours and the optional task; the permission "Decide
+   missions", given to the built-in Admin in every company; missions on the
+   Requests page, under Mine and To review and in the kind filter, with
+   what the approver sees beside each; the mission day on the employee's
+   own attendance, and the reminder and notices skipping it; days in a
+   closed month as discrepancies; and the notification of a decision. No
+   money yet.
+5. **The mission allowance** (§6.10): the policy's Missions section, what
    one day is worth and what each kind pays; each day priced at its date,
    written at approval as its own entry (§12.2); the payslip's Mission
    allowance line.
