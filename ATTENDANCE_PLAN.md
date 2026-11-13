@@ -4,7 +4,8 @@ Status: **built through Phase 3b** (§20). The Foundation is #2, #3 and #5;
 Phase 0 (engine, settings, import) is #9–#15; Phase 1 (payroll) is #16; Phase 2
 (terminals and the Local Sync Agent) is #17–#19; Phase 3 (the check-in app) is
 #20–#26; Phase 3b (face verification) is #27, with later fixes and speed work in
-the PRs after it. Phase 4 (direct device push through the agent) is not built.
+the PRs after it. Phase 4 (terminals through the agent or straight to Nizmo,
+ZKTeco and Hikvision alike, round 9) is planned in #269 and not built.
 This document is the design those PRs follow: what was decided, and why, so
 that whoever changes it is not re-arguing settled points. Where the build
 settled something left open here, its PR says so, and the code and
@@ -120,6 +121,26 @@ by then, and this plan names real models and files that may have changed.
 |---|---|---|
 | 1 | Approved verification photo | **Kept after approval** (reverses round 6, decision 1), as the employee's *reference photo*. **Shown only when reviewing a flagged face check-in or a re-verification**, under the protections in §9.5. **Replaced by each approved re-verification.** |
 
+### Round 9 — terminals that connect straight to Nizmo
+
+Decisions 1, 2, 9, 10, 11 and 12 are the owner's (12 November 2026). The rest are proposed
+with the plan (#269), for the owner to confirm or change before part 2 starts.
+
+| # | Topic | Decision |
+|---|---|---|
+| 1 | How a terminal connects | **Two options, chosen for each terminal: through the office agent, or straight to Nizmo over HTTPS** (§17.1). For terminals that push over HTTPS, this replaces round 1's "direct device push is last". |
+| 2 | Protocols | **ZKTeco's and Hikvision's, both ways** (§17.2–§17.4), whatever brand is printed on the terminal (§17.9). |
+| 3 | *Proposed:* plain HTTP | **Never over the internet.** A terminal that pushes only plain HTTP connects through the agent (§17.1; Phase 4, part 8). |
+| 4 | *Proposed:* a Hikvision terminal's credential | **A secret in the address it sends to**, shown once, kept hashed, replaced on demand (§17.2). |
+| 5 | *Proposed:* a ZKTeco terminal's credential | **Its serial number, accepted only from the office's fixed internet address.** An office without one connects its ZKTeco terminals through the agent (§17.3). |
+| 6 | *Proposed:* one terminal, one count | **A terminal is one record whichever way it connects, and uses one way at a time; a scan is counted once across both** (§17.6). |
+| 7 | *Proposed:* switched off to start | **Turned on for each company by the Super Admin**, after a week's trial with a real terminal for each protocol (§17.8). |
+| 8 | *Proposed:* order | **Hikvision straight to Nizmo, then ZKTeco, then the agent reading Hikvision**, unless the terminal on hand for the trial is a ZKTeco, which then goes first (§20, Phase 4). |
+| 9 | Brands | **A list kept from the screen, not written into the code**, with Convoy on it from the start beside ZKTeco and Hikvision. A brand is what is printed on a terminal; each speaks one of the protocols Nizmo knows. A brand speaking a known protocol is added from the screen; one speaking another needs that protocol built first (§17.9). |
+| 10 | Who keeps the list | **The Super Admin only, one list for every company**, on a Terminal brands page under Templates. A company's Admin picks from it and can't add, change or retire a brand (§17.9). |
+| 11 | Who sets terminals up | **A permission of its own, "Set up fingerprint terminals"**, since it decides whose scans count as attendance. Someone who can open the Attendance settings tab but doesn't hold it never sees the Fingerprint terminals section (§17.10). |
+| 12 | The company's Admin | **The Super Admin decides, company by company, with a switch only they can change, off to start.** Off: only the Super Admin sets the company's terminals up. On: those holding the permission do, the built-in Admin among them. The permission is high-risk: its changes ask for the step-up code (§17.10). |
+
 ---
 
 ## 1. Where this system actually stands
@@ -156,7 +177,9 @@ the models and files named here and in §21 exist and mean what this says.
 1. **Domain before pipe.** Phase 0 is the engine, fed by spreadsheet import.
 2. **The Local Sync Agent is the product, not the fallback.** ZKTeco ADMS is a
    vendor-specific plaintext protocol that many units speak only over plain HTTP
-   on port 80, which Vercel redirects and the device will not follow.
+   on port 80, which Vercel redirects and the device will not follow. Newer
+   models of both brands push over HTTPS, and those may connect straight to
+   Nizmo instead (round 9, §17.1).
 3. **The payload never carries `tenant_id` or our employee ID.** Company comes
    from the device credential; the device's own user ID is mapped here.
 4. **No `ProcessedStatus` boolean.** The derived day is rebuildable.
@@ -562,6 +585,32 @@ model BiometricConsent        // the legal record; not biometric data itself
 
 ```
 model AttendanceDevice, DeviceCredential, UserDeviceMapping   // terminals, §17
+
+// Round 9 adds to AttendanceDevice (§17.1–§17.6), defaults keeping what exists:
+//   protocol         ZKTECO | HIKVISION      default ZKTECO: what Nizmo and the agent speak to it
+//   brandId          String?                 the brand printed on it (§17.9); unset until picked
+//   connection       AGENT | DIRECT          default AGENT
+//   pushSecretHash   String? @unique         Hikvision straight to Nizmo (§17.2)
+//   allowedAddresses String[]                ZKTeco straight to Nizmo, required there (§17.3)
+//   pushCursor       String?                 ZKTeco's ATTLOGStamp (§17.3)
+//   lastAddress      String?                 where its last request came from
+//   refusedCount, lastRefusedAt?, lastRefusal?   §17.5
+//   addedById        String?                 who added it by hand
+// lastSeenAt, already there, is its last contact of any kind, scans or not.
+// On Company: terminalsDirectAllowed Boolean, the Super Admin's switch (§17.8).
+// On Company: terminalsSetupByCompany Boolean, default false: the Super Admin's
+//   switch letting the company set its own terminals up (§17.10).
+// model TerminalBrand: the Super Admin's list of brands (§17.9)
+//   id, name (unique, case aside), protocol ZKTECO | HIKVISION,
+//   notesEn?, notesAr? (where its settings are in its menu),
+//   createdById, createdAt, updatedAt, retiredAt?
+// model TerminalFirstContact: deviceId, receivedAt, method, path (secret
+//   removed), headers Json, body (pictures, templates and names taken out);
+//   the first 50 for each terminal straight to Nizmo, deleted after 7 days
+//   by the nightly job (§17.8).
+// On AttendancePunch: a partial unique index over (companyId, sourceKey)
+//   where source is AGENT or DEVICE_PUSH, so a scan is counted once whichever
+//   way it came (§17.6).
 
 model AttendancePunch
   companyId, userId?, source  // IMPORT | MOBILE | AGENT | DEVICE_PUSH | MANUAL
@@ -1223,7 +1272,7 @@ contract.**
 
 | Add-on | Gives the company |
 |---|---|
-| **Attendance — Terminals** | Fingerprint terminals through the Local Sync Agent (§17). |
+| **Attendance — Terminals** | Fingerprint terminals, through the Local Sync Agent or straight to Nizmo (§17). |
 | **Attendance — Mobile App** | The native check-in app (§9), including face verification when the system switch is on. |
 
 **The attendance core comes with either.** Schedules, policies, permission hours,
@@ -1282,15 +1331,378 @@ The mode is applied **when each punch arrives** and stored on the punch as its
 direction (§8.6). Changing a terminal's mode later affects only new scans; it
 never reinterprets past ones, even in a month still being recomputed.
 
+### 17.1 Two ways a terminal connects (round 9)
+
+Each terminal is set to one of two connections. The company's Admin picks it
+when the terminal is added, and can change it later:
+
+| Connection | How its scans reach Nizmo | Suits |
+|---|---|---|
+| **Through the office agent** | The Local Sync Agent, on a PC on the office network, reads the terminal and sends its scans over HTTPS (above). Built for ZKTeco; Hikvision is added in §17.4. | Any terminal, older ones included. Needs a PC that stays on. |
+| **Straight to Nizmo** | The terminal sends each scan to Nizmo's address itself, over HTTPS, through the office's internet connection. No PC. | Newer models that push over HTTPS: ZKTeco's cloud server setting with HTTPS on (§17.3), Hikvision's HTTP listening with HTTPS (§17.2). |
+
+Whichever way a terminal connects:
+
+- **HTTPS only over the internet.** A terminal that pushes only plain HTTP
+  connects through the agent (§20, Phase 4, part 8), never straight. Vercel
+  redirects plain HTTP, and terminals don't follow redirects, so this is also
+  simply what works.
+- **Nizmo never reaches into the office.** A terminal straight to Nizmo
+  connects out, as the agent does: no port is opened on the office's router,
+  and Nizmo never polls a terminal over the internet (§19).
+- **Company from the credential, never the body** (§2): the agent's token, a
+  Hikvision terminal's secret address (§17.2), or a ZKTeco terminal's serial
+  number from the office's address (§17.3).
+- **Scans only** (§17.5). No fingerprint templates, faces, pictures or user
+  lists are asked for or kept.
+- **The same scan, the same punch.** Mapping employee numbers, the terminal's
+  entrance or exit mode, the engine, health alerts and payroll treat a scan
+  the same whichever way it came.
+
+### 17.2 Straight to Nizmo: Hikvision
+
+A Hikvision access or attendance terminal sends its events to an "HTTP
+listening" server set on the terminal, in its web page or with
+`PUT /ISAPI/Event/notification/httpHosts`: host, port, HTTP or HTTPS, and a
+URL path, all chosen by whoever sets it up. `POST …/httpHosts/<id>/test`
+checks the setting from the terminal's side.
+
+- **Its credential is a secret in the address it sends to.** When an Admin
+  adds a Hikvision terminal straight to Nizmo, Nizmo makes a random secret
+  (32 bytes) and shows, once, what to set on the terminal: Nizmo's host, port
+  443, HTTPS, and the path `/api/terminals/hikvision/<secret>`. Only the
+  secret's sha256 is kept, as for the agent's token. **Issue a new address**
+  replaces it: the old one stops working at once, and the terminal is set to
+  the new one. Over HTTPS the path is encrypted on its way; it does appear in
+  Vercel's request logs, which only the project's owners can read, the same
+  people who hold the database.
+- **What counts as a scan:** an `AccessControllerEvent` with major type 5
+  (an event), a minor type for an identity check that passed (fingerprint,
+  face, card, or more than one), and an employee number
+  (`employeeNoString`). Failed attempts, door events, alarms and heartbeats
+  are answered and dropped. Which minor types each model sends is checked on
+  a real terminal (§17.8, §18).
+- **Bodies come in three shapes:** a multipart form with the event's JSON in
+  one part (usually `event_log`) and pictures in others; JSON alone; or the
+  older XML `EventNotificationAlert`. Pictures are dropped unread (§17.5).
+- **Answered with an empty 200.** A terminal sends an event again until it
+  hears 200, so everything is answered once stored or knowingly refused
+  (§17.5).
+- **Health:** every request, scans or not, is a contact: the terminal's last
+  contact and the address it came from.
+
+### 17.3 Straight to Nizmo: ZKTeco
+
+Newer ZKTeco terminals push with ZKTeco's ADMS protocol to the cloud server
+set on the terminal, under **Comm.**, **Cloud Server Setting**: server address,
+port, **Enable domain name**, and on newer firmware **HTTPS**. The terminal
+then calls fixed paths under `/iclock/`:
+
+- `GET /iclock/cdata?SN=…&options=all`: its first contact, and again after
+  each restart. Nizmo answers with the terminal's options, among them what to
+  send (`TransFlag`: attendance records only) and where it had got to
+  (`ATTLOGStamp`, kept on the terminal's record).
+- `POST /iclock/cdata?SN=…&table=ATTLOG&Stamp=…`: scans, one a line,
+  tab-separated: employee number, wall-clock time, status, how the person was
+  identified, work code. Answered `OK: <count>`. Anything else (`OPERLOG`,
+  `USERINFO`, fingerprint templates, photos) is answered `OK` and dropped
+  unread.
+- `GET /iclock/getrequest?SN=…`: the terminal asking for commands, every few
+  seconds to a minute. Nizmo answers `OK`: there are none (§19). It is the
+  terminal's heartbeat, and says what the terminal reports of itself
+  (firmware, how many users and records it holds), shown on its card.
+
+These paths are at the root of Nizmo's address, not under `/api`. The proxy's
+matcher (`proxy.ts`) leaves `/api` alone and must leave `/iclock` alone too,
+or the terminal is sent to the sign-in page and never follows.
+
+**ADMS knows a terminal by its serial number alone.** Nothing secret travels
+with it that this plan can rely on: the comm key protects the terminal's own
+port on the office network, and whether any firmware sends something derived
+from it over ADMS is unknown (§18). The serial number is printed on the
+terminal and shown in its menu, so anyone who reads it could send Nizmo scans
+in that terminal's name, for any employee number, from anywhere. For
+attendance, that is the threat that matters: someone checking colleagues in
+from home.
+
+So a ZKTeco terminal straight to Nizmo is **accepted only from the office's
+internet address**:
+
+- The Admin enters the office's fixed public address when adding the
+  terminal: one or more, or ranges, as `WorkLocation.officeIpRanges` takes
+  them (§9.4). An Admin in the office is offered the address they are
+  connecting from.
+- The address is read from Vercel's own header, `x-vercel-forwarded-for`,
+  which a caller can't set and `getClientIp()` (`lib/api-utils.ts`) already
+  prefers. A request without it is refused: the check fails closed.
+- A request from any other address is refused, not answered `OK`, and
+  counted on the terminal's card with the address it came from. A real
+  terminal whose office address changed keeps its scans and sends them again
+  once the Admin enters the new address: none is lost.
+- Only serial numbers an Admin has added as straight to Nizmo are answered.
+  An unknown one is refused, never brought in on its first call, unlike a
+  terminal an enrolled agent reports.
+- An office without a fixed address connects its ZKTeco terminals through
+  the agent. If the trial (§17.8) finds firmware that proves itself with a
+  secret, this is looked at again for those models.
+
+### 17.4 Through the agent: Hikvision
+
+The agent learns Hikvision's ISAPI beside the ZKTeco protocol it speaks:
+
+- A terminal in `agent.json` gets `"protocol": "hikvision"`, a user name and a
+  password: a user made on the terminal for the agent, with only the rights
+  reading events needs, where the model allows, rather than its admin.
+- It reads scans with `POST /ISAPI/AccessControl/AcsEvent?format=json` (major
+  type 5, from its cursor, a page at a time), the terminal's identity from
+  `/ISAPI/System/deviceInfo` (serial number, model, firmware), and its clock
+  from `/ISAPI/System/time`. It signs in with HTTP digest authentication,
+  which never sends the password itself.
+- Over HTTPS where the terminal offers it, its self-signed certificate pinned
+  on the first contact; otherwise over HTTP on the office network, as the
+  ZKTeco protocol already is. Plaintext never leaves the building.
+- `probe` works as it does for ZKTeco. Clearing a terminal's memory stays
+  ZKTeco's until a Hikvision model needs it.
+- The agent's queue, cursor and delivery don't change. Nizmo receives
+  `AGENT` punches, and knows the terminal's protocol from what the agent
+  reports, and its brand from its record (§17.9).
+
+### 17.5 What a terminal sends, and what Nizmo keeps
+
+- **Kept**, for each scan: the terminal, the employee number and the
+  wall-clock time; and, as `rawPayload` (§8.6), its line, or its event's JSON
+  without its pictures or the person's name.
+- **Never kept:** pictures (a Hikvision face terminal attaches its capture to
+  each event, and it is a face photo, §10), fingerprint or face templates,
+  user lists and names. A ZKTeco terminal is told to send attendance records
+  only (`TransFlag`). A Hikvision terminal's pictures can be turned off on it,
+  and the setup card says how. Whatever else arrives is dropped unread.
+- **The terminal's wall clock, as for the agent.** A scan's time is the
+  terminal's wall clock, read in the company's time zone, so it reads the same
+  whichever way it came and has the same `sourceKey` (§17.6). A Hikvision
+  event's own offset is kept in `rawPayload` as evidence. If it disagrees with
+  the company's time zone, the terminal's card says so, as it does for clock
+  drift.
+- **Everything is answered**, once the request is known to be the
+  terminal's (§17.2, §17.3). A terminal that pushes sends again whatever
+  isn't answered, and waits behind it, so nothing is left for it to send
+  again. A scan stored, already there, or refused for good (its month's
+  payroll approved, the terminal retired, its time more than 60 minutes ahead
+  of Nizmo's clock) is answered. Each refusal is counted on the terminal's
+  card, with the latest reason. Unlike the agent, a terminal can't hold a scan
+  dated ahead and offer it again later; a terminal whose clock runs ahead is
+  shown as such, and the scans it sent meanwhile are added by hand if needed.
+- **Limits.** Vercel refuses a body over 4.5 MB; a Hikvision event with its
+  pictures is well under that, and the setup card says to turn them off
+  anyway. Requests are rate limited (`RateLimit`): by terminal once it is
+  known, and by address while it isn't, so a wrong secret or serial number
+  can't be tried at speed. A terminal sending its whole memory after a switch
+  sends it in batches, which the limit allows for.
+
+### 17.6 One terminal, whichever way its scans come
+
+- A terminal is one `AttendanceDevice`, known by its serial number, whichever
+  connection it uses. Changing its connection keeps its history, its mode
+  and the employee numbers mapped to people.
+- It uses one connection at a time. The agent skips a terminal set straight
+  to Nizmo (the heartbeat's answer tells it), and a push from a terminal set
+  to the agent is refused.
+- **A scan is counted once across both.** Punches are unique by
+  `(companyId, source, sourceKey)`, and the two ways have different sources
+  (`AGENT`, `DEVICE_PUSH`) with the same `sourceKey`. A ZKTeco terminal moved
+  from the agent to Nizmo sends its whole memory on its first contact, so
+  each scan the agent already delivered would arrive again under the other
+  source and count twice. A partial unique index over
+  `(companyId, sourceKey)`, for those two sources, stops it. Production holds
+  no terminal punches yet (checked 12 November 2026: 23 punches, all from the
+  app), so the index can't fail there.
+- Scans from before the company started with terminals are skipped, as the
+  agent's `sendFrom` skips them.
+
+### 17.7 Setting a terminal up
+
+On **Fingerprint terminals**, in the Attendance tab of the company's options
+(the Company Options page, §5, titled "Company settings" on screen), behind
+its own permission and the company's switch (§17.10) and the **Attendance —
+Terminals** add-on (§16):
+
+- **Add a terminal** asks for its name, brand (from the Super Admin's list,
+  §17.9), serial number, mode (entrance, exit or either, above), and how it
+  connects: **Through the office agent** or **Straight to Nizmo**. The brand
+  decides the protocol, and so which steps the setup card shows; its own notes
+  come above them.
+  - Through the agent: it shows under the agent once the agent reports it, as
+    today.
+  - Straight to Nizmo, Hikvision: what to set on the terminal, the secret
+    path shown once with Copy, and how to turn its pictures off.
+  - Straight to Nizmo, ZKTeco: what to set on the terminal (server address,
+    port 443, Enable domain name on, HTTPS on), and the office's internet
+    address, required.
+- A terminal straight to Nizmo shows **Waiting for its first contact** until
+  it calls, then its status, last contact, the address it calls from, and
+  what was refused.
+- A terminal's menu gains **Change connection** and, for Hikvision straight to
+  Nizmo, **Issue a new address**. Retiring is as today.
+- The Super Admin's terminals list on System health (#177) shows each
+  terminal's connection.
+- The screens' design comes first in `DESIGN.md`, in its own commit, with the
+  part that builds them; their words come in both languages.
+
+### 17.8 Proving it on real terminals
+
+None of this can be tried without the terminals, and the build has none. So:
+
+- **Switched off to start.** The Super Admin turns terminals straight to
+  Nizmo on for a company (`terminalsDirectAllowed`, §8.6); off, the choice
+  isn't offered and the routes refuse everything. As face verification was,
+  it ships built and off.
+- **First contacts kept, to compare with this plan.** The first 50 requests
+  from each terminal straight to Nizmo are kept for 7 days, for the Super
+  Admin: headers without the secret path, and bodies with pictures,
+  templates and names taken out. That is how the real formats are checked
+  against §17.2 and §17.3.
+- **The trial:** one terminal for each protocol, at a company that agrees, on
+  the production address, for a week. It answers the questions in §18, and
+  the switch stays off for everyone else until it passes.
+
+### 17.9 Terminal brands, a list kept from the screen (round 9)
+
+A terminal's **brand** is what is printed on it. Its **protocol** is the
+language Nizmo and the agent speak to it. They aren't the same thing: many
+brands sell terminals another maker builds, and those speak the maker's
+protocol. The first customer's Convoy most likely speaks ZKTeco's (§20).
+
+- **Protocols are code.** Nizmo knows two: ZKTeco's, which the agent reads
+  over the office network (above) and a terminal pushes to Nizmo (§17.3); and
+  Hikvision's ISAPI (§17.2, §17.4). Another protocol is added by building it,
+  with its own plan and PRs.
+- **Brands are data.** Only the Super Admin keeps the list, one for every
+  company, on a **Terminal brands** page under Templates (`UI_PLAN.md`
+  §2.2; round 9, decision 10): each brand's name, the protocol its
+  terminals speak, and optional notes in English and Arabic, such as where
+  its settings are in its menu. It starts with ZKTeco, Hikvision and Convoy
+  (ZKTeco's protocol, until the trial says otherwise).
+- **Adding a brand** takes its name and picks its protocol from the ones
+  Nizmo knows. A brand that speaks another can't be added: the page says so,
+  rather than offering a brand that will never connect.
+- **Changing a brand:** its name and notes at any time; its protocol only
+  while no terminal uses it, since changing it under a working terminal
+  would cut it off. Once a terminal has used it, a brand is retired, never
+  deleted, and isn't offered for new terminals.
+- **A brand whose models speak different protocols** is added once for each,
+  named so the two can be told apart.
+- **On a terminal**, `protocol` is what it speaks and `brandId` what is
+  printed on it (§8.6). A terminal an agent reports gets the protocol the
+  agent read it with and no brand, until an Admin picks one from the brands
+  speaking that protocol. A terminal added by hand takes its brand's
+  protocol.
+- **A company's Admin** sees the brand on each terminal's card and picks it in
+  Add a terminal (§17.7), but can't add, change or retire one. A brand that
+  isn't listed is asked of the Super Admin.
+- Adding, changing and retiring a brand are written to the audit log, as role
+  and policy templates are.
+
+### 17.10 Who may set terminals up (round 9)
+
+Setting terminals up decides whose scans count as attendance: an agent's code
+or a terminal's address lets punches in for any employee number, and so into
+pay. So it stops being part of the Attendance settings tab's own access
+(`lib/attendance/terminals-access.ts` asks the tab's question today):
+
+- **A permission of its own,** `attendance.manage_terminals`, "Set up
+  fingerprint terminals", at company scope: seeing and changing everything
+  under Fingerprint terminals (agents and their codes; terminals, their brand,
+  mode and connection; a Hikvision terminal's address; a ZKTeco terminal's
+  office address; clearing a terminal's memory; retiring). Without it the
+  section isn't shown at all, and its routes answer as if it weren't there
+  (404), whatever else the person may do on the Attendance tab.
+- **High-risk** (`ROLES_PLAN.md` §6.15), since it adds to attendance and so to
+  pay: issuing an agent's code, issuing a terminal's address, changing a
+  terminal's connection or the office address, and retiring a terminal ask
+  for the step-up code. Seeing the section doesn't.
+- **The built-in Admin role holds it**, and another role only if the Super
+  Admin, who alone builds roles (`ROLES_PLAN.md` round 5), grants it.
+- **The company's switch, the Super Admin's alone:** "The company sets up its
+  own fingerprint terminals" (`Company.terminalsSetupByCompany`, §8.6), off to
+  start. It sits on the same Attendance tab of the company's options, beside
+  the Fingerprint terminals section, as a field only the Super Admin may
+  change, as the cash advances switch is (`lib/company-settings-tabs.ts`,
+  `superAdminOnly`). The company's own people never see it.
+  - **Off:** nobody in the company sees the section, its Admin included; the
+    Super Admin sets the company's terminals up, from its settings.
+  - **On:** those holding the permission do.
+  - The built-in Admin role is locked for every company (`ROLES_PLAN.md` §4.3,
+    rule 7), so the switch is how the Super Admin decides, company by
+    company, whether its Admin may.
+  - Turning it off stops nothing already set up: scans keep coming, and only
+    the screens and changes are the Super Admin's again. Turning it on or off
+    is written to the audit log.
+- **Alerts** about a silent agent or terminal in working hours go to those
+  holding the permission while the switch is on, and to the Super Admin
+  otherwise, in place of everyone holding `settings.view` today.
+- **Companies already there:** production has no terminals, and two agents
+  created but never connected (checked 12 November 2026). With the switch off
+  to start, those two are the Super Admin's to finish or remove; nobody loses
+  a working setup.
+
+### 17.11 Sources
+
+Checked on 12 November 2026. Vendor documents vary by model and firmware,
+and some of these are integrators' notes, so the trial (§17.8) has the last
+word.
+
+- Hikvision, [Receive alarm/event in listening mode](https://tpp.hikvision.com/Wiki/ISAPI/Access%20Control%20on%20Person/GUID-0E00BD39-BDB4-4079-A8EE-307A95871C1A.html)
+  and [How to get real-time events in HTTP listening mode](https://www.hikvisioneurope.com/eu/portal/portal/Technology%20Partner%20Program/03-How%20to/How%20to%20get%20real-time%20event%20in%20listening%20mode.pdf).
+- Hikvision, [Open capabilities](https://tpp.hikvision.com/tpp/OpenCapabilities):
+  callback addresses over HTTP or HTTPS.
+- Integrators' notes on Hikvision events: the [ISAPI reference](https://github.com/uchkunr/hikvision-best-practices),
+  [access control events](https://shipkit.davrapps.dev/en/blog/hikvision-isapi-access-control-events)
+  (body shapes, `event_log`), and [a terminal sending again until answered](https://ipcamtalk.com/threads/c-listening-for-hikvision-events.31659/).
+- ZKTeco, [SpeedFace-V3L user manual, Cloud Server Setting](https://www.manualslib.com/manual/2802468/Zkteco-Speedface-V3l.html?page=57):
+  domain name mode and HTTPS.
+- ADMS's paths and handshake, from open implementations:
+  [zkteco-adms (Go)](https://pkg.go.dev/github.com/s0x90/zkteco-adms) and
+  [the PUSH protocol, described](https://www.linkedin.com/pulse/zkteco-adms-protocol-link-your-zk-device-server-herbin-tsobeng-qg0ze).
+
 ---
 
 ## 18. Open questions
 
-One left, deliberately deferred to implementation:
+The first was deferred to implementation; the rest are round 9's, answered by
+the trial on real terminals (§17.8) unless they say otherwise.
 
 1. **Face SDK choice** (§9.5) — chosen when Phase 3b starts, against the rule that
    face templates never leave the phone. Verify the vendor's on-device mode sends
    nothing to their servers.
+2. **Does a ZKTeco terminal send anything secret over ADMS** (its comm key, a
+   registration code)? If a model does, the office address rule (§17.3) can be
+   relaxed for it.
+3. **Do the terminals accept Nizmo's HTTPS?** Vercel needs TLS 1.2 or later and
+   the server's name in the handshake (SNI), and its certificate chains to a
+   current public root. A terminal whose firmware can't connects through the
+   agent.
+4. **Which Hikvision event types** a model sends for a fingerprint, a face and a
+   card that passed (§17.2), and whether it sends heartbeats between scans. If it
+   doesn't, its health is the working-hours silence alert alone.
+5. **Does a ZKTeco terminal set its clock from Nizmo** by itself, from the
+   answer's date or an option in it, with no command sent (§19)? If it does,
+   clock drift mostly goes away for terminals straight to Nizmo.
+6. **The address terminals are pointed at** (before the first terminal is
+   installed at a customer, not in the trial). A terminal is set by hand, so
+   moving Nizmo to its own domain later means visiting every terminal. The
+   address in the setup card is a setting, not written into the code.
+7. **Signing the agent** (the owner's purchase, not the trial). The Attendance
+   agent workflow signs with a `.pfx` file from GitHub secrets, but since June
+   2023 a code signing key must live on a hardware token or a certificate
+   authority's cloud HSM, so no new certificate comes as a `.pfx`. Microsoft's
+   own signing service takes organizations in the US, Canada, the EU and the
+   UK only. So a certificate bought now is an OV certificate from a CA that
+   signs from its cloud (SSL.com's eSigner, for one), and the workflow's
+   signing step changes to that CA's tool, its credentials in GitHub secrets.
+   Signing names the publisher in place of "Unknown publisher", but Windows
+   SmartScreen warns about a new file until it has built a reputation, signed
+   or not, so until then whoever installs the agent chooses Run anyway, as
+   they do unsigned.
 
 ---
 
@@ -1302,6 +1714,11 @@ One left, deliberately deferred to implementation:
 - Storing or transmitting face templates. (One approved reference photo per
   face-enrolled employee is stored, §9.5; ordinary check-ins send none.)
 - Polling a tenant's device over the internet.
+- A terminal pushing plain HTTP over the internet (§17.1).
+- Sending a terminal commands over the internet: adding users, clearing its
+  memory, setting its clock, opening a door. A terminal straight to Nizmo is
+  only listened to (§17.3).
+- Keeping the pictures a terminal attaches to its events (§17.5).
 - Shift planning and rota building.
 - Check-in from a browser. Check-in is native-app only; the web product stays as
   it is for everything else.
@@ -1311,7 +1728,7 @@ One left, deliberately deferred to implementation:
 ## 20. Phasing
 
 Each phase is independently shippable. Every phase up to and including 3b is
-built; Phase 4 is not.
+built; Phase 4 is planned (round 9) and not built.
 
 ### Foundation — built
 
@@ -1357,18 +1774,62 @@ complete and shipped **switched off**; the protected Super Admin enables it when
 they decide to (§10). Consent flow, enrolment with verification photo and approval, on-device
 matching with liveness, fallback to flagged.
 
-### Phase 4 — Direct device push, through the agent — not built
+### Phase 4 — Terminals through the agent or straight to Nizmo — not built
 
-Only on demand. Terminals that push (ZKTeco ADMS) often speak **plain HTTP only**,
-so a public ingress would expose device credentials, employee IDs and punch times
-on the internet and let an intercepted credential forge punches. **A public
-plain-HTTP endpoint is therefore not supported, anywhere.**
+Planned in #269, for ZKTeco and Hikvision alike (§17.1–§17.11). It replaces
+the earlier Phase 4, a listener for pushes on the agent and nothing else,
+which becomes part 8 below. Each part is its own PR:
 
-Instead, the Local Sync Agent (§17) gains an **ADMS listener on the LAN**: the
-terminal pushes to the agent's local address over the office network, and the
-agent forwards over authenticated HTTPS exactly as it does for pulled punches.
-Plaintext never leaves the building. A site that cannot run an agent uses pull
-mode or Excel import, not direct push.
+1. **The plan** (#269).
+2. **Who may set terminals up** (§17.10): the permission, high-risk, held by
+   the built-in Admin; the company's setup switch, the Super Admin's, off to
+   start;
+   the Fingerprint terminals section and its routes behind both; alerts to
+   those holding it. The roles tests and `ROLES_PLAN.md` §6.15's list gain
+   it.
+3. **Terminal brands** (§17.9): the migration (`TerminalBrand`, starting with
+   ZKTeco, Hikvision and Convoy; a terminal's `protocol` and `brandId`), the
+   Super Admin's Terminal brands page under Templates, with `DESIGN.md`
+   first, and the brand on each terminal's card, picked by an Admin. Useful
+   at once with the agent, and needs none of the rest.
+4. **One terminal whichever way** (§17.6): the migration (connection, the
+   columns for terminals straight to Nizmo, the index across both sources,
+   the straight-to-Nizmo switch, §17.8), the ingest taking a terminal as well
+   as an agent,
+   and the agent told to skip a terminal set straight to Nizmo. No screen
+   changes.
+5. **Hikvision straight to Nizmo** (§17.2): `DESIGN.md` first; Add a terminal
+   with its connection, the secret address shown once, Issue a new address;
+   the receiving route; first contacts kept (§17.8); the straight-to-Nizmo
+   switch on the company's Attendance tab.
+6. **ZKTeco straight to Nizmo** (§17.3): the `/iclock` routes, outside the
+   proxy; the options answer, scans, and `getrequest` as its heartbeat; the
+   office address check; ZKTeco's protocol in Add a terminal.
+7. **The agent reads Hikvision** (§17.4): ISAPI beside the ZKTeco protocol,
+   `probe`, `agent.json`; a new agent release.
+8. **Only when a customer needs it: the agent listens on the office network**,
+   for terminals that push only plain HTTP. The terminal pushes to the agent's
+   address on the office network, and the agent sends on over HTTPS, as for
+   scans it reads. Plaintext never leaves the building.
+
+Hikvision goes first because its secret address is the safer first step;
+parts 5 and 6 share the screen, so whichever comes second adds its protocol
+to it. If the terminal on hand for the trial speaks ZKTeco's, part 6 goes
+first. The trial (§17.8) follows parts 5 and 6, before the switch is turned
+on for anyone else.
+
+**The first customer's terminal comes before all of it.** It is a Convoy, an
+Egyptian brand that sells other makers' terminals under its own name. It
+looks like Convoy's CF-500, which retailers list with a network port, USB,
+and ZKTeco's own software (ZKTime 5), so it most likely speaks ZKTeco's
+protocol and has no HTTPS push. Its model, firmware and communication menu
+are being checked on the device. If it is on the network, it connects
+through the agent, built in Phase 2 and never yet tried on a real terminal:
+that trial comes first (`nizmo-agent.exe probe`, then a week of scans), ahead
+of the parts above but parts 2 and 3. Part 2 comes before the terminal is set
+up, so that only those meant to see the setup do; part 3 puts Convoy on its
+card. If it has USB only, its scans come in through the Excel and CSV import
+(Phase 0), from the file it saves to a USB stick.
 
 ---
 
