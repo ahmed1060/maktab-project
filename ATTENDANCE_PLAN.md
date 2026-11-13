@@ -146,9 +146,8 @@ All twelve are the owner's: 1, 2 and 9 to 12 on 12 November 2026, and 3 to
 ### Round 10 — reading a day's scans, and missions
 
 Decisions 1 to 12 are the owner's (12 and 13 November 2026), planned in #270.
-Decisions 13 to 21 come from a review of that plan, in #271: all are the
-owner's (13 November 2026) but 20, proposed for the owner to confirm or
-change before Phase 5, part 4 starts.
+Decisions 13 to 21 come from a review of that plan, in #271, and are the
+owner's (13 November 2026).
 
 | # | Topic | Decision |
 |---|---|---|
@@ -171,7 +170,7 @@ change before Phase 5, part 4 starts.
 | 17 | Reminders on a mission day | **The no-check-in reminder skips a mission by days and a mission from the start of the day; the absent and incomplete notices skip mission days**, as they skip leave (§6.10, §13.4). |
 | 18 | A mission's task | **Optional: one of the employee's open tasks, shown to whoever decides the mission**, to make it easier to review. Nothing else links them: check-ins aren't judged by the task's place, and the task's page doesn't change (§6.10). |
 | 19 | The allowance and tasks | **Never added to a task's costs or charged to a client** (§6.10, §19). |
-| 20 | *Proposed:* deciding a mission | **Beside the request: the employee's missions this month and how many had no task, the day's scans, and the task named or "No task".** No monthly limit (§6.10). |
+| 20 | Deciding a mission | **Beside the request: the day's scans, and the task named or "No task".** No monthly limit (§6.10). |
 | 21 | Nizmo's address | **`nizmo.vercel.app` until the second customer, then the owner's own domain.** The old address keeps working beside it, so the first customer's agent needn't change (§18). |
 
 ---
@@ -581,9 +580,8 @@ mission as text.
 **Never a task's cost** (decision 19). The allowance is salary. It is never
 added to a task's costs or charged to a client (§19).
 
-**Deciding a mission** (proposed, decision 20). Beside the request, the
-approver sees the employee's missions this month and how many had no task,
-the day's scans so far, and the task named or "No task". There is no
+**Deciding a mission** (decision 20). Beside the request, the approver
+sees the day's scans so far, and the task named or "No task". There is no
 monthly limit.
 
 ---
