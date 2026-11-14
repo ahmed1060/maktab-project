@@ -786,6 +786,18 @@
   line-height: var(--leading-xl);
   font-weight: 500;
 }
+/* A title with a guide's button right after it (DESIGN.md §5.2, PR 282).
+   Beside the card's own button, the two wrap above it when they don't
+   fit, as on a phone. */
+.ui-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.ui-card-head:has(> .ui-card-title-group) {
+  flex-wrap: wrap;
+}
 /* A card that needs someone, or says something is wrong (§5.5): its
    meaning's bar on the start edge, as an overdue row has. The background
    stays the panel's, so what it says keeps its contrast. */
@@ -1126,6 +1138,119 @@
 .ui-dialog:has(.ui-perm-matrix) {
   width: min(100%, 640px);
 }
+/* A guide (DESIGN.md §5.5, Dialog; ATTENDANCE_PLAN.md §17.7, PR 282), opened
+   by its round quiet "i" beside a card's title (§5.2): wide enough for a
+   command on one line; numbered steps, each saying who and where; what's
+   typed in boxes of its own, never turned round in Arabic, with Copy
+   beside them. */
+.ui-guide-button {
+  width: 30px;
+  padding-inline: 0;
+  border-radius: var(--radius-pill);
+  color: var(--ink-2);
+}
+.ui-dialog:has(.ui-guide) {
+  width: min(100%, 640px);
+}
+.ui-guide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.ui-guide-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ui-guide-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--space-3);
+  align-items: start;
+}
+/* As tall as the step's title's line, so the two sit level. */
+.ui-guide-number {
+  display: inline-grid;
+  place-items: center;
+  width: var(--leading-lg);
+  height: var(--leading-lg);
+  border-radius: var(--radius-pill);
+  background: var(--brand-tint);
+  color: var(--brand-text);
+  font-size: var(--text-md);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ui-guide-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.ui-guide-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+  font-weight: 600;
+}
+.ui-guide-who {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.ui-guide-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding-inline-start: var(--space-4);
+}
+/* The model's notes, the Super Admin's, kept with finding its address, and
+   their lines as they were written. */
+.ui-dialog-body .ui-guide-notes {
+  padding: var(--space-2) var(--space-3);
+  border-inline-start: 3px solid var(--brand);
+  border-radius: var(--radius-field);
+  background: var(--brand-tint);
+  color: var(--ink);
+  white-space: pre-line;
+}
+.ui-guide-code {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-block-start: var(--space-2);
+}
+.ui-guide-code pre {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-field);
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-code);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  text-align: start;
+}
+/* What's typed inside a sentence, such as a file's name. */
+.ui-guide-inline {
+  padding-inline: var(--space-1);
+  border-radius: var(--radius-field);
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-code);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+/* End of a guide */
 /* Rows read from a file, checked before any is saved (§5.5): wide enough
    for their list on a computer, each row's mistakes under its title in the
    problem colour, and what isn't set yet in --muted. */
@@ -4442,6 +4567,21 @@ a.ui-donut-row:focus-visible {
   }
   .ui-menu-button {
     width: 44px;
+  }
+  .ui-guide-button {
+    width: 44px;
+  }
+  /* A guide's box keeps the phone's width for the command, a size smaller,
+     so most fit on a line, and Copy under it at the end. */
+  .ui-guide-code {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  .ui-guide-code pre {
+    align-self: stretch;
+    padding-inline: var(--space-2);
+    font-size: var(--text-xs);
+    line-height: var(--leading-xs);
   }
   .ui-donut {
     flex-direction: column;

@@ -544,6 +544,12 @@ These are built once, in the building-blocks PR, and every page uses them
   Check-in).
 - An icon is optional and goes before the label. The label is never only
   an icon, unless the button has an accessible name and a tooltip.
+- **A guide's button:** where something is done mostly away from Nizmo,
+  such as setting up a fingerprint terminal in an office, its card has a
+  round quiet button with an "i" right after its title, 30px (44px on
+  phones), named for the guide it opens, such as "How to set up a
+  fingerprint terminal", in its tooltip too. It opens the guide (§5.5,
+  Dialog) and does nothing else.
 - **Busy and disabled states** follow the existing rules from the buttons
   work (global CSS, and a confirmation showing its work under way, §5.5,
   Dialog).
@@ -844,6 +850,20 @@ These are built once, in the building-blocks PR, and every page uses them
   - Escape closes it, and focus goes back to what opened it.
   - One that holds a long list of controls, such as a role's permissions,
     is up to 640px wide, so each control sits beside what it's for.
+  - A guide, opened by its button beside a card's title (§5.2), is up to
+    640px wide and changes nothing: Close is its only button.
+    - Where the steps depend on a choice, such as the terminal's model, a
+      picker at the top asks for it, and until something is picked, a
+      line says to pick it.
+    - The steps are numbered. Each says who does it and where, then what
+      to do, a line each.
+    - Anything to type or paste, such as a command or a file's contents,
+      is in a box of its own, left to right and never translated in
+      either language, with Copy beside it.
+    - Facts kept with the choice, such as the Super Admin's notes on a
+      model, show in the step they belong to, in the page's language, or
+      in the other, marked with its language, when there's none in the
+      page's.
   - One that opens from an older page's modal, as "+ New location" from a
     task's edit window, sits above that modal, and under the toasts.
   - The code a high-risk action asks for (two-factor sign-in) sits above
@@ -2230,3 +2250,8 @@ changed:
 - **2026-11-14:** A picker keeps a retired item where it's already chosen
   (§5.5, Row menu), with "(retired)" after its name, and offers it nowhere
   else. First for a terminal's brand (`ATTENDANCE_PLAN.md` §17.9).
+- **2026-11-14:** A guide behind a round "i" beside a card's title (§5.2,
+  §5.5, Dialog): steps for what's done mostly away from Nizmo, numbered,
+  each saying who and where, what to type in boxes with Copy, and a
+  picker at the top where the steps depend on a choice. First for setting
+  up a fingerprint terminal, by its model, as the product owner asked.

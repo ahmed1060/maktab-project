@@ -173,6 +173,12 @@ describe.skipIf(!ADMIN_URL)("terminal brands, in Postgres", () => {
             expect((await Brands.offered()).map(b => b.name)).toEqual(["Convoy", "Hikvision", "ZKTeco"])
         })
 
+        it("offers each with its notes, for the setup guide's steps (PR 282)", async () => {
+            expect((await Brands.offered()).find(b => b.name === "Convoy")).toEqual({
+                id: await idOf("Convoy"), name: "Convoy", protocol: "ZKTECO", notesEn: "Speaks ZKTeco's protocol, from its screens.", notesAr: null,
+            })
+        })
+
         it("picks a brand that speaks the terminal's protocol, and changes it, each written to the audit log by name", async () => {
             const Devices = await devices()
             expect(await Devices.update("old", { brandId: await idOf("ZKTeco") }, "sa1")).toMatchObject({ brand: { name: "ZKTeco", retired: false } })

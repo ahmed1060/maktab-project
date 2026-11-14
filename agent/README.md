@@ -41,7 +41,12 @@ connects out.
    ```
 
    It shows the terminal's serial number, its clock, and how many scans it holds.
-   It sends nothing.
+   It sends nothing. It doesn't read `agent.json`, so if the terminal has a comm
+   password, give the port and the password after its address:
+
+   ```
+   nizmo-agent.exe probe 192.168.1.20 4370 1234
+   ```
 
 4. In Nizmo, choose **Add an agent**, and give it a name such as "Head office".
    Type the code you are shown:

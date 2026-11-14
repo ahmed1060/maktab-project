@@ -620,6 +620,8 @@ input::-webkit-credentials-auto-fill-button {
   --on-brand: #ffffff;
 
   --font-ui: var(--font-inter), var(--font-noto-arabic), system-ui, sans-serif;
+  /* What's typed as it is, such as a command in a guide (PR 282): equal-width letters. */
+  --font-code: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --text-xs: 12px;
   --leading-xs: 16px;
   --text-sm: 13px;

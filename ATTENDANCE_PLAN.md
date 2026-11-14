@@ -1926,6 +1926,29 @@ Terminals** add-on (§16):
 - The screens' design comes first in `DESIGN.md`, in its own commit, with the
   part that builds them; their words come in both languages.
 
+**Built in #282: the setup guide**, as the product owner asked on
+14 November 2026, ahead of Add a terminal. A round "i" beside the
+Fingerprint terminals title opens **How to set up a fingerprint
+terminal** (`DESIGN.md` §5.2, §5.5, Dialog). Its **Terminal model**
+picker offers the brands not retired (§17.9), and the steps follow the
+model's protocol:
+
+- **ZKTeco's, through the agent:** at the office, the PC software's
+  settings, the terminal's address and clock, and the PC; installing the
+  agent, its `agent.json` and `probe`; connecting it, with Add an agent,
+  `enrol`, the service, and the terminal's brand; matching terminal
+  numbers to people; and what to do when something goes wrong. The
+  model's notes, the Super Admin's, show in the step that finds its
+  address.
+- **Hikvision's:** not read yet, until parts 5 and 7 (§20).
+- **Getting the agent:** the Super Admin is told where it's built, the
+  Attendance agent workflow's latest run on GitHub; anyone else, to ask
+  the Super Admin for it.
+
+The Convoy trial's week, and what passes it, stay on the trial's own
+page, outside Nizmo. For the guide, the brands the terminals list offers
+(`GET /api/attendance/devices`) carry their notes.
+
 ### 17.8 Proving it on real terminals
 
 None of this can be tried without the terminals, and the build has none. So:
@@ -2261,7 +2284,9 @@ which becomes part 8 below. Each part is its own PR:
    first, and the brand on each terminal's card, picked by an Admin. Useful
    at once with the agent, and needs none of the rest. Built in two PRs:
    the migration and the Super Admin's page in #279, then the brand on each
-   terminal's card in #280.
+   terminal's card in #280. Then, as the product owner asked, the setup
+   guide behind an "i" on Fingerprint terminals, its steps by the model
+   picked (§17.7), in #282.
 4. **One terminal whichever way** (§17.6): the migration (connection, the
    columns for terminals straight to Nizmo, the index across both sources,
    the straight-to-Nizmo switch, §17.8), the ingest taking a terminal as well

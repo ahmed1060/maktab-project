@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { ComponentPropsWithoutRef, ReactNode } from 'react'
+import { InfoIcon } from '@phosphor-icons/react/ssr'
 import { Icon, type PhosphorIcon } from './Icon'
 import { cx } from './cx'
 
@@ -29,6 +30,20 @@ export function Button({ variant = 'secondary', size = 'md', icon, busy = false,
         <button type={type} className={classes(variant, size, className)} disabled={disabled || busy} aria-busy={busy || undefined} {...rest}>
             {icon && <Icon icon={icon} size={size === 'sm' ? 16 : 18} />}
             {children}
+        </button>
+    )
+}
+
+/**
+ * A guide's button (DESIGN.md §5.2, PR 282): a round quiet "i" right after a
+ * card's title, where what the card is for is done mostly away from Nizmo.
+ * Named for the guide it opens, in its tooltip too; it opens the guide and
+ * does nothing else.
+ */
+export function GuideButton({ label, onClick }: { label: string; onClick: () => void }) {
+    return (
+        <button type="button" className="ui-btn ui-btn-quiet ui-btn-sm ui-guide-button" aria-label={label} title={label} aria-haspopup="dialog" onClick={onClick}>
+            <Icon icon={InfoIcon} size={18} />
         </button>
     )
 }

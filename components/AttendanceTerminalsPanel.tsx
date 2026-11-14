@@ -2,6 +2,7 @@
 
 import { Fragment, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import useSWR from 'swr'
+import { useSession } from 'next-auth/react'
 import { ArrowsClockwiseIcon, PencilSimpleIcon, PlusIcon, ProhibitIcon, ArrowCounterClockwiseIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { fetcher, type SWRError } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
@@ -9,8 +10,9 @@ import { useToast } from '@/context/ToastContext'
 import { apiErrorText } from '@/lib/api-error-text'
 import { useNow } from '@/lib/useNow'
 import type { TranslationKey } from '@/lib/translations'
-import { Button, Card, Dialog, DialogActions, EmptyState, Field, Row, RowMenu, Select, StatusBadge, TextInput, type MenuItem, type StatusTone } from '@/components/ui'
+import { Button, Card, Dialog, DialogActions, EmptyState, Field, GuideButton, Row, RowMenu, Select, StatusBadge, TextInput, type MenuItem, type StatusTone } from '@/components/ui'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
+import TerminalSetupGuide, { type GuideBrand } from '@/components/TerminalSetupGuide'
 
 /**
  * Fingerprint terminals and the Local Sync Agent (ATTENDANCE_PLAN.md §17,
@@ -28,6 +30,9 @@ import { focusFirstWrong } from '@/components/attendance-calendar/focus'
  *
  * Shown only to whoever may set the company's terminals up, who may change
  * everything in it (§17.10, PR 277): the server answers 404 to anyone else.
+ *
+ * A round "i" beside its title opens How to set up a fingerprint terminal
+ * (§17.7, PR 282), its steps by the model picked from the brands offered.
  */
 
 type Agent = {
@@ -45,8 +50,8 @@ type Device = {
     health: { state: 'RETIRED' | 'OK' | 'UNREACHABLE' | 'SILENT' | 'QUIET'; memoryFull: boolean; clockOff: boolean }
 }
 type Shown = { name: string; code: string; expiresAt: string | null }
-/** A brand one may give a terminal: the Super Admin's, not retired. */
-type OfferedBrand = { id: string; name: string; protocol: Device['protocol'] }
+/** A brand one may give a terminal: the Super Admin's, not retired, with their notes for the setup guide (PR 282). */
+type OfferedBrand = GuideBrand
 
 const AGENT_TONE: Record<Agent['health'], StatusTone> = { OK: 'good', SILENT: 'problem', QUIET: 'neutral', WAITING: 'waiting', REVOKED: 'neutral' }
 const DEVICE_TONE: Record<Device['health']['state'], StatusTone> = { OK: 'good', UNREACHABLE: 'problem', SILENT: 'problem', QUIET: 'neutral', RETIRED: 'neutral' }
@@ -56,16 +61,18 @@ const MODE_LABEL = { ANY: 'audit_value_ANY', ENTRANCE: 'audit_value_ENTRANCE', E
 export default function AttendanceTerminalsPanel({ companyId }: { companyId: string }) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
+    const { data: session } = useSession()
     const now = useNow(30_000)
     const q = `?companyId=${encodeURIComponent(companyId)}`
     // Refreshed as heartbeats come in: health is the point of the panel.
     const { data: agentsBody, error: agentsError, isValidating, mutate: reloadAgents } = useSWR(`/api/attendance/agents${q}`, fetcher, { refreshInterval: 60_000 })
-    const { data: devicesBody, mutate: reloadDevices } = useSWR(agentsBody ? `/api/attendance/devices${q}` : null, fetcher, { refreshInterval: 60_000 })
+    const { data: devicesBody, error: devicesError, mutate: reloadDevices } = useSWR(agentsBody ? `/api/attendance/devices${q}` : null, fetcher, { refreshInterval: 60_000 })
     const [adding, setAdding] = useState(false)
     const [shownCode, setShownCode] = useState<Shown | null>(null)
     const [revoking, setRevoking] = useState<Agent | null>(null)
     const [editing, setEditing] = useState<Device | null>(null)
     const [retiring, setRetiring] = useState<Device | null>(null)
+    const [guiding, setGuiding] = useState(false)
     const [busy, setBusy] = useState(false)
     // One change at a time: each new code replaces the last, so two at once
     // could leave a code on screen that no longer works (Codex on PR 164).
@@ -157,6 +164,7 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
     return (
         <Card
             title={t('att_term_title')}
+            titleAside={<GuideButton label={t('att_guide_button')} onClick={() => setGuiding(true)} />}
             actions={<Button variant="primary" icon={PlusIcon} disabled={busy} onClick={() => setAdding(true)}>{t('att_term_add_agent')}</Button>}
         >
             {/* A refresh that failed after it loaded keeps what's here, and anything open, and says so (Codex on PR 164). */}
@@ -230,6 +238,8 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
                 }} />
             )}
             {shownCode && <CodeDialog shown={shownCode} onClose={() => setShownCode(null)} />}
+            {/* The agent sends to this Nizmo, so its settings name the address it's opened on. */}
+            {guiding && <TerminalSetupGuide brands={devicesBody ? brands : null} loadFailed={!!devicesError} superAdmin={session?.user?.role === 'SUPER_ADMIN'} server={window.location.origin} onClose={() => setGuiding(false)} />}
             {editing && (
                 <TerminalDialog device={editing} brands={brands} busy={busy} onClose={() => setEditing(null)} onSubmit={async change => {
                     await send(`/api/attendance/devices/${editing.id}`, { method: 'PATCH', body: JSON.stringify(change) }, 'att_term_saved', () => setEditing(null))
