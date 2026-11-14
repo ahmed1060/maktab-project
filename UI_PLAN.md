@@ -683,7 +683,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      #270 on 2026-11-13; then the decisions from its review: departures to
      confirm, the payroll run waiting for them, two kinds of mission by
      hours, and a mission naming a task for its reviewer (round 10,
-     decisions 13 to 21), #271;
+     decisions 13 to 21), with a template for the file import
+     (`ATTENDANCE_PLAN.md` §13.9), #271;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6091,3 +6092,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   and linked to nothing else. The allowance is never a task's cost. Nizmo
   stays at `nizmo.vercel.app` until the second customer. Plans only; no
   screen changes yet.
+- **2026-11-14:** A template for the attendance file import is planned
+  (#271; `ATTENDANCE_PLAN.md` §13.9): Download a template on the Import tab
+  gives an Excel file in the page's language, with the headings the import
+  reads on its first sheet and how to fill it, with examples, on a second.
+  Two outdated notes are fixed with it. `CLIENTS_PLAN.md` said nothing was
+  built, and it all is. The attendance plan's first open question, the
+  face SDK, said it would be chosen when Phase 3b started, but Phase 3b was
+  built on a face check for testing only, so the question stays open until
+  a commercial SDK replaces it. Plans only; no screen changes yet.

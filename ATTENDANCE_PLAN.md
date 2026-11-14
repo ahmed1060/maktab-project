@@ -7,7 +7,8 @@ Phase 0 (engine, settings, import) is #9–#15; Phase 1 (payroll) is #16; Phase 
 the PRs after it. Phase 4 (terminals through the agent or straight to Nizmo,
 ZKTeco and Hikvision alike, round 9) is planned in #269 and not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
-planned in #270 and #271 and not built.
+planned in #270 and #271 and not built. A template for the file import
+(§13.9) is planned in #271 and not built.
 This document is the design those PRs follow: what was decided, and why, so
 that whoever changes it is not re-arguing settled points. Where the build
 settled something left open here, its PR says so, and the code and
@@ -1403,6 +1404,34 @@ flag is accepted or rejected; while it exists it has the same protections as the
 reference photo — encrypted, reachable only through the open flag, watermarked,
 every view audited. Covered by the same consent text as the verification photo.
 
+### 13.9 A template for the file import (planned)
+
+The owner, 14 November 2026. The Import tab takes the file a terminal
+exports, but a company without one has nothing to start a file from.
+
+- **Download a template**, a link on the Import tab beside Choose a file,
+  gives an Excel file (.xlsx) in the language the page is in.
+- **Its first sheet, Punches, holds only the headings,** in row 1:
+  Employee number, Date and Time (رقم الموظف، التاريخ، الوقت). The import
+  reads the first sheet that has anything on it, and knows these headings
+  in either language.
+- **No In / out column.** Nizmo doesn't read the in/out key (§6.9). A file
+  that has one still imports as it does now.
+- **Its second sheet, How to fill it,** says what each column takes, with
+  example rows:
+  - the employee number set on Attendance, Employee numbers;
+  - the date, day first (25/11/2026), or an Excel date;
+  - the time, 08:55, 17:05 or 5:05 PM.
+- **The examples stay off the first sheet,** so a template sent back
+  unchanged imports nothing, never made-up punches.
+- **Employee numbers are text cells,** so a number starting with 0 keeps
+  it, and the Date column shows day, month, year.
+- **The same people as the import can download it.** The file holds no
+  company data. The server builds it on request with the library the import
+  already reads files with, from the import's own headings. A test reads
+  each language's template back through the import and finds its three
+  columns.
+
 ---
 
 ## 14. Who corrects attendance
@@ -1838,9 +1867,14 @@ word.
 The first was deferred to implementation; the rest are round 9's, answered by
 the trial on real terminals (§17.8) unless they say otherwise.
 
-1. **Face SDK choice** (§9.5) — chosen when Phase 3b starts, against the rule that
-   face templates never leave the phone. Verify the vendor's on-device mode sends
-   nothing to their servers.
+1. **Face SDK choice** (§9.5) — still open. Phase 3b was built (#27) on a
+   face check for testing only, whose recognition weights are licensed for
+   non-commercial research (`mobile/FACE_CHECK.md`), so it is never used
+   with real employees. A commercial on-device SDK replaces it before any
+   real employee uses face checks, chosen against the rule that face
+   templates never leave the phone (`mobile/README.md`, "Choosing the
+   SDK"). Verify the vendor's
+   on-device mode sends nothing to their servers.
 2. **Does a ZKTeco terminal send anything secret over ADMS** (its comm key, a
    registration code)? If a model does, the office address rule (§17.3) can be
    relaxed for it.
@@ -2037,6 +2071,11 @@ Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
 
 Part 2 needs none of the rest, and helps the first customer at once: a
 second scan on arriving no longer leaves a day incomplete.
+
+### The import's template — not built
+
+Planned in #271 (§13.9). Its own small PR, needing nothing from Phase 4
+or 5, and built before them.
 
 ---
 
