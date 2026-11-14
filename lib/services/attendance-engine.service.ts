@@ -182,14 +182,16 @@ async function deriveMonth(
             // Before their first day or after their last, a person has no attendance.
             if (person.EmploymentEvent.length > 0 && !employed.some(touches)) continue
             const plan = plans.get(date)!
+            // The version in force that day, or the simulator's draft: its window for scans close together (§6.9).
+            const policy = policyOn(policies, date)
             const day = measureDay({
                 date, expected: plan.expected, punches: grouped.get(date) ?? [],
                 onLeave: leaveDays.has(date), suspended: suspended.some(covers),
                 permissions: permissions.filter(p => p.userId === person.id && toDateString(p.date) === date),
                 excused: excusedOn(person.id, date),
+                windowMinutes: policy?.body.scanWindowMinutes,
             })
             const decision = decisions.find(o => o.userId === person.id && toDateString(o.date) === date)
-            const policy = policyOn(policies, date)
             const rate = rateAt(person.SalaryChange as any, noon)
             const base = plan.schedule ? versionOn(plan.schedule.versions, date) : null
             inputs.push({

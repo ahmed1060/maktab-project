@@ -69,6 +69,9 @@ export const absenceSchema = z.object({
 
 export const PERMISSION_TYPES = ["LATE_ARRIVAL", "EARLY_LEAVE", "MIDDAY"] as const
 
+/** Scans this many minutes apart or closer are one (§6.9, round 10, decision 8): the policy's to start. */
+export const DEFAULT_SCAN_WINDOW_MINUTES = 5
+
 export const permissionHoursSchema = z.object({
     enabled: z.boolean(),
     monthlyAllowanceMinutes: z.number().int().min(0).max(60 * 60),
@@ -91,6 +94,12 @@ export const policyBodySchema = z.object({
     permissionHours: permissionHoursSchema,
     /** Minutes after a shift starts with no check-in before the reminder (§13.4). Null: off. */
     noCheckInReminderMinutes: z.number().int().min(1).max(240).nullable(),
+    /**
+     * A scan within this many minutes of the one kept before it is left out
+     * of the day's reading (§6.9, PR 273), though still kept and shown. A
+     * version saved before it reads as 5, so nothing is migrated.
+     */
+    scanWindowMinutes: z.number().int().min(1).max(60).default(DEFAULT_SCAN_WINDOW_MINUTES),
     /**
      * Face verification can be asked of this company's people (§9.5). Only
      * while the system switch is on and the company has confirmed its legal
@@ -198,6 +207,7 @@ export const STANDARD_OFFICE: PolicyBody = {
         maxRequestsPerMonth: 4, afterTheFactHours: 24, carryOver: "LAPSE", types: [...PERMISSION_TYPES],
     },
     noCheckInReminderMinutes: 15,
+    scanWindowMinutes: DEFAULT_SCAN_WINDOW_MINUTES,
     faceVerificationAvailable: false,
     faceReverifyMonths: null,
 }
@@ -225,6 +235,7 @@ export const MEASURE_ONLY: PolicyBody = {
         maxRequestsPerMonth: null, afterTheFactHours: 0, carryOver: "LAPSE", types: [...PERMISSION_TYPES],
     },
     noCheckInReminderMinutes: null,
+    scanWindowMinutes: DEFAULT_SCAN_WINDOW_MINUTES,
     faceVerificationAvailable: false,
     faceReverifyMonths: null,
 }

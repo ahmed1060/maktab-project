@@ -148,6 +148,8 @@ export default function AttendancePolicyPanel({ companyId, readOnly, onChanged }
                 <Details items={[
                     { label: t('attendance_in_force'), value: current ? t('attendance_since_date').replace('{date}', dateText(current.effectiveFrom)) : t('attendance_from_date').replace('{date}', dateText(shown.effectiveFrom)) },
                     { label: t('attendance_work_week'), value: shown.body.workWeek.map(weekdayName).join(' ') },
+                    // How a day is read (§6.9, PR 273).
+                    { label: t('attendance_scans'), value: t('attendance_scans_line').replace('{minutes}', countOf(t, locale, shown.body.scanWindowMinutes, 'minutes')) },
                     { label: t('attendance_lateness'), value: ruleLines(shown.body.lateness) },
                     { label: t('attendance_early_leave'), value: ruleLines(shown.body.earlyLeave) },
                     {

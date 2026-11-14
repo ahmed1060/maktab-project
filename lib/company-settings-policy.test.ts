@@ -393,3 +393,43 @@ describe("found by Codex on #163", () => {
         expect(result.ok ? {} : result.errors).toEqual({ "overtime.minimumMinutes": { key: "number_whole_between", min: 0, max: 1440 } })
     })
 })
+
+describe("scans close together count as one (ATTENDANCE_PLAN.md §6.9, round 10, decision 8, PR 273)", () => {
+    it("is 5 minutes to start, anything from 1 to 60, and a version saved before it reads as 5", async () => {
+        const { policyBodySchema, DEFAULT_SCAN_WINDOW_MINUTES } = await import("@/lib/attendance/policy")
+        expect(DEFAULT_SCAN_WINDOW_MINUTES).toBe(5)
+        for (const body of [STANDARD_OFFICE, SIX_DAY_FACTORY, MEASURE_ONLY]) expect(body.scanWindowMinutes).toBe(5)
+        const { scanWindowMinutes: _, ...saved } = STANDARD_OFFICE
+        expect(policyBodySchema.parse(saved).scanWindowMinutes).toBe(5)
+        for (const minutes of [1, 60]) expect(policyBodySchema.safeParse({ ...STANDARD_OFFICE, scanWindowMinutes: minutes }).success).toBe(true)
+        for (const minutes of [0, 61, 2.5]) expect(policyBodySchema.safeParse({ ...STANDARD_OFFICE, scanWindowMinutes: minutes }).success, String(minutes)).toBe(false)
+    })
+
+    it("says it on the policy card, with how a day is read", async () => {
+        const html = await card()
+        expect(html).toContain(`<dt>${en.attendance_scans}</dt>`)
+        expect(html).toContain(esc(en.attendance_scans_line.replace("{minutes}", "5 minutes")))
+        const arabic = await card({ locale: "ar" })
+        expect(arabic).toContain(`<dt>${ar.attendance_scans}</dt>`)
+        expect(arabic).toContain(ar.attendance_scans_line.replace("{minutes}", "٥ دقائق"))
+    })
+
+    it("is changed in the dialog, a whole number of minutes under its own label, said wrong under it outside 1 to 60", async () => {
+        const html = await dialog()
+        expect(html).toContain(esc(en.attendance_scan_window))
+        expect(html).toContain(esc(en.attendance_scan_window_hint))
+        expect(html).toMatch(/<input[^>]*name="scanWindowMinutes"[^>]*value="5"/)
+        const { bodyFromForm, formFromBody } = await import("@/components/attendance-policy/policy-form")
+        const form = formFromBody(STANDARD_OFFICE)
+        expect(form.scanWindowMinutes).toBe("5")
+        for (const typed of ["0", "61", "", "2.5"]) {
+            const result = bodyFromForm({ ...form, scanWindowMinutes: typed }, STANDARD_OFFICE)
+            expect(result.ok ? {} : result.errors, typed).toEqual({ scanWindowMinutes: { key: "number_whole_between", min: 1, max: 60 } })
+        }
+        expect(bodyFromForm({ ...form, scanWindowMinutes: "10" }, STANDARD_OFFICE)).toMatchObject({ ok: true, body: { scanWindowMinutes: 10 } })
+        for (const key of ["attendance_scans", "attendance_scans_line", "attendance_scan_window", "attendance_scan_window_hint"] as const) {
+            expect(en[key], key).toBeTruthy()
+            expect(ar[key], key).toBeTruthy()
+        }
+    })
+})

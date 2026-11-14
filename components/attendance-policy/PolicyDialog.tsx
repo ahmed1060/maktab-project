@@ -153,6 +153,12 @@ export default function PolicyDialog({ title, start, startOn, defaultFrom, today
                     {errors.workWeek && <span className="ui-error">{message(errors.workWeek)}</span>}
                 </fieldset>
 
+                {/* A day is read first and last; scans close together count as one (§6.9, PR 273). */}
+                <Field label={t('attendance_scan_window')} hint={t('attendance_scan_window_hint')} error={errorOf('scanWindowMinutes')}>{p => (
+                    <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={1} max={60} name="scanWindowMinutes" value={form.scanWindowMinutes}
+                        onChange={e => edit(f => ({ ...f, scanWindowMinutes: e.target.value }), 'scanWindowMinutes')} />
+                )}</Field>
+
                 {(['lateness', 'earlyLeave'] as const).map(name => (
                     <RuleFields key={name} name={name} rule={form[name]} errorOf={errorOf} fraction={fraction} number={number}
                         onChange={(rule, paths) => edit(f => ({ ...f, [name]: rule }), ...paths)} />
