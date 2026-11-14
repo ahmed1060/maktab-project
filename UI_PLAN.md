@@ -720,7 +720,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      second PR, the brand on each terminal's card, picked in its Edit
      dialog, merged in #280 on 2026-11-14; then Phase 5 part 4's first
      PR, a mission's day, shown as Mission on the Days list
-     (`ATTENDANCE_PLAN.md` §6.10), #281;
+     (`ATTENDANCE_PLAN.md` §6.10), merged in #281 on 2026-11-14; then the
+     setup guide behind a round "i" on Fingerprint terminals, its steps by
+     the terminal's model (`ATTENDANCE_PLAN.md` §17.7; `DESIGN.md` §5.2,
+     §5.5, Dialog), #282;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6263,3 +6266,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   says which kind beside its status. The no-check-in reminder and the day
   notices skip mission days. Nothing asks for a mission yet: the Requests
   page does in the next PR.
+- **2026-11-14:** The setup guide (#282; `ATTENDANCE_PLAN.md` §17.7;
+  `DESIGN.md` §5.2, §5.5, Dialog). A round "i" beside the Fingerprint
+  terminals title opens How to set up a fingerprint terminal: pick the
+  terminal's model, and the steps follow it, from the office's PC to
+  matching numbers to people, with the model's notes and Copy beside each
+  command, in both languages.
