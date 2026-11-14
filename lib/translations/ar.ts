@@ -2096,7 +2096,7 @@ export const ar = {
         punch_template_sheet: "البصمات",
         punch_template_help_sheet: "طريقة التعبئة",
         punch_template_help_title: "طريقة تعبئة ورقة البصمات",
-        punch_template_help_rows: "صف واحد لكل بصمة، تحت العناوين في الصف الأول، مع ترك العناوين كما هي.",
+        punch_template_help_rows: "لكل بصمة صف واحد، تحت العناوين في الصف الأول، مع ترك العناوين كما هي.",
         punch_template_help_upload: "ثم يُرفع الملف من الحضور، استيراد ملف. لا يُستورد شيء من هذه الورقة.",
         punch_template_help_column: "العمود",
         punch_template_help_takes: "ما يُكتب فيه",
