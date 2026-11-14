@@ -7,6 +7,7 @@ import { addDays, toDateString } from "@/lib/attendance/calendar"
 import { localToInstant } from "@/lib/attendance/punch-import"
 import { PLATFORM_REASON } from "@/lib/services/attendance-flag.service"
 import { calendarDateStr } from "@/lib/time"
+import { missionKey, missionScans, type MissionDayScans } from "@/lib/attendance/missions"
 import { REQUEST_KINDS, type FeedRow, type RequestKind, type RequestsShow, type RequestsTab } from "./kinds"
 
 /**
@@ -368,6 +369,128 @@ const permission: Source = {
             const now = new Date()
             return { rows: rows.map(r => permissionRow(v, r, now)), total }
         })
+    },
+}
+
+// --- Missions: asked for, then approved, rejected or withdrawn (ATTENDANCE_PLAN.md §6.10, PR 283)
+
+const MISSION_ENDED = ["APPROVED", "REJECTED", "WITHDRAWN", "CANCELLED"]
+
+/**
+ * Which missions this person has on a tab, in a company that has Attendance,
+ * as its routes' rules (app/api/attendance/missions): Mine is their own in
+ * their company; To review is everyone else's they decide with
+ * attendance.approve_missions, at its reach. Null when they have none there.
+ */
+export function missionWhere(v: Viewer, q: Pick<FeedQuery, "tab" | "show" | "search" | "personId" | "companyId">): Record<string, any> | null {
+    if (!sessionHasModule({ user: v }, "ATTENDANCE")) return null
+    const where: Record<string, any> = {}
+    if (q.tab === "mine") {
+        // The Super Admin has no attendance of their own.
+        if (v.role === "SUPER_ADMIN" || !v.companyId) return null
+        where.companyId = v.companyId
+        where.userId = v.id
+    } else {
+        const reach = grantFor(v, "attendance.approve_missions")
+        if (!reach) return null
+        if (reach === "ALL") {
+            if (q.companyId) where.companyId = q.companyId
+        } else {
+            if (!v.companyId) return null
+            where.companyId = v.companyId
+            // Their own are on Mine.
+            where.userId = { not: v.id }
+            if (reach === "TEAM") and(where, { user: teamMemberWhere(v.id) })
+        }
+        if (q.personId) and(where, { userId: q.personId })
+    }
+    where.status = q.show === "done" ? { in: MISSION_ENDED } : "PENDING"
+    if (q.search) where.reason = { contains: q.search, mode: "insensitive" }
+    return where
+}
+
+type MissionRequest = {
+    id: string
+    companyId: string
+    userId: string
+    kind: string
+    startDate: Date
+    endDate: Date
+    hoursPart: string | null
+    taskTitle: string | null
+    reason: string
+    status: string
+    createdAt: Date
+    updatedAt: Date
+    rejectionReason: string | null
+    user: { firstName: string; lastName: string; teamLeaderId: string | null }
+}
+
+/**
+ * A mission as a row. Deciding it is the decision route's own rule (POST
+ * /api/attendance/missions/[id]/decide): attendance.approve_missions at the
+ * asker, which is never one's own; whoever may sees its scans so far beside
+ * it (decision 20). Whoever asked may withdraw it while it waits
+ * (MissionRequestService.withdraw).
+ */
+export function missionRow(v: Viewer, r: MissionRequest, scans: MissionDayScans[] | null): FeedRow {
+    const target: Target = { companyId: r.companyId, userId: r.userId, teamLeaderId: r.user.teamLeaderId }
+    const waits = r.status === "PENDING"
+    const mayDecide = waits && can(v, "attendance.approve_missions", target)
+    const asked = r.createdAt.toISOString()
+    const kind = missionKey(r.kind, r.hoursPart)
+    return {
+        kind: "mission",
+        id: r.id,
+        who: { id: r.userId, name: `${r.user.firstName} ${r.user.lastName}`.trim() },
+        what: kind,
+        detail: r.reason || null,
+        asked,
+        started: null,
+        finished: waits ? null : r.updatedAt.toISOString(),
+        status: r.status,
+        sortAt: waits ? asked : r.updatedAt.toISOString(),
+        mayDecide,
+        mayDelete: false,
+        mayWithdraw: r.userId === v.id && waits,
+        mission: {
+            kind, from: toDateString(r.startDate), to: toDateString(r.endDate), task: r.taskTitle, rejectionReason: r.rejectionReason,
+            scans: mayDecide ? scans ?? [] : null,
+        },
+    }
+}
+
+const mission: Source = {
+    kind: "mission",
+    where: missionWhere,
+    list: async (v, q, where, take) => {
+        const [rows, total] = await Promise.all([
+            prisma.missionRequest.findMany({
+                where,
+                orderBy: feedOrder(q.show),
+                take,
+                include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true } } },
+            }),
+            prisma.missionRequest.count({ where }),
+        ])
+        // The scans so far on the days of those waiting, for whoever decides them (decision 20): one read for the page.
+        const waiting = rows.filter(r => r.status === "PENDING" && r.userId !== v.id)
+        const punches = waiting.length === 0 ? [] : await prisma.attendancePunch.findMany({
+            where: {
+                status: "ACCEPTED", voidedAt: null,
+                OR: waiting.map(r => ({ userId: r.userId, punchAtLocal: { gte: r.startDate, lt: new Date(r.endDate.getTime() + 86_400_000) } })),
+            },
+            select: { userId: true, punchAtLocal: true },
+            orderBy: { punchAtLocal: "asc" },
+            take: 2000,
+        })
+        return {
+            rows: rows.map(r => {
+                const mine = punches.filter(p => p.userId === r.userId && p.punchAtLocal >= r.startDate && p.punchAtLocal.getTime() < r.endDate.getTime() + 86_400_000)
+                return missionRow(v, r, missionScans(mine))
+            }),
+            total,
+        }
     },
 }
 
@@ -1119,7 +1242,7 @@ const role: Source = {
     },
 }
 
-const SOURCES: Source[] = [internal, dayOff, permission, missingPunch, overtime, phone, flagged, nameChange, role]
+const SOURCES: Source[] = [internal, dayOff, permission, mission, missingPunch, overtime, phone, flagged, nameChange, role]
 
 // --- The page --------------------------------------------------------
 

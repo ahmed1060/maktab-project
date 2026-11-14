@@ -25,7 +25,7 @@ const days = [
 ]
 // As the markup writes them.
 const esc = (text: string) => text.replace(/'/g, "&#x27;")
-const settle = (fields: Record<string, unknown> = {}) => ({ count: 2, byStatus: { INCOMPLETE: 1, TO_CONFIRM: 1 }, days, requests: { permissions: 1, missing: 0, overtime: 3 }, ...fields })
+const settle = (fields: Record<string, unknown> = {}) => ({ count: 2, byStatus: { INCOMPLETE: 1, TO_CONFIRM: 1 }, days, requests: { permissions: 1, missing: 0, overtime: 3, missions: 0 }, ...fields })
 
 async function render(what: "days" | "requests", locale: "en" | "ar" = "en", fields: Record<string, unknown> = {}) {
     state.locale = locale

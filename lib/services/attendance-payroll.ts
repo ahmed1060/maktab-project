@@ -74,7 +74,7 @@ export type ToSettle = {
     byStatus: { INCOMPLETE: number; TO_CONFIRM: number }
     days: DayToSettle[]
     /** The month's requests not yet decided: a warning, not a reason to wait (decision 24). */
-    requests: { permissions: number; missing: number; overtime: number }
+    requests: { permissions: number; missing: number; overtime: number; missions: number }
 }
 
 /**
@@ -104,6 +104,10 @@ export async function daysToSettle(db: Db, companyId: string, year: number, mont
     const permissions = await db.permissionRequest.count({ where: { ...people, status: "PENDING" } })
     const missing = await db.missingPunchRequest.count({ where: { ...people, status: "PENDING" } })
     const overtime = await db.attendanceDay.count({ where: { ...people, overtimeStatus: "PENDING" } })
+    // Missions waiting with a day in the month (ATTENDANCE_PLAN.md §6.10, PR 283).
+    const missions = await db.missionRequest.count({
+        where: { companyId, userId: { in: userIds }, status: "PENDING", startDate: { lt: date.lt }, endDate: { gte: date.gte } },
+    })
     return {
         count,
         byStatus,
@@ -115,7 +119,7 @@ export async function daysToSettle(db: Db, companyId: string, year: number, mont
             firstIn: d.firstInAt?.toISOString() ?? null,
             lastOut: d.lastOutAt?.toISOString() ?? null,
         })),
-        requests: { permissions, missing, overtime },
+        requests: { permissions, missing, overtime, missions },
     }
 }
 

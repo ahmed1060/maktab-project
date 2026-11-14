@@ -114,7 +114,7 @@ describe.skipIf(!ADMIN_URL)("payroll waits for days to settle, in Postgres", () 
                 { userId: "e1", name: "Ehab One", date: "2026-10-04", status: "INCOMPLETE", firstIn: "2026-10-04T09:40:00.000Z", lastOut: null },
                 { userId: "e1", name: "Ehab One", date: "2026-10-05", status: "TO_CONFIRM", firstIn: "2026-10-05T09:00:00.000Z", lastOut: "2026-10-05T13:30:00.000Z" },
             ],
-            requests: { permissions: 1, missing: 1, overtime: 1 },
+            requests: { permissions: 1, missing: 1, overtime: 1, missions: 0 },
         })
     })
 

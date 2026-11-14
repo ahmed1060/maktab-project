@@ -176,6 +176,8 @@ export default function AttendancePolicyPanel({ companyId, readOnly, onChanged }
                             ? lines([t('attendance_permission_line').replace('{hours}', countOf(t, locale, shown.body.permissionHours.monthlyAllowanceMinutes / 60, 'hours'))])
                             : t('attendance_rule_off'),
                     },
+                    // Whether missions may be asked for (§6.10, PR 283).
+                    { label: t('attendance_missions'), value: shown.body.missions.enabled ? t('attendance_missions_line') : t('attendance_rule_off') },
                 ]} />
             )}
 

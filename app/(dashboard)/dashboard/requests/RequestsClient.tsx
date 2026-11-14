@@ -31,7 +31,7 @@ import {
 } from '@/components/ui'
 import { AskDayOff, DecideDayOff } from './DayOffDialogs'
 import {
-    AskPermission, PERMISSION_TYPE_LABEL, RejectRequest, ReportMissingPunch, RevokePhone, WithdrawAttendance, clockText, decideRequest, permissionDay, punchDay, punchTime,
+    AskMission, AskPermission, MISSION_KIND_LABEL, PERMISSION_TYPE_LABEL, RejectRequest, ReportMissingPunch, RevokePhone, WithdrawAttendance, clockText, decideRequest, permissionDay, punchDay, punchTime,
 } from './AttendanceDialogs'
 
 /**
@@ -64,6 +64,7 @@ const KIND_LABEL: Record<RequestKind, TranslationKey> = {
     // A kind, "Day off", not the side bar's name for its page (found in the browser).
     dayOff: 'requests_kind_day_off',
     permission: 'requests_kind_permission',
+    mission: 'requests_kind_mission',
     missingPunch: 'requests_kind_missing_punch',
     overtime: 'requests_kind_overtime',
     phone: 'requests_kind_phone',
@@ -106,10 +107,12 @@ interface RequestsClientProps {
     attendanceToday?: string | null
     /** What's left of this month's permission hours, in minutes, on Mine, while the policy allows them. */
     allowance?: { left: number; total: number; pending: number; carried: number } | null
+    /** Whether they may ask for a mission: attendance of their own, under a policy with missions on today (ATTENDANCE_PLAN.md §6.10). */
+    mayAskMission?: boolean
 }
 
 export default function RequestsClient({
-    rows, total, page, totalPages, kinds, tabs, tab, show, superAdmin, mayAskDayOff = false, credit = null, mayAskAttendance = false, attendanceToday = null, allowance = null,
+    rows, total, page, totalPages, kinds, tabs, tab, show, superAdmin, mayAskDayOff = false, credit = null, mayAskAttendance = false, attendanceToday = null, allowance = null, mayAskMission = false,
 }: RequestsClientProps) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
@@ -231,6 +234,7 @@ export default function RequestsClient({
     // What it's for: an internal request's title, or a day off's or permission's type.
     const name = (r: FeedRow) => r.kind === 'dayOff' ? t(DAY_OFF_TYPE_LABEL[r.what] ?? 'regular_day_off')
         : r.kind === 'permission' ? t(PERMISSION_TYPE_LABEL[r.what] ?? 'audit_value_MIDDAY')
+            : r.mission ? t(MISSION_KIND_LABEL[r.mission.kind])
             : r.kind === 'missingPunch' ? t(MISSING_LABEL[r.what] ?? 'requests_missing_any')
                 : r.kind === 'overtime' ? t('requests_overtime')
                     // A phone by its model, or, without one kept, its system.
@@ -256,6 +260,14 @@ export default function RequestsClient({
     // Between the parts of a line. In Arabic a dot beside a number reads as the digit zero (٠).
     const sep = locale === 'ar' ? '، ' : ' · '
     const leaveWhen = (r: FeedRow) => `${leaveDates(r)}${sep}${leaveDays(r)}`
+    // A mission's day, or its first and last (ATTENDANCE_PLAN.md §6.10).
+    const missionDates = (r: FeedRow) => r.mission!.from === r.mission!.to
+        ? permissionDay(r.mission!.from, locale)
+        : `${permissionDay(r.mission!.from, locale)} – ${permissionDay(r.mission!.to, locale)}`
+    // The scans so far, for whoever decides it (decision 20): a day to a line, its scans as the clock read them.
+    const missionScans = (r: FeedRow) => r.mission!.scans!.length === 0
+        ? t('requests_mission_no_scans')
+        : <ul className="ui-detail-lines">{r.mission!.scans!.map(d => <li key={d.date}>{permissionDay(d.date, locale)}: <bdi>{d.times.map(x => clockText(x, locale)).join(locale === 'ar' ? '، ' : ', ')}</bdi></li>)}</ul>
     // Permission hours: the day, its hours and how long, as the language writes them.
     const num = (n: number) => n.toLocaleString(dateLocale)
     const hours = (r: FeedRow) => `${clockText(r.permission!.start, locale)} – ${clockText(r.permission!.end, locale)}`
@@ -307,7 +319,7 @@ export default function RequestsClient({
     // What came of a day off: the days taken and from what, or why it was refused;
     // and why permission hours were.
     const outcome = (r: FeedRow) => {
-        const why = r.dayOff?.rejectionReason ?? r.permission?.rejectionReason ?? r.missingPunch?.rejectionReason ?? r.overtime?.note ?? r.phone?.reason ?? r.flagged?.reason ?? r.nameChange?.note ?? r.role?.note
+        const why = r.dayOff?.rejectionReason ?? r.permission?.rejectionReason ?? r.mission?.rejectionReason ?? r.missingPunch?.rejectionReason ?? r.overtime?.note ?? r.phone?.reason ?? r.flagged?.reason ?? r.nameChange?.note ?? r.role?.note
         const d = r.dayOff
         if (d && r.status === 'APPROVED') return t(d.deductedFrom === 'SALARY' ? 'day_off_deducted_salary' : 'day_off_deducted_credit').replace('{days}', countOf(t, locale, d.deducted, 'days'))
         // A phone revoked, and why, if someone said.
@@ -315,7 +327,7 @@ export default function RequestsClient({
         return r.status === 'REJECTED' && why ? `${t('rejected_reason_prefix')}: ${why}` : null
     }
     // Under its name: its kind, once there's more than one, and a day off's days or permission's hours.
-    const when = (r: FeedRow) => r.dayOff ? leaveWhen(r) : r.permission ? permissionWhen(r) : r.missingPunch ? punchWhen(r) : r.overtime ? overtimeWhen(r)
+    const when = (r: FeedRow) => r.dayOff ? leaveWhen(r) : r.permission ? permissionWhen(r) : r.mission ? missionDates(r) : r.missingPunch ? punchWhen(r) : r.overtime ? overtimeWhen(r)
         : r.phone ? phoneWhen(r) || null : r.flagged ? flaggedWhen(r) || null
             : r.nameChange ? t('requests_name_change_from').replace('{name}', r.nameChange.from)
                 : r.role ? roleWhen(r) : null
@@ -338,7 +350,7 @@ export default function RequestsClient({
             <Button size="sm" icon={CheckIcon} onClick={() => { setViewing(null); setDeciding({ row: r, decision: 'APPROVED' }) }} aria-label={`${t('approve_button')}: ${name(r)}, ${r.who.name}`}>{t('approve_button')}</Button>
             <Button size="sm" icon={XIcon} onClick={() => { setViewing(null); setDeciding({ row: r, decision: 'REJECTED' }) }} aria-label={`${t('reject_button')}: ${name(r)}, ${r.who.name}`}>{t('reject_button')}</Button>
         </>
-        if (r.kind === 'permission' || r.kind === 'missingPunch' || r.kind === 'overtime' || r.kind === 'phone' || r.kind === 'flagged' || r.kind === 'nameChange' || r.kind === 'role') return r.mayDecide && <>
+        if (r.kind === 'permission' || r.kind === 'mission' || r.kind === 'missingPunch' || r.kind === 'overtime' || r.kind === 'phone' || r.kind === 'flagged' || r.kind === 'nameChange' || r.kind === 'role') return r.mayDecide && <>
             <Button size="sm" icon={CheckIcon} onClick={() => { void approveAttendance(r) }} disabled={action.running} busy={action.is(r.id)} aria-label={`${t('approve_button')}: ${name(r)}, ${r.who.name}`}>{t('approve_button')}</Button>
             <Button size="sm" icon={XIcon} onClick={() => { setViewing(null); setRejecting(r) }} aria-label={`${t('reject_button')}: ${name(r)}, ${r.who.name}`}>{t('reject_button')}</Button>
         </>
@@ -371,6 +383,7 @@ export default function RequestsClient({
         if (r.flagged) return t('requests_flagged_reject_question').replace('{name}', r.who.name).replace('{time}', punchTime(r.flagged.at, locale)).replace('{date}', punchDay(r.flagged.at, locale))
         if (r.phone) return t('requests_phone_reject_question').replace('{name}', r.who.name).replace('{phone}', name(r))
         if (r.missingPunch) return t('requests_missing_reject_question').replace('{name}', r.who.name).replace('{time}', punchTime(r.missingPunch.at, locale)).replace('{date}', punchDay(r.missingPunch.at, locale))
+        if (r.mission) return t('requests_mission_reject_question').replace('{name}', r.who.name).replace('{dates}', missionDates(r))
         if (r.overtime) return t('requests_overtime_reject_question').replace('{name}', r.who.name).replace('{date}', permissionDay(r.overtime.date, locale))
         return t('requests_permission_reject_question').replace('{name}', r.who.name).replace('{date}', permissionDay(r.permission!.date, locale))
     }
@@ -475,6 +488,7 @@ export default function RequestsClient({
                             ...(kinds.length > 1 ? [{ icon: ShapesIcon, text: kindLabel(r) }] : []),
                             ...(r.dayOff ? [{ icon: CalendarBlankIcon, text: <span>{leaveWhen(r)}</span> }] : []),
                             ...(r.permission ? [{ icon: ClockIcon, text: <span>{permissionWhen(r)}</span> }] : []),
+                            ...(r.mission ? [{ icon: CalendarBlankIcon, text: <span>{missionDates(r)}</span> }] : []),
                             ...(r.missingPunch ? [{ icon: ClockIcon, text: <span>{punchWhen(r)}</span> }] : []),
                             ...(r.overtime ? [{ icon: ClockIcon, text: <span>{overtimeWhen(r)}</span> }] : []),
                             ...(r.phone && phoneWhen(r) ? [{ icon: DeviceMobileIcon, text: <span>{phoneWhen(r)}</span> }] : []),
@@ -513,6 +527,12 @@ export default function RequestsClient({
                                 { label: t('date_label'), value: permissionDay(viewing.permission.date, locale) },
                                 { label: t('requests_permission_hours'), value: hours(viewing) },
                                 { label: t('requests_permission_length'), value: length(viewing) },
+                            ] : []),
+                            ...(viewing.mission ? [
+                                { label: viewing.mission.from === viewing.mission.to ? t('date_label') : t('dates_label'), value: missionDates(viewing) },
+                                ...(viewing.mission.kind !== 'DAYS' ? [{ label: t('requests_mission_part'), value: t(viewing.mission.kind === 'TO_END' ? 'audit_value_TO_END' : 'audit_value_FROM_START') }] : []),
+                                { label: t('requests_mission_task'), value: viewing.mission.task ? <bdi>{viewing.mission.task}</bdi> : t('requests_mission_no_task') },
+                                ...(viewing.mission.scans ? [{ label: t('requests_mission_scans'), value: missionScans(viewing) }] : []),
                             ] : []),
                             ...(viewing.missingPunch ? [
                                 { label: t('date_label'), value: punchDay(viewing.missingPunch.at, locale) },
@@ -583,7 +603,8 @@ export default function RequestsClient({
                         placeholder={t(rejecting.missingPunch ? 'requests_missing_reject_placeholder' : rejecting.overtime ? 'requests_overtime_reject_placeholder'
                             : rejecting.phone ? 'requests_phone_reject_placeholder' : rejecting.flagged ? 'requests_flagged_reject_placeholder'
                                 : rejecting.nameChange ? 'requests_name_change_reject_placeholder'
-                                    : rejecting.role ? 'requests_role_reject_placeholder' : 'requests_permission_reject_placeholder')}
+                                    : rejecting.role ? 'requests_role_reject_placeholder'
+                                        : rejecting.mission ? 'requests_mission_reject_placeholder' : 'requests_permission_reject_placeholder')}
                         reasonRequired={rejecting.kind === 'role'}
                         onClose={() => setRejecting(null)} onDecided={() => { setRejecting(null); refreshed() }} />
                 )}
@@ -591,7 +612,8 @@ export default function RequestsClient({
                     <WithdrawAttendance key={withdrawing.id} request={withdrawing}
                         title={t(withdrawing.overtime ? 'requests_overtime_withdraw_title' : 'requests_withdraw_title')}
                         hint={t(withdrawing.missingPunch ? 'requests_missing_withdraw_hint' : withdrawing.overtime ? 'requests_overtime_withdraw_hint'
-                            : withdrawing.role ? 'requests_role_withdraw_hint' : 'req_withdraw_hint')}
+                            : withdrawing.role ? 'requests_role_withdraw_hint'
+                                : withdrawing.mission ? 'requests_mission_withdraw_hint' : 'req_withdraw_hint')}
                         onClose={() => setWithdrawing(null)} onWithdrawn={() => { setWithdrawing(null); setViewing(null); refreshed() }} />
                 )}
 
@@ -601,7 +623,7 @@ export default function RequestsClient({
                         onClose={() => setRevoking(null)} onRevoked={() => { setRevoking(null); setViewing(null); refreshed() }} />
                 )}
 
-                <NewRequest open={asking} mayAskDayOff={mayAskDayOff} today={mayAskAttendance ? attendanceToday : null} onClose={() => setAsking(false)} onAsked={() => {
+                <NewRequest open={asking} mayAskDayOff={mayAskDayOff} today={mayAskAttendance ? attendanceToday : null} mayAskMission={mayAskMission} onClose={() => setAsking(false)} onAsked={() => {
                     setAsking(false)
                     // Theirs, waiting: where it now is.
                     if (tab === 'mine' && show === 'waiting') refreshed()
@@ -616,11 +638,13 @@ export default function RequestsClient({
  * Asking for something: a title and what it's about, as the server checks
  * them; a day off, for whoever may ask for leave (§2.3, part 2c); or
  * permission hours or a missing punch, for whoever has attendance of their
- * own (part 3).
+ * own (part 3); or a mission, while their policy has missions on
+ * (ATTENDANCE_PLAN.md §6.10, PR 283).
  */
-function NewRequest({ open, mayAskDayOff, today, onClose, onAsked }: {
+function NewRequest({ open, mayAskDayOff, today, mayAskMission, onClose, onAsked }: {
     open: boolean
     mayAskDayOff: boolean
+    mayAskMission: boolean
     /** The company's day, for whoever has attendance of their own; null for whoever hasn't. */
     today: string | null
     onClose: () => void
@@ -628,7 +652,8 @@ function NewRequest({ open, mayAskDayOff, today, onClose, onAsked }: {
 }) {
     const { t } = useLanguage()
     const [what, setWhat] = useState<RequestKind>('internal')
-    const offered = REQUEST_KINDS.filter(k => k === 'internal' || (k === 'dayOff' && mayAskDayOff) || ((k === 'permission' || k === 'missingPunch') && today !== null))
+    const offered = REQUEST_KINDS.filter(k => k === 'internal' || (k === 'dayOff' && mayAskDayOff) || ((k === 'permission' || k === 'missingPunch') && today !== null)
+        || (k === 'mission' && mayAskMission && today !== null))
     const close = () => {
         setWhat('internal')
         onClose()
@@ -647,6 +672,8 @@ function NewRequest({ open, mayAskDayOff, today, onClose, onAsked }: {
                 ? <AskDayOff onCancel={close} onAsked={asked} />
                 : what === 'permission' && today
                     ? <AskPermission today={today} onCancel={close} onAsked={asked} />
+                    : what === 'mission' && today
+                        ? <AskMission today={today} onCancel={close} onAsked={asked} />
                     : what === 'missingPunch' && today
                         ? <ReportMissingPunch today={today} onCancel={close} onReported={asked} />
                         : <AskInternal onCancel={close} onAsked={onAsked} />}

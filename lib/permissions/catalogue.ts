@@ -219,6 +219,10 @@ export const PERMISSIONS = {
     // settings.view to open. It opens only where the Super Admin lets the
     // company set its own terminals up (Company.terminalsSetupByCompany).
     "attendance.manage_terminals":    { code: 66, module: "ATTENDANCE", scopes: COMPANY, implies: ["settings.view"], highRisk: "Affects pay" },
+    // Deciding missions (§6.10, PR 283): approving or rejecting one asked
+    // for. Never one's own. Not high-risk, as deciding permission hours and
+    // overtime isn't.
+    "attendance.approve_missions":    { code: 67, module: "ATTENDANCE", scopes: TEAM_OR_COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
 } as const satisfies Record<string, PermissionDefinition>
 
 export type Permission = keyof typeof PERMISSIONS
@@ -249,7 +253,8 @@ export type Permission = keyof typeof PERMISSIONS
  * release live by then knows it.
  *
  * Nor for attendance.manage_terminals (code 66, ATTENDANCE_PLAN.md §17.10,
- * PR 277), for the same reason.
+ * PR 277), for the same reason, nor attendance.approve_missions (code 67,
+ * §6.10, PR 283).
  */
 export const CATALOGUE_VERSION = 4
 

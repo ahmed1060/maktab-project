@@ -25,6 +25,15 @@ export async function lockMonths(tx: Prisma.TransactionClient, companyId: string
     for (const month of [...new Set(months)].sort()) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey(companyId, month)}))::text`
 }
 
+/**
+ * One person's leave and missions, asked for at once, wait on each other
+ * (ATTENDANCE_PLAN.md §6.10, decision 10, PR 283): each checks the other's
+ * dates after taking it, so two that overlap can't both pass.
+ */
+export async function lockPersonDates(tx: Prisma.TransactionClient, userId: string) {
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`person-dates:${userId}`}))::text`
+}
+
 /** Which of these months have an approved or paid payroll run. Read after the lock. */
 export async function lockedMonths(tx: Prisma.TransactionClient, companyId: string, months: Iterable<string>): Promise<Set<string>> {
     const wanted = [...new Set(months)]

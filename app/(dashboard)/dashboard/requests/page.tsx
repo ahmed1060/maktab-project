@@ -9,6 +9,7 @@ import { can } from "@/lib/permissions/can"
 import { sessionHasModule } from "@/lib/features/require"
 import { usedDayOffCredit } from "@/lib/day-off-credit"
 import { AttendanceRequestService } from "@/lib/services/attendance-request.service"
+import { MissionRequestService } from "@/lib/services/mission-request.service"
 import AccessDenied from "@/components/AccessDenied"
 import { REQUEST_KINDS, requestFeed, tabsFor, type RequestKind, type RequestsShow, type RequestsTab, type Viewer } from "@/lib/requests/feed"
 import RequestsClient from "./RequestsClient"
@@ -42,6 +43,8 @@ export default async function RequestsPage(props: { searchParams: Promise<Record
         const picked = await prisma.request.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
             ?? await prisma.dayOffRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
             ?? await prisma.permissionRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
+            // A mission's (ATTENDANCE_PLAN.md §6.10, PR 283).
+            ?? await prisma.missionRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
             ?? await prisma.missingPunchRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
             ?? await prisma.checkInPhone.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
             ?? await prisma.profileUpdateRequest.findUnique({ where: { id: searchParams.highlight }, select: { userId: true, status: true } })
@@ -103,11 +106,14 @@ export default async function RequestsPage(props: { searchParams: Promise<Record
         }
     }
 
+    // Asking for a mission, while today's policy has missions on (ATTENDANCE_PLAN.md §6.10, decision 11).
+    const mayAskMission = mayAskAttendance && await MissionRequestService.missionsOnToday(viewer.companyId!)
+
     return (
         <RequestsClient
             rows={feed.rows} total={feed.total} page={page} totalPages={feed.totalPages} kinds={feed.kinds}
             tabs={tabs} tab={tab} show={show} superAdmin={superAdmin} mayAskDayOff={mayAskDayOff} credit={credit}
-            mayAskAttendance={mayAskAttendance} attendanceToday={attendanceToday} allowance={allowance}
+            mayAskAttendance={mayAskAttendance} attendanceToday={attendanceToday} allowance={allowance} mayAskMission={mayAskMission}
         />
     )
 }

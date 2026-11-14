@@ -117,6 +117,14 @@ export const policyBodySchema = z.object({
     faceVerificationAvailable: z.boolean().default(false),
     /** Re-verify each person's face every this many months; null: only on request (§9.5). */
     faceReverifyMonths: z.number().int().min(1).max(36).nullable().default(null),
+    /**
+     * Whether missions may be asked for on a day under this version (§6.10,
+     * decision 11, PR 283). On in every version: one saved before it reads
+     * as on, so nothing is migrated. Off stops only asking; a mission already
+     * asked is decided as before, and one approved counts. Part 5 adds the
+     * allowance beside it.
+     */
+    missions: z.object({ enabled: z.boolean() }).default({ enabled: true }),
 })
 
 export type Band = z.infer<typeof bandSchema>
@@ -220,6 +228,7 @@ export const STANDARD_OFFICE: PolicyBody = {
     departureThresholdMinutes: DEFAULT_DEPARTURE_THRESHOLD_MINUTES,
     faceVerificationAvailable: false,
     faceReverifyMonths: null,
+    missions: { enabled: true },
 }
 
 export const SIX_DAY_FACTORY: PolicyBody = {
@@ -249,6 +258,7 @@ export const MEASURE_ONLY: PolicyBody = {
     departureThresholdMinutes: DEFAULT_DEPARTURE_THRESHOLD_MINUTES,
     faceVerificationAvailable: false,
     faceReverifyMonths: null,
+    missions: { enabled: true },
 }
 
 export type PolicyVersion = { id: string; effectiveFrom: string; body: PolicyBody }

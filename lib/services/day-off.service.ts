@@ -41,6 +41,16 @@ export class DayOffService {
         }
 
         return await prisma.$transaction(async (tx) => {
+            // Never over a mission waiting or approved (ATTENDANCE_PLAN.md
+            // §6.10, decision 10, PR 283), checked under the lock a mission
+            // asked at once takes too.
+            const { lockPersonDates } = await import("./attendance-lock")
+            const { missionOver } = await import("./mission-request.service")
+            await lockPersonDates(tx, userId)
+            if (await tx.missionRequest.findFirst({ where: missionOver(userId, requestDateStr, finalEndDateStr), select: { id: true } })) {
+                throw new Error("DAY_OFF_OVERLAPS_MISSION")
+            }
+
             // --- NEW: Overlap Protection ---
             const overlap = await tx.dayOffRequest.findFirst({
                 where: {
