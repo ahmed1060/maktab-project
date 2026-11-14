@@ -18,7 +18,7 @@ import type { TranslationKey } from './translations'
 type PageKey =
     | 'checkIn' | 'attendance' | 'myAttendance' | 'rolesAndAccess' | 'payroll' | 'myPayslips' | 'myCashAdvance' | 'companySettings' | 'savedLists'
     | 'companies' | 'packages' | 'allUsers'
-    | 'roleTemplates' | 'policyTemplates' | 'publicHolidays'
+    | 'roleTemplates' | 'policyTemplates' | 'publicHolidays' | 'terminalBrands'
     | 'superAdmins' | 'roleChanges' | 'accessReviews' | 'whoCan'
     | 'checkIns' | 'auditLogs' | 'systemHealth' | 'systemSettings'
 
@@ -46,6 +46,8 @@ export const PAGES: Record<PageKey, { href: string; labelKey: TranslationKey }> 
     roleTemplates: { href: '/dashboard/role-templates', labelKey: 'role_templates_title' },
     policyTemplates: { href: '/dashboard/policy-templates', labelKey: 'ptpl_title' },
     publicHolidays: { href: '/dashboard/public-holidays', labelKey: 'public_holidays_title' },
+    // The brands of fingerprint terminal companies pick from (ATTENDANCE_PLAN.md §17.9, PR 279).
+    terminalBrands: { href: '/dashboard/terminal-brands', labelKey: 'tbrand_title' },
     superAdmins: { href: '/dashboard/super-admins', labelKey: 'super_admins' },
     roleChanges: { href: '/dashboard/role-change-requests', labelKey: 'role_changes_title' },
     accessReviews: { href: '/dashboard/access-reviews', labelKey: 'access_review_title' },
@@ -79,7 +81,7 @@ export const COMPANY_GROUPS: readonly SideBarGroup[] = [
 /** The Super Admin's own pages (§2.2), after the company's. */
 export const SUPER_ADMIN_GROUPS: readonly SideBarGroup[] = [
     { key: 'customers', labelKey: 'nav_group_customers', items: ['companies', 'packages', 'allUsers'] },
-    { key: 'templates', labelKey: 'nav_group_templates', items: ['roleTemplates', 'policyTemplates', 'publicHolidays'] },
+    { key: 'templates', labelKey: 'nav_group_templates', items: ['roleTemplates', 'policyTemplates', 'publicHolidays', 'terminalBrands'] },
     { key: 'access', labelKey: 'nav_group_access', items: ['superAdmins', 'roleChanges', 'accessReviews', 'whoCan'] },
     { key: 'operations', labelKey: 'nav_group_operations', items: ['checkIns', 'auditLogs', 'systemHealth', 'systemSettings'] },
 ]
