@@ -703,7 +703,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      on the picked one (`DESIGN.md` §5.5), merged in #274 on 2026-11-14;
      then the second, a day with a punch missing marked absent or accepted
      as it is, each with a reason, on attendance's Exceptions screen
-     (`ATTENDANCE_PLAN.md` §6.9, §13.1), #275;
+     (`ATTENDANCE_PLAN.md` §6.9, §13.1), merged in #275 on 2026-11-14;
+     then the last, payroll waiting for both, its Approve listing the days
+     to settle first and warning of the month's requests not yet decided
+     (`ATTENDANCE_PLAN.md` §6.9, §12.1; `DESIGN.md` §5.5), #276;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6199,3 +6202,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   is, nothing of it is charged. Either way it moves to Decided, where Undo
   makes it incomplete again, and the person's own day says which it was.
   Payroll waiting for incomplete days is part 3's last PR.
+- **2026-11-14:** Payroll waits for days to settle (#276;
+  `ATTENDANCE_PLAN.md` round 10, decisions 14 and 24, §6.9, §12.1;
+  `DESIGN.md` §5.5, Dialog). Once attendance reaches a month's payroll, its
+  Approve can't go ahead while a day of the month is a Departure to confirm
+  or incomplete: the window lists them, each opening attendance's
+  Exceptions screen on its day, and offers Close. The month's requests not
+  yet decided are counted under a heading of their own, as a warning, each
+  kind opening the Requests page on it.

@@ -8,8 +8,9 @@ the PRs after it, and is paused for now (§20). Phase 4 (terminals through the a
 ZKTeco and Hikvision alike, round 9) is planned in #269 and not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
-and the first two of part 3's three PRs, Departure to confirm in #274
-and settling an incomplete day in #275; the rest is not built. A template for the file import
+and part 3 in three PRs: Departure to confirm in #274, settling an
+incomplete day in #275, and payroll waiting for both in #276; the rest is
+not built. A template for the file import
 (§13.9) is built in #272.
 This document is the design those PRs follow: what was decided, and why, so
 that whoever changes it is not re-arguing settled points. Where the build
@@ -481,7 +482,7 @@ a custom policy** from scratch.
 - Applying a template creates a new policy version and goes through the same
   "from when?" question as any other edit.
 
-### 6.9 Reading a day's scans (round 10; first and last built in #273, Departure to confirm in #274, settling an incomplete day in #275)
+### 6.9 Reading a day's scans (round 10; first and last built in #273, Departure to confirm in #274, settling an incomplete day in #275, payroll waiting for both in #276)
 
 **First and last, the only way** (round 10, decision 1). The day's first
 scan is the arrival and its last the departure; the scans between are left
@@ -530,9 +531,8 @@ audited, and undoing it from Decided puts the day back to wait. Adding the
 departure scan, by hand or by approving the employee's missing-punch
 report, measures the day again. The employee's own day says it waits, and
 offers reporting the missing scan or asking for permission hours for the
-early leave. Until part 3's last PR, payroll doesn't wait for it: a month
-approved meanwhile charges a waiting day nothing, as it does an incomplete
-one. A month already approved keeps its days as paid; a recompute there
+early leave. Payroll waits for it from #276 (below). A month already
+approved keeps its days as paid; a recompute there
 records a day that would now wait as a discrepancy (§12.3).
 
 **What counts first** (decision 23). Approved permission hours that day
@@ -564,8 +564,7 @@ Decided, and **Undo** there makes it incomplete again. The person's own
 day says which it was, and a recent one marked absent is told to them as
 any absence is (§13.4). A scan added afterwards measures the day from its
 scans, and the decision stays under Decided, counting for nothing, until
-it is undone. Payroll doesn't wait for incomplete days until part 3's
-last PR.
+it is undone. Payroll waits for incomplete days from #276 (below).
 
 **Payroll waits for both** (decision 14). While any day in the month is a
 Departure to confirm or incomplete, the payroll run can't be approved: its
@@ -575,6 +574,23 @@ charged nothing. The same window also lists, as a warning, the month's
 requests not yet decided (decision 24): missions, permission hours, missing
 scans, and overtime, which approval rejects. They don't stop the approval;
 one decided after it follows §12.3, as any change to a closed month does.
+
+Built in #276. Once attendance reaches a month's payroll (§12), approving
+it is refused while any day of the month, for someone on the register, is
+a Departure to confirm or incomplete; before then attendance charges
+nobody, so nothing waits. Payroll's Approve opens the window in place of
+the confirmation (`DESIGN.md` §5.5, Dialog): each day waiting, with its
+employee, date, what it waits on and its scans, opening the Exceptions
+screen on that day and kind, and Close. It lists 50 at most and says how
+many more wait. Once they're settled, Approve asks as before. Under a
+heading of its own, as a warning, the same window counts the month's
+requests not yet decided for people on the register: permission hours,
+missing punches, and overtime, which approval rejects, each kind opening
+the Requests page on it; missions join them in part 4. The server checks
+again inside approval's transaction, after the month's last recompute and
+before undecided overtime is rejected, so a day whose stored row was out
+of date is caught too; refused then, the recompute is kept, nothing else
+is written, and the window shows the day.
 
 **The terminal's in/out key is still not read.** It is often left on the
 wrong state, and the order of the scans is surer.
@@ -1356,15 +1372,20 @@ So approval and locking are serialized:
   request approval that touches a date take the same Postgres advisory lock for
   that company and month (`pg_advisory_xact_lock`) before writing. They cannot
   interleave.
-- **Before it** (round 10, planned, §6.9): approval is refused while any day in
-  the month is `INCOMPLETE` or `TO_CONFIRM`, and the screen lists them. It
-  also lists the month's requests not yet decided, as a warning that
-  doesn't stop the approval (decision 24).
+- **Before it** (round 10, built in #276, §6.9): once attendance reaches the
+  month's payroll, approval is refused while any day in the month, for
+  someone on the register, is `INCOMPLETE` or `TO_CONFIRM`, and the screen
+  lists them. It also lists the month's requests not yet decided, as a
+  warning that doesn't stop the approval (decision 24).
 - **Inside approval's transaction, in order:** take the lock → resolve pending
   overtime in the month as rejected → run the final recompute of the month's
   attendance → write the attendance payroll entries (§12.2) → compute and save the
   payslips → stamp every `AttendanceDay` with `lockedByPayrollRunId` → set the run
   `APPROVED`. One commit; either all of it happened or none of it did.
+  From #276, once attendance reaches the month's payroll, the days are
+  checked again right after the first recompute and before pending
+  overtime is rejected: a day still waiting refuses the approval, the
+  recompute kept and nothing else written.
 - **After it:** anything that takes the lock and finds the month locked records a
   discrepancy instead of writing (below).
 
@@ -2170,7 +2191,7 @@ With no push, it stays on the agent and tries the agent alone. Parts 4 to 7
 are built all the same, switched off, and tried when a terminal that pushes,
 or a Hikvision, is on hand (round 9, decision 13).
 
-### Phase 5 — Reading scans first and last, and missions — part 2 built in #273
+### Phase 5 — Reading scans first and last, and missions — parts 2 and 3 built in #273 to #276
 
 Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
 
@@ -2187,7 +2208,7 @@ Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
    2. **Settling an incomplete day**, built in #275: marking it absent or
       accepting it as it is, each with a reason, as a decision on the day
       (decision 22).
-   3. **Payroll waits for both**, with the window that lists them and warns
+   3. **Payroll waits for both**, built in #276, with the window that lists them and warns
       of the month's requests not yet decided (decisions 14, 24).
 4. **Missions, asked and decided** (§6.10): `MissionRequest`, with the two
    kinds of mission by hours and the optional task; the permission "Decide
