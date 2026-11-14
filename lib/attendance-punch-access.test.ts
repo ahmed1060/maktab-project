@@ -101,6 +101,7 @@ const upload = async (fields: Record<string, string | File>) => {
 const csv = (name = "october.csv") => new File(["ID,Date,Time\n101,01/10/2026,08:00\n"], name, { type: "text/csv" })
 const voidImport = async (id: string) =>
     (await import("@/app/api/attendance/imports/[id]/void/route")).POST(withBody("POST", `/api/attendance/imports/${id}/void`, { reason: "wrong file" }), params(id))
+const template = async (query = "") => (await import("@/app/api/attendance/import-template/route")).GET(new Request(url(`/api/attendance/import-template${query}`)))
 const codes = async (query = "") => (await import("@/app/api/attendance/codes/route")).GET(new Request(url(`/api/attendance/codes${query}`)))
 const mapCode = async (body: unknown) => (await import("@/app/api/attendance/codes/route")).POST(withBody("POST", "/api/attendance/codes", body))
 const unmap = async (id: string) => (await import("@/app/api/attendance/codes/[id]/route")).DELETE(withBody("DELETE", `/api/attendance/codes/${id}`, {}), params(id))
@@ -201,6 +202,29 @@ describe("files and employee numbers", () => {
         expect((await mapCode({ code: "7", userId: "other" })).status).toBe(404)
         expect((await voidImport("i2")).status).toBe(404)
         expect(reached).toEqual([])
+    })
+
+    it("give the import's template to whoever may import, in the page's language (ATTENDANCE_PLAN.md §13.9, PR 272)", async () => {
+        admin()
+        const en = await template("?locale=en")
+        expect(en.status).toBe(200)
+        expect(en.headers.get("content-type")).toBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        expect(en.headers.get("content-disposition")).toContain("punches-template-en.xlsx")
+        expect((await template("?locale=ar")).headers.get("content-disposition")).toContain("punches-template-ar.xlsx")
+        // Anything else is English, never a file name built from the address.
+        expect((await template("?locale=../x")).headers.get("content-disposition")).toContain("punches-template-en.xlsx")
+        superAdmin()
+        expect((await template("?companyId=c1&locale=en")).status).toBe(200)
+        expect((await template("?locale=en")).status).toBe(400)
+    })
+
+    it("keep the template from whoever can't import: a team leader, an employee, a company without attendance", async () => {
+        leader()
+        expect((await template("?locale=en")).status).toBe(403)
+        employee()
+        expect((await template("?locale=en")).status).toBe(403)
+        admin(HR_ONLY)
+        expect((await template("?locale=en")).status).toBe(403)
     })
 
     it("take a spreadsheet only: .xlsx or .csv, and a column override that is the right shape", async () => {

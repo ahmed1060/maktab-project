@@ -54,6 +54,16 @@ const DATE_HEADERS = ["date", "day", "punch date", "check date", "التاريخ
 const TIME_HEADERS = ["time", "punch time only", "clock", "check in out time", "الوقت", "الساعة"]
 const DIRECTION_HEADERS = ["state", "status", "type", "check type", "checktype", "in out", "inout", "punch type", "direction", "attendance state", "verify state", "الحالة", "النوع", "دخول خروج"]
 
+/**
+ * The template's headings (ATTENDANCE_PLAN.md §13.9, PR 272), one name from
+ * each of the lists above, in the page's language: the import reads them
+ * back as its three columns, and no In / out.
+ */
+export const TEMPLATE_HEADINGS = {
+    en: ["Employee number", "Date", "Time"],
+    ar: ["رقم الموظف", "التاريخ", "الوقت"],
+} as const
+
 function find(headers: string[], names: string[], taken: Set<number>): number | null {
     for (const name of names) {
         const i = headers.findIndex((h, j) => !taken.has(j) && h === name)

@@ -2,8 +2,8 @@
 
 import { useRef, useState } from 'react'
 import useSWR from 'swr'
-import { HourglassIcon, TrayIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
-import { Button, Card, Details, Dialog, DialogActions, EmptyState, Field, FileChip, FilePicker, Row, Select, StatusBadge, TextArea } from '@/components/ui'
+import { DownloadSimpleIcon, HourglassIcon, TrayIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { Button, ButtonDownload, Card, Details, Dialog, DialogActions, EmptyState, Field, FileChip, FilePicker, Row, Select, StatusBadge, TextArea } from '@/components/ui'
 import { fetcher, type SWRError } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -22,6 +22,10 @@ import { useFigures } from './period'
  * the file, how its dates are written and which column is which in one
  * card, with what the file holds before Import; the files imported as rows;
  * and withdrawing one in the building blocks' dialog, which asks why.
+ *
+ * With no terminal, a file can start from the template (ATTENDANCE_PLAN.md
+ * §13.9, PR 272): Download template under the file picker, in the page's
+ * language, which goes once a file is picked (DESIGN.md §5.5, Files).
  */
 
 export type Columns = { code: number; date: number; time: number | null; direction: number | null }
@@ -41,7 +45,7 @@ const PROBLEM_KEYS: Record<string, TranslationKey> = {
 }
 
 export default function ImportTab({ q, companyId }: { q: string; companyId: string | null }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const { num, date } = useFigures()
     const { showToast } = useToast()
     const [file, setFile] = useState<File | null>(null)
@@ -128,8 +132,17 @@ export default function ImportTab({ q, companyId }: { q: string; companyId: stri
                 <p className="ui-card-note">{t('punch_import_hint')}</p>
                 {file
                     ? <FileChip name={file.name} size={file.size} onRemove={busy ? undefined : () => { setFile(null); setColumns(null); invalidate() }} />
-                    : <FilePicker label={t('punch_choose_file')} hint={t('punch_file_hint')} accept=".xlsx,.csv,.txt" multiple={false} disabled={busy}
-                        onFiles={files => { setFile(files[0] ?? null); setColumns(null); invalidate() }} />}
+                    : (
+                        <>
+                            <FilePicker label={t('punch_choose_file')} hint={t('punch_file_hint')} accept=".xlsx,.csv,.txt" multiple={false} disabled={busy}
+                                onFiles={files => { setFile(files[0] ?? null); setColumns(null); invalidate() }} />
+                            <div>
+                                <ButtonDownload variant="quiet" size="sm" icon={DownloadSimpleIcon} href={`/api/attendance/import-template?${q}locale=${locale}`}>
+                                    {t('download_template')}
+                                </ButtonDownload>
+                            </div>
+                        </>
+                    )}
                 <div className="ui-field-row">
                     <Field label={t('punch_date_order')}>{f => (
                         <Select {...f} value={dateOrder} disabled={busy} onChange={e => { setDateOrder(e.target.value as DateOrder); invalidate() }}

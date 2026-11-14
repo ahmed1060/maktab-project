@@ -229,6 +229,12 @@ describe("Import and Employee numbers are on the building blocks", () => {
         expect(PAGE).not.toContain("function NumbersTab(")
     })
 
+    it("offer the template under the file picker, in the page's language, gone once a file is picked (ATTENDANCE_PLAN.md §13.9, DESIGN.md §5.5, PR 272)", () => {
+        // The picker's branch only: once a file is picked, its chip takes the picker's place.
+        const picker = IMPORT.slice(IMPORT.indexOf("<FileChip"), IMPORT.indexOf("<div className=\"ui-field-row\">"))
+        expect(picker).toMatch(/^<FileChip[\s\S]*?: \([\s\S]*?<FilePicker[\s\S]*?<ButtonDownload variant="quiet" size="sm" icon=\{DownloadSimpleIcon\} href=\{`\/api\/attendance\/import-template\?\$\{q\}locale=\$\{locale\}`\}>\s*\{t\('download_template'\)\}/)
+    })
+
     it("withdraw a file in the building blocks' dialog, asking why, under its field when it's missing", () => {
         expect(IMPORT).toMatch(/<Dialog\s+open=\{withdrawing !== null\}/)
         expect(IMPORT).toContain("t('punch_reason_required')")
