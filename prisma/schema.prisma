@@ -288,6 +288,7 @@ model Company {
   permissionRequests   PermissionRequest[]
   overtimeApprovals    OvertimeApproval[]
   missingPunchRequests MissingPunchRequest[]
+  missionRequests      MissionRequest[]
   attendanceDecisions  AttendanceDayDecision[]
   attendancePayrollEntries AttendancePayrollEntry[]
   attendanceDiscrepancies  AttendanceDiscrepancy[]
@@ -576,6 +577,7 @@ model User {
   permissionRequests         PermissionRequest[]
   overtimeApprovals          OvertimeApproval[]
   missingPunchRequests       MissingPunchRequest[]
+  missionRequests            MissionRequest[]
   attendanceDecisions        AttendanceDayDecision[]
   attendancePayrollEntries   AttendancePayrollEntry[]
   attendanceDiscrepancies    AttendanceDiscrepancy[]
@@ -658,6 +660,7 @@ model Task {
   creator             User?             @relation("CreatedTasks", fields: [createdBy], references: [id], onDelete: SetNull)
   assignees           User[]            @relation("MultipleAssignees")
   costs               TaskCost[]
+  missions            MissionRequest[]
   /// Cash advance entries spent on its costs, and put back (CLIENTS_PLAN.md §7.4).
   advanceEntries      CashAdvanceEntry[] @relation("AdvanceOnTask")
   /// Cash advance money given for it (§7.9).
@@ -2435,6 +2438,9 @@ enum AttendanceDayStatus {
   TO_CONFIRM
   LEAVE
   SUSPENDED
+  /// A working day of an approved mission by days (ATTENDANCE_PLAN.md §6.10,
+  /// PR 281): never absent, late or early, its scans kept and changing nothing.
+  MISSION
   REST
   HOLIDAY
   WORKED_REST_DAY
@@ -2574,6 +2580,65 @@ model MissingPunchRequest {
 
   @@index([companyId, status])
   @@index([userId, date])
+}
+
+enum MissionKind {
+  DAYS
+  HOURS
+}
+
+/// The part of the day a mission by hours covers (decision 15): until its
+/// end, one scan read as the arrival; or from its start, one read as the departure.
+enum MissionHoursPart {
+  TO_END
+  FROM_START
+}
+
+/// Withdrawn by whoever asked while it waits; cancelled, once approved, by
+/// someone who decides missions (decision 25).
+enum MissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WITHDRAWN
+  CANCELLED
+}
+
+/// A mission (مأمورية, ATTENDANCE_PLAN.md §6.10, round 10, PR 281): work away
+/// from one's desk, by days or by hours, so the day isn't charged as late,
+/// early or absent. The engine reads the approved ones. The database refuses
+/// a mission by hours without its part of the day or across two dates, and
+/// a last date before the first.
+model MissionRequest {
+  id              String            @id @default(uuid())
+  companyId       String
+  userId          String
+  kind            MissionKind
+  startDate       DateTime          @db.Date
+  /// The first date again for a mission by hours.
+  endDate         DateTime          @db.Date
+  hoursPart       MissionHoursPart?
+  /// One of the employee's open tasks, for whoever decides it (decision 18);
+  /// its title kept as text, so a task deleted since still names it.
+  taskId          String?
+  taskTitle       String?
+  reason          String
+  status          MissionStatus     @default(PENDING)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @default(now()) @updatedAt
+  reviewedById    String?
+  reviewedAt      DateTime?
+  rejectionReason String?
+  cancelledById   String?
+  cancelledAt     DateTime?
+  cancelReason    String?
+  company         Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task            Task?             @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status])
+  @@index([userId, startDate])
+  @@index([taskId])
 }
 
 // --- Attendance: decisions on a day (ATTENDANCE_PLAN.md §13.1) ---------------

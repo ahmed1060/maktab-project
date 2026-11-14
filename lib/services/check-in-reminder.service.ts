@@ -17,9 +17,10 @@ import { PushService } from "./push.service"
  * Only for people who check in with the app — a phone in use or waiting —
  * in a company that still has the Mobile App add-on. Once per person and
  * working day (CheckInReminder), however often the job runs. Not on a rest
- * day or holiday, not on leave, when suspended, or when lateness that day
- * is already excused or asked for: the same days the late notice keeps
- * quiet on. And not more than an hour after it was due: if the job was down,
+ * day or holiday, not on leave, when suspended, when lateness that day is
+ * already excused or asked for, or on a mission by days or from the start
+ * of the day, approved or asked for (§6.10, PR 281): the same days the late
+ * notice keeps quiet on. And not more than an hour after it was due: if the job was down,
  * a reminder at noon about 09:00 helps nobody.
  */
 
