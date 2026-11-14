@@ -698,7 +698,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      the first of Phase 5 part 3's three PRs, a day whose early leave is
      more than the policy's threshold, 2 hours to start, waiting as
      Departure to confirm, with a tab of its own on attendance's
-     Exceptions screen (`ATTENDANCE_PLAN.md` §6.9, §13.1), #274;
+     Exceptions screen (`ATTENDANCE_PLAN.md` §6.9, §13.1), and no tab
+     label on a phone more than two lines (`DESIGN.md` §5.5), #274;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6174,3 +6175,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   Late / early. The Days tab marks the day as waiting, and the person is
   told, as for an incomplete day. Settling an incomplete day and payroll
   waiting are part 3's next two PRs.
+- **2026-11-14:** No tab label on a phone takes more than two lines (#274;
+  `DESIGN.md` §5.5, Tabs). Exceptions' sixth kind, Departure to confirm,
+  squeezed its row's labels three and four lines high, Decided past the
+  edge. A tab is now at most 8rem wide on a phone and isn't squeezed
+  narrower, so a row of more than fit scrolls within itself, as the rule
+  already said it would. A row that fits on two lines, such as Costs'
+  three, is as before.
