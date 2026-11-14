@@ -687,7 +687,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      (`ATTENDANCE_PLAN.md` §13.9), a second review's decisions 22 to 27,
      the first customer's terminal read from its screens, and Phase 4's
      parts 4 to 7 built before a terminal can try them (round 9, decision
-     13), #271;
+     13), merged in #271 on 2026-11-14; then the import's template,
+     Download template on attendance's Import tab, an Excel file in the
+     page's language with the headings the import reads and how to fill
+     it (`ATTENDANCE_PLAN.md` §13.9), #272;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6133,3 +6136,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   the manuals, when a terminal that uses it is on hand, and the switch
   stays off for every company until then. Plans only; no screen changes
   yet.
+- **2026-11-14:** The import's template is built (#272;
+  `ATTENDANCE_PLAN.md` §13.9; `DESIGN.md` §5.5, Files): Download template,
+  a quiet button under the Import tab's file picker, gives an Excel file in
+  the page's language. Its first sheet holds only the headings the import
+  reads, Employee number, Date and Time, in text cells, so what is typed is
+  what is read; how to fill it, with examples, is on a second sheet the
+  import never reads. Anyone who can import can download it. The label is
+  the one the task upload's template already has, where the plan said
+  Download a template.
