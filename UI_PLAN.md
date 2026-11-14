@@ -694,7 +694,11 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      Phase 5 part 2, a day's scans read first and last for every company,
      scans close together counting as one within the policy's window, 5
      minutes to start, said on the policy panel and changed in its dialog
-     (`ATTENDANCE_PLAN.md` §6.9, §11), #273;
+     (`ATTENDANCE_PLAN.md` §6.9, §11), merged in #273 on 2026-11-14; then
+     the first of Phase 5 part 3's three PRs, a day whose early leave is
+     more than the policy's threshold, 2 hours to start, waiting as
+     Departure to confirm, with a tab of its own on attendance's
+     Exceptions screen (`ATTENDANCE_PLAN.md` §6.9, §13.1), #274;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6158,3 +6162,15 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   policy's dialog, "Scans this close count as one", and a new line on its
   panel. A version saved before it reads as 5 minutes. Departures to
   confirm, and payroll waiting for them, are part 3.
+- **2026-11-14:** A departure to confirm (#274; `ATTENDANCE_PLAN.md`
+  round 10, decisions 13, 23 and 26, §6.9, §13.1): a day whose early leave,
+  after approved permission hours, is more than the policy's threshold
+  waits instead of being charged, since a forgotten last scan reads as
+  leaving early. The threshold is a new field of the policy's dialog,
+  "Early leave longer than this waits to be confirmed", 120 minutes to
+  start, and a new line on its panel. Attendance's Exceptions screen has a
+  Departure to confirm tab, between Incomplete and Overtime, where the
+  departure scan is added, or the early leave accepted or excused, as on
+  Late / early. The Days tab marks the day as waiting, and the person is
+  told, as for an incomplete day. Settling an incomplete day and payroll
+  waiting are part 3's next two PRs.
