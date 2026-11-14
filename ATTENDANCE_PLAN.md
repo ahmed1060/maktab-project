@@ -5,7 +5,9 @@ Phase 0 (engine, settings, import) is #9–#15; Phase 1 (payroll) is #16; Phase 
 (terminals and the Local Sync Agent) is #17–#19; Phase 3 (the check-in app) is
 #20–#26; Phase 3b (face verification) is #27, with later fixes and speed work in
 the PRs after it, and is paused for now (§20). Phase 4 (terminals through the agent or straight to Nizmo,
-ZKTeco and Hikvision alike, round 9) is planned in #269 and not built.
+ZKTeco and Hikvision alike, round 9) is planned in #269; its part 2, who
+may set terminals up, is built in #277, with the built-in Admin's grant
+for the companies already there to follow; the rest is not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
@@ -1968,6 +1970,35 @@ pay. So it stops being part of the Attendance settings tab's own access
   to start, those two are the Super Admin's to finish or remove; nobody loses
   a working setup.
 
+**Built in #277.** What the build settled:
+
+- **Reached on the Attendance tab.** The section is on that tab, so a
+  company's people reach it where the Super Admin shows them the tab
+  (§5.2), and the permission implies `settings.view`, without which no tab
+  opens. Its routes no longer ask whether the tab may be saved: they ask
+  that the company holds attendance and the Terminals add-on, that the
+  person may see the Attendance tab, and, for anyone but the Super Admin,
+  the company's switch and the permission. Anything else answers 404.
+- **Seeing it is changing it.** There's no read-only view of the section:
+  whoever may see it may do everything in it.
+- **The high-risk acts there are today:** adding an agent, which issues
+  its code, issuing a new code, and retiring a terminal. Issuing a
+  terminal's address, and changing its connection or the office address,
+  ask the same once parts 5 and 6 add them.
+- **The switch** is a card above the section, shown to the Super Admin
+  alone for a company holding the Terminals add-on. Turning it on asks
+  first, since it lets the company's people add what counts towards pay;
+  turning it off doesn't, since it stops nothing already set up.
+- **Alerts** go to those holding the permission where the switch is on and
+  the Attendance tab is shown to the company, and to the Super Admin
+  otherwise, or when nobody at work there holds it.
+- **The companies already there** get the built-in Admin's grant from a
+  later PR's migration, once this release is live (part 2's second PR, as
+  for cash advances, `CLIENTS_PLAN.md` §7.8), so no role editor that
+  doesn't know the permission drops it meanwhile. A new company's Admin
+  role holds it from this release. With every company's switch off until
+  the Super Admin turns it on, nobody's access changes meanwhile.
+
 ### 17.11 Sources
 
 Checked on 12 November 2026. Vendor documents vary by model and firmware,
@@ -2127,7 +2158,8 @@ which becomes part 8 below. Each part is its own PR:
    start;
    the Fingerprint terminals section and its routes behind both; alerts to
    those holding it. The roles tests and `ROLES_PLAN.md` §6.15's list gain
-   it.
+   it. Built in #277; the built-in Admin's grant for the companies already
+   there is its own small PR after it.
 3. **Terminal brands** (§17.9): the migration (`TerminalBrand`, starting with
    ZKTeco, Hikvision and Convoy; a terminal's `protocol` and `brandId`), the
    Super Admin's Terminal brands page under Templates, with `DESIGN.md`
