@@ -18,11 +18,30 @@ export interface ApprovalInput {
     acknowledgePending: boolean
     /** Nobody to pay is not an error, but it is worth refusing by accident. */
     includedCount: number
+    /**
+     * Days of the month, for people on the register, still incomplete or a
+     * departure to confirm, once attendance reaches the month's payroll
+     * (ATTENDANCE_PLAN.md §6.9, decision 14, PR 276): how many, and whose.
+     */
+    daysToSettle: WaitingDays
+}
+
+/**
+ * What waits, as a refusal hands it back: how many and whose, and, from the
+ * server, how many of each kind and the first of them (review on PR 276), so
+ * the window can show them even when the register read again can't.
+ */
+export type WaitingDays = {
+    count: number
+    names: string[]
+    byStatus?: { INCOMPLETE: number; TO_CONFIRM: number }
+    days?: { userId: string; name: string; date: string; status: "INCOMPLETE" | "TO_CONFIRM"; firstIn: string | null; lastOut: string | null }[]
 }
 
 export type ApprovalRefusal =
     | { code: "ALREADY_APPROVED"; message: string }
     | { code: "CANNOT_COMPUTE"; message: string; names: string[] }
+    | { code: "DAYS_TO_SETTLE"; message: string; names: string[]; waiting: WaitingDays }
     | { code: "PENDING_UNACKNOWLEDGED"; message: string; names: string[] }
     | { code: "NOBODY_TO_PAY"; message: string }
 
@@ -60,6 +79,12 @@ export function checkApproval(input: ApprovalInput): ApprovalVerdict {
         }
     }
 
+    // Refused, not acknowledged: such a day is charged nothing until somebody
+    // settles it, so approving now would pay it as worked, by default rather
+    // than by anybody's decision. Before an undecided suspension, which
+    // acknowledging doesn't settle.
+    if (input.daysToSettle.count > 0) return { ok: false, refusal: settleRefusal(input.daysToSettle) }
+
     // Acknowledged rather than refused, because the answer is "pay them for now
     // and decide later" and that is a legitimate choice. What is not legitimate
     // is making it without noticing, so it takes a deliberate act.
@@ -88,6 +113,23 @@ export function checkApproval(input: ApprovalInput): ApprovalVerdict {
     }
 
     return { ok: true }
+}
+
+/**
+ * Days of the month still to settle: a punch missing, or a departure to
+ * confirm (ATTENDANCE_PLAN.md §6.9, §12.1, PR 276). Also what approval's
+ * transaction answers when its own last recompute finds one.
+ */
+export function settleRefusal(waiting: WaitingDays): ApprovalRefusal {
+    const { count, names } = waiting
+    return {
+        code: "DAYS_TO_SETTLE",
+        message:
+            `${count} ${count === 1 ? "day" : "days"} of this month still ${count === 1 ? "waits" : "wait"} on a scan or a decision: a punch missing, or a departure to confirm. ` +
+            `Each would be charged nothing, so settle them on attendance's Exceptions screen before approving.`,
+        names,
+        waiting,
+    }
 }
 
 /**

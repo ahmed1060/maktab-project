@@ -9,6 +9,7 @@ const base: ApprovalInput = {
     pendingDecisions: [],
     acknowledgePending: false,
     includedCount: 3,
+    daysToSettle: { count: 0, names: [] },
 }
 
 describe("what has to be true before a month can be frozen", () => {
@@ -72,6 +73,24 @@ describe("what has to be true before a month can be frozen", () => {
             pendingDecisions: [{ userId: "u2", name: "B", undecidedDays: 1 }],
         })
         expect(!verdict.ok && verdict.refusal.code).toBe("CANNOT_COMPUTE")
+    })
+
+    it("refuses outright while days of the month wait to be settled, and names whose (ATTENDANCE_PLAN.md §6.9, decision 14, PR 276)", () => {
+        // Not something to acknowledge: a day with one scan, or a departure to
+        // confirm, is charged nothing until somebody settles it.
+        const verdict = checkApproval({ ...base, daysToSettle: { count: 3, names: ["Ehab One", "Rami Nabil"] } })
+        expect(verdict.ok).toBe(false)
+        expect(!verdict.ok && verdict.refusal).toMatchObject({ code: "DAYS_TO_SETTLE", names: ["Ehab One", "Rami Nabil"] })
+        expect(!verdict.ok && verdict.refusal.message).toContain("3 days")
+        // And what waits, for the window to show (review on PR 276).
+        expect(!verdict.ok && "waiting" in verdict.refusal && verdict.refusal.waiting).toEqual({ count: 3, names: ["Ehab One", "Rami Nabil"] })
+        expect(checkApproval({ ...base, daysToSettle: { count: 1, names: ["Ehab One"] } })).toMatchObject({ refusal: { message: expect.stringContaining("1 day ") } })
+        // Acknowledging an undecided suspension doesn't settle a day.
+        const both = checkApproval({ ...base, daysToSettle: { count: 1, names: ["A"] }, pendingDecisions: [{ userId: "u2", name: "B", undecidedDays: 1 }], acknowledgePending: true })
+        expect(!both.ok && both.refusal.code).toBe("DAYS_TO_SETTLE")
+        // Somebody who can't be calculated is still said first.
+        const worse = checkApproval({ ...base, daysToSettle: { count: 1, names: ["A"] }, refused: [{ userId: "u1", name: "C", reason: "x" }] })
+        expect(!worse.ok && worse.refusal.code).toBe("CANNOT_COMPUTE")
     })
 })
 
@@ -145,12 +164,44 @@ describe("approving is its own act", () => {
         expect(draft).not.toContain("PayrollRunService.approve")
     })
 
+    it("checks the days again inside its transaction, after the month's last recompute and before undecided overtime is rejected (PR 276)", () => {
+        // A day whose stored row was out of date is only found by the recompute;
+        // refused there, nothing of the approval is written.
+        const approve = service.slice(service.indexOf("static async approve"))
+        const recompute = approve.indexOf("AttendanceEngineService.recomputeMonthIn(tx")
+        const recheck = approve.indexOf("daysToSettle(tx, companyId, year, month")
+        const reject = approve.indexOf("rejectPendingOvertime(tx")
+        expect(recompute).toBeGreaterThan(-1)
+        expect(recheck).toBeGreaterThan(recompute)
+        expect(reject).toBeGreaterThan(recheck)
+        expect(approve.slice(recheck, reject)).toContain("return { refusal: settleRefusal(")
+        // Before the transaction, from the days as stored, for the people on the register.
+        expect(approve.slice(0, approve.indexOf("prisma.$transaction"))).toContain("daysToSettle: settle")
+    })
+
+    it("checks anyone on the register being approved who wasn't checked before, undoing it all if one waits (review on PR 276)", () => {
+        // Somebody on the payroll again since the register was first read is on
+        // the one approved: their days are checked there, once it's built.
+        const approve = service.slice(service.indexOf("static async approve"))
+        const final = approve.indexOf("const { register: final, payrollDay } = await this.compute(companyId, year, month, tx, reaches)")
+        const late = approve.indexOf("daysToSettle(tx, companyId, year, month, unchecked)")
+        const written = approve.indexOf("this.writeDraft(tx, companyId, year, month, final, payrollDay)")
+        expect(final).toBeGreaterThan(-1)
+        expect(late).toBeGreaterThan(final)
+        expect(written).toBeGreaterThan(late)
+        // Thrown, so the transaction undoes the overtime rejected; answered as the same refusal.
+        expect(approve.slice(late, written)).toContain("throw new SettleRefused(settleRefusal(")
+        expect(approve).toContain("if (error instanceof SettleRefused) return { refusal: error.refusal }")
+    })
+
     it("sends the names back with the refusal", () => {
         // A screen that can only say "no" sends somebody hunting through a list
         // of fifty to find the two people it meant.
         const route = stripComments(readFileSync("app/api/payroll/[year]/[month]/approve/route.ts", "utf8"))
         expect(route).toContain("names")
         expect(route).toContain("ApiResponse.badRequest")
+        // Days to settle send what waits too, for the window to show (review on PR 276).
+        expect(route).toContain("...('waiting' in result.refusal ? { waiting: result.refusal.waiting } : {})")
     })
 })
 

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { lockMonths } from "./attendance-lock"
-import { attendanceReaches, attendanceMoney, rejectPendingOvertime, reconcileEntries, stampDays, monthKey } from "./attendance-payroll"
+import { attendanceReaches, attendanceMoney, rejectPendingOvertime, reconcileEntries, stampDays, monthKey, daysToSettle, waitingOf } from "./attendance-payroll"
 import { buildRegister, variance, nextIssueBatch, issueProgress, ISSUE_BATCH_SIZE, ATTENDANCE_SOURCE, type PersonMonth, type AdjustmentInput } from "@/lib/register"
 import { DEBT_RECOVERY_SOURCE, type RecoverableDebt } from "@/lib/debt-recovery"
 import { timelineForMonth } from "@/lib/employment"
@@ -10,7 +10,16 @@ import { toMajor, toMinor } from "@/lib/payroll"
 import { paydayIn } from "@/lib/payday"
 import { calendarDateStr, startOfMonthIn } from "@/lib/time"
 import { resolveTimeZone } from "@/lib/timezone"
-import { checkApproval, type ApprovalRefusal } from "@/lib/approval"
+import { checkApproval, settleRefusal, type ApprovalRefusal } from "@/lib/approval"
+
+/**
+ * A day still to settle found on the register being approved, for someone
+ * not checked before it was built (review on PR 276). Thrown, so the
+ * transaction undoes what it had done; answered as the refusal it carries.
+ */
+class SettleRefused extends Error {
+    constructor(readonly refusal: ApprovalRefusal) { super("DAYS_TO_SETTLE") }
+}
 
 /**
  * Building a month's payroll, and freezing it once somebody signs it off.
@@ -238,6 +247,12 @@ export class PayrollRunService {
             // Note: `amount` and "still owed" stopped being the same number when
             // recovery arrived — see the mapping below.
         ])
+        // What approving waits on, and warns of (ATTENDANCE_PLAN.md §6.9,
+        // decisions 14 and 24, PR 276): for a draft, once attendance reaches
+        // its payroll. Past approval, nothing waits.
+        const toSettle = (run?.status ?? "DRAFT") === "DRAFT" && attendance.reachesPayroll
+            ? await daysToSettle(prisma, companyId, year, month, register.entries.filter(e => !e.excluded).map(e => e.userId))
+            : null
 
         return {
             year,
@@ -261,6 +276,7 @@ export class PayrollRunService {
                 : {},
             register,
             refused,
+            toSettle,
             // What attendance costs this month: on the payslips once it reaches
             // payroll; before that, shown beside the register and deducted from
             // nobody — the dry run (ATTENDANCE_PLAN.md §20).
@@ -420,12 +436,22 @@ export class PayrollRunService {
         session: any,
         options: { acknowledgePending?: boolean } = {},
     ): Promise<{ runId: string } | { refusal: ApprovalRefusal }> {
-        const [{ register, refused }, existing] = await Promise.all([
+        const [{ register, refused, attendance }, existing] = await Promise.all([
             this.compute(companyId, year, month),
             prisma.payrollRun.findUnique({
                 where: { companyId_month_year: { companyId, month, year } },
             }),
         ])
+
+        // Days still incomplete or a departure to confirm, for the people on
+        // the register, once attendance reaches the month's payroll
+        // (ATTENDANCE_PLAN.md §6.9, decision 14, PR 276): from the days as
+        // stored here, and again inside the transaction below.
+        const onRegister = register.entries.filter(e => !e.excluded).map(e => e.userId)
+        const stored = attendance.reachesPayroll && (existing?.status ?? "DRAFT") === "DRAFT"
+            ? await daysToSettle(prisma, companyId, year, month, onRegister)
+            : null
+        const settle = stored ? waitingOf(stored) : { count: 0, names: [] }
 
         const verdict = checkApproval({
             status: (existing?.status ?? "DRAFT") as "DRAFT" | "APPROVED" | "PAID",
@@ -433,6 +459,7 @@ export class PayrollRunService {
             pendingDecisions: register.pendingDecisions,
             acknowledgePending: options.acknowledgePending === true,
             includedCount: register.includedCount,
+            daysToSettle: settle,
         })
         if (!verdict.ok) return { refusal: verdict.refusal }
 
@@ -446,137 +473,157 @@ export class PayrollRunService {
         // happened or none of it did, and a punch, a request or a recompute for
         // the month waits for the lock and is then refused — it can never land
         // between the figures being computed and the month being frozen.
-        return prisma.$transaction(async (tx) => {
-            const key = monthKey(year, month)
-            await lockMonths(tx, companyId, [key])
-            const current = await tx.payrollRun.findUnique({ where: { companyId_month_year: { companyId, month, year } }, select: { status: true } })
-            if (current && current.status !== "DRAFT") throw new Error("RUN_NOT_DRAFT")
+        try {
+            return await prisma.$transaction(async (tx) => {
+                const key = monthKey(year, month)
+                await lockMonths(tx, companyId, [key])
+                const current = await tx.payrollRun.findUnique({ where: { companyId_month_year: { companyId, month, year } }, select: { status: true } })
+                if (current && current.status !== "DRAFT") throw new Error("RUN_NOT_DRAFT")
 
-            const approverId: string = session?.user?.id ?? "system"
-            // The switch, read once and held (review on #16): FOR SHARE makes a
-            // concurrent change to it wait for this approval, and that change
-            // then sees the month approved. Everything below uses this reading.
-            const [{ attendancePayrollFrom }] = await tx.$queryRaw<{ attendancePayrollFrom: Date | null }[]>`
-                SELECT "attendancePayrollFrom" FROM "Company" WHERE id = ${companyId} FOR SHARE`
-            const reaches = attendanceReaches(attendancePayrollFrom, year, month)
-            let overtimeRejected = 0
-            if (reaches) {
-                // Rebuilt first, so overtime on days whose stored row was stale
-                // or missing is found and refused too; then rebuilt again so the
-                // money reflects those refusals (review on #16).
-                const today = calendarDateStr(new Date(), timeZone)
-                await AttendanceEngineService.recomputeMonthIn(tx, companyId, key, timeZone, today)
-                overtimeRejected = await rejectPendingOvertime(tx, companyId, year, month, approverId)
-                if (overtimeRejected > 0) await AttendanceEngineService.recomputeMonthIn(tx, companyId, key, timeZone, today)
-            }
-            const { register: final, payrollDay } = await this.compute(companyId, year, month, tx, reaches)
-            const draft = await this.writeDraft(tx, companyId, year, month, final, payrollDay)
-            const entries = reaches
-                ? await reconcileEntries(tx, companyId, year, month, draft.id, final.entries.map(e => ({
-                    userId: e.userId,
-                    excluded: e.excluded,
-                    attendance: attendanceOf(e.lines),
-                })))
-                : null
-            const daysLocked = await stampDays(tx, companyId, year, month, draft.id)
+                const approverId: string = session?.user?.id ?? "system"
+                // The switch, read once and held (review on #16): FOR SHARE makes a
+                // concurrent change to it wait for this approval, and that change
+                // then sees the month approved. Everything below uses this reading.
+                const [{ attendancePayrollFrom }] = await tx.$queryRaw<{ attendancePayrollFrom: Date | null }[]>`
+                    SELECT "attendancePayrollFrom" FROM "Company" WHERE id = ${companyId} FOR SHARE`
+                const reaches = attendanceReaches(attendancePayrollFrom, year, month)
+                let overtimeRejected = 0
+                if (reaches) {
+                    // Rebuilt first, so overtime on days whose stored row was stale
+                    // or missing is found and refused too; then rebuilt again so the
+                    // money reflects those refusals (review on #16).
+                    const today = calendarDateStr(new Date(), timeZone)
+                    await AttendanceEngineService.recomputeMonthIn(tx, companyId, key, timeZone, today)
+                    // Checked again on the month as just rebuilt, before anything of
+                    // the approval is written (PR 276): a day whose stored row was
+                    // out of date waits too. Refused, the recompute is kept, as any
+                    // recompute's would be, and nothing else is written.
+                    const still = await daysToSettle(tx, companyId, year, month, onRegister)
+                    if (still.count > 0) return { refusal: settleRefusal(waitingOf(still)) }
+                    overtimeRejected = await rejectPendingOvertime(tx, companyId, year, month, approverId)
+                    if (overtimeRejected > 0) await AttendanceEngineService.recomputeMonthIn(tx, companyId, key, timeZone, today)
+                }
+                const { register: final, payrollDay } = await this.compute(companyId, year, month, tx, reaches)
+                // The register being approved, read again here, can hold somebody the
+                // one read before didn't, such as someone put back on the payroll
+                // meanwhile: their days are checked too (review on PR 276). Found
+                // waiting, everything above is undone, the overtime rejected among it.
+                if (reaches) {
+                    const unchecked = final.entries.filter(e => !e.excluded && !onRegister.includes(e.userId)).map(e => e.userId)
+                    const late = unchecked.length ? await daysToSettle(tx, companyId, year, month, unchecked) : null
+                    if (late && late.count > 0) throw new SettleRefused(settleRefusal(waitingOf(late)))
+                }
+                const draft = await this.writeDraft(tx, companyId, year, month, final, payrollDay)
+                const entries = reaches
+                    ? await reconcileEntries(tx, companyId, year, month, draft.id, final.entries.map(e => ({
+                        userId: e.userId,
+                        excluded: e.excluded,
+                        attendance: attendanceOf(e.lines),
+                    })))
+                    : null
+                const daysLocked = await stampDays(tx, companyId, year, month, draft.id)
 
-            const run = await tx.payrollRun.update({
-                where: { companyId_month_year: { companyId, month, year } },
-                data: {
-                    status: "APPROVED",
-                    attendanceIncluded: reaches,
-                    approvedAt: new Date(),
-                    approvedById: session?.user?.id ?? null,
-                },
-                include: { payslips: { include: { lines: true } } },
-            })
+                const run = await tx.payrollRun.update({
+                    where: { companyId_month_year: { companyId, month, year } },
+                    data: {
+                        status: "APPROVED",
+                        attendanceIncluded: reaches,
+                        approvedAt: new Date(),
+                        approvedById: session?.user?.id ?? null,
+                    },
+                    include: { payslips: { include: { lines: true } } },
+                })
 
-            // Recovery: what this run took back, applied to the debts it took it
-            // from. Driven off the stored payslip lines rather than recomputed,
-            // so the money moved and the record of it moving cannot disagree —
-            // the line on somebody's payslip is the claim, and this is that same
-            // claim being honoured.
-            //
-            // Before the carry loop below, deliberately. A debt raised by this
-            // month is due on this month's payday and could otherwise be read as
-            // already collectable by the very run that created it.
-            for (const payslip of run.payslips) {
-                if (payslip.excluded) continue
-                for (const line of payslip.lines) {
-                    if (line.source !== DEBT_RECOVERY_SOURCE || !line.sourceId) continue
+                // Recovery: what this run took back, applied to the debts it took it
+                // from. Driven off the stored payslip lines rather than recomputed,
+                // so the money moved and the record of it moving cannot disagree —
+                // the line on somebody's payslip is the claim, and this is that same
+                // claim being honoured.
+                //
+                // Before the carry loop below, deliberately. A debt raised by this
+                // month is due on this month's payday and could otherwise be read as
+                // already collectable by the very run that created it.
+                for (const payslip of run.payslips) {
+                    if (payslip.excluded) continue
+                    for (const line of payslip.lines) {
+                        if (line.source !== DEBT_RECOVERY_SOURCE || !line.sourceId) continue
 
-                    const debt = await tx.debt.findUnique({ where: { id: line.sourceId } })
-                    // Gone or already settled between the draft and now. Skipped
-                    // rather than failed: the payslip is already correct about
-                    // what was deducted, and refusing the whole approval over one
-                    // stale row would hold up everybody else's pay.
-                    if (!debt || debt.status !== "OUTSTANDING") continue
+                        const debt = await tx.debt.findUnique({ where: { id: line.sourceId } })
+                        // Gone or already settled between the draft and now. Skipped
+                        // rather than failed: the payslip is already correct about
+                        // what was deducted, and refusing the whole approval over one
+                        // stale row would hold up everybody else's pay.
+                        if (!debt || debt.status !== "OUTSTANDING") continue
 
-                    const recovered = Number(debt.recoveredAmount) + Number(line.amount)
-                    const settled = recovered >= Number(debt.amount)
-                    await tx.debt.update({
-                        where: { id: debt.id },
+                        const recovered = Number(debt.recoveredAmount) + Number(line.amount)
+                        const settled = recovered >= Number(debt.amount)
+                        await tx.debt.update({
+                            where: { id: debt.id },
+                            data: {
+                                recoveredAmount: recovered,
+                                ...(settled && { status: "SETTLED", settledAt: new Date() }),
+                            },
+                        })
+                    }
+                }
+
+                // A net that floored at zero leaves money the deductions could not
+                // take. It becomes a debt here rather than at draft time, because
+                // until approval the figure is still moving and a debt that changes
+                // every time somebody opens a screen is not a debt.
+                for (const payslip of run.payslips) {
+                    if (payslip.excluded) continue
+                    const carried = Number(payslip.carriedAmount)
+                    if (carried <= 0) continue
+
+                    await tx.debt.create({
                         data: {
-                            recoveredAmount: recovered,
-                            ...(settled && { status: "SETTLED", settledAt: new Date() }),
+                            userId: payslip.userId,
+                            companyId,
+                            amount: carried,
+                            source: "PAYSLIP_CARRY",
+                            sourceId: payslip.id,
+                            // Due on the payday this run is for: the month it could
+                            // not be taken from is the month it became owed.
+                            dueDate: paydayIn(year, month, run.payrollDay, timeZone),
                         },
                     })
                 }
-            }
 
-            // A net that floored at zero leaves money the deductions could not
-            // take. It becomes a debt here rather than at draft time, because
-            // until approval the figure is still moving and a debt that changes
-            // every time somebody opens a screen is not a debt.
-            for (const payslip of run.payslips) {
-                if (payslip.excluded) continue
-                const carried = Number(payslip.carriedAmount)
-                if (carried <= 0) continue
-
-                await tx.debt.create({
-                    data: {
-                        userId: payslip.userId,
+                // Settlements waiting on a run, now carried by this one. Attached by
+                // due date rather than by the month somebody left in: a person who
+                // left in March with an April due date is April's to pay.
+                const carriedSettlements = await tx.finalSettlement.updateMany({
+                    where: {
                         companyId,
-                        amount: carried,
-                        source: "PAYSLIP_CARRY",
-                        sourceId: payslip.id,
-                        // Due on the payday this run is for: the month it could
-                        // not be taken from is the month it became owed.
-                        dueDate: paydayIn(year, month, run.payrollDay, timeZone),
+                        status: "PENDING",
+                        payrollRunId: null,
+                        dueDate: { lte: endOfMonthIn(year, month, timeZone) },
+                    },
+                    data: { payrollRunId: run.id, status: "APPROVED" },
+                })
+
+                const { AuditLogService } = await import("./audit-log.service")
+                await AuditLogService.log("APPROVE_PAYROLL", "PAYROLL", run.id, {
+                    tx,
+                    userId: session?.user?.role !== "SUPER_ADMIN" ? session?.user?.id : null,
+                    superAdminId: session?.user?.role === "SUPER_ADMIN" ? session?.user?.id : null,
+                    details: {
+                        companyId, month, year,
+                        payslips: run.payslips.length,
+                        payable: toMajor(final.payableMinor),
+                        attendance: reaches ? { entries: entries?.written ?? 0, overtimeRejected, daysLocked } : null,
+                        settlementsCarried: carriedSettlements.count,
+                        pendingAcknowledged: final.pendingDecisions.map(p => p.name),
                     },
                 })
-            }
 
-            // Settlements waiting on a run, now carried by this one. Attached by
-            // due date rather than by the month somebody left in: a person who
-            // left in March with an April due date is April's to pay.
-            const carriedSettlements = await tx.finalSettlement.updateMany({
-                where: {
-                    companyId,
-                    status: "PENDING",
-                    payrollRunId: null,
-                    dueDate: { lte: endOfMonthIn(year, month, timeZone) },
-                },
-                data: { payrollRunId: run.id, status: "APPROVED" },
-            })
-
-            const { AuditLogService } = await import("./audit-log.service")
-            await AuditLogService.log("APPROVE_PAYROLL", "PAYROLL", run.id, {
-                tx,
-                userId: session?.user?.role !== "SUPER_ADMIN" ? session?.user?.id : null,
-                superAdminId: session?.user?.role === "SUPER_ADMIN" ? session?.user?.id : null,
-                details: {
-                    companyId, month, year,
-                    payslips: run.payslips.length,
-                    payable: toMajor(final.payableMinor),
-                    attendance: reaches ? { entries: entries?.written ?? 0, overtimeRejected, daysLocked } : null,
-                    settlementsCarried: carriedSettlements.count,
-                    pendingAcknowledged: final.pendingDecisions.map(p => p.name),
-                },
-            })
-
-            return { runId: run.id }
-        }, { timeout: 120_000 })
+                return { runId: run.id }
+            }, { timeout: 120_000 })
+        } catch (error) {
+            if (error instanceof SettleRefused) return { refusal: error.refusal }
+            throw error
+        }
     }
 
     /** Which payslips the next issue action would send, and how many remain. */

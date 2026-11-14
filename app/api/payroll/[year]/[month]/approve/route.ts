@@ -35,6 +35,9 @@ export const POST = withStandardHandler(async (_req, session, json, { params }) 
         return ApiResponse.badRequest(result.refusal.message, {
             code: result.refusal.code,
             names: 'names' in result.refusal ? result.refusal.names : [],
+            // What waits, for the window to show even when the register read
+            // again can't: an approval undone takes its recompute with it (PR 276).
+            ...('waiting' in result.refusal ? { waiting: result.refusal.waiting } : {}),
         })
     }
 

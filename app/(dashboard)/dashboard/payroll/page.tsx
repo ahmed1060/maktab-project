@@ -17,6 +17,9 @@ import { useBusyAction } from '@/lib/useBusyAction'
 import { dayLabel } from '@/lib/cash-advances'
 import { addressWithPeriod, periodFromAddress, yearsAround } from '@/lib/period-address'
 import type { TranslationKey } from '@/lib/translations'
+import { DaysToSettle, UndecidedRequests, type ToSettle } from './SettleFirst'
+
+const NO_REQUESTS: ToSettle['requests'] = { permissions: 0, missing: 0, overtime: 0 }
 
 /**
  * The register: one month, everybody in it, and what changed.
@@ -76,6 +79,8 @@ type View = {
     debts: Debt[]
     /** What attendance costs this month: on the payslips once it reaches payroll, else the dry run (ATTENDANCE_PLAN.md §12, §20). */
     attendance?: { reachesPayroll: boolean; from: string | null; byPerson: Record<string, AttendanceMoney>; discrepanciesOpen: number }
+    /** What approving a draft waits on, and warns of, once attendance reaches its payroll (ATTENDANCE_PLAN.md §6.9, PR 276). */
+    toSettle?: ToSettle | null
 }
 
 /** How many of those who changed since last month are listed; the card says how many more. */
@@ -101,6 +106,10 @@ export default function PayrollRegisterPage() {
     const setPeriod = (y: number, m: number) => router.replace(addressWithPeriod(pathname, params.toString(), y, m), { scroll: false })
     const [open, setOpen] = useState<string | null>(null)
     const [acknowledged, setAcknowledged] = useState(false)
+    // What a refusal for days to settle said waits: shown when the register
+    // read again can't, an approval undone having taken its recompute with
+    // it (review on PR 276). Forgotten when the window opens again.
+    const [refused, setRefused] = useState<Omit<ToSettle, 'requests'> | null>(null)
     // Saving, approving, sending and marking paid: one at a time, and the
     // button that started it says so.
     const action = useBusyAction()
@@ -123,6 +132,7 @@ export default function PayrollRegisterPage() {
     >(null)
     // Not while it works: closing then would hide the answer.
     const closeConfirm = () => { if (!action.running) setConfirming(null) }
+    const openApprove = () => { setRefused(null); setConfirming({ kind: 'approve' }) }
     // Defaults to today, and is a date rather than a switch because a transfer
     // made on the 25th is usually recorded on the 27th, and stamping the 27th
     // makes the record disagree with the bank.
@@ -142,6 +152,7 @@ export default function PayrollRegisterPage() {
         setScopeShown(scope)
         setConfirming(null)
         setAcknowledged(false)
+        setRefused(null)
     }
     const { can } = useCan()
 
@@ -166,6 +177,10 @@ export default function PayrollRegisterPage() {
     // one, and Try again (DESIGN.md §5.5).
     const { data, error, isValidating, mutate: load } = useSWR(registerKey, fetcher)
     const view: View | null = registerKey && !error ? (data?.data ?? null) : null
+    // Days of the month still incomplete or a departure to confirm: Approve
+    // says so in place of asking, until they're settled (DESIGN.md §5.5, PR 276).
+    const settle = view?.toSettle?.count ? view.toSettle : refused ? { ...refused, requests: view?.toSettle?.requests ?? NO_REQUESTS } : view?.toSettle ?? null
+    const waits = (settle?.count ?? 0) > 0
     // Attendance changed after a payroll was approved (§12.3): whenever any is
     // open, whatever the switch says now.
     // A page at a time: every open one is money owed, so none is cut off.
@@ -227,7 +242,7 @@ export default function PayrollRegisterPage() {
         }
     }
 
-    const approve = async () => {
+    const approve = async (): Promise<'ok' | 'settle' | 'failed'> => {
         try {
             const res = await fetch(`/api/payroll/${year}/${month}/approve`, {
                 method: 'POST',
@@ -238,7 +253,15 @@ export default function PayrollRegisterPage() {
             if (res.ok) {
                 showToast(t('payroll_approved_ok'), 'success')
                 load()
-                return
+                return 'ok'
+            }
+            // A day came to wait after the register was read, or its stored
+            // row was out of date: the window stays open and, the register
+            // read again, shows what waits (PR 276).
+            if (body?.details?.code === 'DAYS_TO_SETTLE') {
+                setRefused(body.details.waiting ?? null)
+                await load()
+                return 'settle'
             }
             // The refusal names the people it is about, and saying which ones
             // is the difference between a message somebody can act on and one
@@ -248,8 +271,10 @@ export default function PayrollRegisterPage() {
                 names.length ? `${body.error} (${names.join(', ')})` : (body?.error || t('payroll_approve_failed')),
                 'error',
             )
+            return 'failed'
         } catch {
             showToast(t('payroll_approve_failed'), 'error')
+            return 'failed'
         }
     }
 
@@ -394,7 +419,7 @@ export default function PayrollRegisterPage() {
                             </Button>
                         )}
                         {canApprove && (
-                            <Button variant="primary" onClick={() => setConfirming({ kind: 'approve' })} disabled={action.running || !register || register.includedCount === 0}>
+                            <Button variant="primary" onClick={openApprove} disabled={action.running || !register || register.includedCount === 0}>
                                 {t('payroll_approve')}
                             </Button>
                         )}
@@ -702,18 +727,23 @@ export default function PayrollRegisterPage() {
             {/* Approving and marking paid can't be undone, so each asks first,
                 and stays open while it works: the code a high-risk action asks
                 for comes up over it. */}
+            {/* While days of the month wait to be settled, it says so in place of
+                asking, each day opening where it's settled, and Close in place of
+                Approve; the month's requests not yet decided follow as a warning
+                either way (ATTENDANCE_PLAN.md §6.9, decisions 14 and 24, PR 276). */}
             <Dialog
                 open={confirming?.kind === 'approve'}
                 onClose={closeConfirm}
-                title={t('payroll_approve_title')}
-                actions={<>
+                title={t(waits ? 'payroll_settle_title' : 'payroll_approve_title')}
+                actions={waits ? <Button onClick={closeConfirm}>{t('close')}</Button> : <>
                     <Button onClick={closeConfirm} disabled={action.running}>{t('cancel')}</Button>
-                    <Button variant="primary" onClick={() => action.run('approve', async () => { await approve(); setConfirming(null) })} disabled={action.running} busy={action.is('approve')}>
+                    <Button variant="primary" onClick={() => action.run('approve', async () => { if ((await approve()) !== 'settle') setConfirming(null) })} disabled={action.running} busy={action.is('approve')}>
                         {t('payroll_approve')}
                     </Button>
                 </>}
             >
-                <p>{t('payroll_approve_msg')}</p>
+                {waits ? <DaysToSettle settle={settle!} year={year} month={month} /> : <p>{t('payroll_approve_msg')}</p>}
+                {settle && <UndecidedRequests requests={settle.requests} />}
             </Dialog>
             <Dialog
                 open={confirming?.kind === 'paid'}
