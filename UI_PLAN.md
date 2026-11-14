@@ -679,7 +679,15 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      (`ATTENDANCE_PLAN.md` §17.1 to §17.11, Phase 4), merged in #269 on
      2026-11-13; then the plan for reading a day's scans first and last,
      and for missions (مأمورية), by days or by hours, with their allowance
-     (`ATTENDANCE_PLAN.md` round 10, §6.9, §6.10, Phase 5), #270;
+     (`ATTENDANCE_PLAN.md` round 10, §6.9, §6.10, Phase 5), merged in
+     #270 on 2026-11-13; then the decisions from its review: departures to
+     confirm, the payroll run waiting for them, two kinds of mission by
+     hours, and a mission naming a task for its reviewer (round 10,
+     decisions 13 to 21), with a template for the file import
+     (`ATTENDANCE_PLAN.md` §13.9), a second review's decisions 22 to 27,
+     the first customer's terminal read from its screens, and Phase 4's
+     parts 4 to 7 built before a terminal can try them (round 9, decision
+     13), #271;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6076,3 +6084,52 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   customer's terminal is identified with `probe` at install; and it is the
   first trial terminal, so ZKTeco straight to Nizmo goes first if it can
   push over HTTPS. Plans only; no screen changes yet.
+- **2026-11-13:** The decisions from a review of round 10 (#271;
+  `ATTENDANCE_PLAN.md` round 10, decisions 13 to 21). Early leave of more
+  than 2 hours waits as a Departure to confirm, since it's most often a
+  forgotten last scan, until HR accepts it or adds the scan; and a month's
+  payroll can't be approved while such a day, or an incomplete one, is
+  unsettled, with a window listing them. A mission by hours is either until
+  the end of the day or from its start, and needs one scan only. A mission
+  may name one of the employee's open tasks, shown to whoever decides it
+  and linked to nothing else. The allowance is never a task's cost. Nizmo
+  stays at `nizmo.vercel.app` until the second customer. Plans only; no
+  screen changes yet.
+- **2026-11-14:** A template for the attendance file import is planned
+  (#271; `ATTENDANCE_PLAN.md` §13.9): Download a template on the Import tab
+  gives an Excel file in the page's language, with the headings the import
+  reads on its first sheet and how to fill it, with examples, on a second.
+  Two outdated notes are fixed with it. `CLIENTS_PLAN.md` said nothing was
+  built, and it all is. The attendance plan's first open question, the
+  face SDK, said it would be chosen when Phase 3b started, but Phase 3b was
+  built on a face check for testing only, so the question stays open until
+  a commercial SDK replaces it. Plans only; no screen changes yet.
+- **2026-11-14:** The decisions from a second review of round 10 (#271;
+  `ATTENDANCE_PLAN.md` round 10, decisions 22 to 27). An incomplete day can
+  be marked absent or accepted as it is, with a reason, besides adding the
+  scan, so payroll never waits on a made-up one. Approved permission hours
+  count before early leave is measured; a mission until the end of the day
+  never waits as a Departure to confirm, and one from the start of the day
+  waits like any day. The payroll window also warns of the month's
+  requests not yet decided. A mission can be withdrawn while it waits, and
+  cancelled once approved until the month's payroll is approved. The
+  Exceptions screen gets a Departure to confirm tab, and Incomplete means
+  one scan left after the window. Summer time on a terminal is the
+  terminal's own setting. Face checks are paused until Nizmo has more
+  customers. Plans only; no screen changes yet.
+- **2026-11-14:** The first customer's terminal, read from photos of its
+  screens (#271; `ATTENDANCE_PLAN.md` §17.9, §20): a ZKTeco terminal sold
+  as Convoy's CB 3000, on the office network on ZKTeco's port with comm key
+  0, read today with ZKTeco's Attendance Management. It has no Cloud Server
+  Setting, so it can't push to Nizmo: it connects through the agent, and
+  parts 5 to 7 of Phase 4 wait (proposed). Before the trial week, the
+  office's PC software stops clearing the terminal's records after reading
+  them, and the agent and the PC software share the terminal's one
+  connection. Plans only; no screen changes yet.
+- **2026-11-14:** Phase 4's parts 4 to 7 are built now, switched off, though
+  no terminal on hand can try them (#271; `ATTENDANCE_PLAN.md` round 9,
+  decision 13, §20): the owner's choice, where the plan had proposed they
+  wait. Each way is tried, and fixed where the real terminal differs from
+  the manuals, when a terminal that uses it is on hand, and the switch
+  stays off for every company until then. Plans only; no screen changes
+  yet.

@@ -11,7 +11,12 @@ Each part is marked:
 - **Proposed**: suggested, waiting for the product owner's answer.
 - **Open**: a question that needs answering before that part is built.
 
-Nothing here is built yet.
+Status: **all of it is built.** Steps 0 to 7 (§8) were merged from #82 to
+#115, and the advance for a particular task or client (§7.9) from #235 to
+#241. The client statement (§6.9) is #227 and #237, and cost names only
+from the saved list (§5) is #238. Nothing is waiting (§9, §10). Where the
+plan describes today's code before a step, it means the code as it was
+then.
 
 > **A note on names.** Today's **Vendors** are renamed **Clients**, and
 > today's **Clients** section becomes **Records** (§0). From here on, this
@@ -2684,3 +2689,5 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
 - **2026-11-12:** §6.4 says the Charged to clients tab and a client's
   charges draw themselves again, with the Employee costs tab, as costs
   change elsewhere: live updates' part 4b (`REALTIME_PLAN.md`, #264).
+- **2026-11-14:** The status at the top says all of this plan is built,
+  where it said nothing was (#271).
