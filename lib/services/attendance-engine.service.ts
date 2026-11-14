@@ -14,6 +14,7 @@ import { AttendancePolicyService } from "./attendance-policy.service"
 import { lockMonths, lockedMonths } from "./attendance-lock"
 import { NotificationService } from "./notification.service"
 import { ATTENDANCE_PAGE } from "@/lib/attendance-notice-target"
+import type { NoticeKey } from "@/lib/notice"
 
 /**
  * Rebuilding attendance days (ATTENDANCE_PLAN.md §11). Pure and idempotent:
@@ -53,11 +54,17 @@ function hashOf(value: unknown): string {
 }
 
 /**
- * How recent a day must be for its becoming absent or incomplete to be told
+ * How recent a day must be for its becoming absent, incomplete or a departure to confirm to be told
  * to the person (§13.4): yesterday's, and a weekend's worth before it — not
  * the days of a month imported or rebuilt long after.
  */
 export const NOTIFY_RECENT_DAYS = 3
+/** What a person is told of a recent day that needs them (§13.4), by its status. */
+const DAY_NOTICE = new Map<string, NoticeKey>([
+    ["ABSENT", "notice_att_day_absent"],
+    ["INCOMPLETE", "notice_att_day_incomplete"],
+    ["TO_CONFIRM", "notice_att_day_to_confirm"],
+])
 
 /** The most days one list returns; the route asks for one more, to know it stopped short. */
 export const DAY_LIST_LIMIT = 3000
@@ -125,10 +132,14 @@ async function deriveMonth(
             where: { companyId, ...scope, date: { gte: wallClock(`${from}T00:00:00`), lte: wallClock(`${through}T00:00:00`) } },
             select: { userId: true, date: true, status: true, approvedMinutes: true },
         }),
-        // What somebody excused on the exceptions screen (§13.1).
+        // What somebody excused on the exceptions screen (§13.1), and early leave they accepted,
+        // which settles a departure to confirm (§6.9, PR 274).
         tx.attendanceDayDecision.findMany({
-            where: { companyId, outcome: "EXCUSED", ...scope, date: { gte: wallClock(`${from}T00:00:00`), lte: wallClock(`${through}T00:00:00`) } },
-            select: { userId: true, date: true, subject: true },
+            where: {
+                companyId, ...scope, date: { gte: wallClock(`${from}T00:00:00`), lte: wallClock(`${through}T00:00:00`) },
+                OR: [{ outcome: "EXCUSED" }, { outcome: "ACCEPTED", subject: "EARLY_LEAVE" }],
+            },
+            select: { userId: true, date: true, subject: true, outcome: true },
         }),
     ])
     // A draft (the simulator, §6.7) stands in for every version.
@@ -148,9 +159,11 @@ async function deriveMonth(
 
     const out: DerivedDay[] = []
     const excusedOn = (userId: string, day: string) => {
-        const mine = excuses.filter(x => x.userId === userId && toDateString(x.date) === day).map(x => x.subject)
+        const mine = excuses.filter(x => x.userId === userId && toDateString(x.date) === day && x.outcome === "EXCUSED").map(x => x.subject)
         return mine.length === 0 ? undefined : { lateness: mine.includes("LATENESS"), earlyLeave: mine.includes("EARLY_LEAVE"), absence: mine.includes("ABSENCE") }
     }
+    const departureConfirmedOn = (userId: string, day: string) =>
+        excuses.some(x => x.userId === userId && toDateString(x.date) === day && x.outcome === "ACCEPTED" && x.subject === "EARLY_LEAVE")
     for (const person of people) {
         const mine = assignments.filter(a => a.userId === person.id).map(a => ({ scheduleId: a.scheduleId, effectiveFrom: toDateString(a.effectiveFrom) }))
         const plans = new Map<string, { expected: ExpectedDay; scheduleId: string | null; schedule: Schedule | null }>()
@@ -182,7 +195,8 @@ async function deriveMonth(
             // Before their first day or after their last, a person has no attendance.
             if (person.EmploymentEvent.length > 0 && !employed.some(touches)) continue
             const plan = plans.get(date)!
-            // The version in force that day, or the simulator's draft: its window for scans close together (§6.9).
+            // The version in force that day, or the simulator's draft: its window for scans close
+            // together, and its threshold for a departure to confirm (§6.9).
             const policy = policyOn(policies, date)
             const day = measureDay({
                 date, expected: plan.expected, punches: grouped.get(date) ?? [],
@@ -190,6 +204,8 @@ async function deriveMonth(
                 permissions: permissions.filter(p => p.userId === person.id && toDateString(p.date) === date),
                 excused: excusedOn(person.id, date),
                 windowMinutes: policy?.body.scanWindowMinutes,
+                departureThresholdMinutes: policy?.body.departureThresholdMinutes,
+                departureConfirmed: departureConfirmedOn(person.id, date),
             })
             const decision = decisions.find(o => o.userId === person.id && toDateString(o.date) === date)
             const rate = rateAt(person.SalaryChange as any, noon)
@@ -372,12 +388,13 @@ export class AttendanceEngineService {
                     update: { ...d.row, inputsHash: d.inputsHash, derivedAt: new Date() },
                 })
                 result.written += 1
-                // A recent day that has just become absent or incomplete is told
-                // to the person, once: a rebuild that finds it so already says nothing (§13.4).
+                // A recent day that has just become absent, incomplete or a departure to confirm is
+                // told to the person, once: a rebuild that finds it so already says nothing (§13.4).
                 const status = d.row.status as string
-                if ((status === "ABSENT" || status === "INCOMPLETE") && was?.status !== status && d.date >= recent) {
+                const notice = DAY_NOTICE.get(status)
+                if (notice && was?.status !== status && d.date >= recent) {
                     await NotificationService.notify(d.userId, "ATTENDANCE_DAY", {
-                        key: status === "ABSENT" ? "notice_att_day_absent" : "notice_att_day_incomplete",
+                        key: notice,
                         params: { date: { date: `${d.date}T00:00:00.000Z` } },
                     }, ATTENDANCE_PAGE, tx)
                 }

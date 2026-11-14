@@ -58,9 +58,10 @@ const own = row({ id: "d9", userId: "u1", name: "Hana Saad", date: "2026-10-12" 
 const DATA = {
     late: [row(), own], early: [], absent: [row({ id: "d2", date: "2026-10-16", status: "ABSENT", firstIn: null, lastOut: null, lateMinutes: 0, deductionMinor: 50000, breakdown: { lateness: none, earlyLeave: none, absenceDays: 1 } })],
     incomplete: [row({ id: "d3", date: "2026-10-19", status: "INCOMPLETE", lastOut: null, lateMinutes: 0 })],
+    departure: [row({ id: "d6", date: "2026-10-20", status: "TO_CONFIRM", firstIn: "2026-10-20T09:00:00", lastOut: "2026-10-20T12:40:00", lateMinutes: 0, earlyLeaveMinutes: 260, deductionMinor: 0, breakdown: { lateness: none, earlyLeave: none, absenceDays: 0 } })],
     overtime: [row({ id: "d4", date: "2026-10-22", overtimeMinutes: 60, lateMinutes: 0, firstIn: "2026-10-22T10:00:00", lastOut: "2026-10-22T18:00:00" })],
     decided: [{ id: "x1", userId: "u2", name: "Sami Nabil", teamLeaderId: null, date: "2026-10-14", subject: "LATENESS", outcome: "EXCUSED", reason: "Bus strike" }],
-    counts: { late: 2, early: 0, absent: 1, incomplete: 1, overtime: 1, permissions: 2, missing: 1, unmatched: 2, faceOverdue: 0 },
+    counts: { late: 2, early: 0, absent: 1, incomplete: 1, departure: 1, overtime: 1, permissions: 2, missing: 1, unmatched: 2, faceOverdue: 0 },
     capped: { absent: true },
 }
 
@@ -215,6 +216,44 @@ describe("each kind's list", () => {
         expect(failed).toContain(`<p class="ui-empty-title">${en.exc_load_failed.replace("'", "&#x27;")}</p>`)
         expect(failed).toContain("Database unavailable")
         expect(failed).toContain(">Try again</button>")
+    })
+})
+
+describe("a departure to confirm (ATTENDANCE_PLAN.md §6.9, §13.1, round 10, decisions 13 and 26, PR 274)", () => {
+    it("is a kind of its own, between a punch missing and overtime, with how many", async () => {
+        const list = kinds(panel(await page()))
+        expect(list).toContain(">Departure to confirm (1)</button>")
+        expect(list.indexOf(">Punch missing (1)")).toBeLessThan(list.indexOf(">Departure to confirm (1)"))
+        expect(list.indexOf(">Departure to confirm (1)")).toBeLessThan(list.indexOf(">Overtime (1)"))
+        expect(kinds(panel(await page({ locale: "ar" })))).toContain(`>${ar.exc_tab_departure} (١)</button>`)
+    })
+
+    it("gives the day's scans, the early leave, and that nothing is charged while it waits", async () => {
+        const one = row_(panel(await page({ search: "tab=exceptions&kind=departure" })), "d6")
+        expect(one).toContain('<div class="ui-item-title">Tue 20 Oct</div><div class="ui-item-detail">Sami Nabil</div>')
+        expect(one).toContain("<bdi>09:00–12:40</bdi>")
+        expect(one).toContain("Left 260 min early")
+        expect(one).toContain(en.day_unpriced_to_confirm)
+    })
+
+    it("offers adding the departure first, then accepting or excusing the early leave, to whoever corrects it", async () => {
+        const one = row_(panel(await page({ search: "tab=exceptions&kind=departure" })), "d6")
+        expect(one).toMatch(/<button type="button" class="ui-btn ui-btn-primary ui-btn-sm">Add the departure<\/button><button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">Accept<\/button><button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">Excuse<\/button>/)
+        // One's own waiting day is somebody else's to settle.
+        const mine = { ...DATA, departure: [row({ id: "d7", userId: "u1", name: "Hana Saad", status: "TO_CONFIRM", earlyLeaveMinutes: 200 })] }
+        expect(row_(panel(await page({ shows: mine, search: "tab=exceptions&kind=departure" })), "d7")).not.toContain("<button")
+    })
+
+    it("lets a card's three actions go on to a second line on a phone, not past the card (found in the browser check)", () => {
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        expect(css).toMatch(/\.ui-list-card-foot > \.ui-row-actions \{[^}]*flex-wrap: wrap;/)
+    })
+
+    it("settles the day as a decision on its early leave, adding the departure as a punch out", () => {
+        const SOURCE = readFileSync("app/(dashboard)/dashboard/attendance/ExceptionsTab.tsx", "utf8")
+        expect(SOURCE).toMatch(/kind === 'departure'[\s\S]*?decide\(r, 'EARLY_LEAVE', 'ACCEPTED'\)/)
+        expect(SOURCE).toMatch(/kind === 'departure'[\s\S]*?openExcuse\(r, 'EARLY_LEAVE'\)/)
+        expect(SOURCE).toContain("direction: 'OUT'")
     })
 })
 

@@ -6,7 +6,8 @@ import type { ExpectedDay } from "./calendar"
 /**
  * The derivation engine (ATTENDANCE_PLAN.md §11): grouping punches by shift,
  * counting scans close together as one, reading a day first and last (§6.9,
- * round 10, PR 273), and pricing the month in order (§6.3–6.5).
+ * round 10, PR 273), a departure to confirm (PR 274), and pricing the month
+ * in order (§6.3–6.5).
  */
 
 const work = (startMinutes = 540, endMinutes = 1020, breakMinutes = 60): ExpectedDay =>
@@ -56,9 +57,9 @@ describe("measuring a day", () => {
     it("no longer leaves a day incomplete for an extra scan: three scans are a day from the first to the last (decision 7)", () => {
         const day = measure(work(), [p("2026-10-04T08:55:00"), p("2026-10-04T09:02:00"), p("2026-10-04T17:05:00")])
         expect(day).toMatchObject({ status: "PRESENT", punchCount: 3, firstIn: "2026-10-04T08:55:00", lastOut: "2026-10-04T17:05:00", lateMinutes: 0, earlyLeaveMinutes: 0, overtimeMinutes: 5 })
-        // A forgotten last scan reads as leaving early (Departure to confirm is part 3).
+        // A forgotten last scan reads as leaving early, so the day waits to be confirmed (PR 274).
         expect(measure(work(), [p("2026-10-04T08:55:00"), p("2026-10-04T12:00:00"), p("2026-10-04T12:40:00")]))
-            .toMatchObject({ status: "PRESENT", lastOut: "2026-10-04T12:40:00", earlyLeaveMinutes: 260 })
+            .toMatchObject({ status: "TO_CONFIRM", lastOut: "2026-10-04T12:40:00", earlyLeaveMinutes: 260 })
     })
 
     it("scanning twice on arriving changes nothing (decision 8)", () => {
@@ -77,8 +78,9 @@ describe("measuring a day", () => {
     it("takes the window from the policy, anything from 1 to 60 minutes", () => {
         const scans = [p("2026-10-04T08:55:00"), p("2026-10-04T09:04:00")]
         expect(measure(work(), scans, { windowMinutes: 10 })).toMatchObject({ status: "INCOMPLETE", punchCount: 1 })
-        expect(measure(work(), scans, { windowMinutes: 5 })).toMatchObject({ status: "PRESENT", punchCount: 2, lastOut: "2026-10-04T09:04:00" })
-        expect(measure(work(), scans)).toMatchObject({ status: "PRESENT", punchCount: 2 })
+        // Two scans, read as a day from 08:55 to 09:04: one that waits to be confirmed (PR 274).
+        expect(measure(work(), scans, { windowMinutes: 5 })).toMatchObject({ status: "TO_CONFIRM", punchCount: 2, lastOut: "2026-10-04T09:04:00" })
+        expect(measure(work(), scans)).toMatchObject({ status: "TO_CONFIRM", punchCount: 2 })
     })
 
     it("calls a working day with no punches absent, unless the person was on leave or suspended", () => {
@@ -117,10 +119,64 @@ describe("measuring a day", () => {
     })
 })
 
+describe("a departure to confirm (§6.9, round 10, decisions 13 and 23, PR 274)", () => {
+    const left = (out: string) => [p("2026-10-04T09:00:00"), p(`2026-10-04T${out}:00`)]
+
+    it("waits instead of charging early leave of more than the threshold, 2 hours to start, all else measured", () => {
+        expect(measure(work(), [p("2026-10-04T09:30:00"), p("2026-10-04T12:00:00"), p("2026-10-04T12:40:00")])).toMatchObject({
+            status: "TO_CONFIRM", punchCount: 3, firstIn: "2026-10-04T09:30:00", lastOut: "2026-10-04T12:40:00",
+            workedMinutes: 190, lateMinutes: 30, earlyLeaveMinutes: 260, overtimeMinutes: 0,
+        })
+        // The threshold or less is early leave, charged by the policy as always.
+        expect(measure(work(), left("15:00"))).toMatchObject({ status: "PRESENT", earlyLeaveMinutes: 120 })
+        expect(measure(work(), left("14:59"))).toMatchObject({ status: "TO_CONFIRM", earlyLeaveMinutes: 121 })
+    })
+
+    it("takes the threshold from the policy, anything from 1 to 720 minutes", () => {
+        expect(measure(work(), left("13:00"), { departureThresholdMinutes: 300 })).toMatchObject({ status: "PRESENT", earlyLeaveMinutes: 240 })
+        expect(measure(work(), left("16:30"), { departureThresholdMinutes: 1 })).toMatchObject({ status: "TO_CONFIRM", earlyLeaveMinutes: 30 })
+        expect(measure(work(), left("16:59"), { departureThresholdMinutes: 1 })).toMatchObject({ status: "PRESENT", earlyLeaveMinutes: 1 })
+    })
+
+    it("counts approved permission hours first: early leave they cover never makes the day wait (decision 23)", () => {
+        const leaveEarly = (startMinutes: number) => ({ permissions: [{ type: "EARLY_LEAVE" as const, startMinutes, endMinutes: 1020 }] })
+        // Three hours early on three approved hours.
+        expect(measure(work(), left("14:00"), leaveEarly(840))).toMatchObject({ status: "PRESENT", earlyLeaveMinutes: 0, excusedMinutes: 180 })
+        // Half an hour approved of three: two and a half left, more than two.
+        expect(measure(work(), left("14:00"), leaveEarly(990))).toMatchObject({ status: "TO_CONFIRM", earlyLeaveMinutes: 150, excusedMinutes: 30 })
+        // An hour approved of three: two left, which is charged.
+        expect(measure(work(), left("14:00"), leaveEarly(960))).toMatchObject({ status: "PRESENT", earlyLeaveMinutes: 120, excusedMinutes: 60 })
+    })
+
+    it("is settled by accepting the early leave, which is then charged, or by excusing it, which isn't", () => {
+        expect(measure(work(), left("12:00"), { departureConfirmed: true })).toMatchObject({ status: "PRESENT", earlyLeaveMinutes: 300, excusedMinutes: 0 })
+        expect(measure(work(), left("12:00"), { excused: { earlyLeave: true } })).toMatchObject({ status: "PRESENT", earlyLeaveMinutes: 0, excusedMinutes: 300 })
+        // Or by the departure scan, added: a day like any other.
+        expect(measure(work(), [...left("12:00"), p("2026-10-04T17:00:00")])).toMatchObject({ status: "PRESENT", earlyLeaveMinutes: 0, workedMinutes: 480 })
+    })
+
+    it("never waits on a rest day or holiday, which has no shift to leave early from, and leaves one scan incomplete", () => {
+        expect(measure(REST, [p("2026-10-04T10:00:00"), p("2026-10-04T11:00:00")])).toMatchObject({ status: "WORKED_REST_DAY", overtimeMinutes: 60 })
+        expect(measure(work(), [p("2026-10-04T09:00:00")])).toMatchObject({ status: "INCOMPLETE" })
+    })
+
+    it("charges nothing while it waits, its lateness included, and counts no occurrence of either", () => {
+        const waiting = measure(work(), [p("2026-10-04T10:00:00"), p("2026-10-04T12:00:00")])
+        const late = measure(work(), [p("2026-10-05T10:00:00"), p("2026-10-05T17:00:00")], { date: "2026-10-05" })
+        const [priced, next] = priceMonth([
+            { day: waiting, policy: STANDARD_OFFICE, monthlyMinor: 930_000, daysInMonth: 31, paidMinutes: 420 },
+            { day: late, policy: STANDARD_OFFICE, monthlyMinor: 930_000, daysInMonth: 31, paidMinutes: 420 },
+        ])
+        expect(priced).toMatchObject({ status: "TO_CONFIRM", unpriced: "TO_CONFIRM", deductionDays: 0, deductionMinor: 0, lateness: { days: 0, occurrence: 0 } })
+        // The next late arrival is the month's first.
+        expect(next.lateness.occurrence).toBe(1)
+    })
+})
+
 describe("excused on the exceptions screen (§13.1)", () => {
     it("excuses the whole lateness or early leave, and records it as excused", () => {
         const day = measure(work(), [p("2026-10-04T10:30:00"), p("2026-10-04T15:00:00")], { excused: { lateness: true, earlyLeave: true } })
-        expect(day).toMatchObject({ lateMinutes: 0, earlyLeaveMinutes: 0, excusedMinutes: 90 + 120 })
+        expect(day).toMatchObject({ status: "PRESENT", lateMinutes: 0, earlyLeaveMinutes: 0, excusedMinutes: 90 + 120 })
     })
 
     it("charges nothing for an excused absence, which stays an absence", () => {
@@ -219,6 +275,7 @@ describe("pricing a month", () => {
 
     it("prices nothing on an incomplete day, before a policy, or without a salary — and says which", () => {
         expect(priceMonth([input(day("2026-10-04", { status: "INCOMPLETE", lateMinutes: 90 }))])[0]).toMatchObject({ unpriced: "INCOMPLETE", deductionMinor: 0 })
+        expect(priceMonth([input(day("2026-10-04", { status: "TO_CONFIRM", lateMinutes: 90, earlyLeaveMinutes: 200 }))])[0]).toMatchObject({ unpriced: "TO_CONFIRM", deductionMinor: 0 })
         expect(priceMonth([input(day("2026-10-04", { status: "ABSENT" }), { policy: null })])[0]).toMatchObject({ unpriced: "NO_POLICY", deductionMinor: 0 })
         expect(priceMonth([input(day("2026-10-04", { status: "ABSENT" }), { monthlyMinor: null })])[0]).toMatchObject({ unpriced: "NO_SALARY", absenceDays: 1, deductionMinor: 0 })
         expect(priceMonth([input(day("2026-10-04", { status: "ABSENT" }), { policy: MEASURE_ONLY })])[0]).toMatchObject({ deductionMinor: 0 })

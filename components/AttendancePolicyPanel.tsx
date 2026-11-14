@@ -150,6 +150,8 @@ export default function AttendancePolicyPanel({ companyId, readOnly, onChanged }
                     { label: t('attendance_work_week'), value: shown.body.workWeek.map(weekdayName).join(' ') },
                     // How a day is read (§6.9, PR 273).
                     { label: t('attendance_scans'), value: t('attendance_scans_line').replace('{minutes}', countOf(t, locale, shown.body.scanWindowMinutes, 'minutes')) },
+                    // When a day waits to be confirmed (§6.9, PR 274): in hours when it's whole hours.
+                    { label: t('attendance_departure_label'), value: t('attendance_departure_line').replace('{duration}', shown.body.departureThresholdMinutes % 60 === 0 ? countOf(t, locale, shown.body.departureThresholdMinutes / 60, 'hours') : countOf(t, locale, shown.body.departureThresholdMinutes, 'minutes')) },
                     { label: t('attendance_lateness'), value: ruleLines(shown.body.lateness) },
                     { label: t('attendance_early_leave'), value: ruleLines(shown.body.earlyLeave) },
                     {

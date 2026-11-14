@@ -1,0 +1,11 @@
+-- A departure to confirm (ATTENDANCE_PLAN.md §6.9, round 10, decisions 13
+-- and 23, PR 274): a day whose early leave, after approved permission hours,
+-- is more than the policy's threshold waits as TO_CONFIRM, charged nothing,
+-- until somebody accepts or excuses the early leave or adds the departure
+-- scan. A forgotten last scan otherwise reads as leaving early.
+--
+-- Only adds a value. No row is read or changed by it: days are worked out
+-- again by the engine, on a new scan, a decision, a policy change or the
+-- nightly reconciliation. The policy's threshold needs nothing here: a
+-- version saved before it reads as 120 minutes, through its schema's default.
+ALTER TYPE "AttendanceDayStatus" ADD VALUE 'TO_CONFIRM';

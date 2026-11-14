@@ -71,6 +71,8 @@ export const PERMISSION_TYPES = ["LATE_ARRIVAL", "EARLY_LEAVE", "MIDDAY"] as con
 
 /** Scans this many minutes apart or closer are one (§6.9, round 10, decision 8): the policy's to start. */
 export const DEFAULT_SCAN_WINDOW_MINUTES = 5
+/** Early leave longer than this waits to be confirmed (§6.9, PR 274). */
+export const DEFAULT_DEPARTURE_THRESHOLD_MINUTES = 120
 
 export const permissionHoursSchema = z.object({
     enabled: z.boolean(),
@@ -100,6 +102,13 @@ export const policyBodySchema = z.object({
      * version saved before it reads as 5, so nothing is migrated.
      */
     scanWindowMinutes: z.number().int().min(1).max(60).default(DEFAULT_SCAN_WINDOW_MINUTES),
+    /**
+     * Early leave, after approved permission hours, longer than this many
+     * minutes isn't charged as it stands: a forgotten last scan reads as
+     * leaving early, so the day waits as a departure to confirm (§6.9,
+     * decision 13, PR 274). A version saved before it reads as 120.
+     */
+    departureThresholdMinutes: z.number().int().min(1).max(720).default(DEFAULT_DEPARTURE_THRESHOLD_MINUTES),
     /**
      * Face verification can be asked of this company's people (§9.5). Only
      * while the system switch is on and the company has confirmed its legal
@@ -208,6 +217,7 @@ export const STANDARD_OFFICE: PolicyBody = {
     },
     noCheckInReminderMinutes: 15,
     scanWindowMinutes: DEFAULT_SCAN_WINDOW_MINUTES,
+    departureThresholdMinutes: DEFAULT_DEPARTURE_THRESHOLD_MINUTES,
     faceVerificationAvailable: false,
     faceReverifyMonths: null,
 }
@@ -236,6 +246,7 @@ export const MEASURE_ONLY: PolicyBody = {
     },
     noCheckInReminderMinutes: null,
     scanWindowMinutes: DEFAULT_SCAN_WINDOW_MINUTES,
+    departureThresholdMinutes: DEFAULT_DEPARTURE_THRESHOLD_MINUTES,
     faceVerificationAvailable: false,
     faceReverifyMonths: null,
 }

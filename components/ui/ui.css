@@ -3979,9 +3979,12 @@ a.ui-row:focus-visible {
   flex-wrap: wrap;
   gap: var(--space-2);
 }
-/* A card's actions stay at its end, with or without words beside them. */
+/* A card's actions stay at its end, with or without words beside them, and
+   go on to a second line rather than past the card on a phone (PR 274, a
+   departure to confirm's three). */
 .ui-list-card-foot > .ui-row-actions {
   margin-inline-start: auto;
+  flex-wrap: wrap;
 }
 
 /* ── Pager ── */

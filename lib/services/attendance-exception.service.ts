@@ -9,14 +9,17 @@ import type { Visibility } from "./attendance-punch.service"
 /**
  * Daily exceptions (ATTENDANCE_PLAN.md §13.1): only what needs a decision —
  * lateness or early leave that counts, absences, days with a punch missing,
- * overtime waiting for approval — with what waits on the Requests and
+ * departures to confirm (§6.9, PR 274), overtime waiting for approval — with
+ * what waits on the Requests and
  * Employee numbers tabs counted beside them. Access is the caller's: the
  * route shows what the viewer sees and lets them decide what they correct.
  *
  * A decision is excused (not charged, for a reason) or accepted (the charge
  * stands; the day leaves the list). Excuses are applied when the day is
  * priced (lib/attendance/engine.ts); every decision is audited and can be
- * withdrawn while its month is open.
+ * withdrawn while its month is open. A departure to confirm is settled the
+ * same way, as a decision on its early leave: accepted, it is charged by the
+ * policy; excused, it isn't; either way the day no longer waits.
  */
 
 function fail(code: string): never {
@@ -83,11 +86,13 @@ export class AttendanceExceptionService {
             omit: { inputsHash: true },
             include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true } } },
         })
-        const [lateRows, earlyRows, absentRows, incompleteRows, overtimeRows, permissions, missing, unmatched] = await Promise.all([
+        const [lateRows, earlyRows, absentRows, incompleteRows, departureRows, overtimeRows, permissions, missing, unmatched] = await Promise.all([
             kind({ status: "PRESENT", lateMinutes: { gt: 0 }, ...counted("lateness") }, decidedOf("LATENESS")),
             kind({ status: "PRESENT", earlyLeaveMinutes: { gt: 0 }, ...counted("earlyLeave") }, decidedOf("EARLY_LEAVE")),
             kind({ status: "ABSENT" }, decidedOf("ABSENCE")),
             kind({ status: "INCOMPLETE" }),
+            // A decided day no longer waits, so there is nothing to leave out.
+            kind({ status: "TO_CONFIRM" }),
             kind({ overtimeStatus: "PENDING" }),
             waitingFor.permissions ? prisma.permissionRequest.count({ where: { companyId, status: "PENDING", ...visibleWhere(waitingFor.permissions) } }) : null,
             waitingFor.missing ? prisma.missingPunchRequest.count({ where: { companyId, status: "PENDING", ...visibleWhere(waitingFor.missing) } }) : null,
@@ -114,12 +119,13 @@ export class AttendanceExceptionService {
         const early = open("early", earlyRows, "EARLY_LEAVE")
         const absent = open("absent", absentRows, "ABSENCE")
         const incomplete = open("incomplete", incompleteRows)
+        const departure = open("departure", departureRows)
         const overtime = open("overtime", overtimeRows)
         return {
-            late, early, absent, incomplete, overtime,
+            late, early, absent, incomplete, departure, overtime,
             decided: decisions.slice(0, limit).map(({ user, date, ...d }) => ({ ...d, date: toDateString(date), name: `${user.firstName} ${user.lastName}`.trim(), teamLeaderId: user.teamLeaderId })),
             counts: {
-                late: late.length, early: early.length, absent: absent.length, incomplete: incomplete.length, overtime: overtime.length,
+                late: late.length, early: early.length, absent: absent.length, incomplete: incomplete.length, departure: departure.length, overtime: overtime.length,
                 permissions, missing, unmatched,
             },
             /** Kinds with more than the list shows: "500+" rather than a count that reads as the whole. */
@@ -147,9 +153,10 @@ export class AttendanceExceptionService {
                     where: { companyId_userId_date: { companyId, userId: input.userId, date } },
                     select: { status: true, lateMinutes: true, earlyLeaveMinutes: true },
                 })
+                // Early leave is decided on a day present, or one that waits on its departure (PR 274).
                 const fits = !!day && (
                     input.subject === "LATENESS" ? day.status === "PRESENT" && day.lateMinutes > 0
-                        : input.subject === "EARLY_LEAVE" ? day.status === "PRESENT" && day.earlyLeaveMinutes > 0
+                        : input.subject === "EARLY_LEAVE" ? (day.status === "PRESENT" && day.earlyLeaveMinutes > 0) || day.status === "TO_CONFIRM"
                             : day.status === "ABSENT")
                 if (!fits) fail("NOTHING_TO_DECIDE")
             }

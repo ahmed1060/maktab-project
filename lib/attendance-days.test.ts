@@ -301,3 +301,35 @@ describe("a day's status (DESIGN.md §3.4)", () => {
             .toEqual(["On leave", "Rest day", "Worked a rest day", "Worked a holiday", "No schedule"])
     })
 })
+
+describe("a departure to confirm (ATTENDANCE_PLAN.md §6.9, round 10, decision 13, PR 274)", () => {
+    const waiting = day({
+        id: "d6", date: "2026-10-20", status: "TO_CONFIRM", firstIn: "2026-10-20T09:12:00", lastOut: "2026-10-20T12:40:00", workedMinutes: 208,
+        lateMinutes: 12, earlyLeaveMinutes: 260, deductionDays: 0, deductionMinor: 0,
+        breakdown: { lateness: none, earlyLeave: none, absenceDays: 0, unpriced: "TO_CONFIRM", holiday: null },
+    })
+
+    it("is a waiting badge on the day, which says nothing is charged yet", async () => {
+        const html = panel(await page({ shows: [waiting] }))
+        expect(table(html)).toContain(`<span class="ui-badge ui-badge-waiting">${en.audit_value_TO_CONFIRM}</span>`)
+        expect(table(html)).toContain(en.day_unpriced_to_confirm)
+        expect(cards(html)).toContain(en.day_unpriced_to_confirm)
+        const arabic = table(panel(await page({ shows: [waiting], locale: "ar" })))
+        expect(arabic).toContain(`<span class="ui-badge ui-badge-waiting">${ar.audit_value_TO_CONFIRM}</span>`)
+    })
+
+    it("offers one's own day reporting the missing scan, or asking for permission hours for the early leave", async () => {
+        const rows = table(panel(await page({ shows: [waiting] })))
+        expect(rows).toMatch(/<button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">[^<]*Ask for permission<\/button>/)
+        expect(rows).toMatch(/<button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">[^<]*Report a missing punch<\/button>/)
+        // The permission asked is for the early leave, not the lateness: what makes the day wait.
+        const SOURCE = readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
+        expect(SOURCE).toContain("d.status === 'TO_CONFIRM' ? askEarly(d)")
+        expect(SOURCE).toMatch(/const askEarly = [^\n]*\n[^\n]*type: 'EARLY_LEAVE'/)
+    })
+
+    it("is written in sentence case, in both languages", () => {
+        expect(en.audit_value_TO_CONFIRM).toBe("Departure to confirm")
+        expect(ar.audit_value_TO_CONFIRM).toBeTruthy()
+    })
+})

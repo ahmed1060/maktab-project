@@ -168,7 +168,7 @@ type Day = {
 
 /** What a day's status means, which decides its badge's colour (DESIGN.md §2.3); the rest are neutral. */
 const STATUS_TONE: Record<string, StatusTone> = {
-    PRESENT: 'good', ABSENT: 'problem', SUSPENDED: 'problem', INCOMPLETE: 'waiting',
+    PRESENT: 'good', ABSENT: 'problem', SUSPENDED: 'problem', INCOMPLETE: 'waiting', TO_CONFIRM: 'waiting',
     WORKED_REST_DAY: 'progress', WORKED_HOLIDAY: 'progress',
 }
 
@@ -233,7 +233,7 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
         d.breakdown.holiday,
         ruleNote('day_late', d.breakdown.lateness),
         ruleNote('day_early', d.breakdown.earlyLeave),
-        d.breakdown.unpriced ? t(({ INCOMPLETE: 'day_unpriced_incomplete', NO_POLICY: 'day_unpriced_no_policy', NO_SALARY: 'day_unpriced_no_salary' } as Record<string, TranslationKey>)[d.breakdown.unpriced] ?? 'day_unpriced_no_policy') : null,
+        d.breakdown.unpriced ? t(({ INCOMPLETE: 'day_unpriced_incomplete', TO_CONFIRM: 'day_unpriced_to_confirm', NO_POLICY: 'day_unpriced_no_policy', NO_SALARY: 'day_unpriced_no_salary' } as Record<string, TranslationKey>)[d.breakdown.unpriced] ?? 'day_unpriced_no_policy') : null,
         d.overtimeStatus === 'PENDING' ? t('day_overtime_pending') : d.overtimeStatus === 'REJECTED' ? t('day_overtime_rejected') : d.overtimeStatus === 'NOT_COUNTED' ? t('day_overtime_short') : null,
         d.excusedMinutes > 0 ? t('day_excused').replace('{n}', num(d.excusedMinutes)) : null,
         d.breakdown.excusedAbsence ? t('day_absence_excused') : null,
@@ -241,10 +241,14 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
     const totalMinor = (days ?? []).reduce((sum, d) => sum + (d.deductionMinor ?? 0), 0)
     const showsMoney = (days ?? []).some(d => d.deductionMinor !== null)
     const hhmm = (m: number) => `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`
-    const askFor = (d: Day) => d.status === 'PRESENT' && d.expectedStartMinutes !== null && d.expectedEndMinutes !== null && (
-        d.lateMinutes > 0 && d.firstIn ? { date: d.date, type: 'LATE_ARRIVAL' as const, start: hhmm(d.expectedStartMinutes), end: d.firstIn.slice(11, 16) }
-            : d.earlyLeaveMinutes > 0 && d.lastOut ? { date: d.date, type: 'EARLY_LEAVE' as const, start: d.lastOut.slice(11, 16), end: hhmm(d.expectedEndMinutes) }
-                : null
+    // A day waiting on its departure asks for the early leave, which is what makes it wait (PR 274).
+    const askEarly = (d: Day) => (d.earlyLeaveMinutes > 0 && d.lastOut && d.expectedEndMinutes !== null
+        ? { date: d.date, type: 'EARLY_LEAVE' as const, start: d.lastOut.slice(11, 16), end: hhmm(d.expectedEndMinutes) } : null)
+    const askFor = (d: Day) => d.expectedStartMinutes !== null && d.expectedEndMinutes !== null && (
+        d.status === 'TO_CONFIRM' ? askEarly(d)
+            : d.status !== 'PRESENT' ? null
+                : d.lateMinutes > 0 && d.firstIn ? { date: d.date, type: 'LATE_ARRIVAL' as const, start: hhmm(d.expectedStartMinutes), end: d.firstIn.slice(11, 16) }
+                    : askEarly(d)
     )
 
     const listTitle = t('day_list_title').replace('{month}', monthName)
@@ -262,7 +266,8 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
     const asks = (d: Day) => {
         if (d.userId !== me) return null
         const ask = askFor(d)
-        const missing = d.status === 'INCOMPLETE'
+        // The departure scan that may be the one forgotten (PR 274), as for a punch missing.
+        const missing = d.status === 'INCOMPLETE' || d.status === 'TO_CONFIRM'
         if (!ask && !missing) return null
         return (
             <>

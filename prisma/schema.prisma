@@ -2395,6 +2395,9 @@ enum AttendanceDayStatus {
   PRESENT
   ABSENT
   INCOMPLETE
+  /// Early leave of more than the policy's threshold: charged nothing until
+  /// it is accepted or excused, or the departure scan added (ATTENDANCE_PLAN.md §6.9, PR 274).
+  TO_CONFIRM
   LEAVE
   SUSPENDED
   REST
