@@ -118,15 +118,15 @@ permissions allow, as today.
 | Group | Items |
 |---|---|
 | **Customers** | Companies · Packages · All users |
-| **Templates** | Role templates · Policy templates · Public holidays |
+| **Templates** | Role templates · Policy templates · Public holidays · Terminal brands |
 | **Access** | Super Admins · Role changes · Access reviews · Who can |
 | **Operations** | Check-ins · Audit logs · System health · System settings |
 
 - **They come after the company's groups,** which the Super Admin sees for
   the company they've picked, as today.
-- **Terminal brands joins Templates** when it's built: the list of
-  fingerprint terminal brands companies pick from (`ATTENDANCE_PLAN.md`
-  §17.9, round 9, #269).
+- **Terminal brands joins Templates** (#279): the list of fingerprint
+  terminal brands companies pick from (`ATTENDANCE_PLAN.md` §17.9, round 9,
+  #269).
 - **Their Arabic names (Decided on 2026-10-22):** المشتركون (Customers), القوالب
   (Templates), الصلاحيات (Access) and التشغيل (Operations). العملاء, the
   word for a company's clients, would name two groups in the same side bar.
@@ -713,7 +713,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      card above Fingerprint terminals on the Attendance tab
      (`ATTENDANCE_PLAN.md` §17.10; `ROLES_PLAN.md` §6.15), merged in #277
      on 2026-11-14; then the built-in Admin role's Set up fingerprint
-     terminals for the companies already there, #278;
+     terminals for the companies already there, merged in #278 on
+     2026-11-14; then Phase 4 part 3's first PR, the Super Admin's
+     Terminal brands page under Templates (`ATTENDANCE_PLAN.md` §17.9;
+     `DESIGN.md` §5.5, Row menu), #279;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6234,3 +6237,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   holders reload their grants. Nothing on screen changes: Fingerprint
   terminals stays the Super Admin's alone until they turn the company's
   switch on.
+- **2026-11-14:** Terminal brands (#279; `ATTENDANCE_PLAN.md` round 9,
+  §17.9, Phase 4 part 3; `DESIGN.md` §5.5, Row menu). A page of the Super
+  Admin's under Templates lists the brands of fingerprint terminal, each
+  with the protocol it speaks, how many terminals use it and notes in
+  English and Arabic. It starts with ZKTeco, Hikvision and Convoy. Add a
+  brand takes its name and one of the two protocols Nizmo speaks. A brand
+  no terminal has used is deleted; one that has been used is retired, and
+  Put back offers it again. Its protocol can't change while a terminal
+  uses it. The brand on each terminal's card is the next PR.
