@@ -946,7 +946,9 @@ These are built once, in the building-blocks PR, and every page uses them
   scrolls sideways within itself. A tab is at most 8rem wide there and is
   never squeezed narrower than that or its label, so no label takes more
   than two lines: a row that can't fit them so scrolls rather than
-  stacking its labels three and four lines high. A tab can say how many it holds, such as the
+  stacking its labels three and four lines high. Opened on a tab past the
+  row's edge, by a link or a reload, the row scrolls to show it, and the
+  page doesn't move. A tab can say how many it holds, such as the
   companies that need attention: a pill after its label in `--text-xs`,
   in the neutral badge's colours, and the brand tint's when it's the
   selected tab.
@@ -2187,3 +2189,7 @@ changed:
   of more than fit scrolls instead. Attendance's Exceptions, with six kinds
   since `ATTENDANCE_PLAN.md`'s departure to confirm, had stacked "Late /
   left early" four lines high.
+- **2026-11-14:** A row of tabs that scrolls opens on the picked tab when
+  it's past the row's edge (§5.5, Tabs): attendance opened on Employee
+  numbers, the last of its seven, showed the first ones on a phone and not
+  the one picked.
