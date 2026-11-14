@@ -25,6 +25,9 @@ import { focusFirstWrong } from '@/components/attendance-calendar/focus'
  * On the building blocks (UI_PLAN.md §5 step 5, company settings part 3c): a
  * card listing the agents and the terminals as rows, each with its state as a
  * badge and what can be done to it in a menu named for it.
+ *
+ * Shown only to whoever may set the company's terminals up, who may change
+ * everything in it (§17.10, PR 277): the server answers 404 to anyone else.
  */
 
 type Agent = {
@@ -46,7 +49,7 @@ const DEVICE_TONE: Record<Device['health']['state'], StatusTone> = { OK: 'good',
 const MODES: Device['mode'][] = ['ANY', 'ENTRANCE', 'EXIT']
 const MODE_LABEL = { ANY: 'audit_value_ANY', ENTRANCE: 'audit_value_ENTRANCE', EXIT: 'audit_value_EXIT' } as const
 
-export default function AttendanceTerminalsPanel({ companyId, readOnly }: { companyId: string; readOnly: boolean }) {
+export default function AttendanceTerminalsPanel({ companyId }: { companyId: string }) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const now = useNow(30_000)
@@ -142,7 +145,7 @@ export default function AttendanceTerminalsPanel({ companyId, readOnly }: { comp
     return (
         <Card
             title={t('att_term_title')}
-            actions={!readOnly && <Button variant="primary" icon={PlusIcon} disabled={busy} onClick={() => setAdding(true)}>{t('att_term_add_agent')}</Button>}
+            actions={<Button variant="primary" icon={PlusIcon} disabled={busy} onClick={() => setAdding(true)}>{t('att_term_add_agent')}</Button>}
         >
             {/* A refresh that failed after it loaded keeps what's here, and anything open, and says so (Codex on PR 164). */}
             {agentsError && <p className="ui-card-note" role="status">{t('ui_refresh_failed')} <Button size="sm" busy={isValidating} onClick={() => { void reloadAgents() }}>{t('try_again')}</Button></p>}
@@ -167,7 +170,7 @@ export default function AttendanceTerminalsPanel({ companyId, readOnly }: { comp
                                     a.lastSyncAt && t('att_term_last_sync').replace('{when}', ago(a.lastSyncAt)),
                                     a.clockDriftSeconds !== null && Math.abs(a.clockDriftSeconds) > 120 && t('att_term_clock_off').replace('{d}', drift(a.clockDriftSeconds)),
                                 ])}
-                                end={!readOnly && <RowMenu label={t('ui_more_actions_for').replace('{name}', a.name)} tooltip={t('ui_more_actions')} items={agentMenu(a)} />}
+                                end={<RowMenu label={t('ui_more_actions_for').replace('{name}', a.name)} tooltip={t('ui_more_actions')} items={agentMenu(a)} />}
                             />
                         ))}
                     </ul>
@@ -196,7 +199,7 @@ export default function AttendanceTerminalsPanel({ companyId, readOnly }: { comp
                                     d.lastPunchAt && t('att_term_last_punch').replace('{when}', ago(d.lastPunchAt)),
                                     !d.reachable && d.lastError,
                                 ])}
-                                end={!readOnly && <RowMenu label={t('ui_more_actions_for').replace('{name}', d.name)} tooltip={t('ui_more_actions')} items={deviceMenu(d)} />}
+                                end={<RowMenu label={t('ui_more_actions_for').replace('{name}', d.name)} tooltip={t('ui_more_actions')} items={deviceMenu(d)} />}
                             />
                         ))}
                     </ul>

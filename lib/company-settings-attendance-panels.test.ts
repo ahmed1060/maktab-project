@@ -172,7 +172,7 @@ describe("the fingerprint terminals", () => {
         expect(html).not.toContain(" · ")
     })
 
-    it("give each agent and terminal a menu named for it, and Add an agent, to whoever may change them", async () => {
+    it("give each agent and terminal a menu named for it, and Add an agent, to whoever reaches them", async () => {
         const html = await render("AttendanceTerminalsPanel", terminals())
         expect(html).toMatch(new RegExp(`ui-btn-primary[^>]*>(<svg[\\s\\S]*?</svg>)?${en.att_term_add_agent}</button>`))
         for (const name of ["Office PC", "Warehouse PC", "Front door", "Back door"]) {
@@ -180,8 +180,10 @@ describe("the fingerprint terminals", () => {
         }
         // The mode was a select in each row, changed as it was picked.
         expect(html).not.toContain("<select")
-        const looking = await render("AttendanceTerminalsPanel", terminals(), { readOnly: true })
-        expect(looking).not.toContain("</button>")
+        // No read-only view since PR 277 (ATTENDANCE_PLAN.md §17.10): whoever
+        // reaches the panel may change everything in it, and nobody else
+        // reaches it at all.
+        expect(readFileSync("components/AttendanceTerminalsPanel.tsx", "utf8")).not.toContain("readOnly")
     })
 
     it("aren't there when the package doesn't have them, and say so when they didn't load, with Try again", async () => {

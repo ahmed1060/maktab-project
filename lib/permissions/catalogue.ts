@@ -212,6 +212,13 @@ export const PERMISSIONS = {
     // photo is shown to the Admin, HR and the Super Admin, never to a team
     // leader. Never one's own: approving your own face is the whole fraud.
     "attendance.approve_face":        { code: 54, module: "ATTENDANCE", scopes: COMPANY, implies: ["attendance.view_team"], notOnOwn: true },
+    // Setting fingerprint terminals up (§17.10): everything under Fingerprint
+    // terminals, agents and their codes, terminals and retiring them. An
+    // agent's code lets punches in for any employee number, and so into pay.
+    // The section is on the Attendance settings tab, which needs
+    // settings.view to open. It opens only where the Super Admin lets the
+    // company set its own terminals up (Company.terminalsSetupByCompany).
+    "attendance.manage_terminals":    { code: 66, module: "ATTENDANCE", scopes: COMPANY, implies: ["settings.view"], highRisk: "Affects pay" },
 } as const satisfies Record<string, PermissionDefinition>
 
 export type Permission = keyof typeof PERMISSIONS
@@ -240,6 +247,9 @@ export type Permission = keyof typeof PERMISSIONS
  * Not raised for dayoff.request (code 65, UI_PLAN.md §2.3, part 2a): no role
  * already there holds it until a later release's migration, and every
  * release live by then knows it.
+ *
+ * Nor for attendance.manage_terminals (code 66, ATTENDANCE_PLAN.md §17.10,
+ * PR 277), for the same reason.
  */
 export const CATALOGUE_VERSION = 4
 

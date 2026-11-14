@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useState, type ReactNode } from 'react'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
 import { HourglassIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
@@ -37,7 +37,12 @@ import type { Calendar, Confirming, Ctx, Editing, Schedule } from '@/components/
  * for the holidays; every change in the building blocks' dialog, and every
  * change that can't be taken back asked about first.
  */
-export default function CompanyAttendanceCard({ companyId, readOnly = false }: { companyId: string; readOnly?: boolean }) {
+export default function CompanyAttendanceCard({ companyId, readOnly = false, terminalsSetup }: {
+    companyId: string
+    readOnly?: boolean
+    /** The Super Admin's switch for who sets the terminals up, shown above them (§17.10). */
+    terminalsSetup?: ReactNode
+}) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const { data: session } = useSession()
@@ -118,8 +123,11 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false }: {
             )}
             {/* Whether any of this reaches anybody's pay yet (§12). */}
             <AttendancePayrollPanel companyId={companyId} readOnly={!editable} />
-            {/* Only for a company holding the Terminals add-on; hides itself otherwise (§16). */}
-            <AttendanceTerminalsPanel companyId={companyId} readOnly={!editable} />
+            {terminalsSetup}
+            {/* Only for a company holding the Terminals add-on, and only for
+                whoever may set its terminals up, who may change everything
+                in it; hides itself otherwise (§16, §17.10). */}
+            <AttendanceTerminalsPanel companyId={companyId} />
             {/* Only for a company holding the Mobile App add-on; hides itself otherwise (§16). */}
             <AttendanceLocationsPanel companyId={companyId} readOnly={!editable} />
             {/* The policy first: its work week is what the schedules inherit. */}

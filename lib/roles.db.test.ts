@@ -97,6 +97,12 @@ const KEPT_SESSION = "20261203000000_kept_session"
 // (ROLES_PLAN.md §6.15).
 const COST_NAMES_FROM_LIST = "20261205000000_cost_names_from_list"
 const CONFIRM_HIGH_RISK = "20261206000000_confirm_high_risk"
+// Company.terminalsSetupByCompany, the Super Admin's switch letting a company
+// set its own fingerprint terminals up (ATTENDANCE_PLAN.md §17.10).
+const TERMINALS_SETUP = "20261220000000_terminals_setup"
+// Given to a new company's built-in roles now, and to the companies there
+// already are by a later migration (ATTENDANCE_PLAN.md §17.10).
+const GRANTED_LATER = ["attendance.manage_terminals"]
 
 const BEFORE_ROLES = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now());
@@ -163,6 +169,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(KEPT_SESSION))
         await db.query(sql(COST_NAMES_FROM_LIST))
         await db.query(sql(CONFIRM_HIGH_RISK))
+        await db.query(sql(TERMINALS_SETUP))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
@@ -213,7 +220,8 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                     const grants = Object.fromEntries(rows
                         .filter(r => r.companyId === company && r.builtIn === builtIn)
                         .map(r => [r.permission, r.scope]))
-                    expect(grants, `${company} ${builtIn}`).toEqual(BUILT_IN_GRANTS[builtIn])
+                    const now = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).filter(([permission]) => !GRANTED_LATER.includes(permission)))
+                    expect(grants, `${company} ${builtIn}`).toEqual(now)
                 }
             }
         })

@@ -44,9 +44,9 @@ const linkFor = (who: "company" | "platform", companyId: string, subjectId: stri
 const aboutSubject = (subjectId: string) => ({ type: TERMINAL_ALERT, priority: "CRITICAL" as const, read: false, relatedId: { endsWith: `highlight=${subjectId}` } })
 
 const PACKAGE = { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } } as const
-const COMPANY = { select: { id: true, name: true, timezone: true, adminSettingsEnabled: true, adminSettingsTabs: true, package: PACKAGE } } as const
+const COMPANY = { select: { id: true, name: true, timezone: true, adminSettingsEnabled: true, adminSettingsTabs: true, terminalsSetupByCompany: true, package: PACKAGE } } as const
 
-type Company = { id: string; name: string; timezone: string | null; adminSettingsEnabled: boolean; adminSettingsTabs: string[]; package: PackageFacts }
+type Company = { id: string; name: string; timezone: string | null; adminSettingsEnabled: boolean; adminSettingsTabs: string[]; terminalsSetupByCompany: boolean; package: PackageFacts }
 type Recipients = { who: "company" | "platform"; userIds: string[]; superAdminIds: string[] }
 
 /** Whether the company still holds the Terminals add-on: without it, its agents are refused and nothing is expected of them. */
@@ -125,14 +125,16 @@ export class TerminalAlerts {
     }
 
     /**
-     * Who is told: whoever in the company can open its terminals, which live
-     * on the Attendance settings tab. A company whose tab the Super Admin has
-     * not shown it, or with nobody holding settings, is the Super Admin's to
-     * look after, so the Super Admin is told.
+     * Who is told: whoever in the company can open its terminals
+     * (ATTENDANCE_PLAN.md §17.10). That's those holding Set up fingerprint
+     * terminals, where the Super Admin lets the company set its own up and
+     * shows it the Attendance tab they're on. Otherwise the terminals are
+     * the Super Admin's to look after, as they are when nobody at work holds
+     * it, so the Super Admin is told.
      */
     private static async recipients(company: Company): Promise<Recipients> {
-        if (exposedTabs(company).includes("attendance")) {
-            const people = await prisma.user.findMany({ where: { companyId: company.id, status: { in: [...AT_WORK] }, ...holdersOf("settings.view") }, select: { id: true } })
+        if (company.terminalsSetupByCompany && exposedTabs(company).includes("attendance")) {
+            const people = await prisma.user.findMany({ where: { companyId: company.id, status: { in: [...AT_WORK] }, ...holdersOf("attendance.manage_terminals") }, select: { id: true } })
             if (people.length > 0) return { who: "company", userIds: people.map(p => p.id), superAdminIds: [] }
         }
         const [table, platformUsers] = await Promise.all([

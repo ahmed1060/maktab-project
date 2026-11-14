@@ -6,7 +6,7 @@ import { CompanyService } from "@/lib/services/company.service"
 import { parsePaging } from "@/lib/pagination"
 import { SystemSettingsService } from "@/lib/services/system-settings.service"
 import { CashAdvanceService } from "@/lib/services/cash-advance.service"
-import { hasModule, resolveBundles } from "@/lib/features/bundles"
+import { hasBundle, hasModule, resolveBundles } from "@/lib/features/bundles"
 
 export const GET = withStandardHandler(async (req, session) => {
     if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.forbidden()
@@ -19,6 +19,7 @@ export const GET = withStandardHandler(async (req, session) => {
             where: { id },
             select: {
                 id: true, name: true, isBanned: true, autoVerifyLocation: true, cashAdvancesAllowed: true, cashAdvancesOn: true, costNamesFromListOnly: true, confirmHighRisk: true,
+                terminalsSetupByCompany: true,
                 moduleLabels: true, moduleIcons: true, logoUrl: true, brandColour: true,
                 payrollDay: true, payslipsVisible: true, timezone: true, debtRecoveryPercent: true,
                 adminSettingsEnabled: true, adminSettingsTabs: true,
@@ -31,7 +32,9 @@ export const GET = withStandardHandler(async (req, session) => {
         // what's held, which keeps cash advances on (CLIENTS_PLAN.md §7.6),
         // whether cost names can be kept to the saved list, and how many it
         // holds (§6.9), and whether the high-risk confirmation is on for every
-        // company (ROLES_PLAN.md §6.15), as company-settings' General tab has them.
+        // company (ROLES_PLAN.md §6.15), as company-settings' General tab has them;
+        // and whether it has fingerprint terminals to set up, as its Attendance
+        // tab has it (ATTENDANCE_PLAN.md §17.10).
         return ApiResponse.success({
             ...company,
             defaultBrandColour: (await SystemSettingsService.get()).brandColour,
@@ -39,6 +42,7 @@ export const GET = withStandardHandler(async (req, session) => {
             cashAdvancesHeld: await CashAdvanceService.heldIn(company.id),
             costNamesOffered: hasModule(resolveBundles(company.package), "COSTS"),
             costNamesSaved: await prisma.listEntry.count({ where: { companyId: company.id, kind: "COST_NAME", archivedAt: null } }),
+            terminalsOffered: hasBundle(resolveBundles(company.package), "ATTENDANCE_TERMINALS"),
         })
     }
 

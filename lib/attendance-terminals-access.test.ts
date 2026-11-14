@@ -10,9 +10,11 @@ vi.setConfig({ testTimeout: 60_000 })
 /**
  * Who reaches a company's terminals and agents (ATTENDANCE_PLAN.md §16, §17).
  *
- * On the website they are part of the Attendance settings tab, and only for
- * a company holding the Terminals add-on. On the agent's side there is no
- * session: the token says which agent, and so which company. The services
+ * On the website they are on the Attendance settings tab, only for a company
+ * holding the Terminals add-on, and since PR 277 (§17.10) only for the Super
+ * Admin, unless the Super Admin lets the company set its own up: then for
+ * those holding Set up fingerprint terminals. On the agent's side there is
+ * no session: the token says which agent, and so which company. The services
  * are replaced; what is checked here is who reaches them.
  */
 
@@ -65,12 +67,13 @@ vi.mock("@/lib/services/attendance-ingest.service", () => ({
 type Pkg = { hasCompanyManagement: boolean; hasHR: boolean; hasAttendanceTerminals?: boolean; hasAttendanceMobile?: boolean } | null
 const TERMINALS: Pkg = { hasCompanyManagement: false, hasHR: true, hasAttendanceTerminals: true }
 const MOBILE_ONLY: Pkg = { hasCompanyManagement: false, hasHR: true, hasAttendanceMobile: true }
-const companies: Record<string, { adminSettingsEnabled: boolean; adminSettingsTabs: string[]; package: Pkg }> = {}
+const companies: Record<string, { adminSettingsEnabled: boolean; adminSettingsTabs: string[]; package: Pkg; terminalsSetupByCompany: boolean }> = {}
 
 beforeEach(() => {
     reached.length = 0
-    companies.c1 = { adminSettingsEnabled: true, adminSettingsTabs: ["attendance"], package: TERMINALS }
-    companies.c2 = { adminSettingsEnabled: true, adminSettingsTabs: ["attendance"], package: TERMINALS }
+    // Both let the company set its own terminals up; the tests that turn it off say so.
+    companies.c1 = { adminSettingsEnabled: true, adminSettingsTabs: ["attendance"], package: TERMINALS, terminalsSetupByCompany: true }
+    companies.c2 = { adminSettingsEnabled: true, adminSettingsTabs: ["attendance"], package: TERMINALS, terminalsSetupByCompany: true }
     prismaMock.company.findUnique = async ({ where }: any) => companies[where.id] ? { id: where.id, ...companies[where.id] } : null
 })
 
@@ -86,7 +89,13 @@ function signIn(user: { id: string; role: string; companyId: string | null; gran
 const admin = (pkg: Pkg = TERMINALS) => signIn({ id: "admin", role: "ADMIN", companyId: "c1", grants: BUILT_IN_GRANTS.ADMIN }, pkg)
 const employee = () => signIn({ id: "emp", role: "EMPLOYEE", companyId: "c1", grants: BUILT_IN_GRANTS.EMPLOYEE })
 const viewer = () => signIn({ id: "hr", role: "EMPLOYEE", companyId: "c1", grants: { "settings.view": "COMPANY" } })
+// Saves every shown tab, but wasn't given Set up fingerprint terminals.
+const settingsEditor = () => signIn({ id: "hr", role: "EMPLOYEE", companyId: "c1", grants: { "settings.view": "COMPANY", "settings.edit": "COMPANY" } })
+// Given Set up fingerprint terminals, and with it settings.view, but not settings.edit.
+const installer = () => signIn({ id: "it", role: "EMPLOYEE", companyId: "c1", grants: { "attendance.manage_terminals": "COMPANY", "settings.view": "COMPANY" } })
 const superAdmin = () => signIn({ id: "sa", role: "SUPER_ADMIN", companyId: null })
+/** Signed in as before, with no step-up code entered this session. */
+const unconfirmed = () => { state.session.user = { ...state.session.user, stepUpAt: null } }
 
 const params = (id: string) => ({ params: Promise.resolve({ id }) }) as any
 const list = async (query = "") => (await import("@/app/api/attendance/agents/route")).GET(new Request(url(`/api/attendance/agents${query}`)))
@@ -95,7 +104,7 @@ const revoke = async (id: string) => (await import("@/app/api/attendance/agents/
 const reissue = async (id: string) => (await import("@/app/api/attendance/agents/[id]/code/route")).POST(new Request(url(`/api/attendance/agents/${id}/code`), { method: "POST" }), params(id))
 
 describe("on the website: the Attendance settings tab, with the Terminals add-on", () => {
-    it("an Admin with the tab adds, lists, re-codes and revokes their own company's agents", async () => {
+    it("an Admin with the tab, the company setting its own terminals up, adds, lists, re-codes and revokes its agents", async () => {
         admin()
         expect((await list()).status).toBe(200)
         const created = await add({ name: "Head office" })
@@ -115,13 +124,56 @@ describe("on the website: the Attendance settings tab, with the Terminals add-on
         expect(reached).toEqual(["createAgent:c1:Theirs"])
     })
 
-    it("lets whoever only sees settings look, not change", async () => {
-        viewer()
+    it("shows nothing to whoever only sees or saves settings, without Set up fingerprint terminals (PR 277)", async () => {
+        for (const who of [viewer, settingsEditor]) {
+            who()
+            expect((await list()).status).toBe(404)
+            expect((await add({ name: "Mine" })).status).toBe(404)
+            expect((await revoke("ag1")).status).toBe(404)
+            expect((await reissue("ag1")).status).toBe(404)
+        }
+        expect(reached).toEqual([])
+    })
+
+    it("lets someone given Set up fingerprint terminals do everything there, without saving settings (PR 277)", async () => {
+        installer()
         expect((await list()).status).toBe(200)
-        expect((await add({ name: "Mine" })).status).toBe(403)
-        expect((await revoke("ag1")).status).toBe(403)
+        expect((await add({ name: "Annex" })).status).toBe(201)
+        expect((await reissue("ag1")).status).toBe(200)
+        expect((await revoke("ag1")).status).toBe(200)
+        expect(reached).toEqual(["agents:c1", "createAgent:c1:Annex", "reissue:ag1", "revoke:ag1"])
+    })
+
+    it("shows nothing to the company, its Admin included, until the Super Admin lets it set its own terminals up (PR 277)", async () => {
+        companies.c1.terminalsSetupByCompany = false
+        for (const who of [() => admin(), installer]) {
+            who()
+            expect((await list()).status).toBe(404)
+            expect((await add({ name: "Mine" })).status).toBe(404)
+            expect((await reissue("ag1")).status).toBe(404)
+            expect((await revoke("ag1")).status).toBe(404)
+        }
+        expect(reached).toEqual([])
+    })
+
+    it("shows nothing where the company isn't shown the Attendance tab, whatever its people hold (PR 277)", async () => {
+        companies.c1.adminSettingsTabs = ["general"]
+        admin()
+        expect((await list()).status).toBe(404)
+        expect((await add({ name: "Mine" })).status).toBe(404)
+        expect(reached).toEqual([])
+    })
+
+    it("asks for the step-up code to add an agent or issue its code again, not to look or revoke one (PR 277)", async () => {
+        admin()
+        unconfirmed()
+        const added = await add({ name: "Head office" })
+        expect(added.status).toBe(403)
+        expect((await added.json()).code).toBe("STEP_UP_REQUIRED")
         expect((await reissue("ag1")).status).toBe(403)
-        expect(reached).toEqual(["agents:c1"])
+        expect((await list()).status).toBe(200)
+        expect((await revoke("ag1")).status).toBe(200)
+        expect(reached).toEqual(["agents:c1", "revoke:ag1"])
     })
 
     it("shows nothing to an employee", async () => {
@@ -139,7 +191,8 @@ describe("on the website: the Attendance settings tab, with the Terminals add-on
         expect(reached).toEqual([])
     })
 
-    it("lets the Super Admin act for a company they name", async () => {
+    it("lets the Super Admin act for a company they name, its switch off or on", async () => {
+        companies.c2.terminalsSetupByCompany = false
         superAdmin()
         expect((await list()).status).toBe(400)
         expect((await list("?companyId=c2")).status).toBe(200)
@@ -154,7 +207,7 @@ const retire = async (id: string) => (await import("@/app/api/attendance/devices
 const restore = async (id: string) => (await import("@/app/api/attendance/devices/[id]/restore/route")).POST(new Request(url(`/api/attendance/devices/${id}/restore`), { method: "POST" }), params(id))
 
 describe("terminals on the website", () => {
-    it("are listed, renamed, given a mode, retired and restored by whoever may change the tab", async () => {
+    it("are listed, renamed, given a mode, retired and restored by whoever may set terminals up", async () => {
         admin()
         expect((await devices()).status).toBe(200)
         expect((await patchDevice("d1", { name: "Front door", mode: "ENTRANCE" })).status).toBe(200)
@@ -164,15 +217,36 @@ describe("terminals on the website", () => {
         expect(reached).toEqual(["devices:c1", "updateDevice:d1:ENTRANCE", "retire:d1", "restore:d1"])
     })
 
-    it("are looked at, not changed, by whoever only sees settings; another company's are absent", async () => {
-        viewer()
-        expect((await devices()).status).toBe(200)
-        expect((await patchDevice("d1", { name: "Mine" })).status).toBe(403)
-        expect((await retire("d1")).status).toBe(403)
+    it("are absent to whoever only sees or saves settings, and another company's to anyone (PR 277)", async () => {
+        for (const who of [viewer, settingsEditor]) {
+            who()
+            expect((await devices()).status).toBe(404)
+            expect((await patchDevice("d1", { name: "Mine" })).status).toBe(404)
+            expect((await retire("d1")).status).toBe(404)
+        }
         admin()
         expect((await patchDevice("d2", { name: "Mine" })).status).toBe(404)
         expect((await restore("d2")).status).toBe(404)
-        expect(reached).toEqual(["devices:c1"])
+        expect(reached).toEqual([])
+    })
+
+    it("are absent to the company while the Super Admin sets them up (PR 277)", async () => {
+        companies.c1.terminalsSetupByCompany = false
+        admin()
+        expect((await devices()).status).toBe(404)
+        expect((await retire("d1")).status).toBe(404)
+        expect(reached).toEqual([])
+    })
+
+    it("ask for the step-up code to retire one, not to rename it, set its mode or put it back (PR 277)", async () => {
+        admin()
+        unconfirmed()
+        const retired = await retire("d1")
+        expect(retired.status).toBe(403)
+        expect((await retired.json()).code).toBe("STEP_UP_REQUIRED")
+        expect((await patchDevice("d1", { name: "Front door", mode: "ENTRANCE" })).status).toBe(200)
+        expect((await restore("d1")).status).toBe(200)
+        expect(reached).toEqual(["updateDevice:d1:ENTRANCE", "restore:d1"])
     })
 
     it("are closed to a company with attendance from the app only", async () => {

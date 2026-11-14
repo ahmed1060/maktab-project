@@ -253,6 +253,10 @@ model Company {
   /// while both are on. Neither goes off while anyone holds advance money.
   cashAdvancesAllowed  Boolean                   @default(false)
   cashAdvancesOn       Boolean                   @default(true)
+  /// Whether the company's people holding attendance.manage_terminals set its
+  /// fingerprint terminals up, or the Super Admin alone does: the Super
+  /// Admin's switch, off to start (ATTENDANCE_PLAN.md §17.10).
+  terminalsSetupByCompany Boolean               @default(false)
   /// Cost names only from the saved list (CLIENTS_PLAN.md §6.9): while on, a
   /// cost added to a task is named from the company's saved cost names, so a
   /// client statement by cost name adds it up under the same name. Off until

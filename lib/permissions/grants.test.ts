@@ -31,6 +31,7 @@ describe("permission codes", () => {
         "attendance.view_team": 49, "attendance.correct": 50, "attendance.approve_overtime": 51, "attendance.approve_permissions": 52,
         "attendance.approve_devices": 53,
         "attendance.approve_face": 54,
+        "attendance.manage_terminals": 66,
     }
 
     it("have not changed", () => {
