@@ -92,9 +92,16 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
     // swap places with the words beside it in Arabic (audit on part 3c), and
     // all of them in one span: the detail line puts a gap between its
     // children, which put one before each comma.
-    const facts = (items: (string | null | false | undefined)[]): ReactNode => (
+    const facts = (items: ReactNode[]): ReactNode => (
         <span>{items.filter(Boolean).map((x, i) => <Fragment key={i}>{i > 0 && t('list_separator')}<bdi>{x}</bdi></Fragment>)}</span>
     )
+
+    /** Its brand, the name kept as printed (never machine-translated), or that none is picked yet (§17.9, PR 280). */
+    const brandLine = (d: Device): ReactNode => {
+        if (!d.brand) return t('att_term_brand_none')
+        const [before, after] = t('att_term_brand_line').split('{brand}')
+        return <>{before}<bdi translate="no">{d.brand.name}</bdi>{after}</>
+    }
 
     const ago = (iso: string | null) => {
         if (!iso) return t('att_term_never')
@@ -198,7 +205,7 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
                                 </>}
                                 detail={facts([
                                     `${t('att_term_serial')} ${d.serialNumber}`,
-                                    d.brand ? t('att_term_brand_line').replace('{brand}', d.brand.name) : t('att_term_brand_none'),
+                                    brandLine(d),
                                     d.model,
                                     t('att_term_mode_line').replace('{mode}', t(MODE_LABEL[d.mode])),
                                     t('att_term_last_seen').replace('{when}', ago(d.lastSeenAt)),

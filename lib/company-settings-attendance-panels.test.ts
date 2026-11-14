@@ -165,10 +165,11 @@ describe("the fingerprint terminals", () => {
     it("show each terminal's brand among its facts, or that none is picked yet", async () => {
         const html = await render("AttendanceTerminalsPanel", terminals())
         // Right after its serial number.
-        expect(html).toContain(`<bdi>${en.att_term_serial} ZK-001</bdi>${en.list_separator}<bdi>${en.att_term_brand_line.replace("{brand}", "Convoy")}</bdi>`)
+        // The brand's name kept as it's printed, never machine-translated.
+        expect(html).toContain(`<bdi>${en.att_term_serial} ZK-001</bdi>${en.list_separator}<bdi>${en.att_term_brand_line.replace("{brand}", '<bdi translate="no">Convoy</bdi>')}</bdi>`)
         expect(html).toContain(`<bdi>${esc(en.att_term_brand_none)}</bdi>`)
         const arabic = await render("AttendanceTerminalsPanel", terminals(), { locale: "ar" })
-        expect(arabic).toContain(`<bdi>${ar.att_term_brand_line.replace("{brand}", "Convoy")}</bdi>`)
+        expect(arabic).toContain(`<bdi>${ar.att_term_brand_line.replace("{brand}", '<bdi translate="no">Convoy</bdi>')}</bdi>`)
     })
 
     it("pick a terminal's brand in its Edit dialog, from the brands that speak its protocol", async () => {
@@ -353,7 +354,7 @@ describe("found in the browser and the audit (company settings part 3c)", () => 
         const terms = await render("AttendanceTerminalsPanel", terminals(), { locale: "ar" })
         expect(terms).toContain(`<bdi>FRONT-DESK</bdi>${ar.list_separator}<bdi>v1.4.2</bdi>`)
         // Its brand comes between its serial number and its model since PR 280.
-        expect(terms).toContain(`<bdi>${ar.att_term_serial} ZK-001</bdi>${ar.list_separator}<bdi>${ar.att_term_brand_line.replace("{brand}", "Convoy")}</bdi>${ar.list_separator}<bdi>K40</bdi>`)
+        expect(terms).toContain(`<bdi>${ar.att_term_serial} ZK-001</bdi>${ar.list_separator}<bdi>${ar.att_term_brand_line.replace("{brand}", '<bdi translate="no">Convoy</bdi>')}</bdi>${ar.list_separator}<bdi>K40</bdi>`)
         const places = await render("AttendanceLocationsPanel", { [PLACES]: ok(PLACE_LIST) }, { locale: "ar" })
         expect(places).toContain("<bdi>Youssef Ali</bdi>")
     })
