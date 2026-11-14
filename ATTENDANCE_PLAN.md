@@ -581,8 +581,10 @@ a Departure to confirm or incomplete; before then attendance charges
 nobody, so nothing waits. Payroll's Approve opens the window in place of
 the confirmation (`DESIGN.md` §5.5, Dialog): each day waiting, with its
 employee, date, what it waits on and its scans, opening the Exceptions
-screen on that day and kind, and Close. It lists 50 at most and says how
-many more wait. Once they're settled, Approve asks as before. Under a
+screen on that day and kind, and Close. It lists 50 at most, then says
+how many more wait of each kind, each line opening the Exceptions screen
+on that kind for the month (review on #276). Once they're settled, Approve
+asks as before. Under a
 heading of its own, as a warning, the same window counts the month's
 requests not yet decided for people on the register: permission hours,
 missing punches, and overtime, which approval rejects, each kind opening
@@ -594,6 +596,9 @@ is written, and the window shows the day. Anyone on the register being
 approved who wasn't on the one read before, such as someone put back on
 the payroll meanwhile, is checked once that register is built; a day of
 theirs waiting undoes the whole approval and is refused the same way
+(review on #276). Undone, the recompute that found it goes too, so the
+register read again can't show it: the refusal carries the days waiting,
+how many of each kind and the first 50, and the window shows those
 (review on #276).
 
 **The terminal's in/out key is still not read.** It is often left on the
