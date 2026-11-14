@@ -38,3 +38,6 @@ ALTER TABLE "AttendanceDevice" ADD COLUMN "protocol" "TerminalProtocol" NOT NULL
 ALTER TABLE "AttendanceDevice" ADD COLUMN "brandId" TEXT;
 ALTER TABLE "AttendanceDevice" ADD CONSTRAINT "AttendanceDevice_brandId_fkey" FOREIGN KEY ("brandId") REFERENCES "TerminalBrand"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 CREATE INDEX "AttendanceDevice_brandId_idx" ON "AttendanceDevice"("brandId");
+
+-- Every table has Row Level Security on (DATABASE_SETUP.md).
+ALTER TABLE "TerminalBrand" ENABLE ROW LEVEL SECURITY;
