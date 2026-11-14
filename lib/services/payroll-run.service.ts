@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { lockMonths } from "./attendance-lock"
-import { attendanceReaches, attendanceMoney, rejectPendingOvertime, reconcileEntries, stampDays, monthKey } from "./attendance-payroll"
+import { attendanceReaches, attendanceMoney, rejectPendingOvertime, reconcileEntries, stampDays, monthKey, daysToSettle, namesOf } from "./attendance-payroll"
 import { buildRegister, variance, nextIssueBatch, issueProgress, ISSUE_BATCH_SIZE, ATTENDANCE_SOURCE, type PersonMonth, type AdjustmentInput } from "@/lib/register"
 import { DEBT_RECOVERY_SOURCE, type RecoverableDebt } from "@/lib/debt-recovery"
 import { timelineForMonth } from "@/lib/employment"
@@ -10,7 +10,7 @@ import { toMajor, toMinor } from "@/lib/payroll"
 import { paydayIn } from "@/lib/payday"
 import { calendarDateStr, startOfMonthIn } from "@/lib/time"
 import { resolveTimeZone } from "@/lib/timezone"
-import { checkApproval, type ApprovalRefusal } from "@/lib/approval"
+import { checkApproval, settleRefusal, type ApprovalRefusal } from "@/lib/approval"
 
 /**
  * Building a month's payroll, and freezing it once somebody signs it off.
@@ -238,6 +238,12 @@ export class PayrollRunService {
             // Note: `amount` and "still owed" stopped being the same number when
             // recovery arrived — see the mapping below.
         ])
+        // What approving waits on, and warns of (ATTENDANCE_PLAN.md §6.9,
+        // decisions 14 and 24, PR 276): for a draft, once attendance reaches
+        // its payroll. Past approval, nothing waits.
+        const toSettle = (run?.status ?? "DRAFT") === "DRAFT" && attendance.reachesPayroll
+            ? await daysToSettle(prisma, companyId, year, month, register.entries.filter(e => !e.excluded).map(e => e.userId))
+            : null
 
         return {
             year,
@@ -261,6 +267,7 @@ export class PayrollRunService {
                 : {},
             register,
             refused,
+            toSettle,
             // What attendance costs this month: on the payslips once it reaches
             // payroll; before that, shown beside the register and deducted from
             // nobody — the dry run (ATTENDANCE_PLAN.md §20).
@@ -420,12 +427,22 @@ export class PayrollRunService {
         session: any,
         options: { acknowledgePending?: boolean } = {},
     ): Promise<{ runId: string } | { refusal: ApprovalRefusal }> {
-        const [{ register, refused }, existing] = await Promise.all([
+        const [{ register, refused, attendance }, existing] = await Promise.all([
             this.compute(companyId, year, month),
             prisma.payrollRun.findUnique({
                 where: { companyId_month_year: { companyId, month, year } },
             }),
         ])
+
+        // Days still incomplete or a departure to confirm, for the people on
+        // the register, once attendance reaches the month's payroll
+        // (ATTENDANCE_PLAN.md §6.9, decision 14, PR 276): from the days as
+        // stored here, and again inside the transaction below.
+        const onRegister = register.entries.filter(e => !e.excluded).map(e => e.userId)
+        const stored = attendance.reachesPayroll && (existing?.status ?? "DRAFT") === "DRAFT"
+            ? await daysToSettle(prisma, companyId, year, month, onRegister)
+            : null
+        const settle = { count: stored?.count ?? 0, names: stored ? namesOf(stored.days) : [] }
 
         const verdict = checkApproval({
             status: (existing?.status ?? "DRAFT") as "DRAFT" | "APPROVED" | "PAID",
@@ -433,6 +450,7 @@ export class PayrollRunService {
             pendingDecisions: register.pendingDecisions,
             acknowledgePending: options.acknowledgePending === true,
             includedCount: register.includedCount,
+            daysToSettle: settle,
         })
         if (!verdict.ok) return { refusal: verdict.refusal }
 
@@ -466,6 +484,12 @@ export class PayrollRunService {
                 // money reflects those refusals (review on #16).
                 const today = calendarDateStr(new Date(), timeZone)
                 await AttendanceEngineService.recomputeMonthIn(tx, companyId, key, timeZone, today)
+                // Checked again on the month as just rebuilt, before anything of
+                // the approval is written (PR 276): a day whose stored row was
+                // out of date waits too. Refused, the recompute is kept, as any
+                // recompute's would be, and nothing else is written.
+                const still = await daysToSettle(tx, companyId, year, month, onRegister)
+                if (still.count > 0) return { refusal: settleRefusal(still.count, namesOf(still.days)) }
                 overtimeRejected = await rejectPendingOvertime(tx, companyId, year, month, approverId)
                 if (overtimeRejected > 0) await AttendanceEngineService.recomputeMonthIn(tx, companyId, key, timeZone, today)
             }
