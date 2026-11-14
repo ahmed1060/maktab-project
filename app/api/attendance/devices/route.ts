@@ -7,7 +7,8 @@ import { denyTerminals } from "@/lib/attendance/terminals-access"
 
 /**
  * The company's fingerprint terminals, as its agents report them (ATTENDANCE_PLAN.md §17),
- * and the brands one may be given: the Super Admin's, not retired (§17.9, PR 280).
+ * and the brands one may be given: the Super Admin's, not retired (§17.9, PR 280),
+ * with their notes for the setup guide's steps (§17.7, PR 282).
  */
 export const GET = withStandardHandler(async (req, session) => {
     const companyId = attendanceCompanyFor(session, new URL(req.url).searchParams.get("companyId"))
