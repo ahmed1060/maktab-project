@@ -213,6 +213,9 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     BRAND_IN_USE: { status: 409, message: "Terminals have this brand, so it can't be deleted. Retire it instead." },
     BRAND_RETIRED: { status: 409, message: "That brand is already retired." },
     BRAND_NOT_RETIRED: { status: 409, message: "That brand is offered already; there's nothing to put back." },
+    // A terminal's brand, picked by an Admin (§17.9, PR 280).
+    DEVICE_BRAND_PROTOCOL: { status: 409, message: "That brand's terminals speak another protocol than this one, so this terminal can't have it. Pick one that speaks its protocol." },
+    DEVICE_BRAND_RETIRED: { status: 409, message: "That brand has been retired, so it isn't offered for terminals any more. Pick another, or ask a Super Admin to put it back." },
     PHONE_KEY_INVALID: { status: 400, message: "The phone's key isn't one we can use. Update the app and try again." },
     PHONE_SIGNATURE_INVALID: { status: 400, message: "The phone's signature didn't check out. Try again." },
     PHONE_CHALLENGE_INVALID: { status: 400, message: "That request has expired or was already used. Try again." },

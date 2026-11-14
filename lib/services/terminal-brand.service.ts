@@ -81,6 +81,12 @@ export class TerminalBrandService {
             .sort((a, b) => Number(a.retiredAt !== null) - Number(b.retiredAt !== null) || a.name.localeCompare(b.name, "en", { sensitivity: "base" }))
     }
 
+    /** The brands an Admin may pick for a terminal (PR 280): those not retired, by name. */
+    static async offered(): Promise<{ id: string; name: string; protocol: TerminalProtocol }[]> {
+        const rows = await prisma.terminalBrand.findMany({ where: { retiredAt: null }, select: { id: true, name: true, protocol: true } })
+        return rows.sort((x, y) => x.name.localeCompare(y.name, "en", { sensitivity: "base" }))
+    }
+
     static async create(input: TerminalBrandInput, superAdminId: string): Promise<TerminalBrandRow> {
         const data = checked(input)
         await clash(data.name, null)

@@ -157,4 +157,68 @@ describe.skipIf(!ADMIN_URL)("terminal brands, in Postgres", () => {
             await expect(db.query(`DELETE FROM "TerminalBrand" WHERE name = 'Convoy'`)).rejects.toThrow()
         })
     })
+
+    // Part 3's second PR (PR 280): the brand on each terminal, picked by an Admin.
+    describe("a terminal's brand", () => {
+        const devices = async () => (await import("@/lib/services/attendance-device.service")).AttendanceDeviceService
+        const brandOf = async (id: string) => (await db.query(`SELECT b.name FROM "AttendanceDevice" d LEFT JOIN "TerminalBrand" b ON b.id = d."brandId" WHERE d.id = $1`, [id])).rows[0].name as string | null
+
+        it("lists each terminal with its protocol and brand, and offers the brands not retired", async () => {
+            const byId = Object.fromEntries((await (await devices()).list("c1")).map(d => [d.id, d]))
+            expect(byId.old).toMatchObject({ protocol: "ZKTECO", brand: null })
+            expect(byId.t1).toMatchObject({ protocol: "ZKTECO", brand: { id: await idOf("Convoy"), name: "Convoy", retired: false } })
+            await Brands.retire(await idOf("Hikvision"), "sa1")
+            expect((await Brands.offered()).map(b => [b.name, b.protocol])).toEqual([["Convoy", "ZKTECO"], ["ZKTeco", "ZKTECO"]])
+            await Brands.restore(await idOf("Hikvision"), "sa1")
+            expect((await Brands.offered()).map(b => b.name)).toEqual(["Convoy", "Hikvision", "ZKTeco"])
+        })
+
+        it("picks a brand that speaks the terminal's protocol, and changes it, each written to the audit log by name", async () => {
+            const Devices = await devices()
+            expect(await Devices.update("old", { brandId: await idOf("ZKTeco") }, "sa1")).toMatchObject({ brand: { name: "ZKTeco", retired: false } })
+            await Devices.update("old", { brandId: await idOf("Convoy") }, "sa1")
+            expect(await brandOf("old")).toBe("Convoy")
+            expect((await audits("UPDATE_ATTENDANCE_DEVICE")).map(a => a.details.brand)).toEqual([{ from: null, to: "ZKTeco" }, { from: "ZKTeco", to: "Convoy" }])
+        })
+
+        it("refuses a brand that speaks another protocol, a retired one, and one that isn't there, changing nothing", async () => {
+            const Devices = await devices()
+            await expect(Devices.update("old", { brandId: await idOf("Hikvision") }, "sa1")).rejects.toThrow("DEVICE_BRAND_PROTOCOL")
+            const zk = await idOf("ZKTeco")
+            await Brands.retire(zk, "sa1")
+            await expect(Devices.update("old", { name: "Gate 2", brandId: zk }, "sa1")).rejects.toThrow("DEVICE_BRAND_RETIRED")
+            await Brands.restore(zk, "sa1")
+            await expect(Devices.update("old", { brandId: "nope" }, "sa1")).rejects.toThrow("BRAND_NOT_FOUND")
+            expect(await brandOf("old")).toBe("Convoy")
+            expect((await db.query(`SELECT name FROM "AttendanceDevice" WHERE id = 'old'`)).rows[0].name).toBe("Front door")
+        })
+
+        it("keeps a retired brand the terminal already has when its name or mode changes", async () => {
+            const Devices = await devices()
+            const convoy = await idOf("Convoy")
+            await Brands.retire(convoy, "sa1")
+            const before = (await audits("UPDATE_ATTENDANCE_DEVICE")).length
+            expect(await Devices.update("old", { name: "Gate 2", brandId: convoy }, "sa1")).toMatchObject({ name: "Gate 2", brand: { name: "Convoy", retired: true } })
+            const entries = await audits("UPDATE_ATTENDANCE_DEVICE")
+            expect(entries).toHaveLength(before + 1)
+            expect(entries.at(-1).details.brand).toBeUndefined()
+            await Brands.restore(convoy, "sa1")
+        })
+
+        it("holds the brand's row while it saves, so a protocol changed meanwhile is seen and refused", async () => {
+            const Devices = await devices()
+            const fresh = await Brands.create({ name: "Suprema", protocol: "ZKTECO" }, "sa1")
+            // The Super Admin's change of protocol, under way but not yet saved.
+            await db.query("BEGIN")
+            await db.query(`UPDATE "TerminalBrand" SET protocol = 'HIKVISION' WHERE id = $1`, [fresh.id])
+            let settled = false
+            const picking = Devices.update("old", { brandId: fresh.id }, "sa1")
+            picking.then(() => { settled = true }, () => { settled = true })
+            await new Promise(r => setTimeout(r, 300))
+            expect(settled).toBe(false)
+            await db.query("COMMIT")
+            await expect(picking).rejects.toThrow("DEVICE_BRAND_PROTOCOL")
+            expect(await brandOf("old")).toBe("Convoy")
+        })
+    })
 })

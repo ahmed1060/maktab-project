@@ -44,7 +44,13 @@ const SHOWN = {
     id: true, agentId: true, serialNumber: true, name: true, model: true, firmware: true, mode: true,
     firstSeenAt: true, lastSeenAt: true, reachable: true, lastError: true, clockDriftSeconds: true,
     userCount: true, recordCount: true, recordCapacity: true, lastPunchAt: true, retiredAt: true,
+    protocol: true, brand: { select: { id: true, name: true, retiredAt: true } },
 } as const
+
+/** The brand printed on it (§17.9, PR 280), and whether the Super Admin has retired it since. */
+function withBrand<T extends { brand: { id: string; name: string; retiredAt: Date | null } | null }>(d: T) {
+    return { ...d, brand: d.brand && { id: d.brand.id, name: d.brand.name, retired: d.brand.retiredAt !== null } }
+}
 
 export class AttendanceDeviceService {
     /** With each one's health now (§13.2). */
@@ -54,7 +60,7 @@ export class AttendanceDeviceService {
             workingNow(companyId),
         ])
         const now = new Date()
-        return devices.map(d => ({ ...d, health: deviceHealth(d, now, working) }))
+        return devices.map(d => ({ ...withBrand(d), health: deviceHealth(d, now, working) }))
     }
 
     static async deviceOf(id: string) {
@@ -62,22 +68,42 @@ export class AttendanceDeviceService {
     }
 
     /**
-     * Renamed, or its mode changed (§17). A new mode applies to scans that
-     * arrive from now on; punches already stored keep the direction they
-     * were given.
+     * Renamed, its mode changed (§17), or its brand picked (§17.9, PR 280).
+     * A new mode applies to scans that arrive from now on; punches already
+     * stored keep the direction they were given.
+     *
+     * A brand must speak the terminal's protocol and not be retired, unless
+     * it's the one the terminal already has. Its row is held while the
+     * terminal is saved, so the Super Admin can't change its protocol,
+     * retire it or delete it meanwhile: whichever comes second sees the
+     * first. Once picked, a brand can be changed but not taken off.
      */
-    static async update(id: string, input: { name?: string; mode?: "ANY" | "ENTRANCE" | "EXIT" }, actorId: string) {
+    static async update(id: string, input: { name?: string; mode?: "ANY" | "ENTRANCE" | "EXIT"; brandId?: string }, actorId: string) {
         const name = input.name?.trim()
         if (input.name !== undefined && !name) fail("DEVICE_NAME_REQUIRED")
         return prisma.$transaction(async tx => {
-            const before = await tx.attendanceDevice.findUnique({ where: { id }, select: { companyId: true, name: true, mode: true, serialNumber: true } }) ?? fail("DEVICE_NOT_FOUND")
-            const after = await tx.attendanceDevice.update({ where: { id }, data: { ...(name && { name }), ...(input.mode && { mode: input.mode }) }, select: SHOWN })
+            const before = await tx.attendanceDevice.findUnique({
+                where: { id }, select: { companyId: true, name: true, mode: true, serialNumber: true, protocol: true, brandId: true, brand: { select: { name: true } } },
+            }) ?? fail("DEVICE_NOT_FOUND")
+            const brandId = input.brandId !== undefined && input.brandId !== before.brandId ? input.brandId : undefined
+            if (brandId !== undefined) {
+                const [brand] = await tx.$queryRaw<{ protocol: string; retiredAt: Date | null }[]>`SELECT protocol::text AS protocol, "retiredAt" FROM "TerminalBrand" WHERE id = ${brandId} FOR SHARE`
+                if (!brand) fail("BRAND_NOT_FOUND")
+                if (brand.retiredAt) fail("DEVICE_BRAND_RETIRED")
+                if (brand.protocol !== before.protocol) fail("DEVICE_BRAND_PROTOCOL")
+            }
+            const after = await tx.attendanceDevice.update({
+                where: { id }, data: { ...(name && { name }), ...(input.mode && { mode: input.mode }), ...(brandId !== undefined && { brandId }) }, select: SHOWN,
+            })
             const changed = (k: "name" | "mode") => before[k] === after[k] ? undefined : { from: before[k], to: after[k] }
             await AuditLogService.log("UPDATE_ATTENDANCE_DEVICE", "ATTENDANCE_DEVICE", id, {
                 tx, ...(await actorOf(tx, actorId)),
-                details: { companyId: before.companyId, serialNumber: before.serialNumber, name: changed("name") ?? after.name, mode: changed("mode") },
+                details: {
+                    companyId: before.companyId, serialNumber: before.serialNumber, name: changed("name") ?? after.name, mode: changed("mode"),
+                    brand: brandId !== undefined ? { from: before.brand?.name ?? null, to: after.brand?.name ?? null } : undefined,
+                },
             })
-            return after
+            return withBrand(after)
         })
     }
 

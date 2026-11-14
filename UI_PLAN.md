@@ -716,7 +716,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      terminals for the companies already there, merged in #278 on
      2026-11-14; then Phase 4 part 3's first PR, the Super Admin's
      Terminal brands page under Templates (`ATTENDANCE_PLAN.md` §17.9;
-     `DESIGN.md` §5.5, Row menu), #279;
+     `DESIGN.md` §5.5, Row menu), merged in #279 on 2026-11-14; then its
+     second PR, the brand on each terminal's card, picked in its Edit
+     dialog, #280;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6246,3 +6248,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   no terminal has used is deleted; one that has been used is retired, and
   Put back offers it again. Its protocol can't change while a terminal
   uses it. The brand on each terminal's card is the next PR.
+- **2026-11-14:** A terminal's brand (#280; `ATTENDANCE_PLAN.md` §17.9,
+  Phase 4 part 3; `DESIGN.md` §5.5, Row menu). Each terminal's card on
+  Fingerprint terminals shows its brand, or that none is picked yet, and
+  its Edit dialog picks one from the brands that speak its protocol. A
+  brand retired since stays chosen where a terminal has it, marked
+  "(retired)", and isn't offered anywhere else.

@@ -127,6 +127,13 @@ describe("its routes", () => {
         expect(KNOWN_REFUSALS.BRAND_NAME_TAKEN.status).toBe(409)
         expect(KNOWN_REFUSALS.BRAND_IN_USE.message).toContain("Retire")
     })
+
+    it("answer an Admin's pick of a brand that won't do, on a terminal (PR 280)", () => {
+        for (const code of ["DEVICE_BRAND_PROTOCOL", "DEVICE_BRAND_RETIRED"]) {
+            expect(KNOWN_REFUSALS[code], code).toMatchObject({ status: 409 })
+        }
+        expect(KNOWN_REFUSALS.DEVICE_BRAND_RETIRED.message).toContain("Super Admin")
+    })
 })
 
 describe("the page", () => {
@@ -220,6 +227,17 @@ describe("its words", () => {
             expect(KEYS, action).toContain(`audit_action_${action}_TERMINAL_BRAND`)
         }
         expect(KEYS).toContain("audit_entity_TERMINAL_BRAND")
+    })
+
+    it("say a terminal's brand in both languages, and name it in the audit log (PR 280)", () => {
+        for (const key of ["att_term_brand", "att_term_brand_line", "att_term_brand_none", "att_term_brand_unpicked", "att_term_brand_hint", "att_term_brand_retired", "audit_field_brand"]) {
+            expect((en as Record<string, string>)[key], key).toBeTruthy()
+            expect((ar as Record<string, string>)[key], key).toBeTruthy()
+        }
+        expect(en.att_term_brand_line).toContain("{brand}")
+        expect(ar.att_term_brand_line).toContain("{brand}")
+        expect(en.att_term_brand_retired).toBe("{name} (retired)")
+        expect(ar.att_term_brand_retired).toContain("{name}")
     })
 
     it("name each protocol as Nizmo speaks it", () => {
