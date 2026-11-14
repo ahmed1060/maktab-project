@@ -126,8 +126,9 @@ by then, and this plan names real models and files that may have changed.
 
 ### Round 9 — terminals that connect straight to Nizmo
 
-All twelve are the owner's: 1, 2 and 9 to 12 on 12 November 2026, and 3 to
-8, proposed with the plan (#269), on 13 November 2026, when it merged.
+All thirteen are the owner's: 1, 2 and 9 to 12 on 12 November 2026, 3 to
+8, proposed with the plan (#269), on 13 November 2026, when it merged, and
+13 on 14 November 2026 (#271).
 
 | # | Topic | Decision |
 |---|---|---|
@@ -143,6 +144,7 @@ All twelve are the owner's: 1, 2 and 9 to 12 on 12 November 2026, and 3 to
 | 10 | Who keeps the list | **The Super Admin only, one list for every company**, on a Terminal brands page under Templates. A company's Admin picks from it and can't add, change or retire a brand (§17.9). |
 | 11 | Who sets terminals up | **A permission of its own, "Set up fingerprint terminals"**, since it decides whose scans count as attendance. Someone who can open the Attendance settings tab but doesn't hold it never sees the Fingerprint terminals section (§17.10). |
 | 12 | The company's Admin | **The Super Admin decides, company by company, with a switch only they can change, off to start.** Off: only the Super Admin sets the company's terminals up. On: those holding the permission do, the built-in Admin among them. The permission is high-risk: its changes ask for the step-up code (§17.10). |
+| 13 | Built before a terminal can try them | **Parts 4 to 7 are built now, switched off, though no terminal on hand can try them:** the first customer's Convoy can't push and isn't a Hikvision. Each way is tried, and fixed where the real terminal differs from the manuals, when a terminal that uses it is on hand; until then the switch stays off for every company (decision 7; §20, Phase 4). |
 
 ### Round 10 — reading a day's scans, and missions
 
@@ -2065,9 +2067,12 @@ which becomes part 8 below. Each part is its own PR:
 
 Hikvision goes first because its secret address is the safer first step;
 parts 5 and 6 share the screen, so whichever comes second adds its protocol
-to it. If the terminal on hand for the trial speaks ZKTeco's, part 6 goes
-first. The trial (§17.8) follows parts 5 and 6, before the switch is turned
-on for anyone else.
+to it. Parts 4 to 7 are built now, switched off, though no terminal on hand
+can try them (round 9, decision 13). The trial (§17.8) of each way follows
+when a terminal that uses it is on hand, and the switch stays off for every
+company until it passes. Part 7 changes nothing in how the agent reads
+ZKTeco's terminals, so a new agent with it still reads the Convoy as
+before.
 
 **The first customer's terminal comes before all of it.** It is a Convoy, an
 Egyptian brand that sells other makers' terminals under its own name. Its
@@ -2105,8 +2110,9 @@ Until the agent runs, the office's scans can come in through the import
 (§13.9). The trial checks that the import reads that file's columns.
 
 It is also the first trial terminal (§17.8; the owner, 13 November 2026).
-With no push, it stays on the agent, and parts 5 to 7 wait (proposed) until
-there is a terminal they can be tried on.
+With no push, it stays on the agent and tries the agent alone. Parts 4 to 7
+are built all the same, switched off, and tried when a terminal that pushes,
+or a Hikvision, is on hand (round 9, decision 13).
 
 ### Phase 5 — Reading scans first and last, and missions — not built
 

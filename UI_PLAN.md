@@ -685,7 +685,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      hours, and a mission naming a task for its reviewer (round 10,
      decisions 13 to 21), with a template for the file import
      (`ATTENDANCE_PLAN.md` §13.9), a second review's decisions 22 to 27,
-     and the first customer's terminal read from its screens, #271;
+     the first customer's terminal read from its screens, and Phase 4's
+     parts 4 to 7 built before a terminal can try them (round 9, decision
+     13), #271;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6124,3 +6126,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   office's PC software stops clearing the terminal's records after reading
   them, and the agent and the PC software share the terminal's one
   connection. Plans only; no screen changes yet.
+- **2026-11-14:** Phase 4's parts 4 to 7 are built now, switched off, though
+  no terminal on hand can try them (#271; `ATTENDANCE_PLAN.md` round 9,
+  decision 13, §20): the owner's choice, where the plan had proposed they
+  wait. Each way is tried, and fixed where the real terminal differs from
+  the manuals, when a terminal that uses it is on hand, and the switch
+  stays off for every company until then. Plans only; no screen changes
+  yet.
