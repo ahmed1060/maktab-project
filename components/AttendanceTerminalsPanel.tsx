@@ -38,11 +38,15 @@ type Agent = {
 }
 type Device = {
     id: string; serialNumber: string; name: string; model: string | null; mode: 'ANY' | 'ENTRANCE' | 'EXIT'
+    // What it speaks, and the brand printed on it (ATTENDANCE_PLAN.md §17.9, PR 280).
+    protocol: 'ZKTECO' | 'HIKVISION'; brand: { id: string; name: string; retired: boolean } | null
     lastSeenAt: string | null; lastPunchAt: string | null; reachable: boolean; lastError: string | null
     clockDriftSeconds: number | null; recordCount: number | null; recordCapacity: number | null; retiredAt: string | null
     health: { state: 'RETIRED' | 'OK' | 'UNREACHABLE' | 'SILENT' | 'QUIET'; memoryFull: boolean; clockOff: boolean }
 }
 type Shown = { name: string; code: string; expiresAt: string | null }
+/** A brand one may give a terminal: the Super Admin's, not retired. */
+type OfferedBrand = { id: string; name: string; protocol: Device['protocol'] }
 
 const AGENT_TONE: Record<Agent['health'], StatusTone> = { OK: 'good', SILENT: 'problem', QUIET: 'neutral', WAITING: 'waiting', REVOKED: 'neutral' }
 const DEVICE_TONE: Record<Device['health']['state'], StatusTone> = { OK: 'good', UNREACHABLE: 'problem', SILENT: 'problem', QUIET: 'neutral', RETIRED: 'neutral' }
@@ -81,6 +85,7 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
     if (!agentsBody?.data) return null
     const agents: Agent[] = agentsBody.data.agents
     const devices: Device[] = devicesBody?.data?.devices ?? []
+    const brands: OfferedBrand[] = devicesBody?.data?.brands ?? []
     const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
     const number = (n: number) => n.toLocaleString(intl)
     // Each fact kept apart from the next, so a host name or a version can't
@@ -193,6 +198,7 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
                                 </>}
                                 detail={facts([
                                     `${t('att_term_serial')} ${d.serialNumber}`,
+                                    d.brand ? t('att_term_brand_line').replace('{brand}', d.brand.name) : t('att_term_brand_none'),
                                     d.model,
                                     t('att_term_mode_line').replace('{mode}', t(MODE_LABEL[d.mode])),
                                     t('att_term_last_seen').replace('{when}', ago(d.lastSeenAt)),
@@ -218,7 +224,7 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
             )}
             {shownCode && <CodeDialog shown={shownCode} onClose={() => setShownCode(null)} />}
             {editing && (
-                <TerminalDialog device={editing} busy={busy} onClose={() => setEditing(null)} onSubmit={async change => {
+                <TerminalDialog device={editing} brands={brands} busy={busy} onClose={() => setEditing(null)} onSubmit={async change => {
                     await send(`/api/attendance/devices/${editing.id}`, { method: 'PATCH', body: JSON.stringify(change) }, 'att_term_saved', () => setEditing(null))
                 }} />
             )}
@@ -296,22 +302,35 @@ export function CodeDialog({ shown, onClose }: { shown: Shown; onClose: () => vo
     )
 }
 
-/** A terminal's name, which it needs, and how it reads scans. */
-export function TerminalDialog({ device, busy, onClose, onSubmit }: {
-    device: Pick<Device, 'name' | 'mode'>
+/**
+ * A terminal's name, which it needs, how it reads scans, and its brand
+ * (ATTENDANCE_PLAN.md §17.9, PR 280): one of the brands that speak its
+ * protocol. A brand retired since stays chosen, marked, and is the only
+ * retired one offered (DESIGN.md §5.5); "Not picked yet" is there only
+ * until one is.
+ */
+export function TerminalDialog({ device, brands, busy, onClose, onSubmit }: {
+    device: Pick<Device, 'name' | 'mode' | 'protocol' | 'brand'>
+    brands: OfferedBrand[]
     busy: boolean
     onClose: () => void
-    onSubmit: (change: { name: string; mode: Device['mode'] }) => Promise<void>
+    onSubmit: (change: { name: string; mode: Device['mode']; brandId?: string }) => Promise<void>
 }) {
     const { t } = useLanguage()
     const formRef = useRef<HTMLFormElement>(null)
     const [name, setName] = useState(device.name)
     const [mode, setMode] = useState<Device['mode']>(device.mode)
+    const [brandId, setBrandId] = useState(device.brand?.id ?? '')
     const [error, setError] = useState<string | undefined>()
+    const brandOptions = [
+        ...(device.brand ? [] : [{ value: '', label: t('att_term_brand_unpicked') }]),
+        ...(device.brand?.retired ? [{ value: device.brand.id, label: t('att_term_brand_retired').replace('{name}', device.brand.name) }] : []),
+        ...brands.filter(b => b.protocol === device.protocol).map(b => ({ value: b.id, label: b.name })),
+    ]
     const submit = async (e: FormEvent) => {
         e.preventDefault()
         if (!name.trim()) { setError(t('att_term_device_name_required')); focusFirstWrong(formRef.current); return }
-        await onSubmit({ name: name.trim(), mode })
+        await onSubmit({ name: name.trim(), mode, ...(brandId && { brandId }) })
     }
     return (
         <Dialog open onClose={() => { if (!busy) onClose() }} title={t('att_term_edit_title').replace('{name}', device.name)}>
@@ -321,6 +340,9 @@ export function TerminalDialog({ device, busy, onClose, onSubmit }: {
                 )}</Field>
                 <Field label={t('att_term_mode')} hint={t('att_term_mode_hint')}>{p => (
                     <Select {...p} name="mode" value={mode} options={MODES.map(m => ({ value: m, label: t(MODE_LABEL[m]) }))} onChange={e => setMode(e.target.value as Device['mode'])} />
+                )}</Field>
+                <Field label={t('att_term_brand')} hint={t('att_term_brand_hint')}>{p => (
+                    <Select {...p} name="brand" value={brandId} options={brandOptions} onChange={e => setBrandId(e.target.value)} />
                 )}</Field>
                 <DialogActions>
                     <Button onClick={onClose} disabled={busy}>{t('cancel')}</Button>

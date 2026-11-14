@@ -147,13 +147,58 @@ const AGENT_LIST = {
 }
 const DEVICE_LIST = {
     devices: [
-        { id: "d1", serialNumber: "ZK-001", name: "Front door", model: "K40", mode: "ENTRANCE", lastSeenAt: null, lastPunchAt: null, reachable: true, lastError: null, clockDriftSeconds: 600, recordCount: 95_000, recordCapacity: 100_000, retiredAt: null, health: { state: "OK", memoryFull: true, clockOff: true } },
-        { id: "d2", serialNumber: "ZK-002", name: "Back door", model: null, mode: "ANY", lastSeenAt: null, lastPunchAt: null, reachable: true, lastError: null, clockDriftSeconds: null, recordCount: null, recordCapacity: null, retiredAt: "2026-06-01T00:00:00.000Z", health: { state: "RETIRED", memoryFull: false, clockOff: false } },
+        { id: "d1", serialNumber: "ZK-001", name: "Front door", model: "K40", mode: "ENTRANCE", protocol: "ZKTECO", brand: { id: "b1", name: "Convoy", retired: false }, lastSeenAt: null, lastPunchAt: null, reachable: true, lastError: null, clockDriftSeconds: 600, recordCount: 95_000, recordCapacity: 100_000, retiredAt: null, health: { state: "OK", memoryFull: true, clockOff: true } },
+        { id: "d2", serialNumber: "ZK-002", name: "Back door", model: null, mode: "ANY", protocol: "ZKTECO", brand: null, lastSeenAt: null, lastPunchAt: null, reachable: true, lastError: null, clockDriftSeconds: null, recordCount: null, recordCapacity: null, retiredAt: "2026-06-01T00:00:00.000Z", health: { state: "RETIRED", memoryFull: false, clockOff: false } },
+    ],
+    // The brands an Admin may pick from (PR 280): the Super Admin's, not retired.
+    brands: [
+        { id: "b1", name: "Convoy", protocol: "ZKTECO" },
+        { id: "b2", name: "Hikvision", protocol: "HIKVISION" },
+        { id: "b3", name: "ZKTeco", protocol: "ZKTECO" },
     ],
 }
+const BRANDS = DEVICE_LIST.brands
 const terminals = (extra: Record<string, Loaded> = {}) => ({ [AGENTS]: ok(AGENT_LIST), [DEVICES]: ok(DEVICE_LIST), ...extra })
 
 describe("the fingerprint terminals", () => {
+    // Part 3's second PR (PR 280; ATTENDANCE_PLAN.md §17.9): the brand on each terminal.
+    it("show each terminal's brand among its facts, or that none is picked yet", async () => {
+        const html = await render("AttendanceTerminalsPanel", terminals())
+        // Right after its serial number.
+        expect(html).toContain(`<bdi>${en.att_term_serial} ZK-001</bdi>${en.list_separator}<bdi>${en.att_term_brand_line.replace("{brand}", "Convoy")}</bdi>`)
+        expect(html).toContain(`<bdi>${esc(en.att_term_brand_none)}</bdi>`)
+        const arabic = await render("AttendanceTerminalsPanel", terminals(), { locale: "ar" })
+        expect(arabic).toContain(`<bdi>${ar.att_term_brand_line.replace("{brand}", "Convoy")}</bdi>`)
+    })
+
+    it("pick a terminal's brand in its Edit dialog, from the brands that speak its protocol", async () => {
+        const { TerminalDialog } = await import("@/components/AttendanceTerminalsPanel")
+        Object.assign(state, { locale: "en", swr: {} })
+        vi.stubGlobal("document", { body: {} })
+        const dialog = (brand: unknown) => renderToStaticMarkup(h(TerminalDialog, { device: { name: "Front door", mode: "ANY" as const, protocol: "ZKTECO" as const, brand: brand as never }, brands: BRANDS as never, busy: false, onClose: () => {}, onSubmit: async () => {} }))
+        const options = (html: string) => [...html.matchAll(/<option value="([^"]*)"( selected="")?>([^<]*)<\/option>/g)].map(m => `${m[1]}${m[2] ? "*" : ""}=${m[3]}`)
+        try {
+            // None picked yet: "Not picked yet" first, then the two speaking ZKTeco's protocol.
+            const none = dialog(null)
+            expect(none).toMatch(new RegExp(`<label for="[^"]+" class="ui-label">${en.att_term_brand}</label>`))
+            expect(none).toContain(esc(en.att_term_brand_hint))
+            expect(options(none).filter(o => !o.includes(en.audit_value_ANY) && !o.includes(en.audit_value_ENTRANCE) && !o.includes(en.audit_value_EXIT))).toEqual([`*=${en.att_term_brand_unpicked}`, "b1=Convoy", "b3=ZKTeco"])
+            // Picked: no way back to none.
+            expect(options(dialog({ id: "b3", name: "ZKTeco", retired: false })).filter(o => o.startsWith("b"))).toEqual(["b1=Convoy", "b3*=ZKTeco"])
+            // Retired since: kept, marked, and the only retired one offered (DESIGN.md §5.5).
+            expect(options(dialog({ id: "b9", name: "Old make", retired: true })).filter(o => o.startsWith("b"))).toEqual([`b9*=${en.att_term_brand_retired.replace("{name}", "Old make")}`, "b1=Convoy", "b3=ZKTeco"])
+        } finally {
+            vi.unstubAllGlobals()
+        }
+    })
+
+    it("send a brand only once one is picked, and say each refusal of it in words", () => {
+        const source = readFileSync("components/AttendanceTerminalsPanel.tsx", "utf8")
+        expect(source).toContain("...(brandId && { brandId })")
+        const route = readFileSync("app/api/attendance/devices/[id]/route.ts", "utf8")
+        expect(route).toContain("brandId: z.string().min(1).max(64).optional()")
+    })
+
     it("are a card listing the agents and the terminals as rows, each with its state as a badge", async () => {
         const html = await render("AttendanceTerminalsPanel", terminals())
         expect(html).toContain(`<h2 class="ui-card-title">${en.att_term_title}</h2>`)
@@ -206,7 +251,7 @@ describe("the fingerprint terminals", () => {
             expect(code).toContain(en.att_term_code_title.replace("{name}", "Office PC"))
             expect(code).toMatch(/<p class="ui-code" dir="ltr" translate="no">AB12-CD34<\/p>/)
             expect(code).toContain(`${en.att_term_done}</button>`)
-            const device = renderToStaticMarkup(h(TerminalDialog, { device: { name: "Front door", mode: "ENTRANCE" as const }, busy: false, onClose: () => {}, onSubmit: async () => {} }))
+            const device = renderToStaticMarkup(h(TerminalDialog, { device: { name: "Front door", mode: "ENTRANCE" as const, protocol: "ZKTECO" as const, brand: null }, brands: BRANDS as never, busy: false, onClose: () => {}, onSubmit: async () => {} }))
             expect(device).toMatch(new RegExp(`<label for="[^"]+" class="ui-label">${en.att_term_device_name}</label>`))
             expect(device).toMatch(new RegExp(`<label for="[^"]+" class="ui-label">${en.att_term_mode}</label>`))
             expect(device).toContain(esc(en.att_term_mode_hint))
@@ -307,7 +352,8 @@ describe("found in the browser and the audit (company settings part 3c)", () => 
     it("keeps each of a row's facts apart from the next, so a host name or a version can't swap places with the words beside it in Arabic", async () => {
         const terms = await render("AttendanceTerminalsPanel", terminals(), { locale: "ar" })
         expect(terms).toContain(`<bdi>FRONT-DESK</bdi>${ar.list_separator}<bdi>v1.4.2</bdi>`)
-        expect(terms).toContain(`<bdi>${ar.att_term_serial} ZK-001</bdi>${ar.list_separator}<bdi>K40</bdi>`)
+        // Its brand comes between its serial number and its model since PR 280.
+        expect(terms).toContain(`<bdi>${ar.att_term_serial} ZK-001</bdi>${ar.list_separator}<bdi>${ar.att_term_brand_line.replace("{brand}", "Convoy")}</bdi>${ar.list_separator}<bdi>K40</bdi>`)
         const places = await render("AttendanceLocationsPanel", { [PLACES]: ok(PLACE_LIST) }, { locale: "ar" })
         expect(places).toContain("<bdi>Youssef Ali</bdi>")
     })

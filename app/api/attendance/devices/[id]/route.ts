@@ -13,9 +13,10 @@ async function deviceFor(session: any, id: string): Promise<{ denied: NextRespon
     return denied ? { denied } : { device }
 }
 
-const schema = z.object({ name: z.string().max(80).optional(), mode: z.enum(["ANY", "ENTRANCE", "EXIT"]).optional() })
+// A brand from the Super Admin's list (§17.9, PR 280); once picked it can be changed, not taken off.
+const schema = z.object({ name: z.string().max(80).optional(), mode: z.enum(["ANY", "ENTRANCE", "EXIT"]).optional(), brandId: z.string().min(1).max(64).optional() })
 
-/** Renamed, or marked entrance-only or exit-only (§17): for scans from now on. */
+/** Renamed, marked entrance-only or exit-only (§17), for scans from now on; or its brand picked (§17.9). */
 export const PATCH = withStandardHandler(async (_req, session, json, { params }) => {
     const validation = schema.safeParse(json)
     if (!validation.success) return ApiResponse.badRequest("Validation Error", validation.error.format())
