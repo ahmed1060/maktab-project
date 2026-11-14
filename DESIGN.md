@@ -1006,7 +1006,13 @@ These are built once, in the building-blocks PR, and every page uses them
     which kinds and how large they may be;
   - each file, picked or saved, is a chip with a file icon, its name and
     its size. A saved file's chip opens it in a new tab, and says so to
-    screen readers. A chip's remove button is named for its file.
+    screen readers. A chip's remove button is named for its file;
+  - a file that can be started from a template, such as attendance's
+    import, has the template under the file picker: a quiet, small
+    Download template button with the download icon, the label the task
+    upload's template has. It's a plain link, which the browser downloads
+    itself, and the template is in the page's language. Once a file is
+    picked, its chip takes the picker's place, and the button goes with it.
 - **A file that replaces one,** such as a template for the bulk upload of
   tasks, which the Super Admin keeps, is a section of its own under its
   heading:
@@ -2169,3 +2175,7 @@ changed:
   says when the server has stopped checking codes, after five in fifteen
   minutes, and counts down until it checks again, where it called a right
   code wrong.
+- **2026-11-14:** A file that can be started from a template (§5.5,
+  Files), as the product owner chose for attendance's import
+  (`ATTENDANCE_PLAN.md` §13.9): a quiet, small Download template button
+  under the file picker, giving the template in the page's language.

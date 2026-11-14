@@ -8,7 +8,7 @@ the PRs after it, and is paused for now (§20). Phase 4 (terminals through the a
 ZKTeco and Hikvision alike, round 9) is planned in #269 and not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271 and not built. A template for the file import
-(§13.9) is planned in #271 and not built.
+(§13.9) is built in #272.
 This document is the design those PRs follow: what was decided, and why, so
 that whoever changes it is not re-arguing settled points. Where the build
 settled something left open here, its PR says so, and the code and
@@ -1442,13 +1442,16 @@ flag is accepted or rejected; while it exists it has the same protections as the
 reference photo — encrypted, reachable only through the open flag, watermarked,
 every view audited. Covered by the same consent text as the verification photo.
 
-### 13.9 A template for the file import (planned)
+### 13.9 A template for the file import (built in #272)
 
 The owner, 14 November 2026. The Import tab takes the file a terminal
 exports, but a company without one has nothing to start a file from.
 
-- **Download a template**, a link on the Import tab beside Choose a file,
-  gives an Excel file (.xlsx) in the language the page is in.
+- **Download template**, a quiet button on the Import tab under Choose a
+  file (`DESIGN.md` §5.5, Files), gives an Excel file (.xlsx) in the
+  language the page is in. The plan said Download a template; the build
+  took the label the task upload's template already has, so the same thing
+  is called the same everywhere.
 - **Its first sheet, Punches, holds only the headings,** in row 1:
   Employee number, Date and Time (رقم الموظف، التاريخ، الوقت). The import
   reads the first sheet that has anything on it, and knows these headings
@@ -1462,8 +1465,14 @@ exports, but a company without one has nothing to start a file from.
   - the time, 08:55, 17:05 or 5:05 PM.
 - **The examples stay off the first sheet,** so a template sent back
   unchanged imports nothing, never made-up punches.
-- **Employee numbers are text cells,** so a number starting with 0 keeps
-  it, and the Date column shows day, month, year.
+- **All three columns are text cells,** so what is typed is what the
+  import reads: an employee number starting with 0 keeps it, and Excel
+  never turns 03/11/2026 into 11 March by the computer's own date order,
+  or a time into a fraction of a day. The import then reads the date in
+  the order the Import tab is set to, day first unless changed. The plan
+  had the Date column showing day, month, year; the build made it text
+  for the same reason as the employee number.
+- **Both sheets read right to left in Arabic.**
 - **The same people as the import can download it.** The file holds no
   company data. The server builds it on request with the library the import
   already reads files with, from the import's own headings. A test reads
@@ -2147,7 +2156,7 @@ Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
 Part 2 needs none of the rest, and helps the first customer at once: a
 second scan on arriving no longer leaves a day incomplete.
 
-### The import's template — not built
+### The import's template — built in #272
 
 Planned in #271 (§13.9). Its own small PR, needing nothing from Phase 4
 or 5, and built before them.
