@@ -829,6 +829,11 @@ These are built once, in the building-blocks PR, and every page uses them
     on its list after the others, with a Retired badge, and isn't offered
     anywhere new; Put back, in its menu, offers it again. An item that
     nothing has used is deleted as before.
+  - Where something already has a retired item, such as a terminal whose
+    brand was retired, its picker keeps it chosen, with "(retired)" after
+    its name, so saving other changes leaves it as it is. It's the only
+    retired item offered there, and once another is picked and saved, it
+    isn't offered again.
 - **Dialog:** a level-2 panel (§4.3) on `--panel-raised`, with 12px
   corners and 24px inside (16px on phones), over the dimmed page.
   - The title is `--text-xl`, weight 500.
@@ -2222,3 +2227,6 @@ changed:
   the Super Admin's terminal brands (`ATTENDANCE_PLAN.md` §17.9).
 - **2026-11-14:** Terminal brands, the Super Admin's page under Templates
   (`UI_PLAN.md` §2.2), has the side bar icon `Fingerprint` (§6).
+- **2026-11-14:** A picker keeps a retired item where it's already chosen
+  (§5.5, Row menu), with "(retired)" after its name, and offers it nowhere
+  else. First for a terminal's brand (`ATTENDANCE_PLAN.md` §17.9).
