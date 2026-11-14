@@ -590,7 +590,11 @@ the Requests page on it; missions join them in part 4. The server checks
 again inside approval's transaction, after the month's last recompute and
 before undecided overtime is rejected, so a day whose stored row was out
 of date is caught too; refused then, the recompute is kept, nothing else
-is written, and the window shows the day.
+is written, and the window shows the day. Anyone on the register being
+approved who wasn't on the one read before, such as someone put back on
+the payroll meanwhile, is checked once that register is built; a day of
+theirs waiting undoes the whole approval and is refused the same way
+(review on #276).
 
 **The terminal's in/out key is still not read.** It is often left on the
 wrong state, and the order of the scans is surer.
@@ -1385,7 +1389,9 @@ So approval and locking are serialized:
   From #276, once attendance reaches the month's payroll, the days are
   checked again right after the first recompute and before pending
   overtime is rejected: a day still waiting refuses the approval, the
-  recompute kept and nothing else written.
+  recompute kept and nothing else written. Anyone on the register being
+  approved who wasn't checked then is checked once it's built, and a day
+  of theirs waiting undoes it all.
 - **After it:** anything that takes the lock and finds the month locked records a
   discrepancy instead of writing (below).
 
