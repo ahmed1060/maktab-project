@@ -163,7 +163,11 @@ type Day = {
     lateMinutes: number; earlyLeaveMinutes: number; overtimeMinutes: number; excusedMinutes: number
     expectedStartMinutes: number | null; expectedEndMinutes: number | null
     deductionDays: number; deductionMinor: number | null; overtimeStatus: string; overtimeMinor: number | null
-    breakdown: { lateness: RuleOutcome; earlyLeave: RuleOutcome; absenceDays: number; unpriced: string | null; holiday: string | null; excusedAbsence?: boolean }
+    breakdown: {
+        lateness: RuleOutcome; earlyLeave: RuleOutcome; absenceDays: number; unpriced: string | null; holiday: string | null; excusedAbsence?: boolean
+        /** A day with one scan somebody marked absent or accepted as it is (PR 275). */
+        settled?: 'ABSENT' | 'AS_IT_IS'
+    }
 }
 
 /** What a day's status means, which decides its badge's colour (DESIGN.md §2.3); the rest are neutral. */
@@ -237,6 +241,7 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
         d.overtimeStatus === 'PENDING' ? t('day_overtime_pending') : d.overtimeStatus === 'REJECTED' ? t('day_overtime_rejected') : d.overtimeStatus === 'NOT_COUNTED' ? t('day_overtime_short') : null,
         d.excusedMinutes > 0 ? t('day_excused').replace('{n}', num(d.excusedMinutes)) : null,
         d.breakdown.excusedAbsence ? t('day_absence_excused') : null,
+        d.breakdown.settled === 'ABSENT' ? t('day_settled_absent') : d.breakdown.settled === 'AS_IT_IS' ? t('day_settled_as_is') : null,
     ].filter((n): n is string => !!n)
     const totalMinor = (days ?? []).reduce((sum, d) => sum + (d.deductionMinor ?? 0), 0)
     const showsMoney = (days ?? []).some(d => d.deductionMinor !== null)

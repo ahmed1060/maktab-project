@@ -20,6 +20,11 @@ import type { Visibility } from "./attendance-punch.service"
  * withdrawn while its month is open. A departure to confirm is settled the
  * same way, as a decision on its early leave: accepted, it is charged by the
  * policy; excused, it isn't; either way the day no longer waits.
+ *
+ * A day with one scan is settled as a decision on the day itself (§6.9,
+ * decision 22, PR 275), each with a reason: accepted, it is marked absent,
+ * an absence the policy charges; excused, it is accepted as it is, charged
+ * nothing. A day off can only be accepted as it is.
  */
 
 function fail(code: string): never {
@@ -45,7 +50,7 @@ function visibleWhere(v: Visibility) {
     return { userId: v.userId }
 }
 
-export type Subject = "LATENESS" | "EARLY_LEAVE" | "ABSENCE"
+export type Subject = "LATENESS" | "EARLY_LEAVE" | "ABSENCE" | "INCOMPLETE"
 export type DecisionInput = { userId: string; date: string; subject: Subject; outcome: "EXCUSED" | "ACCEPTED"; reason?: string | null }
 
 /** The most of each kind one list returns. */
@@ -89,7 +94,8 @@ export class AttendanceExceptionService {
         const [lateRows, earlyRows, absentRows, incompleteRows, departureRows, overtimeRows, permissions, missing, unmatched] = await Promise.all([
             kind({ status: "PRESENT", lateMinutes: { gt: 0 }, ...counted("lateness") }, decidedOf("LATENESS")),
             kind({ status: "PRESENT", earlyLeaveMinutes: { gt: 0 }, ...counted("earlyLeave") }, decidedOf("EARLY_LEAVE")),
-            kind({ status: "ABSENT" }, decidedOf("ABSENCE")),
+            // An absence with no scan: a day with one, marked absent, is under Decided (PR 275).
+            kind({ status: "ABSENT", punchCount: 0 }, decidedOf("ABSENCE")),
             kind({ status: "INCOMPLETE" }),
             // A decided day no longer waits, so there is nothing to leave out.
             kind({ status: "TO_CONFIRM" }),
@@ -138,7 +144,8 @@ export class AttendanceExceptionService {
         if (!isDateString(input.date)) fail("INVALID_DATE")
         if (input.userId === actorId) fail("CANNOT_CORRECT_OWN")
         const reason = input.reason?.trim() || null
-        if (input.outcome === "EXCUSED" && !reason) fail("REASON_REQUIRED")
+        // A day with one scan, marked absent or accepted as it is, always says why (decision 22).
+        if ((input.outcome === "EXCUSED" || input.subject === "INCOMPLETE") && !reason) fail("REASON_REQUIRED")
         const date = wallClock(`${input.date}T00:00:00`)
         const saved = await prisma.$transaction(async tx => {
             const person = await tx.user.findFirst({ where: { id: input.userId, companyId, status: { not: "DELETED" } }, select: { id: true } })
@@ -148,18 +155,22 @@ export class AttendanceExceptionService {
             // already made, changed. Otherwise a future day could be excused in
             // advance and the waiver applied, unseen, when it came (review on #15).
             const already = await tx.attendanceDayDecision.findUnique({ where: { userId_date_subject: { userId: input.userId, date, subject: input.subject } }, select: { id: true } })
+            const day = await tx.attendanceDay.findUnique({
+                where: { companyId_userId_date: { companyId, userId: input.userId, date } },
+                select: { status: true, lateMinutes: true, earlyLeaveMinutes: true, expectedStartMinutes: true },
+            })
             if (!already) {
-                const day = await tx.attendanceDay.findUnique({
-                    where: { companyId_userId_date: { companyId, userId: input.userId, date } },
-                    select: { status: true, lateMinutes: true, earlyLeaveMinutes: true },
-                })
-                // Early leave is decided on a day present, or one that waits on its departure (PR 274).
+                // Early leave is decided on a day present, or one that waits on its departure (PR 274);
+                // a day with one scan while it waits on the other (PR 275).
                 const fits = !!day && (
                     input.subject === "LATENESS" ? day.status === "PRESENT" && day.lateMinutes > 0
                         : input.subject === "EARLY_LEAVE" ? (day.status === "PRESENT" && day.earlyLeaveMinutes > 0) || day.status === "TO_CONFIRM"
-                            : day.status === "ABSENT")
+                            : input.subject === "INCOMPLETE" ? day.status === "INCOMPLETE"
+                                : day.status === "ABSENT")
                 if (!fits) fail("NOTHING_TO_DECIDE")
             }
+            // Nobody is absent on a day off: a rest day or holiday is only accepted as it is.
+            if (input.subject === "INCOMPLETE" && input.outcome === "ACCEPTED" && day?.expectedStartMinutes == null) fail("NOTHING_TO_DECIDE")
             const row = await tx.attendanceDayDecision.upsert({
                 where: { userId_date_subject: { userId: input.userId, date, subject: input.subject } },
                 create: { companyId, userId: input.userId, date, subject: input.subject, outcome: input.outcome, reason, decidedById: actorId },

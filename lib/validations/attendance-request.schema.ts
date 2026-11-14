@@ -37,7 +37,7 @@ export const dayDecisionSchema = z.object({
     companyId: z.string().optional(),
     userId: z.string().min(1),
     date,
-    subject: z.enum(["LATENESS", "EARLY_LEAVE", "ABSENCE"]),
+    subject: z.enum(["LATENESS", "EARLY_LEAVE", "ABSENCE", "INCOMPLETE"]),
     outcome: z.enum(["EXCUSED", "ACCEPTED"]),
     reason: z.string().max(500).nullable().optional(),
 })

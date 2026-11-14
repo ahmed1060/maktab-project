@@ -51,7 +51,7 @@ const row = (fields: Row = {}): Row => ({
     id: "d1", userId: "u2", name: "Sami Nabil", teamLeaderId: null, date: "2026-10-15", status: "PRESENT",
     firstIn: "2026-10-15T09:12:00", lastOut: "2026-10-15T17:00:00", lateMinutes: 12, earlyLeaveMinutes: 0, overtimeMinutes: 0,
     deductionMinor: 12500, breakdown: { lateness: { minutes: 12, days: 0.25, occurrence: 3, note: "ESCALATED" }, earlyLeave: none, absenceDays: 0 },
-    expectedEndMinutes: 1020,
+    expectedStartMinutes: 540, expectedEndMinutes: 1020,
     ...fields,
 })
 const own = row({ id: "d9", userId: "u1", name: "Hana Saad", date: "2026-10-12" })
@@ -254,6 +254,54 @@ describe("a departure to confirm (ATTENDANCE_PLAN.md §6.9, §13.1, round 10, de
         expect(SOURCE).toMatch(/kind === 'departure'[\s\S]*?decide\(r, 'EARLY_LEAVE', 'ACCEPTED'\)/)
         expect(SOURCE).toMatch(/kind === 'departure'[\s\S]*?openExcuse\(r, 'EARLY_LEAVE'\)/)
         expect(SOURCE).toContain("direction: 'OUT'")
+    })
+})
+
+describe("settling a day with a punch missing (ATTENDANCE_PLAN.md §6.9, §13.1, round 10, decision 22, PR 275)", () => {
+    const SOURCE = readFileSync("app/(dashboard)/dashboard/attendance/ExceptionsTab.tsx", "utf8")
+
+    it("offers adding the punch first, then marking the day absent or accepting it as it is, to whoever corrects it", async () => {
+        const one = row_(panel(await page({ search: "tab=exceptions&kind=incomplete" })), "d3")
+        expect(one).toMatch(/<button type="button" class="ui-btn ui-btn-primary ui-btn-sm">Add a punch<\/button><button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">Mark absent<\/button><button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">Accept as it is<\/button>/)
+        // One's own day is somebody else's to settle.
+        const mine = { ...DATA, incomplete: [row({ id: "d8", userId: "u1", name: "Hana Saad", status: "INCOMPLETE", lastOut: null })] }
+        expect(row_(panel(await page({ shows: mine, search: "tab=exceptions&kind=incomplete" })), "d8")).not.toContain("<button")
+        const arabic = row_(panel(await page({ locale: "ar", search: "tab=exceptions&kind=incomplete" })), "d3")
+        expect(arabic).toContain(`>${ar.exc_mark_absent}</button>`)
+        expect(arabic).toContain(`>${ar.exc_accept_as_is}</button>`)
+    })
+
+    it("can't mark a rest day or a holiday absent, where nobody was expected, only accept it", async () => {
+        const rest = { ...DATA, incomplete: [row({ id: "d5", status: "INCOMPLETE", lastOut: null, expectedStartMinutes: null, expectedEndMinutes: null })] }
+        const one = row_(panel(await page({ shows: rest, search: "tab=exceptions&kind=incomplete" })), "d5")
+        expect(one).toContain(">Accept as it is</button>")
+        expect(one).not.toContain(">Mark absent</button>")
+    })
+
+    it("asks a reason for either in the excuse's dialog, saying what each does, as a decision on the day", () => {
+        expect(SOURCE).toMatch(/kind === 'incomplete'[\s\S]*?openExcuse\(r, 'INCOMPLETE', 'ACCEPTED'\)/)
+        expect(SOURCE).toMatch(/kind === 'incomplete'[\s\S]*?openExcuse\(r, 'INCOMPLETE', 'EXCUSED'\)/)
+        // The same dialog, its reason asked under the field when it's missing.
+        expect(SOURCE).toContain("void decide(excusing.row, excusing.subject, excusing.outcome, reason.trim())")
+        for (const words of [en, ar]) {
+            expect(words.exc_mark_absent_hint).toBeTruthy()
+            expect(words.exc_accept_as_is_hint).toBeTruthy()
+        }
+        expect(en.exc_mark_absent_hint).toContain("charged as an absence")
+        expect(en.exc_accept_as_is_hint).toContain("nothing of the day is charged")
+    })
+
+    it("lists what was decided as the punch missing, marked absent or accepted as it is, with its reason and Undo", async () => {
+        const decided = { ...DATA, decided: [
+            { id: "x2", userId: "u2", name: "Sami Nabil", teamLeaderId: null, date: "2026-10-19", subject: "INCOMPLETE", outcome: "ACCEPTED", reason: "Went home ill" },
+            { id: "x3", userId: "u2", name: "Sami Nabil", teamLeaderId: null, date: "2026-10-21", subject: "INCOMPLETE", outcome: "EXCUSED", reason: "At a client" },
+        ] }
+        const html = panel(await page({ shows: decided, search: "tab=exceptions&kind=decided" }))
+        expect(row_(html, "x2")).toContain(`>${en.exc_tab_incomplete}<`)
+        expect(row_(html, "x2")).toContain('<span class="ui-badge ui-badge-neutral">Marked absent</span>')
+        expect(row_(html, "x2")).toContain("Went home ill")
+        expect(row_(html, "x3")).toContain('<span class="ui-badge ui-badge-good">Accepted as it is</span>')
+        expect(row_(html, "x3")).toContain(">Undo</button>")
     })
 })
 

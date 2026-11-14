@@ -1,0 +1,12 @@
+-- Settling an incomplete day (ATTENDANCE_PLAN.md §6.9, round 10, decision
+-- 22, PR 275): a day with one scan, the other missing, is marked absent or
+-- accepted as it is, each with a reason, as a decision on the day itself:
+-- ACCEPTED marks it absent, which the policy charges as an absence; EXCUSED
+-- accepts it as it is, charged nothing. Not a decision on its absence, since
+-- an absence decided while a day had no scan says nothing about a scan that
+-- arrives later.
+--
+-- Only adds a value. No row is read or changed by it: days are worked out
+-- again by the engine, on a new scan, a decision, a policy change or the
+-- nightly reconciliation.
+ALTER TYPE "AttendanceSubject" ADD VALUE 'INCOMPLETE';
