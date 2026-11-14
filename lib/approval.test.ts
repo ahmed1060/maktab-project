@@ -177,6 +177,21 @@ describe("approving is its own act", () => {
         expect(approve.slice(0, approve.indexOf("prisma.$transaction"))).toContain("daysToSettle: settle")
     })
 
+    it("checks anyone on the register being approved who wasn't checked before, undoing it all if one waits (review on PR 276)", () => {
+        // Somebody on the payroll again since the register was first read is on
+        // the one approved: their days are checked there, once it's built.
+        const approve = service.slice(service.indexOf("static async approve"))
+        const final = approve.indexOf("const { register: final, payrollDay } = await this.compute(companyId, year, month, tx, reaches)")
+        const late = approve.indexOf("daysToSettle(tx, companyId, year, month, unchecked)")
+        const written = approve.indexOf("this.writeDraft(tx, companyId, year, month, final, payrollDay)")
+        expect(final).toBeGreaterThan(-1)
+        expect(late).toBeGreaterThan(final)
+        expect(written).toBeGreaterThan(late)
+        // Thrown, so the transaction undoes the overtime rejected; answered as the same refusal.
+        expect(approve.slice(late, written)).toContain("throw new SettleRefused(settleRefusal(")
+        expect(approve).toContain("if (error instanceof SettleRefused) return { refusal: error.refusal }")
+    })
+
     it("sends the names back with the refusal", () => {
         // A screen that can only say "no" sends somebody hunting through a list
         // of fifty to find the two people it meant.

@@ -141,8 +141,32 @@ describe.skipIf(!ADMIN_URL)("payroll waits for days to settle, in Postgres", () 
         expect((await Payroll.view("c1", 2026, 10)).toSettle?.days.map(d => d.date)).toEqual(["2026-10-11"])
     })
 
-    it("approves once they're settled, the requests not yet decided not stopping it", async () => {
+    it("checks the register being approved, not the one read before: someone on it since is refused too, and nothing is kept (review on PR 276)", async () => {
         await Exceptions.decide("c1", { userId: "e1", date: "2026-10-11", subject: "INCOMPLETE", outcome: "EXCUSED", reason: "At a client" }, "a1")
+        // As if Amal were put back on the payroll between the register read
+        // before approving and the one approved: the first leaves her out.
+        const compute = Payroll.compute.bind(Payroll)
+        const spy = vi.spyOn(Payroll, "compute").mockImplementationOnce(async (...args: Parameters<typeof Payroll.compute>) => {
+            const out = await compute(...args)
+            return { ...out, register: { ...out.register, entries: out.register.entries.filter(e => e.userId !== "a1") } }
+        })
+        // Her scan out on the 12th gone, her day not worked out again.
+        const { rows: [gone] } = await db.query(`SELECT row_to_json(p) AS row FROM "AttendancePunch" p WHERE "userId" = 'a1' AND "punchAtLocal" >= '2026-10-12' AND "punchAtLocal" < '2026-10-13' ORDER BY "punchAtLocal" DESC LIMIT 1`)
+        await db.query(`DELETE FROM "AttendancePunch" WHERE id = $1`, [gone.row.id])
+        try {
+            const out = await Payroll.approve("c1", 2026, 10, SESSION)
+            expect(out).toEqual({ refusal: expect.objectContaining({ code: "DAYS_TO_SETTLE", names: ["Amal One"] }) })
+        } finally {
+            spy.mockRestore()
+            await db.query(`INSERT INTO "AttendancePunch" SELECT * FROM json_populate_record(NULL::"AttendancePunch", $1)`, [JSON.stringify(gone.row)])
+        }
+        // Refused once the register to approve was built: all of it undone.
+        expect(await status()).toBeNull()
+        expect((await day("2026-10-08")).overtimeStatus).toBe("PENDING")
+        expect((await db.query(`SELECT status FROM "AttendanceDay" WHERE "userId" = 'a1' AND date = '2026-10-12'`)).rows[0].status).toBe("PRESENT")
+    })
+
+    it("approves once they're settled, the requests not yet decided not stopping it", async () => {
         const out = await Payroll.approve("c1", 2026, 10, SESSION)
         expect(out).toEqual({ runId: expect.any(String) })
         expect(await status()).toBe("APPROVED")
