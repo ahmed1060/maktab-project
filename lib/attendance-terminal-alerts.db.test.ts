@@ -8,8 +8,10 @@ import { NotificationService } from "@/lib/services/notification.service"
 /**
  * A terminal nobody hears from in working hours raises a CRITICAL notice,
  * once, to whoever can open the company's terminals, and the notice goes by
- * itself when the terminal is heard again (ATTENDANCE_PLAN.md §13.4).
- * Against a real Postgres built from the migrations.
+ * itself when the terminal is heard again (ATTENDANCE_PLAN.md §13.4). Since
+ * PR 277 (§17.10), that's those holding Set up fingerprint terminals where
+ * the Super Admin lets the company set its own up, and the Super Admin
+ * otherwise. Against a real Postgres built from the migrations.
  */
 
 const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
@@ -46,8 +48,12 @@ describe.skipIf(!ADMIN_URL)("silent terminal alerts, in Postgres", () => {
             await db.query(sql(m))
             if (m === "20260920000000_team_leader") await db.query(BEFORE_ROLES)
         }
-        // c1 shows its people the Attendance tab; c2 leaves it to the Super Admin.
-        await db.query(`UPDATE "Company" SET "adminSettingsEnabled" = true, "adminSettingsTabs" = ARRAY['attendance'] WHERE id = 'c1'`)
+        // c1 shows its people the Attendance tab and sets its own terminals
+        // up; c2 leaves both to the Super Admin.
+        await db.query(`UPDATE "Company" SET "adminSettingsEnabled" = true, "adminSettingsTabs" = ARRAY['attendance'], "terminalsSetupByCompany" = true WHERE id = 'c1'`)
+        // A new company's Admin role holds Set up fingerprint terminals; the
+        // companies there already are get it from a later migration.
+        await db.query(`INSERT INTO "RoleGrant"("roleId", permission, scope) SELECT id, 'attendance.manage_terminals', 'COMPANY' FROM "Role" WHERE "builtIn" = 'ADMIN'`)
         await db.query(`INSERT INTO "SuperAdmin"(id, email, username, password, "firstName", "lastName", "updatedAt") VALUES ('sa1', 'sa@x', 'sa1', 'p', 'Sara', 'Admin', now())`)
         process.env.POSTGRES_PRISMA_URL = url.toString()
     }, 180_000)
@@ -81,13 +87,13 @@ describe.skipIf(!ADMIN_URL)("silent terminal alerts, in Postgres", () => {
     const notices = async (subjectId: string) =>
         (await db.query(`SELECT * FROM "Notification" WHERE "relatedId" LIKE $1 ORDER BY "createdAt"`, [`%highlight=${subjectId}`])).rows
 
-    it("tells the company's settings holders once that an agent has gone silent in working hours", async () => {
+    it("tells those setting the company's terminals up once that an agent has gone silent in working hours", async () => {
         const id = await agentHeardAt("c1", "Head office", minutesBefore(WORKING, 40))
         await TerminalAlerts.check({ companyId: "c1" }, WORKING)
         await TerminalAlerts.check({ companyId: "c1" }, WORKING)
 
         const rows = await notices(id)
-        // The Admin holds settings.view; the employee does not.
+        // The Admin holds Set up fingerprint terminals; the employee does not.
         expect(rows.map(r => r.userId)).toEqual(["a1"])
         expect(rows[0]).toMatchObject({ type: "ATTENDANCE_TERMINAL", priority: "CRITICAL", read: false, relatedId: `/dashboard/settings?tab=attendance&highlight=${id}` })
         expect(rows[0].message).toBe("Nothing has been heard from the attendance agent “Head office” since 10:20 on " + new Date("2026-10-04").toLocaleDateString() + ", so scans from its terminals aren't arriving. Check that its PC is on and connected.")
@@ -148,6 +154,19 @@ describe.skipIf(!ADMIN_URL)("silent terminal alerts, in Postgres", () => {
         await heard("AttendanceDevice", unplugged, WORKING)
         await TerminalAlerts.check({ companyId: "c1" }, WORKING)
         expect((await notices(unplugged)).map(r => r.read)).toEqual([true])
+    })
+
+    it("tells the Super Admin while they set the company's terminals up, though its Admin holds the permission (PR 277)", async () => {
+        const id = await agentHeardAt("c1", "Warehouse", minutesBefore(WORKING, 40))
+        try {
+            await db.query(`UPDATE "Company" SET "terminalsSetupByCompany" = false WHERE id = 'c1'`)
+            await TerminalAlerts.check({ companyId: "c1" }, WORKING)
+            const rows = await notices(id)
+            expect(rows.map(r => r.userId ?? r.superAdminId)).toEqual(["sa1"])
+            expect(rows[0].relatedId).toBe(`/dashboard/companies/c1/settings?tab=attendance&highlight=${id}`)
+        } finally {
+            await db.query(`UPDATE "Company" SET "terminalsSetupByCompany" = true WHERE id = 'c1'`)
+        }
     })
 
     it("tells the Super Admin, naming the company, when the company's people can't open its terminals", async () => {

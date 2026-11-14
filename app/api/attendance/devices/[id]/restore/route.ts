@@ -7,7 +7,7 @@ import { denyTerminals } from "@/lib/attendance/terminals-access"
 export const POST = withStandardHandler(async (_req, session, _json, { params }) => {
     const device = await AttendanceDeviceService.deviceOf(params.id)
     if (!device) return ApiResponse.notFound("Terminal not found")
-    const denied = await denyTerminals(session, device.companyId, "edit")
+    const denied = await denyTerminals(session, device.companyId)
     if (denied) return denied
     await AttendanceDeviceService.restore(device.id, session.user.id)
     return ApiResponse.success({ restored: true })

@@ -8,7 +8,7 @@ import { maySetField, maySettings, visibleSettingsTabs } from "@/lib/company-set
 import { can } from "@/lib/permissions/can"
 import { SystemSettingsService } from "@/lib/services/system-settings.service"
 import { CashAdvanceService } from "@/lib/services/cash-advance.service"
-import { hasModule, resolveBundles } from "@/lib/features/bundles"
+import { hasBundle, hasModule, resolveBundles } from "@/lib/features/bundles"
 
 /**
  * A company's settings, tab by tab (ATTENDANCE_PLAN.md §5), for the Super
@@ -34,6 +34,7 @@ export const GET = withStandardHandler(async (req, session) => {
             package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } },
             autoVerifyLocation: true, cashAdvancesAllowed: true, cashAdvancesOn: true, costNamesFromListOnly: true, confirmHighRisk: true, logoUrl: true, brandColour: true,
             payrollDay: true, payslipsVisible: true, timezone: true, debtRecoveryPercent: true,
+            terminalsSetupByCompany: true,
         },
     })
     if (!company) return ApiResponse.notFound("Company not found")
@@ -55,6 +56,11 @@ export const GET = withStandardHandler(async (req, session) => {
         // The high-risk confirmation (ROLES_PLAN.md §6.15): off for every
         // company, its own switch has nothing to turn.
         shown.confirmHighRiskForAll = (await SystemSettingsService.get()).confirmHighRisk
+    }
+    // Whether the company has fingerprint terminals to set up, for the
+    // Super Admin's switch on the Attendance tab (ATTENDANCE_PLAN.md §17.10).
+    if (tabs.includes("attendance") && session.user.role === "SUPER_ADMIN") {
+        shown.terminalsOffered = hasBundle(resolveBundles(company.package), "ATTENDANCE_TERMINALS")
     }
     if (tabs.includes("branding")) {
         shown.logoUrl = company.logoUrl

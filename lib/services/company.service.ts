@@ -260,7 +260,7 @@ export class CompanyService {
     }
 
     static async update(input: UpdateCompanyInput, session: any) {
-        const { id, name, usernameCode, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs, brandColour, cashAdvancesAllowed, cashAdvancesOn, costNamesFromListOnly, confirmHighRisk } = input
+        const { id, name, usernameCode, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs, brandColour, cashAdvancesAllowed, cashAdvancesOn, costNamesFromListOnly, confirmHighRisk, terminalsSetupByCompany } = input
         const existing = await prisma.company.findUnique({ where: { id } })
         if (!existing) throw new Error("COMPANY_NOT_FOUND")
 
@@ -324,6 +324,8 @@ export class CompanyService {
             ...(cashAdvancesOn !== undefined && { cashAdvancesOn }),
             ...(costNamesFromListOnly !== undefined && { costNamesFromListOnly }),
             ...(confirmHighRisk !== undefined && { confirmHighRisk }),
+            // Who sets the company's fingerprint terminals up (ATTENDANCE_PLAN.md §17.10).
+            ...(terminalsSetupByCompany !== undefined && { terminalsSetupByCompany }),
         }
         // Switching cash advances off waits for any advance being recorded,
         // and is refused while anyone holds advance money (§7.6).
@@ -405,6 +407,9 @@ export class CompanyService {
         if (confirmHighRisk !== undefined && confirmHighRisk !== existing.confirmHighRisk) {
             changes.confirmHighRisk = { old: existing.confirmHighRisk, new: confirmHighRisk }
         }
+        if (terminalsSetupByCompany !== undefined && terminalsSetupByCompany !== existing.terminalsSetupByCompany) {
+            changes.terminalsSetupByCompany = { old: existing.terminalsSetupByCompany, new: terminalsSetupByCompany }
+        }
 
         if (Object.keys(changes).length > 0) {
             const { AuditLogService } = await import("./audit-log.service")
@@ -445,6 +450,9 @@ export class CompanyService {
                 // Whether it uses cash advances, for My cash advance in the
                 // side bar (CLIENTS_PLAN.md §7.5), read with it.
                 cashAdvancesAllowed: true, cashAdvancesOn: true,
+                // Whether its people set its fingerprint terminals up
+                // (ATTENDANCE_PLAN.md §17.10).
+                terminalsSetupByCompany: true,
                 // A tab tied to a module exists only for a company holding it.
                 package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } },
             },
