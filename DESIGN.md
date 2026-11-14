@@ -943,7 +943,10 @@ These are built once, in the building-blocks PR, and every page uses them
 - **Tabs:** text tabs with a 2px `--brand` line under the selected one, and
   a hairline under the whole row. On phones, the tabs share the row, a
   long label on two lines, so every tab shows; a row of more than fit
-  scrolls sideways within itself. A tab can say how many it holds, such as the
+  scrolls sideways within itself. A tab is at most 8rem wide there and is
+  never squeezed narrower than that or its label, so no label takes more
+  than two lines: a row that can't fit them so scrolls rather than
+  stacking its labels three and four lines high. A tab can say how many it holds, such as the
   companies that need attention: a pill after its label in `--text-xs`,
   in the neutral badge's colours, and the brand tint's when it's the
   selected tab.
@@ -2179,3 +2182,8 @@ changed:
   Files), as the product owner chose for attendance's import
   (`ATTENDANCE_PLAN.md` §13.9): a quiet, small Download template button
   under the file picker, giving the template in the page's language.
+- **2026-11-14:** On phones, no tab label takes more than two lines (§5.5,
+  Tabs). A tab is at most 8rem wide and isn't squeezed narrower, so a row
+  of more than fit scrolls instead. Attendance's Exceptions, with six kinds
+  since `ATTENDANCE_PLAN.md`'s departure to confirm, had stacked "Late /
+  left early" four lines high.
