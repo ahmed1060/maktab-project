@@ -399,7 +399,9 @@ describe("scans close together count as one (ATTENDANCE_PLAN.md §6.9, round 10,
         const { policyBodySchema, DEFAULT_SCAN_WINDOW_MINUTES } = await import("@/lib/attendance/policy")
         expect(DEFAULT_SCAN_WINDOW_MINUTES).toBe(5)
         for (const body of [STANDARD_OFFICE, SIX_DAY_FACTORY, MEASURE_ONLY]) expect(body.scanWindowMinutes).toBe(5)
-        const { scanWindowMinutes: _, ...saved } = STANDARD_OFFICE
+        // A version saved before the window: the same body without it.
+        const saved: Record<string, unknown> = { ...STANDARD_OFFICE }
+        delete saved.scanWindowMinutes
         expect(policyBodySchema.parse(saved).scanWindowMinutes).toBe(5)
         for (const minutes of [1, 60]) expect(policyBodySchema.safeParse({ ...STANDARD_OFFICE, scanWindowMinutes: minutes }).success).toBe(true)
         for (const minutes of [0, 61, 2.5]) expect(policyBodySchema.safeParse({ ...STANDARD_OFFICE, scanWindowMinutes: minutes }).success, String(minutes)).toBe(false)
