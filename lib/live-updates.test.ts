@@ -907,7 +907,8 @@ describe("the screens that are drawn again", () => {
         expect(exceptions).toContain("useLive(['attendance', 'requests'], () => { void mutate() })")
         expect(exceptions).toContain("const arrivals = useArrivalsIn(['attendance', 'requests'], `${listUrl}#${kind}`, shown, x => x.key)")
         expect(exceptions).toContain("const action = useBusyAction(arrivals.own)")
-        expect(exceptions.match(/arrived=\{arrivals\.arrived\}/g)?.length).toBe(5)
+        // Each kind's list, Departure to confirm's included (PR 274).
+        expect(exceptions.match(/arrived=\{arrivals\.arrived\}/g)?.length).toBe(6)
         expect(exceptions).toMatch(/arrivals\.saved\(\)\s+await mutate\(\)/)
         expect(exceptions).toContain("<ActionStarts.Provider value={arrivals.own}>")
         expect(exceptions).toContain("onAdded={() => { setAdding(null); arrivals.saved(); void mutate() }}")

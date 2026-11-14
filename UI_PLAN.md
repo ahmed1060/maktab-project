@@ -694,7 +694,13 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      Phase 5 part 2, a day's scans read first and last for every company,
      scans close together counting as one within the policy's window, 5
      minutes to start, said on the policy panel and changed in its dialog
-     (`ATTENDANCE_PLAN.md` §6.9, §11), #273;
+     (`ATTENDANCE_PLAN.md` §6.9, §11), merged in #273 on 2026-11-14; then
+     the first of Phase 5 part 3's three PRs, a day whose early leave is
+     more than the policy's threshold, 2 hours to start, waiting as
+     Departure to confirm, with a tab of its own on attendance's
+     Exceptions screen (`ATTENDANCE_PLAN.md` §6.9, §13.1), no tab label
+     on a phone more than two lines, and a row of tabs that scrolls opening
+     on the picked one (`DESIGN.md` §5.5), #274;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6158,3 +6164,28 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   policy's dialog, "Scans this close count as one", and a new line on its
   panel. A version saved before it reads as 5 minutes. Departures to
   confirm, and payroll waiting for them, are part 3.
+- **2026-11-14:** A departure to confirm (#274; `ATTENDANCE_PLAN.md`
+  round 10, decisions 13, 23 and 26, §6.9, §13.1): a day whose early leave,
+  after approved permission hours, is more than the policy's threshold
+  waits instead of being charged, since a forgotten last scan reads as
+  leaving early. The threshold is a new field of the policy's dialog,
+  "Early leave longer than this waits to be confirmed", 120 minutes to
+  start, and a new line on its panel. Attendance's Exceptions screen has a
+  Departure to confirm tab, between Incomplete and Overtime, where the
+  departure scan is added, or the early leave accepted or excused, as on
+  Late / early. The Days tab marks the day as waiting, and the person is
+  told, as for an incomplete day. Settling an incomplete day and payroll
+  waiting are part 3's next two PRs.
+- **2026-11-14:** No tab label on a phone takes more than two lines (#274;
+  `DESIGN.md` §5.5, Tabs). Exceptions' sixth kind, Departure to confirm,
+  squeezed its row's labels three and four lines high, Decided past the
+  edge. A tab is now at most 8rem wide on a phone and isn't squeezed
+  narrower, so a row of more than fit scrolls within itself, as the rule
+  already said it would. A row that fits on two lines, such as Costs'
+  three, is as before.
+- **2026-11-14:** A row of tabs that scrolls opens on the picked tab (#274;
+  `DESIGN.md` §5.5, Tabs). Found while checking the rule above: on a phone,
+  attendance opened on Employee numbers, by a link or a reload, showed its
+  first tabs and not the one picked, and so did Exceptions opened on a
+  later kind. Both kinds of tab row now scroll themselves, never the page,
+  to show the picked tab whole, and again when the pick changes.

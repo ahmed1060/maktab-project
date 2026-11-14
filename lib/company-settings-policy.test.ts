@@ -435,3 +435,51 @@ describe("scans close together count as one (ATTENDANCE_PLAN.md §6.9, round 10,
         }
     })
 })
+
+describe("a departure to confirm (ATTENDANCE_PLAN.md §6.9, round 10, decision 13, PR 274)", () => {
+    it("waits on early leave of more than 120 minutes to start, anything from 1 to 720, and a version saved before it reads as 120", async () => {
+        const { policyBodySchema, DEFAULT_DEPARTURE_THRESHOLD_MINUTES } = await import("@/lib/attendance/policy")
+        expect(DEFAULT_DEPARTURE_THRESHOLD_MINUTES).toBe(120)
+        for (const body of [STANDARD_OFFICE, SIX_DAY_FACTORY, MEASURE_ONLY]) expect(body.departureThresholdMinutes).toBe(120)
+        // A version saved before the threshold: the same body without it.
+        const saved: Record<string, unknown> = { ...STANDARD_OFFICE }
+        delete saved.departureThresholdMinutes
+        expect(policyBodySchema.parse(saved).departureThresholdMinutes).toBe(120)
+        for (const minutes of [1, 720]) expect(policyBodySchema.safeParse({ ...STANDARD_OFFICE, departureThresholdMinutes: minutes }).success).toBe(true)
+        for (const minutes of [0, 721, 90.5]) expect(policyBodySchema.safeParse({ ...STANDARD_OFFICE, departureThresholdMinutes: minutes }).success, String(minutes)).toBe(false)
+    })
+
+    it("says it on the policy card, in hours when it is whole hours, in minutes otherwise", async () => {
+        const html = await card()
+        expect(html).toContain(`<dt>${en.attendance_departure_label}</dt>`)
+        expect(html).toContain(esc(en.attendance_departure_line.replace("{duration}", "2 hours")))
+        // Right after how scans are read.
+        expect(html.indexOf(`<dt>${en.attendance_departure_label}</dt>`)).toBeGreaterThan(html.indexOf(`<dt>${en.attendance_scans}</dt>`))
+        const arabic = await card({ locale: "ar" })
+        expect(arabic).toContain(`<dt>${ar.attendance_departure_label}</dt>`)
+        expect(arabic).toContain(ar.attendance_departure_line.replace("{duration}", "ساعتان"))
+        const odd = await card({ swr: loaded({ ...POLICY, versions: [{ ...POLICY.versions[0], body: { ...STANDARD_OFFICE, departureThresholdMinutes: 90 } }] }) })
+        expect(odd).toContain(esc(en.attendance_departure_line.replace("{duration}", "90 minutes")))
+    })
+
+    it("is changed in the dialog, a whole number of minutes under its own label, said wrong under it outside 1 to 720", async () => {
+        const html = await dialog()
+        expect(html).toContain(esc(en.attendance_departure_threshold))
+        expect(html).toContain(esc(en.attendance_departure_threshold_hint))
+        expect(html).toMatch(/<input[^>]*name="departureThresholdMinutes"[^>]*value="120"/)
+        // After the window for scans close together, before the lateness rule.
+        expect(html.indexOf('name="departureThresholdMinutes"')).toBeGreaterThan(html.indexOf('name="scanWindowMinutes"'))
+        const { bodyFromForm, formFromBody } = await import("@/components/attendance-policy/policy-form")
+        const form = formFromBody(STANDARD_OFFICE)
+        expect(form.departureThresholdMinutes).toBe("120")
+        for (const typed of ["0", "721", "", "90.5"]) {
+            const result = bodyFromForm({ ...form, departureThresholdMinutes: typed }, STANDARD_OFFICE)
+            expect(result.ok ? {} : result.errors, typed).toEqual({ departureThresholdMinutes: { key: "number_whole_between", min: 1, max: 720 } })
+        }
+        expect(bodyFromForm({ ...form, departureThresholdMinutes: "180" }, STANDARD_OFFICE)).toMatchObject({ ok: true, body: { departureThresholdMinutes: 180 } })
+        for (const key of ["attendance_departure_label", "attendance_departure_line", "attendance_departure_threshold", "attendance_departure_threshold_hint"] as const) {
+            expect(en[key], key).toBeTruthy()
+            expect(ar[key], key).toBeTruthy()
+        }
+    })
+})

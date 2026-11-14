@@ -7,8 +7,9 @@ Phase 0 (engine, settings, import) is #9–#15; Phase 1 (payroll) is #16; Phase 
 the PRs after it, and is paused for now (§20). Phase 4 (terminals through the agent or straight to Nizmo,
 ZKTeco and Hikvision alike, round 9) is planned in #269 and not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
-planned in #270 and #271; its part 2, first and last, is built in #273, and
-the rest is not built. A template for the file import
+planned in #270 and #271; its part 2, first and last, is built in #273,
+and the first of part 3's three PRs, Departure to confirm, in #274; the
+rest is not built. A template for the file import
 (§13.9) is built in #272.
 This document is the design those PRs follow: what was decided, and why, so
 that whoever changes it is not re-arguing settled points. Where the build
@@ -480,7 +481,7 @@ a custom policy** from scratch.
 - Applying a template creates a new policy version and goes through the same
   "from when?" question as any other edit.
 
-### 6.9 Reading a day's scans (round 10; first and last built in #273)
+### 6.9 Reading a day's scans (round 10; first and last built in #273, Departure to confirm in #274)
 
 **First and last, the only way** (round 10, decision 1). The day's first
 scan is the arrival and its last the departure; the scans between are left
@@ -516,6 +517,23 @@ incomplete day (§13.4). Someone with `attendance.correct` settles it on the
 Exceptions screen (§13.1): accepting the early leave, which the policy then
 charges, or adding the missing scan, from the employee's report or by hand.
 Early leave of the threshold or less is charged by the policy as always.
+
+Built in #274. The threshold is the policy's "Early leave longer than this
+waits to be confirmed", in minutes, 120 to start and anything from 1 to
+720, and its panel says it; a version saved before it reads as 120, so
+nothing is migrated. The day's status is `TO_CONFIRM`, an added value
+(§11). While it waits, nothing of the day is charged, its lateness
+included, as for an incomplete day. Settling it is a decision on its early
+leave, as on the Late / early tab: **Accept**, which the policy then
+charges, or **Excuse**, with a reason, which isn't charged; each is
+audited, and undoing it from Decided puts the day back to wait. Adding the
+departure scan, by hand or by approving the employee's missing-punch
+report, measures the day again. The employee's own day says it waits, and
+offers reporting the missing scan or asking for permission hours for the
+early leave. Until part 3's last PR, payroll doesn't wait for it: a month
+approved meanwhile charges a waiting day nothing, as it does an incomplete
+one. A month already approved keeps its days as paid; a recompute there
+records a day that would now wait as a discrepancy (§12.3).
 
 **What counts first** (decision 23). Approved permission hours that day
 are taken off the early leave before it's measured against the threshold,
@@ -1285,7 +1303,8 @@ the day incomplete.
 early-leave minutes before pricing, and recorded as `excusedMinutes`. An approved mission by hours (round 10, planned, §6.10)
 excuses the day's early leave or its lateness, as its kind says, and a
 mission by days makes each working day in it a mission day. A day whose
-early leave passes the policy's threshold waits as `TO_CONFIRM` (§6.9).
+early leave passes the policy's threshold waits as `TO_CONFIRM` (§6.9,
+built in #274), and is charged nothing until it is settled.
 
 **Pricing** — measured facts and priced outcomes are stored separately. Monthly
 rules (allowance, escalation, cap, permission balance) depend on the order of
@@ -1375,7 +1394,7 @@ permission scope:
 | Late / early | Minutes, excused minutes, resulting deduction | Excuse with reason, accept |
 | Absent | Expected, no punches, no leave | Mark leave, mark present with reason, accept |
 | Incomplete | Odd punch count. Under First and last (Phase 5, planned): one scan left after the window (§6.9) | Add punch, link a missing-punch request; with Phase 5, mark absent or accept as it is, with a reason (decision 22) |
-| Departure to confirm (Phase 5, planned) | Early leave of more than the policy's threshold (§6.9) | Accept the early leave, add the departure scan, link a missing-punch request (decisions 13, 26) |
+| Departure to confirm (built in #274) | Early leave of more than the policy's threshold (§6.9) | Add the departure scan; accept the early leave, or excuse it with a reason, as on Late / early. The employee's missing-punch report adds the scan once approved (decisions 13, 26) |
 | Overtime | Unapproved overtime | Approve, approve partially, reject |
 | Requests | Pending permission-hour, missing-punch, device and face-enrolment requests | Approve, reject |
 | Unmatched | Terminal punches with no mapped employee | Map (backfills) |
@@ -1414,7 +1433,7 @@ day itself, and, with round 10, ask for a mission (§6.10).
   ordinary events are critical too, people learn to ignore red, and the one that
   matters is missed.
 - Sent when: a day becomes `INCOMPLETE` or `ABSENT`, or with round 10
-  `TO_CONFIRM`, though not on a mission day (§6.10); a check-in is flagged; a
+  `TO_CONFIRM` (built in #274), though not on a mission day (§6.10); a check-in is flagged; a
   request is approved or rejected; **no check-in has arrived N minutes after the
   shift starts** (reminder, adopted in round 4 — N configurable in the policy,
   suggest 15).
@@ -2139,12 +2158,15 @@ Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
    first and last, and In pairs is removed; the policy's window, 5 minutes
    to start, on the policy panel; the simulator. No migration: a saved
    policy without the window reads as 5 minutes.
-3. **Departures to confirm** (§6.9): the policy's threshold, 2 hours to
-   start, measured after approved permission hours; the waiting day, its
-   notice, and its tab and settling on the Exceptions screen; marking an
-   incomplete day absent or accepting it as it is; and the payroll run
-   waiting for both, with the window that lists them and warns of the
-   month's requests not yet decided (decisions 22 to 24, 26).
+3. **Departures to confirm** (§6.9), in three PRs:
+   1. **The waiting day**, built in #274: the policy's threshold, 2 hours
+      to start, measured after approved permission hours; the day waiting
+      as `TO_CONFIRM`, charged nothing; its notice; and its tab and
+      settling on the Exceptions screen (decisions 13, 23, 26).
+   2. **Settling an incomplete day**: marking it absent or accepting it as
+      it is, each with a reason (decision 22).
+   3. **Payroll waits for both**, with the window that lists them and warns
+      of the month's requests not yet decided (decisions 14, 24).
 4. **Missions, asked and decided** (§6.10): `MissionRequest`, with the two
    kinds of mission by hours and the optional task; the permission "Decide
    missions", given to the built-in Admin in every company; missions on the

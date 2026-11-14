@@ -1,5 +1,5 @@
 import type { ExpectedDay } from "./calendar"
-import { DEFAULT_SCAN_WINDOW_MINUTES, dayFractionFor, type DeductionRule, type PolicyBody } from "./policy"
+import { DEFAULT_DEPARTURE_THRESHOLD_MINUTES, DEFAULT_SCAN_WINDOW_MINUTES, dayFractionFor, type DeductionRule, type PolicyBody } from "./policy"
 
 /**
  * The derivation engine (ATTENDANCE_PLAN.md §11): from what each day was meant
@@ -16,14 +16,16 @@ import { DEFAULT_SCAN_WINDOW_MINUTES, dayFractionFor, type DeductionRule, type P
  * Scans close together are one, within the policy's window. A missing punch
  * is never guessed: a single scan left makes the day INCOMPLETE, shown,
  * measured as far as it goes, priced at nothing until somebody adds the
- * missing one.
+ * missing one. Nor is a forgotten last scan taken for leaving early: early
+ * leave of more than the policy's threshold makes the day TO_CONFIRM, priced
+ * at nothing until somebody settles it (PR 274).
  */
 
 /** A punch as the engine reads it: the wall-clock time where it happened. */
 export type EnginePunch = { id: string; at: string; direction: "IN" | "OUT" | null }
 
 export type DayStatus =
-    | "PRESENT" | "ABSENT" | "INCOMPLETE" | "LEAVE" | "SUSPENDED"
+    | "PRESENT" | "ABSENT" | "INCOMPLETE" | "TO_CONFIRM" | "LEAVE" | "SUSPENDED"
     | "REST" | "HOLIDAY" | "WORKED_REST_DAY" | "WORKED_HOLIDAY" | "NO_SCHEDULE"
 
 /** Arrivals this long before a shift, and leavings this long after it, still belong to it. */
@@ -144,6 +146,11 @@ function coveredMinutes(date: string, permissions: readonly PermissionSpan[], ty
  * the time worked from the first scan to the last, so a break isn't measured,
  * and overtime is the time past the shift's end up to the last scan. Work on
  * a rest day or holiday is all overtime.
+ *
+ * A departure to confirm (§6.9, decisions 13 and 23, PR 274): early leave,
+ * after approved permission hours, of more than the policy's threshold makes
+ * the day wait, measured as it is, until its early leave is accepted or
+ * excused on the exceptions screen, or its departure scan added.
  */
 export function measureDay(input: {
     date: string
@@ -157,6 +164,10 @@ export function measureDay(input: {
     excused?: { lateness?: boolean; earlyLeave?: boolean; absence?: boolean }
     /** The policy's window for scans close together (§6.9), 1 to 60 minutes; 5 without a policy. */
     windowMinutes?: number
+    /** Early leave longer than this waits to be confirmed (§6.9), 1 to 720 minutes; 120 without a policy. */
+    departureThresholdMinutes?: number
+    /** Somebody accepted the day's early leave on the exceptions screen (§13.1): charged, and no longer waiting. */
+    departureConfirmed?: boolean
 }): MeasuredDay {
     const { date, expected } = input
     const punches = debounce(input.punches, input.windowMinutes)
@@ -191,9 +202,11 @@ export function measureDay(input: {
     const earlyRaw = Math.max(0, Math.floor((shift.end - out) / 60))
     const excusedEarly = input.excused?.earlyLeave ? earlyRaw
         : Math.min(earlyRaw, coveredMinutes(date, input.permissions ?? [], "EARLY_LEAVE", out, shift.end))
+    // Approved permission hours count first (decision 23); an excuse leaves nothing to wait on.
+    const waits = !input.departureConfirmed && earlyRaw - excusedEarly > (input.departureThresholdMinutes ?? DEFAULT_DEPARTURE_THRESHOLD_MINUTES)
     return {
         ...base,
-        status: "PRESENT",
+        status: waits ? "TO_CONFIRM" : "PRESENT",
         workedMinutes,
         lateMinutes: lateRaw - excusedLate,
         earlyLeaveMinutes: earlyRaw - excusedEarly,
@@ -231,7 +244,7 @@ export type PricedDay = MeasuredDay & {
     overtimeStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED" | "NOT_COUNTED"
     overtimeMinor: number
     /** Why nothing was priced, when nothing could be. */
-    unpriced: "NO_POLICY" | "NO_SALARY" | "INCOMPLETE" | null
+    unpriced: "NO_POLICY" | "NO_SALARY" | "INCOMPLETE" | "TO_CONFIRM" | null
 }
 
 export type PricingInput = {
@@ -299,7 +312,8 @@ export function priceMonth(days: readonly PricingInput[]): PricedDay[] {
             deductionParts: { lateness: 0, earlyLeave: 0, absence: 0 },
             overtimeStatus: "NONE", overtimeMinor: 0, unpriced: null,
         }
-        if (day.status === "INCOMPLETE") return { ...none, unpriced: "INCOMPLETE" }
+        // A day waiting on a punch, or on its departure, is charged nothing until it is settled.
+        if (day.status === "INCOMPLETE" || day.status === "TO_CONFIRM") return { ...none, unpriced: day.status }
         if (!policy) return { ...none, unpriced: "NO_POLICY" }
 
         const lateness = day.status === "PRESENT" ? applyRule(policy.lateness, day.lateMinutes, input.paidMinutes, lateTally) : NO_RULE

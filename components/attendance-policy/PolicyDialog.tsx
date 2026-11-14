@@ -159,6 +159,12 @@ export default function PolicyDialog({ title, start, startOn, defaultFrom, today
                         onChange={e => edit(f => ({ ...f, scanWindowMinutes: e.target.value }), 'scanWindowMinutes')} />
                 )}</Field>
 
+                {/* Early leave longer than this waits to be confirmed (§6.9, PR 274). */}
+                <Field label={t('attendance_departure_threshold')} hint={t('attendance_departure_threshold_hint')} error={errorOf('departureThresholdMinutes')}>{p => (
+                    <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={1} max={720} name="departureThresholdMinutes" value={form.departureThresholdMinutes}
+                        onChange={e => edit(f => ({ ...f, departureThresholdMinutes: e.target.value }), 'departureThresholdMinutes')} />
+                )}</Field>
+
                 {(['lateness', 'earlyLeave'] as const).map(name => (
                     <RuleFields key={name} name={name} rule={form[name]} errorOf={errorOf} fraction={fraction} number={number}
                         onChange={(rule, paths) => edit(f => ({ ...f, [name]: rule }), ...paths)} />

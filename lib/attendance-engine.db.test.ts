@@ -176,9 +176,12 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
         expect(ehab(strict).draft.deductionMinor - ehab(strict).current.deductionMinor).toBe(31000 + 40000)
         expect(strict.totals.draft.deductionMinor).toBeGreaterThan(strict.totals.current.deductionMinor)
         // The draft's window too (PR 273): at 1 minute, the 14th's two scans are a day from 08:55 to 08:58,
-        // 482 minutes early, which costs a whole day at 310.00.
+        // 482 minutes early, which waits to be confirmed and costs nothing (PR 274)...
         const narrow = await Engine.simulate("c1", "2026-09", { ...STANDARD_OFFICE, scanWindowMinutes: 1 })
-        expect(ehab(narrow).draft.deductionMinor - ehab(narrow).current.deductionMinor).toBe(31000)
+        expect(ehab(narrow).draft.deductionMinor - ehab(narrow).current.deductionMinor).toBe(0)
+        // ...and its threshold: at 12 hours that early leave doesn't wait, and costs a whole day at 310.00.
+        const patient = await Engine.simulate("c1", "2026-09", { ...STANDARD_OFFICE, scanWindowMinutes: 1, departureThresholdMinutes: 720 })
+        expect(ehab(patient).draft.deductionMinor - ehab(patient).current.deductionMinor).toBe(31000)
         const { rows: [after] } = await db.query(`SELECT count(*)::int AS n, max("derivedAt") AS at, sum("deductionMinor")::int AS minor FROM "AttendanceDay" WHERE "userId" = 'e1' AND date < '2026-10-01'`)
         expect(after).toEqual(before)
     })

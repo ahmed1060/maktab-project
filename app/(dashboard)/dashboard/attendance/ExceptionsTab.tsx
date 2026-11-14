@@ -22,8 +22,9 @@ import { lastDayOf, pad, useDayInAddress, useFigures, useMonthInAddress } from '
  * Daily exceptions (ATTENDANCE_PLAN.md §13.1): only what needs a decision,
  * with a count per kind, for the people the viewer sees. Lateness and early
  * leave that count, and absences, are excused (not charged, with a reason)
- * or accepted (the charge stands); a missing punch is added; overtime is
- * approved or rejected. What waits on the Requests page and the Employee
+ * or accepted (the charge stands); a missing punch is added; a departure to
+ * confirm has its departure added or its early leave accepted or excused
+ * (§6.9, PR 274); overtime is approved or rejected. What waits on the Requests page and the Employee
  * numbers and Face tabs is counted, and opens there. Every decision is
  * audited and can be undone.
  *
@@ -45,18 +46,18 @@ type Row = {
 type Decided = { id: string; userId: string; name: string; teamLeaderId: string | null; date: string; subject: Subject; outcome: 'EXCUSED' | 'ACCEPTED'; reason: string | null }
 type Subject = 'LATENESS' | 'EARLY_LEAVE' | 'ABSENCE'
 type Data = {
-    late: Row[]; early: Row[]; absent: Row[]; incomplete: Row[]; overtime: Row[]; decided: Decided[]
-    counts: { late: number; early: number; absent: number; incomplete: number; overtime: number; permissions: number | null; missing: number | null; unmatched: number | null; faceOverdue?: number | null }
+    late: Row[]; early: Row[]; absent: Row[]; incomplete: Row[]; departure: Row[]; overtime: Row[]; decided: Decided[]
+    counts: { late: number; early: number; absent: number; incomplete: number; departure: number; overtime: number; permissions: number | null; missing: number | null; unmatched: number | null; faceOverdue?: number | null }
     /** Kinds with more than the list shows. */
     capped?: Record<string, boolean>
 }
-type Kind = 'lateEarly' | 'absent' | 'incomplete' | 'overtime' | 'decided'
+type Kind = 'lateEarly' | 'absent' | 'incomplete' | 'departure' | 'overtime' | 'decided'
 type Person = { id: string; name: string; teamLeaderId: string | null }
 /** A late arrival or an early leave, one row each. */
 type LateEarly = { key: string; r: Row; subject: 'LATENESS' | 'EARLY_LEAVE'; minutes: number; rule: RuleOutcome }
 
-const KINDS: Kind[] = ['lateEarly', 'absent', 'incomplete', 'overtime', 'decided']
-const KIND_LABEL: Record<Kind, TranslationKey> = { lateEarly: 'exc_tab_late', absent: 'exc_tab_absent', incomplete: 'exc_tab_incomplete', overtime: 'exc_tab_overtime', decided: 'exc_tab_decided' }
+const KINDS: Kind[] = ['lateEarly', 'absent', 'incomplete', 'departure', 'overtime', 'decided']
+const KIND_LABEL: Record<Kind, TranslationKey> = { lateEarly: 'exc_tab_late', absent: 'exc_tab_absent', incomplete: 'exc_tab_incomplete', departure: 'exc_tab_departure', overtime: 'exc_tab_overtime', decided: 'exc_tab_decided' }
 const NOTE_KEY: Record<string, TranslationKey> = { FREE_OCCURRENCE: 'day_note_free', ESCALATED: 'day_note_escalated', CAPPED: 'day_note_capped' }
 
 export default function ExceptionsTab({ q, companyId, today, topics }: { q: string; companyId: string | null; today: string; topics: string[] }) {
@@ -171,6 +172,7 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
         lateEarly: { n: c ? c.late + c.early : undefined, more: cap.late || cap.early },
         absent: { n: c?.absent, more: cap.absent },
         incomplete: { n: c?.incomplete, more: cap.incomplete },
+        departure: { n: c?.departure, more: cap.departure },
         overtime: { n: c?.overtime, more: cap.overtime },
         decided: { n: data?.decided.length },
     }
@@ -250,6 +252,31 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
                         { icon: ClockIcon, text: <span>{t('exc_punched')}: <bdi>{r.firstIn ? clock(r.firstIn) : '—'}</bdi></span> },
                         { icon: InfoIcon, text: t('day_unpriced_incomplete') },
                     ]} foot={add(r) ?? undefined} />} />
+            )
+        }
+        if (kind === 'departure') {
+            // A departure to confirm (§6.9, PR 274): the scan that's missing added first, as it most
+            // often is; or the early leave accepted, then charged, or excused, with a reason, as on Late / early.
+            const settle = (r: Row) => (corrects(r) ? (
+                <span className="ui-row-actions">
+                    <Button variant="primary" size="sm" disabled={action.running} onClick={() => setAdding(r)}>{t('exc_add_departure')}</Button>
+                    <Button size="sm" disabled={action.running} busy={busyKey(`ACCEPTED:${r.userId}:${r.date}:EARLY_LEAVE`)} onClick={() => { void decide(r, 'EARLY_LEAVE', 'ACCEPTED') }}>{t('exc_accept')}</Button>
+                    <Button size="sm" disabled={action.running} onClick={() => openExcuse(r, 'EARLY_LEAVE')}>{t('exc_excuse')}</Button>
+                </span>
+            ) : null)
+            const early = (r: Row) => t('exc_early_n').replace('{n}', num(r.earlyLeaveMinutes))
+            return (
+                <DataList<Row> caption={label} rows={data.departure} rowKey={r => r.id} arrived={arrivals.arrived} empty={empty}
+                    columns={[
+                        { key: 'date', header: t('punch_date'), cell: who },
+                        { key: 'what', header: t('exc_what'), cell: r => <>{early(r)}{times(r) && <div className="ui-item-detail">{times(r)}</div>}<div className="ui-item-detail">{t('day_unpriced_to_confirm')}</div></> },
+                        actionsColumn<Row>(settle),
+                    ]}
+                    card={r => <ListCard title={date(r.date)} details={[
+                        { icon: UserIcon, text: r.name },
+                        { icon: ClockIcon, text: <span>{early(r)}{times(r) && <>, {times(r)}</>}</span> },
+                        { icon: InfoIcon, text: t('day_unpriced_to_confirm') },
+                    ]} foot={settle(r) ?? undefined} />} />
             )
         }
         if (kind === 'overtime') {

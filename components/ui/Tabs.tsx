@@ -1,11 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { useRef, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 
 /**
  * Tabs (DESIGN.md §5.5): text with a brand-coloured line under the selected
- * one. On a phone the row scrolls sideways within itself.
+ * one. On a phone the row scrolls sideways within itself, and opens on the
+ * picked tab when it's past the row's edge.
  *
  * `Tabs` switches what's shown on the page. The arrow keys move between tabs
  * the way the page reads, so in Arabic the left arrow goes to the next one.
@@ -16,6 +17,32 @@ export type TabItem<V extends string> = {
     label: ReactNode
     /** The id of the panel this tab shows. */
     controls?: string
+}
+
+/**
+ * A row of more tabs than fit scrolls (DESIGN.md §5.5). Opened on one past
+ * its edge, by a link or a reload, the row scrolls to show it: the row
+ * alone, never the page (PR 274).
+ */
+function usePickedInView(row: RefObject<HTMLElement | null>, picked: string | undefined) {
+    useEffect(() => {
+        const el = row.current
+        const tab = el?.querySelector<HTMLElement>('[aria-selected="true"], [aria-current="page"]')
+        if (!el || !tab || el.scrollWidth <= el.clientWidth) return
+        const by = scrollToShow(el.getBoundingClientRect(), tab.getBoundingClientRect())
+        if (by !== 0) el.scrollBy({ left: by, behavior: 'instant' })
+    }, [row, picked])
+}
+
+/**
+ * How far to scroll a row, rightwards, so a tab shows whole: nothing when it
+ * does already. The same sum whichever way the page reads: scrolling by a
+ * positive amount shows more of the right side in both.
+ */
+export function scrollToShow(row: { left: number; right: number }, tab: { left: number; right: number }): number {
+    if (tab.left < row.left) return tab.left - row.left
+    if (tab.right > row.right) return tab.right - row.right
+    return 0
 }
 
 export function Tabs<V extends string>({ label, items, value, onChange, idPrefix = 'tab' }: {
@@ -44,6 +71,7 @@ export function Tabs<V extends string>({ label, items, value, onChange, idPrefix
         else return
         e.preventDefault()
     }
+    usePickedInView(list, value)
     return (
         <div ref={list} role="tablist" aria-label={label} className="ui-tabs" onKeyDown={onKeyDown}>
             {items.map(item => {
@@ -70,8 +98,10 @@ export function Tabs<V extends string>({ label, items, value, onChange, idPrefix
 }
 
 export function TabLinks({ label, items }: { label: string; items: { href: string; label: ReactNode; current: boolean }[] }) {
+    const row = useRef<HTMLElement>(null)
+    usePickedInView(row, items.find(item => item.current)?.href)
     return (
-        <nav aria-label={label} className="ui-tablinks">
+        <nav ref={row} aria-label={label} className="ui-tablinks">
             {items.map(item => (
                 <Link key={item.href} href={item.href} className="ui-tab" aria-current={item.current ? 'page' : undefined}>{item.label}</Link>
             ))}
