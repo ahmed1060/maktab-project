@@ -109,6 +109,7 @@ describe.skipIf(!ADMIN_URL)("payroll waits for days to settle, in Postgres", () 
         const view = await Payroll.view("c1", 2026, 10)
         expect(view.toSettle).toEqual({
             count: 2,
+            byStatus: { INCOMPLETE: 1, TO_CONFIRM: 1 },
             days: [
                 { userId: "e1", name: "Ehab One", date: "2026-10-04", status: "INCOMPLETE", firstIn: "2026-10-04T09:40:00.000Z", lastOut: null },
                 { userId: "e1", name: "Ehab One", date: "2026-10-05", status: "TO_CONFIRM", firstIn: "2026-10-05T09:00:00.000Z", lastOut: "2026-10-05T13:30:00.000Z" },
@@ -155,7 +156,11 @@ describe.skipIf(!ADMIN_URL)("payroll waits for days to settle, in Postgres", () 
         await db.query(`DELETE FROM "AttendancePunch" WHERE id = $1`, [gone.row.id])
         try {
             const out = await Payroll.approve("c1", 2026, 10, SESSION)
-            expect(out).toEqual({ refusal: expect.objectContaining({ code: "DAYS_TO_SETTLE", names: ["Amal One"] }) })
+            // Undone, the register read again can't show her day: the refusal carries it (review on PR 276).
+            expect(out).toEqual({ refusal: expect.objectContaining({
+                code: "DAYS_TO_SETTLE", names: ["Amal One"],
+                waiting: expect.objectContaining({ count: 1, byStatus: { INCOMPLETE: 1, TO_CONFIRM: 0 }, days: [expect.objectContaining({ name: "Amal One", date: "2026-10-12", status: "INCOMPLETE", firstIn: "2026-10-12T09:00:00.000Z" })] }),
+            }) })
         } finally {
             spy.mockRestore()
             await db.query(`INSERT INTO "AttendancePunch" SELECT * FROM json_populate_record(NULL::"AttendancePunch", $1)`, [JSON.stringify(gone.row)])

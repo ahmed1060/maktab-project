@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { lockMonths } from "./attendance-lock"
-import { attendanceReaches, attendanceMoney, rejectPendingOvertime, reconcileEntries, stampDays, monthKey, daysToSettle, namesOf } from "./attendance-payroll"
+import { attendanceReaches, attendanceMoney, rejectPendingOvertime, reconcileEntries, stampDays, monthKey, daysToSettle, waitingOf } from "./attendance-payroll"
 import { buildRegister, variance, nextIssueBatch, issueProgress, ISSUE_BATCH_SIZE, ATTENDANCE_SOURCE, type PersonMonth, type AdjustmentInput } from "@/lib/register"
 import { DEBT_RECOVERY_SOURCE, type RecoverableDebt } from "@/lib/debt-recovery"
 import { timelineForMonth } from "@/lib/employment"
@@ -451,7 +451,7 @@ export class PayrollRunService {
         const stored = attendance.reachesPayroll && (existing?.status ?? "DRAFT") === "DRAFT"
             ? await daysToSettle(prisma, companyId, year, month, onRegister)
             : null
-        const settle = { count: stored?.count ?? 0, names: stored ? namesOf(stored.days) : [] }
+        const settle = stored ? waitingOf(stored) : { count: 0, names: [] }
 
         const verdict = checkApproval({
             status: (existing?.status ?? "DRAFT") as "DRAFT" | "APPROVED" | "PAID",
@@ -499,7 +499,7 @@ export class PayrollRunService {
                     // out of date waits too. Refused, the recompute is kept, as any
                     // recompute's would be, and nothing else is written.
                     const still = await daysToSettle(tx, companyId, year, month, onRegister)
-                    if (still.count > 0) return { refusal: settleRefusal(still.count, namesOf(still.days)) }
+                    if (still.count > 0) return { refusal: settleRefusal(waitingOf(still)) }
                     overtimeRejected = await rejectPendingOvertime(tx, companyId, year, month, approverId)
                     if (overtimeRejected > 0) await AttendanceEngineService.recomputeMonthIn(tx, companyId, key, timeZone, today)
                 }
@@ -511,7 +511,7 @@ export class PayrollRunService {
                 if (reaches) {
                     const unchecked = final.entries.filter(e => !e.excluded && !onRegister.includes(e.userId)).map(e => e.userId)
                     const late = unchecked.length ? await daysToSettle(tx, companyId, year, month, unchecked) : null
-                    if (late && late.count > 0) throw new SettleRefused(settleRefusal(late.count, namesOf(late.days)))
+                    if (late && late.count > 0) throw new SettleRefused(settleRefusal(waitingOf(late)))
                 }
                 const draft = await this.writeDraft(tx, companyId, year, month, final, payrollDay)
                 const entries = reaches

@@ -19,6 +19,8 @@ import { addressWithPeriod, periodFromAddress, yearsAround } from '@/lib/period-
 import type { TranslationKey } from '@/lib/translations'
 import { DaysToSettle, UndecidedRequests, type ToSettle } from './SettleFirst'
 
+const NO_REQUESTS: ToSettle['requests'] = { permissions: 0, missing: 0, overtime: 0 }
+
 /**
  * The register: one month, everybody in it, and what changed.
  *
@@ -104,6 +106,10 @@ export default function PayrollRegisterPage() {
     const setPeriod = (y: number, m: number) => router.replace(addressWithPeriod(pathname, params.toString(), y, m), { scroll: false })
     const [open, setOpen] = useState<string | null>(null)
     const [acknowledged, setAcknowledged] = useState(false)
+    // What a refusal for days to settle said waits: shown when the register
+    // read again can't, an approval undone having taken its recompute with
+    // it (review on PR 276). Forgotten when the window opens again.
+    const [refused, setRefused] = useState<Omit<ToSettle, 'requests'> | null>(null)
     // Saving, approving, sending and marking paid: one at a time, and the
     // button that started it says so.
     const action = useBusyAction()
@@ -126,6 +132,7 @@ export default function PayrollRegisterPage() {
     >(null)
     // Not while it works: closing then would hide the answer.
     const closeConfirm = () => { if (!action.running) setConfirming(null) }
+    const openApprove = () => { setRefused(null); setConfirming({ kind: 'approve' }) }
     // Defaults to today, and is a date rather than a switch because a transfer
     // made on the 25th is usually recorded on the 27th, and stamping the 27th
     // makes the record disagree with the bank.
@@ -145,6 +152,7 @@ export default function PayrollRegisterPage() {
         setScopeShown(scope)
         setConfirming(null)
         setAcknowledged(false)
+        setRefused(null)
     }
     const { can } = useCan()
 
@@ -171,7 +179,7 @@ export default function PayrollRegisterPage() {
     const view: View | null = registerKey && !error ? (data?.data ?? null) : null
     // Days of the month still incomplete or a departure to confirm: Approve
     // says so in place of asking, until they're settled (DESIGN.md §5.5, PR 276).
-    const settle = view?.toSettle ?? null
+    const settle = view?.toSettle?.count ? view.toSettle : refused ? { ...refused, requests: view?.toSettle?.requests ?? NO_REQUESTS } : view?.toSettle ?? null
     const waits = (settle?.count ?? 0) > 0
     // Attendance changed after a payroll was approved (§12.3): whenever any is
     // open, whatever the switch says now.
@@ -251,6 +259,7 @@ export default function PayrollRegisterPage() {
             // row was out of date: the window stays open and, the register
             // read again, shows what waits (PR 276).
             if (body?.details?.code === 'DAYS_TO_SETTLE') {
+                setRefused(body.details.waiting ?? null)
                 await load()
                 return 'settle'
             }
@@ -410,7 +419,7 @@ export default function PayrollRegisterPage() {
                             </Button>
                         )}
                         {canApprove && (
-                            <Button variant="primary" onClick={() => setConfirming({ kind: 'approve' })} disabled={action.running || !register || register.includedCount === 0}>
+                            <Button variant="primary" onClick={openApprove} disabled={action.running || !register || register.includedCount === 0}>
                                 {t('payroll_approve')}
                             </Button>
                         )}

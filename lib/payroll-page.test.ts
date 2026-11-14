@@ -421,7 +421,8 @@ describe("a confirmation is for the register it was opened on", () => {
         // unseen. Reset while rendering, so the new register is never drawn
         // with the old one's dialog open.
         expect(PAGE).toContain("const scope = `${companyId}/${year}/${month}`")
-        expect(PAGE).toMatch(/if \(scope !== scopeShown\) \{\s*setScopeShown\(scope\)\s*setConfirming\(null\)\s*setAcknowledged\(false\)\s*\}/)
+        // A refusal's days to settle are forgotten with them (PR 276).
+        expect(PAGE).toMatch(/if \(scope !== scopeShown\) \{\s*setScopeShown\(scope\)\s*setConfirming\(null\)\s*setAcknowledged\(false\)\s*setRefused\(null\)\s*\}/)
     })
 })
 

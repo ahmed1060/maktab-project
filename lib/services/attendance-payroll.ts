@@ -70,6 +70,8 @@ export type DayToSettle = {
 }
 export type ToSettle = {
     count: number
+    /** How many of each kind, so what's left over past the list opens its own (review on PR 276). */
+    byStatus: { INCOMPLETE: number; TO_CONFIRM: number }
     days: DayToSettle[]
     /** The month's requests not yet decided: a warning, not a reason to wait (decision 24). */
     requests: { permissions: number; missing: number; overtime: number }
@@ -88,7 +90,11 @@ export async function daysToSettle(db: Db, companyId: string, year: number, mont
     const waiting = { ...people, status: { in: ["INCOMPLETE", "TO_CONFIRM"] as ("INCOMPLETE" | "TO_CONFIRM")[] } }
     // One after another: inside approval's transaction, two queries at once
     // on one connection is what #268 took out.
-    const count = await db.attendanceDay.count({ where: waiting })
+    const byStatus = {
+        INCOMPLETE: await db.attendanceDay.count({ where: { ...people, status: "INCOMPLETE" } }),
+        TO_CONFIRM: await db.attendanceDay.count({ where: { ...people, status: "TO_CONFIRM" } }),
+    }
+    const count = byStatus.INCOMPLETE + byStatus.TO_CONFIRM
     const days = count === 0 ? [] : await db.attendanceDay.findMany({
         where: waiting,
         orderBy: [{ date: "asc" }, { user: { firstName: "asc" } }, { userId: "asc" }],
@@ -100,6 +106,7 @@ export async function daysToSettle(db: Db, companyId: string, year: number, mont
     const overtime = await db.attendanceDay.count({ where: { ...people, overtimeStatus: "PENDING" } })
     return {
         count,
+        byStatus,
         days: days.map(d => ({
             userId: d.userId,
             name: [d.user.firstName, d.user.lastName].filter(Boolean).join(" "),
@@ -114,6 +121,9 @@ export async function daysToSettle(db: Db, companyId: string, year: number, mont
 
 /** Whose days a refusal names: each once, in the order listed. */
 export const namesOf = (days: DayToSettle[]) => days.map(d => d.name).filter((n, i, all) => all.indexOf(n) === i)
+
+/** What a refusal carries of what waits: how many, whose, of each kind, and the first of them. */
+export const waitingOf = (t: ToSettle) => ({ count: t.count, names: namesOf(t.days), byStatus: t.byStatus, days: t.days })
 
 /**
  * Overtime still waiting for a decision when the month's payroll is approved

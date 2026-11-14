@@ -82,6 +82,8 @@ describe("what has to be true before a month can be frozen", () => {
         expect(verdict.ok).toBe(false)
         expect(!verdict.ok && verdict.refusal).toMatchObject({ code: "DAYS_TO_SETTLE", names: ["Ehab One", "Rami Nabil"] })
         expect(!verdict.ok && verdict.refusal.message).toContain("3 days")
+        // And what waits, for the window to show (review on PR 276).
+        expect(!verdict.ok && "waiting" in verdict.refusal && verdict.refusal.waiting).toEqual({ count: 3, names: ["Ehab One", "Rami Nabil"] })
         expect(checkApproval({ ...base, daysToSettle: { count: 1, names: ["Ehab One"] } })).toMatchObject({ refusal: { message: expect.stringContaining("1 day ") } })
         // Acknowledging an undecided suspension doesn't settle a day.
         const both = checkApproval({ ...base, daysToSettle: { count: 1, names: ["A"] }, pendingDecisions: [{ userId: "u2", name: "B", undecidedDays: 1 }], acknowledgePending: true })
@@ -198,6 +200,8 @@ describe("approving is its own act", () => {
         const route = stripComments(readFileSync("app/api/payroll/[year]/[month]/approve/route.ts", "utf8"))
         expect(route).toContain("names")
         expect(route).toContain("ApiResponse.badRequest")
+        // Days to settle send what waits too, for the window to show (review on PR 276).
+        expect(route).toContain("...('waiting' in result.refusal ? { waiting: result.refusal.waiting } : {})")
     })
 })
 

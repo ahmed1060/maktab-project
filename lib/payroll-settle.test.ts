@@ -25,7 +25,7 @@ const days = [
 ]
 // As the markup writes them.
 const esc = (text: string) => text.replace(/'/g, "&#x27;")
-const settle = (fields: Record<string, unknown> = {}) => ({ count: 2, days, requests: { permissions: 1, missing: 0, overtime: 3 }, ...fields })
+const settle = (fields: Record<string, unknown> = {}) => ({ count: 2, byStatus: { INCOMPLETE: 1, TO_CONFIRM: 1 }, days, requests: { permissions: 1, missing: 0, overtime: 3 }, ...fields })
 
 async function render(what: "days" | "requests", locale: "en" | "ar" = "en", fields: Record<string, unknown> = {}) {
     state.locale = locale
@@ -63,11 +63,20 @@ describe("the days to settle before a month's payroll is approved", () => {
         expect(html).toContain("أكتوبر")
     })
 
-    it("says how many more wait when it lists only some, opening the Exceptions screen on the month", async () => {
-        const html = await render("days", "en", { count: 52 })
-        expect(html).toContain(esc(en.payroll_settle_more.replace("{n}", "50")))
-        expect(html).toContain('href="/dashboard/attendance?tab=exceptions&amp;year=2026&amp;month=10&amp;kind=incomplete"')
-        expect(await render("days")).not.toContain(esc(en.payroll_settle_more.split("{n}")[1]))
+    it("says how many more wait of each kind when it lists only some, each opening its own list on the month (review on PR 276)", async () => {
+        const more = (n: string, kind: string) => esc(en.payroll_settle_more.replace("{n}", n).replace("{kind}", kind))
+        // 51 departures to confirm and 1 punch missing: both listed ones shown, 50 departures left.
+        const html = await render("days", "en", { count: 52, byStatus: { INCOMPLETE: 1, TO_CONFIRM: 51 } })
+        expect(html).toContain(more("50", en.exc_tab_departure))
+        expect(html).toContain('href="/dashboard/attendance?tab=exceptions&amp;year=2026&amp;month=10&amp;kind=departure"')
+        expect(html).not.toContain(more("0", en.exc_tab_incomplete))
+        expect(html).not.toContain('month=10&amp;kind=incomplete"')
+        // Some of each left over: a line for each.
+        const both = await render("days", "en", { count: 7, byStatus: { INCOMPLETE: 4, TO_CONFIRM: 3 } })
+        expect(both).toContain(more("3", en.exc_tab_incomplete))
+        expect(both).toContain(more("2", en.exc_tab_departure))
+        // All listed: none.
+        expect(await render("days")).not.toContain(esc(en.payroll_settle_more.split("{n}")[1].split("{kind}")[0]))
     })
 })
 
@@ -119,8 +128,13 @@ describe("Payroll's Approve uses them", () => {
         expect(dialog).toContain("if ((await approve()) !== 'settle') setConfirming(null)")
     })
 
-    it("reads what waits from the register", () => {
-        expect(PAGE).toContain("const settle = view?.toSettle ?? null")
+    it("reads what waits from the register, or from the refusal when the register read again can't show it (review on PR 276)", () => {
+        // An approval undone takes the recompute that found the day with it.
+        expect(PAGE).toContain("setRefused(body.details.waiting ?? null)")
+        expect(PAGE).toContain("const settle = view?.toSettle?.count ? view.toSettle : refused ? { ...refused, requests: view?.toSettle?.requests ?? NO_REQUESTS } : view?.toSettle ?? null")
         expect(PAGE).toContain("const waits = (settle?.count ?? 0) > 0")
+        // Forgotten when the window opens again, and with the company or month.
+        expect(PAGE).toContain("const openApprove = () => { setRefused(null); setConfirming({ kind: 'approve' }) }")
+        expect(PAGE.slice(PAGE.indexOf("if (scope !== scopeShown) {"), PAGE.indexOf("const { can } = useCan()"))).toContain("setRefused(null)")
     })
 })

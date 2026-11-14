@@ -1252,7 +1252,7 @@ export const en = {
         // Approve while days of the month wait (ATTENDANCE_PLAN.md §6.9, decisions 14 and 24, PR 276).
         payroll_settle_title: "Days to settle first",
         payroll_settle_msg: "This month can be approved once these days are settled. Each still waits on a scan or a decision, and would otherwise be charged nothing.",
-        payroll_settle_more: "See {n} more on attendance's Exceptions screen",
+        payroll_settle_more: "See {n} more under {kind} on attendance's Exceptions screen",
         payroll_undecided_title: "Requests not yet decided",
         payroll_undecided_msg: "Approving doesn't wait for these. Overtime still undecided is rejected when the month is approved; any other request decided afterwards is recorded as a change to the approved month.",
         payroll_undecided_permissions: "Permission hours",

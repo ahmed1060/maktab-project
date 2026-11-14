@@ -20,8 +20,9 @@ export type DayToSettle = {
     firstIn: string | null; lastOut: string | null
 }
 export type ToSettle = {
-    /** How many wait in all; `days` lists the first of them. */
+    /** How many wait in all, and of each kind; `days` lists the first of them. */
     count: number
+    byStatus: Record<DayToSettle['status'], number>
     days: DayToSettle[]
     requests: { permissions: number; missing: number; overtime: number }
 }
@@ -44,7 +45,10 @@ function useWords() {
 
 export function DaysToSettle({ settle, year, month }: { settle: ToSettle; year: number; month: number }) {
     const { t, num, date, clock } = useWords()
-    const more = settle.count - settle.days.length
+    // What's left over past the list, of each kind, opening its own (review on PR 276).
+    const more = (['INCOMPLETE', 'TO_CONFIRM'] as const)
+        .map(status => ({ status, n: settle.byStatus[status] - settle.days.filter(d => d.status === status).length }))
+        .filter(m => m.n > 0)
     const scans = (d: DayToSettle) => [d.firstIn, d.lastOut].filter((at): at is string => !!at).map(clock).join('–')
     return (
         <>
@@ -57,9 +61,13 @@ export function DaysToSettle({ settle, year, month }: { settle: ToSettle; year: 
                         end={<StatusBadge tone="waiting">{t(WAITS_ON[d.status])}</StatusBadge>} />
                 ))}
             </ul>
-            {more > 0 && (
-                <p><Link className="ui-item-link" href={exceptions(year, month, 'incomplete')} prefetch={false}>{t('payroll_settle_more').replace('{n}', num(more))}</Link></p>
-            )}
+            {more.map(m => (
+                <p key={m.status}>
+                    <Link className="ui-item-link" href={exceptions(year, month, m.status === 'TO_CONFIRM' ? 'departure' : 'incomplete')} prefetch={false}>
+                        {t('payroll_settle_more').replace('{n}', num(m.n)).replace('{kind}', t(WAITS_ON[m.status]))}
+                    </Link>
+                </p>
+            ))}
         </>
     )
 }
