@@ -1802,7 +1802,8 @@ None of this can be tried without the terminals, and the build has none. So:
 A terminal's **brand** is what is printed on it. Its **protocol** is the
 language Nizmo and the agent speak to it. They aren't the same thing: many
 brands sell terminals another maker builds, and those speak the maker's
-protocol. The first customer's Convoy most likely speaks ZKTeco's (§20).
+protocol. The first customer's Convoy speaks ZKTeco's, as its own screens
+show (§20).
 
 - **Protocols are code.** Nizmo knows two: ZKTeco's, which the agent reads
   over the office network (above) and a terminal pushes to Nizmo (§17.3); and
@@ -1813,7 +1814,7 @@ protocol. The first customer's Convoy most likely speaks ZKTeco's (§20).
   §2.2; round 9, decision 10): each brand's name, the protocol its
   terminals speak, and optional notes in English and Arabic, such as where
   its settings are in its menu. It starts with ZKTeco, Hikvision and Convoy
-  (ZKTeco's protocol, until the trial says otherwise).
+  (ZKTeco's protocol, from its screens, 14 November 2026).
 - **Adding a brand** takes its name and picks its protocol from the ones
   Nizmo knows. A brand that speaks another can't be added: the page says so,
   rather than offering a brand that will never connect.
@@ -2069,23 +2070,43 @@ first. The trial (§17.8) follows parts 5 and 6, before the switch is turned
 on for anyone else.
 
 **The first customer's terminal comes before all of it.** It is a Convoy, an
-Egyptian brand that sells other makers' terminals under its own name. It
-looks like Convoy's CF-500, which retailers list with a network port, USB,
-and ZKTeco's own software (ZKTime 5), so it most likely speaks ZKTeco's
-protocol and has no HTTPS push. Its model and firmware are read at install
-with `nizmo-agent.exe probe`, which answers only from a terminal speaking
-ZKTeco's protocol. If it is on the network, it connects
-through the agent, built in Phase 2 and never yet tried on a real terminal:
-that trial comes first (`nizmo-agent.exe probe`, then a week of scans), ahead
-of the parts above but parts 2 and 3. Part 2 comes before the terminal is set
-up, so that only those meant to see the setup do; part 3 puts Convoy on its
-card. If it has USB only, its scans come in through the Excel and CSV import
-(Phase 0), from the file it saves to a USB stick.
+Egyptian brand that sells other makers' terminals under its own name. Its
+screens, photographed by the owner on 14 November 2026, settle what it is:
+
+- **A ZKTeco terminal under Convoy's name.** It calls itself a CB 3000, on
+  ZKTeco's platform ZLM60_TFT with ZKTeco's fingerprint algorithm VX10.0,
+  and the office reads it today with ZKTeco's PC software, Attendance
+  Management.
+- **On the office network, as the agent reads it.** A fixed address there,
+  ZKTeco's port 4370 and comm key 0: the agent's defaults, so
+  `nizmo-agent.exe probe <its address>` is all it takes to read it.
+- **No push to anyone.** Its Comm menu holds Ethernet and PC Connection
+  only, with no Cloud Server Setting, and it has no gateway set. It can't
+  send scans to Nizmo itself, so ZKTeco straight to Nizmo (part 6) can't be
+  tried on it.
+
+So it connects through the agent, built in Phase 2 and never yet tried on a
+real terminal: that trial comes first (`nizmo-agent.exe probe`, then a week
+of scans), ahead of the parts above but parts 2 and 3. Part 2 comes before
+the terminal is set up, so that only those meant to see the setup do; part
+3 puts Convoy on its card. Two things to settle with the office before the
+trial week:
+
+- **One reader at a time.** Attendance Management and the agent both read
+  the terminal on port 4370, and a ZKTeco terminal often takes one
+  connection at a time, so while the PC software is connected the agent's
+  read waits for its next round.
+- **Records cleared after reading.** If Attendance Management is set to
+  delete the terminal's records once it has downloaded them, scans it
+  reads first never reach the agent. That option is off for the trial.
+
+Until the agent runs, the office's scans can come in through the import
+(Phase 0), from the file Attendance Management exports, or the template
+(§13.9). The trial checks that the import reads that file's columns.
 
 It is also the first trial terminal (§17.8; the owner, 13 November 2026).
-If its Cloud Server Setting offers HTTPS, ZKTeco straight to Nizmo (part 6)
-goes before Hikvision (part 5). If it doesn't, it stays on the agent, and
-parts 5 to 7 wait (proposed) until there is a terminal they can be tried on.
+With no push, it stays on the agent, and parts 5 to 7 wait (proposed) until
+there is a terminal they can be tried on.
 
 ### Phase 5 — Reading scans first and last, and missions — not built
 

@@ -684,8 +684,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      confirm, the payroll run waiting for them, two kinds of mission by
      hours, and a mission naming a task for its reviewer (round 10,
      decisions 13 to 21), with a template for the file import
-     (`ATTENDANCE_PLAN.md` §13.9), and a second review's decisions 22 to
-     27, #271;
+     (`ATTENDANCE_PLAN.md` §13.9), a second review's decisions 22 to 27,
+     and the first customer's terminal read from its screens, #271;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6115,3 +6115,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   one scan left after the window. Summer time on a terminal is the
   terminal's own setting. Face checks are paused until Nizmo has more
   customers. Plans only; no screen changes yet.
+- **2026-11-14:** The first customer's terminal, read from photos of its
+  screens (#271; `ATTENDANCE_PLAN.md` §17.9, §20): a ZKTeco terminal sold
+  as Convoy's CB 3000, on the office network on ZKTeco's port with comm key
+  0, read today with ZKTeco's Attendance Management. It has no Cloud Server
+  Setting, so it can't push to Nizmo: it connects through the agent, and
+  parts 5 to 7 of Phase 4 wait (proposed). Before the trial week, the
+  office's PC software stops clearing the terminal's records after reading
+  them, and the agent and the PC software share the terminal's one
+  connection. Plans only; no screen changes yet.
