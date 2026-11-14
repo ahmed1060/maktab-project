@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client"
 import { calendarDateStr } from "@/lib/time"
 import { addDays, expectedDay, observedHolidays, scheduleIdOn, toDateString, versionOn, companyWeekOn, type ExpectedDay, type Schedule } from "@/lib/attendance/calendar"
 import { policyOn, type PolicyBody } from "@/lib/attendance/policy"
-import { assignPunches, measureDay, priceMonth, paidMinutesOf, type EnginePunch, type PricingInput } from "@/lib/attendance/engine"
+import { assignPunches, measureDay, priceMonth, paidMinutesOf, type EnginePunch, type IncompleteSettled, type PricingInput } from "@/lib/attendance/engine"
 import { localToInstant } from "@/lib/attendance/punch-import"
 import { employmentSpans, suspensionSpans } from "@/lib/employment"
 import { rateAt } from "@/lib/salary-history"
@@ -137,7 +137,7 @@ async function deriveMonth(
         tx.attendanceDayDecision.findMany({
             where: {
                 companyId, ...scope, date: { gte: wallClock(`${from}T00:00:00`), lte: wallClock(`${through}T00:00:00`) },
-                OR: [{ outcome: "EXCUSED" }, { outcome: "ACCEPTED", subject: "EARLY_LEAVE" }],
+                OR: [{ outcome: "EXCUSED" }, { outcome: "ACCEPTED", subject: { in: ["EARLY_LEAVE", "INCOMPLETE"] } }],
             },
             select: { userId: true, date: true, subject: true, outcome: true },
         }),
@@ -164,6 +164,11 @@ async function deriveMonth(
     }
     const departureConfirmedOn = (userId: string, day: string) =>
         excuses.some(x => x.userId === userId && toDateString(x.date) === day && x.outcome === "ACCEPTED" && x.subject === "EARLY_LEAVE")
+    // A day with one scan, marked absent or accepted as it is (§6.9, decision 22, PR 275).
+    const incompleteOn = (userId: string, day: string): IncompleteSettled | undefined => {
+        const d = excuses.find(x => x.userId === userId && toDateString(x.date) === day && x.subject === "INCOMPLETE")
+        return d ? (d.outcome === "ACCEPTED" ? "ABSENT" : "AS_IT_IS") : undefined
+    }
     for (const person of people) {
         const mine = assignments.filter(a => a.userId === person.id).map(a => ({ scheduleId: a.scheduleId, effectiveFrom: toDateString(a.effectiveFrom) }))
         const plans = new Map<string, { expected: ExpectedDay; scheduleId: string | null; schedule: Schedule | null }>()
@@ -206,6 +211,7 @@ async function deriveMonth(
                 windowMinutes: policy?.body.scanWindowMinutes,
                 departureThresholdMinutes: policy?.body.departureThresholdMinutes,
                 departureConfirmed: departureConfirmedOn(person.id, date),
+                incomplete: incompleteOn(person.id, date),
             })
             const decision = decisions.find(o => o.userId === person.id && toDateString(o.date) === date)
             const rate = rateAt(person.SalaryChange as any, noon)
@@ -244,6 +250,8 @@ async function deriveMonth(
                 breakdown: {
                     lateness: d.lateness, earlyLeave: d.earlyLeave, absenceDays: d.absenceDays, unpriced: d.unpriced,
                     excusedAbsence: d.excusedAbsence,
+                    // Said on the person's own day (PR 275); left out where nothing was settled.
+                    ...(d.settled ? { settled: d.settled } : {}),
                     minor: d.deductionParts,
                     holiday: e.kind === "HOLIDAY" ? e.holiday.name : null,
                 } as Prisma.InputJsonValue,

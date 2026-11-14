@@ -6,8 +6,8 @@ import type { ExpectedDay } from "./calendar"
 /**
  * The derivation engine (ATTENDANCE_PLAN.md §11): grouping punches by shift,
  * counting scans close together as one, reading a day first and last (§6.9,
- * round 10, PR 273), a departure to confirm (PR 274), and pricing the month
- * in order (§6.3–6.5).
+ * round 10, PR 273), a departure to confirm (PR 274), an incomplete day
+ * settled (PR 275), and pricing the month in order (§6.3–6.5).
  */
 
 const work = (startMinutes = 540, endMinutes = 1020, breakMinutes = 60): ExpectedDay =>
@@ -170,6 +170,42 @@ describe("a departure to confirm (§6.9, round 10, decisions 13 and 23, PR 274)"
         expect(priced).toMatchObject({ status: "TO_CONFIRM", unpriced: "TO_CONFIRM", deductionDays: 0, deductionMinor: 0, lateness: { days: 0, occurrence: 0 } })
         // The next late arrival is the month's first.
         expect(next.lateness.occurrence).toBe(1)
+    })
+})
+
+describe("an incomplete day settled (§6.9, round 10, decision 22, PR 275)", () => {
+    const one = (at: string) => [p(`2026-10-04T${at}:00`)]
+    const priced = (day: MeasuredDay) => priceMonth([{ day, policy: STANDARD_OFFICE, monthlyMinor: 930_000, daysInMonth: 31, paidMinutes: 420 }])[0]
+
+    it("is waiting on its missing scan until somebody settles it", () => {
+        expect(measure(work(), one("09:40"))).toMatchObject({ status: "INCOMPLETE", punchCount: 1, lateMinutes: 40 })
+        expect(priced(measure(work(), one("09:40")))).toMatchObject({ unpriced: "INCOMPLETE", deductionMinor: 0 })
+    })
+
+    it("marked absent, is an absence the policy charges, its one scan kept and its lateness not counted", () => {
+        const day = measure(work(), one("09:40"), { incomplete: "ABSENT" })
+        expect(day).toMatchObject({ status: "ABSENT", settled: "ABSENT", punchCount: 1, firstIn: "2026-10-04T09:40:00", lateMinutes: 0, excusedAbsence: false })
+        // 300.00 a day, an absence a whole day.
+        expect(priced(day)).toMatchObject({ absenceDays: 1, deductionMinor: 30000, unpriced: null, lateness: { occurrence: 0 } })
+    })
+
+    it("accepted as it is, is present and charged nothing, its lateness included", () => {
+        const day = measure(work(), one("09:40"), { incomplete: "AS_IT_IS" })
+        expect(day).toMatchObject({ status: "PRESENT", settled: "AS_IT_IS", punchCount: 1, lateMinutes: 0, earlyLeaveMinutes: 0, excusedMinutes: 40, workedMinutes: 0, overtimeMinutes: 0 })
+        expect(priced(day)).toMatchObject({ deductionMinor: 0, unpriced: null, lateness: { occurrence: 0 } })
+    })
+
+    it("on a rest day or holiday, can only be accepted, as worked with no overtime", () => {
+        expect(measure(REST, one("10:00"), { incomplete: "AS_IT_IS" })).toMatchObject({ status: "WORKED_REST_DAY", settled: "AS_IT_IS", workedMinutes: 0, overtimeMinutes: 0 })
+        expect(measure(HOLIDAY, one("10:00"), { incomplete: "AS_IT_IS" })).toMatchObject({ status: "WORKED_HOLIDAY", unpaidHoliday: false, overtimeMinutes: 0 })
+        // Nobody was expected, so nobody is absent.
+        expect(measure(REST, one("10:00"), { incomplete: "ABSENT" })).toMatchObject({ status: "INCOMPLETE" })
+    })
+
+    it("counts only while the day has its one scan: an absence with none, or a day with both, is measured as it is", () => {
+        expect(measure(work(), [], { incomplete: "AS_IT_IS" })).toMatchObject({ status: "ABSENT", excusedAbsence: false })
+        expect(measure(work(), [...one("09:00"), p("2026-10-04T17:00:00")], { incomplete: "ABSENT" })).toMatchObject({ status: "PRESENT", workedMinutes: 480 })
+        expect(measure(work(), [...one("09:00"), p("2026-10-04T17:00:00")], { incomplete: "ABSENT" }).settled).toBeUndefined()
     })
 })
 

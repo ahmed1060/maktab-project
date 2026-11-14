@@ -2547,6 +2547,10 @@ enum AttendanceSubject {
   LATENESS
   EARLY_LEAVE
   ABSENCE
+  /// A day with one scan, the other missing (§6.9, decision 22, PR 275):
+  /// ACCEPTED marks it absent, charged as an absence; EXCUSED accepts it as
+  /// it is, charged nothing. Each with a reason.
+  INCOMPLETE
 }
 
 enum AttendanceDecisionOutcome {

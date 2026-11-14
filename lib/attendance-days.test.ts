@@ -333,3 +333,32 @@ describe("a departure to confirm (ATTENDANCE_PLAN.md §6.9, round 10, decision 1
         expect(ar.audit_value_TO_CONFIRM).toBeTruthy()
     })
 })
+
+describe("an incomplete day settled (ATTENDANCE_PLAN.md §6.9, round 10, decision 22, PR 275)", () => {
+    const marked = day({
+        id: "d7", date: "2026-10-21", status: "ABSENT", firstIn: "2026-10-21T09:40:00", lastOut: null, workedMinutes: 0,
+        lateMinutes: 0, earlyLeaveMinutes: 0, deductionDays: 1, deductionMinor: 30000,
+        breakdown: { lateness: none, earlyLeave: none, absenceDays: 1, unpriced: null, holiday: null, settled: "ABSENT" },
+    })
+    const accepted = day({
+        id: "d8", date: "2026-10-22", status: "PRESENT", firstIn: "2026-10-22T09:30:00", lastOut: null, workedMinutes: 0,
+        lateMinutes: 0, earlyLeaveMinutes: 0, excusedMinutes: 30, deductionDays: 0, deductionMinor: 0,
+        breakdown: { lateness: none, earlyLeave: none, absenceDays: 0, unpriced: null, holiday: null, settled: "AS_IT_IS" },
+    })
+
+    it("says on one's own day which it was: marked absent, or accepted as it is, with its one scan", async () => {
+        const html = panel(await page({ shows: [marked, accepted] }))
+        expect(table(html)).toContain(en.day_settled_absent)
+        expect(table(html)).toContain(en.day_settled_as_is)
+        expect(cards(html)).toContain(en.day_settled_absent)
+        expect(table(html)).toContain("<bdi>09:40</bdi>")
+        const arabic = table(panel(await page({ shows: [marked, accepted], locale: "ar" })))
+        expect(arabic).toContain(ar.day_settled_absent)
+        expect(arabic).toContain(ar.day_settled_as_is)
+    })
+
+    it("no longer offers reporting the missing scan, once settled", async () => {
+        const rows = table(panel(await page({ shows: [marked, accepted] })))
+        expect(rows).not.toContain("Report a missing punch")
+    })
+})

@@ -114,7 +114,16 @@ export type MeasuredDay = {
     unpaidHoliday: boolean
     /** An absence somebody excused (§13.1): measured as absent, never charged. */
     excusedAbsence: boolean
+    /**
+     * A day with one scan somebody settled on the exceptions screen (§6.9,
+     * decision 22, PR 275): marked absent, or accepted as it is. Absent while
+     * the day has any other number of scans, where the decision counts for nothing.
+     */
+    settled?: IncompleteSettled
 }
+
+/** How somebody settled a day with one scan (§6.9, decision 22, PR 275). */
+export type IncompleteSettled = "ABSENT" | "AS_IT_IS"
 
 export type PermissionSpan = { type: "LATE_ARRIVAL" | "EARLY_LEAVE" | "MIDDAY"; startMinutes: number; endMinutes: number }
 
@@ -151,6 +160,12 @@ function coveredMinutes(date: string, permissions: readonly PermissionSpan[], ty
  * after approved permission hours, of more than the policy's threshold makes
  * the day wait, measured as it is, until its early leave is accepted or
  * excused on the exceptions screen, or its departure scan added.
+ *
+ * A day with one scan is incomplete until its other scan is added, or
+ * somebody settles it (§6.9, decision 22, PR 275): marked absent, it is an
+ * absence, its one scan kept; accepted as it is, nothing of it is charged,
+ * present on a working day and worked, with no overtime, on a day off. A day
+ * off can't be marked absent: nobody was expected.
  */
 export function measureDay(input: {
     date: string
@@ -168,6 +183,8 @@ export function measureDay(input: {
     departureThresholdMinutes?: number
     /** Somebody accepted the day's early leave on the exceptions screen (§13.1): charged, and no longer waiting. */
     departureConfirmed?: boolean
+    /** How somebody settled the day on the exceptions screen, should it have one scan (PR 275). */
+    incomplete?: IncompleteSettled
 }): MeasuredDay {
     const { date, expected } = input
     const punches = debounce(input.punches, input.windowMinutes)
@@ -181,11 +198,14 @@ export function measureDay(input: {
     // From the first scan to the last; nothing to measure with only one.
     const workedMinutes = lastOut ? Math.floor((wallSeconds(lastOut) - wallSeconds(firstIn!)) / 60) : 0
     const single = punches.length === 1
+    // Accepted as it is, a day with one scan counts as there, charged nothing (decision 22).
+    const asItIs = single && input.incomplete === "AS_IT_IS"
 
     if (input.suspended) return { ...base, status: "SUSPENDED" }
     if (expected.kind === "NO_SCHEDULE") return { ...base, status: "NO_SCHEDULE", workedMinutes }
     if (expected.kind === "REST" || expected.kind === "HOLIDAY") {
         if (punches.length === 0) return { ...base, status: expected.kind, unpaidHoliday: expected.kind === "HOLIDAY" && !expected.holiday.isPaid }
+        if (asItIs) return { ...base, status: expected.kind === "REST" ? "WORKED_REST_DAY" : "WORKED_HOLIDAY", settled: "AS_IT_IS" }
         if (single) return { ...base, status: "INCOMPLETE" }
         return { ...base, status: expected.kind === "REST" ? "WORKED_REST_DAY" : "WORKED_HOLIDAY", workedMinutes, overtimeMinutes: workedMinutes }
     }
@@ -196,7 +216,12 @@ export function measureDay(input: {
     const lateRaw = Math.max(0, Math.floor((wallSeconds(firstIn!) - shift.start) / 60))
     const excusedLate = input.excused?.lateness ? lateRaw
         : Math.min(lateRaw, coveredMinutes(date, input.permissions ?? [], "LATE_ARRIVAL", shift.start, wallSeconds(firstIn!)))
-    if (single) return { ...base, status: "INCOMPLETE", lateMinutes: lateRaw - excusedLate, excusedMinutes: excusedLate }
+    if (single) {
+        // Marked absent, an absence like any other, its one scan kept and its lateness not counted.
+        if (input.incomplete === "ABSENT") return { ...base, settled: "ABSENT" }
+        if (asItIs) return { ...base, status: "PRESENT", settled: "AS_IT_IS", excusedMinutes: lateRaw }
+        return { ...base, status: "INCOMPLETE", lateMinutes: lateRaw - excusedLate, excusedMinutes: excusedLate }
+    }
 
     const out = wallSeconds(lastOut!)
     const earlyRaw = Math.max(0, Math.floor((shift.end - out) / 60))

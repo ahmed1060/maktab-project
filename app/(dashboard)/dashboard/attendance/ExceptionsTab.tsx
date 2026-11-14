@@ -22,9 +22,10 @@ import { lastDayOf, pad, useDayInAddress, useFigures, useMonthInAddress } from '
  * Daily exceptions (ATTENDANCE_PLAN.md §13.1): only what needs a decision,
  * with a count per kind, for the people the viewer sees. Lateness and early
  * leave that count, and absences, are excused (not charged, with a reason)
- * or accepted (the charge stands); a missing punch is added; a departure to
- * confirm has its departure added or its early leave accepted or excused
- * (§6.9, PR 274); overtime is approved or rejected. What waits on the Requests page and the Employee
+ * or accepted (the charge stands); a missing punch is added, or its day
+ * marked absent or accepted as it is, each with a reason (§6.9, PR 275); a
+ * departure to confirm has its departure added or its early leave accepted
+ * or excused (§6.9, PR 274); overtime is approved or rejected. What waits on the Requests page and the Employee
  * numbers and Face tabs is counted, and opens there. Every decision is
  * audited and can be undone.
  *
@@ -41,10 +42,22 @@ type Row = {
     id: string; userId: string; name: string; teamLeaderId: string | null; date: string; status: string
     firstIn: string | null; lastOut: string | null; lateMinutes: number; earlyLeaveMinutes: number; overtimeMinutes: number
     deductionMinor: number | null; breakdown: { lateness: RuleOutcome; earlyLeave: RuleOutcome; absenceDays: number }
-    expectedEndMinutes: number | null
+    expectedStartMinutes: number | null; expectedEndMinutes: number | null
 }
 type Decided = { id: string; userId: string; name: string; teamLeaderId: string | null; date: string; subject: Subject; outcome: 'EXCUSED' | 'ACCEPTED'; reason: string | null }
-type Subject = 'LATENESS' | 'EARLY_LEAVE' | 'ABSENCE'
+type Subject = 'LATENESS' | 'EARLY_LEAVE' | 'ABSENCE' | 'INCOMPLETE'
+type Outcome = 'EXCUSED' | 'ACCEPTED'
+// A day with one scan (decision 22, PR 275) is a decision on the day: accepted, it is marked
+// absent, charged as an absence; excused, it is accepted as it is, charged nothing.
+const outcomeWord = (subject: Subject, outcome: Outcome): TranslationKey =>
+    subject === 'INCOMPLETE' ? (outcome === 'ACCEPTED' ? 'exc_marked_absent' : 'exc_accepted_as_is')
+        : outcome === 'EXCUSED' ? 'exc_outcome_excused' : 'exc_outcome_accepted'
+const decisionWord = (subject: Subject, outcome: Outcome): TranslationKey =>
+    subject === 'INCOMPLETE' ? outcomeWord(subject, outcome) : outcome === 'EXCUSED' ? 'exc_excused' : 'exc_accepted'
+const dialogWords = (subject: Subject, outcome: Outcome): { title: TranslationKey; hint: TranslationKey } =>
+    subject !== 'INCOMPLETE' ? { title: 'exc_excuse', hint: 'exc_excuse_hint' }
+        : outcome === 'ACCEPTED' ? { title: 'exc_mark_absent', hint: 'exc_mark_absent_hint' }
+            : { title: 'exc_accept_as_is', hint: 'exc_accept_as_is_hint' }
 type Data = {
     late: Row[]; early: Row[]; absent: Row[]; incomplete: Row[]; departure: Row[]; overtime: Row[]; decided: Decided[]
     counts: { late: number; early: number; absent: number; incomplete: number; departure: number; overtime: number; permissions: number | null; missing: number | null; unmatched: number | null; faceOverdue?: number | null }
@@ -97,7 +110,7 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
         return `${pathname}?${next.toString()}`
     }
 
-    const [excusing, setExcusing] = useState<{ row: { userId: string; name: string; date: string }; subject: Subject } | null>(null)
+    const [excusing, setExcusing] = useState<{ row: { userId: string; name: string; date: string }; subject: Subject; outcome: Outcome } | null>(null)
     const [rejecting, setRejecting] = useState<Row | null>(null)
     const [reason, setReason] = useState('')
     const [reasonError, setReasonError] = useState<string | undefined>()
@@ -136,14 +149,15 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
         await mutate()
         return true
     })
-    const decide = (row: { userId: string; date: string }, subject: Subject, outcome: 'EXCUSED' | 'ACCEPTED', why?: string) =>
-        act(`${outcome}:${row.userId}:${row.date}:${subject}`, '/api/attendance/decisions', json('POST', { ...companyField, userId: row.userId, date: row.date, subject, outcome, reason: why ?? null }), outcome === 'EXCUSED' ? 'exc_excused' : 'exc_accepted')
+    const decide = (row: { userId: string; date: string }, subject: Subject, outcome: Outcome, why?: string) =>
+        act(`${outcome}:${row.userId}:${row.date}:${subject}`, '/api/attendance/decisions', json('POST', { ...companyField, userId: row.userId, date: row.date, subject, outcome, reason: why ?? null }), decisionWord(subject, outcome))
     const overtime = (row: Row, status: 'APPROVED' | 'REJECTED', note?: string) =>
         act(`${status}:${row.id}`, '/api/attendance/overtime', json('POST', { ...companyField, userId: row.userId, date: row.date, status, note: note || null }), status === 'APPROVED' ? 'req_approved' : 'req_rejected')
     const corrects = (row: { userId: string; teamLeaderId: string | null }) => row.userId !== me && p.canFor('attendance.correct', row.userId, row.teamLeaderId)
     const approvesOvertime = (row: Row) => row.userId !== me && p.canFor('attendance.approve_overtime', row.userId, row.teamLeaderId)
 
-    const openExcuse = (row: { userId: string; name: string; date: string }, subject: Subject) => { setReason(''); setReasonError(undefined); setExcusing({ row, subject }) }
+    // Excusing, and settling a day with one scan, each ask why (PR 275).
+    const openExcuse = (row: { userId: string; name: string; date: string }, subject: Subject, outcome: Outcome = 'EXCUSED') => { setReason(''); setReasonError(undefined); setExcusing({ row, subject, outcome }) }
     const openReject = (row: Row) => { setReason(''); setReasonError(undefined); setRejecting(row) }
     // Not while it works: closing then would hide the answer.
     const closeExcuse = () => { if (!action.running) setExcusing(null) }
@@ -158,7 +172,7 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
             return
         }
         // Refused, it stays open with the reason typed, to try again.
-        void decide(excusing.row, excusing.subject, 'EXCUSED', reason.trim()).then(ok => { if (ok) setExcusing(null) })
+        void decide(excusing.row, excusing.subject, excusing.outcome, reason.trim()).then(ok => { if (ok) setExcusing(null) })
     }
     const reject = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -195,6 +209,8 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
     const times = (r: Row) => (r.firstIn || r.lastOut ? <bdi>{r.firstIn ? clock(r.firstIn) : '—'}–{r.lastOut ? clock(r.lastOut) : '—'}</bdi> : null)
     const note = (rule: RuleOutcome) => (rule.note && NOTE_KEY[rule.note] ? t(NOTE_KEY[rule.note]).replace('{n}', num(rule.occurrence)) : null)
     const who = (r: { date: string; name: string }) => <ItemTitle title={date(r.date)} detail={r.name} />
+    // What a decision was about: a day with one scan is named as its tab is.
+    const subjectWord = (subject: Subject) => (subject === 'INCOMPLETE' ? t('exc_tab_incomplete') : t(`audit_value_${subject}` as TranslationKey))
     const busyKey = (key: string) => action.is(key)
     const decisionButtons = (row: Row, subject: Subject) => corrects(row) ? (
         <span className="ui-row-actions">
@@ -239,7 +255,15 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
                 ]} foot={decisionButtons(r, 'ABSENCE') ?? undefined} />} />
         )
         if (kind === 'incomplete') {
-            const add = (r: Row) => (corrects(r) ? <Button variant="primary" size="sm" onClick={() => setAdding(r)}>{t('punch_add')}</Button> : null)
+            // The scan that's missing added first, as it most often is; or the day marked absent, or
+            // accepted as it is, each with a reason (decision 22, PR 275). Nobody is absent on a day off.
+            const add = (r: Row) => (corrects(r) ? (
+                <span className="ui-row-actions">
+                    <Button variant="primary" size="sm" disabled={action.running} onClick={() => setAdding(r)}>{t('punch_add')}</Button>
+                    {r.expectedStartMinutes != null && <Button size="sm" disabled={action.running} onClick={() => openExcuse(r, 'INCOMPLETE', 'ACCEPTED')}>{t('exc_mark_absent')}</Button>}
+                    <Button size="sm" disabled={action.running} onClick={() => openExcuse(r, 'INCOMPLETE', 'EXCUSED')}>{t('exc_accept_as_is')}</Button>
+                </span>
+            ) : null)
             return (
                 <DataList<Row> caption={label} rows={data.incomplete} rowKey={r => r.id} arrived={arrivals.arrived} empty={empty}
                     columns={[
@@ -299,7 +323,7 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
                     ]} foot={decideOvertime(r) ?? undefined} />} />
             )
         }
-        const badge = (d: Decided) => <StatusBadge tone={d.outcome === 'EXCUSED' ? 'good' : 'neutral'}>{t(d.outcome === 'EXCUSED' ? 'exc_outcome_excused' : 'exc_outcome_accepted')}</StatusBadge>
+        const badge = (d: Decided) => <StatusBadge tone={d.outcome === 'EXCUSED' ? 'good' : 'neutral'}>{t(outcomeWord(d.subject, d.outcome))}</StatusBadge>
         const undo = (d: Decided) => (corrects(d) ? (
             <Button size="sm" disabled={action.running} busy={busyKey(`undo:${d.id}`)} onClick={() => { void act(`undo:${d.id}`, `/api/attendance/decisions/${d.id}`, { method: 'DELETE' }, 'exc_undone') }}>{t('exc_undo')}</Button>
         ) : null)
@@ -307,13 +331,13 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
             <DataList<Decided> caption={label} rows={data.decided} rowKey={d => d.id} arrived={arrivals.arrived} empty={empty}
                 columns={[
                     { key: 'date', header: t('punch_date'), cell: who },
-                    { key: 'what', header: t('exc_what'), cell: d => t(`audit_value_${d.subject}` as TranslationKey) },
+                    { key: 'what', header: t('exc_what'), cell: d => subjectWord(d.subject) },
                     { key: 'decision', header: t('req_decision'), cell: d => <>{badge(d)}{d.reason && <div className="ui-item-detail">{d.reason}</div>}</> },
                     actionsColumn<Decided>(undo),
                 ]}
                 card={d => <ListCard title={date(d.date)} status={badge(d)} details={[
                     { icon: UserIcon, text: d.name },
-                    { icon: InfoIcon, text: t(`audit_value_${d.subject}` as TranslationKey) },
+                    { icon: InfoIcon, text: subjectWord(d.subject) },
                     ...(d.reason ? [{ icon: InfoIcon, text: d.reason }] : []),
                 ]} foot={undo(d) ?? undefined} />} />
         )
@@ -375,18 +399,18 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
             </ActionStarts.Provider>
 
             {/* Excused, it isn't charged: it asks why, kept with the day and in the audit log. */}
-            <Dialog open={excusing !== null} onClose={closeExcuse} title={t('exc_excuse')}>
+            <Dialog open={excusing !== null} onClose={closeExcuse} title={t(excusing ? dialogWords(excusing.subject, excusing.outcome).title : 'exc_excuse')}>
                 {excusing && (
                     <form className="ui-form" noValidate onSubmit={excuse}>
-                        {facts(excusing.row, t(`audit_value_${excusing.subject}` as TranslationKey))}
-                        <p>{t('exc_excuse_hint')}</p>
+                        {facts(excusing.row, subjectWord(excusing.subject))}
+                        <p>{t(dialogWords(excusing.subject, excusing.outcome).hint)}</p>
                         <Field label={t('punch_reason')} error={reasonError}>{f => (
                             <TextArea {...f} name="reason" value={reason} disabled={action.running}
                                 onChange={e => { setReason(e.target.value); setReasonError(undefined) }} />
                         )}</Field>
                         <DialogActions>
                             <Button onClick={closeExcuse} disabled={action.running}>{t('cancel')}</Button>
-                            <Button variant="primary" type="submit" disabled={action.running} busy={action.running}>{t('exc_excuse')}</Button>
+                            <Button variant="primary" type="submit" disabled={action.running} busy={action.running}>{t(dialogWords(excusing.subject, excusing.outcome).title)}</Button>
                         </DialogActions>
                     </form>
                 )}
