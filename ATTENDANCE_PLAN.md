@@ -7,9 +7,9 @@ Phase 0 (engine, settings, import) is #9–#15; Phase 1 (payroll) is #16; Phase 
 the PRs after it, and is paused for now (§20). Phase 4 (terminals through the agent or straight to Nizmo,
 ZKTeco and Hikvision alike, round 9) is planned in #269; its part 2, who
 may set terminals up, is built in #277, with the built-in Admin's grant
-for the companies already there in #278; part 3, terminal brands, is in
-two PRs, the Super Admin's list in #279 and the brand on each terminal
-after it; the rest is not built.
+for the companies already there in #278; part 3, terminal brands, is
+built in two PRs, the Super Admin's list in #279 and the brand on each
+terminal in #280; the rest is not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
@@ -1947,6 +1947,25 @@ show (§20).
   since the agent reads only that one, and no brand. Showing the brand on a
   terminal's card and picking it there is part 3's second PR.
 
+**Built in #280** (part 3's second PR). What the build settled:
+
+- **A terminal's card shows its brand** among its facts, or "Brand not
+  picked yet" for one an agent brought in.
+- **An Admin picks it in the terminal's Edit dialog,** from the brands that
+  speak the terminal's protocol and aren't retired. Its hint says the list
+  is the Super Admin's, and that a brand that isn't there is asked of
+  them. Once picked, a brand can be changed but not taken off.
+- **A retired brand stays where a terminal has it,** chosen in its picker
+  with "(retired)" after its name, so saving the name or mode leaves it as
+  it is (`DESIGN.md` §5.5, Row menu). Once another is saved, it isn't
+  offered again.
+- **The server checks the brand:** it must be there, speak the terminal's
+  protocol, and not be retired unless it's the terminal's own. It holds
+  the brand's row while it saves, so the Super Admin can't change its
+  protocol or delete it meanwhile.
+- **The audit log** has the brand's change, by name, with the terminal's
+  other changes.
+
 ### 17.10 Who may set terminals up (round 9)
 
 Setting terminals up decides whose scans count as attendance: an agent's code
@@ -2188,9 +2207,9 @@ which becomes part 8 below. Each part is its own PR:
    ZKTeco, Hikvision and Convoy; a terminal's `protocol` and `brandId`), the
    Super Admin's Terminal brands page under Templates, with `DESIGN.md`
    first, and the brand on each terminal's card, picked by an Admin. Useful
-   at once with the agent, and needs none of the rest. In two PRs: the
-   migration and the Super Admin's page in #279, then the brand on each
-   terminal's card.
+   at once with the agent, and needs none of the rest. Built in two PRs:
+   the migration and the Super Admin's page in #279, then the brand on each
+   terminal's card in #280.
 4. **One terminal whichever way** (§17.6): the migration (connection, the
    columns for terminals straight to Nizmo, the index across both sources,
    the straight-to-Nizmo switch, §17.8), the ingest taking a terminal as well
