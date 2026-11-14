@@ -28,6 +28,7 @@ vi.mock("@/lib/services/audit-log.service", () => ({ AuditLogService: { log: asy
 const C1 = {
     id: "c1", name: "One", isBanned: false,
     autoVerifyLocation: false, cashAdvancesAllowed: false, cashAdvancesOn: true, costNamesFromListOnly: false, confirmHighRisk: true, logoUrl: "https://example.test/logo.png",
+    terminalsSetupByCompany: false,
     payrollDay: 25, payslipsVisible: false, timezone: "Africa/Cairo", debtRecoveryPercent: 100,
     moduleLabels: null, moduleIcons: null,
     adminSettingsEnabled: true, adminSettingsTabs: ["general", "payroll"],
@@ -195,6 +196,36 @@ describe("the company settings API", () => {
         as("superAdmin")
         expect((await put({ companyId: "c1", tab: "general", cashAdvancesAllowed: true, cashAdvancesOn: true })).status).toBe(200)
         expect(state.written).toEqual([{ cashAdvancesAllowed: true, cashAdvancesOn: true }])
+    })
+
+    it("lets only the Super Admin let the company set up its own fingerprint terminals, audited (ATTENDANCE_PLAN.md §17.10, PR 277)", async () => {
+        company.adminSettingsTabs = ["general", "attendance"]
+        as("admin")
+        expect((await put({ tab: "attendance", terminalsSetupByCompany: true })).status).toBe(403)
+        expect(state.written).toEqual([])
+        // Its own people don't see the switch, nor whether terminals are offered.
+        expect(Object.keys((await (await get()).json()).data.company)).not.toContain("terminalsOffered")
+        as("superAdmin")
+        expect((await put({ companyId: "c1", tab: "attendance", terminalsSetupByCompany: true })).status).toBe(200)
+        expect(state.written).toEqual([{ terminalsSetupByCompany: true }])
+        expect(audited.at(-1)[3]).toMatchObject({ details: { terminalsSetupByCompany: { old: false, new: true } } })
+        const { data } = await (await get("?companyId=c1")).json()
+        expect(data.company).toMatchObject({ terminalsSetupByCompany: true, terminalsOffered: true })
+        // A company without the Terminals add-on has nothing to set up.
+        company.package = { hasCompanyManagement: false, hasHR: true, hasAttendanceMobile: true }
+        expect((await (await get("?companyId=c1")).json()).data.company.terminalsOffered).toBe(false)
+    })
+
+    it("tells the Super Admin's own settings page the switch, and whether there are terminals to set up (PR 277)", async () => {
+        // That page reads the company from /api/companies?id=, not from here.
+        const { GET } = await import("@/app/api/companies/route")
+        as("superAdmin")
+        company.terminalsSetupByCompany = true
+        let { data } = await (await GET(new Request(url("/api/companies?id=c1")))).json()
+        expect(data).toMatchObject({ terminalsSetupByCompany: true, terminalsOffered: true })
+        company.package = { hasCompanyManagement: false, hasHR: true, hasAttendanceMobile: true }
+        ;({ data } = await (await GET(new Request(url("/api/companies?id=c1")))).json())
+        expect(data.terminalsOffered).toBe(false)
     })
 
     it("keeps cash advances on while anyone holds advance money, and says how much", async () => {

@@ -154,6 +154,11 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "attendance.approve_devices": "COMPANY",
         // Deciding face enrolments: added by migration 20261026000000.
         "attendance.approve_face": "COMPANY",
+        // Setting fingerprint terminals up, where the Super Admin lets the
+        // company set its own up (ATTENDANCE_PLAN.md §17.10). Given to the
+        // companies there already are by Phase 4 part 2's second PR, once
+        // this release's role editor is live.
+        "attendance.manage_terminals": "COMPANY",
     },
     // A Team Leader sees their team in the employee list and can look each of
     // them up — TEAM scope, enforced by buildUserWhereClause and

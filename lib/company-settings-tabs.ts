@@ -51,7 +51,13 @@ export const COMPANY_SETTINGS_TABS = [
     },
     // Schedules, overrides, who works which, and holidays (ATTENDANCE_PLAN.md
     // §7). Its own API under /api/attendance, which asks the same questions.
-    { key: "attendance", labelKey: "settings_tab_attendance", adminEligible: true, fields: [], module: "ATTENDANCE" },
+    {
+        key: "attendance", labelKey: "settings_tab_attendance", adminEligible: true, module: "ATTENDANCE",
+        fields: ["terminalsSetupByCompany"],
+        // Whether the company sets its own fingerprint terminals up, or the
+        // Super Admin does (ATTENDANCE_PLAN.md §17.10).
+        superAdminOnly: ["terminalsSetupByCompany"],
+    },
     { key: "roles", labelKey: "settings_tab_roles", adminEligible: false, fields: [] },
     { key: "modules", labelKey: "settings_tab_modules", adminEligible: false, fields: [] },
     // Which of these the company's own people see: the Super Admin's switch.

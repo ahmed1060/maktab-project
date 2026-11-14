@@ -13,6 +13,7 @@ import CompanySettingsAccessCard from '@/components/CompanySettingsAccessCard'
 import CashAdvancesCard from '@/components/cash-advances/CashAdvancesCard'
 import CostNamesCard from '@/components/lists/CostNamesCard'
 import HighRiskCard from '@/components/HighRiskCard'
+import TerminalsSetupCard from '@/components/TerminalsSetupCard'
 import { Button, Dialog, Tabs } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { COMPANY_SETTINGS_TABS, type CompanySettingsTabKey } from '@/lib/company-settings-tabs'
@@ -56,6 +57,13 @@ export type CompanySettings = {
      */
     confirmHighRisk?: boolean
     confirmHighRiskForAll?: boolean
+    /**
+     * Whether the company sets its own fingerprint terminals up, and, for the
+     * Super Admin, whether it holds the Terminals add-on, so has any to set
+     * up (ATTENDANCE_PLAN.md §17.10).
+     */
+    terminalsSetupByCompany?: boolean
+    terminalsOffered?: boolean
     moduleLabels: unknown
     moduleIcons: unknown
     logoUrl: string | null
@@ -213,8 +221,18 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
                 )}
 
                 {/* Schedules, seasonal hours, who works which, and holidays
-                    (ATTENDANCE_PLAN.md §7). Saves each change as it is made. */}
-                {tab === 'attendance' && <CompanyAttendanceCard companyId={companyId} readOnly={readOnly} />}
+                    (ATTENDANCE_PLAN.md §7). Saves each change as it is made.
+                    The Super Admin's switch for who sets the company's
+                    fingerprint terminals up goes above them (§17.10). */}
+                {tab === 'attendance' && (
+                    <CompanyAttendanceCard
+                        companyId={companyId}
+                        readOnly={readOnly}
+                        terminalsSetup={superAdmin && company.terminalsOffered && (
+                            <TerminalsSetupCard companyId={companyId} on={!!company.terminalsSetupByCompany} onSaved={onSaved} />
+                        )}
+                    />
+                )}
 
                 {/* Who may do what here (ROLES_PLAN.md §6.2). */}
                 {tab === 'roles' && <CompanyRolesCard companyId={companyId} />}

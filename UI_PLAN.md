@@ -706,7 +706,12 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      (`ATTENDANCE_PLAN.md` §6.9, §13.1), merged in #275 on 2026-11-14;
      then the last, payroll waiting for both, its Approve listing the days
      to settle first and warning of the month's requests not yet decided
-     (`ATTENDANCE_PLAN.md` §6.9, §12.1; `DESIGN.md` §5.5), #276;
+     (`ATTENDANCE_PLAN.md` §6.9, §12.1; `DESIGN.md` §5.5), merged in #276
+     on 2026-11-14; then Phase 4 part 2, who may set fingerprint terminals
+     up: Set up fingerprint terminals, high-risk, and the Super Admin's
+     switch letting a company set its own up, off for every company, on a
+     card above Fingerprint terminals on the Attendance tab
+     (`ATTENDANCE_PLAN.md` §17.10; `ROLES_PLAN.md` §6.15), #277;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6210,3 +6215,13 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   Exceptions screen on its day, and offers Close. The month's requests not
   yet decided are counted under a heading of their own, as a warning, each
   kind opening the Requests page on it.
+- **2026-11-14:** Who may set fingerprint terminals up (#277;
+  `ATTENDANCE_PLAN.md` round 9, §17.10, Phase 4 part 2; `ROLES_PLAN.md`
+  §6.15). Fingerprint terminals, on the Attendance tab, is now the Super
+  Admin's alone, unless they turn on "The company sets up its own
+  fingerprint terminals" on a card above it, which asks first. Then those
+  in the company holding Set up fingerprint terminals see it, and adding
+  an agent, a new code and retiring a terminal ask for the step-up code.
+  The built-in Admin role holds it; the companies already there get it in
+  the next PR. Alerts about a silent agent or terminal follow the same
+  rule.

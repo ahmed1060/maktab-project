@@ -779,15 +779,18 @@ A few permissions move money, give it away, or cannot be undone: `tasks.pay`,
 `salary_adjustments.manage`, `payroll.approve`, `payroll.mark_paid`,
 `debts.waive`, `employees.delete`, `employees.end_contract`,
 `charges.collect`, marking a client's charges collected (`CLIENTS_PLAN.md`
-§6.6), and `cash_advances.give`, giving and settling employees' cash
-advances (`CLIENTS_PLAN.md` §7.7). The catalogue (`lib/permissions/catalogue.ts`, `highRisk`) is the
+§6.6), `cash_advances.give`, giving and settling employees' cash
+advances (`CLIENTS_PLAN.md` §7.7), and `attendance.manage_terminals`,
+setting up fingerprint terminals (`ATTENDANCE_PLAN.md` §17.10, round 9;
+Phase 4, part 2, built in #277). The catalogue (`lib/permissions/catalogue.ts`, `highRisk`) is the
 list the code checks.
 
-Planned, not built: `attendance.manage_terminals`, setting up fingerprint
-terminals, joins the list when it is built (`ATTENDANCE_PLAN.md` §17.10,
-round 9; Phase 4, part 2). An agent's code or a terminal's address lets
-punches into attendance, and so into pay. The built-in Admin holds it, but
-only in a company whose setup switch the Super Admin has turned on.
+An agent's code or a terminal's address lets punches into attendance, and
+so into pay, so `attendance.manage_terminals` is marked "affects pay". The
+built-in Admin holds it, but it opens the Fingerprint terminals section
+only in a company whose setup switch the Super Admin has turned on. Adding
+an agent, issuing its code again and retiring a terminal ask for the code;
+seeing the section doesn't.
 
 - **Marked in the catalogue as high-risk**, with the reason ("moves money",
   "cannot be undone"). The role editor shows the label — the "affects pay" label
