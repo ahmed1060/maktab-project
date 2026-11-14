@@ -13,8 +13,9 @@ terminal in #280; the rest is not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
-incomplete day in #275, and payroll waiting for both in #276; the rest is
-not built. A template for the file import
+incomplete day in #275, and payroll waiting for both in #276; part 4,
+missions, is split in four PRs, the first, a mission's day, built in
+#281; the rest is not built. A template for the file import
 (§13.9) is built in #272.
 This document is the design those PRs follow: what was decided, and why, so
 that whoever changes it is not re-arguing settled points. Where the build
@@ -608,7 +609,7 @@ how many of each kind and the first 50, and the window shows those
 **The terminal's in/out key is still not read.** It is often left on the
 wrong state, and the order of the scans is surer.
 
-### 6.10 Missions — مأمورية (round 10, planned)
+### 6.10 Missions — مأمورية (round 10; a mission's day built in #281)
 
 An employee sent to work away from their desk (a client, another branch,
 another city) asks for a mission on the Requests page, so the day isn't
@@ -686,6 +687,55 @@ added to a task's costs or charged to a client (§19).
 **Deciding a mission** (decision 20). Beside the request, the approver
 sees the day's scans so far, and the task named or "No task". There is no
 monthly limit.
+
+**Built in #281: a mission's day.** The first of part 4's four PRs
+(§20). Nothing asks for a mission yet; the next PR does.
+
+- **`MissionRequest`** holds each mission: by days, or by hours with the
+  part of the day it covers; its first and last date, one date for a
+  mission by hours; the optional task, its title kept as text; the
+  reason; and who decided or cancelled it, when and why. Its status is
+  its own, `MissionStatus`: waiting, approved, rejected, withdrawn or
+  cancelled. The database refuses a mission by hours without its part of
+  the day or across two dates, and a last date before the first.
+- **The engine reads approved missions**, whatever the policy says about
+  asking for them: the policy's switch, in the next PR, stops new ones
+  being asked, never one already approved.
+- **By days.** Each working day in it is `MISSION`, an added day status:
+  never absent, late or early, charged nothing, adding no overtime. Its
+  scans are kept, counted and shown, first and last, and change nothing.
+  Rest days and holidays inside it stay rest days and holidays, scans or
+  not, adding no overtime (decision 9); an unpaid holiday stays unpaid,
+  as for everyone else.
+- **Until the end of the day.** One scan is the arrival, its lateness
+  charged as on any day, and the day is present, not incomplete. Two or
+  more are read first and last as on any day, but the early leave isn't
+  counted, so the day never waits as a Departure to confirm
+  (decision 23). Overtime past the shift's end counts as on any day.
+- **From the start of the day.** One scan is the departure: no lateness,
+  early leave from it to the shift's end, after approved permission
+  hours, waiting as a Departure to confirm past the threshold
+  (decision 23), and overtime past the shift's end. Two or more are read
+  first and last, without the lateness.
+- **What stays.** A working day of a mission by hours with no scan is
+  absent. Time worked is only measured between two scans, so one scan
+  read as the arrival or the departure measures none. Leave and
+  suspension come first: a day on leave stays leave, a suspended day
+  suspended. A day with one scan settled on the Exceptions screen
+  (§6.9, PR 275) keeps the decision, but it counts for nothing on a
+  mission by hours, where one scan is enough.
+- **Reminders and notices** (decision 17). The no-check-in reminder skips
+  a working day of a mission by days or from the start of the day,
+  approved or waiting, as it skips a late arrival asked for; a check-in
+  on one approved isn't called late. A mission day, of any kind, sends
+  no day notice: neither absent, incomplete, nor a departure to confirm
+  (§13.4).
+- **On screen.** The Days list shows a mission by days as **Mission**,
+  marked good, and a day of a mission by hours says which kind beside
+  its status. The day's breakdown keeps which kind of mission it had. A
+  day of a mission by days is on none of the Exceptions screen's tabs;
+  one of a mission by hours is there as the lateness or early leave its
+  kind charges.
 
 ---
 
@@ -789,12 +839,12 @@ model MissingPunchRequest
   userId, date, claimedInAt?, claimedOutAt?, reason, status, …
   updatedAt                   // reported, decided or withdrawn: the Requests page's Done order (UI_PLAN.md §2.3, #131)
 
-model MissionRequest          // مأمورية, round 10, planned (§6.10)
+model MissionRequest          // مأمورية, round 10, the table built in #281 (§6.10)
   userId, kind DAYS | HOURS, startDate, endDate   // one date for HOURS
   hoursPart FROM_START | TO_END?                  // HOURS only (decision 15)
   taskId?, taskTitle?                             // optional (decision 18); the title kept as text
   reason, status, reviewedById?, reviewedAt?, rejectionReason?
-                              // status: PENDING | APPROVED | REJECTED | WITHDRAWN | CANCELLED
+                              // status MissionStatus: PENDING | APPROVED | REJECTED | WITHDRAWN | CANCELLED
   cancelledById?, cancelledAt?, cancelReason?     // an approved mission cancelled (decision 25)
   updatedAt
 ```
@@ -1347,9 +1397,10 @@ third with fourth, after a fixed 60-second debounce, so an odd count left
 the day incomplete.
 
 **Excusing** — approved permission hours are subtracted from late and
-early-leave minutes before pricing, and recorded as `excusedMinutes`. An approved mission by hours (round 10, planned, §6.10)
-excuses the day's early leave or its lateness, as its kind says, and a
-mission by days makes each working day in it a mission day. A day whose
+early-leave minutes before pricing, and recorded as `excusedMinutes`. An approved mission by hours (round 10, built in #281, §6.10)
+leaves the day's early leave or its lateness uncounted, as its kind says,
+and a mission by days makes each working day in it a mission day,
+`MISSION`. A day whose
 early leave passes the policy's threshold waits as `TO_CONFIRM` (§6.9,
 built in #274), and is charged nothing until it is settled. An incomplete
 day is settled by a decision on the day (§6.9, built in #275): the added
@@ -1490,10 +1541,11 @@ day itself, and, with round 10, ask for a mission (§6.10).
   ordinary events are critical too, people learn to ignore red, and the one that
   matters is missed.
 - Sent when: a day becomes `INCOMPLETE` or `ABSENT`, or with round 10
-  `TO_CONFIRM` (built in #274), though not on a mission day (§6.10); a check-in is flagged; a
+  `TO_CONFIRM` (built in #274), though not on a mission day (§6.10, built in #281); a check-in is flagged; a
   request is approved or rejected; **no check-in has arrived N minutes after the
   shift starts** (reminder, adopted in round 4 — N configurable in the policy,
-  suggest 15).
+  suggest 15), though not on a mission by days or from the start of the
+  day (§6.10, built in #281).
 
 ### 13.5 "Who can do this?" (roles)
 
@@ -2279,7 +2331,7 @@ With no push, it stays on the agent and tries the agent alone. Parts 4 to 7
 are built all the same, switched off, and tried when a terminal that pushes,
 or a Hikvision, is on hand (round 9, decision 13).
 
-### Phase 5 — Reading scans first and last, and missions — parts 2 and 3 built in #273 to #276
+### Phase 5 — Reading scans first and last, and missions — parts 2 and 3 built in #273 to #276, part 4's first PR in #281
 
 Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
 
@@ -2298,16 +2350,28 @@ Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
       (decision 22).
    3. **Payroll waits for both**, built in #276, with the window that lists them and warns
       of the month's requests not yet decided (decisions 14, 24).
-4. **Missions, asked and decided** (§6.10): `MissionRequest`, with the two
-   kinds of mission by hours and the optional task; the permission "Decide
-   missions", given to the built-in Admin in every company; missions on the
-   Requests page, under Mine and To review and in the kind filter, with
-   what the approver sees beside each; the mission day on the employee's
-   own attendance, and the reminder and notices skipping it; a mission from
-   the start of the day waiting as a Departure to confirm like any day;
-   withdrawing a mission, and cancelling an approved one; days in a closed
-   month as discrepancies; and the notification of a decision or a
-   cancellation (decisions 23, 25). No money yet.
+4. **Missions, asked and decided** (§6.10), in four PRs. No money yet:
+   1. **A mission's day**, built in #281: `MissionRequest`, with the two
+      kinds of mission by hours and the optional task; the engine reading
+      approved missions, a mission by days as the day status `MISSION`, a
+      mission from the start of the day waiting as a Departure to confirm
+      like any day; the mission day on the employee's own attendance, and
+      the reminder and notices skipping it (decisions 9, 15, 17, 23).
+   2. **Asking and deciding**: the permission "Decide missions", given to
+      a new company's built-in Admin; the policy's Missions switch, on to
+      start (decision 11); missions on the Requests page, under Mine and
+      To review and in the kind filter, with the optional task, and what
+      the approver sees beside each; withdrawing one while it waits; a
+      mission across a closed month accepted, its days there becoming
+      discrepancies; and the notification of a decision (decisions 4, 10,
+      16, 18, 20, 25).
+   3. **The companies already there** get "Decide missions" for their
+      built-in Admin, from a migration, once the release before it has
+      the role editor's new line (as #278 did).
+   4. **Cancelling an approved mission**, with a reason, until the month's
+      payroll is approved, and after it its days there as discrepancies
+      the other way round; and the notification of a cancellation
+      (decision 25).
 5. **The mission allowance** (§6.10): the policy's Missions section, what
    one day is worth and what each kind pays; each day priced at its date,
    written at approval as its own entry (§12.2); the payslip's Mission

@@ -718,7 +718,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      Terminal brands page under Templates (`ATTENDANCE_PLAN.md` §17.9;
      `DESIGN.md` §5.5, Row menu), merged in #279 on 2026-11-14; then its
      second PR, the brand on each terminal's card, picked in its Edit
-     dialog, #280;
+     dialog, merged in #280 on 2026-11-14; then Phase 5 part 4's first
+     PR, a mission's day, shown as Mission on the Days list
+     (`ATTENDANCE_PLAN.md` §6.10), #281;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6254,3 +6256,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   its Edit dialog picks one from the brands that speak its protocol. A
   brand retired since stays chosen where a terminal has it, marked
   "(retired)", and isn't offered anywhere else.
+- **2026-11-14:** A mission's day (#281; `ATTENDANCE_PLAN.md` round 10,
+  §6.10, Phase 5 part 4). Attendance reads approved missions: each working
+  day of a mission by days is a Mission day, never absent, late or early,
+  and the Days list shows it so, marked good; a day of a mission by hours
+  says which kind beside its status. The no-check-in reminder and the day
+  notices skip mission days. Nothing asks for a mission yet: the Requests
+  page does in the next PR.
