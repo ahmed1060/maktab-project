@@ -151,18 +151,28 @@ describe("on the Attendance tab", () => {
         expect(off).toContain(en.att_term_setup_title)
         expect(off).toContain(en.att_term_setup_label)
         expect(off).toContain(en.att_term_setup_off_hint.replace(/'/g, "&#x27;"))
-        expect(off).toContain(`>${en.advances_off_badge}<`)
+        expect(off).toContain(`>${en.att_term_setup_off_badge}<`)
         expect(off).toContain(`>${en.att_term_setup_turn_on}<`)
         const on = await card(true)
         expect(on).toContain(en.att_term_setup_on_hint.replace(/'/g, "&#x27;"))
-        expect(on).toContain(`>${en.advances_on}<`)
+        expect(on).toContain(`>${en.att_term_setup_on_badge}<`)
         expect(on).toContain(`>${en.att_term_setup_turn_off}<`)
     })
 
-    it("in Arabic", async () => {
+    it("in Arabic, its badge saying what its hint does", async () => {
         const off = await card(false, "ar")
         expect(off).toContain(ar.att_term_setup_title)
         expect(off).toContain(ar.att_term_setup_turn_on)
+        expect(ar.att_term_setup_off_hint.startsWith(`${ar.att_term_setup_off_badge}:`)).toBe(true)
+        expect(ar.att_term_setup_on_hint.startsWith(`${ar.att_term_setup_on_badge}:`)).toBe(true)
+        expect(en.att_term_setup_off_hint.startsWith(`${en.att_term_setup_off_badge}:`)).toBe(true)
+        expect(en.att_term_setup_on_hint.startsWith(`${en.att_term_setup_on_badge}:`)).toBe(true)
+    })
+
+    it("keeps its question open when turning the switch on fails, to try again or cancel", () => {
+        const source = stripComments(readFileSync("components/TerminalsSetupCard.tsx", "utf8"))
+        expect(source).toContain("if (await save(true)) setAsking(false)")
+        expect(source).toContain("return false")
     })
 
     it("shows the card to the Super Admin alone, for a company holding the Terminals add-on", () => {

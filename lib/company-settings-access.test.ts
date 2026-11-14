@@ -216,6 +216,18 @@ describe("the company settings API", () => {
         expect((await (await get("?companyId=c1")).json()).data.company.terminalsOffered).toBe(false)
     })
 
+    it("tells the Super Admin's own settings page the switch, and whether there are terminals to set up (PR 277)", async () => {
+        // That page reads the company from /api/companies?id=, not from here.
+        const { GET } = await import("@/app/api/companies/route")
+        as("superAdmin")
+        company.terminalsSetupByCompany = true
+        let { data } = await (await GET(new Request(url("/api/companies?id=c1")))).json()
+        expect(data).toMatchObject({ terminalsSetupByCompany: true, terminalsOffered: true })
+        company.package = { hasCompanyManagement: false, hasHR: true, hasAttendanceMobile: true }
+        ;({ data } = await (await GET(new Request(url("/api/companies?id=c1")))).json())
+        expect(data.terminalsOffered).toBe(false)
+    })
+
     it("keeps cash advances on while anyone holds advance money, and says how much", async () => {
         held = 250
         as("admin")

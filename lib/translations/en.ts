@@ -2236,6 +2236,8 @@ export const en = {
         att_term_setup_label: "The company sets up its own fingerprint terminals",
         att_term_setup_off_hint: "Off: only you see and change this company's agents and terminals. Nobody in the company sees Fingerprint terminals, its Admin included.",
         att_term_setup_on_hint: "On: those in the company allowed to set up fingerprint terminals see them on this tab, where it's shown to them. Its Admin role is allowed.",
+        att_term_setup_on_badge: "On",
+        att_term_setup_off_badge: "Off",
         att_term_setup_turn_on: "Let the company set them up",
         att_term_setup_turn_off: "Set them up for the company",
         att_term_setup_confirm_title: "Let the company set up its own terminals?",
