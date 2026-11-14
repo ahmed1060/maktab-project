@@ -700,7 +700,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      Departure to confirm, with a tab of its own on attendance's
      Exceptions screen (`ATTENDANCE_PLAN.md` §6.9, §13.1), no tab label
      on a phone more than two lines, and a row of tabs that scrolls opening
-     on the picked one (`DESIGN.md` §5.5), #274;
+     on the picked one (`DESIGN.md` §5.5), merged in #274 on 2026-11-14;
+     then the second, a day with a punch missing marked absent or accepted
+     as it is, each with a reason, on attendance's Exceptions screen
+     (`ATTENDANCE_PLAN.md` §6.9, §13.1), #275;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6189,3 +6192,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   first tabs and not the one picked, and so did Exceptions opened on a
   later kind. Both kinds of tab row now scroll themselves, never the page,
   to show the picked tab whole, and again when the pick changes.
+- **2026-11-14:** Settling an incomplete day (#275; `ATTENDANCE_PLAN.md`
+  round 10, decision 22, §6.9, §13.1). Attendance's Punch missing tab
+  offers Mark absent and Accept as it is beside Add a punch, each asking a
+  reason. Marked absent, the day is charged as an absence; accepted as it
+  is, nothing of it is charged. Either way it moves to Decided, where Undo
+  makes it incomplete again, and the person's own day says which it was.
+  Payroll waiting for incomplete days is part 3's last PR.

@@ -8,8 +8,8 @@ the PRs after it, and is paused for now (§20). Phase 4 (terminals through the a
 ZKTeco and Hikvision alike, round 9) is planned in #269 and not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
-and the first of part 3's three PRs, Departure to confirm, in #274; the
-rest is not built. A template for the file import
+and the first two of part 3's three PRs, Departure to confirm in #274
+and settling an incomplete day in #275; the rest is not built. A template for the file import
 (§13.9) is built in #272.
 This document is the design those PRs follow: what was decided, and why, so
 that whoever changes it is not re-arguing settled points. Where the build
@@ -481,7 +481,7 @@ a custom policy** from scratch.
 - Applying a template creates a new policy version and goes through the same
   "from when?" question as any other edit.
 
-### 6.9 Reading a day's scans (round 10; first and last built in #273, Departure to confirm in #274)
+### 6.9 Reading a day's scans (round 10; first and last built in #273, Departure to confirm in #274, settling an incomplete day in #275)
 
 **First and last, the only way** (round 10, decision 1). The day's first
 scan is the arrival and its last the departure; the scans between are left
@@ -548,6 +548,24 @@ scan, or linking the employee's missing-punch request, HR can **mark the
 day absent**, which the policy charges as an absence, or **accept it as
 it is**, charged nothing. Each needs a reason and is audited, so that
 payroll never waits on a scan someone has to make up.
+
+Built in #275. The Punch missing tab on the Exceptions screen offers
+**Mark absent** and **Accept as it is** beside Add a punch, each asking a
+reason that is kept with the day and audited. Each is a decision on the
+day itself, the subject `INCOMPLETE` (§11), and not on its absence: an
+absence decided while a day had no scan says nothing about a scan that
+arrives later. Marked absent, the day is an absence, charged by the
+policy as one, with its one scan shown; it can't be marked on a rest day
+or a holiday, where nobody was expected. Accepted as it is, nothing of
+the day is charged, its lateness included: on a working day it counts as
+present, and on a rest day or a holiday as worked, with no overtime.
+Either way the day is no longer incomplete, so it leaves the tab for
+Decided, and **Undo** there makes it incomplete again. The person's own
+day says which it was, and a recent one marked absent is told to them as
+any absence is (§13.4). A scan added afterwards measures the day from its
+scans, and the decision stays under Decided, counting for nothing, until
+it is undone. Payroll doesn't wait for incomplete days until part 3's
+last PR.
 
 **Payroll waits for both** (decision 14). While any day in the month is a
 Departure to confirm or incomplete, the payroll run can't be approved: its
@@ -1304,7 +1322,10 @@ early-leave minutes before pricing, and recorded as `excusedMinutes`. An approve
 excuses the day's early leave or its lateness, as its kind says, and a
 mission by days makes each working day in it a mission day. A day whose
 early leave passes the policy's threshold waits as `TO_CONFIRM` (§6.9,
-built in #274), and is charged nothing until it is settled.
+built in #274), and is charged nothing until it is settled. An incomplete
+day is settled by a decision on the day (§6.9, built in #275): the added
+subject `INCOMPLETE` of `AttendanceDayDecision`, marked absent when
+`ACCEPTED`, accepted as it is, charged nothing, when `EXCUSED`.
 
 **Pricing** — measured facts and priced outcomes are stored separately. Monthly
 rules (allowance, escalation, cap, permission balance) depend on the order of
@@ -1393,7 +1414,7 @@ permission scope:
 |---|---|---|
 | Late / early | Minutes, excused minutes, resulting deduction | Excuse with reason, accept |
 | Absent | Expected, no punches, no leave | Mark leave, mark present with reason, accept |
-| Incomplete | Odd punch count. Under First and last (Phase 5, planned): one scan left after the window (§6.9) | Add punch, link a missing-punch request; with Phase 5, mark absent or accept as it is, with a reason (decision 22) |
+| Incomplete | Odd punch count. Under First and last (built in #273): one scan left after the window (§6.9) | Add punch, link a missing-punch request; mark absent or accept as it is, each with a reason (decision 22, built in #275) |
 | Departure to confirm (built in #274) | Early leave of more than the policy's threshold (§6.9) | Add the departure scan; accept the early leave, or excuse it with a reason, as on Late / early. The employee's missing-punch report adds the scan once approved (decisions 13, 26) |
 | Overtime | Unapproved overtime | Approve, approve partially, reject |
 | Requests | Pending permission-hour, missing-punch, device and face-enrolment requests | Approve, reject |
@@ -2163,8 +2184,9 @@ Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
       to start, measured after approved permission hours; the day waiting
       as `TO_CONFIRM`, charged nothing; its notice; and its tab and
       settling on the Exceptions screen (decisions 13, 23, 26).
-   2. **Settling an incomplete day**: marking it absent or accepting it as
-      it is, each with a reason (decision 22).
+   2. **Settling an incomplete day**, built in #275: marking it absent or
+      accepting it as it is, each with a reason, as a decision on the day
+      (decision 22).
    3. **Payroll waits for both**, with the window that lists them and warns
       of the month's requests not yet decided (decisions 14, 24).
 4. **Missions, asked and decided** (§6.10): `MissionRequest`, with the two
