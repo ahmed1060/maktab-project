@@ -684,7 +684,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      confirm, the payroll run waiting for them, two kinds of mission by
      hours, and a mission naming a task for its reviewer (round 10,
      decisions 13 to 21), with a template for the file import
-     (`ATTENDANCE_PLAN.md` §13.9), #271;
+     (`ATTENDANCE_PLAN.md` §13.9), and a second review's decisions 22 to
+     27, #271;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6101,3 +6102,16 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   face SDK, said it would be chosen when Phase 3b started, but Phase 3b was
   built on a face check for testing only, so the question stays open until
   a commercial SDK replaces it. Plans only; no screen changes yet.
+- **2026-11-14:** The decisions from a second review of round 10 (#271;
+  `ATTENDANCE_PLAN.md` round 10, decisions 22 to 27). An incomplete day can
+  be marked absent or accepted as it is, with a reason, besides adding the
+  scan, so payroll never waits on a made-up one. Approved permission hours
+  count before early leave is measured; a mission until the end of the day
+  never waits as a Departure to confirm, and one from the start of the day
+  waits like any day. The payroll window also warns of the month's
+  requests not yet decided. A mission can be withdrawn while it waits, and
+  cancelled once approved until the month's payroll is approved. The
+  Exceptions screen gets a Departure to confirm tab, and Incomplete means
+  one scan left after the window. Summer time on a terminal is the
+  terminal's own setting. Face checks are paused until Nizmo has more
+  customers. Plans only; no screen changes yet.
