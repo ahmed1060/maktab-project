@@ -711,7 +711,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      up: Set up fingerprint terminals, high-risk, and the Super Admin's
      switch letting a company set its own up, off for every company, on a
      card above Fingerprint terminals on the Attendance tab
-     (`ATTENDANCE_PLAN.md` §17.10; `ROLES_PLAN.md` §6.15), #277;
+     (`ATTENDANCE_PLAN.md` §17.10; `ROLES_PLAN.md` §6.15), merged in #277
+     on 2026-11-14; then the built-in Admin role's Set up fingerprint
+     terminals for the companies already there, #278;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6225,3 +6227,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   The built-in Admin role holds it; the companies already there get it in
   the next PR. Alerts about a silent agent or terminal follow the same
   rule.
+- **2026-11-14:** The companies already there get Set up fingerprint
+  terminals (#278; `ATTENDANCE_PLAN.md` §17.10, Phase 4 part 2;
+  `ROLES_PLAN.md` §6.15). A migration gives every company's built-in Admin
+  role the permission, as a new company's has had since #277, and its
+  holders reload their grants. Nothing on screen changes: Fingerprint
+  terminals stays the Super Admin's alone until they turn the company's
+  switch on.

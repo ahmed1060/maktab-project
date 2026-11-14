@@ -73,11 +73,12 @@ describe.skipIf(!ADMIN_URL)("punches, in Postgres", () => {
     const rows = async (where = "TRUE") => (await db.query(`SELECT * FROM "AttendancePunch" WHERE ${where} ORDER BY "punchAtLocal"`)).rows
 
     describe("the built-in Admin", () => {
-        // P0.6 adds the two that decide requests, to the Admin alone as well.
+        // P0.6 adds the two that decide requests, to the Admin alone as well,
+        // and PR 278 Set up fingerprint terminals (ATTENDANCE_PLAN.md §17.10).
         it("gains the attendance permissions, and only the Admin does", async () => {
             const { rows: grants } = await db.query(`SELECT r."builtIn", g.permission FROM "RoleGrant" g JOIN "Role" r ON r.id = g."roleId" WHERE g.permission LIKE 'attendance.%' ORDER BY 1, 2`)
             expect(new Set(grants.map(g => g.builtIn))).toEqual(new Set(["ADMIN"]))
-            expect(new Set(grants.map(g => g.permission))).toEqual(new Set(["attendance.correct", "attendance.view_team", "attendance.approve_overtime", "attendance.approve_permissions", "attendance.approve_devices", "attendance.approve_face"]))
+            expect(new Set(grants.map(g => g.permission))).toEqual(new Set(["attendance.correct", "attendance.view_team", "attendance.approve_overtime", "attendance.approve_permissions", "attendance.approve_devices", "attendance.approve_face", "attendance.manage_terminals"]))
         })
     })
 

@@ -100,9 +100,9 @@ const CONFIRM_HIGH_RISK = "20261206000000_confirm_high_risk"
 // Company.terminalsSetupByCompany, the Super Admin's switch letting a company
 // set its own fingerprint terminals up (ATTENDANCE_PLAN.md §17.10).
 const TERMINALS_SETUP = "20261220000000_terminals_setup"
-// Given to a new company's built-in roles now, and to the companies there
-// already are by a later migration (ATTENDANCE_PLAN.md §17.10).
-const GRANTED_LATER = ["attendance.manage_terminals"]
+// The built-in Admin role's attendance.manage_terminals, for the companies
+// there before it (ATTENDANCE_PLAN.md §17.10, PR 278).
+const TERMINALS_GRANTED = "20261221000000_terminals_granted"
 
 const BEFORE_ROLES = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now());
@@ -170,6 +170,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(COST_NAMES_FROM_LIST))
         await db.query(sql(CONFIRM_HIGH_RISK))
         await db.query(sql(TERMINALS_SETUP))
+        await db.query(sql(TERMINALS_GRANTED))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
@@ -220,8 +221,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                     const grants = Object.fromEntries(rows
                         .filter(r => r.companyId === company && r.builtIn === builtIn)
                         .map(r => [r.permission, r.scope]))
-                    const now = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).filter(([permission]) => !GRANTED_LATER.includes(permission)))
-                    expect(grants, `${company} ${builtIn}`).toEqual(now)
+                    expect(grants, `${company} ${builtIn}`).toEqual(BUILT_IN_GRANTS[builtIn])
                 }
             }
         })
@@ -235,13 +235,31 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             // And one for the Admin and Team Leader roles: charges.* (CLIENTS_PLAN.md §6.8).
             // And one for the Admin and Team Leader roles: cash_advances.* (CLIENTS_PLAN.md §7.8).
             // And one for the Team Leader and Employee roles: dayoff.request (UI_PLAN.md §2.3, part 2b).
+            // And one for the Admin role: attendance.manage_terminals (ATTENDANCE_PLAN.md §17.10, PR 278).
             const { rows: roles } = await db.query(`SELECT "companyId", "builtIn", version FROM "Role" ORDER BY "companyId", "builtIn"`)
-            const version = { ADMIN: 11, TEAM_LEADER: 7, EMPLOYEE: 4 } as Record<string, number>
+            const version = { ADMIN: 12, TEAM_LEADER: 7, EMPLOYEE: 4 } as Record<string, number>
             for (const role of roles) expect(role.version, `${role.companyId} ${role.builtIn}`).toBe(version[role.builtIn])
             const { rows: companies } = await db.query(`SELECT "adminSettingsEnabled", "adminSettingsTabs" FROM "Company"`)
             expect(companies).toEqual([
                 { adminSettingsEnabled: false, adminSettingsTabs: [] },
                 { adminSettingsEnabled: false, adminSettingsTabs: [] },
+            ])
+        })
+
+        it("gives every built-in Admin role Set up fingerprint terminals once: run again, nobody reloads (PR 278)", async () => {
+            // A new company's Admin role holds it from PR 277, so the
+            // migration leaves it as it is, its holders keeping their grants.
+            const versions = `SELECT id, version FROM "Role" ORDER BY id`
+            const { rows: before } = await db.query(versions)
+            await db.query(sql(TERMINALS_GRANTED))
+            const { rows: after } = await db.query(versions)
+            expect(after).toEqual(before)
+            const { rows } = await db.query(`
+                SELECT r."companyId", r."builtIn", g.scope FROM "Role" r JOIN "RoleGrant" g ON g."roleId" = r.id
+                WHERE g.permission = 'attendance.manage_terminals' ORDER BY r."companyId"`)
+            expect(rows).toEqual([
+                { companyId: "c1", builtIn: "ADMIN", scope: "COMPANY" },
+                { companyId: "c2", builtIn: "ADMIN", scope: "COMPANY" },
             ])
         })
 

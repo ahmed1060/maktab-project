@@ -782,7 +782,8 @@ A few permissions move money, give it away, or cannot be undone: `tasks.pay`,
 §6.6), `cash_advances.give`, giving and settling employees' cash
 advances (`CLIENTS_PLAN.md` §7.7), and `attendance.manage_terminals`,
 setting up fingerprint terminals (`ATTENDANCE_PLAN.md` §17.10, round 9;
-Phase 4, part 2, built in #277). The catalogue (`lib/permissions/catalogue.ts`, `highRisk`) is the
+Phase 4, part 2, built in #277, with the built-in Admin's grant for the
+companies already there in #278). The catalogue (`lib/permissions/catalogue.ts`, `highRisk`) is the
 list the code checks.
 
 An agent's code or a terminal's address lets punches into attendance, and
