@@ -44,6 +44,7 @@ const EHAB: Record<string, [string, string][] | null> = {
     "2026-09-09": null,                               // on approved leave
     "2026-09-10": [["09:00", "18:30"]],               // 90 minutes' overtime, awaiting approval
     "2026-09-13": [["09:00", "13:00"], ["14:00", "16:00"]], // left an hour early, after a lunch break
+    "2026-09-14": [["08:55", ""], ["08:58", ""]],     // scanned twice on arriving, never on leaving
     "2026-09-16": null,                               // absent, after the raise
 }
 
@@ -136,7 +137,10 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
         const status = (d: string) => e.get(d)?.status
         expect([status("2026-09-01"), status("2026-09-02"), status("2026-09-05"), status("2026-09-07"), status("2026-09-08"), status("2026-09-09"), status("2026-09-12")])
             .toEqual(["PRESENT", "PRESENT", "REST", "INCOMPLETE", "ABSENT", "LEAVE", "WORKED_REST_DAY"])
-        expect(e.get("2026-09-13")).toMatchObject({ workedMinutes: 360, earlyLeaveMinutes: 60, lateMinutes: 0 })
+        // First and last (§6.9, PR 273): 09:00 to 16:00, the lunch break not measured.
+        expect(e.get("2026-09-13")).toMatchObject({ workedMinutes: 420, earlyLeaveMinutes: 60, lateMinutes: 0, punchCount: 4 })
+        // Two scans 3 minutes apart are one scan, within the policy's 5 minutes: incomplete, never a day from 08:55 to 08:58.
+        expect(e.get("2026-09-14")).toMatchObject({ status: "INCOMPLETE", punchCount: 1, earlyLeaveMinutes: 0, deductionMinor: 0 })
         expect(e.get("2026-09-10")).toMatchObject({ overtimeMinutes: 90, overtimeStatus: "PENDING", overtimeMinor: 0 })
         expect(e.get("2026-09-12")).toMatchObject({ overtimeMinutes: 240, overtimeStatus: "PENDING" })
         expect(e.get("2026-09-01")).toMatchObject({ expectedStartMinutes: 540, expectedEndMinutes: 1020, breakMinutes: 60, punchCount: 2 })
@@ -171,6 +175,10 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
         const strict = await Engine.simulate("c1", "2026-09", { ...STANDARD_OFFICE, absence: { multiplier: 2 } })
         expect(ehab(strict).draft.deductionMinor - ehab(strict).current.deductionMinor).toBe(31000 + 40000)
         expect(strict.totals.draft.deductionMinor).toBeGreaterThan(strict.totals.current.deductionMinor)
+        // The draft's window too (PR 273): at 1 minute, the 14th's two scans are a day from 08:55 to 08:58,
+        // 482 minutes early, which costs a whole day at 310.00.
+        const narrow = await Engine.simulate("c1", "2026-09", { ...STANDARD_OFFICE, scanWindowMinutes: 1 })
+        expect(ehab(narrow).draft.deductionMinor - ehab(narrow).current.deductionMinor).toBe(31000)
         const { rows: [after] } = await db.query(`SELECT count(*)::int AS n, max("derivedAt") AS at, sum("deductionMinor")::int AS minor FROM "AttendanceDay" WHERE "userId" = 'e1' AND date < '2026-10-01'`)
         expect(after).toEqual(before)
     })

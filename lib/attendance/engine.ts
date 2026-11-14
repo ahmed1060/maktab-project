@@ -1,5 +1,5 @@
 import type { ExpectedDay } from "./calendar"
-import { dayFractionFor, type DeductionRule, type PolicyBody } from "./policy"
+import { DEFAULT_SCAN_WINDOW_MINUTES, dayFractionFor, type DeductionRule, type PolicyBody } from "./policy"
 
 /**
  * The derivation engine (ATTENDANCE_PLAN.md §11): from what each day was meant
@@ -11,9 +11,12 @@ import { dayFractionFor, type DeductionRule, type PolicyBody } from "./policy"
  * needs only that day; pricing needs the month, because free occurrences,
  * escalation and the monthly cap depend on what came before.
  *
- * A missing punch is never guessed. An odd number of punches on a day makes it
- * INCOMPLETE: shown, measured as far as it goes, priced at nothing until
- * somebody adds the missing one.
+ * A day is read first and last (§6.9, round 10, PR 273): its first scan is the
+ * arrival and its last the departure, and the scans between are left out.
+ * Scans close together are one, within the policy's window. A missing punch
+ * is never guessed: a single scan left makes the day INCOMPLETE, shown,
+ * measured as far as it goes, priced at nothing until somebody adds the
+ * missing one.
  */
 
 /** A punch as the engine reads it: the wall-clock time where it happened. */
@@ -26,8 +29,6 @@ export type DayStatus =
 /** Arrivals this long before a shift, and leavings this long after it, still belong to it. */
 export const EARLY_MARGIN_MINUTES = 4 * 60
 export const LATE_MARGIN_MINUTES = 6 * 60
-/** Two scans this close together are one (§11): a finger held twice, not two events. */
-export const DEBOUNCE_SECONDS = 60
 /** Paid minutes assumed for a day with no shift of its own, to price overtime on a rest day. */
 export const FALLBACK_PAID_MINUTES = 8 * 60
 
@@ -80,22 +81,19 @@ export function assignPunches(punches: readonly EnginePunch[], plans: ReadonlyMa
     return out
 }
 
-/** Drops a scan within a minute of the one kept before it. Input in time order. */
-export function debounce(punches: readonly EnginePunch[]): EnginePunch[] {
+/**
+ * Drops a scan within the window of the one kept before it (§6.9): two scans
+ * on arriving are one arrival, never a day from 08:55 to 08:57. Each scan is
+ * measured from the one kept, not from one left out. Input in time order.
+ */
+export function debounce(punches: readonly EnginePunch[], windowMinutes = DEFAULT_SCAN_WINDOW_MINUTES): EnginePunch[] {
     const kept: EnginePunch[] = []
     for (const p of punches) {
         const last = kept.at(-1)
-        if (last && wallSeconds(p.at) - wallSeconds(last.at) < DEBOUNCE_SECONDS) continue
+        if (last && wallSeconds(p.at) - wallSeconds(last.at) < windowMinutes * 60) continue
         kept.push(p)
     }
     return kept
-}
-
-/** Punches taken two by two in sequence, as [in, out] seconds; an odd last one is left out. */
-function pairs(punches: readonly EnginePunch[]): [number, number][] {
-    const out: [number, number][] = []
-    for (let i = 0; i + 1 < punches.length; i += 2) out.push([wallSeconds(punches[i].at), wallSeconds(punches[i + 1].at)])
-    return out
 }
 
 export type MeasuredDay = {
@@ -141,11 +139,11 @@ function coveredMinutes(date: string, permissions: readonly PermissionSpan[], ty
 /**
  * What one day was, from what it was meant to be and its punches.
  *
- * Pairs are taken in sequence, first with second and third with fourth —
- * never the earliest and latest (§11), so a lunch-break out and in is not
- * counted as work. Lateness runs from the shift's start to the first punch;
- * early leave from the last punch to the shift's end; overtime is work past
- * the shift's end. Work on a rest day or holiday is all overtime.
+ * First and last (§6.9, round 10, decision 1): lateness runs from the shift's
+ * start to the first scan, early leave from the last scan to the shift's end,
+ * the time worked from the first scan to the last, so a break isn't measured,
+ * and overtime is the time past the shift's end up to the last scan. Work on
+ * a rest day or holiday is all overtime.
  */
 export function measureDay(input: {
     date: string
@@ -157,9 +155,11 @@ export function measureDay(input: {
     permissions?: readonly PermissionSpan[]
     /** What somebody excused outright on the exceptions screen (§13.1), whatever its length. */
     excused?: { lateness?: boolean; earlyLeave?: boolean; absence?: boolean }
+    /** The policy's window for scans close together (§6.9), 1 to 60 minutes; 5 without a policy. */
+    windowMinutes?: number
 }): MeasuredDay {
     const { date, expected } = input
-    const punches = debounce(input.punches)
+    const punches = debounce(input.punches, input.windowMinutes)
     const firstIn = punches[0]?.at ?? null
     const lastOut = punches.length >= 2 ? punches.at(-1)!.at : null
     const base: MeasuredDay = {
@@ -167,15 +167,15 @@ export function measureDay(input: {
         workedMinutes: 0, lateMinutes: 0, earlyLeaveMinutes: 0, overtimeMinutes: 0, excusedMinutes: 0,
         unpaidHoliday: false, excusedAbsence: false,
     }
-    const worked = pairs(punches).reduce((sum, [a, b]) => sum + (b - a), 0)
-    const workedMinutes = Math.floor(worked / 60)
-    const odd = punches.length % 2 === 1
+    // From the first scan to the last; nothing to measure with only one.
+    const workedMinutes = lastOut ? Math.floor((wallSeconds(lastOut) - wallSeconds(firstIn!)) / 60) : 0
+    const single = punches.length === 1
 
     if (input.suspended) return { ...base, status: "SUSPENDED" }
     if (expected.kind === "NO_SCHEDULE") return { ...base, status: "NO_SCHEDULE", workedMinutes }
     if (expected.kind === "REST" || expected.kind === "HOLIDAY") {
         if (punches.length === 0) return { ...base, status: expected.kind, unpaidHoliday: expected.kind === "HOLIDAY" && !expected.holiday.isPaid }
-        if (odd) return { ...base, status: "INCOMPLETE", lastOut: null }
+        if (single) return { ...base, status: "INCOMPLETE" }
         return { ...base, status: expected.kind === "REST" ? "WORKED_REST_DAY" : "WORKED_HOLIDAY", workedMinutes, overtimeMinutes: workedMinutes }
     }
     if (input.onLeave) return { ...base, status: "LEAVE" }
@@ -185,7 +185,7 @@ export function measureDay(input: {
     const lateRaw = Math.max(0, Math.floor((wallSeconds(firstIn!) - shift.start) / 60))
     const excusedLate = input.excused?.lateness ? lateRaw
         : Math.min(lateRaw, coveredMinutes(date, input.permissions ?? [], "LATE_ARRIVAL", shift.start, wallSeconds(firstIn!)))
-    if (odd) return { ...base, status: "INCOMPLETE", lastOut: null, lateMinutes: lateRaw - excusedLate, excusedMinutes: excusedLate }
+    if (single) return { ...base, status: "INCOMPLETE", lateMinutes: lateRaw - excusedLate, excusedMinutes: excusedLate }
 
     const out = wallSeconds(lastOut!)
     const earlyRaw = Math.max(0, Math.floor((shift.end - out) / 60))
@@ -197,10 +197,8 @@ export function measureDay(input: {
         workedMinutes,
         lateMinutes: lateRaw - excusedLate,
         earlyLeaveMinutes: earlyRaw - excusedEarly,
-        // Only time actually worked past the shift's end: the sum of each
-        // pair's part after it, so a gap between leaving and coming back is
-        // not overtime (review on #13).
-        overtimeMinutes: Math.floor(pairs(punches).reduce((sum, [a, b]) => sum + Math.max(0, b - Math.max(a, shift.end)), 0) / 60),
+        // Past the shift's end up to the last scan, from the first if that came after it.
+        overtimeMinutes: Math.floor(Math.max(0, out - Math.max(wallSeconds(firstIn!), shift.end)) / 60),
         excusedMinutes: excusedLate + excusedEarly,
     }
 }

@@ -43,6 +43,7 @@ export type PolicyForm = {
         types: PolicyBody['permissionHours']['types']
     }
     noCheckInReminderMinutes: number | null
+    scanWindowMinutes: string
     faceVerificationAvailable: boolean
     faceReverifyMonths: string
 }
@@ -95,6 +96,7 @@ export function formFromBody(body: PolicyBody): PolicyForm {
             types: [...p.types],
         },
         noCheckInReminderMinutes: body.noCheckInReminderMinutes,
+        scanWindowMinutes: text(body.scanWindowMinutes),
         faceVerificationAvailable: body.faceVerificationAvailable,
         faceReverifyMonths: text(body.faceReverifyMonths),
     }
@@ -247,6 +249,8 @@ export function bodyFromForm(form: PolicyForm, base: PolicyBody): { ok: true; bo
         if (permissionHours.types.length === 0) permissionHours = { ...permissionHours, types: pWas.types.length ? [...pWas.types] : [...PERMISSION_TYPES] }
     }
 
+    // Scans close together count as one (§6.9, PR 273): always read, so always checked.
+    const scanWindowMinutes = wholeIn(true, 'scanWindowMinutes', form.scanWindowMinutes, 1, 60, base.scanWindowMinutes)
     const faceReverifyMonths = optionalWhole(form.faceVerificationAvailable, 'faceReverifyMonths', form.faceReverifyMonths, 1, 36, base.faceReverifyMonths)
 
     if (Object.keys(errors).length > 0) return { ok: false, errors }
@@ -260,6 +264,7 @@ export function bodyFromForm(form: PolicyForm, base: PolicyBody): { ok: true; bo
             absence: { multiplier: form.absence.multiplier },
             permissionHours,
             noCheckInReminderMinutes: form.noCheckInReminderMinutes,
+            scanWindowMinutes,
             faceVerificationAvailable: form.faceVerificationAvailable,
             faceReverifyMonths,
         },

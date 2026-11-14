@@ -5,7 +5,8 @@ import type { ExpectedDay } from "./calendar"
 
 /**
  * The derivation engine (ATTENDANCE_PLAN.md §11): grouping punches by shift,
- * debouncing, pairing in sequence, and pricing the month in order (§6.3–6.5).
+ * counting scans close together as one, reading a day first and last (§6.9,
+ * round 10, PR 273), and pricing the month in order (§6.3–6.5).
  */
 
 const work = (startMinutes = 540, endMinutes = 1020, breakMinutes = 60): ExpectedDay =>
@@ -32,26 +33,52 @@ describe("which day a punch belongs to", () => {
 })
 
 describe("measuring a day", () => {
-    it("counts two scans within a minute as one", () => {
-        expect(debounce([p("2026-10-04T09:00:00"), p("2026-10-04T09:00:40"), p("2026-10-04T09:01:30")]).map(x => x.at))
-            .toEqual(["2026-10-04T09:00:00", "2026-10-04T09:01:30"])
+    it("counts scans within the policy's window of the one kept before as one: 5 minutes to start (§6.9)", () => {
+        const scans = [p("2026-10-04T09:00:00"), p("2026-10-04T09:00:40"), p("2026-10-04T09:04:59"), p("2026-10-04T09:05:00"), p("2026-10-04T09:08:00"), p("2026-10-04T09:10:30")]
+        // Each is measured from the one kept before it, never from one left out.
+        expect(debounce(scans, 5).map(x => x.at)).toEqual(["2026-10-04T09:00:00", "2026-10-04T09:05:00", "2026-10-04T09:10:30"])
+        expect(debounce(scans, 1).map(x => x.at)).toEqual(["2026-10-04T09:00:00", "2026-10-04T09:04:59", "2026-10-04T09:08:00", "2026-10-04T09:10:30"])
+        expect(debounce(scans).map(x => x.at)).toEqual(debounce(scans, 5).map(x => x.at))
     })
 
-    it("pairs in sequence, so a lunch break out and back is not work, and measures late, early and overtime", () => {
+    it("reads a day first and last: the scans between are left out, so a break isn't measured (round 10, decision 1)", () => {
         const day = measure(work(), [p("2026-10-04T09:20:00"), p("2026-10-04T13:00:00"), p("2026-10-04T14:00:00"), p("2026-10-04T17:45:00")])
-        expect(day).toMatchObject({ status: "PRESENT", punchCount: 4, workedMinutes: 220 + 225, lateMinutes: 20, earlyLeaveMinutes: 0, overtimeMinutes: 45 })
+        expect(day).toMatchObject({ status: "PRESENT", punchCount: 4, firstIn: "2026-10-04T09:20:00", lastOut: "2026-10-04T17:45:00", workedMinutes: 505, lateMinutes: 20, earlyLeaveMinutes: 0, overtimeMinutes: 45 })
         const early = measure(work(), [p("2026-10-04T08:50:00"), p("2026-10-04T16:30:00")])
-        expect(early).toMatchObject({ lateMinutes: 0, earlyLeaveMinutes: 30, overtimeMinutes: 0 })
+        expect(early).toMatchObject({ lateMinutes: 0, earlyLeaveMinutes: 30, overtimeMinutes: 0, workedMinutes: 460 })
     })
 
-    it("counts as overtime only the time worked after the shift, not a gap before coming back (review on #13)", () => {
+    it("counts as overtime the time past the shift's end up to the last scan", () => {
         const day = measure(work(), [p("2026-10-04T09:00:00"), p("2026-10-04T18:00:00"), p("2026-10-04T19:00:00"), p("2026-10-04T20:00:00")])
-        expect(day).toMatchObject({ overtimeMinutes: 60 + 60, workedMinutes: 540 + 60 })
+        expect(day).toMatchObject({ status: "PRESENT", overtimeMinutes: 180, workedMinutes: 660 })
     })
 
-    it("never guesses a missing punch: an odd count is incomplete, with only the lateness known", () => {
-        const day = measure(work(), [p("2026-10-04T09:40:00")])
-        expect(day).toMatchObject({ status: "INCOMPLETE", firstIn: "2026-10-04T09:40:00", lastOut: null, lateMinutes: 40, earlyLeaveMinutes: 0, overtimeMinutes: 0 })
+    it("no longer leaves a day incomplete for an extra scan: three scans are a day from the first to the last (decision 7)", () => {
+        const day = measure(work(), [p("2026-10-04T08:55:00"), p("2026-10-04T09:02:00"), p("2026-10-04T17:05:00")])
+        expect(day).toMatchObject({ status: "PRESENT", punchCount: 3, firstIn: "2026-10-04T08:55:00", lastOut: "2026-10-04T17:05:00", lateMinutes: 0, earlyLeaveMinutes: 0, overtimeMinutes: 5 })
+        // A forgotten last scan reads as leaving early (Departure to confirm is part 3).
+        expect(measure(work(), [p("2026-10-04T08:55:00"), p("2026-10-04T12:00:00"), p("2026-10-04T12:40:00")]))
+            .toMatchObject({ status: "PRESENT", lastOut: "2026-10-04T12:40:00", earlyLeaveMinutes: 260 })
+    })
+
+    it("scanning twice on arriving changes nothing (decision 8)", () => {
+        const twice = measure(work(), [p("2026-10-04T08:55:00"), p("2026-10-04T08:57:00"), p("2026-10-04T17:05:00")])
+        expect(twice).toMatchObject({ status: "PRESENT", punchCount: 2, firstIn: "2026-10-04T08:55:00", lastOut: "2026-10-04T17:05:00", workedMinutes: 490 })
+    })
+
+    it("never guesses a missing punch: one scan left after the window is incomplete, with only the lateness known", () => {
+        expect(measure(work(), [p("2026-10-04T09:40:00")]))
+            .toMatchObject({ status: "INCOMPLETE", punchCount: 1, firstIn: "2026-10-04T09:40:00", lastOut: null, lateMinutes: 40, earlyLeaveMinutes: 0, overtimeMinutes: 0, workedMinutes: 0 })
+        // Two scans on arriving and none on leaving are one scan, never a day from 08:55 to 08:57.
+        expect(measure(work(), [p("2026-10-04T08:55:00"), p("2026-10-04T08:57:00")]))
+            .toMatchObject({ status: "INCOMPLETE", punchCount: 1, lastOut: null, earlyLeaveMinutes: 0 })
+    })
+
+    it("takes the window from the policy, anything from 1 to 60 minutes", () => {
+        const scans = [p("2026-10-04T08:55:00"), p("2026-10-04T09:04:00")]
+        expect(measure(work(), scans, { windowMinutes: 10 })).toMatchObject({ status: "INCOMPLETE", punchCount: 1 })
+        expect(measure(work(), scans, { windowMinutes: 5 })).toMatchObject({ status: "PRESENT", punchCount: 2, lastOut: "2026-10-04T09:04:00" })
+        expect(measure(work(), scans)).toMatchObject({ status: "PRESENT", punchCount: 2 })
     })
 
     it("calls a working day with no punches absent, unless the person was on leave or suspended", () => {
@@ -64,6 +91,9 @@ describe("measuring a day", () => {
         expect(measure(REST, [])).toMatchObject({ status: "REST", overtimeMinutes: 0 })
         expect(measure(REST, [p("2026-10-04T10:00:00"), p("2026-10-04T13:30:00")])).toMatchObject({ status: "WORKED_REST_DAY", overtimeMinutes: 210 })
         expect(measure(HOLIDAY, [p("2026-10-04T10:00:00"), p("2026-10-04T12:00:00")])).toMatchObject({ status: "WORKED_HOLIDAY", overtimeMinutes: 120 })
+        // First and last there too: a scan in between doesn't cut the time.
+        expect(measure(REST, [p("2026-10-04T10:00:00"), p("2026-10-04T11:00:00"), p("2026-10-04T13:30:00")])).toMatchObject({ status: "WORKED_REST_DAY", workedMinutes: 210, overtimeMinutes: 210 })
+        expect(measure(REST, [p("2026-10-04T10:00:00"), p("2026-10-04T10:03:00")])).toMatchObject({ status: "INCOMPLETE", overtimeMinutes: 0 })
     })
 
     it("subtracts approved permission minutes from lateness and early leave, and records them", () => {
