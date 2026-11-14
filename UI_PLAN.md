@@ -698,8 +698,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      the first of Phase 5 part 3's three PRs, a day whose early leave is
      more than the policy's threshold, 2 hours to start, waiting as
      Departure to confirm, with a tab of its own on attendance's
-     Exceptions screen (`ATTENDANCE_PLAN.md` §6.9, §13.1), and no tab
-     label on a phone more than two lines (`DESIGN.md` §5.5), #274;
+     Exceptions screen (`ATTENDANCE_PLAN.md` §6.9, §13.1), no tab label
+     on a phone more than two lines, and a row of tabs that scrolls opening
+     on the picked one (`DESIGN.md` §5.5), #274;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6182,3 +6183,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   narrower, so a row of more than fit scrolls within itself, as the rule
   already said it would. A row that fits on two lines, such as Costs'
   three, is as before.
+- **2026-11-14:** A row of tabs that scrolls opens on the picked tab (#274;
+  `DESIGN.md` §5.5, Tabs). Found while checking the rule above: on a phone,
+  attendance opened on Employee numbers, by a link or a reload, showed its
+  first tabs and not the one picked, and so did Exceptions opened on a
+  later kind. Both kinds of tab row now scroll themselves, never the page,
+  to show the picked tab whole, and again when the pick changes.
