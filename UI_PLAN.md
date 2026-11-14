@@ -135,8 +135,8 @@ permissions allow, as today.
 
 - **Every kind of request in one place:** day off, permission hours,
   overtime, missing punch, role changes, name changes, and internal
-  requests. Missions (مأمورية) join them (`ATTENDANCE_PLAN.md` §6.10,
-  round 10, Phase 5, part 3).
+  requests. Missions (مأمورية) join them in #283 (`ATTENDANCE_PLAN.md`
+  §6.10, round 10, Phase 5, part 4).
 - **Two tabs: Mine and To review.** "To review" shows only what the person
   may decide.
 - **A filter by kind,** so a manager can look at day-off requests only, for
@@ -723,7 +723,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      (`ATTENDANCE_PLAN.md` §6.10), merged in #281 on 2026-11-14; then the
      setup guide behind a round "i" on Fingerprint terminals, its steps by
      the terminal's model (`ATTENDANCE_PLAN.md` §17.7; `DESIGN.md` §5.2,
-     §5.5, Dialog), #282;
+     §5.5, Dialog), merged in #282 on 2026-11-14; then Phase 5 part 4's
+     second PR, missions asked for and decided on the Requests page, with
+     Decide missions and the policy's Missions switch
+     (`ATTENDANCE_PLAN.md` §6.10), #283;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6272,3 +6275,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   terminal's model, and the steps follow it, from the office's PC to
   matching numbers to people, with the model's notes and Copy beside each
   command, in both languages.
+- **2026-11-14:** Missions asked and decided (#283; `ATTENDANCE_PLAN.md`
+  round 10, §6.10, Phase 5 part 4). New request on the Requests page asks
+  for a mission, by days or by hours, with one of the asker's open tasks
+  if there is one, and why. Whoever holds Decide missions sees it under
+  To review, with its task and the scans so far, and approves or rejects
+  it; the asker is told, and can withdraw it while it waits. A mission
+  over a closed month is accepted, its days there becoming discrepancies.
+  The policy has a Missions switch, on to start, and payroll's window
+  counts the missions not yet decided.
