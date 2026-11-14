@@ -4182,16 +4182,21 @@ a.ui-row:focus-visible {
 }
 
 /* On phones, the tabs share the row, a long label on two lines, so every
-   tab shows. A row of more than fit still scrolls within itself. */
+   tab shows. A row of more than fit still scrolls within itself. A tab is
+   at most 8rem wide and grows to share the row but is never squeezed, so no
+   label takes more than two lines: six kinds on attendance's Exceptions had
+   stacked theirs three and four lines high (PR 274, DESIGN.md §5.5). */
 @media (max-width: 767px) {
   .ui-tabs,
   .ui-tablinks {
     gap: var(--space-3);
   }
   .ui-tab {
-    flex: 1 1 auto;
+    flex: 1 0 auto;
+    max-inline-size: 8rem;
     justify-content: center;
     text-align: center;
+    text-wrap: balance;
     white-space: normal;
   }
 }
