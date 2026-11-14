@@ -78,6 +78,18 @@ describe("the steps, by the model's protocol", () => {
         expect(readFileSync("agent/agent.example.json", "utf8")).toContain('"pollSeconds": 60')
     })
 
+    // Codex on PR 282: probe reads only what it's given, never agent.json, so a
+    // terminal with a comm key failed it whatever agent.json said.
+    it("gives probe the port and comm key itself, right after it, since probe doesn't read agent.json", () => {
+        const install = setupGuide("ZKTECO", { superAdmin: false, server: SERVER })![1].lines
+        const at = install.findIndex(l => l.text === "att_guide_probe")
+        expect(install[at + 1]).toEqual({ text: "att_guide_probe_key", code: "nizmo-agent.exe probe TERMINAL-ADDRESS 4370 1234" })
+        expect(readFileSync("agent/src/main.ts", "utf8")).toContain("nizmo-agent probe <address> [port] [password]")
+        expect(readFileSync("agent/README.md", "utf8")).toContain("nizmo-agent.exe probe 192.168.1.20 4370 1234")
+        expect(en.att_guide_probe_key).toContain("`4370`")
+        expect(ar.att_guide_probe_key).toContain("`4370`")
+    })
+
     it("names the brand picked in the step that sets it on the terminal", () => {
         const connect = setupGuide("ZKTECO", { superAdmin: true, server: SERVER })![2]
         expect(connect.lines.find(l => l.text === "att_guide_brand")).toEqual({ text: "att_guide_brand", brand: true })

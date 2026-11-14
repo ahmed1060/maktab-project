@@ -2415,6 +2415,7 @@ export const ar = {
         att_guide_settings: "وهناك، نسخ `agent.example.json` باسم `agent.json`، وضبطه هكذا بعنوان الجهاز:",
         att_guide_password: "وإن لم يكن رمز الاتصال `0`، إضافته بجانب العنوان، هكذا: `\"password\": 1234`.",
         att_guide_probe: "فتح `Command Prompt` كمسؤول في ذلك المجلد، والتأكد من أن الجهاز يرد. يعرض رقمه التسلسلي وساعته وعدد البصمات فيه، ولا يرسل شيئًا:",
+        att_guide_probe_key: "وإن لم يكن رمز الاتصال `0`، كتابة المنفذ، وهو عادةً `4370`، ثم الرمز بعد العنوان، فهذا الفحص لا يقرأ `agent.json`:",
         att_guide_unknown_publisher: "وإن نبّه Windows إلى ناشر غير معروف في المرة الأولى: اختيار «مزيد من المعلومات» ثم «تشغيل على أي حال».",
         att_guide_connect_title: "ربطه بـ Nizmo",
         att_guide_connect_who: "هنا، ثم على كمبيوتر المكتب",

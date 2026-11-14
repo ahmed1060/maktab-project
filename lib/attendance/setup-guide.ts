@@ -80,6 +80,8 @@ export function setupGuide(protocol: TerminalProtocol, { superAdmin, server }: {
                 { text: "att_guide_settings", code: settingsFor(server) },
                 { text: "att_guide_password" },
                 { text: "att_guide_probe", code: "nizmo-agent.exe probe TERMINAL-ADDRESS" },
+                // probe reads only what it's given, never agent.json (Codex on PR 282).
+                { text: "att_guide_probe_key", code: "nizmo-agent.exe probe TERMINAL-ADDRESS 4370 1234" },
                 { text: "att_guide_unknown_publisher" },
             ],
         },

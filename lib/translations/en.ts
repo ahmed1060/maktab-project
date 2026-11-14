@@ -2421,6 +2421,7 @@ export const en = {
         att_guide_settings: "There, copy `agent.example.json` to `agent.json`, and set it like this, with the terminal's address:",
         att_guide_password: "If its comm key isn't `0`, add it beside its address, as `\"password\": 1234`.",
         att_guide_probe: "Open `Command Prompt` as administrator in that folder, and check the terminal answers. It shows its serial number, its clock and how many scans it holds, and sends nothing:",
+        att_guide_probe_key: "If its comm key isn't `0`, give the port, usually `4370`, and the key after its address, since this check doesn't read `agent.json`:",
         att_guide_unknown_publisher: "If Windows warns of an unknown publisher the first time, choose More info, then Run anyway.",
         att_guide_connect_title: "Connect it to Nizmo",
         att_guide_connect_who: "Here, then on the office PC",
