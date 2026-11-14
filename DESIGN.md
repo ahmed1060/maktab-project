@@ -822,6 +822,13 @@ These are built once, in the building-blocks PR, and every page uses them
     button, and choosing an item closes it.
   - A destructive item, such as Delete, is in the danger text colour and
     is last, after a hairline. It still asks before it acts.
+  - **An item that others use is retired, not deleted,** such as a
+    terminal brand that a terminal has used (`ATTENDANCE_PLAN.md` §17.9).
+    Its menu's last item is Retire in place of Delete, in the usual text
+    colour, since nothing is lost, and it asks first. A retired item stays
+    on its list after the others, with a Retired badge, and isn't offered
+    anywhere new; Put back, in its menu, offers it again. An item that
+    nothing has used is deleted as before.
 - **Dialog:** a level-2 panel (§4.3) on `--panel-raised`, with 12px
   corners and 24px inside (16px on phones), over the dimmed page.
   - The title is `--text-xl`, weight 500.
@@ -1514,7 +1521,8 @@ These are built once, in the building-blocks PR, and every page uses them
     `GearSix`;
   - the Super Admin's: Companies `Buildings`, Packages `Package`, All users
     `UsersThree`, Role templates `Stack`, Policy templates `Clock`, Public
-    holidays `CalendarBlank`, Super Admins `ShieldCheck`, Role changes
+    holidays `CalendarBlank`, Terminal brands `Fingerprint`, Super Admins
+    `ShieldCheck`, Role changes
     `ArrowsLeftRight`, Access reviews `ListChecks`, Who can
     `MagnifyingGlass`, Check-ins `MapPin`, Audit logs `ClipboardText`,
     System health `Heartbeat`, System settings `GearSix`.
@@ -2208,3 +2216,9 @@ changed:
   each opening where it's settled, and Close. What only needs knowing
   follows under a heading of its own. First for approving payroll while
   days of the month wait (`ATTENDANCE_PLAN.md` §6.9, decision 14).
+- **2026-11-14:** An item that others use is retired, not deleted (§5.5,
+  Row menu): Retire, asking first, keeps it on its list with a Retired
+  badge and offers it nowhere new, and Put back offers it again. First for
+  the Super Admin's terminal brands (`ATTENDANCE_PLAN.md` §17.9).
+- **2026-11-14:** Terminal brands, the Super Admin's page under Templates
+  (`UI_PLAN.md` §2.2), has the side bar icon `Fingerprint` (§6).

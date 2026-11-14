@@ -7,7 +7,9 @@ Phase 0 (engine, settings, import) is #9–#15; Phase 1 (payroll) is #16; Phase 
 the PRs after it, and is paused for now (§20). Phase 4 (terminals through the agent or straight to Nizmo,
 ZKTeco and Hikvision alike, round 9) is planned in #269; its part 2, who
 may set terminals up, is built in #277, with the built-in Admin's grant
-for the companies already there in #278; the rest is not built.
+for the companies already there in #278; part 3, terminal brands, is in
+two PRs, the Super Admin's list in #279 and the brand on each terminal
+after it; the rest is not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
@@ -1927,6 +1929,24 @@ show (§20).
 - Adding, changing and retiring a brand are written to the audit log, as role
   and policy templates are.
 
+**Built in #279** (part 3's first PR). What the build settled:
+
+- **The list** is the Terminal brands page under Templates, the Super
+  Admin's alone. Each brand is a row: its name, the protocol it speaks,
+  how many terminals use it, and its notes in the page's language.
+- **Names are unique, capitals aside,** so "zkteco" can't sit beside
+  "ZKTeco".
+- **A brand no terminal has used is deleted, asking first;** one a
+  terminal has used is retired instead (`DESIGN.md` §5.5, Row menu), and
+  Put back offers it again. A retired brand's terminals keep it.
+- **Its protocol can't change while any terminal uses it,** retired or
+  not: the field is locked, and its hint says why.
+- **Only the two protocols Nizmo speaks are offered.** The dialog says a
+  brand whose terminals speak another can't be added yet.
+- **Every terminal gets a protocol,** ZKTeco's for those already there,
+  since the agent reads only that one, and no brand. Showing the brand on a
+  terminal's card and picking it there is part 3's second PR.
+
 ### 17.10 Who may set terminals up (round 9)
 
 Setting terminals up decides whose scans count as attendance: an agent's code
@@ -2168,7 +2188,9 @@ which becomes part 8 below. Each part is its own PR:
    ZKTeco, Hikvision and Convoy; a terminal's `protocol` and `brandId`), the
    Super Admin's Terminal brands page under Templates, with `DESIGN.md`
    first, and the brand on each terminal's card, picked by an Admin. Useful
-   at once with the agent, and needs none of the rest.
+   at once with the agent, and needs none of the rest. In two PRs: the
+   migration and the Super Admin's page in #279, then the brand on each
+   terminal's card.
 4. **One terminal whichever way** (§17.6): the migration (connection, the
    columns for terminals straight to Nizmo, the index across both sources,
    the straight-to-Nizmo switch, §17.8), the ingest taking a terminal as well

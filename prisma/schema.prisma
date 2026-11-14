@@ -2370,12 +2370,43 @@ model AttendanceDevice {
   updatedAt         DateTime          @updatedAt
   retiredAt         DateTime?
   retiredById       String?
+  /// What Nizmo and the agent speak to it (ATTENDANCE_PLAN.md §17.9).
+  protocol          TerminalProtocol  @default(ZKTECO)
+  /// The brand printed on it, from the Super Admin's list; unset until picked.
+  brandId           String?
   company           Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   agent             AttendanceAgent?  @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  brand             TerminalBrand?    @relation(fields: [brandId], references: [id], onDelete: Restrict)
   punches           AttendancePunch[]
 
   @@unique([companyId, serialNumber])
   @@index([agentId])
+  @@index([brandId])
+}
+
+/// The protocols Nizmo and the agent speak to a terminal (ATTENDANCE_PLAN.md
+/// §17.9): code, not data. Another is added by building it.
+enum TerminalProtocol {
+  ZKTECO
+  HIKVISION
+}
+
+/// A brand of fingerprint terminal, what is printed on it, kept by the Super
+/// Admin for every company (ATTENDANCE_PLAN.md §17.9). One to a name, ignoring
+/// capitals (a unique index on lower(name) in the migration). Once a terminal
+/// has it, it's retired, never deleted, and isn't offered for new terminals.
+model TerminalBrand {
+  id          String             @id @default(uuid())
+  name        String
+  protocol    TerminalProtocol
+  /// Where its settings are in its menu, and the like, in each language.
+  notesEn     String?
+  notesAr     String?
+  createdById String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  retiredAt   DateTime?
+  devices     AttendanceDevice[]
 }
 
 /// Which person an employee number on a terminal or in a file is.
