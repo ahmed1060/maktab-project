@@ -362,3 +362,62 @@ describe("an incomplete day settled (ATTENDANCE_PLAN.md §6.9, round 10, decisio
         expect(rows).not.toContain("Report a missing punch")
     })
 })
+
+describe("a mission's day (ATTENDANCE_PLAN.md §6.10, round 10, PR 281)", () => {
+    const byDays = day({
+        id: "d9", date: "2026-10-25", status: "MISSION", firstIn: null, lastOut: null, workedMinutes: 0,
+        lateMinutes: 0, earlyLeaveMinutes: 0, deductionDays: 0, deductionMinor: 0,
+        breakdown: { lateness: none, earlyLeave: none, absenceDays: 0, unpriced: null, holiday: null, mission: "DAYS" },
+    })
+    const rest = day({
+        id: "d10", date: "2026-10-23", status: "REST", firstIn: null, lastOut: null, workedMinutes: 0, lateMinutes: 0,
+        expectedStartMinutes: null, expectedEndMinutes: null, deductionDays: 0, deductionMinor: 0,
+        breakdown: { lateness: none, earlyLeave: none, absenceDays: 0, unpriced: null, holiday: null, mission: "DAYS" },
+    })
+    const toEnd = day({
+        id: "d11", date: "2026-10-26", status: "PRESENT", firstIn: "2026-10-26T09:12:00", lastOut: null, workedMinutes: 0,
+        breakdown: { lateness: { minutes: 12, days: 0.25, occurrence: 3, note: "CHARGED" }, earlyLeave: none, absenceDays: 0, unpriced: null, holiday: null, mission: "TO_END" },
+    })
+    const fromStart = day({
+        id: "d12", date: "2026-10-27", status: "PRESENT", firstIn: null, lastOut: "2026-10-27T16:00:00", workedMinutes: 0,
+        lateMinutes: 0, earlyLeaveMinutes: 60, deductionDays: 0, deductionMinor: 0,
+        breakdown: { lateness: none, earlyLeave: none, absenceDays: 0, unpriced: null, holiday: null, mission: "FROM_START" },
+    })
+
+    it("shows a working day of a mission by days as Mission, marked good, in both languages", async () => {
+        const html = panel(await page({ shows: [byDays] }))
+        expect(table(html)).toContain(`<span class="ui-badge ui-badge-good">${en.audit_value_MISSION}</span>`)
+        expect(cards(html)).toContain(`<span class="ui-badge ui-badge-good">${en.audit_value_MISSION}</span>`)
+        // Its badge says it all.
+        expect(table(html)).not.toContain(en.day_mission_days)
+        const arabic = table(panel(await page({ shows: [byDays], locale: "ar" })))
+        expect(arabic).toContain(`<span class="ui-badge ui-badge-good">${ar.audit_value_MISSION}</span>`)
+    })
+
+    it("says so on a rest day inside one, and which kind on a day of a mission by hours", async () => {
+        const rows = table(panel(await page({ shows: [rest, toEnd, fromStart] })))
+        // As the page writes it: "isn't" with its apostrophe escaped.
+        const html = (text: string) => text.replace(/'/g, "&#x27;")
+        expect(rows).toContain(en.day_mission_days)
+        expect(rows).toContain(html(en.day_mission_to_end))
+        expect(rows).toContain(html(en.day_mission_from_start))
+        const arabic = table(panel(await page({ shows: [rest, toEnd, fromStart], locale: "ar" })))
+        for (const key of ["day_mission_days", "day_mission_to_end", "day_mission_from_start"] as const) expect(arabic).toContain(ar[key])
+    })
+
+    it("offers nothing to ask about on a mission day by days", async () => {
+        const rows = table(panel(await page({ shows: [byDays] })))
+        expect(rows).not.toContain("Ask for permission")
+        expect(rows).not.toContain("Report a missing punch")
+    })
+
+    it("is written in sentence case, in both languages", () => {
+        expect(en.audit_value_MISSION).toBe("Mission")
+        expect([en.day_mission_days, en.day_mission_to_end, en.day_mission_from_start]).toEqual([
+            "on a mission",
+            "a mission until the end of the day, so early leave isn't counted",
+            "a mission from the start of the day, so lateness isn't counted",
+        ])
+        for (const key of ["audit_value_MISSION", "day_mission_days", "day_mission_to_end", "day_mission_from_start"] as const) expect(ar[key]).toBeTruthy()
+    })
+})

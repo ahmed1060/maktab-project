@@ -19,13 +19,17 @@ import { DEFAULT_DEPARTURE_THRESHOLD_MINUTES, DEFAULT_SCAN_WINDOW_MINUTES, dayFr
  * missing one. Nor is a forgotten last scan taken for leaving early: early
  * leave of more than the policy's threshold makes the day TO_CONFIRM, priced
  * at nothing until somebody settles it (PR 274).
+ *
+ * An approved mission (§6.10, PR 281) changes how a day is read: a mission
+ * by days makes a working day MISSION, and one by hours needs only one scan,
+ * read as the arrival or the departure as its part of the day says.
  */
 
 /** A punch as the engine reads it: the wall-clock time where it happened. */
 export type EnginePunch = { id: string; at: string; direction: "IN" | "OUT" | null }
 
 export type DayStatus =
-    | "PRESENT" | "ABSENT" | "INCOMPLETE" | "TO_CONFIRM" | "LEAVE" | "SUSPENDED"
+    | "PRESENT" | "ABSENT" | "INCOMPLETE" | "TO_CONFIRM" | "LEAVE" | "SUSPENDED" | "MISSION"
     | "REST" | "HOLIDAY" | "WORKED_REST_DAY" | "WORKED_HOLIDAY" | "NO_SCHEDULE"
 
 /** Arrivals this long before a shift, and leavings this long after it, still belong to it. */
@@ -120,7 +124,22 @@ export type MeasuredDay = {
      * the day has any other number of scans, where the decision counts for nothing.
      */
     settled?: IncompleteSettled
+    /**
+     * The approved mission that read the day (§6.10, PR 281): by days, or by
+     * hours until the end of the day or from its start. Absent where none
+     * did: no mission, or a day on leave, suspended, or with no shift for a
+     * mission by hours to be late or early for.
+     */
+    mission?: DayMission
 }
+
+/**
+ * An approved mission on a day (§6.10, decision 15, PR 281): by days, or by
+ * hours until the end of the day (one scan is the arrival, early leave
+ * isn't counted) or from its start (one scan is the departure, lateness
+ * isn't counted).
+ */
+export type DayMission = "DAYS" | "TO_END" | "FROM_START"
 
 /** How somebody settled a day with one scan (§6.9, decision 22, PR 275). */
 export type IncompleteSettled = "ABSENT" | "AS_IT_IS"
@@ -166,6 +185,16 @@ function coveredMinutes(date: string, permissions: readonly PermissionSpan[], ty
  * absence, its one scan kept; accepted as it is, nothing of it is charged,
  * present on a working day and worked, with no overtime, on a day off. A day
  * off can't be marked absent: nobody was expected.
+ *
+ * A mission (§6.10, decisions 9, 15 and 23, PR 281), after leave and a
+ * suspension. By days: a working day is MISSION, its scans kept and shown
+ * and changing nothing; a rest day or holiday stays one, adding no
+ * overtime. By hours, on a working day: with no scan it's absent, and one
+ * scan is enough, so it's never incomplete. Until the end of the day, the
+ * first scan is the arrival and the early leave isn't counted, so the day
+ * never waits. From the start of the day, the last scan is the departure
+ * and the lateness isn't counted; its early leave waits past the threshold
+ * like any day's. Time worked is only measured between two scans.
  */
 export function measureDay(input: {
     date: string
@@ -185,6 +214,8 @@ export function measureDay(input: {
     departureConfirmed?: boolean
     /** How somebody settled the day on the exceptions screen, should it have one scan (PR 275). */
     incomplete?: IncompleteSettled
+    /** An approved mission that day (§6.10, PR 281). */
+    mission?: DayMission
 }): MeasuredDay {
     const { date, expected } = input
     const punches = debounce(input.punches, input.windowMinutes)
@@ -204,12 +235,17 @@ export function measureDay(input: {
     if (input.suspended) return { ...base, status: "SUSPENDED" }
     if (expected.kind === "NO_SCHEDULE") return { ...base, status: "NO_SCHEDULE", workedMinutes }
     if (expected.kind === "REST" || expected.kind === "HOLIDAY") {
-        if (punches.length === 0) return { ...base, status: expected.kind, unpaidHoliday: expected.kind === "HOLIDAY" && !expected.holiday.isPaid }
+        const off = { ...base, status: expected.kind, unpaidHoliday: expected.kind === "HOLIDAY" && !expected.holiday.isPaid }
+        // Inside a mission by days it stays a day off, its scans kept, adding no overtime (decision 9).
+        if (input.mission === "DAYS") return { ...off, mission: "DAYS" }
+        if (punches.length === 0) return off
         if (asItIs) return { ...base, status: expected.kind === "REST" ? "WORKED_REST_DAY" : "WORKED_HOLIDAY", settled: "AS_IT_IS" }
         if (single) return { ...base, status: "INCOMPLETE" }
         return { ...base, status: expected.kind === "REST" ? "WORKED_REST_DAY" : "WORKED_HOLIDAY", workedMinutes, overtimeMinutes: workedMinutes }
     }
     if (input.onLeave) return { ...base, status: "LEAVE" }
+    if (input.mission === "DAYS") return { ...base, status: "MISSION", mission: "DAYS" }
+    if (input.mission) return measureMissionHours(input, punches, input.mission)
     if (punches.length === 0) return { ...base, excusedAbsence: !!input.excused?.absence }
 
     const shift = shiftOf(date, expected)!
@@ -238,6 +274,55 @@ export function measureDay(input: {
         // Past the shift's end up to the last scan, from the first if that came after it.
         overtimeMinutes: Math.floor(Math.max(0, out - Math.max(wallSeconds(firstIn!), shift.end)) / 60),
         excusedMinutes: excusedLate + excusedEarly,
+    }
+}
+
+/**
+ * A working day of a mission by hours (§6.10, decisions 15 and 23, PR 281).
+ * Until the end of the day, the first scan is the arrival, its lateness
+ * counted, and nothing after it is early leave. From the start of the day,
+ * the last scan is the departure, its early leave counted and waiting past
+ * the threshold, and nothing before it is lateness. Overtime past the
+ * shift's end counts either way; one scan measures no time worked.
+ */
+function measureMissionHours(input: Parameters<typeof measureDay>[0], punches: readonly EnginePunch[], mission: "TO_END" | "FROM_START"): MeasuredDay {
+    const { date, expected } = input
+    const shift = shiftOf(date, expected)!
+    const base: MeasuredDay = {
+        date, status: "ABSENT", punchCount: punches.length, firstIn: null, lastOut: null,
+        workedMinutes: 0, lateMinutes: 0, earlyLeaveMinutes: 0, overtimeMinutes: 0, excusedMinutes: 0,
+        unpaidHoliday: false, excusedAbsence: false, mission,
+    }
+    if (punches.length === 0) return { ...base, excusedAbsence: !!input.excused?.absence }
+    const single = punches.length === 1
+    // One scan is the arrival until the end of the day, the departure from its start.
+    const firstIn = single && mission === "FROM_START" ? null : punches[0].at
+    const lastOut = single && mission === "TO_END" ? null : punches.at(-1)!.at
+    const workedMinutes = single ? 0 : Math.floor((wallSeconds(lastOut!) - wallSeconds(firstIn!)) / 60)
+
+    let lateMinutes = 0, earlyLeaveMinutes = 0, overtimeMinutes = 0, excusedMinutes = 0, waits = false
+    if (mission === "TO_END") {
+        const lateRaw = Math.max(0, Math.floor((wallSeconds(firstIn!) - shift.start) / 60))
+        const excusedLate = input.excused?.lateness ? lateRaw
+            : Math.min(lateRaw, coveredMinutes(date, input.permissions ?? [], "LATE_ARRIVAL", shift.start, wallSeconds(firstIn!)))
+        lateMinutes = lateRaw - excusedLate
+        excusedMinutes = excusedLate
+    } else {
+        const out = wallSeconds(lastOut!)
+        const earlyRaw = Math.max(0, Math.floor((shift.end - out) / 60))
+        const excusedEarly = input.excused?.earlyLeave ? earlyRaw
+            : Math.min(earlyRaw, coveredMinutes(date, input.permissions ?? [], "EARLY_LEAVE", out, shift.end))
+        earlyLeaveMinutes = earlyRaw - excusedEarly
+        excusedMinutes = excusedEarly
+        waits = !input.departureConfirmed && earlyLeaveMinutes > (input.departureThresholdMinutes ?? DEFAULT_DEPARTURE_THRESHOLD_MINUTES)
+    }
+    if (lastOut) {
+        const out = wallSeconds(lastOut)
+        overtimeMinutes = Math.floor(Math.max(0, out - Math.max(firstIn ? wallSeconds(firstIn) : shift.end, shift.end)) / 60)
+    }
+    return {
+        ...base, status: waits ? "TO_CONFIRM" : "PRESENT", firstIn, lastOut,
+        workedMinutes, lateMinutes, earlyLeaveMinutes, overtimeMinutes, excusedMinutes,
     }
 }
 

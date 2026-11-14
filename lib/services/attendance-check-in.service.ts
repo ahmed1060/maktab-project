@@ -251,7 +251,8 @@ export class AttendanceCheckInService {
     /**
      * Whether lateness that day costs nothing anyway, as the engine measures
      * it (deriveMonth, measureDay): on approved leave, suspended for the whole
-     * day or not employed on it, or already excused on the exceptions screen.
+     * day or not employed on it, already excused on the exceptions screen, or
+     * on an approved mission by days or from the start of the day (§6.10, PR 281).
      * Offering permission hours would spend allowance on nothing (review on
      * #24). Permission hours already asked for are the caller's to weigh: they
      * excuse only the times they cover (review on #61).
@@ -265,6 +266,8 @@ export class AttendanceCheckInService {
      * many, for the reminder job (review on #25). The keys of the waived ones,
      * as "userId|date". Unless told otherwise, a late-arrival permission asked
      * for or granted that day waives it too: whoever asked expects to be late.
+     * So does a mission by days or from the start of the day, approved, or
+     * asked for unless told otherwise: no arrival is due (§6.10, decision 17).
      */
     static async latenessWaivedFor(companyId: string, pairs: readonly { userId: string; date: string }[], { permissions: countPermissions = true } = {}): Promise<Set<string>> {
         const waived = new Set<string>()
@@ -272,7 +275,7 @@ export class AttendanceCheckInService {
         const userIds = [...new Set(pairs.map(p => p.userId))]
         const days = [...new Set(pairs.map(p => p.date))].sort()
         const asDates = days.map(d => new Date(`${d}T00:00:00Z`))
-        const [leave, permissions, excused, people, company] = await Promise.all([
+        const [leave, permissions, excused, people, company, missions] = await Promise.all([
             prisma.dayOffRequest.findMany({
                 where: {
                     userId: { in: userIds }, status: "APPROVED", date: { lte: new Date(`${days.at(-1)}T23:59:59Z`) },
@@ -286,6 +289,14 @@ export class AttendanceCheckInService {
             prisma.attendanceDayDecision.findMany({ where: { companyId, userId: { in: userIds }, date: { in: asDates }, outcome: "EXCUSED", subject: "LATENESS" }, select: { userId: true, date: true } }),
             prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, EmploymentEvent: { select: { type: true, effectiveFrom: true, deductSuspension: true, createdAt: true } } } }),
             prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } }),
+            prisma.missionRequest.findMany({
+                where: {
+                    companyId, userId: { in: userIds }, status: { in: countPermissions ? ["PENDING", "APPROVED"] : ["APPROVED"] },
+                    OR: [{ kind: "DAYS" }, { hoursPart: "FROM_START" }],
+                    startDate: { lte: asDates.at(-1) }, endDate: { gte: asDates[0] },
+                },
+                select: { userId: true, startDate: true, endDate: true },
+            }),
         ])
         const timeZone = company?.timezone ?? DEFAULT_TIME_ZONE
         const asked = new Set([...permissions, ...excused].map(r => `${r.userId}|${toDateString(r.date)}`))
@@ -297,6 +308,7 @@ export class AttendanceCheckInService {
             const key = `${userId}|${day}`
             if (asked.has(key)) { waived.add(key); continue }
             if (leave.some(l => l.userId === userId && toDateString(l.date) <= day && day <= toDateString(l.endDate ?? l.date))) { waived.add(key); continue }
+            if (missions.some(m => m.userId === userId && toDateString(m.startDate) <= day && day <= toDateString(m.endDate))) { waived.add(key); continue }
             const mine = spans.get(userId)
             if (!mine) continue
             const dayStart = localToInstant(`${day}T00:00:00`, timeZone), nextStart = localToInstant(`${addDays(day, 1)}T00:00:00`, timeZone)

@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client"
 import { calendarDateStr } from "@/lib/time"
 import { addDays, expectedDay, observedHolidays, scheduleIdOn, toDateString, versionOn, companyWeekOn, type ExpectedDay, type Schedule } from "@/lib/attendance/calendar"
 import { policyOn, type PolicyBody } from "@/lib/attendance/policy"
-import { assignPunches, measureDay, priceMonth, paidMinutesOf, type EnginePunch, type IncompleteSettled, type PricingInput } from "@/lib/attendance/engine"
+import { assignPunches, measureDay, priceMonth, paidMinutesOf, type DayMission, type EnginePunch, type IncompleteSettled, type PricingInput } from "@/lib/attendance/engine"
 import { localToInstant } from "@/lib/attendance/punch-import"
 import { employmentSpans, suspensionSpans } from "@/lib/employment"
 import { rateAt } from "@/lib/salary-history"
@@ -97,7 +97,7 @@ async function deriveMonth(
 
     // A day either side, for night shifts that start before the month or end after it.
     const loadFrom = addDays(from, -1), loadTo = addDays(through, 1)
-    const [schedules, assignments, defaults, people, central, exclusions, own, punches, leave, permissions, decisions, excuses] = await Promise.all([
+    const [schedules, assignments, defaults, people, central, exclusions, own, punches, leave, permissions, decisions, excuses, missions] = await Promise.all([
         tx.workSchedule.findMany({ where: { companyId }, include: SCHEDULE_INCLUDE }),
         tx.userSchedule.findMany({ where: { schedule: { companyId }, ...scope }, select: { userId: true, scheduleId: true, effectiveFrom: true } }),
         tx.scheduleDefault.findMany({ where: { companyId }, select: { scheduleId: true, effectiveFrom: true } }),
@@ -140,6 +140,11 @@ async function deriveMonth(
                 OR: [{ outcome: "EXCUSED" }, { outcome: "ACCEPTED", subject: { in: ["EARLY_LEAVE", "INCOMPLETE"] } }],
             },
             select: { userId: true, date: true, subject: true, outcome: true },
+        }),
+        // Approved missions that reach the dates measured (§6.10, PR 281): one by days may have begun before them.
+        tx.missionRequest.findMany({
+            where: { companyId, status: "APPROVED", ...scope, startDate: { lte: wallClock(`${through}T00:00:00`) }, endDate: { gte: wallClock(`${from}T00:00:00`) } },
+            select: { userId: true, kind: true, startDate: true, endDate: true, hoursPart: true },
         }),
     ])
     // A draft (the simulator, §6.7) stands in for every version.
@@ -186,6 +191,16 @@ async function deriveMonth(
             const start = toDateString(l.date), end = l.endDate ? toDateString(l.endDate) : start
             for (let d = start; d <= end; d = addDays(d, 1)) leaveDays.add(d)
         }
+        // Each date's approved mission. They can't overlap once asked for (§6.10); should two
+        // somehow, a mission by days, which reads the whole day, comes first.
+        const missionOn = new Map<string, DayMission>()
+        for (const m of missions.filter(m => m.userId === person.id)) {
+            const start = toDateString(m.startDate), end = toDateString(m.endDate)
+            for (let d = start; d <= end; d = addDays(d, 1)) {
+                if (m.kind === "DAYS") missionOn.set(d, "DAYS")
+                else if (m.hoursPart && !missionOn.has(d)) missionOn.set(d, m.hoursPart)
+            }
+        }
 
         const inputs: (PricingInput & { plan: { expected: ExpectedDay; scheduleId: string | null }; policyId: string | null })[] = []
         for (let date = from; date <= through; date = addDays(date, 1)) {
@@ -212,6 +227,7 @@ async function deriveMonth(
                 departureThresholdMinutes: policy?.body.departureThresholdMinutes,
                 departureConfirmed: departureConfirmedOn(person.id, date),
                 incomplete: incompleteOn(person.id, date),
+                mission: missionOn.get(date),
             })
             const decision = decisions.find(o => o.userId === person.id && toDateString(o.date) === date)
             const rate = rateAt(person.SalaryChange as any, noon)
@@ -252,6 +268,8 @@ async function deriveMonth(
                     excusedAbsence: d.excusedAbsence,
                     // Said on the person's own day (PR 275); left out where nothing was settled.
                     ...(d.settled ? { settled: d.settled } : {}),
+                    // Which mission read the day (§6.10, PR 281); left out where none did.
+                    ...(d.mission ? { mission: d.mission } : {}),
                     minor: d.deductionParts,
                     holiday: e.kind === "HOLIDAY" ? e.holiday.name : null,
                 } as Prisma.InputJsonValue,
@@ -398,9 +416,11 @@ export class AttendanceEngineService {
                 result.written += 1
                 // A recent day that has just become absent, incomplete or a departure to confirm is
                 // told to the person, once: a rebuild that finds it so already says nothing (§13.4).
+                // Never a mission day, of any kind (§6.10, decision 17, PR 281).
                 const status = d.row.status as string
                 const notice = DAY_NOTICE.get(status)
-                if (notice && was?.status !== status && d.date >= recent) {
+                const onMission = !!(d.row.breakdown as { mission?: DayMission }).mission
+                if (notice && !onMission && was?.status !== status && d.date >= recent) {
                     await NotificationService.notify(d.userId, "ATTENDANCE_DAY", {
                         key: notice,
                         params: { date: { date: `${d.date}T00:00:00.000Z` } },

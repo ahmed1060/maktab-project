@@ -167,14 +167,19 @@ type Day = {
         lateness: RuleOutcome; earlyLeave: RuleOutcome; absenceDays: number; unpriced: string | null; holiday: string | null; excusedAbsence?: boolean
         /** A day with one scan somebody marked absent or accepted as it is (PR 275). */
         settled?: 'ABSENT' | 'AS_IT_IS'
+        /** The approved mission that read the day (ATTENDANCE_PLAN.md §6.10, PR 281). */
+        mission?: 'DAYS' | 'TO_END' | 'FROM_START'
     }
 }
 
 /** What a day's status means, which decides its badge's colour (DESIGN.md §2.3); the rest are neutral. */
 const STATUS_TONE: Record<string, StatusTone> = {
-    PRESENT: 'good', ABSENT: 'problem', SUSPENDED: 'problem', INCOMPLETE: 'waiting', TO_CONFIRM: 'waiting',
+    PRESENT: 'good', MISSION: 'good', ABSENT: 'problem', SUSPENDED: 'problem', INCOMPLETE: 'waiting', TO_CONFIRM: 'waiting',
     WORKED_REST_DAY: 'progress', WORKED_HOLIDAY: 'progress',
 }
+
+/** What a day says of the mission that read it (ATTENDANCE_PLAN.md §6.10, PR 281). */
+const MISSION_NOTE: Record<string, TranslationKey> = { DAYS: 'day_mission_days', TO_END: 'day_mission_to_end', FROM_START: 'day_mission_from_start' }
 
 /**
  * Days (§13.3): one's own, or everyone's this person sees, over a month.
@@ -226,6 +231,7 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
         void mutate()
     })
 
+    const missionNote = (mission: string | undefined) => (mission && MISSION_NOTE[mission] ? t(MISSION_NOTE[mission]) : null)
     const ruleNote = (label: TranslationKey, r: RuleOutcome) => {
         if (!r.note || r.note === 'CHARGED' || r.note === 'OFF') return null
         const key = ({ WITHIN_GRACE: 'day_note_grace', FREE_OCCURRENCE: 'day_note_free', ESCALATED: 'day_note_escalated', CAPPED: 'day_note_capped' } as Record<string, TranslationKey>)[r.note]
@@ -242,6 +248,8 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
         d.excusedMinutes > 0 ? t('day_excused').replace('{n}', num(d.excusedMinutes)) : null,
         d.breakdown.excusedAbsence ? t('day_absence_excused') : null,
         d.breakdown.settled === 'ABSENT' ? t('day_settled_absent') : d.breakdown.settled === 'AS_IT_IS' ? t('day_settled_as_is') : null,
+        // Which mission read the day (PR 281): a Mission day's badge says it already.
+        d.status === 'MISSION' ? null : missionNote(d.breakdown.mission),
     ].filter((n): n is string => !!n)
     const totalMinor = (days ?? []).reduce((sum, d) => sum + (d.deductionMinor ?? 0), 0)
     const showsMoney = (days ?? []).some(d => d.deductionMinor !== null)

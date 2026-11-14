@@ -7,7 +7,8 @@ import type { ExpectedDay } from "./calendar"
  * The derivation engine (ATTENDANCE_PLAN.md §11): grouping punches by shift,
  * counting scans close together as one, reading a day first and last (§6.9,
  * round 10, PR 273), a departure to confirm (PR 274), an incomplete day
- * settled (PR 275), and pricing the month in order (§6.3–6.5).
+ * settled (PR 275), a mission's day (§6.10, PR 281), and pricing the month
+ * in order (§6.3–6.5).
  */
 
 const work = (startMinutes = 540, endMinutes = 1020, breakMinutes = 60): ExpectedDay =>
@@ -206,6 +207,111 @@ describe("an incomplete day settled (§6.9, round 10, decision 22, PR 275)", () 
         expect(measure(work(), [], { incomplete: "AS_IT_IS" })).toMatchObject({ status: "ABSENT", excusedAbsence: false })
         expect(measure(work(), [...one("09:00"), p("2026-10-04T17:00:00")], { incomplete: "ABSENT" })).toMatchObject({ status: "PRESENT", workedMinutes: 480 })
         expect(measure(work(), [...one("09:00"), p("2026-10-04T17:00:00")], { incomplete: "ABSENT" }).settled).toBeUndefined()
+    })
+})
+
+describe("a mission's day (§6.10, round 10, decisions 9, 15 and 23, PR 281)", () => {
+    const at = (time: string) => p(`2026-10-04T${time}:00`)
+    const priced = (day: MeasuredDay) => priceMonth([{ day, policy: STANDARD_OFFICE, monthlyMinor: 930_000, daysInMonth: 31, paidMinutes: 420 }])[0]
+    const NOTHING = { lateMinutes: 0, earlyLeaveMinutes: 0, overtimeMinutes: 0, workedMinutes: 0, excusedMinutes: 0 }
+
+    it("by days, makes a working day a mission day, with no scans needed and nothing charged", () => {
+        expect(measure(work(), [], { mission: "DAYS" })).toMatchObject({ status: "MISSION", mission: "DAYS", punchCount: 0, excusedAbsence: false, ...NOTHING })
+        expect(priced(measure(work(), [], { mission: "DAYS" }))).toMatchObject({ absenceDays: 0, deductionDays: 0, deductionMinor: 0, unpriced: null })
+    })
+
+    it("by days, keeps and shows the scans that arrive, which change nothing", () => {
+        // Late in, early out, and one scan alone: never late, early, incomplete or waiting.
+        expect(measure(work(), [at("10:30"), at("12:00")], { mission: "DAYS" })).toMatchObject({
+            status: "MISSION", punchCount: 2, firstIn: "2026-10-04T10:30:00", lastOut: "2026-10-04T12:00:00", ...NOTHING,
+        })
+        expect(measure(work(), [at("09:40")], { mission: "DAYS" })).toMatchObject({ status: "MISSION", punchCount: 1, ...NOTHING })
+        // Past the shift's end adds no overtime (decision 5).
+        expect(measure(work(), [at("09:00"), at("20:00")], { mission: "DAYS" })).toMatchObject({ status: "MISSION", overtimeMinutes: 0 })
+        // Nor is a lateness occurrence counted towards the month's.
+        const [, next] = priceMonth([
+            { day: measure(work(), [at("10:30"), at("17:00")], { mission: "DAYS" }), policy: STANDARD_OFFICE, monthlyMinor: 930_000, daysInMonth: 31, paidMinutes: 420 },
+            { day: measure(work(), [p("2026-10-05T10:30:00"), p("2026-10-05T17:00:00")], { date: "2026-10-05" }), policy: STANDARD_OFFICE, monthlyMinor: 930_000, daysInMonth: 31, paidMinutes: 420 },
+        ])
+        expect(next.lateness.occurrence).toBe(1)
+    })
+
+    it("by days, leaves rest days and holidays as they are, scans or not, adding no overtime (decision 9)", () => {
+        expect(measure(REST, [], { mission: "DAYS" })).toMatchObject({ status: "REST", mission: "DAYS" })
+        expect(measure(REST, [at("10:00"), at("15:00")], { mission: "DAYS" })).toMatchObject({ status: "REST", mission: "DAYS", punchCount: 2, ...NOTHING })
+        expect(measure(REST, [at("10:00")], { mission: "DAYS" })).toMatchObject({ status: "REST", punchCount: 1 })
+        expect(measure(HOLIDAY, [at("10:00"), at("15:00")], { mission: "DAYS" })).toMatchObject({ status: "HOLIDAY", mission: "DAYS", overtimeMinutes: 0 })
+        // An unpaid holiday stays unpaid, as for everyone else.
+        const unpaid: ExpectedDay = { ...HOLIDAY, holiday: { ...(HOLIDAY as Extract<ExpectedDay, { kind: "HOLIDAY" }>).holiday, isPaid: false } }
+        expect(measure(unpaid, [at("10:00"), at("15:00")], { mission: "DAYS" })).toMatchObject({ status: "HOLIDAY", unpaidHoliday: true })
+    })
+
+    it("until the end of the day, reads one scan as the arrival, its lateness charged, the day present", () => {
+        expect(measure(work(), [at("09:40")], { mission: "TO_END" })).toMatchObject({
+            status: "PRESENT", mission: "TO_END", punchCount: 1, firstIn: "2026-10-04T09:40:00", lastOut: null,
+            lateMinutes: 40, earlyLeaveMinutes: 0, workedMinutes: 0, overtimeMinutes: 0,
+        })
+        // Approved late-arrival hours excuse it as on any day.
+        expect(measure(work(), [at("09:40")], { mission: "TO_END", permissions: [{ type: "LATE_ARRIVAL", startMinutes: 540, endMinutes: 600 }] }))
+            .toMatchObject({ status: "PRESENT", lateMinutes: 0, excusedMinutes: 40 })
+        expect(priced(measure(work(), [at("09:40")], { mission: "TO_END" }))).toMatchObject({ unpriced: null, lateness: { minutes: 40 } })
+    })
+
+    it("until the end of the day, reads two scans first and last without the early leave, so it never waits (decision 23)", () => {
+        expect(measure(work(), [at("09:00"), at("11:00")], { mission: "TO_END" })).toMatchObject({
+            status: "PRESENT", lastOut: "2026-10-04T11:00:00", workedMinutes: 120, earlyLeaveMinutes: 0, lateMinutes: 0,
+        })
+        expect(measure(work(), [at("09:30"), at("12:00")], { mission: "TO_END", departureThresholdMinutes: 1 })).toMatchObject({ status: "PRESENT", lateMinutes: 30, earlyLeaveMinutes: 0 })
+        // Overtime from its own scans past the shift's end counts as on any day.
+        expect(measure(work(), [at("09:00"), at("18:30")], { mission: "TO_END" })).toMatchObject({ status: "PRESENT", overtimeMinutes: 90 })
+    })
+
+    it("from the start of the day, reads one scan as the departure: no lateness, its early leave charged", () => {
+        expect(measure(work(), [at("16:00")], { mission: "FROM_START" })).toMatchObject({
+            status: "PRESENT", mission: "FROM_START", punchCount: 1, firstIn: null, lastOut: "2026-10-04T16:00:00",
+            lateMinutes: 0, earlyLeaveMinutes: 60, workedMinutes: 0, overtimeMinutes: 0,
+        })
+        expect(priced(measure(work(), [at("16:00")], { mission: "FROM_START" }))).toMatchObject({ unpriced: null, earlyLeave: { minutes: 60 } })
+        // Past the shift's end, overtime.
+        expect(measure(work(), [at("18:00")], { mission: "FROM_START" })).toMatchObject({ status: "PRESENT", earlyLeaveMinutes: 0, overtimeMinutes: 60 })
+    })
+
+    it("from the start of the day, waits like any day when that early leave is more than the threshold (decision 23)", () => {
+        expect(measure(work(), [at("12:00")], { mission: "FROM_START" })).toMatchObject({ status: "TO_CONFIRM", lastOut: "2026-10-04T12:00:00", earlyLeaveMinutes: 300 })
+        expect(priced(measure(work(), [at("12:00")], { mission: "FROM_START" }))).toMatchObject({ unpriced: "TO_CONFIRM", deductionMinor: 0 })
+        // Approved permission hours count first, and accepting the early leave settles it.
+        expect(measure(work(), [at("12:00")], { mission: "FROM_START", permissions: [{ type: "EARLY_LEAVE", startMinutes: 720, endMinutes: 1020 }] }))
+            .toMatchObject({ status: "PRESENT", earlyLeaveMinutes: 0, excusedMinutes: 300 })
+        expect(measure(work(), [at("12:00")], { mission: "FROM_START", departureConfirmed: true })).toMatchObject({ status: "PRESENT", earlyLeaveMinutes: 300 })
+    })
+
+    it("from the start of the day, reads two scans first and last without the lateness", () => {
+        expect(measure(work(), [at("10:30"), at("16:00")], { mission: "FROM_START" })).toMatchObject({
+            status: "PRESENT", firstIn: "2026-10-04T10:30:00", lateMinutes: 0, earlyLeaveMinutes: 60, workedMinutes: 330,
+        })
+    })
+
+    it("by hours, leaves a working day with no scan at all absent", () => {
+        expect(measure(work(), [], { mission: "TO_END" })).toMatchObject({ status: "ABSENT", mission: "TO_END" })
+        expect(measure(work(), [], { mission: "FROM_START" })).toMatchObject({ status: "ABSENT", mission: "FROM_START" })
+    })
+
+    it("by hours, needs only one scan, so a day settled for its one scan is measured as the mission reads it", () => {
+        const absent = measure(work(), [at("09:40")], { mission: "TO_END", incomplete: "ABSENT" })
+        expect(absent).toMatchObject({ status: "PRESENT", lateMinutes: 40 })
+        expect(absent.settled).toBeUndefined()
+        expect(measure(work(), [at("16:00")], { mission: "FROM_START", incomplete: "AS_IT_IS" })).toMatchObject({ status: "PRESENT", earlyLeaveMinutes: 60 })
+    })
+
+    it("by hours, changes nothing on a rest day or holiday, which has no shift to be late or early for", () => {
+        expect(measure(REST, [at("10:00"), at("12:00")], { mission: "TO_END" })).toMatchObject({ status: "WORKED_REST_DAY", overtimeMinutes: 120 })
+        expect(measure(REST, [at("10:00"), at("12:00")], { mission: "TO_END" }).mission).toBeUndefined()
+    })
+
+    it("comes after leave and a suspension", () => {
+        expect(measure(work(), [], { mission: "DAYS", onLeave: true })).toMatchObject({ status: "LEAVE" })
+        expect(measure(work(), [at("16:00")], { mission: "FROM_START", suspended: true })).toMatchObject({ status: "SUSPENDED" })
+        expect(measure(work(), [], { mission: "DAYS", onLeave: true }).mission).toBeUndefined()
     })
 })
 
