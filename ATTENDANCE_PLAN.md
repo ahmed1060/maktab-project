@@ -7,7 +7,8 @@ Phase 0 (engine, settings, import) is #9–#15; Phase 1 (payroll) is #16; Phase 
 the PRs after it, and is paused for now (§20). Phase 4 (terminals through the agent or straight to Nizmo,
 ZKTeco and Hikvision alike, round 9) is planned in #269 and not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
-planned in #270 and #271 and not built. A template for the file import
+planned in #270 and #271; its part 2, first and last, is built in #273, and
+the rest is not built. A template for the file import
 (§13.9) is built in #272.
 This document is the design those PRs follow: what was decided, and why, so
 that whoever changes it is not re-arguing settled points. Where the build
@@ -479,7 +480,7 @@ a custom policy** from scratch.
 - Applying a template creates a new policy version and goes through the same
   "from when?" question as any other edit.
 
-### 6.9 Reading a day's scans (round 10, planned)
+### 6.9 Reading a day's scans (round 10; first and last built in #273)
 
 **First and last, the only way** (round 10, decision 1). The day's first
 scan is the arrival and its last the departure; the scans between are left
@@ -487,7 +488,7 @@ out. A break isn't measured, and scanning twice on arriving changes
 nothing. Lateness runs from the shift's start to the first scan, early
 leave from the last scan to the shift's end, the time worked from the first
 scan to the last, and overtime is the time past the shift's end up to the
-last scan.
+last scan. Built in #273, with the window below.
 
 **In pairs is removed** (decision 7). Built in Phase 0 (§11), it took the
 first scan with the second and the third with the fourth, so one extra
@@ -501,7 +502,10 @@ and none on leaving would otherwise read as a day from 08:55 to 08:57. A
 scan within the policy's window of the one kept before it is dropped from
 the reading, though it is still kept and shown on the Punches tab: 5
 minutes to start, anything from 1 to 60. A single scan left after that is
-an incomplete day, as now: a missing departure is never guessed.
+an incomplete day, as now: a missing departure is never guessed. Built in
+#273: the window is "Scans this close count as one" in the policy's dialog,
+and its panel says it. A version saved before it reads as 5 minutes, so
+nothing is migrated.
 
 **Departure to confirm** (decision 13). A forgotten last scan would
 otherwise read as leaving early: 08:55, 12:00 and 12:40 with nothing at
@@ -1268,11 +1272,14 @@ Two things the research surfaced that concern more than attendance:
 ## 11. The derivation engine
 
 **Grouping** by shift instance (override first, then base schedule), with a
-margin either side for early arrivals and overruns. **Debounce** repeats within
-60 seconds. **Pair** in/out by sequence — never earliest/latest. An odd count is
-`INCOMPLETE`; a missing punch is never guessed. Round 10 (planned, §6.9)
-replaces these pairs with first and last for every company, and makes the
-window the policy's.
+margin either side for early arrivals and overruns. **Scans close together**
+count as one: a scan within the policy's window of the one kept before it is
+left out (§6.9, 5 minutes to start). **First and last** (round 10, built in
+#273): the day's first scan is the arrival and its last the departure, for
+every company. A single scan left is `INCOMPLETE`; a missing punch is never
+guessed. Before #273, scans were paired in sequence, first with second and
+third with fourth, after a fixed 60-second debounce, so an odd count left
+the day incomplete.
 
 **Excusing** — approved permission hours are subtracted from late and
 early-leave minutes before pricing, and recorded as `excusedMinutes`. An approved mission by hours (round 10, planned, §6.10)
@@ -2123,15 +2130,15 @@ With no push, it stays on the agent and tries the agent alone. Parts 4 to 7
 are built all the same, switched off, and tried when a terminal that pushes,
 or a Hikvision, is on hand (round 9, decision 13).
 
-### Phase 5 — Reading scans first and last, and missions — not built
+### Phase 5 — Reading scans first and last, and missions — part 2 built in #273
 
 Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
 
 1. **The plan** (#270), and the decisions from its review (#271).
-2. **First and last** (§6.9): the engine reads every day first and last,
-   and In pairs is removed; the policy's window, 5 minutes to start, on the
-   policy panel; the simulator. No migration: a saved policy without the
-   window reads as 5 minutes.
+2. **First and last** (§6.9), built in #273: the engine reads every day
+   first and last, and In pairs is removed; the policy's window, 5 minutes
+   to start, on the policy panel; the simulator. No migration: a saved
+   policy without the window reads as 5 minutes.
 3. **Departures to confirm** (§6.9): the policy's threshold, 2 hours to
    start, measured after approved permission hours; the waiting day, its
    notice, and its tab and settling on the Exceptions screen; marking an

@@ -690,7 +690,11 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      13), merged in #271 on 2026-11-14; then the import's template,
      Download template on attendance's Import tab, an Excel file in the
      page's language with the headings the import reads and how to fill
-     it (`ATTENDANCE_PLAN.md` §13.9), #272;
+     it (`ATTENDANCE_PLAN.md` §13.9), merged in #272 on 2026-11-14; then
+     Phase 5 part 2, a day's scans read first and last for every company,
+     scans close together counting as one within the policy's window, 5
+     minutes to start, said on the policy panel and changed in its dialog
+     (`ATTENDANCE_PLAN.md` §6.9, §11), #273;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6145,3 +6149,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   import never reads. Anyone who can import can download it. The label is
   the one the task upload's template already has, where the plan said
   Download a template.
+- **2026-11-14:** A day's scans are read first and last (#273;
+  `ATTENDANCE_PLAN.md` round 10, decisions 1, 7 and 8, §6.9, §11): the
+  first scan is the arrival and the last the departure, for every company,
+  and In pairs is gone, so a second scan on arriving no longer leaves the
+  day incomplete. Scans within the policy's window of the one before count
+  as one: 5 minutes to start, anything from 1 to 60, in a new field of the
+  policy's dialog, "Scans this close count as one", and a new line on its
+  panel. A version saved before it reads as 5 minutes. Departures to
+  confirm, and payroll waiting for them, are part 3.
