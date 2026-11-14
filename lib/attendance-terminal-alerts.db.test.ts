@@ -51,9 +51,8 @@ describe.skipIf(!ADMIN_URL)("silent terminal alerts, in Postgres", () => {
         // c1 shows its people the Attendance tab and sets its own terminals
         // up; c2 leaves both to the Super Admin.
         await db.query(`UPDATE "Company" SET "adminSettingsEnabled" = true, "adminSettingsTabs" = ARRAY['attendance'], "terminalsSetupByCompany" = true WHERE id = 'c1'`)
-        // A new company's Admin role holds Set up fingerprint terminals; the
-        // companies there already are get it from a later migration.
-        await db.query(`INSERT INTO "RoleGrant"("roleId", permission, scope) SELECT id, 'attendance.manage_terminals', 'COMPANY' FROM "Role" WHERE "builtIn" = 'ADMIN'`)
+        // Every company's built-in Admin role holds Set up fingerprint
+        // terminals, from PR 278's migration.
         await db.query(`INSERT INTO "SuperAdmin"(id, email, username, password, "firstName", "lastName", "updatedAt") VALUES ('sa1', 'sa@x', 'sa1', 'p', 'Sara', 'Admin', now())`)
         process.env.POSTGRES_PRISMA_URL = url.toString()
     }, 180_000)
