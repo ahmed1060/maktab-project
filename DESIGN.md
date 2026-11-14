@@ -877,6 +877,16 @@ These are built once, in the building-blocks PR, and every page uses them
     can't be undone. Once confirmed, it stays open until the work is done:
     Cancel is off, the main button is busy, and Escape or a click outside
     does nothing, since what was sent can't be called off.
+  - One that can't go ahead until something is settled elsewhere, such as
+    approving a month's payroll while days of it wait on a scan or a
+    decision, says so in place of asking: why, in a sentence, then what
+    waits, a row for each that opens where it's settled, and Close in place
+    of the button that would do it. Settled and opened again, it asks as
+    any confirmation does. Refused because something came to wait after it
+    opened, it stays open and shows what waits. What only needs knowing,
+    such as requests not yet decided that the action doesn't wait for,
+    follows under a heading of its own, a row for each kind with how many,
+    opening where they're decided, whether it can go ahead or not.
   - One that records money owed, such as ending a contract, shows what
     it would record before it does: the statement's own lines, totals and
     notes (Document, below), under a heading of its own, as the statement
@@ -2193,3 +2203,8 @@ changed:
   it's past the row's edge (§5.5, Tabs): attendance opened on Employee
   numbers, the last of its seven, showed the first ones on a phone and not
   the one picked.
+- **2026-11-14:** A confirmation that can't go ahead until something is
+  settled elsewhere says so in place of asking (§5.5, Dialog): what waits,
+  each opening where it's settled, and Close. What only needs knowing
+  follows under a heading of its own. First for approving payroll while
+  days of the month wait (`ATTENDANCE_PLAN.md` §6.9, decision 14).
