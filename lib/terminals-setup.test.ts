@@ -52,6 +52,26 @@ describe("Set up fingerprint terminals, in the catalogue", () => {
     })
 })
 
+describe("for the companies already there (PR 278)", () => {
+    const sql = () => {
+        const name = readdirSync("prisma/migrations").find(m => m.endsWith("_terminals_granted"))
+        expect(name).toBe("20261221000000_terminals_granted")
+        return readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8").split("\n").filter(line => !line.startsWith("--")).join("\n")
+    }
+
+    it("a migration gives it to the built-in Admin role alone, company-wide", () => {
+        const rows = [...sql().matchAll(/\('(\w+)', '([\w.]+)', '(\w+)'\)/g)].map(([, role, permission, scope]) => [role, permission, scope])
+        expect(rows).toEqual([["ADMIN", "attendance.manage_terminals", "COMPANY"]])
+    })
+
+    it("leaves a role holding it already as it is, and has only the holders of a role given it reload", () => {
+        const text = sql().replace(/\s+/g, " ")
+        expect(text).toContain(`ON CONFLICT ("roleId", "permission") DO NOTHING RETURNING "roleId"`)
+        expect(text).toContain(`UPDATE "Role" SET "version" = "version" + 1, "updatedAt" = now() WHERE "id" IN (SELECT "roleId" FROM given)`)
+        expect(text).not.toMatch(/DELETE|DROP|ALTER/)
+    })
+})
+
 describe("the company's switch", () => {
     it("is a field of the Attendance tab only the Super Admin sets", () => {
         const tab = settingsTab("attendance")!
