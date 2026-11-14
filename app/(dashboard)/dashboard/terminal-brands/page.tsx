@@ -1,10 +1,11 @@
 'use client'
 
-import { Fragment, useId, useState } from 'react'
+import { Fragment, useId, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
 import { ArrowCounterClockwiseIcon, FingerprintIcon, HourglassIcon, PencilSimpleIcon, PlusIcon, ProhibitIcon, TrashIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
+import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import { Button, ConfirmDialog, Dialog, EmptyState, Field, Page, PageHeader, Row, RowMenu, Rows, Select, StatusBadge, TextArea, TextInput, type MenuItem } from '@/components/ui'
 import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -67,18 +68,20 @@ export default function TerminalBrandsPage() {
         return <span>{parts.map((x, i) => <Fragment key={i}>{i > 0 && t('list_separator')}<bdi>{x}</bdi></Fragment>)}</span>
     }
 
-    /** Posts a change, says how it went, and loads the list again. */
-    const act = async (path: string, method: string, done: TranslationKey) => {
+    /** Posts a change, says how it went, and loads the list again; false when it didn't go through. */
+    const act = async (path: string, method: string, done: TranslationKey): Promise<boolean> => {
         try {
             const res = await fetch(path, { method })
             if (!res.ok) {
                 showToast(apiErrorText(await res.text(), t('error_generic')), 'error')
-                return
+                return false
             }
             showToast(t(done), 'success')
             await mutate()
+            return true
         } catch {
             showToast(t('error_generic'), 'error')
+            return false
         }
     }
 
@@ -115,7 +118,7 @@ export default function TerminalBrandsPage() {
                     {shown.map(b => (
                         <Row
                             key={b.id}
-                            title={<bdi>{b.name}</bdi>}
+                            title={<bdi translate="no">{b.name}</bdi>}
                             detail={detail(b)}
                             note={notes(b)}
                             end={<>
@@ -139,9 +142,11 @@ export default function TerminalBrandsPage() {
                 onConfirm={async () => {
                     if (!asking) return
                     const { brand: b, action } = asking
-                    if (action === 'retire') await act(`/api/terminal-brands/${b.id}/retire`, 'POST', 'tbrand_retired_done')
-                    else await act(`/api/terminal-brands/${b.id}`, 'DELETE', 'tbrand_deleted')
-                    setAsking(null)
+                    const done = action === 'retire'
+                        ? await act(`/api/terminal-brands/${b.id}/retire`, 'POST', 'tbrand_retired_done')
+                        : await act(`/api/terminal-brands/${b.id}`, 'DELETE', 'tbrand_deleted')
+                    // Kept open when it fails, to try again or cancel.
+                    if (done) setAsking(null)
                 }}
             />
         </Page>
@@ -151,12 +156,14 @@ export default function TerminalBrandsPage() {
 /**
  * Add a brand, or change one: its name as printed on it, the protocol its
  * terminals speak, locked while any has it, and notes in each language. A
- * name already taken is said under its field.
+ * name missing or already taken is said under its field, and the focus
+ * moves there (DESIGN.md §5.3).
  */
 function BrandDialog({ brand, onClose, onSaved }: { brand: Brand | null; onClose: () => void; onSaved: () => Promise<void> }) {
     const { t } = useLanguage()
     const { showToast } = useToast()
     const formId = useId()
+    const formRef = useRef<HTMLFormElement>(null)
     const [name, setName] = useState(brand?.name ?? '')
     const [protocol, setProtocol] = useState<Protocol>(brand?.protocol ?? 'ZKTECO')
     const [notesEn, setNotesEn] = useState(brand?.notesEn ?? '')
@@ -168,7 +175,7 @@ function BrandDialog({ brand, onClose, onSaved }: { brand: Brand | null; onClose
     const submit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (saving) return
-        if (!name.trim()) return setNameError(t('tbrand_name_required'))
+        if (!name.trim()) { setNameError(t('tbrand_name_required')); focusFirstWrong(formRef.current); return }
         setSaving(true)
         try {
             const res = await fetch(brand ? `/api/terminal-brands/${brand.id}` : '/api/terminal-brands', {
@@ -179,7 +186,7 @@ function BrandDialog({ brand, onClose, onSaved }: { brand: Brand | null; onClose
             if (!res.ok) {
                 const text = await res.text()
                 // A name already taken is said under the name (DESIGN.md §5.3).
-                if (res.status === 409 && text.includes('BRAND_NAME_TAKEN')) return setNameError(t('tbrand_name_taken'))
+                if (res.status === 409 && text.includes('BRAND_NAME_TAKEN')) { setNameError(t('tbrand_name_taken')); focusFirstWrong(formRef.current); return }
                 return showToast(apiErrorText(text, t('error_generic')), 'error')
             }
             showToast(t(brand ? 'tbrand_saved' : 'tbrand_added'), 'success')
@@ -196,7 +203,7 @@ function BrandDialog({ brand, onClose, onSaved }: { brand: Brand | null; onClose
             <Button onClick={onClose} disabled={saving}>{t('cancel')}</Button>
             <Button type="submit" form={formId} variant="primary" busy={saving}>{t('save')}</Button>
         </>}>
-            <form id={formId} onSubmit={submit} className="ui-dialog-body" noValidate>
+            <form id={formId} ref={formRef} onSubmit={submit} className="ui-dialog-body" noValidate>
                 <Field label={t('tbrand_name')} hint={t('tbrand_name_hint')} error={nameError}>{p => (
                     <TextInput {...p} name="name" value={name} maxLength={60} autoComplete="off" spellCheck={false} disabled={saving}
                         onChange={e => { setName(e.target.value); setNameError(undefined) }} />

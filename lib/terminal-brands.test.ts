@@ -156,7 +156,8 @@ describe("the page", () => {
             brand({ id: "b2", name: "Hikvision", protocol: "HIKVISION" }),
         ] }) })
         expect(html).toContain(`<ul class="ui-panel ui-rows" aria-label="${en.tbrand_title}">`)
-        expect(html).toContain('<span class="ui-item-title"><bdi>Convoy</bdi></span>')
+        // A brand's name is kept as it's printed, never machine-translated.
+        expect(html).toContain('<span class="ui-item-title"><bdi translate="no">Convoy</bdi></span>')
         expect(html).toContain(`<bdi>${esc(en.tbrand_protocol_ZKTECO)}</bdi>${en.list_separator}<bdi>2 terminals</bdi>`)
         expect(html).toContain(`<bdi>${esc(en.tbrand_protocol_HIKVISION)}</bdi>${en.list_separator}<bdi>${esc(en.tbrand_used_none)}</bdi>`)
         // Its notes in the page's language.
@@ -180,7 +181,20 @@ describe("the page", () => {
             brand({ id: "b2", name: "Hikvision", protocol: "HIKVISION" }),
         ] }) })
         expect(html).toContain(`>${en.tbrand_retired_badge}</span>`)
-        expect(html.indexOf("<bdi>Hikvision</bdi>")).toBeLessThan(html.indexOf("<bdi>Old</bdi>"))
+        expect(html.indexOf('<bdi translate="no">Hikvision</bdi>')).toBeLessThan(html.indexOf('<bdi translate="no">Old</bdi>'))
+    })
+
+    it("keeps the question to Retire or Delete open when it fails, to try again or cancel", () => {
+        const source = stripComments(readFileSync("app/(dashboard)/dashboard/terminal-brands/page.tsx", "utf8"))
+        expect(source).toContain("if (done) setAsking(null)")
+        expect(source.match(/return false/g)).toHaveLength(2)
+    })
+
+    it("moves the focus to the name when it's missing or taken, where it says so (DESIGN.md §5.3)", () => {
+        const source = stripComments(readFileSync("app/(dashboard)/dashboard/terminal-brands/page.tsx", "utf8"))
+        expect(source).toContain("<form id={formId} ref={formRef}")
+        expect(source).toContain("setNameError(t('tbrand_name_required')); focusFirstWrong(formRef.current)")
+        expect(source).toContain("setNameError(t('tbrand_name_taken')); focusFirstWrong(formRef.current)")
     })
 
     it("in Arabic, counts in Arabic and shows the Arabic notes, falling back to the English ones", async () => {
