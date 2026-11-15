@@ -15,7 +15,8 @@ planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
 incomplete day in #275, and payroll waiting for both in #276; part 4,
 missions, is split in four PRs, the first, a mission's day, built in
-#281, and the second, asking and deciding, in #283; the rest is not
+#281, the second, asking and deciding, in #283, and the third, Decide
+missions for the companies already there, in #284; the rest is not
 built. A template for the file import
 (§13.9) is built in #272.
 This document is the design those PRs follow: what was decided, and why, so
@@ -610,7 +611,7 @@ how many of each kind and the first 50, and the window shows those
 **The terminal's in/out key is still not read.** It is often left on the
 wrong state, and the order of the scans is surer.
 
-### 6.10 Missions — مأمورية (round 10; a mission's day built in #281, asking and deciding in #283)
+### 6.10 Missions — مأمورية (round 10; a mission's day built in #281, asking and deciding in #283, the companies already there in #284)
 
 An employee sent to work away from their desk (a client, another branch,
 another city) asks for a mission on the Requests page, so the day isn't
@@ -745,7 +746,10 @@ monthly limit.
   company's built-in Admin holds it company-wide; the companies already
   there get it from the next PR's migration, once this release's role
   editor knows it (as #278 did). It isn't high-risk, as deciding permission
-  hours and overtime isn't.
+  hours and overtime isn't. Given in #284, to the built-in Admin alone, as
+  for Set up fingerprint terminals: a company's own roles are given it in
+  the role editor. An Admin role holding it already, a new company's, is
+  left as it is; the others' holders reload their grants once.
 - **The policy's Missions switch** (decision 11), on in every version: one
   saved before it reads as on, so nothing is migrated. The policy dialog
   has a Missions section with the switch alone for now (part 5 adds the
@@ -2418,7 +2422,7 @@ With no push, it stays on the agent and tries the agent alone. Parts 4 to 7
 are built all the same, switched off, and tried when a terminal that pushes,
 or a Hikvision, is on hand (round 9, decision 13).
 
-### Phase 5 — Reading scans first and last, and missions — parts 2 and 3 built in #273 to #276, part 4's first two PRs in #281 and #283
+### Phase 5 — Reading scans first and last, and missions — parts 2 and 3 built in #273 to #276, part 4's first three PRs in #281, #283 and #284
 
 Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
 
@@ -2452,9 +2456,9 @@ Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
       withdrawing one while it waits; a mission across a closed month
       accepted, its days there becoming discrepancies; and the
       notification of a decision (decisions 4, 10, 16, 18, 20, 25).
-   3. **The companies already there** get "Decide missions" for their
-      built-in Admin, from a migration, once the release before it has
-      the role editor's new line (as #278 did).
+   3. **The companies already there**, built in #284: they get "Decide
+      missions" for their built-in Admin, from a migration, once the
+      release before it has the role editor's new line (as #278 did).
    4. **Cancelling an approved mission**, with a reason, until the month's
       payroll is approved, and after it its days there as discrepancies
       the other way round; and the notification of a cancellation
