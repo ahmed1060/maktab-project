@@ -10,7 +10,9 @@ may set terminals up, is built in #277, with the built-in Admin's grant
 for the companies already there in #278; part 3, terminal brands, is
 built in two PRs, the Super Admin's list in #279 and the brand on each
 terminal in #280; part 4, one terminal whichever way it connects, is
-built in #290; the rest is not built.
+built in #290; part 5, Hikvision straight to Nizmo, is split in four PRs,
+the first, the address a terminal sends to, built in #291; the rest is
+not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
@@ -1983,6 +1985,60 @@ checks the setting from the terminal's side.
 - **Health:** every request, scans or not, is a contact: the terminal's last
   contact and the address it came from.
 
+**Built in #291: the address a terminal sends to**,
+`POST /api/terminals/hikvision/<secret>`. Nothing gives a terminal a secret
+yet (Add a terminal does, §20, part 5), and the company's switch is off
+(§17.8), so it answers nobody until those are built.
+
+- **Whose request it is:** the secret is 32 random bytes, in the address;
+  only its sha256 is kept. One that isn't a secret's shape is answered 404
+  without a look at the database. One that is, and is nobody's, is 404 and
+  counted against the address it came from: past 30 in 15 minutes, 429. A
+  guess costs one indexed read either way, and 2^256 secrets can't be
+  searched; the count is for a scanner or a terminal set to an old address
+  hammering away.
+- **Held, not dropped,** while Nizmo can't take a scan: 503 during
+  maintenance, as for the agent; 403 while the company is suspended, its
+  package has no Terminals add-on, or its straight-to-Nizmo switch is off;
+  429 past 600 requests a minute from one terminal. A terminal sends an
+  event again until it hears 200, so these are sent again later. An
+  unexpected failure is a 500, recorded with the address's secret taken
+  out, and sent again too.
+- **Everything else is answered with an empty 200** (§17.5), and the
+  request is the terminal's contact: when, and from which address.
+- **A scan** is an `AccessControllerEvent` of major type 5 with an employee
+  number and a minor type for an identity check that passed. The list is
+  Hikvision's own, from its SDK's header: card (0x01), card and password
+  (0x02), fingerprint (0x26), card and fingerprint (0x28), card, fingerprint
+  and password (0x2b), fingerprint and password (0x2e), face and
+  fingerprint (0x36), face and password (0x39), face and card (0x3c), face,
+  password and fingerprint (0x3f), face, card and fingerprint (0x42),
+  employee number and fingerprint (0x45), with password too (0x48), face
+  (0x4b), employee number and face (0x4d), employee number and password
+  (0x65), person and ID card (0x69). Its time is the first 19 characters of
+  the event's `dateTime`, the terminal's wall clock; its offset isn't read
+  (§17.5). It goes through the same steps as any terminal's own scan
+  (§17.6).
+- **Not a scan, and dropped:** heartbeats, alarms, door and button events,
+  failed and timed-out checks, and anything with no employee number.
+- **Counted on the terminal as refused, with the reason** (§17.5), so that
+  nothing a real terminal sends is lost without a trace: an event with an
+  employee number whose minor type is on neither list
+  (`EVENT_NOT_KNOWN:<minor>`: a model that names a passed check otherwise
+  shows up here in the trial, §17.8), an employee number longer than 32
+  characters (`INVALID_NUMBER`), and a body that can't be read
+  (`UNREADABLE`). They are answered 200: sent again, they would only come
+  the same, and a terminal waits behind what isn't answered.
+- **The three shapes** (above) are read: a multipart form, whose text parts
+  are tried and whose pictures are never opened; JSON alone; and XML.
+- **The secret stays out of what is kept:** the audit log's entry for a
+  failure names the route as `/api/terminals/hikvision/[secret]`, and
+  anything sent to the error tracker has the secret taken out of every
+  address in it.
+- **Not yet:** first contacts kept, what a scan keeps of its event
+  (`rawPayload`), and saying on the terminal's card that its offset and
+  the company's time zone disagree. They come with the PRs below (§20).
+
 ### 17.3 Straight to Nizmo: ZKTeco
 
 Newer ZKTeco terminals push with ZKTeco's ADMS protocol to the cloud server
@@ -2528,7 +2584,7 @@ matching with liveness, fallback to flagged.
 It stays switched off meanwhile, on the face check meant for testing only;
 choosing a commercial SDK (§18, question 1) waits with it.
 
-### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290
+### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 begun in #291
 
 Planned in #269, for ZKTeco and Hikvision alike (§17.1–§17.11). It replaces
 the earlier Phase 4, a listener for pushes on the agent and nothing else,
@@ -2560,7 +2616,18 @@ which becomes part 8 below. Each part is its own PR:
 5. **Hikvision straight to Nizmo** (§17.2): `DESIGN.md` first; Add a terminal
    with its connection, the secret address shown once, Issue a new address;
    the receiving route; first contacts kept (§17.8); the straight-to-Nizmo
-   switch on the company's Attendance tab.
+   switch on the company's Attendance tab. In four PRs, each safe with the
+   switch off:
+   1. The address a terminal sends to, which answers nobody yet (§17.2).
+      Built in #291.
+   2. Add a terminal, with its connection, the secret address shown once,
+      Issue a new address and Change connection; and the terminal's card
+      for one straight to Nizmo (§17.7). `DESIGN.md` first. Straight to
+      Nizmo is offered only where the switch is on.
+   3. First contacts kept, for the Super Admin (§17.8), and what a scan
+      keeps of its event (`rawPayload`, §17.5).
+   4. The straight-to-Nizmo switch on the company's Attendance tab
+      (§17.8), last, when everything it turns on is there.
 6. **ZKTeco straight to Nizmo** (§17.3): the `/iclock` routes, outside the
    proxy; the options answer, scans, and `getrequest` as its heartbeat; the
    office address check; ZKTeco's protocol in Add a terminal.
