@@ -28,8 +28,12 @@ export type AgentState = {
     sendFrom: string | null
     /** The start the cursors were last moved under ("" for none): moved earlier, the logs are read again. */
     readFrom?: string | null
-    /** By "host:port", as configured. */
-    devices: Record<string, { serialNumber: string | null; cursor: Cursor; mustEnable?: boolean }>
+    /**
+     * By "host:port", as configured. `direct`: the server said the terminal
+     * is set to connect straight to Nizmo, so its log is left alone until
+     * the server says it is this agent's again.
+     */
+    devices: Record<string, { serialNumber: string | null; cursor: Cursor; mustEnable?: boolean; direct?: boolean }>
     queue: QueuedPunch[]
     /** Set when the server no longer accepts the token: nothing is sent until the agent is enrolled again. */
     needsEnrolment: boolean

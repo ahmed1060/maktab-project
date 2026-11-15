@@ -32,7 +32,8 @@ export type DeviceReport = {
 export type HeartbeatReply = {
     serverTime: string
     timeZone: string
-    devices: { serialNumber: string; state: "ACTIVE" | "RETIRED" | "CLAIMED_ELSEWHERE"; deviceId: string | null; mode: string | null }[]
+    /** `DIRECT`: the terminal is set to connect straight to Nizmo, so its log is its own to send, not this agent's to read. */
+    devices: { serialNumber: string; state: "ACTIVE" | "RETIRED" | "CLAIMED_ELSEWHERE" | "DIRECT"; deviceId: string | null; mode: string | null }[]
     rotateToken: boolean
 }
 

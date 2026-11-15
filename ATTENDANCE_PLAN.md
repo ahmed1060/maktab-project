@@ -9,7 +9,8 @@ ZKTeco and Hikvision alike, round 9) is planned in #269; its part 2, who
 may set terminals up, is built in #277, with the built-in Admin's grant
 for the companies already there in #278; part 3, terminal brands, is
 built in two PRs, the Super Admin's list in #279 and the brand on each
-terminal in #280; the rest is not built.
+terminal in #280; part 4, one terminal whichever way it connects, is
+built in #290; the rest is not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
@@ -2114,6 +2115,52 @@ The agent learns Hikvision's ISAPI beside the ZKTeco protocol it speaks:
 - Scans from before the company started with terminals are skipped, as the
   agent's `sendFrom` skips them.
 
+**Built in #290**, with no screen and no route for a terminal yet (parts 5
+and 6 add those, §20):
+
+- **The connection is on the terminal**: `AttendanceDevice.connection`,
+  through the agent or straight to Nizmo, through the agent for every
+  terminal there is. With it, the columns a terminal straight to Nizmo
+  needs (§8.6): its secret's hash, the addresses it may call from, where
+  it had got to, the address of its last request, what was refused, and
+  who added it. And the Super Admin's switch on the company,
+  `terminalsDirectAllowed`, off (§17.8). The migration only adds.
+- **A scan is stored once across both ways**: the index over
+  `(companyId, sourceKey)` for the two sources. Production held no
+  terminal punch when it was added (15 November 2026: 23 punches, all
+  from the app, and no terminal).
+- **One way in for both**: the agent's punches and a terminal's own go
+  through the same steps, in the same order: the employee numbers, the
+  month's lock, a punch already there under either source, the direction
+  from the terminal's mode, and the days worked out again. The Punches
+  list names the terminal a scan came from, whichever way it came.
+- **A scan already there is already there**, whatever has happened to its
+  month since. Only a new one in a month whose payroll is approved is
+  refused. Before, an agent sending a stored scan of a paid month again
+  was told the month was locked. For a terminal sending its whole memory
+  after a switch, that would have counted every scan Nizmo holds as
+  refused on its card.
+- **One connection at a time**: a terminal's own scans are refused while
+  it is set to the agent, while the company's switch is off, or once it
+  is retired. The agent's for a terminal set straight to Nizmo are still
+  taken, each stored once: what the agent read before it heard of the
+  change isn't lost.
+- **The agent leaves such a terminal's log alone**: the heartbeat answers
+  `DIRECT` for it and takes none of what the agent says of it. The agent
+  sends what it already holds, then reads no more of the terminal's log
+  and never clears it. It still asks the terminal which one it is and
+  names it in each heartbeat: so it hears when the terminal is set back to
+  the agent, and reads on from where it stopped; and another terminal put
+  at the same address is read. An agent from before this goes on reading
+  it: each scan is still stored once, and it never clears a terminal that
+  isn't `ACTIVE`.
+- **A terminal's own scans**: one from before the company's first
+  terminal's month is skipped, as the agent's `sendFrom` skips it. One
+  refused is counted on the terminal with its reason (§17.5): its month's
+  payroll approved, the terminal retired, a time no calendar has, or one
+  more than 60 minutes ahead. Unlike the agent's, none waits to be sent
+  again.
+
 ### 17.7 Setting a terminal up
 
 On **Fingerprint terminals**, in the Attendance tab of the company's options
@@ -2481,7 +2528,7 @@ matching with liveness, fallback to flagged.
 It stays switched off meanwhile, on the face check meant for testing only;
 choosing a commercial SDK (§18, question 1) waits with it.
 
-### Phase 4 — Terminals through the agent or straight to Nizmo — not built
+### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290
 
 Planned in #269, for ZKTeco and Hikvision alike (§17.1–§17.11). It replaces
 the earlier Phase 4, a listener for pushes on the agent and nothing else,
@@ -2509,7 +2556,7 @@ which becomes part 8 below. Each part is its own PR:
    the straight-to-Nizmo switch, §17.8), the ingest taking a terminal as well
    as an agent,
    and the agent told to skip a terminal set straight to Nizmo. No screen
-   changes.
+   changes. Built in #290.
 5. **Hikvision straight to Nizmo** (§17.2): `DESIGN.md` first; Add a terminal
    with its connection, the secret address shown once, Issue a new address;
    the receiving route; first contacts kept (§17.8); the straight-to-Nizmo

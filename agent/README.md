@@ -88,6 +88,15 @@ full. Nizmo shows a warning at 80%. To let the agent clear it, set
 delivered. It stops the terminal taking scans for the moment it takes to check
 and clear, then turns it back on.
 
+## A terminal set to connect straight to Nizmo
+
+A terminal can be set in Nizmo to send its scans straight to Nizmo instead of
+through this agent. The agent then sends what it has already read from that
+terminal, stops reading its log, and never clears it. Each scan is stored
+once, whichever way it arrives. Set back to the agent, the terminal is read
+again from where the agent stopped. The terminal can stay in `agent.json`
+meanwhile.
+
 ## Moving to another PC
 
 In Nizmo, choose **Move to another PC** on the agent. Install on the new PC with

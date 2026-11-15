@@ -4,9 +4,9 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
  * A stand-in for the website's agent API (/api/agent/*), behaving as the
  * real one does where the agent can tell: one code enrols once, a punch is
  * stored once by its terminal, number and time, a terminal must be reported
- * in a heartbeat before its punches are taken, and a rotated token replaces
- * the old one once used. Failures can be switched on to test the agent's
- * patience.
+ * in a heartbeat before its punches are taken, one set straight to Nizmo is
+ * answered `DIRECT`, and a rotated token replaces the old one once used.
+ * Failures can be switched on to test the agent's patience.
  */
 
 export class FakeServer {
@@ -15,7 +15,7 @@ export class FakeServer {
     code = "K7QD-2MXP"
     tokens = new Set<string>()
     pendingToken: string | null = null
-    devices = new Map<string, { state: "ACTIVE" | "RETIRED" | "CLAIMED_ELSEWHERE"; mode: string }>()
+    devices = new Map<string, { state: "ACTIVE" | "RETIRED" | "CLAIMED_ELSEWHERE" | "DIRECT"; mode: string }>()
     stored = new Map<string, { serialNumber: string; userNumber: string; at: string }>()
     heartbeats: any[] = []
     batches: number[] = []
@@ -73,7 +73,8 @@ export class FakeServer {
             const devices = body.devices.map((d: any) => {
                 const known = this.devices.get(d.serialNumber) ?? { state: "ACTIVE" as const, mode: "ANY" }
                 this.devices.set(d.serialNumber, known)
-                return { serialNumber: d.serialNumber, state: known.state, deviceId: known.state === "ACTIVE" ? `dev-${d.serialNumber}` : null, mode: known.mode }
+                const mine = known.state === "ACTIVE" || known.state === "DIRECT"
+                return { serialNumber: d.serialNumber, state: known.state, deviceId: mine ? `dev-${d.serialNumber}` : null, mode: known.state === "ACTIVE" ? known.mode : null }
             })
             const rotateToken = this.rotateNext
             this.rotateNext = false
@@ -91,7 +92,8 @@ export class FakeServer {
             body.punches.forEach((p: any, index: number) => {
                 const d = this.devices.get(p.serialNumber)
                 if (!d) return refused.push({ index, reason: "UNKNOWN_DEVICE", retry: true })
-                if (d.state !== "ACTIVE") return refused.push({ index, reason: "DEVICE_RETIRED", retry: false })
+                // One set straight to Nizmo still has the agent's punches taken, each stored once (PR 290).
+                if (d.state !== "ACTIVE" && d.state !== "DIRECT") return refused.push({ index, reason: "DEVICE_RETIRED", retry: false })
                 if (this.lockedBefore && p.at < this.lockedBefore) return refused.push({ index, reason: "MONTH_LOCKED", retry: false })
                 const key = `${p.serialNumber}:${p.userNumber}:${p.at}`
                 if (this.stored.has(key)) duplicates++

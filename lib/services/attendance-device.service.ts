@@ -30,7 +30,12 @@ async function actorOf(tx: Prisma.TransactionClient, actorId: string) {
 /** An agent asked to rotate its token once it is this old. */
 export const TOKEN_ROTATE_DAYS = 30
 
-export type DeviceState = "ACTIVE" | "RETIRED" | "CLAIMED_ELSEWHERE"
+/**
+ * What an agent hears of a terminal it reports. `DIRECT`: the terminal is
+ * set straight to Nizmo (§17.6, PR 290), so its log is the terminal's to
+ * send, not the agent's to read.
+ */
+export type DeviceState = "ACTIVE" | "RETIRED" | "CLAIMED_ELSEWHERE" | "DIRECT"
 
 /** Seconds a wall clock reading is ahead of the company's own wall clock now. */
 export function wallClockDrift(reading: string, timeZone: string, now: Date): number {
@@ -141,7 +146,8 @@ export class AttendanceDeviceService {
     /**
      * What an agent says each time it checks in, recorded; and what it needs
      * back — each terminal's state and mode, our clock, and whether to
-     * rotate its token.
+     * rotate its token. A terminal set straight to Nizmo is answered
+     * `DIRECT`, and nothing said of it is recorded (PR 290).
      */
     static async heartbeat(agent: AuthenticatedAgent, beat: Heartbeat) {
         const now = new Date()
@@ -173,8 +179,12 @@ export class AttendanceDeviceService {
     /** One terminal from a heartbeat: brought in, updated, or turned away. */
     private static async report(agent: AuthenticatedAgent, serialNumber: string, name: string | undefined, health: Prisma.AttendanceDeviceUncheckedUpdateInput) {
         for (let attempt = 0; attempt < 2; attempt++) {
-            const mine = await prisma.attendanceDevice.findUnique({ where: { companyId_serialNumber: { companyId: agent.companyId, serialNumber } }, select: { id: true, mode: true, retiredAt: true } })
+            const mine = await prisma.attendanceDevice.findUnique({ where: { companyId_serialNumber: { companyId: agent.companyId, serialNumber } }, select: { id: true, mode: true, retiredAt: true, connection: true } })
             if (mine?.retiredAt) return { serialNumber, state: "RETIRED" as const, deviceId: mine.id, mode: null }
+            // One connection at a time (§17.6, PR 290): set straight to Nizmo,
+            // it's the terminal that says how it is, so nothing the agent
+            // says of it is taken, not even which agent last saw it.
+            if (mine?.connection === "DIRECT") return { serialNumber, state: "DIRECT" as const, deviceId: mine.id, mode: null }
             if (mine) {
                 await prisma.attendanceDevice.update({ where: { id: mine.id }, data: health })
                 return { serialNumber, state: "ACTIVE" as const, deviceId: mine.id, mode: mine.mode }

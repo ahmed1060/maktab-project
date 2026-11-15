@@ -508,7 +508,8 @@ function PunchesTab({ q, companyId, today, topics }: { q: string; companyId: str
     const when = (x: Punch) => new Date(`${x.at.slice(0, 16)}:00Z`).toLocaleString(digits, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' })
     const whose = (x: Punch) => x.name ?? t('punch_number').replace('{code}', x.hardwareUserId ?? '')
     const direction = (x: Punch) => (x.direction === 'IN' ? t('punch_in') : x.direction === 'OUT' ? t('punch_out') : t('punch_direction_unknown'))
-    const source = (x: Punch) => (x.source === 'AGENT' ? t('punch_source_terminal').replace('{name}', x.deviceName ?? '—')
+    // A terminal's scan reads the same whichever way it came: through the agent, or from the terminal itself (PR 290).
+    const source = (x: Punch) => (x.source === 'AGENT' || x.source === 'DEVICE_PUSH' ? t('punch_source_terminal').replace('{name}', x.deviceName ?? '—')
         // From the app, with the place it was at when there's one (found in the interface audit, PR 150).
         : x.source === 'MOBILE' ? (x.placeName ? t('punch_source_app').replace('{place}', x.placeName) : t('punch_source_app_only'))
             : t(x.source === 'MANUAL' ? 'punch_source_manual' : 'punch_source_import'))

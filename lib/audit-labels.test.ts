@@ -150,9 +150,10 @@ describe("the audit log's labels", () => {
     it("are in sentence case, as every label is (DESIGN.md §3.4)", () => {
         // "User Logged In" and "All Creations" read as titles where the rest
         // of the app reads as sentences; Arabic has no capitals, so the two
-        // languages match only this way. The role names and the add-on's name
-        // keep theirs, as they do everywhere, and so do acronyms (ID, HQ, IPs).
-        const KEPT = ["Super Admin", "Team Leader", "Mobile App"]
+        // languages match only this way. The role names, the add-on's name
+        // and the product's own keep theirs, as they do everywhere, and so do
+        // acronyms (ID, HQ, IPs).
+        const KEPT = ["Super Admin", "Team Leader", "Mobile App", "Nizmo"]
         const titled = Object.entries(en)
             .filter(([key]) => /^audit_(action|entity|field|value)_/.test(key))
             .filter(([, value]) => {
