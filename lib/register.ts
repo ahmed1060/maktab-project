@@ -46,6 +46,8 @@ export interface AttendanceMoney {
     earlyLeave: Minor
     absence: Minor
     overtime: Minor
+    /** The mission allowance (§6.10, PR 288): an earning, the sum of the days' allowances. */
+    missionAllowance: Minor
 }
 
 /** Where an attendance line comes from: one per category, so a payslip line is traceable to its entry. */
@@ -166,6 +168,7 @@ export function buildEntry(person: PersonMonth): RegisterEntry {
         const a = person.attendance
         for (const [category, kind, label, amountMinor] of [
             ["OVERTIME", "EARNING", "Overtime", a.overtime],
+            ["MISSION_ALLOWANCE", "EARNING", "Mission allowance", a.missionAllowance],
             ["LATENESS", "DEDUCTION", "Lateness", a.lateness],
             ["EARLY_LEAVE", "DEDUCTION", "Early leave", a.earlyLeave],
             ["ABSENCE", "DEDUCTION", "Absence", a.absence],

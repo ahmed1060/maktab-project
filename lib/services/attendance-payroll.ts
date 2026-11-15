@@ -25,16 +25,17 @@ export function attendanceReaches(from: Date | null, year: number, month: number
  * Each person's attendance money for a month, from the days as derived: the
  * sum of each day's priced parts (§12.2). A day priced before the parts were
  * kept is split by the day-fractions each cause charged — and approval
- * rebuilds every day first, so what is approved is always exact.
+ * rebuilds every day first, so what is approved is always exact. The mission
+ * allowance (§6.10, PR 288) is the sum of the days' allowances.
  */
 export async function attendanceMoney(db: Db, companyId: string, year: number, month: number): Promise<Map<string, AttendanceMoney>> {
     const days = await db.attendanceDay.findMany({
         where: { companyId, date: { gte: monthStart(year, month), lt: nextMonthStart(year, month) } },
-        select: { userId: true, status: true, deductionMinor: true, overtimeMinor: true, breakdown: true },
+        select: { userId: true, status: true, deductionMinor: true, overtimeMinor: true, missionAllowanceMinor: true, breakdown: true },
     })
     const out = new Map<string, AttendanceMoney>()
     for (const d of days) {
-        const sum = out.get(d.userId) ?? { lateness: 0, earlyLeave: 0, absence: 0, overtime: 0 }
+        const sum = out.get(d.userId) ?? { lateness: 0, earlyLeave: 0, absence: 0, overtime: 0, missionAllowance: 0 }
         const b = (d.breakdown ?? {}) as {
             minor?: { lateness: number; earlyLeave: number; absence: number }
             lateness?: { days: number }; earlyLeave?: { days: number }; absenceDays?: number
@@ -58,6 +59,7 @@ export async function attendanceMoney(db: Db, companyId: string, year: number, m
             }
         }
         sum.overtime += d.overtimeMinor
+        sum.missionAllowance += d.missionAllowanceMinor
         out.set(d.userId, sum)
     }
     return out
@@ -150,6 +152,8 @@ export async function rejectPendingOvertime(tx: Db, companyId: string, year: num
 
 const CATEGORIES = [
     ["LATENESS", "lateness"], ["EARLY_LEAVE", "earlyLeave"], ["ABSENCE", "absence"], ["OVERTIME", "overtime"],
+    // The mission allowance (§6.10, PR 288): an earning, as overtime is.
+    ["MISSION_ALLOWANCE", "missionAllowance"],
 ] as const
 
 /**
@@ -189,15 +193,14 @@ export async function reconcileEntries(
 /**
  * Stamps the month's days with the run that paid them: the record of which approval froze each.
  *
- * No payslip carries the mission allowance yet (§6.10, PR 287: priced and
- * shown, paid from the next PR), so a day is frozen with none: what a frozen
- * day holds is what was paid, and an allowance left on it would read as paid
- * when the month is set beside its days again (§12.3).
+ * A day is frozen as it was priced, its mission allowance with it: the
+ * payslips carry the allowance from PR 288. A month approved between PR 287
+ * and then was frozen with none, no payslip having carried one.
  */
 export async function stampDays(tx: Db, companyId: string, year: number, month: number, payrollRunId: string) {
     return (await tx.attendanceDay.updateMany({
         where: { companyId, lockedByPayrollRunId: null, date: { gte: monthStart(year, month), lt: nextMonthStart(year, month) } },
-        data: { lockedByPayrollRunId: payrollRunId, missionAllowanceMinor: 0 },
+        data: { lockedByPayrollRunId: payrollRunId },
     })).count
 }
 

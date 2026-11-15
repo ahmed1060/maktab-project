@@ -16,8 +16,9 @@ import { bodyFromForm, formFromBody } from "@/components/attendance-policy/polic
  * nothing to start. Then each mission day priced (PR 287): kept on the day,
  * and shown on the Days list to whoever may see that person's pay; the
  * pricing itself is in lib/attendance/engine.test.ts, and the days as kept
- * in lib/mission-allowance.db.test.ts. Paying it with salary and carrying
- * it across a closed month come in the PRs after.
+ * in lib/mission-allowance.db.test.ts. Then paid with salary (PR 288): an
+ * earning on the payslip, written at approval as its own attendance entry.
+ * Carrying it across a closed month comes in the PR after.
  */
 
 const withAllowance = (allowance: Partial<PolicyBody["missions"]["allowance"]>, enabled = true): PolicyBody => ({
@@ -239,12 +240,62 @@ describe("each mission day priced (PR 287)", () => {
         expect(en.day_total_mission_allowance).toBe("Total mission allowance")
         expect(ar.day_total_mission_allowance).toBe("إجمالي بدل المأمورية")
     })
+})
 
-    it("freezes with no allowance when the month's payroll is approved, until a payslip carries it", () => {
-        const payroll = readFileSync("lib/services/attendance-payroll.ts", "utf8")
-        expect(payroll).toContain("data: { lockedByPayrollRunId: payrollRunId, missionAllowanceMinor: 0 },")
-        // Not yet on the payslip: the next PR's.
-        expect(payroll).not.toContain("MISSION_ALLOWANCE")
+describe("paid with salary (PR 288)", () => {
+    const migration = readFileSync("prisma/migrations/20261227000000_mission_allowance_paid/migration.sql", "utf8")
+    const statements = migration.split("\n").filter(l => l.trim() && !l.startsWith("--")).join("\n")
+    const payroll = readFileSync("lib/services/attendance-payroll.ts", "utf8")
+    const register = readFileSync("lib/register.ts", "utf8")
+    const page = readFileSync("app/(dashboard)/dashboard/payroll/page.tsx", "utf8")
+
+    it("has its own category of attendance entry, by a migration that only adds it", () => {
+        expect(statements).toBe(`ALTER TYPE "AttendanceCategory" ADD VALUE 'MISSION_ALLOWANCE';`)
+        expect(readFileSync("prisma/schema.prisma", "utf8")).toMatch(/enum AttendanceCategory \{[^}]*\n\s+OVERTIME\n\s+MISSION_ALLOWANCE\n\}/)
+    })
+
+    it("is summed from the days as priced, never worked out again", () => {
+        expect(payroll).toContain("select: { userId: true, status: true, deductionMinor: true, overtimeMinor: true, missionAllowanceMinor: true, breakdown: true },")
+        expect(payroll).toContain("sum.missionAllowance += d.missionAllowanceMinor")
+    })
+
+    it("is an earning on the payslip, after overtime, traceable to its entry", () => {
+        expect(register).toContain(`["MISSION_ALLOWANCE", "EARNING", "Mission allowance", a.missionAllowance],`)
+        expect(register.indexOf(`["OVERTIME", "EARNING", "Overtime", a.overtime],`)).toBeLessThan(register.indexOf(`["MISSION_ALLOWANCE", "EARNING"`))
+        expect(register.indexOf(`["MISSION_ALLOWANCE", "EARNING"`)).toBeLessThan(register.indexOf(`["LATENESS", "DEDUCTION"`))
+    })
+
+    it("is written at approval with the other attendance entries, and read back from the payslip's own line", () => {
+        expect(payroll).toContain(`["MISSION_ALLOWANCE", "missionAllowance"],`)
+        const run = readFileSync("lib/services/payroll-run.service.ts", "utf8")
+        expect(run).toContain(`missionAllowance: of("MISSION_ALLOWANCE")`)
+    })
+
+    it("freezes a month's days with the allowance their payslips carried, where PR 287 froze them with none", () => {
+        expect(payroll).toContain("data: { lockedByPayrollRunId: payrollRunId },")
+        expect(payroll).not.toContain("missionAllowanceMinor: 0")
+    })
+
+    it("is named on Payroll's register, on the payslip's line and in what attendance puts there", () => {
+        expect(en.attpay_line_MISSION_ALLOWANCE).toBe("Mission allowance")
+        expect(ar.attpay_line_MISSION_ALLOWANCE).toBe("بدل المأمورية")
+        // And wherever the audit log names the entry's category.
+        expect(en.audit_value_MISSION_ALLOWANCE).toBe("Mission allowance")
+        expect(ar.audit_value_MISSION_ALLOWANCE).toBe("بدل المأمورية")
+        for (const words of [en, ar]) {
+            for (const key of ["attpay_register_on", "attpay_register_on_approved", "attpay_hint"] as const) {
+                expect(words[key], key).toContain(words === en ? "mission allowance" : "بدل المأمورية")
+            }
+        }
+        expect(en.attpay_register_on).toBe("Attendance is on these payslips (from {month}): lateness, early leave and absence as deductions, approved overtime and the mission allowance as earnings.")
+    })
+
+    it("says in the dry run what the allowance would add, only when there is any, and counts it with each person's overtime", () => {
+        expect(en.attpay_dry_allowance).toBe("It would also add {amount} of mission allowance.")
+        expect(ar.attpay_dry_allowance).toBe("وكان سيضيف {amount} بدل مأمورية.")
+        expect(page).toContain("{dryAllowance > 0 && <p>{t('attpay_dry_allowance').replace('{amount}', money(dryAllowance))}</p>}")
+        expect(page).toContain("additions: m.overtime + (m.missionAllowance ?? 0)")
+        expect(page).toContain(".filter(r => r.name && (r.deductions > 0 || r.additions > 0))")
     })
 })
 

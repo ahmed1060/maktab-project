@@ -640,7 +640,7 @@ export class PayrollRunService {
 /** What attendance put on one payslip, read back from its lines: exactly what is paid. */
 function attendanceOf(lines: { source: string; sourceId?: string | null; amountMinor: number }[]) {
     const of = (category: string) => lines.filter(l => l.source === ATTENDANCE_SOURCE && l.sourceId === category).reduce((s, l) => s + l.amountMinor, 0)
-    return { lateness: of("LATENESS"), earlyLeave: of("EARLY_LEAVE"), absence: of("ABSENCE"), overtime: of("OVERTIME") }
+    return { lateness: of("LATENESS"), earlyLeave: of("EARLY_LEAVE"), absence: of("ABSENCE"), overtime: of("OVERTIME"), missionAllowance: of("MISSION_ALLOWANCE") }
 }
 
 /** The last instant of a calendar month in a given zone. */
