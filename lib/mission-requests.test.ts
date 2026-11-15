@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest"
 import { createElement as h } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
-import { readFileSync } from "node:fs"
+import { readdirSync, readFileSync } from "node:fs"
 import { withGrants } from "@/lib/permissions/test-actors"
 import { PERMISSIONS } from "@/lib/permissions/catalogue"
 import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
@@ -58,6 +58,26 @@ describe("Decide missions", () => {
     it("is named in both languages", () => {
         expect(en.perm_attendance_approve_missions).toBe("Decide missions")
         expect(ar.perm_attendance_approve_missions).toBe("البت في طلبات المأمورية")
+    })
+})
+
+describe("Decide missions, for the companies already there (PR 284)", () => {
+    const sql = () => {
+        const name = readdirSync("prisma/migrations").find(m => m.endsWith("_missions_granted"))
+        expect(name).toBe("20261225000000_missions_granted")
+        return readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8").split("\n").filter(line => !line.startsWith("--")).join("\n")
+    }
+
+    it("a migration gives it to the built-in Admin role alone, company-wide", () => {
+        const rows = [...sql().matchAll(/\('(\w+)', '([\w.]+)', '(\w+)'\)/g)].map(([, role, permission, scope]) => [role, permission, scope])
+        expect(rows).toEqual([["ADMIN", "attendance.approve_missions", "COMPANY"]])
+    })
+
+    it("leaves a role holding it already as it is, and has only the holders of a role given it reload", () => {
+        const text = sql().replace(/\s+/g, " ")
+        expect(text).toContain(`ON CONFLICT ("roleId", "permission") DO NOTHING RETURNING "roleId"`)
+        expect(text).toContain(`UPDATE "Role" SET "version" = "version" + 1, "updatedAt" = now() WHERE "id" IN (SELECT "roleId" FROM given)`)
+        expect(text).not.toMatch(/DELETE|DROP|ALTER/)
     })
 })
 

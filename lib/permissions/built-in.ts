@@ -160,8 +160,8 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // role editor, which knows it, was live.
         "attendance.manage_terminals": "COMPANY",
         // Deciding missions (ATTENDANCE_PLAN.md §6.10, PR 283). Given to the
-        // companies there already are by the next PR's migration, once this
-        // release's role editor, which knows it, is live.
+        // companies there already are by PR 284's migration, once PR 283's
+        // role editor, which knows it, was live.
         "attendance.approve_missions": "COMPANY",
     },
     // A Team Leader sees their team in the employee list and can look each of
