@@ -728,7 +728,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      Decide missions and the policy's Missions switch
      (`ATTENDANCE_PLAN.md` §6.10), merged in #283 on 2026-11-15; then the
      built-in Admin role's Decide missions for the companies already
-     there, #284;
+     there, merged in #284 on 2026-11-15; then cancelling an approved
+     mission, with a reason, from To review's Done, #285;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6298,3 +6299,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   had since #283, and its holders reload their grants. Their Admins now
   see the missions waiting under To review on the Requests page, and
   decide them.
+- **2026-11-15:** An approved mission can be cancelled (#285;
+  `ATTENDANCE_PLAN.md` §6.10, decision 25, Phase 5 part 4). Whoever holds
+  Decide missions cancels it from its row's More actions under To
+  review's Done, with a reason. It's then Cancelled, the asker is told
+  why, and its days count again as they would without it; its days in a
+  month whose payroll is approved become discrepancies.

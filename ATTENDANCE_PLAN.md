@@ -15,9 +15,10 @@ planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
 incomplete day in #275, and payroll waiting for both in #276; part 4,
 missions, is split in four PRs, the first, a mission's day, built in
-#281, the second, asking and deciding, in #283, and the third, Decide
-missions for the companies already there, in #284; the rest is not
-built. A template for the file import
+#281, the second, asking and deciding, in #283, the third, Decide
+missions for the companies already there, in #284, and the fourth,
+cancelling an approved mission, in #285; part 5, the mission allowance,
+is not built. A template for the file import
 (§13.9) is built in #272.
 This document is the design those PRs follow: what was decided, and why, so
 that whoever changes it is not re-arguing settled points. Where the build
@@ -611,7 +612,7 @@ how many of each kind and the first 50, and the window shows those
 **The terminal's in/out key is still not read.** It is often left on the
 wrong state, and the order of the scans is surer.
 
-### 6.10 Missions — مأمورية (round 10; a mission's day built in #281, asking and deciding in #283, the companies already there in #284)
+### 6.10 Missions — مأمورية (round 10; a mission's day built in #281, asking and deciding in #283, the companies already there in #284, cancelling in #285)
 
 An employee sent to work away from their desk (a client, another branch,
 another city) asks for a mission on the Requests page, so the day isn't
@@ -784,7 +785,7 @@ monthly limit.
   cascade reaches a year back at most, which a mission asked near that
   edge can pass while it waits (found by Codex on #283).
 - **Withdrawing**: the employee, while it waits; it's then Withdrawn.
-  Cancelling an approved one is part 4's last PR.
+  Cancelling an approved one is part 4's last PR, #285.
 - **Deciding**, under To review, for whoever holds Decide missions at the
   asker (the Super Admin for every company): approve, or reject with a
   reason if there is one. Beside it (decision 20): its kind, dates and
@@ -802,6 +803,35 @@ monthly limit.
   draw themselves again when a mission is asked, decided or withdrawn
   (a migration adds the table to #250's triggers).
 - **Audit**: asking, approving, rejecting and withdrawing, each in the log.
+
+**Built in #285: cancelling an approved mission.** Part 4's last PR
+(§20, decision 25). No migration: #281's table already keeps who
+cancelled a mission, when and why.
+
+- **Who**: whoever holds Decide missions at the asker (the Super Admin
+  for every company), as for deciding it, and never one's own.
+- **What**: an approved mission alone, with a reason, which it needs, up
+  to 500 characters. One waiting is withdrawn or rejected instead; one
+  cancelled, rejected or withdrawn already is refused.
+- **Where**: To review's Done, where the approved ones are. Its row's
+  More actions has Cancel mission, which asks whose mission and which
+  dates, says what follows, and takes the reason.
+- **What follows**: the mission is Cancelled, and its days are worked out
+  again from its first, as after approving it, so they count as they
+  would without it. Its days in a month whose payroll is approved aren't
+  rewritten: they become discrepancies the other way round from decision
+  16, the deductions charged on the next payslip. A discrepancy still
+  open from approving it closes instead, the day being back to what was
+  paid.
+- **Its dates are free again**: another mission or a day off can be
+  asked for them.
+- **Told of it**: the employee hears it was cancelled, with the reason.
+  The notice opens the Requests page on it.
+- **On the page**: it's Cancelled, in the problem badge's colours, as a
+  phone revoked is, since it isn't the asker's doing; under Mine and To
+  review's Done, with when it was cancelled and why.
+- **Live and audit**: the page draws itself again, as for a decision;
+  cancelling is in the log.
 
 ---
 
@@ -2422,7 +2452,7 @@ With no push, it stays on the agent and tries the agent alone. Parts 4 to 7
 are built all the same, switched off, and tried when a terminal that pushes,
 or a Hikvision, is on hand (round 9, decision 13).
 
-### Phase 5 — Reading scans first and last, and missions — parts 2 and 3 built in #273 to #276, part 4's first three PRs in #281, #283 and #284
+### Phase 5 — Reading scans first and last, and missions — parts 2 and 3 built in #273 to #276, part 4 in #281, #283, #284 and #285
 
 Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
 
@@ -2459,7 +2489,7 @@ Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
    3. **The companies already there**, built in #284: they get "Decide
       missions" for their built-in Admin, from a migration, once the
       release before it has the role editor's new line (as #278 did).
-   4. **Cancelling an approved mission**, with a reason, until the month's
+   4. **Cancelling an approved mission**, built in #285, with a reason, until the month's
       payroll is approved, and after it its days there as discrepancies
       the other way round; and the notification of a cancellation
       (decision 25).
