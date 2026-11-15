@@ -743,7 +743,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      merged in #290 on 2026-11-15; then part 5's first PR, the address a
      Hikvision terminal sends to, which changes no screen either, merged
      in #291 on 2026-11-15; then its second, Add a terminal with its
-     address shown once, on Fingerprint terminals, #292;
+     address shown once, on Fingerprint terminals, merged in #292 on
+     2026-11-15; then its third, what a scan keeps of its event, with the
+     terminal's time zone on its row there, #293;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6388,3 +6390,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     card says how it connects, where it calls from and what was refused.
   - Change connection waits for part 6, the first protocol with both
     ways.
+- **2026-11-15:** What a scan keeps of its event (#293;
+  `ATTENDANCE_PLAN.md` §17.5, Phase 4 part 5, the third of its five PRs).
+  One thing shows: on Fingerprint terminals, the row of a terminal
+  straight to Nizmo says when its own time zone isn't the company's,
+  beside Clock off, as "Time zone UTC+08:00, not the company's". No
+  `DESIGN.md` change: it is a row's badge, as Clock off is. First
+  contacts for the Super Admin come next, then the switch.

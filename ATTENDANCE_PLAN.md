@@ -10,10 +10,10 @@ may set terminals up, is built in #277, with the built-in Admin's grant
 for the companies already there in #278; part 3, terminal brands, is
 built in two PRs, the Super Admin's list in #279 and the brand on each
 terminal in #280; part 4, one terminal whichever way it connects, is
-built in #290; part 5, Hikvision straight to Nizmo, is split in four PRs,
-the first, the address a terminal sends to, built in #291, and the
-second, Add a terminal with its address shown once, in #292; the rest is
-not built.
+built in #290; part 5, Hikvision straight to Nizmo, is split in five PRs,
+the first, the address a terminal sends to, built in #291, the second,
+Add a terminal with its address shown once, in #292, and the third, what
+a scan keeps of its event, in #293; the rest is not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
@@ -2152,6 +2152,41 @@ The agent learns Hikvision's ISAPI beside the ZKTeco protocol it speaks:
   can't be tried at speed. A terminal sending its whole memory after a switch
   sends it in batches, which the limit allows for.
 
+**Built in #293: what a scan keeps of its event**, for a Hikvision
+terminal straight to Nizmo (part 5's third PR, §20). What the build
+settled:
+
+- **A scan keeps the fields of its event that Nizmo knows**, as
+  `rawPayload` on its punch: when and what kind of event it was, the
+  terminal's own name and its address on the office network, the event's
+  number in the terminal's log, the employee number, how the person was
+  identified, which reader and door, and the attendance status picked on
+  the terminal (in, out, a break). Each is a short text, a number or a
+  yes or no.
+- **Kept by name, not left out by name.** Only the fields listed are
+  kept, so one this plan didn't foresee can't carry a name, a card number
+  or a picture in: the person's name, the card's number, pictures,
+  whether they wore a mask, and anything nested are never kept. This is
+  stricter than "the event without its pictures or the person's name"
+  above, on purpose: what a punch keeps, it keeps for good. What a real
+  terminal sends beyond these is seen in its first contacts (§17.8), kept
+  for 7 days.
+- **Only a new punch keeps it.** A scan already there, from the agent or
+  sent before, stays as it is.
+- **The terminal's own offset from UTC** is read from each scan's
+  `dateTime` and kept on the terminal (`utcOffsetMinutes`), with the
+  event's `dateTime` whole in `rawPayload`. A scan's time is still the
+  terminal's wall clock (above): the offset changes nothing about when a
+  scan counts.
+- **Its card says when that isn't the company's time zone**, beside
+  Clock off: "Time zone UTC+08:00, not the company's". It is compared
+  with the company's zone as it is now, so a terminal that doesn't follow
+  the company's summer time shows it while it differs. It is something to
+  check on the terminal, since its wall clock is what counts.
+- **The migration only adds:** `rawPayload` on a punch, empty for every
+  punch there is, and `utcOffsetMinutes` on a terminal, empty until it
+  sends a scan.
+
 ### 17.6 One terminal, whichever way its scans come
 
 - A terminal is one `AttendanceDevice`, known by its serial number, whichever
@@ -2653,7 +2688,7 @@ matching with liveness, fallback to flagged.
 It stays switched off meanwhile, on the face check meant for testing only;
 choosing a commercial SDK (§18, question 1) waits with it.
 
-### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 begun in #291 and #292
+### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 begun in #291 to #293
 
 Planned in #269, for ZKTeco and Hikvision alike (§17.1–§17.11). It replaces
 the earlier Phase 4, a listener for pushes on the agent and nothing else,
@@ -2685,7 +2720,7 @@ which becomes part 8 below. Each part is its own PR:
 5. **Hikvision straight to Nizmo** (§17.2): `DESIGN.md` first; Add a terminal
    with its connection, the secret address shown once, Issue a new address;
    the receiving route; first contacts kept (§17.8); the straight-to-Nizmo
-   switch on the company's Attendance tab. In four PRs, each safe with the
+   switch on the company's Attendance tab. In five PRs, each safe with the
    switch off:
    1. The address a terminal sends to, which answers nobody yet (§17.2).
       Built in #291.
@@ -2694,10 +2729,12 @@ which becomes part 8 below. Each part is its own PR:
       to Nizmo (§17.7). `DESIGN.md` first. Straight to Nizmo is offered
       only where the switch is on. Built in #292. Change connection moves
       to part 6: until then no protocol has both ways to change between.
-   3. First contacts kept, for the Super Admin (§17.8), with each
-      terminal's connection on the Super Admin's terminals list (§17.7),
-      and what a scan keeps of its event (`rawPayload`, §17.5).
-   4. The straight-to-Nizmo switch on the company's Attendance tab
+   3. What a scan keeps of its event (`rawPayload`, §17.5), and the
+      terminal's own time zone on its card. Built in #293. It was one PR
+      with first contacts, and is its own to keep each small.
+   4. First contacts kept, for the Super Admin (§17.8), with each
+      terminal's connection on the Super Admin's terminals list (§17.7).
+   5. The straight-to-Nizmo switch on the company's Attendance tab
       (§17.8), last, when everything it turns on is there.
 6. **ZKTeco straight to Nizmo** (§17.3): the `/iclock` routes, outside the
    proxy; the options answer, scans, and `getrequest` as its heartbeat; the
