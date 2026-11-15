@@ -258,6 +258,27 @@ describe("a mission's row", () => {
             finished: decided.toISOString(), sortAt: decided.toISOString(), mission: { rejectionReason: "Not this week" },
         })
     })
+
+    it("once approved, may be cancelled by whoever decides the asker's, never by the asker (decision 25, PR 285)", () => {
+        const approved = (fields: object = {}) => mission({ status: "APPROVED", updatedAt: decided, ...fields })
+        expect(missionRow(admin, approved(), null).mayCancel).toBe(true)
+        expect(missionRow(shiftLead, approved(), null).mayCancel).toBe(true)
+        expect(missionRow(superAdmin, approved(), null).mayCancel).toBe(true)
+        expect(missionRow(shiftLead, approved({ user: { firstName: "Sami", lastName: "Nabil", teamLeaderId: "h2" } }), null).mayCancel).toBe(false)
+        expect(missionRow(leader, approved(), null).mayCancel).toBe(false)
+        expect(missionRow(employee, approved({ userId: "e1" }), null).mayCancel).toBe(false)
+        expect(missionRow(admin, approved({ userId: "a1" }), null).mayCancel).toBe(false)
+        // Only an approved one: one waiting is rejected or withdrawn instead.
+        for (const status of ["PENDING", "REJECTED", "WITHDRAWN", "CANCELLED"]) expect(missionRow(admin, mission({ status }), null).mayCancel, status).toBe(false)
+    })
+
+    it("once cancelled, is in order of when, with why", () => {
+        expect(missionRow(employee, mission({ userId: "e1", status: "CANCELLED", cancelReason: "Trip called off", updatedAt: decided }), null)).toMatchObject({
+            status: "CANCELLED", finished: decided.toISOString(), sortAt: decided.toISOString(), mayWithdraw: false,
+            mission: { cancelReason: "Trip called off", rejectionReason: null },
+        })
+        expect(missionRow(admin, mission(), null).mission?.cancelReason).toBeNull()
+    })
 })
 
 describe("the Requests page", () => {
@@ -265,7 +286,7 @@ describe("the Requests page", () => {
         kind: "mission", id: "m1", who: { id: "e2", name: "Mona Adel" }, what: "DAYS", detail: "Client visit in Alexandria",
         asked: "2026-11-10T09:00:00.000Z", started: null, finished: null, status: "PENDING", sortAt: "2026-11-10T09:00:00.000Z",
         mayDecide: false, mayDelete: false,
-        mission: { kind: "DAYS", from: "2026-11-16", to: "2026-11-18", task: "Site survey", rejectionReason: null, scans: null },
+        mission: { kind: "DAYS", from: "2026-11-16", to: "2026-11-18", task: "Site survey", rejectionReason: null, cancelReason: null, scans: null },
         ...fields,
     })
     async function page(props: Record<string, unknown> = {}) {
@@ -293,7 +314,7 @@ describe("the Requests page", () => {
         expect(html).toContain("Mona Adel")
         expect(html).toContain("requests_kind_mission")
         expect(html).toContain("ui-badge ui-badge-waiting")
-        expect(await page({ rows: [row({ what: "TO_END", mission: { kind: "TO_END", from: "2026-11-16", to: "2026-11-16", task: null, rejectionReason: null, scans: null } })] }))
+        expect(await page({ rows: [row({ what: "TO_END", mission: { kind: "TO_END", from: "2026-11-16", to: "2026-11-16", task: null, rejectionReason: null, cancelReason: null, scans: null } })] }))
             .toContain("requests_mission_to_end")
     })
 
@@ -312,6 +333,27 @@ describe("the Requests page", () => {
         const withdrawn = await page({ rows: [row({ status: "WITHDRAWN" })], show: "done" })
         expect(withdrawn).toContain("ui-badge ui-badge-neutral")
         expect(withdrawn).toContain("status_withdrawn")
+    })
+
+    it("once approved, is cancelled from its row's More actions, with a reason, through its own route (PR 285)", () => {
+        expect(client).toContain("r.mayCancel")
+        expect(client).toContain("label: t('requests_mission_cancel')")
+        expect(client).toContain("<CancelMission")
+        expect(dialogs).toContain("export function CancelMission(")
+        expect(dialogs).toContain("fetch(`${ATTENDANCE_API.mission}/${request.id}/cancel`, {")
+        expect(dialogs).toContain("MISSION_NOT_APPROVED: 'requests_mission_not_approved'")
+        // It needs its reason, said under the field.
+        expect(dialogs).toContain("t('requests_mission_cancel_reason_missing')")
+    })
+
+    it("once cancelled, is Cancelled, in the problem badge's colours, not Withdrawn: it isn't the asker's doing", async () => {
+        const cancelled = row({ status: "CANCELLED", finished: "2026-11-12T10:00:00.000Z", mission: { kind: "DAYS", from: "2026-11-16", to: "2026-11-18", task: null, rejectionReason: null, cancelReason: "Trip called off", scans: null } })
+        const html = await page({ rows: [cancelled], show: "done" })
+        expect(html).toContain("ui-badge ui-badge-problem")
+        expect(html).toContain("requests_mission_cancelled")
+        expect(html).not.toContain("status_withdrawn")
+        expect(client).toContain("'requests_mission_cancelled_on'")
+        expect(client).toContain("t('requests_mission_cancel_reason')")
     })
 
     it("shows whoever decides it the task, or No task, and the scans so far, or that there are none yet", () => {
@@ -355,6 +397,12 @@ describe("the notice of a decision", () => {
     it("opens the Requests page on the mission", () => {
         expect(attendanceNoticeTarget("ATTENDANCE_REQUEST", "m1", "notice_att_mission_approved")).toBe("/dashboard/requests?kind=mission&highlight=m1")
         expect(attendanceNoticeTarget("ATTENDANCE_REQUEST", "m1", "notice_att_mission_rejected")).toBe("/dashboard/requests?kind=mission&highlight=m1")
+        expect(attendanceNoticeTarget("ATTENDANCE_REQUEST", "m1", "notice_att_mission_cancelled")).toBe("/dashboard/requests?kind=mission&highlight=m1")
+    })
+
+    it("of a cancellation names its day or its dates, and why (PR 285)", () => {
+        expect(en.notice_att_mission_cancelled).toBe("Your mission {when} has been cancelled.{reason}")
+        expect(ar.notice_att_mission_cancelled).toBe("تم إلغاء المأمورية {when}.{reason}")
     })
 
     it("names its day or its dates, and the reason if there is one, in both languages", () => {
@@ -390,6 +438,11 @@ describe("its words", () => {
         "requests_day_off_overlaps_mission",
         "attendance_missions", "attendance_missions_on", "attendance_missions_line",
         "audit_action_REQUEST_ATTENDANCE_MISSION", "audit_action_APPROVE_ATTENDANCE_MISSION", "audit_action_REJECT_ATTENDANCE_MISSION", "audit_action_WITHDRAW_ATTENDANCE_MISSION",
+        // Cancelling an approved one (PR 285).
+        "requests_mission_cancel", "requests_mission_cancel_title", "requests_mission_cancel_question", "requests_mission_cancel_hint",
+        "requests_mission_cancel_reason", "requests_mission_cancel_placeholder", "requests_mission_cancel_reason_missing", "requests_mission_keep",
+        "requests_mission_cancelled", "requests_mission_cancelled_on", "requests_mission_cancelled_done", "requests_mission_not_approved",
+        "audit_action_CANCEL_ATTENDANCE_MISSION", "notice_att_mission_cancelled",
     ]
 
     it("are in both languages, and the typed parts the same in each", () => {

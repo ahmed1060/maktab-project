@@ -425,6 +425,7 @@ type MissionRequest = {
     createdAt: Date
     updatedAt: Date
     rejectionReason: string | null
+    cancelReason?: string | null
     user: { firstName: string; lastName: string; teamLeaderId: string | null }
 }
 
@@ -433,7 +434,8 @@ type MissionRequest = {
  * /api/attendance/missions/[id]/decide): attendance.approve_missions at the
  * asker, which is never one's own; whoever may sees its scans so far beside
  * it (decision 20). Whoever asked may withdraw it while it waits
- * (MissionRequestService.withdraw).
+ * (MissionRequestService.withdraw); whoever decides it may cancel it once
+ * approved (MissionRequestService.cancel, decision 25).
  */
 export function missionRow(v: Viewer, r: MissionRequest, scans: MissionDayScans[] | null): FeedRow {
     const target: Target = { companyId: r.companyId, userId: r.userId, teamLeaderId: r.user.teamLeaderId }
@@ -455,8 +457,11 @@ export function missionRow(v: Viewer, r: MissionRequest, scans: MissionDayScans[
         mayDecide,
         mayDelete: false,
         mayWithdraw: r.userId === v.id && waits,
+        // An approved one, by whoever decides the asker's, which is never the asker (decision 25, PR 285).
+        mayCancel: r.status === "APPROVED" && can(v, "attendance.approve_missions", target),
         mission: {
             kind, from: toDateString(r.startDate), to: toDateString(r.endDate), task: r.taskTitle, rejectionReason: r.rejectionReason,
+            cancelReason: r.cancelReason ?? null,
             scans: mayDecide ? scans ?? [] : null,
         },
     }

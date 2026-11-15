@@ -25,6 +25,8 @@ const ON_REQUESTS_PAGE: Record<string, string> = {
     // Missions (ATTENDANCE_PLAN.md §6.10, PR 283).
     notice_att_mission_approved: "mission",
     notice_att_mission_rejected: "mission",
+    // An approved one cancelled (decision 25, PR 285).
+    notice_att_mission_cancelled: "mission",
 }
 
 /** Where a notice about a new phone sent deciders before part 4d. */

@@ -29,6 +29,11 @@ export const missionRequestSchema = z.object({
     reason: z.string().max(500),
 })
 
+/** Cancelling an approved mission (decision 25, PR 285): why, which the service needs. */
+export const missionCancelSchema = z.object({
+    reason: z.string().max(500),
+})
+
 export const decisionSchema = z.object({
     approve: z.boolean(),
     reason: z.string().max(500).nullable().optional(),

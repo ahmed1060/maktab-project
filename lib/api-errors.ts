@@ -195,6 +195,7 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     MISSION_OUT_OF_RANGE: { status: 400, message: "A mission's dates can't be more than a year before today or after it." },
     MISSION_OVERLAPS: { status: 409, message: "There's already a mission on one of those days." },
     MISSION_OVERLAPS_DAY_OFF: { status: 409, message: "There's already a day off on one of those days." },
+    MISSION_NOT_APPROVED: { status: 409, message: "Only an approved mission can be cancelled, and that one isn't approved now." },
     MISSION_TASK_NOT_OPEN: { status: 400, message: "That task isn't one of your open tasks." },
     DAY_OFF_OVERLAPS_MISSION: { status: 409, message: "There's already a mission on one of those days." },
     OVERTIME_OFF: { status: 400, message: "The attendance policy doesn't count overtime on that day." },

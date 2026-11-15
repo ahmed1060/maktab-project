@@ -159,7 +159,7 @@ describe("asking for it again", () => {
         expect(shell).toContain("waiting={waiting?.data?.count}")
     })
 
-    it("once something is decided, deleted, withdrawn, revoked or asked for on the Requests page", () => {
+    it("once something is decided, deleted, withdrawn, revoked, cancelled or asked for on the Requests page", () => {
         expect(requests).toContain("const { mutate } = useSWRConfig()")
         // Saved, so what's drawn next is the person's own, not tinted (PR 251's Codex findings).
         expect(requests).toContain("const refreshed = () => { arrivals.saved(); router.refresh(); void mutate(WAITING_FOR_REVIEW_KEY) }")
@@ -169,7 +169,8 @@ describe("asking for it again", () => {
         expect(requests).toContain("useLive('requests', () => router.refresh())")
         const actions = requests.replace("useLive('requests', () => router.refresh())", "")
         expect(actions.match(/router\.refresh\(\)/g)).toHaveLength(1)
-        expect(requests.match(/refreshed\(\)/g)).toHaveLength(8)
+        // Nine since cancelling an approved mission (PR 285).
+        expect(requests.match(/refreshed\(\)/g)).toHaveLength(9)
     })
 })
 
