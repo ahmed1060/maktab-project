@@ -822,7 +822,9 @@ These are built once, in the building-blocks PR, and every page uses them
     it's open, and screen readers hear whether it is. The row's own links,
     such as the person's payslip, sit at its end, beside the button and
     never inside it. Its lines are indented, in `--text-sm` and `--muted`,
-    each with its amount at the end.
+    each with its amount at the end. Where what it opens isn't lines of
+    amounts, such as what a device sent (Dialog, below), that is drawn
+    under the row instead, as wide as the row.
 - **Row menu:** the actions on one item that don't fit in its row, behind a
   quiet "More actions" button.
   - The pop-up is level 2 (§4.3) with 8px corners, on the end side of the
@@ -910,6 +912,26 @@ These are built once, in the building-blocks PR, and every page uses them
     - A line says which value is secret and won't be shown again, and how
       a new one is issued.
     - Done closes it, and then the secret is gone.
+  - What a device sent, kept to be read, such as a fingerprint terminal's
+    first requests (`ATTENDANCE_PLAN.md` §17.8), is a list in the order
+    they came, up to 640px wide. It changes nothing: Close is its only
+    button.
+    - A line above the list says what is kept, for how long, and what is
+      taken out of it.
+    - Each is a row that opens (Rows, above): what Nizmo made of it, in
+      words, then when it came. Several can be open at once.
+    - Opened, it shows what was sent: its headers, then its body, each
+      under its own label in a box of its own with Copy beside it, as in
+      a guide, left to right and never translated in either language. A
+      long line scrolls inside its box and never widens the dialog, and a
+      long body scrolls inside its box too. The keyboard reaches a box
+      that scrolls, with the focus ring around it.
+    - What was taken out is said in its place, inside the box.
+    - With nothing kept, a line says so and why: nothing has come yet, or
+      the time for keeping is over.
+    - While it's open the list is read again every few seconds, so one
+      that comes now appears without opening it again. A row that's open
+      stays open.
   - One that can't be undone, such as restoring a backup, asks for a word
     typed first, such as RESTORE: the word is shown as the code has it,
     left to right and never translated, in both languages, and the main
@@ -2274,3 +2296,11 @@ changed:
   an option that isn't a company's to pick isn't listed (§5.3). First for
   a fingerprint terminal that sends its scans straight to Nizmo
   (`ATTENDANCE_PLAN.md` §17.7).
+- **2026-11-15:** What a device sent, kept to be read (§5.5, Dialog): a
+  list in the order it came, each a row that opens, saying what Nizmo
+  made of it and when, onto what was sent, in boxes left to right, with
+  what was taken out said in its place. The keyboard reaches a box that
+  scrolls, and the list is read again while it's open. A row that opens
+  (§5.5, Rows) can now open onto something other than lines of amounts.
+  First for a fingerprint terminal's first requests, for the Super Admin
+  (`ATTENDANCE_PLAN.md` §17.8).
