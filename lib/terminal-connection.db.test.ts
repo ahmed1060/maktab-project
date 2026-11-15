@@ -272,6 +272,25 @@ describe.skipIf(!ADMIN_URL)("one terminal whichever way it connects, in Postgres
             expect(day).toEqual({ status: "PRESENT", firstInAt: new Date("2026-09-21T09:00:00Z"), lastOutAt: new Date("2026-09-21T17:00:00Z") })
         })
 
+        it("keeps its event on the terminal's own new scan only: the agent's keeps none, and one already there stays as it is (PR 293)", async () => {
+            const agent = await agentOf("c1", "Office PC")
+            const [{ deviceId }] = (await Devices.heartbeat(agent, beat([{ serialNumber: "KEPT-1", reachable: true }]))).devices
+            const id = deviceId!
+            const scan = (time: string) => ({ userNumber: "7", at: `2026-09-28T${time}` })
+            const kept = (time: string) => ({ ...scan(time), kept: { dateTime: `2026-09-28T${time}+03:00`, AccessControllerEvent: { employeeNoString: "7" } } })
+            expect(await Ingest.punches(agent, { punches: [{ serialNumber: "KEPT-1", ...scan("09:00:00") }] })).toEqual({ accepted: 1, duplicates: 0, refused: [] })
+            await connect(id, "DIRECT")
+            // The terminal sends its memory: the morning is there already, the afternoon is new.
+            expect(await Ingest.fromTerminal(id, [kept("09:00:00"), kept("13:00:00"), scan("17:00:00")])).toEqual({ accepted: 2, duplicates: 1, skipped: 0, refused: [] })
+            const { rows } = await db.query(`SELECT to_char("punchAtLocal", 'HH24:MI:SS') AS at, source, "rawPayload" FROM "AttendancePunch" WHERE "deviceId" = $1 ORDER BY "punchAtLocal"`, [id])
+            expect(rows).toEqual([
+                { at: "09:00:00", source: "AGENT", rawPayload: null },
+                { at: "13:00:00", source: "DEVICE_PUSH", rawPayload: { dateTime: "2026-09-28T13:00:00+03:00", AccessControllerEvent: { employeeNoString: "7" } } },
+                // A scan with nothing to keep is stored the same, with none.
+                { at: "17:00:00", source: "DEVICE_PUSH", rawPayload: null },
+            ])
+        })
+
         it("answers a scan it holds as already there even once its month is paid, and refuses only what is new", async () => {
             const agent = await agentOf("c1", "Whole memory PC")
             const [{ deviceId }] = (await Devices.heartbeat(agent, beat([{ serialNumber: "MEM-1", reachable: true }]))).devices

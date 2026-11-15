@@ -45,13 +45,23 @@ export function agentHealth(agent: { status: string; lastSeenAt: Date | null }, 
  * its own call (§17.7, PR 292). Only one added by hand waits: one an agent
  * brought in was heard of when it was, so its silence is silence.
  */
-export type DeviceHealth = { state: "RETIRED" | "WAITING" | "OK" | "UNREACHABLE" | "SILENT" | "QUIET"; memoryFull: boolean; clockOff: boolean }
+export type DeviceHealth = {
+    state: "RETIRED" | "WAITING" | "OK" | "UNREACHABLE" | "SILENT" | "QUIET"; memoryFull: boolean; clockOff: boolean
+    /** A terminal straight to Nizmo states an offset from UTC that isn't the company's now (§17.5, PR 293). */
+    zoneOff: boolean
+}
 
 /**
  * How a terminal is doing now. Through the agent, it is the agent that
  * says: out of reach, or heard from at its last heartbeats. Straight to
  * Nizmo, it is the terminal's own calls, and whether an agent reaches it
  * says nothing.
+ *
+ * `companyOffsetMinutes`: the company's offset from UTC now. A terminal
+ * straight to Nizmo that states another is flagged: a scan's time is its
+ * wall clock, so its time zone is something to check on the terminal. It
+ * is compared as the zone is now, so a terminal that doesn't follow the
+ * company's summer time shows while it differs.
  */
 export function deviceHealth(
     device: {
@@ -59,16 +69,26 @@ export function deviceHealth(
         connection?: "AGENT" | "DIRECT"
         /** Who added it by hand; empty for one an agent brought in. */
         addedById?: string | null
+        /** Its own offset from UTC, as its last scan stated it. */
+        utcOffsetMinutes?: number | null
     },
-    now: Date, working: boolean,
+    now: Date, working: boolean, companyOffsetMinutes?: number,
 ): DeviceHealth {
     const memoryFull = !!device.recordCapacity && (device.recordCount ?? 0) / device.recordCapacity >= MEMORY_WARN_RATIO
     const clockOff = device.clockDriftSeconds !== null && Math.abs(device.clockDriftSeconds) > CLOCK_WARN_SECONDS
-    if (device.retiredAt) return { state: "RETIRED", memoryFull: false, clockOff: false }
+    if (device.retiredAt) return { state: "RETIRED", memoryFull: false, clockOff: false, zoneOff: false }
     const direct = device.connection === "DIRECT"
+    const zoneOff = direct && companyOffsetMinutes !== undefined && typeof device.utcOffsetMinutes === "number" && device.utcOffsetMinutes !== companyOffsetMinutes
     const state = !direct && !device.reachable ? "UNREACHABLE"
         : !device.lastSeenAt && device.addedById ? "WAITING"
             : !silent(device.lastSeenAt, now, direct ? DIRECT_SILENT_AFTER_MINUTES : SILENT_AFTER_MINUTES) ? "OK"
                 : working ? "SILENT" : "QUIET"
-    return { state, memoryFull, clockOff }
+    return { state, memoryFull, clockOff, zoneOff }
+}
+
+/** An offset from UTC as it's written: "UTC+03:00", "UTC-05:30". */
+export function utcOffsetLabel(minutes: number): string {
+    const whole = Math.abs(Math.trunc(minutes))
+    const two = (n: number) => String(n).padStart(2, "0")
+    return `UTC${minutes < 0 ? "-" : "+"}${two(Math.floor(whole / 60))}:${two(whole % 60)}`
 }

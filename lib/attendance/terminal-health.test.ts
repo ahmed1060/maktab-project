@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { DIRECT_SILENT_AFTER_MINUTES, agentHealth, deviceHealth, inWorkingHours } from "./terminal-health"
+import { DIRECT_SILENT_AFTER_MINUTES, agentHealth, deviceHealth, inWorkingHours, utcOffsetLabel } from "./terminal-health"
 
 const SUN_TO_THU = [0, 1, 2, 3, 4]
 // Thursday 1 October 2026; Cairo is UTC+3.
@@ -30,13 +30,13 @@ describe("terminal health (ATTENDANCE_PLAN.md §13.2)", () => {
     it("flags a terminal out of reach, nearly full, or with its clock off", () => {
         const now = at("2026-10-01T10:00:00")
         const base = { retiredAt: null, reachable: true, lastSeenAt: now, recordCount: 1000, recordCapacity: 100_000, clockDriftSeconds: 30 }
-        expect(deviceHealth(base, now, true)).toEqual({ state: "OK", memoryFull: false, clockOff: false })
+        expect(deviceHealth(base, now, true)).toEqual({ state: "OK", memoryFull: false, clockOff: false, zoneOff: false })
         expect(deviceHealth({ ...base, reachable: false }, now, false).state).toBe("UNREACHABLE")
         expect(deviceHealth({ ...base, recordCount: 80_000 }, now, true).memoryFull).toBe(true)
         expect(deviceHealth({ ...base, clockDriftSeconds: -300 }, now, true).clockOff).toBe(true)
         expect(deviceHealth({ ...base, recordCapacity: null }, now, true).memoryFull).toBe(false)
         expect(deviceHealth({ ...base, lastSeenAt: new Date(now.getTime() - 3_600_000) }, now, true).state).toBe("SILENT")
-        expect(deviceHealth({ ...base, retiredAt: now, reachable: false }, now, true)).toEqual({ state: "RETIRED", memoryFull: false, clockOff: false })
+        expect(deviceHealth({ ...base, retiredAt: now, reachable: false }, now, true)).toEqual({ state: "RETIRED", memoryFull: false, clockOff: false, zoneOff: false })
     })
 
     it("waits for a terminal added by hand until it is heard from (PR 292)", () => {
@@ -74,5 +74,33 @@ describe("terminal health (ATTENDANCE_PLAN.md §13.2)", () => {
         expect(deviceHealth({ ...direct, connection: "AGENT", lastSeenAt: ago(60) }, now, true).state).toBe("SILENT")
         // Whether an agent reaches it says nothing of one that calls Nizmo itself.
         expect(deviceHealth({ ...direct, reachable: false }, now, true).state).toBe("OK")
+    })
+
+    it("says when a terminal straight to Nizmo states another time zone than the company's now (PR 293)", () => {
+        const now = at("2026-10-01T10:00:00")
+        const direct = { retiredAt: null, reachable: true, lastSeenAt: now, recordCount: null, recordCapacity: null, clockDriftSeconds: null, connection: "DIRECT" as const, addedById: "a1" }
+        // The company is three hours east of UTC now.
+        expect(deviceHealth({ ...direct, utcOffsetMinutes: 180 }, now, true, 180).zoneOff).toBe(false)
+        expect(deviceHealth({ ...direct, utcOffsetMinutes: 480 }, now, true, 180).zoneOff).toBe(true)
+        // An hour apart is a terminal that doesn't follow the company's summer time: said while it differs.
+        expect(deviceHealth({ ...direct, utcOffsetMinutes: 120 }, now, true, 180).zoneOff).toBe(true)
+        expect(deviceHealth({ ...direct, utcOffsetMinutes: 120 }, now, true, 120).zoneOff).toBe(false)
+        expect(deviceHealth({ ...direct, utcOffsetMinutes: 0 }, now, true, 180).zoneOff).toBe(true)
+        // Nothing stated yet, or nothing to compare with: nothing is said.
+        expect(deviceHealth({ ...direct, utcOffsetMinutes: null }, now, true, 180).zoneOff).toBe(false)
+        expect(deviceHealth(direct, now, true, 180).zoneOff).toBe(false)
+        expect(deviceHealth({ ...direct, utcOffsetMinutes: 480 }, now, true).zoneOff).toBe(false)
+        // The agent's terminals state none: their clock is the agent's to compare.
+        expect(deviceHealth({ ...direct, connection: "AGENT", utcOffsetMinutes: 480 }, now, true, 180).zoneOff).toBe(false)
+        expect(deviceHealth({ ...direct, retiredAt: now, utcOffsetMinutes: 480 }, now, true, 180).zoneOff).toBe(false)
+    })
+
+    it("writes an offset from UTC as it's read on a clock's settings (PR 293)", () => {
+        expect(utcOffsetLabel(180)).toBe("UTC+03:00")
+        expect(utcOffsetLabel(0)).toBe("UTC+00:00")
+        expect(utcOffsetLabel(-300)).toBe("UTC-05:00")
+        expect(utcOffsetLabel(330)).toBe("UTC+05:30")
+        expect(utcOffsetLabel(-570)).toBe("UTC-09:30")
+        expect(utcOffsetLabel(840)).toBe("UTC+14:00")
     })
 })

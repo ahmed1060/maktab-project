@@ -2242,6 +2242,10 @@ model AttendancePunch {
   /// (UI_PLAN.md §2.3, part 4c). Null until it's decided.
   reviewedAt           DateTime?
   reviewReason         String?
+  /// What a scan a terminal sent itself keeps of its event (§17.5): the
+  /// fields Nizmo knows, each a short text, a number or a yes or no. Never
+  /// a name, a card's number or a picture. Empty for every other punch.
+  rawPayload           Json?
 
   @@unique([companyId, source, sourceKey])
   @@index([companyId, userId, punchAtLocal])
@@ -2396,6 +2400,10 @@ model AttendanceDevice {
   allowedAddresses  String[]          @default([])
   pushCursor        String?
   lastAddress       String?
+  /// Its own offset from UTC, in minutes, as the last scan it sent itself
+  /// stated it (§17.5); empty until it sends one. A scan's time is its wall
+  /// clock all the same: this is to say when the two disagree.
+  utcOffsetMinutes  Int?
   /// Its own scans that were refused, with the latest reason (§17.5).
   refusedCount      Int               @default(0)
   lastRefusedAt     DateTime?

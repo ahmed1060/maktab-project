@@ -49,15 +49,20 @@ export class AttendanceTerminalPushService {
      * A terminal that is retired, or set to the agent, is refused there and
      * counted; its contact isn't noted, since how it is doing is then the
      * agent's to say, or nobody's.
+     *
+     * With the contact goes the terminal's own offset from UTC, as the last
+     * scan here states it, and each scan keeps the fields of its event that
+     * Nizmo knows (§17.5, PR 293).
      */
     static async receive(deviceId: string, events: readonly TerminalEvent[] | null, address: string) {
         const now = new Date()
+        const scans = (events ?? []).filter(isScan)
+        const stated = scans.filter(s => s.offsetMinutes !== null)
         await prisma.attendanceDevice.updateMany({
             where: { id: deviceId, connection: "DIRECT", retiredAt: null },
-            data: { lastSeenAt: now, lastAddress: address.slice(0, 64) },
+            data: { lastSeenAt: now, lastAddress: address.slice(0, 64), ...(stated.length > 0 && { utcOffsetMinutes: stated[stated.length - 1].offsetMinutes }) },
         })
-        const scans = (events ?? []).filter(isScan).map(({ userNumber, at }) => ({ userNumber, at }))
-        const stored = scans.length > 0 ? await AttendanceIngestService.fromTerminal(deviceId, scans) : null
+        const stored = scans.length > 0 ? await AttendanceIngestService.fromTerminal(deviceId, scans.map(({ userNumber, at, kept }) => ({ userNumber, at, kept }))) : null
         const reasons = events === null ? ["UNREADABLE"] : events.filter(isRefused).map(e => e.reason)
         if (reasons.length > 0) {
             await prisma.attendanceDevice.update({

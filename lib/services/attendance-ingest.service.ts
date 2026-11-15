@@ -77,8 +77,12 @@ export type TerminalResult = {
     refused: { index: number; reason: TerminalRefusal }[]
 }
 
-/** A scan to store: where it was in what was sent, and the terminal it came from. */
-type Candidate = { index: number; deviceId: string; mode: string; userNumber: string; at: string }
+/**
+ * A scan to store: where it was in what was sent, and the terminal it came
+ * from. `kept`: what a scan a terminal sent itself keeps of its event
+ * (§17.5, PR 293); the agent's has none.
+ */
+type Candidate = { index: number; deviceId: string; mode: string; userNumber: string; at: string; kept?: Prisma.InputJsonObject }
 
 /**
  * The steps both ways in share (§17.6, PR 290), inside the caller's
@@ -130,6 +134,8 @@ async function store(
                 punchAtLocal: wallClock(c.at), punchAt: localToInstant(c.at, timeZone), resolvedWithTimeZone: timeZone,
                 // The terminal's mode now, kept on the punch (§17): changing the mode later reinterprets nothing.
                 direction: c.mode === "ENTRANCE" ? "IN" as const : c.mode === "EXIT" ? "OUT" as const : null,
+                // Only a new punch keeps its event: one already there stays as it is.
+                ...(c.kept && { rawPayload: c.kept }),
             })),
             skipDuplicates: true,
         })
@@ -224,7 +230,7 @@ export class AttendanceIngestService {
      * started, or refused. What is refused is counted on the terminal, with
      * the latest reason (§17.5).
      */
-    static async fromTerminal(deviceId: string, scans: readonly { userNumber: string; at: string }[]): Promise<TerminalResult> {
+    static async fromTerminal(deviceId: string, scans: readonly { userNumber: string; at: string; kept?: Prisma.InputJsonObject }[]): Promise<TerminalResult> {
         const now = new Date()
         const outcome = await prisma.$transaction(async tx => {
             const device = await tx.attendanceDevice.findUnique({
@@ -258,7 +264,7 @@ export class AttendanceIngestService {
                         refuse(index, "IN_FUTURE")
                     } else {
                         const key = `${device.id}:${s.userNumber}:${s.at}`
-                        if (!candidates.has(key)) candidates.set(key, { index, deviceId: device.id, mode: device.mode, userNumber: s.userNumber, at: s.at })
+                        if (!candidates.has(key)) candidates.set(key, { index, deviceId: device.id, mode: device.mode, userNumber: s.userNumber, at: s.at, kept: s.kept })
                     }
                 })
                 sameRequestRepeats = scans.length - refused.length - skipped - candidates.size

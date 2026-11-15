@@ -2480,6 +2480,7 @@ export const en = {
         att_term_connection_none: "Nizmo can't connect this brand's terminals for this company yet.",
         att_term_waiting_agent: "shows as Working once an agent reports this serial number",
         att_term_calls_from: "calls from {address}",
+        att_term_zone_off: "Time zone {zone}, not the company's",
         att_term_refused_line: "Scans refused: {n}, the latest {when}: {reason}",
         att_term_refusal_MONTH_LOCKED: "its month's payroll is approved",
         att_term_refusal_INVALID_TIME: "its time isn't one a calendar has",
