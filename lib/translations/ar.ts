@@ -2401,7 +2401,7 @@ export const ar = {
         att_term_health_memory: "{n} ذاكرته شبه ممتلئة",
         att_term_health_clock: "{n} ساعته مختلفة",
         attpay_changed_title: "تغيّر الحضور بعد اعتماد الرواتب",
-        attpay_changed_msg: "تغيّرت هذه الأيام بعد اعتماد رواتب شهرها. يبقى الشهر المدفوع كما هو؛ سوِّ كل منها بتسوية في الشهر الحالي ثم علِّمها كمسوّاة.",
+        attpay_changed_msg: "تغيّرت هذه الأيام بعد اعتماد رواتب شهرها. يبقى الشهر المدفوع كما هو؛ يُرجى إضافة تسوية لكل منها في الشهر الحالي ثم تعليمها كمسوّاة.",
         attpay_show_more: "عرض المزيد",
         attpay_changed_allowance_more: "بدل المأمورية: {amount} أكثر مما صُرف",
         attpay_changed_allowance_less: "بدل المأمورية: {amount} أقل مما صُرف",

@@ -124,6 +124,18 @@ describe("the app's Arabic, part 3: every other command", () => {
         for (const key of keys) expect([key, masculine.test(ar[key])], ar[key]).toEqual([key, false])
     })
 
+    it("asks no one in the masculine to settle or to mark, two commands the parts above missed (PR 289)", () => {
+        // "سوِّ" and "علِّم", written with their marks in either order, or with the doubling alone.
+        const masculine = word("(?:سو[\\u0650\\u0651]+|عل[\\u0650\\u0651]+م)(?:ه|ها|هم)?")
+        expect(masculine.test("سوِّ كل منها بتسوية ثم علِّمها كمسوّاة")).toBe(true)
+        expect(masculine.test("ثم علّمه")).toBe(true)
+        // Not the noun, nor the verb said of something done.
+        expect(masculine.test("للعلم، سُوّيت كلها وتم التعليم")).toBe(false)
+        for (const key of keys) expect([key, masculine.test(ar[key])], ar[key]).toEqual([key, false])
+        expect(ar.attpay_changed_msg).toBe("تغيّرت هذه الأيام بعد اعتماد رواتب شهرها. يبقى الشهر المدفوع كما هو؛ يُرجى إضافة تسوية لكل منها في الشهر الحالي ثم تعليمها كمسوّاة.")
+        expect(en.attpay_changed_msg).toBe("These days changed after their month's payroll was approved. The paid month stays as it was; settle each with an adjustment in the current month, then mark it resolved.")
+    })
+
     it("asks with يُرجى, or says what can be done, in a hint or a notice", () => {
         expect(ar.ci_key_failed).toBe("تعذّر استخدام المفتاح الآمن لهذا الهاتف. يُرجى تسجيل الهاتف من جديد.")
         expect(ar.notice_att_day_incomplete).toBe("هناك بصمة ناقصة يوم {date}. يُرجى الإبلاغ عن الوقت المنسي ليُحسب اليوم.")
