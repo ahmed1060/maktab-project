@@ -775,7 +775,10 @@ monthly limit.
   the months' locks, as permission hours do, but go ahead in a month
   whose payroll is approved. Once approved, the mission's days are worked
   out again from its first date, and those in a closed month become
-  discrepancies (§12.3) for HR to settle on the next payslip.
+  discrepancies (§12.3) for HR to settle on the next payslip. Its own
+  months are worked out by name, however far back they now are: a change's
+  cascade reaches a year back at most, which a mission asked near that
+  edge can pass while it waits (found by Codex on #283).
 - **Withdrawing**: the employee, while it waits; it's then Withdrawn.
   Cancelling an approved one is part 4's last PR.
 - **Deciding**, under To review, for whoever holds Decide missions at the
@@ -783,7 +786,8 @@ monthly limit.
   reason if there is one. Beside it (decision 20): its kind, dates and
   part of the day; the task, or "No task"; the reason; and the scans so
   far, each of its days up to today that has any, with that day's scans as
-  the clock read them, or that there are none yet.
+  the clock read them, or that there are none yet. They're read for the
+  missions on the page shown, every scan of each (found by Codex on #283).
 - **Told of the decision**: the employee hears it was approved or not,
   with the reason if there is one. The notice opens the Requests page on
   it.

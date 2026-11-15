@@ -6284,3 +6284,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   over a closed month is accepted, its days there becoming discrepancies.
   The policy has a Missions switch, on to start, and payroll's window
   counts the missions not yet decided.
+- **2026-11-15:** Two findings by Codex on #283, fixed in it. The scans
+  beside a mission waiting are read for the missions on the page shown,
+  every one of them, where one read for every row up to the page stopped
+  at 2,000. And approving a mission works its own months out again however
+  far back they now are, past the year a change's cascade reaches
+  (`ATTENDANCE_PLAN.md` §6.10).
