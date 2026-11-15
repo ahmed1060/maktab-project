@@ -78,6 +78,8 @@ const models: Record<string, any> = {
 const prismaMock: any = new Proxy({}, {
     get(_t, prop: string) {
         if (prop === "$transaction") return async (fn: any) => typeof fn === "function" ? fn(prismaMock) : Promise.all(fn)
+        // Locks taken in SQL, such as the person's that asking for leave takes over missions (PR 283).
+        if (prop === "$queryRaw" || prop === "$executeRaw") return async () => []
         if (prop === "then") return undefined
         return models[prop] ??= permissiveModel()
     },

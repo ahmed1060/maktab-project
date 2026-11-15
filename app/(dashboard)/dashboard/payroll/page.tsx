@@ -19,7 +19,7 @@ import { addressWithPeriod, periodFromAddress, yearsAround } from '@/lib/period-
 import type { TranslationKey } from '@/lib/translations'
 import { DaysToSettle, UndecidedRequests, type ToSettle } from './SettleFirst'
 
-const NO_REQUESTS: ToSettle['requests'] = { permissions: 0, missing: 0, overtime: 0 }
+const NO_REQUESTS: ToSettle['requests'] = { permissions: 0, missing: 0, overtime: 0, missions: 0 }
 
 /**
  * The register: one month, everybody in it, and what changed.

@@ -248,6 +248,8 @@ describe.skipIf(!ADMIN_URL)("live updates, in Postgres", () => {
             ["missing punches", `INSERT INTO "MissingPunchRequest"(id, "companyId", "userId", date, "claimedAt", reason) VALUES ('mp1', 'c1', 'u2', '2026-11-10', '2026-11-10 09:00', 'Forgot')`, `"MissingPunchRequest"`, `status = 'REJECTED'`],
             ["overtime decisions", `INSERT INTO "OvertimeApproval"(id, "companyId", "userId", date, status, "approvedMinutes", "decidedById") VALUES ('oa1', 'c1', 'u2', '2026-11-10', 'APPROVED', 60, 'u1')`, `"OvertimeApproval"`, `note = 'An hour'`],
             ["role requests", `INSERT INTO "RoleRequest"(id, "companyId", "userId", "roleId", "requestedById", "updatedAt") VALUES ('rr1', 'c1', 'u2', 'r-live', 'u1', now())`, `"RoleRequest"`, `"decisionNote" = 'Yes'`],
+            // Missions (ATTENDANCE_PLAN.md §6.10, PR 283).
+            ["missions", `INSERT INTO "MissionRequest"(id, "companyId", "userId", kind, "startDate", "endDate", reason) VALUES ('mi1', 'c1', 'u2', 'DAYS', '2026-11-10', '2026-11-11', 'Client visit')`, `"MissionRequest"`, `status = 'APPROVED'`],
         ]
         for (const [name, insert, table, change] of KINDS) {
             it(`${name}: asked for, changed and withdrawn, to the company and each Super Admin`, async () => {

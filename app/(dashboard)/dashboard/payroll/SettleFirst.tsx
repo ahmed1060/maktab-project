@@ -24,7 +24,7 @@ export type ToSettle = {
     count: number
     byStatus: Record<DayToSettle['status'], number>
     days: DayToSettle[]
-    requests: { permissions: number; missing: number; overtime: number }
+    requests: { permissions: number; missing: number; overtime: number; missions: number }
 }
 
 const exceptions = (year: number, month: number, kind: string, day?: number) =>
@@ -74,6 +74,7 @@ export function DaysToSettle({ settle, year, month }: { settle: ToSettle; year: 
 
 const REQUESTS: { key: keyof ToSettle['requests']; label: TranslationKey; kind: string }[] = [
     { key: 'permissions', label: 'payroll_undecided_permissions', kind: 'permission' },
+    { key: 'missions', label: 'payroll_undecided_missions', kind: 'mission' },
     { key: 'missing', label: 'payroll_undecided_missing', kind: 'missingPunch' },
     { key: 'overtime', label: 'payroll_undecided_overtime', kind: 'overtime' },
 ]

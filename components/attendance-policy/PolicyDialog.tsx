@@ -266,6 +266,18 @@ export default function PolicyDialog({ title, start, startOn, defaultFrom, today
                     </div>
                 </fieldset>
 
+                {/* Missions (ATTENDANCE_PLAN.md §6.10, decision 11, PR 283): the switch alone, until part 5's allowance. */}
+                <fieldset className="ui-fieldset">
+                    <legend className="ui-subsection-title">{t('attendance_missions')}</legend>
+                    <div className="ui-field-group">
+                        <label className="ui-choice">
+                            <input type="checkbox" className="ui-check" checked={form.missions.enabled}
+                                onChange={e => edit(f => ({ ...f, missions: { enabled: e.target.checked } }))} />
+                            {t('attendance_missions_on')}
+                        </label>
+                    </div>
+                </fieldset>
+
                 {companyId && (
                     <FaceFields companyId={companyId} available={form.faceVerificationAvailable} months={form.faceReverifyMonths} error={errorOf('faceReverifyMonths')}
                         onChange={change => edit(f => ({ ...f, ...change }), 'faceReverifyMonths')} />

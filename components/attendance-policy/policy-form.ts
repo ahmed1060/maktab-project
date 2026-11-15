@@ -47,6 +47,8 @@ export type PolicyForm = {
     departureThresholdMinutes: string
     faceVerificationAvailable: boolean
     faceReverifyMonths: string
+    /** Whether missions may be asked for (ATTENDANCE_PLAN.md §6.10, PR 283). */
+    missions: { enabled: boolean }
 }
 
 /** What's wrong with a field: the words, and the range they name. */
@@ -101,6 +103,7 @@ export function formFromBody(body: PolicyBody): PolicyForm {
         departureThresholdMinutes: text(body.departureThresholdMinutes),
         faceVerificationAvailable: body.faceVerificationAvailable,
         faceReverifyMonths: text(body.faceReverifyMonths),
+        missions: { enabled: body.missions.enabled },
     }
 }
 
@@ -272,6 +275,7 @@ export function bodyFromForm(form: PolicyForm, base: PolicyBody): { ok: true; bo
             departureThresholdMinutes,
             faceVerificationAvailable: form.faceVerificationAvailable,
             faceReverifyMonths,
+            missions: { enabled: form.missions.enabled },
         },
     }
 }

@@ -11,7 +11,7 @@
 export const WAITING_FOR_REVIEW_KEY = '/api/requests/waiting'
 
 /** The kinds the page lists, in the order its filter offers them. */
-export const REQUEST_KINDS = ["internal", "dayOff", "permission", "missingPunch", "overtime", "phone", "flagged", "nameChange", "role"] as const
+export const REQUEST_KINDS = ["internal", "dayOff", "permission", "mission", "missingPunch", "overtime", "phone", "flagged", "nameChange", "role"] as const
 export type RequestKind = typeof REQUEST_KINDS[number]
 
 export type RequestsTab = "mine" | "review"
@@ -39,6 +39,8 @@ export type FeedRow = {
     dayOff?: DayOffFacts
     /** Permission hours' own facts (§2.3, part 3a). Its `what` is its type. */
     permission?: PermissionFacts
+    /** A mission's own facts (ATTENDANCE_PLAN.md §6.10, PR 283). Its `what` is its kind: by days, or which part of the day. */
+    mission?: MissionFacts
     /** A missing punch's own facts (§2.3, part 3b). Its `what` is its direction, if stated. */
     missingPunch?: MissingPunchFacts
     /** Overtime's own facts (§2.3, part 4a): a day's waiting, or a decision on it. */
@@ -73,6 +75,21 @@ export type PermissionFacts = {
     end: string
     minutes: number
     rejectionReason: string | null
+}
+
+export type MissionFacts = {
+    kind: "DAYS" | "TO_END" | "FROM_START"
+    /** Its first and last dates, calendar days; the same for a mission by hours. */
+    from: string
+    to: string
+    /** The task it names, as its title was kept (decision 18), or none. */
+    task: string | null
+    rejectionReason: string | null
+    /**
+     * For whoever may decide it (decision 20): each of its days up to today
+     * that has scans, with them as the clock read them. Null for anyone else.
+     */
+    scans: { date: string; times: string[] }[] | null
 }
 
 export type MissingPunchFacts = {

@@ -103,6 +103,9 @@ const TERMINALS_SETUP = "20261220000000_terminals_setup"
 // The built-in Admin role's attendance.manage_terminals, for the companies
 // there before it (ATTENDANCE_PLAN.md §17.10, PR 278).
 const TERMINALS_GRANTED = "20261221000000_terminals_granted"
+// Given to a new company's built-in roles now, and to the companies there
+// already are by a later migration (ATTENDANCE_PLAN.md §6.10, PR 283).
+const GRANTED_LATER = ["attendance.approve_missions"]
 
 const BEFORE_ROLES = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now());
@@ -221,7 +224,8 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                     const grants = Object.fromEntries(rows
                         .filter(r => r.companyId === company && r.builtIn === builtIn)
                         .map(r => [r.permission, r.scope]))
-                    expect(grants, `${company} ${builtIn}`).toEqual(BUILT_IN_GRANTS[builtIn])
+                    const now = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).filter(([permission]) => !GRANTED_LATER.includes(permission)))
+                    expect(grants, `${company} ${builtIn}`).toEqual(now)
                 }
             }
         })

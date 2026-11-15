@@ -15,7 +15,8 @@ planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
 incomplete day in #275, and payroll waiting for both in #276; part 4,
 missions, is split in four PRs, the first, a mission's day, built in
-#281; the rest is not built. A template for the file import
+#281, and the second, asking and deciding, in #283; the rest is not
+built. A template for the file import
 (§13.9) is built in #272.
 This document is the design those PRs follow: what was decided, and why, so
 that whoever changes it is not re-arguing settled points. Where the build
@@ -593,7 +594,7 @@ asks as before. Under a
 heading of its own, as a warning, the same window counts the month's
 requests not yet decided for people on the register: permission hours,
 missing punches, and overtime, which approval rejects, each kind opening
-the Requests page on it; missions join them in part 4. The server checks
+the Requests page on it; missions joined them in #283. The server checks
 again inside approval's transaction, after the month's last recompute and
 before undecided overtime is rejected, so a day whose stored row was out
 of date is caught too; refused then, the recompute is kept, nothing else
@@ -609,7 +610,7 @@ how many of each kind and the first 50, and the window shows those
 **The terminal's in/out key is still not read.** It is often left on the
 wrong state, and the order of the scans is surer.
 
-### 6.10 Missions — مأمورية (round 10; a mission's day built in #281)
+### 6.10 Missions — مأمورية (round 10; a mission's day built in #281, asking and deciding in #283)
 
 An employee sent to work away from their desk (a client, another branch,
 another city) asks for a mission on the Requests page, so the day isn't
@@ -689,7 +690,7 @@ sees the day's scans so far, and the task named or "No task". There is no
 monthly limit.
 
 **Built in #281: a mission's day.** The first of part 4's four PRs
-(§20). Nothing asks for a mission yet; the next PR does.
+(§20). Nothing asked for a mission then; #283 does.
 
 - **`MissionRequest`** holds each mission: by days, or by hours with the
   part of the day it covers; its first and last date, one date for a
@@ -736,6 +737,67 @@ monthly limit.
   day of a mission by days is on none of the Exceptions screen's tabs;
   one of a mission by hours is there as the lateness or early leave its
   kind charges.
+
+**Built in #283: asking and deciding.** Part 4's second PR (§20).
+
+- **Decide missions** (`attendance.approve_missions`), at team or company
+  scope, implying `attendance.view_team`, never on one's own. A new
+  company's built-in Admin holds it company-wide; the companies already
+  there get it from the next PR's migration, once this release's role
+  editor knows it (as #278 did). It isn't high-risk, as deciding permission
+  hours and overtime isn't.
+- **The policy's Missions switch** (decision 11), on in every version: one
+  saved before it reads as on, so nothing is migrated. The policy dialog
+  has a Missions section with the switch alone for now (part 5 adds the
+  allowance under it), and the policy card says whether they're on. A
+  mission is refused while any of its dates falls under a version with
+  missions off. Turning them off withdraws nothing: a mission already
+  asked is decided as before, and one approved counts.
+- **Asking**, on the Requests page's New request, for whoever has
+  attendance of their own, as for permission hours, and offered while
+  today's policy has missions on. The form asks:
+  - which kind: by days, or by hours;
+  - by days, its first and last dates; by hours, its date and the part of
+    the day, until its end or from its start;
+  - the task, optional: one of their open tasks (theirs, Pending or In
+    progress), where the company has Tasks; "No task" to start;
+  - and why, which it needs, up to 500 characters.
+- **What asking refuses**, besides missions off:
+  - dates more than a year before today or after it, and a mission by
+    days longer than 90 days (a guard: recomputing reaches back a year,
+    §11);
+  - any of its dates in another mission, or in a day off, waiting or
+    approved. Asking for a day off over a mission waiting or approved is
+    refused the same way. One person's missions and days off, asked at
+    once, wait on each other, so two can't both pass;
+  - a task that isn't one of their open tasks.
+- **A closed month is no refusal** (decision 16). Asking and deciding take
+  the months' locks, as permission hours do, but go ahead in a month
+  whose payroll is approved. Once approved, the mission's days are worked
+  out again from its first date, and those in a closed month become
+  discrepancies (§12.3) for HR to settle on the next payslip. Its own
+  months are worked out by name, however far back they now are: a change's
+  cascade reaches a year back at most, which a mission asked near that
+  edge can pass while it waits (found by Codex on #283).
+- **Withdrawing**: the employee, while it waits; it's then Withdrawn.
+  Cancelling an approved one is part 4's last PR.
+- **Deciding**, under To review, for whoever holds Decide missions at the
+  asker (the Super Admin for every company): approve, or reject with a
+  reason if there is one. Beside it (decision 20): its kind, dates and
+  part of the day; the task, or "No task"; the reason; and the scans so
+  far, each of its days up to today that has any, with that day's scans as
+  the clock read them, or that there are none yet. They're read for the
+  missions on the page shown, every scan of each (found by Codex on #283).
+- **Told of the decision**: the employee hears it was approved or not,
+  with the reason if there is one. The notice opens the Requests page on
+  it.
+- **Payroll's window** counts the missions waiting with a day in the
+  month, for people on the register, among the month's requests not yet
+  decided, opening To review on missions.
+- **Live**: the Requests page and the count on Requests in the side bar
+  draw themselves again when a mission is asked, decided or withdrawn
+  (a migration adds the table to #250's triggers).
+- **Audit**: asking, approving, rejecting and withdrawing, each in the log.
 
 ---
 
@@ -2356,7 +2418,7 @@ With no push, it stays on the agent and tries the agent alone. Parts 4 to 7
 are built all the same, switched off, and tried when a terminal that pushes,
 or a Hikvision, is on hand (round 9, decision 13).
 
-### Phase 5 — Reading scans first and last, and missions — parts 2 and 3 built in #273 to #276, part 4's first PR in #281
+### Phase 5 — Reading scans first and last, and missions — parts 2 and 3 built in #273 to #276, part 4's first two PRs in #281 and #283
 
 Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
 
@@ -2382,14 +2444,14 @@ Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
       mission from the start of the day waiting as a Departure to confirm
       like any day; the mission day on the employee's own attendance, and
       the reminder and notices skipping it (decisions 9, 15, 17, 23).
-   2. **Asking and deciding**: the permission "Decide missions", given to
-      a new company's built-in Admin; the policy's Missions switch, on to
-      start (decision 11); missions on the Requests page, under Mine and
-      To review and in the kind filter, with the optional task, and what
-      the approver sees beside each; withdrawing one while it waits; a
-      mission across a closed month accepted, its days there becoming
-      discrepancies; and the notification of a decision (decisions 4, 10,
-      16, 18, 20, 25).
+   2. **Asking and deciding**, built in #283: the permission "Decide
+      missions", given to a new company's built-in Admin; the policy's
+      Missions switch, on to start (decision 11); missions on the
+      Requests page, under Mine and To review and in the kind filter,
+      with the optional task, and what the approver sees beside each;
+      withdrawing one while it waits; a mission across a closed month
+      accepted, its days there becoming discrepancies; and the
+      notification of a decision (decisions 4, 10, 16, 18, 20, 25).
    3. **The companies already there** get "Decide missions" for their
       built-in Admin, from a migration, once the release before it has
       the role editor's new line (as #278 did).

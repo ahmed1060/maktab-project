@@ -36,6 +36,15 @@ const wallClock = (local: string) => new Date(`${local}Z`)
 const wallClockText = (d: Date) => d.toISOString().slice(0, 19)
 const monthEnd = (month: string) => `${month}-${String(daysInMonth(Number(month.slice(0, 4)), Number(month.slice(5, 7)))).padStart(2, "0")}`
 
+/**
+ * How far back a change reworks days by itself: the first of the month a year
+ * before today's. Nothing older is rebuilt implicitly: a change dated that far
+ * back is a correction for somebody to look at, not a cascade.
+ */
+export function reworkFloor(today: string): string {
+    return `${Number(today.slice(0, 4)) - 1}${today.slice(4, 7)}-01`
+}
+
 /** The months from one date's month to another's, inclusive. */
 export function monthsBetween(from: string, to: string): string[] {
     const out: string[] = []
@@ -543,9 +552,7 @@ export class AttendanceEngineService {
         const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } })
         if (!company) return []
         const today = calendarDateStr(new Date(), company.timezone)
-        // Nothing older than a year is rebuilt implicitly: a change dated that
-        // far back is a correction for somebody to look at, not a cascade.
-        const floor = `${Number(today.slice(0, 4)) - 1}${today.slice(4, 7)}-01`
+        const floor = reworkFloor(today)
         const start = fromDate < floor ? floor : fromDate
         if (start > today) return []
         const out: RecomputeResult[] = []

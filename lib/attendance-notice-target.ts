@@ -22,6 +22,9 @@ const ON_REQUESTS_PAGE: Record<string, string> = {
     notice_att_permission_rejected: "permission",
     notice_att_missing_approved: "missingPunch",
     notice_att_missing_rejected: "missingPunch",
+    // Missions (ATTENDANCE_PLAN.md §6.10, PR 283).
+    notice_att_mission_approved: "mission",
+    notice_att_mission_rejected: "mission",
 }
 
 /** Where a notice about a new phone sent deciders before part 4d. */

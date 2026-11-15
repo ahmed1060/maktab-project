@@ -8,7 +8,9 @@ import { useBusyAction } from '@/lib/useBusyAction'
 import type { TranslationKey } from '@/lib/translations'
 import type { FeedRow, RequestKind } from '@/lib/requests/kinds'
 import DatePickerSingle from '@/components/DatePickerSingle'
-import { Button, Dialog, DialogActions, Field, Select, TextArea, TextInput } from '@/components/ui'
+import DateRangePicker from '@/components/DateRangePicker'
+import { MISSION_MAX_DAYS, type MissionKey } from '@/lib/attendance/missions'
+import { Button, Choice, Dialog, DialogActions, Field, Select, TextArea, TextInput } from '@/components/ui'
 
 /**
  * Attendance requests on the one Requests page (UI_PLAN.md §2.3, parts 3
@@ -20,9 +22,11 @@ import { Button, Dialog, DialogActions, Field, Select, TextArea, TextInput } fro
  */
 
 /** The attendance kinds, and each one's API (app/api/attendance). */
-export type AttendanceKind = Extract<RequestKind, 'permission' | 'missingPunch' | 'overtime' | 'phone' | 'flagged'>
+export type AttendanceKind = Extract<RequestKind, 'permission' | 'mission' | 'missingPunch' | 'overtime' | 'phone' | 'flagged'>
 export const ATTENDANCE_API: Record<AttendanceKind, string> = {
     permission: '/api/attendance/permissions',
+    // Asked for, withdrawn and decided (ATTENDANCE_PLAN.md §6.10, PR 283).
+    mission: '/api/attendance/missions',
     missingPunch: '/api/attendance/missing-punches',
     // A decision on a day's overtime, made or withdrawn (§2.3, part 4a).
     overtime: '/api/attendance/overtime',
@@ -42,6 +46,13 @@ export const PERMISSION_TYPE_LABEL: Record<string, TranslationKey> = {
     MIDDAY: 'audit_value_MIDDAY',
 }
 
+/** A mission, by its kind (ATTENDANCE_PLAN.md §6.10). */
+export const MISSION_KIND_LABEL: Record<MissionKey, TranslationKey> = {
+    DAYS: 'requests_mission_days',
+    TO_END: 'requests_mission_to_end',
+    FROM_START: 'requests_mission_from_start',
+}
+
 /** Why the server refused, by its code (lib/api-errors.ts), in the person's language. */
 const REFUSED: Record<string, TranslationKey> = {
     PERMISSION_HOURS_OFF: 'req_permissions_off_on_day',
@@ -52,6 +63,14 @@ const REFUSED: Record<string, TranslationKey> = {
     PERMISSION_OVER_ALLOWANCE: 'requests_permission_over',
     PERMISSION_TOO_LATE: 'requests_permission_too_late',
     PERMISSION_OVERLAPS: 'requests_permission_overlap',
+    // A mission's (PR 283).
+    MISSIONS_OFF: 'requests_missions_off',
+    MISSION_DATES_INVALID: 'requests_mission_dates_invalid',
+    MISSION_TOO_LONG: 'requests_mission_too_long',
+    MISSION_OUT_OF_RANGE: 'requests_mission_out_of_range',
+    MISSION_OVERLAPS: 'requests_mission_overlaps',
+    MISSION_OVERLAPS_DAY_OFF: 'requests_mission_overlaps_day_off',
+    MISSION_TASK_NOT_OPEN: 'requests_mission_task_not_open',
     PAYROLL_MONTH_LOCKED: 'requests_month_locked',
     REQUEST_ALREADY_DECIDED: 'requests_already_decided',
     REQUEST_ALREADY_STARTED: 'requests_permission_started',
@@ -484,6 +503,100 @@ export function ReportMissingPunch({ today, initial, onCancel, onReported }: {
             <DialogActions>
                 <Button onClick={onCancel}>{t('cancel')}</Button>
                 <Button type="submit" variant="primary" disabled={action.running} busy={action.is('report')}>{t('send_request')}</Button>
+            </DialogActions>
+        </form>
+    )
+}
+
+type MissionErrors = { dates?: string; reason?: string }
+
+/**
+ * Asking for a mission (ATTENDANCE_PLAN.md §6.10, PR 283): by days, its first
+ * and last dates; by hours, its date and the part of the day; one of their
+ * open tasks, if it's for one (decision 18); and why.
+ */
+export function AskMission({ today, onCancel, onAsked }: {
+    /** Today, as the company's calendar has it: where the pickers start. */
+    today: string
+    onCancel: () => void
+    onAsked: () => void
+}) {
+    const { t, locale } = useLanguage()
+    const { showToast } = useToast()
+    const action = useBusyAction()
+    const num = digits(locale)
+    const [kind, setKind] = useState<'DAYS' | 'HOURS'>('DAYS')
+    const [from, setFrom] = useState('')
+    const [to, setTo] = useState('')
+    const [part, setPart] = useState<'TO_END' | 'FROM_START'>('TO_END')
+    const [taskId, setTaskId] = useState('')
+    const [reason, setReason] = useState('')
+    const [errors, setErrors] = useState<MissionErrors>({})
+    const { data } = useSWR('/api/attendance/missions/tasks', fetcher)
+    const tasks: { id: string; title: string }[] = data?.data?.tasks ?? []
+
+    const submit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault()
+        const form = e.currentTarget
+        const found: MissionErrors = {
+            dates: !from || (kind === 'DAYS' && !to) ? t('requests_mission_dates_missing') : undefined,
+            reason: !reason.trim() ? t('requests_mission_reason_missing') : undefined,
+        }
+        setErrors(found)
+        if (found.dates || found.reason) {
+            // To the first field that needs fixing, once it's marked: the dates' picker is a button.
+            requestAnimationFrame(() => form.querySelector<HTMLElement>(found.dates ? '.ui-date-trigger' : '[aria-invalid="true"]')?.focus())
+            return
+        }
+        void action.run('ask', async () => {
+            try {
+                const res = await fetch('/api/attendance/missions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(kind === 'DAYS'
+                        ? { kind, startDate: from, endDate: to, taskId: taskId || null, reason: reason.trim() }
+                        : { kind, startDate: from, hoursPart: part, taskId: taskId || null, reason: reason.trim() }),
+                })
+                if (!res.ok) {
+                    const said = await refusal(res, 'failed_submit_request')
+                    showToast(t(said).replace('{max}', num(MISSION_MAX_DAYS)), 'error')
+                    return
+                }
+                showToast(t('req_asked'), 'success')
+                onAsked()
+            } catch {
+                showToast(t('error_generic'), 'error')
+            }
+        })
+    }
+
+    return (
+        <form className="ui-form" noValidate onSubmit={submit}>
+            <Choice legend={t('requests_mission_kind')} name="mission-kind" value={kind}
+                onChange={k => { setKind(k); setFrom(k === 'HOURS' ? today : ''); setTo(''); setErrors(x => ({ ...x, dates: undefined })) }}
+                options={[{ value: 'DAYS', label: t('requests_mission_by_days') }, { value: 'HOURS', label: t('requests_mission_by_hours') }]} />
+            {kind === 'DAYS'
+                ? <DateRangePicker label={t('dates_label')} dateFrom={from} dateTo={to} error={errors.dates}
+                    onChange={(start, end) => { setFrom(start); setTo(end); setErrors(x => ({ ...x, dates: undefined })) }} />
+                : <DatePickerSingle label={t('date_label')} value={from} error={errors.dates}
+                    onChange={d => { setFrom(d); setErrors(x => ({ ...x, dates: undefined })) }} />}
+            {kind === 'HOURS' && (
+                <Choice legend={t('requests_mission_part')} name="mission-part" value={part} onChange={setPart}
+                    options={[{ value: 'TO_END', label: t('audit_value_TO_END') }, { value: 'FROM_START', label: t('audit_value_FROM_START') }]} />
+            )}
+            {tasks.length > 0 && (
+                <Field label={t('requests_mission_task')} hint={t('requests_mission_task_hint')}>{p => (
+                    <Select {...p} name="task" value={taskId} onChange={e => setTaskId(e.target.value)}
+                        options={[{ value: '', label: t('requests_mission_no_task') }, ...tasks.map(x => ({ value: x.id, label: x.title }))]} />
+                )}</Field>
+            )}
+            <Field label={t('reason_label')} hint={t('ui_characters_used').replace('{used}', num(reason.length)).replace('{max}', num(REASON_MAX))} error={errors.reason}>{p => (
+                <TextArea {...p} name="reason" dir="auto" placeholder={t('requests_mission_reason_placeholder')} value={reason} maxLength={REASON_MAX}
+                    onChange={e => { setReason(e.target.value); setErrors(x => ({ ...x, reason: undefined })) }} />
+            )}</Field>
+            <DialogActions>
+                <Button onClick={onCancel}>{t('cancel')}</Button>
+                <Button type="submit" variant="primary" disabled={action.running} busy={action.is('ask')}>{t('send_request')}</Button>
             </DialogActions>
         </form>
     )
