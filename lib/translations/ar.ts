@@ -2476,6 +2476,7 @@ export const ar = {
         att_term_connection_none: "لا يمكن توصيل أجهزة هذه الماركة بـ Nizmo لهذه الشركة بعد.",
         att_term_waiting_agent: "يظهر «يعمل» عندما يبلّغ برنامج مزامنة عن هذا الرقم التسلسلي",
         att_term_calls_from: "يتصل من {address}",
+        att_term_zone_off: "المنطقة الزمنية {zone}، وليست منطقة الشركة",
         att_term_refused_line: "بصمات مرفوضة: {n}، آخرها {when}: {reason}",
         att_term_refusal_MONTH_LOCKED: "رواتب شهرها معتمدة",
         att_term_refusal_INVALID_TIME: "وقتها غير موجود في التقويم",

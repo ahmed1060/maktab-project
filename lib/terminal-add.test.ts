@@ -291,7 +291,7 @@ describe("the server's side", () => {
         expect(shown).toContain("connection: true, lastAddress: true, refusedCount: true, lastRefusedAt: true, lastRefusal: true")
         expect(shown).not.toContain("pushSecretHash")
         // Who added it tells waiting from silent, on the server; the list leaves it out of what it sends.
-        expect(service).toContain("return devices.map(({ addedById, ...d }) => ({ ...withBrand(d), health: deviceHealth({ ...d, addedById }, now, working) }))")
+        expect(service).toContain("return devices.map(({ addedById, ...d }) => ({ ...withBrand(d), health: deviceHealth({ ...d, addedById }, now, working, zone) }))")
         // The secret is made, hashed and returned in one place each for adding and issuing again.
         expect(service.match(/newPushSecret\(\)/g)).toHaveLength(2)
         expect(service.match(/hashSecret\(secret\)/g)).toHaveLength(2)

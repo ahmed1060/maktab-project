@@ -15,6 +15,7 @@ import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import TerminalSetupGuide, { type GuideBrand } from '@/components/TerminalSetupGuide'
 import { TerminalAddDialog, TerminalAddressDialog } from '@/components/TerminalAddDialog'
 import { hasAddress, refusalWords } from '@/lib/attendance/terminal-connections'
+import { utcOffsetLabel } from '@/lib/attendance/terminal-health'
 
 /**
  * Fingerprint terminals and the Local Sync Agent (ATTENDANCE_PLAN.md §17,
@@ -55,9 +56,11 @@ type Device = {
     protocol: 'ZKTECO' | 'HIKVISION'; brand: { id: string; name: string; retired: boolean } | null
     // How its scans come, and for one straight to Nizmo, where it calls from and what was refused (§17.7, PR 292).
     connection: 'AGENT' | 'DIRECT'; lastAddress: string | null; refusedCount: number; lastRefusedAt: string | null; lastRefusal: string | null
+    // Its own offset from UTC, as its last scan stated it (§17.5, PR 293).
+    utcOffsetMinutes: number | null
     lastSeenAt: string | null; lastPunchAt: string | null; reachable: boolean; lastError: string | null
     clockDriftSeconds: number | null; recordCount: number | null; recordCapacity: number | null; retiredAt: string | null
-    health: { state: 'RETIRED' | 'WAITING' | 'OK' | 'UNREACHABLE' | 'SILENT' | 'QUIET'; memoryFull: boolean; clockOff: boolean }
+    health: { state: 'RETIRED' | 'WAITING' | 'OK' | 'UNREACHABLE' | 'SILENT' | 'QUIET'; memoryFull: boolean; clockOff: boolean; zoneOff?: boolean }
 }
 type Shown = { name: string; code: string; expiresAt: string | null }
 /** A terminal's address to set on it, with its secret: held only while its dialog is open. */
@@ -133,6 +136,16 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
         if (minutes < 1) return t('att_term_just_now')
         if (minutes < 60) return t('att_term_minutes_ago').replace('{n}', number(minutes))
         return new Date(iso).toLocaleString(intl, { dateStyle: 'medium', timeStyle: 'short' })
+    }
+    /**
+     * The time zone a terminal states, where it isn't the company's: written
+     * as it is, left to right, in either language (§17.5, PR 293). One
+     * piece, so the badge's gap between its pieces doesn't split the
+     * sentence around the offset.
+     */
+    const zoneLine = (minutes: number): ReactNode => {
+        const [before, after] = t('att_term_zone_off').split('{zone}')
+        return <span>{before}<bdi dir="ltr" translate="no">{utcOffsetLabel(minutes)}</bdi>{after}</span>
     }
     /** Where a terminal straight to Nizmo last called from: an address, left to right and never translated (web audit, PR 292). */
     const callsFrom = (d: Device): ReactNode => {
@@ -251,6 +264,7 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
                                     <StatusBadge tone={DEVICE_TONE[d.health.state]}>{t(`att_term_device_${d.health.state}`)}</StatusBadge>
                                     {d.health.memoryFull && <>{' '}<StatusBadge tone="waiting">{t('att_term_memory_full').replace('{p}', number(Math.round(100 * (d.recordCount ?? 0) / (d.recordCapacity || 1))))}</StatusBadge></>}
                                     {d.health.clockOff && <>{' '}<StatusBadge tone="waiting">{t('att_term_clock_off').replace('{d}', drift(d.clockDriftSeconds))}</StatusBadge></>}
+                                    {d.health.zoneOff && typeof d.utcOffsetMinutes === 'number' && <>{' '}<StatusBadge tone="waiting">{zoneLine(d.utcOffsetMinutes)}</StatusBadge></>}
                                 </>}
                                 detail={facts([
                                     `${t('att_term_serial')} ${d.serialNumber}`,

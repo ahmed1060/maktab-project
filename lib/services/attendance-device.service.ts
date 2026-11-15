@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { AuditLogService } from "./audit-log.service"
-import { offsetMsIn } from "@/lib/time"
+import { DEFAULT_TIME_ZONE, offsetMsIn } from "@/lib/time"
 import type { AuthenticatedAgent } from "./attendance-agent.service"
 import type { Heartbeat } from "@/lib/attendance/agent-payloads"
 import { deviceHealth } from "@/lib/attendance/terminal-health"
@@ -61,6 +61,8 @@ const SHOWN = {
     // How its scans come, and for one straight to Nizmo, where it calls from
     // and what was refused (§17.7, PR 292). Never its secret's hash.
     connection: true, lastAddress: true, refusedCount: true, lastRefusedAt: true, lastRefusal: true,
+    // Its own offset from UTC, as its last scan stated it (§17.5, PR 293).
+    utcOffsetMinutes: true,
 } as const
 
 /** The brand printed on it (§17.9, PR 280), and whether the Super Admin has retired it since. */
@@ -71,13 +73,16 @@ function withBrand<T extends { brand: { id: string; name: string; retiredAt: Dat
 export class AttendanceDeviceService {
     /** With each one's health now (§13.2). */
     static async list(companyId: string) {
-        const [devices, working] = await Promise.all([
+        const [devices, working, company] = await Promise.all([
             // Who added it says whether it waits for its first contact (PR 292); it isn't sent on.
             prisma.attendanceDevice.findMany({ where: { companyId }, orderBy: [{ retiredAt: { sort: "desc", nulls: "first" } }, { name: "asc" }], select: { ...SHOWN, addedById: true } }),
             workingNow(companyId),
+            prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } }),
         ])
         const now = new Date()
-        return devices.map(({ addedById, ...d }) => ({ ...withBrand(d), health: deviceHealth({ ...d, addedById }, now, working) }))
+        // The company's own offset now: a terminal straight to Nizmo that states another says so on its row (PR 293).
+        const zone = Math.round(offsetMsIn(now, company?.timezone ?? DEFAULT_TIME_ZONE) / 60_000)
+        return devices.map(({ addedById, ...d }) => ({ ...withBrand(d), health: deviceHealth({ ...d, addedById }, now, working, zone) }))
     }
 
     static async deviceOf(id: string) {

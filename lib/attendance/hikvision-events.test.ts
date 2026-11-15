@@ -19,7 +19,7 @@ const access = (inner: Record<string, unknown>, outer: Record<string, unknown> =
 
 describe("one event", () => {
     it("is a scan when an identity check passed for an employee number, at the terminal's wall clock", () => {
-        expect(readEvent(access({}))).toEqual({ kind: "scan", userNumber: "7", at: "2026-09-14T09:05:00" })
+        expect(readEvent(access({}))).toMatchObject({ kind: "scan", userNumber: "7", at: "2026-09-14T09:05:00" })
         // Whatever offset the terminal names: its wall clock is what's read, as for the agent (§17.5).
         expect(readEvent(access({}, { dateTime: "2026-09-14T09:05:00Z" }))).toMatchObject({ at: "2026-09-14T09:05:00" })
         expect(readEvent(access({}, { dateTime: "2026-09-14T09:05:00-05:00" }))).toMatchObject({ at: "2026-09-14T09:05:00" })
@@ -39,7 +39,7 @@ describe("one event", () => {
     })
 
     it("reads numbers written as text, and an older terminal's employee number", () => {
-        expect(readEvent(access({ majorEventType: "5", subEventType: "38", employeeNoString: " 12 " }))).toEqual({ kind: "scan", userNumber: "12", at: "2026-09-14T09:05:00" })
+        expect(readEvent(access({ majorEventType: "5", subEventType: "38", employeeNoString: " 12 " }))).toMatchObject({ kind: "scan", userNumber: "12", at: "2026-09-14T09:05:00" })
         expect(readEvent(access({ employeeNoString: undefined, employeeNo: 44 }))).toMatchObject({ kind: "scan", userNumber: "44" })
     })
 
@@ -66,9 +66,57 @@ describe("one event", () => {
         expect(readEvent(access({ employeeNoString: "9".repeat(33) }))).toEqual({ kind: "refused", reason: "INVALID_NUMBER" })
     })
 
+    it("reads the offset its time states, in minutes, beside the wall clock it doesn't change (PR 293)", () => {
+        const offset = (dateTime: unknown) => (readEvent(access({}, { dateTime })) as { offsetMinutes: number | null }).offsetMinutes
+        expect(offset("2026-09-14T09:05:00+03:00")).toBe(180)
+        expect(offset("2026-09-14T09:05:00+02:00")).toBe(120)
+        expect(offset("2026-09-14T09:05:00-05:00")).toBe(-300)
+        expect(offset("2026-09-14T09:05:00+05:30")).toBe(330)
+        expect(offset("2026-09-14T09:05:00+0530")).toBe(330)
+        expect(offset("2026-09-14T09:05:00.250+08:00")).toBe(480)
+        expect(offset("2026-09-14T09:05:00Z")).toBe(0)
+        // None stated, or one no clock has: nothing is said of the terminal's zone.
+        for (const dateTime of ["2026-09-14T09:05:00", "2026-09-14T09:05:00+15:00", "2026-09-14T09:05:00+03:70", "2026-09-14T09:05:00 +03:00", "yesterday", "", undefined, 20260914]) {
+            expect(offset(dateTime), String(dateTime)).toBeNull()
+        }
+        // Whatever it states, the scan's time is the wall clock.
+        for (const zone of ["+03:00", "-05:00", "Z", ""]) expect(readEvent(access({}, { dateTime: `2026-09-14T09:05:00${zone}` }))).toMatchObject({ at: "2026-09-14T09:05:00" })
+    })
+
+    it("keeps the fields of its event that Nizmo knows, and never a name, a card's number or a picture (PR 293)", () => {
+        const event = access(
+            { cardNo: "1234567890", cardType: 1, cardReaderNo: 1, doorNo: 1, attendanceStatus: "checkIn", statusValue: 0, mask: "no", pictureURL: "http://192.0.2.10/pic/1.jpg", FaceRect: { height: 0.2, width: 0.1, x: 0.4, y: 0.5 }, somethingNew: "who knows" },
+            { PicInfo: [{ url: "http://192.0.2.10/pic/1.jpg" }], shortSerialNumber: "K1", deviceID: "abc" },
+        )
+        const { kept } = readEvent(event) as { kept: Record<string, unknown> }
+        expect(kept).toEqual({
+            dateTime: "2026-09-14T09:05:00+03:00", eventType: "AccessControllerEvent", eventState: "active",
+            ipAddress: "192.0.2.10", macAddress: "00:00:5e:00:53:01", channelID: 1, activePostCount: 1,
+            AccessControllerEvent: {
+                deviceName: "Lobby", majorEventType: 5, subEventType: 75, employeeNoString: "7", serialNo: 223, verifyNo: 147,
+                userType: "normal", currentVerifyMode: "cardOrFaceOrFp", cardReaderNo: 1, doorNo: 1, attendanceStatus: "checkIn", statusValue: 0, picturesNumber: 1,
+            },
+        })
+        // Kept by name: the person's name, the card's number, pictures, and whatever nobody foresaw are not there.
+        const text = JSON.stringify(kept)
+        for (const never of ["Ehab", '"name"', "cardNo", "1234567890", "pictureURL", ".jpg", "FaceRect", "PicInfo", "mask", "somethingNew", "who knows", "deviceID", "portNo", "eventDescription"]) expect(text, never).not.toContain(never)
+    })
+
+    it("keeps each field as a short text, a number or a yes or no, and nothing nested (PR 293)", () => {
+        const { kept } = readEvent(access(
+            { deviceName: "L".repeat(500), userType: { nested: "Ehab" }, statusValue: true, currentVerifyMode: ["card"], doorNo: Number.NaN, verifyNo: null },
+            { ipAddress: { v4: "192.0.2.10" }, eventState: ["active"] },
+        )) as { kept: { AccessControllerEvent: Record<string, unknown> } & Record<string, unknown> }
+        expect(kept.AccessControllerEvent.deviceName).toBe("L".repeat(100))
+        expect(kept.AccessControllerEvent.statusValue).toBe(true)
+        for (const gone of ["userType", "currentVerifyMode", "doorNo", "verifyNo"]) expect(kept.AccessControllerEvent, gone).not.toHaveProperty(gone)
+        for (const gone of ["ipAddress", "eventState"]) expect(kept, gone).not.toHaveProperty(gone)
+        expect(JSON.stringify(kept)).not.toContain("Ehab")
+    })
+
     it("stays a scan with a time that can't be read, for the ingest to refuse and count", () => {
         for (const dateTime of [undefined, "", "yesterday", 20260914, "2026-09-14 09:05:00"]) {
-            expect(readEvent(access({}, { dateTime }))).toEqual({ kind: "scan", userNumber: "7", at: "" })
+            expect(readEvent(access({}, { dateTime }))).toMatchObject({ kind: "scan", userNumber: "7", at: "" })
         }
     })
 })
@@ -83,8 +131,8 @@ const XML = (inner: string, dateTime = "2026-09-14T17:02:00+03:00") => `<?xml ve
 
 describe("a body's text", () => {
     it("is read as JSON, one event or several", () => {
-        expect(readEventText(JSON.stringify(access({})))).toEqual([{ kind: "scan", userNumber: "7", at: "2026-09-14T09:05:00" }])
-        expect(readEventText(JSON.stringify([access({}), access({ subEventType: 0x4c, employeeNoString: "" })]))).toEqual([
+        expect(readEventText(JSON.stringify(access({})))).toMatchObject([{ kind: "scan", userNumber: "7", at: "2026-09-14T09:05:00" }])
+        expect(readEventText(JSON.stringify([access({}), access({ subEventType: 0x4c, employeeNoString: "" })]))).toMatchObject([
             { kind: "scan", userNumber: "7", at: "2026-09-14T09:05:00" }, { kind: "other" },
         ])
         expect(readEventText(`  \n${JSON.stringify({ eventType: "heartBeat" })}\n`)).toEqual([{ kind: "other" }])
@@ -92,11 +140,21 @@ describe("a body's text", () => {
 
     it("is read as the older XML", () => {
         expect(readEventText(XML("<majorEventType>5</majorEventType><subEventType>38</subEventType><employeeNoString>7</employeeNoString><name>Ehab</name>")))
-            .toEqual([{ kind: "scan", userNumber: "7", at: "2026-09-14T17:02:00" }])
+            .toMatchObject([{ kind: "scan", userNumber: "7", at: "2026-09-14T17:02:00" }])
         expect(readEventText(XML("<majorEventType>5</majorEventType><subEventType>39</subEventType>"))).toEqual([{ kind: "other" }])
         expect(readEventText(XML("<majorEventType>5</majorEventType><subEventType>200</subEventType><employeeNoString>7</employeeNoString>")))
             .toEqual([{ kind: "refused", reason: "EVENT_NOT_KNOWN:200" }])
         expect(readEventText(`<EventNotificationAlert><eventType>heartBeat</eventType></EventNotificationAlert>`)).toEqual([{ kind: "other" }])
+    })
+
+    it("keeps the same fields of the older XML, by their names, and its offset (PR 293)", () => {
+        const [scan] = readEventText(XML("<deviceName>Lobby</deviceName><majorEventType>5</majorEventType><subEventType>38</subEventType><employeeNoString>7</employeeNoString><name>Ehab</name><cardNo>1234567890</cardNo><cardReaderNo>1</cardReaderNo>"))!
+        expect(scan).toMatchObject({ kind: "scan", userNumber: "7", at: "2026-09-14T17:02:00", offsetMinutes: 180 })
+        expect((scan as { kept: unknown }).kept).toEqual({
+            dateTime: "2026-09-14T17:02:00+03:00", eventType: "AccessControllerEvent", eventState: "active", ipAddress: "192.0.2.10", activePostCount: "1",
+            AccessControllerEvent: { deviceName: "Lobby", majorEventType: "5", subEventType: "38", employeeNoString: "7", cardReaderNo: "1" },
+        })
+        expect(JSON.stringify(scan)).not.toMatch(/Ehab|1234567890/)
     })
 
     it("is unreadable when it is neither", () => {
@@ -114,22 +172,25 @@ describe("a request", () => {
         // A picture whose bytes, read as an event, would be one: it is never opened.
         form.set("Picture", new File([JSON.stringify(access({ employeeNoString: "666" }))], "Picture.jpg", { type: "image/jpeg" }))
         form.set("FacePicture", new File([PICTURE], "face.jpeg", { type: "application/octet-stream" }))
-        expect(await eventsOf(post({ body: form }))).toEqual([{ kind: "scan", userNumber: "7", at: "2026-09-14T09:05:00" }])
+        const events = await eventsOf(post({ body: form }))
+        expect(events).toMatchObject([{ kind: "scan", userNumber: "7", at: "2026-09-14T09:05:00" }])
+        // Nor is anything of a picture in what the scan keeps (PR 293).
+        expect(JSON.stringify(events)).not.toMatch(/666|JFIF|Picture/)
     })
 
     it("reads the event whatever its part is called, and when it comes as a file", async () => {
         const form = new FormData()
         form.set("AccessControllerEvent", new File([JSON.stringify(access({ employeeNoString: "8" }))], "event.json", { type: "application/json" }))
-        expect(await eventsOf(post({ body: form }))).toEqual([{ kind: "scan", userNumber: "8", at: "2026-09-14T09:05:00" }])
+        expect(await eventsOf(post({ body: form }))).toMatchObject([{ kind: "scan", userNumber: "8", at: "2026-09-14T09:05:00" }])
         const xml = new FormData()
         xml.set("event", XML("<majorEventType>5</majorEventType><subEventType>75</subEventType><employeeNoString>9</employeeNoString>"))
-        expect(await eventsOf(post({ body: xml }))).toEqual([{ kind: "scan", userNumber: "9", at: "2026-09-14T17:02:00" }])
+        expect(await eventsOf(post({ body: xml }))).toMatchObject([{ kind: "scan", userNumber: "9", at: "2026-09-14T17:02:00" }])
     })
 
     it("is read from JSON alone, or XML alone, whatever content type it claims", async () => {
-        expect(await eventsOf(post({ body: JSON.stringify(access({})), headers: { "Content-Type": "application/json" } }))).toEqual([{ kind: "scan", userNumber: "7", at: "2026-09-14T09:05:00" }])
+        expect(await eventsOf(post({ body: JSON.stringify(access({})), headers: { "Content-Type": "application/json" } }))).toMatchObject([{ kind: "scan", userNumber: "7", at: "2026-09-14T09:05:00" }])
         const xml = XML("<majorEventType>5</majorEventType><subEventType>1</subEventType><employeeNoString>7</employeeNoString>")
-        expect(await eventsOf(post({ body: xml, headers: { "Content-Type": "application/xml; charset=UTF-8" } }))).toEqual([{ kind: "scan", userNumber: "7", at: "2026-09-14T17:02:00" }])
+        expect(await eventsOf(post({ body: xml, headers: { "Content-Type": "application/xml; charset=UTF-8" } }))).toMatchObject([{ kind: "scan", userNumber: "7", at: "2026-09-14T17:02:00" }])
         expect(await eventsOf(post({ body: xml, headers: { "Content-Type": "text/plain" } }))).toHaveLength(1)
     })
 

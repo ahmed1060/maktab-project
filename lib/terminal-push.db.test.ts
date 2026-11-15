@@ -5,6 +5,8 @@ import { hashSecret } from "@/lib/attendance/agent-credentials"
 import { newPushSecret } from "@/lib/attendance/terminal-secrets"
 import { AttendanceIngestService as Ingest } from "@/lib/services/attendance-ingest.service"
 import { AttendancePunchService as Punches } from "@/lib/services/attendance-punch.service"
+import { AttendanceDeviceService as Devices } from "@/lib/services/attendance-device.service"
+import { offsetMsIn } from "@/lib/time"
 
 /**
  * The address a Hikvision terminal sends to (ATTENDANCE_PLAN.md §17.2,
@@ -281,6 +283,110 @@ describe.skipIf(!ADMIN_URL)("the address a Hikvision terminal sends to, in Postg
             expect((await send(retired, ...json(access("7", "2026-09-18T09:00:00")))).status).toBe(200)
             expect(await device("retired")).toMatchObject({ refusedCount: 1, lastRefusal: "DEVICE_RETIRED" })
             expect([...(await punchesOf("via-agent")), ...(await punchesOf("retired"))]).toEqual([])
+        })
+    })
+
+    describe("what a scan keeps of its event (PR 293)", () => {
+        const keptOf = async (deviceId: string) => (await db.query(`SELECT "hardwareUserId", "rawPayload" FROM "AttendancePunch" WHERE "deviceId" = $1 ORDER BY "punchAtLocal"`, [deviceId])).rows
+        /** The same event at another offset from UTC, or with none stated. */
+        const stating = (employee: string, at: string, zone: string) => ({ ...access(employee, at), dateTime: `${at}${zone}` })
+
+        it("keeps the fields Nizmo knows on its punch, and never a name, a card's number or a picture", async () => {
+            const secret = await terminal("keeps")
+            const event = access("7", "2026-09-21T09:05:00")
+            const whole = {
+                ...event, PicInfo: [{ url: "http://192.0.2.10/pic/1.jpg" }], somethingNew: "who knows",
+                AccessControllerEvent: {
+                    ...event.AccessControllerEvent, cardNo: "1234567890", currentVerifyMode: "cardOrFaceOrFp", cardReaderNo: 1, doorNo: 1, mask: "no",
+                    pictureURL: "http://192.0.2.10/pic/1.jpg", FaceRect: { height: 0.2, width: 0.1, x: 0.4, y: 0.5 },
+                },
+            }
+            const form = new FormData()
+            form.set("event_log", JSON.stringify(whole))
+            form.set("Picture", new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0])], "Picture.jpg", { type: "image/jpeg" }))
+            expect((await send(secret, form)).status).toBe(200)
+            // The older XML keeps the same fields, by their names.
+            const xml = `<EventNotificationAlert><ipAddress>192.0.2.10</ipAddress><dateTime>2026-09-21T17:02:00+03:00</dateTime><eventType>AccessControllerEvent</eventType><AccessControllerEvent><deviceName>Lobby</deviceName><majorEventType>5</majorEventType><subEventType>1</subEventType><employeeNoString>7</employeeNoString><name>Somebody</name><cardNo>1234567890</cardNo></AccessControllerEvent></EventNotificationAlert>`
+            expect((await send(secret, xml, { "Content-Type": "application/xml" })).status).toBe(200)
+
+            const rows = await keptOf("keeps")
+            expect(rows).toEqual([
+                { hardwareUserId: "7", rawPayload: {
+                    dateTime: "2026-09-21T09:05:00+03:00", eventType: "AccessControllerEvent", eventState: "active", ipAddress: "192.0.2.10", macAddress: "00:00:5e:00:53:01",
+                    AccessControllerEvent: { deviceName: "Lobby", majorEventType: 5, subEventType: 75, employeeNoString: "7", serialNo: 1, currentVerifyMode: "cardOrFaceOrFp", cardReaderNo: 1, doorNo: 1, picturesNumber: 1 },
+                } },
+                { hardwareUserId: "7", rawPayload: {
+                    dateTime: "2026-09-21T17:02:00+03:00", eventType: "AccessControllerEvent", ipAddress: "192.0.2.10",
+                    AccessControllerEvent: { deviceName: "Lobby", majorEventType: "5", subEventType: "1", employeeNoString: "7" },
+                } },
+            ])
+            const { rows: punches } = await db.query(`SELECT * FROM "AttendancePunch" WHERE "deviceId" = 'keeps'`)
+            const text = JSON.stringify(punches)
+            for (const never of ["Somebody", '"name"', "cardNo", "1234567890", "pictureURL", ".jpg", "FaceRect", "PicInfo", "mask", "somethingNew", "who knows"]) expect(text, never).not.toContain(never)
+        })
+
+        it("keeps it on a new punch only: a scan sent again stays as it was first kept", async () => {
+            const secret = await terminal("kept-once")
+            const first = access("7", "2026-09-22T09:00:00")
+            expect((await send(secret, ...json(first))).status).toBe(200)
+            const again = { ...first, AccessControllerEvent: { ...first.AccessControllerEvent, serialNo: 2, deviceName: "Renamed" } }
+            expect((await send(secret, ...json(again))).status).toBe(200)
+            const rows = await keptOf("kept-once")
+            expect(rows).toHaveLength(1)
+            expect(rows[0].rawPayload.AccessControllerEvent).toMatchObject({ serialNo: 1, deviceName: "Lobby" })
+        })
+
+        it("keeps the terminal's own offset from UTC as its last scan stated it, and never moves a scan by it", async () => {
+            const secret = await terminal("zone")
+            expect((await device("zone")).utcOffsetMinutes).toBeNull()
+            // A contact with no scan says nothing of its zone.
+            expect((await send(secret, ...json({ eventType: "heartBeat", dateTime: "2026-09-23T08:00:00+08:00", eventState: "active" }))).status).toBe(200)
+            expect((await device("zone")).utcOffsetMinutes).toBeNull()
+
+            expect((await send(secret, ...json(stating("7", "2026-09-23T09:00:00", "+08:00")))).status).toBe(200)
+            expect((await device("zone")).utcOffsetMinutes).toBe(480)
+            // One with none stated doesn't empty it; the next that states one replaces it.
+            expect((await send(secret, ...json(stating("7", "2026-09-23T13:00:00", "")))).status).toBe(200)
+            expect((await device("zone")).utcOffsetMinutes).toBe(480)
+            expect((await send(secret, ...json([stating("7", "2026-09-23T17:00:00", "-05:00"), stating("7", "2026-09-23T17:30:00", "+05:30")]))).status).toBe(200)
+            expect((await device("zone")).utcOffsetMinutes).toBe(330)
+            expect((await send(secret, ...json(stating("7", "2026-09-23T18:00:00", "Z")))).status).toBe(200)
+            expect((await device("zone")).utcOffsetMinutes).toBe(0)
+
+            // Whatever it stated, each scan is at the terminal's wall clock, with its dateTime kept whole.
+            expect((await punchesOf("zone")).map(p => p.at)).toEqual(["2026-09-23T09:00:00", "2026-09-23T13:00:00", "2026-09-23T17:00:00", "2026-09-23T17:30:00", "2026-09-23T18:00:00"])
+            expect((await keptOf("zone")).map(r => r.rawPayload.dateTime)).toEqual(["2026-09-23T09:00:00+08:00", "2026-09-23T13:00:00", "2026-09-23T17:00:00-05:00", "2026-09-23T17:30:00+05:30", "2026-09-23T18:00:00Z"])
+        })
+
+        it("notes no offset on a terminal set to the agent, or one that is retired", async () => {
+            const viaAgent = await terminal("zone-agent", "c1", { connection: "AGENT" })
+            const retired = await terminal("zone-retired")
+            await db.query(`UPDATE "AttendanceDevice" SET "retiredAt" = now() WHERE id = 'zone-retired'`)
+            for (const secret of [viaAgent, retired]) expect((await send(secret, ...json(stating("7", "2026-09-24T09:00:00", "+08:00")))).status).toBe(200)
+            expect((await device("zone-agent")).utcOffsetMinutes).toBeNull()
+            expect((await device("zone-retired")).utcOffsetMinutes).toBeNull()
+        })
+
+        it("says on the terminals list when a terminal's time zone isn't the company's now", async () => {
+            // The company's own offset now, summer time or not.
+            const company = Math.round(offsetMsIn(new Date(), "Africa/Cairo") / 60_000)
+            const two = (n: number) => String(n).padStart(2, "0")
+            const zone = (minutes: number) => `${minutes < 0 ? "-" : "+"}${two(Math.floor(Math.abs(minutes) / 60))}:${two(Math.abs(minutes) % 60)}`
+            const same = await terminal("zone-same")
+            const other = await terminal("zone-other")
+            const unstated = await terminal("zone-unstated")
+            expect((await send(same, ...json(stating("7", "2026-09-25T09:00:00", zone(company))))).status).toBe(200)
+            expect((await send(other, ...json(stating("7", "2026-09-25T09:01:00", "+08:00")))).status).toBe(200)
+            expect((await send(unstated, ...json(stating("7", "2026-09-25T09:02:00", "")))).status).toBe(200)
+
+            const listed = new Map((await Devices.list("c1")).map(d => [d.id, d]))
+            expect(listed.get("zone-same")).toMatchObject({ utcOffsetMinutes: company, health: { state: "OK", zoneOff: false } })
+            expect(listed.get("zone-other")).toMatchObject({ utcOffsetMinutes: 480, health: { state: "OK", zoneOff: true } })
+            expect(listed.get("zone-unstated")).toMatchObject({ utcOffsetMinutes: null, health: { state: "OK", zoneOff: false } })
+            // One the agent reads states none, and is never flagged.
+            expect(listed.get("first")).toMatchObject({ utcOffsetMinutes: null, health: { zoneOff: false } })
+            // What a punch keeps is never on the list.
+            expect(JSON.stringify([...listed.values()])).not.toContain("rawPayload")
         })
     })
 })

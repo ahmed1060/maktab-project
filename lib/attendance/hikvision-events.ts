@@ -2,8 +2,8 @@
  * What a Hikvision terminal sends, read (ATTENDANCE_PLAN.md §17.2, §17.5,
  * PR 291). A terminal set to "HTTP listening" posts each event as it
  * happens: a scan, a door opening, a failed attempt, a heartbeat. Only a
- * scan is kept, and of it only the employee number and the time: no name,
- * no picture.
+ * scan is kept: the employee number and the time, and with them the fields
+ * of its event that Nizmo knows (PR 293). No name, no picture.
  *
  * No terminal is on hand, so this follows Hikvision's documents. Where a
  * real one differs, it has to show: an event that names an employee and is
@@ -59,9 +59,17 @@ export const MAX_USER_NUMBER = 32
 /** An event's text is a few hundred bytes. Past this, a part isn't one and isn't opened. */
 const MAX_EVENT_BYTES = 256 * 1024
 
+/** What a scan keeps of its event (§17.5, PR 293): the event's own shape, with only the fields listed below. */
+export type KeptEvent = { [field: string]: string | number | boolean } & { AccessControllerEvent: { [field: string]: string | number | boolean } }
+
 export type TerminalEvent =
-    /** A passed identity check: the employee number, at the terminal's wall clock ("" when it can't be read). */
-    | { kind: "scan"; userNumber: string; at: string }
+    /**
+     * A passed identity check: the employee number, at the terminal's wall
+     * clock ("" when it can't be read); the offset from UTC its event
+     * states, in minutes, or null when it states none; and what the scan
+     * keeps of its event.
+     */
+    | { kind: "scan"; userNumber: string; at: string; offsetMinutes: number | null; kept: KeptEvent }
     /** Not kept, and counted on the terminal with this reason. */
     | { kind: "refused"; reason: string }
     /** Answered and dropped: a heartbeat, a door, a failed attempt. */
@@ -84,6 +92,52 @@ function wallClockOf(dateTime: unknown): string {
     return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.exec(typeof dateTime === "string" ? dateTime : "")?.[0] ?? ""
 }
 
+/**
+ * The offset from UTC that an event's `dateTime` states, in minutes east:
+ * 180 for "+03:00", 0 for "Z". Null when it states none, or one no clock
+ * has. It is kept beside the terminal (§17.5): a scan's time is its wall
+ * clock whatever this says.
+ */
+function offsetOf(dateTime: unknown): number | null {
+    const stated = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})$/.exec(typeof dateTime === "string" ? dateTime.trim() : "")?.[1]
+    if (!stated) return null
+    if (stated === "Z") return 0
+    const digits = stated.slice(1).replace(":", "")
+    const minutes = Number(digits.slice(0, 2)) * 60 + Number(digits.slice(2))
+    // No clock is further from UTC than 14 hours, or keeps 60 minutes or more in its hour.
+    if (minutes > 14 * 60 || Number(digits.slice(2)) > 59) return null
+    return stated[0] === "-" ? -minutes : minutes
+}
+
+/**
+ * The fields a scan keeps of its event (§17.5, PR 293), by name: when and
+ * what kind of event it was, the terminal's own name and its address on
+ * the office network, the event's number in the terminal's log, the
+ * employee number, how the person was identified, which reader and door,
+ * and the attendance status picked on the terminal (in, out, a break).
+ * Kept by name, not left out by name, so a field nobody foresaw can't
+ * carry a name, a card's number or a picture in. Whether the person wore
+ * a mask is theirs, and nothing here needs it: it isn't kept either.
+ */
+const KEPT_OF_EVENT = ["dateTime", "eventType", "eventState", "ipAddress", "macAddress", "channelID", "activePostCount"] as const
+const KEPT_OF_ACCESS = [
+    "deviceName", "majorEventType", "subEventType", "employeeNoString", "employeeNo", "serialNo", "verifyNo", "userType",
+    "currentVerifyMode", "cardReaderNo", "doorNo", "attendanceStatus", "statusValue", "picturesNumber",
+] as const
+/** No field kept is longer than this: a name or a mode, never a document. */
+const MAX_KEPT_TEXT = 100
+
+/** The listed fields of one object that are a text, a number or a yes or no; anything nested is left. */
+function keep(source: Record<string, unknown>, names: readonly string[]): { [field: string]: string | number | boolean } {
+    const kept: { [field: string]: string | number | boolean } = {}
+    for (const name of names) {
+        const value = source[name]
+        if (typeof value === "string") kept[name] = value.slice(0, MAX_KEPT_TEXT)
+        else if ((typeof value === "number" && Number.isFinite(value)) || typeof value === "boolean") kept[name] = value
+    }
+    return kept
+}
+
 /** One event, from its JSON. */
 export function readEvent(event: unknown): TerminalEvent {
     const outer = objectOf(event)
@@ -97,7 +151,10 @@ export function readEvent(event: unknown): TerminalEvent {
     const minor = Number(inner.subEventType ?? inner.minor)
     if (PASSED_CHECKS.has(minor)) {
         if (userNumber.length > MAX_USER_NUMBER) return { kind: "refused", reason: "INVALID_NUMBER" }
-        return { kind: "scan", userNumber, at: wallClockOf(outer.dateTime) }
+        return {
+            kind: "scan", userNumber, at: wallClockOf(outer.dateTime), offsetMinutes: offsetOf(outer.dateTime),
+            kept: { ...keep(outer, KEPT_OF_EVENT), AccessControllerEvent: keep(inner, KEPT_OF_ACCESS) } as KeptEvent,
+        }
     }
     if (NOT_SCANS.has(minor)) return OTHER
     return { kind: "refused", reason: `EVENT_NOT_KNOWN:${Number.isInteger(minor) ? minor : "?"}` }
@@ -109,15 +166,9 @@ const element = (xml: string, name: string): string | undefined => new RegExp(`<
 /** One event, from the older XML `EventNotificationAlert`: the same fields, as elements. */
 function readEventXml(xml: string): TerminalEvent {
     const access = /<AccessControllerEvent[\s>]/.test(xml)
-    return readEvent({
-        eventType: element(xml, "eventType"), dateTime: element(xml, "dateTime"),
-        ...(access && {
-            AccessControllerEvent: {
-                majorEventType: element(xml, "majorEventType"), subEventType: element(xml, "subEventType"),
-                employeeNoString: element(xml, "employeeNoString"), employeeNo: element(xml, "employeeNo"),
-            },
-        }),
-    })
+    // Each field by its name, the ones a scan keeps among them: an element that isn't there is left out.
+    const read = (names: readonly string[]) => Object.fromEntries(names.map(name => [name, element(xml, name)]).filter(([, value]) => value !== undefined))
+    return readEvent({ ...read(KEPT_OF_EVENT), ...(access && { AccessControllerEvent: read(KEPT_OF_ACCESS) }) })
 }
 
 /** The events in a body's text, JSON or XML. Null when it is neither. */
