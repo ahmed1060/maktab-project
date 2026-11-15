@@ -12,6 +12,8 @@ import { AttendancePolicyService } from "@/lib/services/attendance-policy.servic
  * attendance.view_team at its scope. What a day costs is money from that
  * person's salary, so it is shown to them, and to others only where
  * salary.view reaches them; anyone else sees the minutes and not the money.
+ * So is what a mission day pays (§6.10, PR 287): where one day is worth the
+ * person's own day's pay, the allowance gives their salary away.
  */
 export const GET = withStandardHandler(async (req, session) => {
     const url = new URL(req.url)
@@ -27,7 +29,7 @@ export const GET = withStandardHandler(async (req, session) => {
     const me = session.user.id
     const shown = days.map(({ teamLeaderId, ...d }) => {
         const seesPay = d.userId === me || can(session.user, "salary.view", { companyId: access.companyId, userId: d.userId, teamLeaderId })
-        return seesPay ? d : { ...d, deductionMinor: null, overtimeMinor: null }
+        return seesPay ? d : { ...d, deductionMinor: null, overtimeMinor: null, missionAllowanceMinor: null }
     })
     // The free occurrences the period's policy allows, for "lates against the
     // free allowance" on one's own month (§13.3): the rule, not anybody's pay.

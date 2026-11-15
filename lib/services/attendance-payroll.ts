@@ -186,11 +186,18 @@ export async function reconcileEntries(
     return { written, removed: stale.length }
 }
 
-/** Stamps the month's days with the run that paid them: the record of which approval froze each. */
+/**
+ * Stamps the month's days with the run that paid them: the record of which approval froze each.
+ *
+ * No payslip carries the mission allowance yet (§6.10, PR 287: priced and
+ * shown, paid from the next PR), so a day is frozen with none: what a frozen
+ * day holds is what was paid, and an allowance left on it would read as paid
+ * when the month is set beside its days again (§12.3).
+ */
 export async function stampDays(tx: Db, companyId: string, year: number, month: number, payrollRunId: string) {
     return (await tx.attendanceDay.updateMany({
         where: { companyId, lockedByPayrollRunId: null, date: { gte: monthStart(year, month), lt: nextMonthStart(year, month) } },
-        data: { lockedByPayrollRunId: payrollRunId },
+        data: { lockedByPayrollRunId: payrollRunId, missionAllowanceMinor: 0 },
     })).count
 }
 

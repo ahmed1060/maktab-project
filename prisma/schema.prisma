@@ -2481,6 +2481,10 @@ model AttendanceDay {
   deductionMinor       Int                 @default(0)
   overtimeStatus       String              @default("NONE")
   overtimeMinor        Int                 @default(0)
+  /// The mission allowance for the date, in minor units (§6.10, PR 287): the
+  /// days its kind of mission pays, times what one day is worth, by the
+  /// policy and the salary in force that date.
+  missionAllowanceMinor Int                @default(0)
   /// Why each rule charged what it did, for the person and their payslip.
   breakdown            Json
   inputsHash           String

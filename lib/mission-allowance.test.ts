@@ -13,8 +13,11 @@ import { bodyFromForm, formFromBody } from "@/components/attendance-policy/polic
  * The mission allowance, بدل مأمورية (ATTENDANCE_PLAN.md §6.10, decisions 6,
  * 9 and 12; §20, Phase 5 part 5). Its settings in the attendance policy
  * first (PR 286): what each kind of mission pays and what one day is worth,
- * nothing to start. Pricing each day, paying it with salary and carrying it
- * across a closed month come in the PRs after.
+ * nothing to start. Then each mission day priced (PR 287): kept on the day,
+ * and shown on the Days list to whoever may see that person's pay; the
+ * pricing itself is in lib/attendance/engine.test.ts, and the days as kept
+ * in lib/mission-allowance.db.test.ts. Paying it with salary and carrying
+ * it across a closed month come in the PRs after.
  */
 
 const withAllowance = (allowance: Partial<PolicyBody["missions"]["allowance"]>, enabled = true): PolicyBody => ({
@@ -180,6 +183,68 @@ describe("the policy's card", () => {
         expect(panel).toContain("t('attendance_mission_worth_amount_line')")
         // Beside whether they can be asked for, which stays.
         expect(panel).toContain("shown.body.missions.enabled ? t('attendance_missions_line') : t('attendance_missions_off_line')")
+    })
+})
+
+describe("each mission day priced (PR 287)", () => {
+    const migration = readFileSync("prisma/migrations/20261226000000_mission_allowance_day/migration.sql", "utf8")
+    const statements = migration.split("\n").filter(l => l.trim() && !l.startsWith("--")).join("\n")
+    const service = readFileSync("lib/services/attendance-engine.service.ts", "utf8")
+    const page = readFileSync("app/(dashboard)/dashboard/attendance/page.tsx", "utf8")
+
+    it("is kept on the day by a migration that only adds a column, nothing on the days there before it", () => {
+        expect(statements).toBe(`ALTER TABLE "AttendanceDay" ADD COLUMN "missionAllowanceMinor" INTEGER NOT NULL DEFAULT 0;`)
+        expect(readFileSync("prisma/schema.prisma", "utf8")).toMatch(/model AttendanceDay \{[^}]*\n\s+missionAllowanceMinor\s+Int\s+@default\(0\)/)
+    })
+
+    it("follows the approved mission on that date, not how the day read, and never a date on leave or suspended", () => {
+        expect(service).toContain("mission: onLeave || isSuspended ? null : missionOn.get(date) ?? null,")
+        expect(service).toContain("row: { ...row, missionAllowanceMinor: d.missionAllowanceMinor },")
+    })
+
+    it("leaves a day with no allowance its hash, so no day is written again for the column alone", () => {
+        expect(service).toContain("inputsHash: hashOf({ ...row, deductionDays: d.deductionDays, ...(d.missionAllowanceMinor ? { missionAllowanceMinor: d.missionAllowanceMinor } : {}) }),")
+    })
+
+    it("is hidden with the day's other money from whoever doesn't see that person's pay", () => {
+        const days = readFileSync("app/api/attendance/days/route.ts", "utf8")
+        expect(days).toContain("return seesPay ? d : { ...d, deductionMinor: null, overtimeMinor: null, missionAllowanceMinor: null }")
+        const exceptions = readFileSync("app/api/attendance/exceptions/route.ts", "utf8")
+        expect(exceptions).toContain("? d : { ...d, deductionMinor: null, overtimeMinor: null, missionAllowanceMinor: null })")
+        // The two lists that send whole days on; every other reader picks its fields.
+        const readers = ["lib/services/attendance-request.service.ts", "lib/services/attendance-payroll.ts", "lib/services/attendance-lock.ts", "lib/requests/feed.ts"]
+        for (const file of readers) {
+            const reads = readFileSync(file, "utf8").split("attendanceDay.find").slice(1)
+            expect(reads.length, file).toBeGreaterThan(0)
+            for (const read of reads) expect(read.slice(0, 600), file).toMatch(/\bselect: \{/)
+        }
+    })
+
+    it("is shown on the day, in the table and on the card, with the amount in the page's digits", () => {
+        expect(page).toContain("missionAllowanceMinor: number | null")
+        expect(page).toContain("const allowance = (d: Day) => (d.missionAllowanceMinor ? <span>{t('day_mission_allowance')}: <bdi>{amount(d.missionAllowanceMinor)}</bdi></span> : null)")
+        // Under the day's status in the table, and a line of its own on the card.
+        expect(page).toContain("{allowance(d) && <div className=\"ui-item-detail\">{allowance(d)}</div>}")
+        expect(page).toContain("...(d.missionAllowanceMinor ? [{ icon: CoinsIcon, text: allowance(d) }] : []),")
+    })
+
+    it("is in the month's totals once there is any: one person's month, and everyone's", () => {
+        expect(page).toContain("...(!hidesMoney && allowanceMinor > 0 ? [{ label: t('day_mission_allowance'), value: amount(allowanceMinor) }] : []),")
+        expect(page).toContain("...(allowanceTotal > 0 ? [{ label: t('day_total_mission_allowance'), value: amount(allowanceTotal) }] : []),")
+    })
+
+    it("has its words in both languages", () => {
+        expect(en.day_mission_allowance).toBe("Mission allowance")
+        expect(ar.day_mission_allowance).toBe("بدل المأمورية")
+        expect(en.day_total_mission_allowance).toBe("Total mission allowance")
+        expect(ar.day_total_mission_allowance).toBe("إجمالي بدل المأمورية")
+    })
+
+    it("freezes with no allowance when the month's payroll is approved, until a payslip carries it", () => {
+        const payroll = readFileSync("lib/services/attendance-payroll.ts", "utf8")
+        expect(payroll).toContain("data: { lockedByPayrollRunId: payrollRunId, missionAllowanceMinor: 0 },")
+        // Not yet on the payslip: the next PR's.
+        expect(payroll).not.toContain("MISSION_ALLOWANCE")
     })
 })
 

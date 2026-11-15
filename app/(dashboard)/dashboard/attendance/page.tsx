@@ -163,6 +163,8 @@ type Day = {
     lateMinutes: number; earlyLeaveMinutes: number; overtimeMinutes: number; excusedMinutes: number
     expectedStartMinutes: number | null; expectedEndMinutes: number | null
     deductionDays: number; deductionMinor: number | null; overtimeStatus: string; overtimeMinor: number | null
+    /** What the date's mission pays (ATTENDANCE_PLAN.md §6.10, PR 287); null where the viewer doesn't see this person's pay. */
+    missionAllowanceMinor: number | null
     breakdown: {
         lateness: RuleOutcome; earlyLeave: RuleOutcome; absenceDays: number; unpriced: string | null; holiday: string | null; excusedAbsence?: boolean
         /** A day with one scan somebody marked absent or accepted as it is (PR 275). */
@@ -252,6 +254,7 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
         d.status === 'MISSION' ? null : missionNote(d.breakdown.mission),
     ].filter((n): n is string => !!n)
     const totalMinor = (days ?? []).reduce((sum, d) => sum + (d.deductionMinor ?? 0), 0)
+    const allowanceTotal = (days ?? []).reduce((sum, d) => sum + (d.missionAllowanceMinor ?? 0), 0)
     const showsMoney = (days ?? []).some(d => d.deductionMinor !== null)
     const hhmm = (m: number) => `${pad(Math.floor(m / 60) % 24)}:${pad(m % 60)}`
     // A day waiting on its departure asks for the early leave, which is what makes it wait (PR 274).
@@ -275,6 +278,8 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
             {d.deductionDays > 0 && <div className="ui-item-detail">{daysWord(d.deductionDays)}</div>}
         </>
     )
+    // What the date's mission pays (PR 287), a line of its own: money, so there only for whoever sees that person's pay.
+    const allowance = (d: Day) => (d.missionAllowanceMinor ? <span>{t('day_mission_allowance')}: <bdi>{amount(d.missionAllowanceMinor)}</bdi></span> : null)
     // What one can ask about one's own day: permission for the minutes, or the punch that's missing.
     const asks = (d: Day) => {
         if (d.userId !== me) return null
@@ -298,7 +303,7 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
         { key: 'overtime', header: t('day_overtime'), align: 'end', cell: d => mins(d.overtimeMinutes) },
         ...(showsMoney ? [{ key: 'deduction', header: t('day_deduction'), align: 'end' as const, cell: deduction }] : []),
         // The status and what can be done at the end (DESIGN.md §5.4).
-        { key: 'status', header: t('day_status'), cell: d => <>{badge(d)}{notes(d).map(n => <div key={n} className="ui-item-detail">{n}</div>)}</> },
+        { key: 'status', header: t('day_status'), cell: d => <>{badge(d)}{notes(d).map(n => <div key={n} className="ui-item-detail">{n}</div>)}{allowance(d) && <div className="ui-item-detail">{allowance(d)}</div>}</> },
         ...(oneself ? [{ key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end' as const, cell: asks }] : []),
     ]
     const card = (d: Day) => (
@@ -314,6 +319,7 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
                 ...(d.overtimeMinutes > 0 ? [{ icon: TimerIcon, text: `${t('day_overtime')}: ${minutes(d.overtimeMinutes)}` }] : []),
                 // The amount with its days, as the table has them, to check against the policy (review on PR 149).
                 ...(showsMoney && (d.deductionMinor || d.deductionDays > 0) ? [{ icon: CoinsIcon, text: <span>{t('day_deduction')}: {d.deductionMinor ? <><bdi>{amount(d.deductionMinor)}</bdi>{d.deductionDays > 0 && ` (${daysWord(d.deductionDays)})`}</> : daysWord(d.deductionDays)}</span> }] : []),
+                ...(d.missionAllowanceMinor ? [{ icon: CoinsIcon, text: allowance(d) }] : []),
                 ...notes(d).map(n => ({ icon: InfoIcon, text: n })),
             ]}
             foot={asks(d)}
@@ -339,7 +345,12 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
             {/* The month so far, not from a list cut short. */}
             {days && days.length > 0 && !daysTruncated && (
                 onePerson ? <MonthSummary days={days} rules={rules} balance={oneself ? balanceBody?.data ?? null : null} />
-                    : showsMoney && <TotalTiles items={[{ label: t('day_total'), value: amount(totalMinor) }]} />
+                    : showsMoney && (
+                        <TotalTiles items={[
+                            { label: t('day_total'), value: amount(totalMinor) },
+                            ...(allowanceTotal > 0 ? [{ label: t('day_total_mission_allowance'), value: amount(allowanceTotal) }] : []),
+                        ]} />
+                    )
             )}
 
             <Section title={listTitle} action={correctsCompany ? <Button size="sm" onClick={() => { void recompute() }} disabled={action.running} busy={action.is('recompute')}>{t('day_recompute')}</Button> : undefined}>
@@ -370,7 +381,8 @@ const COUNTED = new Set(['FREE_OCCURRENCE', 'CHARGED', 'ESCALATED', 'CAPPED'])
 /**
  * One person's month so far (§13.3), as total tiles above the list: deductions
  * to date, lateness and early leave against the free allowance, absences,
- * overtime pay, and — for one's own — the permission hours left.
+ * overtime pay, the mission allowance (PR 287), and — for one's own — the
+ * permission hours left.
  */
 function MonthSummary({ days, rules, balance }: { days: Day[]; rules: Rules | null; balance: Balance | null }) {
     const { t } = useLanguage()
@@ -378,6 +390,7 @@ function MonthSummary({ days, rules, balance }: { days: Day[]; rules: Rules | nu
     const deducted = days.reduce((s, d) => s + (d.deductionMinor ?? 0), 0)
     const deductedDays = Math.round(days.reduce((s, d) => s + d.deductionDays, 0) * 10_000) / 10_000
     const overtimeMinor = days.reduce((s, d) => s + (d.overtimeMinor ?? 0), 0)
+    const allowanceMinor = days.reduce((s, d) => s + (d.missionAllowanceMinor ?? 0), 0)
     const hidesMoney = days.every(d => d.deductionMinor === null)
     const lates = days.filter(d => COUNTED.has(d.breakdown.lateness.note ?? ''))
     const earlies = days.filter(d => COUNTED.has(d.breakdown.earlyLeave.note ?? ''))
@@ -390,6 +403,7 @@ function MonthSummary({ days, rules, balance }: { days: Day[]; rules: Rules | nu
         { label: t('sum_early'), value: num(earlies.length), note: freeLine(earlies.filter(d => d.breakdown.earlyLeave.note === 'FREE_OCCURRENCE').length, rules?.earlyLeave) },
         { label: t('sum_absences'), value: num(absences) },
         ...(!hidesMoney && overtimeMinor > 0 ? [{ label: t('sum_overtime'), value: amount(overtimeMinor) }] : []),
+        ...(!hidesMoney && allowanceMinor > 0 ? [{ label: t('day_mission_allowance'), value: amount(allowanceMinor) }] : []),
         ...(balance?.enabled ? [{ label: t('sum_permission_left'), value: minutes(balance.remainingMinutes), note: t('sum_of_total').replace('{n}', num(balance.allowanceMinutes + balance.carriedMinutes)) }] : []),
     ]
     return <TotalTiles items={items} />

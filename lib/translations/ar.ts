@@ -2270,6 +2270,8 @@ export const ar = {
         day_mission_days: "في مأمورية",
         day_mission_to_end: "مأمورية حتى نهاية اليوم، فلا يُحتسب الانصراف المبكر",
         day_mission_from_start: "مأمورية من بداية اليوم، فلا يُحتسب التأخير",
+        day_mission_allowance: "بدل المأمورية",
+        day_total_mission_allowance: "إجمالي بدل المأمورية",
         day_unpriced_no_policy: "لا توجد سياسة بعد، يُقاس فقط",
         day_unpriced_no_salary: "لا يوجد راتب مسجّل، فلا تسعير",
         day_overtime_pending: "عمل إضافي بانتظار الاعتماد",

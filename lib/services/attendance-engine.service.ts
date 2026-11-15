@@ -227,9 +227,10 @@ async function deriveMonth(
             // The version in force that day, or the simulator's draft: its window for scans close
             // together, and its threshold for a departure to confirm (§6.9).
             const policy = policyOn(policies, date)
+            const onLeave = leaveDays.has(date), isSuspended = suspended.some(covers)
             const day = measureDay({
                 date, expected: plan.expected, punches: grouped.get(date) ?? [],
-                onLeave: leaveDays.has(date), suspended: suspended.some(covers),
+                onLeave, suspended: isSuspended,
                 permissions: permissions.filter(p => p.userId === person.id && toDateString(p.date) === date),
                 excused: excusedOn(person.id, date),
                 windowMinutes: policy?.body.scanWindowMinutes,
@@ -249,6 +250,10 @@ async function deriveMonth(
                 paidMinutes: paidMinutesOf(plan.expected, base),
                 overtimeDecision: decision && decision.status !== "PENDING" && decision.status !== "CANCELLED"
                     ? { status: decision.status, minutes: decision.approvedMinutes } : null,
+                // The allowance follows the approved mission, not how the day read (§6.10, PR 287): a rest
+                // day of a mission by days has it too. Leave and a suspension come before a mission, as they
+                // do when the day is read, a rest day inside the leave included.
+                mission: onLeave || isSuspended ? null : missionOn.get(date) ?? null,
             })
         }
 
@@ -284,7 +289,12 @@ async function deriveMonth(
                 } as Prisma.InputJsonValue,
             }
             out.push({
-                userId: person.id, date: d.date, row, inputsHash: hashOf({ ...row, deductionDays: d.deductionDays }),
+                userId: person.id, date: d.date,
+                // The date's mission allowance (§6.10, PR 287), always written: a mission cancelled takes it back.
+                row: { ...row, missionAllowanceMinor: d.missionAllowanceMinor },
+                // Hashed only where there is one, so a day without it keeps the hash it had before
+                // the allowance was kept, and isn't written again for nothing.
+                inputsHash: hashOf({ ...row, deductionDays: d.deductionDays, ...(d.missionAllowanceMinor ? { missionAllowanceMinor: d.missionAllowanceMinor } : {}) }),
                 deductionDays: d.deductionDays, deductionMinor: d.deductionMinor, overtimeMinor: d.overtimeMinor,
             })
         }
