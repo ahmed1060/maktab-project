@@ -729,7 +729,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      (`ATTENDANCE_PLAN.md` §6.10), merged in #283 on 2026-11-15; then the
      built-in Admin role's Decide missions for the companies already
      there, merged in #284 on 2026-11-15; then cancelling an approved
-     mission, with a reason, from To review's Done, #285;
+     mission, with a reason, from To review's Done, merged in #285 on
+     2026-11-15; then Phase 5 part 5's first PR, the mission allowance's
+     settings in the attendance policy, #286;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6305,3 +6307,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   review's Done, with a reason. It's then Cancelled, the asker is told
   why, and its days count again as they would without it; its days in a
   month whose payroll is approved become discrepancies.
+- **2026-11-15:** The attendance policy has the mission allowance's
+  settings (#286; `ATTENDANCE_PLAN.md` §6.10, decisions 6 and 12, Phase 5
+  part 5). Under Missions in the policy dialog: what a mission by days
+  pays for each day and what a mission by hours pays, each nothing, ¼, ½,
+  1 or 2 days, and what one day is worth, the employee's own day's pay or
+  an amount typed in. Both pay nothing to start, and the policy's card
+  says what's set. Nothing is priced or paid yet.

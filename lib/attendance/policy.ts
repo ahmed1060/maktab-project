@@ -86,6 +86,37 @@ export const permissionHoursSchema = z.object({
     types: z.array(z.enum(PERMISSION_TYPES)).min(1),
 })
 
+/** What a kind of mission can pay, in days (§6.10, decision 6): nothing, a quarter, a half, one or two. */
+export const MISSION_PAYS = [0, 0.25, 0.5, 1, 2] as const
+/** The most one day can be worth as an amount typed in: 100,000 of the company's currency, in minor units. */
+export const MISSION_AMOUNT_MAX_MINOR = 100_000_00
+
+const missionPaysSchema = z.union([z.literal(0), z.literal(0.25), z.literal(0.5), z.literal(1), z.literal(2)])
+
+/**
+ * The mission allowance, بدل مأمورية (§6.10, decisions 6, 9 and 12, PR 286):
+ * what one day is worth, and how many days each kind of mission pays. Only
+ * kept here: the PRs after price each mission day and pay it with salary.
+ */
+export const missionAllowanceSchema = z.object({
+    /** What one day is worth: the employee's own day's pay on that date, or the amount below, the same for everyone. */
+    dayWorth: z.enum(["OWN_PAY", "AMOUNT"]),
+    /** The amount one day is worth, in minor units of the company's currency. Read only when one day is worth an amount. */
+    amountMinor: z.number().int().min(0).max(MISSION_AMOUNT_MAX_MINOR),
+    /** A mission by days pays this many days for each day in it, rest days and holidays included (decision 9). */
+    days: missionPaysSchema,
+    /** A mission by hours pays this many days, once. */
+    hours: missionPaysSchema,
+})
+export type MissionAllowance = z.infer<typeof missionAllowanceSchema>
+
+/**
+ * Nothing for both kinds (decision 12): what every policy starts with, and
+ * what one saved before the allowance reads as. Frozen, since the starting
+ * policies and the schema's default all hold this one object.
+ */
+export const NO_MISSION_ALLOWANCE: MissionAllowance = Object.freeze({ dayWorth: "OWN_PAY", amountMinor: 0, days: 0, hours: 0 })
+
 export const policyBodySchema = z.object({
     /** The company's working days, 0 = Sunday (§6.2). A schedule may differ. */
     workWeek: z.array(z.number().int().min(0).max(6)).min(1).max(7),
@@ -121,10 +152,17 @@ export const policyBodySchema = z.object({
      * Whether missions may be asked for on a day under this version (§6.10,
      * decision 11, PR 283). On in every version: one saved before it reads
      * as on, so nothing is migrated. Off stops only asking; a mission already
-     * asked is decided as before, and one approved counts. Part 5 adds the
-     * allowance beside it.
+     * asked is decided as before, and one approved counts.
+     *
+     * Its allowance (decisions 6 and 12, PR 286) is nothing to start, and
+     * nothing in a version saved before it, so nothing is migrated. It
+     * isn't inside the switch: a mission approved before asking was turned
+     * off still counts.
      */
-    missions: z.object({ enabled: z.boolean() }).default({ enabled: true }),
+    missions: z.object({
+        enabled: z.boolean(),
+        allowance: missionAllowanceSchema.default(NO_MISSION_ALLOWANCE),
+    }).default({ enabled: true, allowance: NO_MISSION_ALLOWANCE }),
 })
 
 export type Band = z.infer<typeof bandSchema>
@@ -144,6 +182,9 @@ export function policyProblem(body: PolicyBody): string | null {
     const p = body.permissionHours
     if (p.minPerRequestMinutes > p.maxPerRequestMinutes) return "PERMISSION_LIMITS_REVERSED"
     if (p.enabled && p.maxPerRequestMinutes > p.monthlyAllowanceMinutes && p.monthlyAllowanceMinutes > 0) return "PERMISSION_REQUEST_OVER_ALLOWANCE"
+    // One day worth an amount, and a kind that pays: the amount has to be there (§6.10, PR 286).
+    const a = body.missions.allowance
+    if (a.dayWorth === "AMOUNT" && (a.days > 0 || a.hours > 0) && a.amountMinor <= 0) return "MISSION_ALLOWANCE_AMOUNT_MISSING"
     return null
 }
 
@@ -228,7 +269,7 @@ export const STANDARD_OFFICE: PolicyBody = {
     departureThresholdMinutes: DEFAULT_DEPARTURE_THRESHOLD_MINUTES,
     faceVerificationAvailable: false,
     faceReverifyMonths: null,
-    missions: { enabled: true },
+    missions: { enabled: true, allowance: NO_MISSION_ALLOWANCE },
 }
 
 export const SIX_DAY_FACTORY: PolicyBody = {
@@ -258,7 +299,7 @@ export const MEASURE_ONLY: PolicyBody = {
     departureThresholdMinutes: DEFAULT_DEPARTURE_THRESHOLD_MINUTES,
     faceVerificationAvailable: false,
     faceReverifyMonths: null,
-    missions: { enabled: true },
+    missions: { enabled: true, allowance: NO_MISSION_ALLOWANCE },
 }
 
 export type PolicyVersion = { id: string; effectiveFrom: string; body: PolicyBody }

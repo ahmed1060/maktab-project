@@ -1,15 +1,15 @@
 'use client'
 
-import { useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import DatePickerSingle from '@/components/DatePickerSingle'
 import { Button, Dialog, DialogActions, Field, Select, TextInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { countOf } from '@/lib/plural'
-import { PERMISSION_TYPES, type PolicyBody } from '@/lib/attendance/policy'
+import { MISSION_PAYS, PERMISSION_TYPES, type MissionAllowance, type PolicyBody } from '@/lib/attendance/policy'
 import { rebaseOnDate, startFromStale, type Based } from '@/lib/attendance/rebase'
 import { firstOfNextMonth } from '@/components/attendance-calendar/hours-form'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
-import { bodyFromForm, formFromBody, type FieldError, type FormErrors, type PolicyForm } from './policy-form'
+import { MISSION_AMOUNT_MAX, MISSION_AMOUNT_MIN, bodyFromForm, formFromBody, type FieldError, type FormErrors, type PolicyForm } from './policy-form'
 import RuleFields from './RuleFields'
 import FaceFields from './FaceFields'
 import Simulation from './Simulation'
@@ -50,6 +50,7 @@ export default function PolicyDialog({ title, start, startOn, defaultFrom, today
     const { t, locale } = useLanguage()
     const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
     const formRef = useRef<HTMLFormElement>(null)
+    const allowanceHintId = useId()
     const [form, setForm] = useState<PolicyForm>(() => formFromBody(start))
     const [from, setFrom] = useState(defaultFrom ?? '')
     const [errors, setErrors] = useState<FormErrors>({})
@@ -113,6 +114,11 @@ export default function PolicyDialog({ title, start, startOn, defaultFrom, today
 
     const o = form.overtime
     const ph = form.permissionHours
+    // The mission allowance (§6.10, PR 286): what one day is worth is asked once either kind pays.
+    const m = form.missions
+    const missionPays = m.days > 0 || m.hours > 0
+    const paysOptions = MISSION_PAYS.map(pays => ({ value: String(pays), label: pays === 0 ? t('attendance_mission_pays_none') : pays > 1 ? countOf(t, locale, pays, 'days') : fraction(pays) }))
+    const setMissions = (change: Partial<PolicyForm['missions']>, ...paths: string[]) => edit(f => ({ ...f, missions: { ...f.missions, ...change } }), ...paths)
     const absences = [...new Set([...ABSENCE_MULTIPLIERS, form.absence.multiplier])].sort((a, b) => a - b)
 
     return (
@@ -266,15 +272,48 @@ export default function PolicyDialog({ title, start, startOn, defaultFrom, today
                     </div>
                 </fieldset>
 
-                {/* Missions (ATTENDANCE_PLAN.md §6.10, decision 11, PR 283): the switch alone, until part 5's allowance. */}
+                {/*
+                  * Missions (ATTENDANCE_PLAN.md §6.10): whether they can be asked for
+                  * (decision 11, PR 283), and their allowance (decisions 6 and 12,
+                  * PR 286). The allowance isn't inside the switch: a mission approved
+                  * before asking was turned off still counts.
+                  */}
                 <fieldset className="ui-fieldset">
                     <legend className="ui-subsection-title">{t('attendance_missions')}</legend>
                     <div className="ui-field-group">
                         <label className="ui-choice">
-                            <input type="checkbox" className="ui-check" checked={form.missions.enabled}
-                                onChange={e => edit(f => ({ ...f, missions: { enabled: e.target.checked } }))} />
+                            <input type="checkbox" className="ui-check" checked={m.enabled}
+                                onChange={e => setMissions({ enabled: e.target.checked })} />
                             {t('attendance_missions_on')}
                         </label>
+                        <fieldset className="ui-field ui-fieldset" aria-describedby={allowanceHintId}>
+                            <legend className="ui-label">{t('attendance_mission_allowance')}</legend>
+                            <p className="ui-hint" id={allowanceHintId}>{t('attendance_mission_allowance_hint')}</p>
+                            {/* One under the other: their labels are sentences, and a hint under one alone would put a row out of line. */}
+                            <div className="ui-field-group">
+                                <Field label={t('attendance_mission_days_pays')} hint={t('attendance_mission_days_pays_hint')}>{p => (
+                                    <Select {...p} name="missions.days" value={String(m.days)} options={paysOptions}
+                                        onChange={e => setMissions({ days: Number(e.target.value) as MissionAllowance['days'] }, 'missions.amount')} />
+                                )}</Field>
+                                <Field label={t('attendance_mission_hours_pays')}>{p => (
+                                    <Select {...p} name="missions.hours" value={String(m.hours)} options={paysOptions}
+                                        onChange={e => setMissions({ hours: Number(e.target.value) as MissionAllowance['hours'] }, 'missions.amount')} />
+                                )}</Field>
+                                {missionPays && (
+                                    <Field label={t('attendance_mission_day_worth')}>{p => (
+                                        <Select {...p} name="missions.dayWorth" value={m.dayWorth}
+                                            options={[{ value: 'OWN_PAY', label: t('attendance_mission_worth_own') }, { value: 'AMOUNT', label: t('attendance_mission_worth_amount') }]}
+                                            onChange={e => setMissions({ dayWorth: e.target.value as MissionAllowance['dayWorth'] }, 'missions.amount')} />
+                                    )}</Field>
+                                )}
+                                {missionPays && m.dayWorth === 'AMOUNT' && (
+                                    <Field label={t('attendance_mission_amount')} error={errorOf('missions.amount')}>{p => (
+                                        <TextInput {...p} type="number" inputMode="decimal" autoComplete="off" min={MISSION_AMOUNT_MIN} max={MISSION_AMOUNT_MAX} step={0.01} name="missions.amount" value={m.amount}
+                                            onChange={e => setMissions({ amount: e.target.value }, 'missions.amount')} />
+                                    )}</Field>
+                                )}
+                            </div>
+                        </fieldset>
                     </div>
                 </fieldset>
 

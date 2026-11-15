@@ -81,19 +81,20 @@ describe("Decide missions, for the companies already there (PR 284)", () => {
     })
 })
 
+// The allowance beside it (PR 286) has its own tests, in lib/mission-allowance.test.ts.
 describe("the policy's Missions switch (decision 11)", () => {
     it("is on in every template", () => {
-        for (const body of [STANDARD_OFFICE, SIX_DAY_FACTORY, MEASURE_ONLY]) expect(body.missions).toEqual({ enabled: true })
+        for (const body of [STANDARD_OFFICE, SIX_DAY_FACTORY, MEASURE_ONLY]) expect(body.missions.enabled).toBe(true)
     })
 
     it("reads as on in a version saved before it, so nothing is migrated", () => {
         const saved: Record<string, unknown> = { ...STANDARD_OFFICE }
         delete saved.missions
-        expect(policyBodySchema.parse(saved).missions).toEqual({ enabled: true })
+        expect(policyBodySchema.parse(saved).missions.enabled).toBe(true)
     })
 
     it("keeps off once turned off", () => {
-        expect(policyBodySchema.parse({ ...STANDARD_OFFICE, missions: { enabled: false } }).missions).toEqual({ enabled: false })
+        expect(policyBodySchema.parse({ ...STANDARD_OFFICE, missions: { enabled: false } }).missions.enabled).toBe(false)
     })
 
     it("is in the policy dialog's own Missions section, and the policy card says whether they're on", () => {
@@ -102,8 +103,8 @@ describe("the policy's Missions switch (decision 11)", () => {
         const panel = readFileSync("components/AttendancePolicyPanel.tsx", "utf8")
         expect(dialog).toContain("t('attendance_missions')")
         expect(dialog).toContain("t('attendance_missions_on')")
-        expect(dialog).toContain("missions: { enabled: e.target.checked }")
-        expect(form).toContain("missions: { enabled: form.missions.enabled }")
+        expect(dialog).toContain("setMissions({ enabled: e.target.checked })")
+        expect(form).toContain("missions: { enabled: form.missions.enabled, allowance }")
         expect(panel).toContain("shown.body.missions.enabled")
         expect(en.attendance_missions_on).toBe("Employees can ask for missions")
         expect(ar.attendance_missions_on).toBe("يمكن للموظفين طلب المأموريات")
@@ -111,9 +112,9 @@ describe("the policy's Missions switch (decision 11)", () => {
 
     it("round-trips through the policy form", async () => {
         const { formFromBody, bodyFromForm } = await import("@/components/attendance-policy/policy-form")
-        const off = { ...STANDARD_OFFICE, missions: { enabled: false } }
+        const off = { ...STANDARD_OFFICE, missions: { ...STANDARD_OFFICE.missions, enabled: false } }
         const out = bodyFromForm(formFromBody(off), off)
-        expect(out.ok && out.body.missions).toEqual({ enabled: false })
+        expect(out.ok && out.body.missions.enabled).toBe(false)
     })
 })
 
