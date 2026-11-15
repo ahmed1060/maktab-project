@@ -6332,3 +6332,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   "Attendance, not deducted yet" card says what the allowance would add,
   and each person's line there counts it with their overtime. Payroll's
   note on what attendance puts on the payslips names it.
+- **2026-11-15:** A month approved before attendance reaches payroll
+  freezes its days with no mission allowance, as do the days of someone
+  left out of the run: no payslip carried it (review on #288;
+  `ATTENDANCE_PLAN.md` §6.10). Once such a month is approved, its
+  "Attendance, not deducted yet" card and its days say nothing of an
+  allowance. No screen changed.

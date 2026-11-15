@@ -906,10 +906,15 @@ payslip.
   again never pays it twice, and one that no longer applies is removed.
   The migration only adds the category.
 - **Frozen as paid**: a month's days are frozen with the allowance their
-  payslips carried, where #287 froze them with none.
+  payslips carried, where #287 froze them with none. What a frozen day
+  holds is what was paid, so a day whose allowance no payslip carried is
+  frozen with none: every day of a month approved before attendance
+  reaches payroll, and the days of someone left out of the run (review
+  on #288).
 - **Before attendance reaches payroll**, the dry run says what the
   allowance would add, with what attendance would deduct, and pays
   nobody: a company pays the allowance by using attendance in payroll.
+  Once such a month is approved, its days say nothing of an allowance.
 - **Someone left out of the run** is paid no allowance, as nothing else
   of their month is paid.
 - **Not in it**: a mission approved or cancelled after the month's
