@@ -18,7 +18,8 @@ import { bodyFromForm, formFromBody } from "@/components/attendance-policy/polic
  * pricing itself is in lib/attendance/engine.test.ts, and the days as kept
  * in lib/mission-allowance.db.test.ts. Then paid with salary (PR 288): an
  * earning on the payslip, written at approval as its own attendance entry.
- * Carrying it across a closed month comes in the PR after.
+ * Then across a closed month (PR 289): a difference carries the allowance,
+ * for those the run paid.
  */
 
 const withAllowance = (allowance: Partial<PolicyBody["missions"]["allowance"]>, enabled = true): PolicyBody => ({
@@ -302,6 +303,54 @@ describe("paid with salary (PR 288)", () => {
         expect(page).toContain("{dryAllowance > 0 && <p>{t('attpay_dry_allowance').replace('{amount}', money(dryAllowance))}</p>}")
         expect(page).toContain("additions: m.overtime + (m.missionAllowance ?? 0)")
         expect(page).toContain(".filter(r => r.name && (r.deductions > 0 || r.additions > 0))")
+    })
+})
+
+describe("across a closed month (PR 289)", () => {
+    const migration = readFileSync("prisma/migrations/20261228000000_discrepancy_mission_allowance/migration.sql", "utf8")
+    const statements = migration.split("\n").filter(l => l.trim() && !l.startsWith("--")).join("\n")
+    const engine = readFileSync("lib/services/attendance-engine.service.ts", "utf8")
+    const service = readFileSync("lib/services/attendance-discrepancy.service.ts", "utf8")
+    const page = readFileSync("app/(dashboard)/dashboard/payroll/page.tsx", "utf8")
+
+    it("keeps on a difference what the allowance was paid at and what it is now, by a migration that only adds two columns, empty on those recorded before", () => {
+        expect(statements).toBe(`ALTER TABLE "AttendanceDiscrepancy" ADD COLUMN "paidAllowanceMinor" INTEGER, ADD COLUMN "nowAllowanceMinor" INTEGER;`)
+        const schema = readFileSync("prisma/schema.prisma", "utf8")
+        expect(schema).toMatch(/model AttendanceDiscrepancy \{[^}]*\n\s+paidAllowanceMinor\s+Int\?\n/)
+        expect(schema).toMatch(/model AttendanceDiscrepancy \{[^}]*\n\s+nowAllowanceMinor\s+Int\?\n/)
+    })
+
+    it("sets the day's allowance, worked out again, beside what was paid, with its deduction and overtime", () => {
+        // What was paid is read from the frozen day; what it is now, from the day derived again.
+        expect(engine).toContain("select: { userId: true, date: true, status: true, deductionMinor: true, overtimeMinor: true, missionAllowanceMinor: true }")
+        expect(engine).toContain("allowance: paidBy(userId, n?.missionAllowanceMinor ?? 0)")
+        // Open, kept current and closed on all three.
+        expect(engine).toContain("const back = current.deduction === r.paidDeductionMinor && current.overtime === r.paidOvertimeMinor && current.allowance === paidAllowance")
+        expect(engine).toContain("if (base.deduction === current.deduction && base.overtime === current.overtime && base.allowance === current.allowance) continue")
+        expect(engine).toContain("paidAllowanceMinor: base.allowance, nowAllowanceMinor: current.allowance,")
+    })
+
+    it("compares the allowance only for those the run paid: someone left out of it was paid none, and being left out is no change", () => {
+        expect(engine).toContain("tx.payslip.findMany({ where: { payrollRunId: run.id, excluded: false, ...scope }, select: { userId: true } })")
+        expect(engine).toContain("const paidBy = (userId: string, minor: number) => (paidPeople.has(userId) ? minor : 0)")
+    })
+
+    it("reads the allowance paid from the day for a difference recorded before the columns", () => {
+        expect(engine).toContain("const paidAllowance = r.paidAllowanceMinor ?? frozen")
+        expect(engine).toContain("allowance: last.nowAllowanceMinor ?? frozen")
+    })
+
+    it("counts the allowance in what a difference owes, nothing where it was recorded before", () => {
+        expect(service).toContain("differenceMinor: (d.paidDeductionMinor - d.nowDeductionMinor) + (d.nowOvertimeMinor - d.paidOvertimeMinor) + allowanceMinor,")
+        expect(service).toContain("const allowanceMinor = (d.nowAllowanceMinor ?? 0) - (d.paidAllowanceMinor ?? 0)")
+    })
+
+    it("says on the row how much more or less allowance than was paid, only where it is part of the difference", () => {
+        expect(page).toContain("note={d.allowanceMinor ? t(d.allowanceMinor > 0 ? 'attpay_changed_allowance_more' : 'attpay_changed_allowance_less').replace('{amount}', money(Math.abs(d.allowanceMinor))) : undefined}")
+        expect(en.attpay_changed_allowance_more).toBe("Mission allowance: {amount} more than paid")
+        expect(en.attpay_changed_allowance_less).toBe("Mission allowance: {amount} less than paid")
+        expect(ar.attpay_changed_allowance_more).toBe("بدل المأمورية: {amount} أكثر مما صُرف")
+        expect(ar.attpay_changed_allowance_less).toBe("بدل المأمورية: {amount} أقل مما صُرف")
     })
 })
 

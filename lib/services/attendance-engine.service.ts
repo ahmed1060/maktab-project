@@ -83,7 +83,7 @@ export type RecomputeResult = { month: string; locked: boolean; derived: number;
 /** One day as derived: the row recomputeMonth stores, and the simulator compares. */
 type DerivedDay = {
     userId: string; date: string; row: Omit<Prisma.AttendanceDayUncheckedCreateInput, "companyId" | "userId" | "date" | "inputsHash">; inputsHash: string
-    deductionDays: number; deductionMinor: number; overtimeMinor: number
+    deductionDays: number; deductionMinor: number; overtimeMinor: number; missionAllowanceMinor: number
 }
 
 /**
@@ -296,6 +296,7 @@ async function deriveMonth(
                 // the allowance was kept, and isn't written again for nothing.
                 inputsHash: hashOf({ ...row, deductionDays: d.deductionDays, ...(d.missionAllowanceMinor ? { missionAllowanceMinor: d.missionAllowanceMinor } : {}) }),
                 deductionDays: d.deductionDays, deductionMinor: d.deductionMinor, overtimeMinor: d.overtimeMinor,
+                missionAllowanceMinor: d.missionAllowanceMinor,
             })
         }
     }
@@ -309,6 +310,12 @@ async function deriveMonth(
  * that has come back to what was paid closes its record. Nothing paid is
  * rewritten. Only for a month whose payslips carried attendance: otherwise
  * attendance took nothing from anybody, and there is nothing to settle.
+ *
+ * A day's money is its deduction, its overtime and its mission allowance
+ * (§6.10, decisions 16 and 25, PR 289): a mission approved after the month
+ * was paid is owed its allowance, and a paid one cancelled owes it back.
+ * The allowance is compared only for those the run paid: someone it left
+ * out, or with no payslip in it, was paid none, and that is no change.
  */
 async function recordDiscrepancies(tx: Prisma.TransactionClient, companyId: string, month: string, tz: string, today: string, userIds?: readonly string[]): Promise<number> {
     // Whether this month's payslips carried attendance, as approved — not
@@ -322,9 +329,12 @@ async function recordDiscrepancies(tx: Prisma.TransactionClient, companyId: stri
     const range = { gte: wallClock(`${month}-01T00:00:00`), lte: wallClock(`${monthEnd(month)}T00:00:00`) }
     const [derived, paid, recorded] = await Promise.all([
         deriveMonth(tx, companyId, month, tz, today, userIds),
-        tx.attendanceDay.findMany({ where: { companyId, ...scope, date: range }, select: { userId: true, date: true, status: true, deductionMinor: true, overtimeMinor: true } }),
+        tx.attendanceDay.findMany({ where: { companyId, ...scope, date: range }, select: { userId: true, date: true, status: true, deductionMinor: true, overtimeMinor: true, missionAllowanceMinor: true } }),
         tx.attendanceDiscrepancy.findMany({ where: { companyId, ...scope, date: range } }),
     ])
+    // Whose allowance the run paid: those with a payslip in it, not left out.
+    const paidPeople = new Set((await tx.payslip.findMany({ where: { payrollRunId: run.id, excluded: false, ...scope }, select: { userId: true } })).map(p => p.userId))
+    const paidBy = (userId: string, minor: number) => (paidPeople.has(userId) ? minor : 0)
     const now = new Map(derived.days.map(d => [`${d.userId}:${d.date}`, d]))
     const was = new Map(paid.map(d => [`${d.userId}:${toDateString(d.date)}`, d]))
     // Per day: the open difference, if any, and the last one settled.
@@ -339,19 +349,22 @@ async function recordDiscrepancies(tx: Prisma.TransactionClient, companyId: stri
     for (const key of new Set([...now.keys(), ...was.keys(), ...settled.keys()])) {
         const [userId, date] = key.split(":")
         const n = now.get(key), w = was.get(key), r = opened.get(key), s = settled.get(key)
-        const current = { deduction: n?.deductionMinor ?? 0, overtime: n?.overtimeMinor ?? 0, status: n ? String(n.row.status) : null }
+        const current = { deduction: n?.deductionMinor ?? 0, overtime: n?.overtimeMinor ?? 0, allowance: paidBy(userId, n?.missionAllowanceMinor ?? 0), status: n ? String(n.row.status) : null }
+        // The allowance the day was frozen with: what a difference recorded before the allowance was carried is measured from.
+        const frozen = paidBy(userId, w?.missionAllowanceMinor ?? 0)
         if (r) {
             // Only while still open. Resolution doesn't wait for this month's lock, so one settled since it was
             // read is history, kept as it was settled; the day is then measured from it below, as from any
             // settled one (review on #16).
             const open = { id: r.id, resolvedAt: null }
-            const back = current.deduction === r.paidDeductionMinor && current.overtime === r.paidOvertimeMinor
-            const moved = r.nowDeductionMinor !== current.deduction || r.nowOvertimeMinor !== current.overtime || r.nowStatus !== current.status
+            const paidAllowance = r.paidAllowanceMinor ?? frozen
+            const back = current.deduction === r.paidDeductionMinor && current.overtime === r.paidOvertimeMinor && current.allowance === paidAllowance
+            const moved = r.nowDeductionMinor !== current.deduction || r.nowOvertimeMinor !== current.overtime || (r.nowAllowanceMinor ?? paidAllowance) !== current.allowance || r.nowStatus !== current.status
             const { count } = back
                 // Back to what was paid or settled: nothing left to settle.
                 ? await tx.attendanceDiscrepancy.deleteMany({ where: open })
                 : moved
-                    ? await tx.attendanceDiscrepancy.updateMany({ where: open, data: { nowDeductionMinor: current.deduction, nowOvertimeMinor: current.overtime, nowStatus: current.status } })
+                    ? await tx.attendanceDiscrepancy.updateMany({ where: open, data: { nowDeductionMinor: current.deduction, nowOvertimeMinor: current.overtime, paidAllowanceMinor: paidAllowance, nowAllowanceMinor: current.allowance, nowStatus: current.status } })
                     : { count: 1 }
             if (count > 0) {
                 if (!back) differing += 1
@@ -362,9 +375,9 @@ async function recordDiscrepancies(tx: Prisma.TransactionClient, companyId: stri
         // paid it, or as last settled since (review on #16) — never the
         // original once a settlement has moved it.
         const last = r ?? s
-        const base = last ? { deduction: last.nowDeductionMinor, overtime: last.nowOvertimeMinor, status: last.nowStatus ?? "NONE" }
-            : { deduction: w?.deductionMinor ?? 0, overtime: w?.overtimeMinor ?? 0, status: w?.status ?? "NONE" }
-        if (base.deduction === current.deduction && base.overtime === current.overtime) continue
+        const base = last ? { deduction: last.nowDeductionMinor, overtime: last.nowOvertimeMinor, allowance: last.nowAllowanceMinor ?? frozen, status: last.nowStatus ?? "NONE" }
+            : { deduction: w?.deductionMinor ?? 0, overtime: w?.overtimeMinor ?? 0, allowance: frozen, status: w?.status ?? "NONE" }
+        if (base.deduction === current.deduction && base.overtime === current.overtime && base.allowance === current.allowance) continue
         differing += 1
         // New, or changed again after being settled: a new one, the settled one kept as it was.
         await tx.attendanceDiscrepancy.create({
@@ -372,6 +385,7 @@ async function recordDiscrepancies(tx: Prisma.TransactionClient, companyId: stri
                 companyId, userId, date: wallClock(`${date}T00:00:00`), payrollRunId: run.id,
                 paidDeductionMinor: base.deduction, paidOvertimeMinor: base.overtime, paidStatus: base.status,
                 nowDeductionMinor: current.deduction, nowOvertimeMinor: current.overtime, nowStatus: current.status,
+                paidAllowanceMinor: base.allowance, nowAllowanceMinor: current.allowance,
             },
         })
     }

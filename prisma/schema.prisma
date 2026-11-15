@@ -2734,6 +2734,11 @@ model AttendanceDiscrepancy {
   paidOvertimeMinor  Int
   nowDeductionMinor  Int
   nowOvertimeMinor   Int
+  /// The day's mission allowance as paid or last settled, and as it is now
+  /// (ATTENDANCE_PLAN.md §6.10, PR 289). Empty on a difference recorded
+  /// before them: its paid allowance is the frozen day's.
+  paidAllowanceMinor Int?
+  nowAllowanceMinor  Int?
   paidStatus         String
   nowStatus          String?
   detectedAt         DateTime  @default(now())

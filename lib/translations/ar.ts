@@ -2403,6 +2403,8 @@ export const ar = {
         attpay_changed_title: "تغيّر الحضور بعد اعتماد الرواتب",
         attpay_changed_msg: "تغيّرت هذه الأيام بعد اعتماد رواتب شهرها. يبقى الشهر المدفوع كما هو؛ سوِّ كل منها بتسوية في الشهر الحالي ثم علِّمها كمسوّاة.",
         attpay_show_more: "عرض المزيد",
+        attpay_changed_allowance_more: "بدل المأمورية: {amount} أكثر مما صُرف",
+        attpay_changed_allowance_less: "بدل المأمورية: {amount} أقل مما صُرف",
         attpay_owed_to: "{amount} مستحقة للموظف",
         attpay_owed_by: "{amount} مستحقة على الموظف",
         attpay_resolve: "تمت التسوية",
