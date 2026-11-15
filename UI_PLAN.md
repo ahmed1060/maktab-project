@@ -740,7 +740,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      after payroll card, with that card's Arabic note asking no one in
      the masculine, merged in #289 on 2026-11-15; then Phase 4 part 4,
      one terminal whichever way it connects, which changes no screen,
-     #290;
+     merged in #290 on 2026-11-15; then part 5's first PR, the address a
+     Hikvision terminal sends to, which changes no screen either, #291;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6363,3 +6364,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   Punches list is ready for it: a scan a terminal sent itself reads
   "Terminal: name" there, as the agent's does, where it would have read
   "Imported".
+- **2026-11-15:** The address a Hikvision terminal sends to (#291;
+  `ATTENDANCE_PLAN.md` §17.2, Phase 4 part 5, the first of its four PRs).
+  No screen changes, and nothing answers yet: no terminal has a secret
+  until Add a terminal is built, and every company's switch is off. The
+  screens come with the next PRs: Add a terminal and its card, `DESIGN.md`
+  first, then first contacts for the Super Admin, then the switch on the
+  company's Attendance tab.
