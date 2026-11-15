@@ -18,7 +18,8 @@ missions, is split in four PRs, the first, a mission's day, built in
 #281, the second, asking and deciding, in #283, the third, Decide
 missions for the companies already there, in #284, and the fourth,
 cancelling an approved mission, in #285; part 5, the mission allowance,
-is not built. A template for the file import
+is split in four PRs, the first, the allowance's settings in the policy,
+built in #286, and the rest not built. A template for the file import
 (§13.9) is built in #272.
 This document is the design those PRs follow: what was decided, and why, so
 that whoever changes it is not re-arguing settled points. Where the build
@@ -832,6 +833,30 @@ cancelled a mission, when and why.
   review's Done, with when it was cancelled and why.
 - **Live and audit**: the page draws itself again, as for a decision;
   cancelling is in the log.
+
+**Built in #286: the allowance's settings.** The first of part 5's four
+PRs (§20, decisions 6 and 12). Nothing is priced or paid yet: the next PR
+prices each mission day.
+
+- **In the policy**, under Missions, beside the switch: what a mission by
+  days pays for each of its days, and what a mission by hours pays, each
+  nothing, ¼ day, ½ day, 1 day or 2 days; and what one day is worth, the
+  employee's own day's pay or an amount typed in, asked once either kind
+  pays something.
+- **To start**, both kinds pay nothing (decision 12), in every policy, new
+  or already saved, and in the templates: a version saved before it reads
+  as nothing, so nothing is migrated.
+- **The amount** is in the company's currency, the same for everyone, from
+  0.01 to 100,000. It's needed when one day is worth an amount and either
+  kind pays something, said under its field.
+- **Each version has its own**, as with every rule: a change counts from
+  its version's date, and each mission day will be priced by the version in
+  force on it.
+- **While missions can't be asked for**, the settings stay: a mission
+  approved before still counts, and will pay.
+- **On the policy's card**, the Missions lines say what each kind pays and
+  what one day is worth.
+- **Audit**: saved with the policy, as its other rules are.
 
 ---
 
@@ -2452,7 +2477,7 @@ With no push, it stays on the agent and tries the agent alone. Parts 4 to 7
 are built all the same, switched off, and tried when a terminal that pushes,
 or a Hikvision, is on hand (round 9, decision 13).
 
-### Phase 5 — Reading scans first and last, and missions — parts 2 and 3 built in #273 to #276, part 4 in #281, #283, #284 and #285
+### Phase 5 — Reading scans first and last, and missions — parts 2 and 3 built in #273 to #276, part 4 in #281, #283, #284 and #285, part 5's first PR in #286
 
 Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
 
@@ -2493,10 +2518,21 @@ Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
       payroll is approved, and after it its days there as discrepancies
       the other way round; and the notification of a cancellation
       (decision 25).
-5. **The mission allowance** (§6.10): the policy's Missions section, what
-   one day is worth and what each kind pays; each day priced at its date,
-   written at approval as its own entry (§12.2); the payslip's Mission
-   allowance line.
+5. **The mission allowance** (§6.10), in four PRs:
+   1. **The allowance's settings**, built in #286: the policy's Missions
+      section, what each kind pays and what one day is worth, nothing to
+      start (decisions 6, 12). Nothing priced yet.
+   2. **Each mission day priced**: at its date, by the policy in force on
+      it and, where one day is worth the employee's own day's pay, the
+      salary in force on it (§6.3); shown on the day. The allowance
+      follows the approved mission, not the day's scans: by days, every
+      date in it, rest days and holidays included (decision 9); by hours,
+      its one date. A mission that didn't happen is cancelled (decision
+      25), which takes its allowance back.
+   3. **Paid with salary**: written at approval as its own entry (§12.2);
+      the register's and the payslip's Mission allowance line.
+   4. **Across a closed month**: a discrepancy carries the allowance, paid
+      or taken back on the next payslip (decisions 16, 25).
 
 Part 2 needs none of the rest, and helps the first customer at once: a
 second scan on arriving no longer leaves a day incomplete.
