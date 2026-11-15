@@ -6,6 +6,7 @@ import { SyncAgent, newRecords, firstOfMonthIn, type Logger, type DeviceAccess }
 import { parseConfig, type AgentConfig } from "../src/config"
 import { emptyState, loadState, type AgentState } from "../src/state"
 import { withDevice } from "../src/zk/client"
+import { CMD } from "../src/zk/protocol"
 import { FakeZkDevice } from "./fake-zk-device"
 import { FakeServer } from "./fake-server"
 
@@ -220,6 +221,107 @@ describe("a round of the agent", () => {
         const onDisk = JSON.parse(readFileSync(statePath(), "utf8"))
         expect(onDisk.queue).toEqual([])
         expect(Object.values(onDisk.devices)[0]).toMatchObject({ serialNumber: "ZK-A1", cursor: { count: 1 } })
+    })
+
+    describe("a terminal set to connect straight to Nizmo (PR 290)", () => {
+        /** How many times the terminal's log, or anything as large, has been asked for. */
+        const logReads = () => device.state.log.filter(c => c === CMD.PREPARE_BUFFER).length
+        const remembered = () => loadState(statePath()).devices[Object.keys(state.devices)[0]]
+        const direct = () => server.devices.set("ZK-A1", { state: "DIRECT", mode: "ANY" })
+
+        it("sends what it has already read, then reads no more of its log, and still names it in each heartbeat", async () => {
+            await agent().enrol("K7QD-2MXP")
+            device.scan("7", at(today, "09:00:00"))
+            direct()
+            // The round it hears: what it read before the heartbeat is still sent, and taken.
+            expect(await agent().round()).toMatchObject({ read: 1, queued: 1, delivered: 1, refused: 0 })
+            expect(remembered()).toMatchObject({ direct: true, cursor: { count: 1 } })
+            expect(log.lines.filter(l => l.includes("straight to Nizmo"))).toHaveLength(1)
+
+            // From then on the log is the terminal's own to send.
+            const before = logReads()
+            device.scan("7", at(today, "17:00:00"))
+            expect(await agent().round()).toMatchObject({ read: 0, queued: 0, delivered: 0, unreachable: [], stopped: null })
+            expect(await agent().round()).toMatchObject({ read: 0, queued: 0 })
+            expect(logReads()).toBe(before)
+            expect(server.stored.size).toBe(1)
+            expect(remembered().cursor.count).toBe(1)
+            // Still named, as it is, so that the agent hears when it is set back.
+            expect(server.heartbeats.at(-1).devices).toEqual([expect.objectContaining({ serialNumber: "ZK-A1", reachable: true, recordCount: 2 })])
+            // Said once, not every round.
+            expect(log.lines.filter(l => l.includes("straight to Nizmo"))).toHaveLength(1)
+        })
+
+        it("reads on from where it stopped once the terminal is set back to this agent", async () => {
+            await agent().enrol("K7QD-2MXP")
+            device.scan("7", at(today, "09:00:00"))
+            direct()
+            await agent().round()
+            device.scan("7", at(today, "13:00:00"))
+            device.scan("7", at(today, "17:00:00"))
+            await agent().round()
+            // After a restart too: what it was told is on disk.
+            state = loadState(statePath())
+            await agent().round()
+            expect(server.stored.size).toBe(1)
+
+            server.devices.set("ZK-A1", { state: "ACTIVE", mode: "ANY" })
+            // The round it hears, the terminal has already been passed over; the next reads it.
+            expect(await agent().round()).toMatchObject({ queued: 0 })
+            expect(remembered().direct).toBe(false)
+            expect(log.lines.some(l => l.includes("set back to this agent"))).toBe(true)
+            expect(await agent().round()).toMatchObject({ read: 3, queued: 2, delivered: 2 })
+            expect([...server.stored.values()].map(p => p.at.slice(11))).toEqual(["09:00:00", "13:00:00", "17:00:00"])
+        })
+
+        it("is still left alone once it is retired, until it is this agent's again", async () => {
+            await agent().enrol("K7QD-2MXP")
+            direct()
+            await agent().round()
+            const before = logReads()
+            server.devices.set("ZK-A1", { state: "RETIRED", mode: "ANY" })
+            device.scan("7", at(today, "09:00:00"))
+            expect(await agent().round()).toMatchObject({ queued: 0, refused: 0 })
+            expect(logReads()).toBe(before)
+            expect(remembered().direct).toBe(true)
+        })
+
+        it("is never cleared, however full", async () => {
+            config = { ...config, clearWhenFull: true, clearAtRatio: 0.9 }
+            device.state.recordsCapacity = 10
+            await agent().enrol("K7QD-2MXP")
+            for (let i = 0; i < 9; i++) device.scan(String(i), at(today, `09:0${i}:00`))
+            direct()
+            expect(await agent().round()).toMatchObject({ delivered: 9, cleared: [] })
+            expect((await agent().round()).cleared).toEqual([])
+            expect(device.state.records).toHaveLength(9)
+            expect(device.state.disabled).toBe(false)
+            expect(device.state.log).not.toContain(CMD.CLEAR_ATTLOG)
+        })
+
+        it("is switched back on after an interrupted clear, all the same", async () => {
+            await agent().enrol("K7QD-2MXP")
+            direct()
+            await agent().round()
+            // As a clear cut off before the terminal was enabled again would leave it.
+            device.state.disabled = true
+            state.devices[Object.keys(state.devices)[0]].mustEnable = true
+            await agent().round()
+            expect(device.state.disabled).toBe(false)
+            expect(remembered().mustEnable).toBe(false)
+        })
+
+        it("reads another terminal put at the same address", async () => {
+            await agent().enrol("K7QD-2MXP")
+            device.scan("7", at(today, "09:00:00"))
+            direct()
+            await agent().round()
+            device.state.serialNumber = "ZK-B2"
+            device.scan("8", at(today, "10:00:00"))
+            expect(await agent().round()).toMatchObject({ read: 2, queued: 2, delivered: 2 })
+            expect(remembered()).toMatchObject({ serialNumber: "ZK-B2", direct: false })
+            expect(log.lines.some(l => l.includes("is now terminal ZK-B2"))).toBe(true)
+        })
     })
 
     describe("clearing a terminal that is nearly full", () => {

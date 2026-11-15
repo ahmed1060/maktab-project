@@ -4409,6 +4409,7 @@ export const en = {
         audit_value_MOBILE: "Mobile App",
         audit_value_AGENT: "Terminal (sync agent)",
         audit_value_DEVICE_PUSH: "Terminal",
+        audit_value_DIRECT: "Straight to Nizmo",
         audit_value_MANUAL: "Added by hand",
         audit_value_IN: "In",
         audit_value_OUT: "Out",

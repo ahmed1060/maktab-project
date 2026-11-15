@@ -22,6 +22,13 @@ import { AGENT_VERSION } from "./version"
  *    nothing is scanned between the last read and the clear.
  *
  * Nothing here deletes a punch the server has not accepted or refused.
+ *
+ * A terminal the server says is set to connect straight to Nizmo (`DIRECT`
+ * in the heartbeat's answer, §17.6) sends its own scans. The agent sends
+ * what it has already read, then reads no more of its log and never clears
+ * it. It still asks which terminal it is and reports it, so that it hears
+ * when the terminal is this agent's again, and reads on from where it
+ * stopped.
  */
 
 export const BATCH_SIZE = 500
@@ -173,22 +180,30 @@ export class SyncAgent {
                         this.save()
                         this.log.info(`Switched terminal ${d.name ?? key} back on after an interrupted clear.`)
                     }
-                    return { info: await zk.info(), records: await zk.attendance() }
+                    const info = await zk.info()
+                    // Set to connect straight to Nizmo: its log is its own to send. Only which terminal it is
+                    // is asked, so that another one put at this address is read.
+                    const leftAlone = remembered.direct === true && remembered.serialNumber === info.serialNumber
+                    return { info, records: leftAlone ? null : await zk.attendance() }
                 })
                 // Another terminal at this address now: its log is a different log.
                 if (remembered.serialNumber && remembered.serialNumber !== info.serialNumber) {
                     this.log.warn(`${key} is now terminal ${info.serialNumber} (was ${remembered.serialNumber}); reading its log from the start.`)
                     remembered.cursor = { count: 0, lastKey: null }
+                    // What the server said was of the terminal that was here.
+                    remembered.direct = false
                 }
                 remembered.serialNumber = info.serialNumber
-                const { fresh, cursor } = newRecords(records, remembered.cursor)
-                const wanted = fresh.filter(r => !sendFrom || r.at.slice(0, 10) >= sendFrom)
-                this.state.queue.push(...wanted.map((r): QueuedPunch => ({ serialNumber: info.serialNumber, userNumber: r.userNumber, at: r.at })))
-                remembered.cursor = cursor
-                // The queue and the cursor in one write: a record is either queued and passed, or neither.
-                this.save()
-                result.read += records.length
-                result.queued += wanted.length
+                if (records) {
+                    const { fresh, cursor } = newRecords(records, remembered.cursor)
+                    const wanted = fresh.filter(r => !sendFrom || r.at.slice(0, 10) >= sendFrom)
+                    this.state.queue.push(...wanted.map((r): QueuedPunch => ({ serialNumber: info.serialNumber, userNumber: r.userNumber, at: r.at })))
+                    remembered.cursor = cursor
+                    // The queue and the cursor in one write: a record is either queued and passed, or neither.
+                    this.save()
+                    result.read += records.length
+                    result.queued += wanted.length
+                }
                 reports.set(key, {
                     // What the terminal says about itself, cut to what the server takes.
                     serialNumber: info.serialNumber, ...(d.name ? { name: d.name } : {}), ...(info.name ? { model: info.name.slice(0, 80) } : {}), ...(info.firmware ? { firmware: info.firmware.slice(0, 80) } : {}),
@@ -214,10 +229,25 @@ export class SyncAgent {
             agentVersion: AGENT_VERSION, hostname: hostname(), queueDepth: this.state.queue.length, clock: new Date().toISOString(),
             devices: [...reports.values()].map(withoutRatio),
         })
+        let changed = false
         for (const d of reply.devices) {
             if (d.state === "CLAIMED_ELSEWHERE") this.log.warn(`Terminal ${d.serialNumber} is in use by another company; retire it there first. Its punches are not accepted here.`)
             if (d.state === "RETIRED") this.log.warn(`Terminal ${d.serialNumber} is retired in Company Settings; its punches are not accepted.`)
+            // Which way the terminal connects, remembered across rounds and restarts. Only `ACTIVE` gives its
+            // log back to this agent: retired meanwhile, it is still not this agent's to read.
+            for (const remembered of Object.values(this.state.devices).filter(r => r.serialNumber === d.serialNumber)) {
+                if (d.state === "DIRECT" && !remembered.direct) {
+                    remembered.direct = true
+                    changed = true
+                    this.log.info(`Terminal ${d.serialNumber} is set to connect straight to Nizmo. What is already read is sent; its log is not read from now on, and never cleared.`)
+                } else if (d.state === "ACTIVE" && remembered.direct) {
+                    remembered.direct = false
+                    changed = true
+                    this.log.info(`Terminal ${d.serialNumber} is set back to this agent. Its log is read from where it stopped.`)
+                }
+            }
         }
+        if (changed) this.save()
         if (reply.rotateToken) {
             const { token } = await this.api.rotate()
             this.state.token = token
@@ -263,8 +293,9 @@ export class SyncAgent {
             const remembered = this.state.devices[key]
             if (!report?.reachable || report.ratio < this.config.clearAtRatio || !remembered?.serialNumber) continue
             if (this.state.queue.some(p => p.serialNumber === remembered.serialNumber)) continue
-            // Only a terminal in use by this company: one retired here, or now
-            // another company's, holds scans that are not ours to erase (review on #18).
+            // Only a terminal in use by this company through this agent: one
+            // retired here, now another company's, or set to connect straight
+            // to Nizmo holds scans that are not ours to erase (review on #18).
             if (states.get(remembered.serialNumber) !== "ACTIVE") continue
             await this.device(zkOptions(d), async zk => {
                 // Recorded before disabling: if this connection is lost before the

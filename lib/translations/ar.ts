@@ -4393,6 +4393,7 @@ export const ar = {
         audit_value_MOBILE: "تطبيق الجوال",
         audit_value_AGENT: "جهاز بصمة (وكيل المزامنة)",
         audit_value_DEVICE_PUSH: "جهاز بصمة",
+        audit_value_DIRECT: "مباشرة إلى Nizmo",
         audit_value_MANUAL: "مضافة يدويًا",
         audit_value_IN: "دخول",
         audit_value_OUT: "خروج",
