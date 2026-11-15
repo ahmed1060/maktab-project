@@ -4,7 +4,7 @@ Which pull requests Codex has reviewed, and which commits it hasn't seen
 yet. When Codex's usage limit stops a review, work goes on; this file is
 the list of what to send Codex once the limit resets.
 
-Last checked: 2026-11-14 23:08 UTC, against GitHub.
+Last checked: 2026-11-15 00:50 UTC, against GitHub.
 
 ## When the limit resets
 
@@ -47,7 +47,7 @@ Nothing is waiting: every open and merged PR has been reviewed.
 
 ## Reviewed
 
-Every merged PR, #1 to #282, has been reviewed in full. Codex's two
+Every merged PR, #1 to #283, has been reviewed in full. Codex's two
 findings on #251, from its review after the merge, were fixed in #253,
 with a third Codex found there; #253 was reviewed at its last commit,
 4d3229e, after that fix. #254 to #261 were reviewed at their last
@@ -63,7 +63,8 @@ commits, 64b07e4, cfcac9f, b77cbdb, 88b7d05, ed2e9a1, 2e36087,
 984ee97, 2bfd874, 8d4d7c0, d592fb6, ae7f44c, 14d4c5d, 65e6bb7,
 147a153, 7528129 and 4d6498f, with no findings. #282 was reviewed at
 its last commit, a04fa01, with no findings, after its finding on
-ee4f54b was fixed there.
+ee4f54b was fixed there. #283 was reviewed at its last commit, df18b0b,
+with no findings, after its two findings on daf49c5 were fixed there.
 
 On 2026-11-11, every merged PR from #79 to #250 was checked against GitHub
 for a last commit Codex hadn't seen: a fix pushed after its last review.
@@ -72,7 +73,7 @@ merging, on main at 50e4723 and 124721a, and found nothing.
 
 | PR | How |
 | --- | --- |
-| #4, #7, #8, #30–#32, #34, #39–#44, #46, #47, #49, #72, #79–#101, #103–#240, #242, #243, #245–#250, #252–#282 | At its last commit |
+| #4, #7, #8, #30–#32, #34, #39–#44, #46, #47, #49, #72, #79–#101, #103–#240, #242, #243, #245–#250, #252–#283 | At its last commit |
 | #1, #28, #29, #33, #35–#38, #45, #48, #73–#78, #102, #241, #244, #251 | After merging, on main containing its last commit |
 | #2 | Review-only #71 |
 | #3 | Review-only #69 |

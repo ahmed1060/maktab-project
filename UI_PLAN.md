@@ -726,7 +726,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      §5.5, Dialog), merged in #282 on 2026-11-14; then Phase 5 part 4's
      second PR, missions asked for and decided on the Requests page, with
      Decide missions and the policy's Missions switch
-     (`ATTENDANCE_PLAN.md` §6.10), #283;
+     (`ATTENDANCE_PLAN.md` §6.10), merged in #283 on 2026-11-15; then the
+     built-in Admin role's Decide missions for the companies already
+     there, #284;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6290,3 +6292,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   at 2,000. And approving a mission works its own months out again however
   far back they now are, past the year a change's cascade reaches
   (`ATTENDANCE_PLAN.md` §6.10).
+- **2026-11-15:** The companies already there get Decide missions (#284;
+  `ATTENDANCE_PLAN.md` §6.10, Phase 5 part 4). A migration gives every
+  company's built-in Admin role the permission, as a new company's has
+  had since #283, and its holders reload their grants. Their Admins now
+  see the missions waiting under To review on the Requests page, and
+  decide them.
