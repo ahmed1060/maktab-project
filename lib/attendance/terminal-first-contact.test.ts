@@ -157,6 +157,73 @@ describe("a body's text", () => {
         expect(textOf("<EventNotificationAlert><eventType>heartBeat</eventType></EventNotificationAlert>").kinds).toEqual(["heartBeat"])
     })
 
+    it("takes out what is under a picture's, a name's or a card's element in XML, and what an element's attributes hold (review on PR 294)", () => {
+        const xml = `<?xml version="1.0" encoding="UTF-8"?><EventNotificationAlert version="2.0"><eventType>AccessControllerEvent</eventType><AccessControllerEvent><majorEventType>5</majorEventType><subEventType>75</subEventType><employeeNoString>7</employeeNoString>`
+            + `<PicInfo><url>http://192.0.2.10/pic/ehab.jpg</url><size>14233</size></PicInfo>`
+            + `<personName><first>Ehab</first><last>Hassan</last></personName>`
+            + `<card><number>1234567890</number></card>`
+            + `<FaceTemplate><data>QUJDRA==</data></FaceTemplate>`
+            + `<Person name="Ehab Hassan" cardNo="1234567890" id="7"/>`
+            + `<snapshot url="http://192.0.2.10/s/1" width="640">kept?</snapshot>`
+            + `<door no="1">open</door><!-- Ehab was here -->`
+            + `</AccessControllerEvent></EventNotificationAlert>`
+        const read = textOf(xml)
+        expect(read.body).toBe(`<?xml version="1.0" encoding="UTF-8"?><EventNotificationAlert version="2.0"><eventType>AccessControllerEvent</eventType><AccessControllerEvent><majorEventType>5</majorEventType><subEventType>75</subEventType><employeeNoString>7</employeeNoString>`
+            + `<PicInfo><url>[removed, 30 characters]</url><size>[removed, 5 characters]</size></PicInfo>`
+            + `<personName><first>[name removed]</first><last>[name removed]</last></personName>`
+            + `<card><number>[card number removed]</number></card>`
+            + `<FaceTemplate><data>[removed, 8 characters]</data></FaceTemplate>`
+            + `<Person name="[name removed]" cardNo="[card number removed]" id="7"/>`
+            + `<snapshot url="[removed, 21 characters]" width="[removed, 3 characters]">[removed, 5 characters]</snapshot>`
+            + `<door no="1">open</door><!--[removed]-->`
+            + `</AccessControllerEvent></EventNotificationAlert>`)
+        for (const never of ["Ehab", "Hassan", "1234567890", "ehab.jpg", "QUJDRA", "192.0.2.10/s"]) expect(read.body, never).not.toContain(never)
+        expect(read.kinds).toEqual(["AccessControllerEvent 5/75"])
+        // Once an element that holds a picture closes, what follows it is kept as ever, also when the XML is broken.
+        expect(textOf(`<EventNotificationAlert><PicInfo><url>http://192.0.2.10/a.jpg</PicInfo><doorNo>1</doorNo></EventNotificationAlert>`).body)
+            .toBe(`<EventNotificationAlert><PicInfo><url>[removed, 23 characters]</PicInfo><doorNo>1</doorNo></EventNotificationAlert>`)
+    })
+
+    it("reads markup that is broken, or made to be slow to read, once from start to end", () => {
+        const event = (inside: string) => `<EventNotificationAlert><eventType>heartBeat</eventType>${inside}</EventNotificationAlert>`
+        // A bracket that opens nothing is text; a comment or a section that never ends goes whole.
+        expect(textOf(event("<doorNo>1 < 2</doorNo>")).body).toBe(event("<doorNo>1 < 2</doorNo>"))
+        expect(textOf(event("<doorNo>1</doorNo><!-- Ehab")).body).toBe("<EventNotificationAlert><eventType>heartBeat</eventType><doorNo>1</doorNo><!--[removed]-->")
+        expect(textOf(event("<remark><![CDATA[Ehab")).body).toBe("<EventNotificationAlert><eventType>heartBeat</eventType><remark>[text removed]")
+        expect(textOf(event(`<!DOCTYPE x [<!ENTITY who "Ehab">]><doorNo>1</doorNo>`)).body).not.toContain("Ehab")
+        // A closing tag that was never opened closes nothing: the name's element is still open.
+        expect(textOf(event("<name></door>Ehab</name>")).body).toBe(event("<name></door>[name removed]</name>"))
+        // An element's attributes past a few hundred characters aren't read.
+        expect(textOf(event(`<door ${"x".repeat(500)}="Ehab">1</door>`)).body).toBe(event("<door>1</door>"))
+        const started = Date.now()
+        for (const slow of ["<".repeat(250_000), "<![CDATA[".repeat(28_000), "<!--".repeat(60_000), `<a ${"x".repeat(250_000)}>`, "<a>".repeat(80_000) + "</b>".repeat(60_000), `<a b="1" `.repeat(28_000), `"a":"`.repeat(50_000), "a=".repeat(125_000)]) {
+            textOf(event(slow))
+            textOf(slow)
+            textOf(`{"broken": ${slow}`)
+        }
+        expect(Date.now() - started).toBeLessThan(5_000)
+    })
+
+    it("takes a picture's address out whatever its field is called, and a file's name with it", () => {
+        const body = JSON.parse(textOf(JSON.stringify({
+            url: "http://192.0.2.10/LOCALS/pic/acsLinkCap/1_2.jpeg@WEB000000000123", file: "Ehab_Hassan.JPG", link: "http://192.0.2.10/doc/page", type: "image/jpeg",
+        })).body)
+        expect(body).toEqual({ url: "[removed, 64 characters]", file: "[removed, 15 characters]", link: "http://192.0.2.10/doc/page", type: "image/jpeg" })
+    })
+
+    it("reads a text that holds an event of its own by the same rules: a field's name inside a text still says what it is", () => {
+        const inner = JSON.stringify({ name: "Ehab Hassan", cardNo: "1234567890", employeeNoString: "7" })
+        const body = JSON.parse(textOf(JSON.stringify({ data: inner, query: "employeeNo=7&name=Ehab&cardNo=99", markup: "<name>Ehab</name><doorNo>1</doorNo>" })).body)
+        expect(body).toEqual({
+            data: `{"name":"[name removed]","cardNo":"[card number removed]","employeeNoString":"7"}`,
+            query: "employeeNo=7&name=[name removed]&cardNo=[card number removed]",
+            markup: "<name>[name removed]</name><doorNo>1</doorNo>",
+        })
+        // What was taken out is said once, however many times the text is read.
+        const address = textOf(`{"url":"http://192.0.2.10/x?name=Ehab&id=3","broken`).body
+        expect(address).toBe(`{"url":"http://192.0.2.10/x?name=[name removed]&id=3","broken`)
+    })
+
     it("keeps the start of what is neither, with what looks like a name or a card number taken out", () => {
         const broken = textOf(`{"eventType":"AccessControllerEvent","name":"Ehab Hassan","cardNo":"1234567890","employeeNoString":"7",`)
         expect(broken.body).toBe(`{"eventType":"AccessControllerEvent","name":"[name removed]","cardNo":"[card number removed]","employeeNoString":"7",`)
@@ -207,6 +274,31 @@ describe("a request's body", () => {
         expect(read.kind).toBe("AccessControllerEvent 5/75")
         expect(read.body).toContain('part "AccessControllerEvent": a file (application/json, .json, ')
         expect(read.body).toContain('"name": "[name removed]"')
+    })
+
+    it("takes a form's field out by its own name, as it would a field of an event (review on PR 294)", async () => {
+        const form = new FormData()
+        form.set("eventType", "AccessControllerEvent")
+        form.set("name", "Ehab Hassan")
+        form.set("cardNo", "1234567890")
+        form.set("FaceData", "abc123")
+        form.set("employeeNoString", "7")
+        form.set("personName", new File(["Ehab Hassan"], "who.txt", { type: "text/plain" }))
+        // A picture's field that holds an event keeps its shape and its numbers, and none of its text.
+        form.set("FaceCapture", JSON.stringify({ eventType: "faceCapture", who: "Ehab", count: 2 }))
+        const read = await bodyOf(post({ body: form }), SECRET)
+        expect(read.body).toBe([
+            'part "eventType": text, 21 characters\nAccessControllerEvent',
+            'part "name": text, 11 characters\n[name removed]',
+            'part "cardNo": text, 10 characters\n[card number removed]',
+            'part "FaceData": text, 6 characters\n[removed, 6 characters]',
+            'part "employeeNoString": text, 1 characters\n7',
+            'part "personName": a file (text/plain, .txt, 11 bytes), 11 characters\n[name removed]',
+            'part "FaceCapture": text, 50 characters\n{\n  "eventType": "[removed, 11 characters]",\n  "who": "[removed, 4 characters]",\n  "count": 2\n}',
+        ].join("\n\n"))
+        for (const never of ["Ehab", "Hassan", "1234567890", "abc123"]) expect(read.body, never).not.toContain(never)
+        // Its kind is still read from the event it holds.
+        expect(read.kind).toBe("faceCapture")
     })
 
     it("says a form it can't read is one", async () => {

@@ -58,10 +58,8 @@ export async function receiveHikvision(req: Request, secret: string): Promise<Re
         if (limited) return answer(429)
         // Its first contacts are kept for the Super Admin (§17.8, PR 294). A
         // body is read once, so a copy is taken first, only while one may
-        // still be kept: past its first 7 days nothing is looked up. What
-        // is kept is counted again when it is, with the terminal held.
-        const counts = terminal.live && keepingFor(terminal.firstContactAt, new Date()) ? await TerminalFirstContactService.counts(terminal.deviceId) : null
-        const copy = counts && roomFor(counts) ? req.clone() : null
+        // still be kept.
+        const copy = await copyToKeep(req, terminal)
         const events = await eventsOf(req)
         const taken = await AttendanceTerminalPushService.receive(terminal.deviceId, events, getClientIp(req.headers))
         if (copy) await keepContact(terminal.deviceId, copy, secret, events, taken.stored)
@@ -72,6 +70,25 @@ export async function receiveHikvision(req: Request, secret: string): Promise<Re
         console.error("Terminal API error:", HIKVISION_ROUTE, error)
         await AuditLogService.logSystemError({ error, route: HIKVISION_ROUTE, method: req.method, extra: { deviceId } })
         return answer(500)
+    }
+}
+
+/**
+ * A copy of the request to keep among its terminal's first contacts, while
+ * one may still be kept: past its first 7 days nothing is looked up, and
+ * with 50 kept no copy is taken. What is kept is counted again when it
+ * is, with the terminal held.
+ *
+ * Counting is no more allowed to hold a terminal than keeping is: if it
+ * fails, the request is taken without a copy (review on PR 294).
+ */
+async function copyToKeep(req: Request, terminal: { deviceId: string; firstContactAt: Date | null; live: boolean }): Promise<Request | null> {
+    if (!terminal.live || !keepingFor(terminal.firstContactAt, new Date())) return null
+    try {
+        return roomFor(await TerminalFirstContactService.counts(terminal.deviceId)) ? req.clone() : null
+    } catch (error) {
+        await notKept(error, terminal.deviceId, req.method)
+        return null
     }
 }
 
@@ -87,8 +104,13 @@ async function keepContact(deviceId: string, copy: Request, secret: string, even
         const { body, kind } = await bodyOf(copy, secret)
         await TerminalFirstContactService.keep(deviceId, { method: copy.method, path: HIKVISION_ROUTE, headers, otherHeaders: others, body, kind, outcome: outcomeOf(events, stored) })
     } catch (error) {
-        if (isNextInternalError(error)) throw error
-        console.error("Terminal first contact not kept:", HIKVISION_ROUTE, error)
-        await AuditLogService.logSystemError({ error, route: HIKVISION_ROUTE, method: copy.method, extra: { deviceId, step: "first contact" } }).catch(() => {})
+        await notKept(error, deviceId, copy.method)
     }
+}
+
+/** Records that a first contact wasn't kept, by the route's pattern: never by the request's address, which is the secret. */
+async function notKept(error: unknown, deviceId: string, method: string): Promise<void> {
+    if (isNextInternalError(error)) throw error
+    console.error("Terminal first contact not kept:", HIKVISION_ROUTE, error)
+    await AuditLogService.logSystemError({ error, route: HIKVISION_ROUTE, method, extra: { deviceId, step: "first contact" } }).catch(() => {})
 }

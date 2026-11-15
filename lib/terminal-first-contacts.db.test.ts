@@ -249,6 +249,27 @@ describe.skipIf(!ADMIN_URL)("a terminal's first contacts, in Postgres", () => {
     })
 
     describe("keeping", () => {
+        it("never holds a terminal when what is kept can't even be counted: its scan is stored, and the failure recorded (review on PR 294)", async () => {
+            const secret = await terminal("uncounted")
+            const broken = vi.spyOn(Contacts, "counts").mockRejectedValueOnce(new Error("the contacts table can't be read"))
+            const quiet = vi.spyOn(console, "error").mockImplementation(() => {})
+            try {
+                expect((await send(secret, ...json(access("7", "2026-09-20T09:00:00")))).status).toBe(200)
+                expect(JSON.stringify(quiet.mock.calls)).not.toContain(secret)
+            } finally {
+                broken.mockRestore()
+                quiet.mockRestore()
+            }
+            expect((await db.query(`SELECT count(*)::int AS n FROM "AttendancePunch" WHERE "deviceId" = 'uncounted'`)).rows[0].n).toBe(1)
+            expect(await kept("uncounted")).toEqual([])
+            const { rows } = await db.query(`SELECT details FROM "AuditLog" WHERE action = 'SYSTEM_API_ERROR' ORDER BY "createdAt" DESC LIMIT 1`)
+            expect(rows[0].details).toMatchObject({ route: HIKVISION_ROUTE, method: "POST", message: "the contacts table can't be read", deviceId: "uncounted", step: "first contact" })
+            expect(JSON.stringify(rows[0].details)).not.toContain(secret)
+            // Its next request is kept as ever.
+            expect((await send(secret, ...json(heartbeat))).status).toBe(200)
+            expect((await kept("uncounted")).map(r => r.kind)).toEqual(["heartBeat"])
+        })
+
         it("never holds a terminal: the request is answered and its scan stored, and the failure recorded without the secret", async () => {
             const secret = await terminal("failing")
             const broken = vi.spyOn(Contacts, "keep").mockRejectedValueOnce(new Error("the contacts table went away"))

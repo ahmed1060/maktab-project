@@ -241,8 +241,13 @@ describe("the migration, and the nightly job", () => {
         expect(taken).toBeGreaterThan(-1)
         expect(keeps).toBeGreaterThan(taken)
         // Past its first 7 days, or with 50 kept, no copy of the request is taken.
-        expect(handler).toContain("const counts = terminal.live && keepingFor(terminal.firstContactAt, new Date()) ? await TerminalFirstContactService.counts(terminal.deviceId) : null")
-        expect(handler).toContain("const copy = counts && roomFor(counts) ? req.clone() : null")
+        expect(handler).toContain("if (!terminal.live || !keepingFor(terminal.firstContactAt, new Date())) return null")
+        expect(handler).toContain("return roomFor(await TerminalFirstContactService.counts(terminal.deviceId)) ? req.clone() : null")
+        // Counting what is kept is no more allowed to hold the terminal than keeping is: the copy is decided before the request is taken, on its own.
+        const copies = handler.indexOf("const copy = await copyToKeep(req, terminal)")
+        expect(copies).toBeGreaterThan(-1)
+        expect(copies).toBeLessThan(taken)
+        expect(handler.split("await notKept(").length).toBe(3)
         // What is kept is counted again as it is kept, one at a time for a terminal, without holding up a scan being stored.
         const service = source("lib/services/terminal-first-contact.service.ts")
         expect(service).toContain('SELECT "firstContactAt" FROM "AttendanceDevice" WHERE id = ${deviceId} FOR NO KEY UPDATE')

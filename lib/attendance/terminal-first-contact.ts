@@ -84,18 +84,35 @@ const isName = (key: string) => /name/i.test(key) && !NOT_A_PERSON.has(key.toLow
 const isCard = (key: string) => /^card(no|number|num|id)?$/i.test(key)
 /** A picture, its address, or a template of a finger, a face, an eye or a palm. */
 const isPictureKey = (key: string) => /pic|photo|image|img|snapshot|capture|template|finger|iris|palm|facedata|facemodel|modeldata/i.test(key)
+/** A picture's address, or its file's name, whatever the field it is in is called. */
+const isPictureAddress = (value: string) => /\.(?:jpe?g|png|bmp|gif|webp|heic)(?![A-Za-z0-9])/i.test(value)
+
+/**
+ * What a field's name says it holds. Whatever is under such a field holds
+ * the same: a picture's address is under its picture, a first name under
+ * a name (review on PR 294).
+ */
+type Holds = "name" | "card" | "picture" | null
+const holds = (key: string): Holds => (isName(key) ? "name" : isCard(key) ? "card" : isPictureKey(key) ? "picture" : null)
 
 const NAME_REMOVED = "[name removed]"
 const CARD_REMOVED = "[card number removed]"
 const count = (n: number) => n.toLocaleString("en-US")
 
-/** One text value under its key: what is kept of it, or a note of what was there. */
-function leaf(key: string, value: string, inPicture = false): string {
+/**
+ * One text value under its key, and under what its key is under: what is
+ * kept of it, or a note of what was there. A text that is kept may hold
+ * fields of its own, an event sent as text or an address with a query, and
+ * those go by the same rules.
+ */
+function leaf(key: string, value: string, under: Holds = null): string {
     if (!value) return value
-    if (isName(key)) return NAME_REMOVED
-    if (isCard(key)) return CARD_REMOVED
-    if (inPicture || isPictureKey(key)) return `[removed, ${count(value.length)} characters]`
-    return value.length > MAX_TEXT ? `[text removed, ${count(value.length)} characters]` : value
+    const own = holds(key)
+    const what = own === "name" || own === "card" ? own : under ?? own
+    if (what === "name") return NAME_REMOVED
+    if (what === "card") return CARD_REMOVED
+    if (what === "picture" || isPictureAddress(value)) return `[removed, ${count(value.length)} characters]`
+    return value.length > MAX_TEXT ? `[text removed, ${count(value.length)} characters]` : loose(value)
 }
 
 const MAX_DEPTH = 8
@@ -103,7 +120,7 @@ const MAX_ITEMS = 50
 
 /** A JSON value with names, card numbers, pictures and long text taken out. */
 function walk(value: unknown, key: string, inPicture: boolean, depth: number): unknown {
-    if (typeof value === "string") return leaf(key, value, inPicture)
+    if (typeof value === "string") return leaf(key, value, inPicture ? "picture" : null)
     if (value === null || typeof value !== "object") {
         // A number can be a card's or a name's as well as a text can.
         if (typeof value === "number" && isName(key)) return NAME_REMOVED
@@ -141,30 +158,118 @@ function kindOfEvent(event: unknown): string | null {
 
 const element = (xml: string, name: string): string | undefined => new RegExp(`<${name}(?:\\s[^>]*)?>([^<]*)</${name}>`).exec(xml)?.[1]
 
-/** The older XML, element by element: the same rules by each element's name. */
-function redactXml(xml: string): string {
-    return xml
-        // What a CDATA section holds can't be told apart: it goes whole.
-        .replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, "[text removed]")
-        .replace(/<([A-Za-z_][\w.:-]*)((?:\s[^<>]*)?)>([^<]*)<\/\1>/g, (_whole, tag: string, attrs: string, value: string) =>
-            `<${tag}${attrs.length > 100 ? "" : attrs}>${leaf(tag.replace(/^.*:/, ""), value)}</${tag}>`)
+/** An element's own name, without the prefix of its namespace. */
+const local = (tag: string) => tag.replace(/^.*:/, "")
+
+/** Past this an element's attributes aren't read: a terminal's own are a few dozen characters. */
+const MAX_ATTRIBUTES = 400
+
+/** An element's attributes, each by the same rules as a field: what doesn't read as one is dropped. */
+function attributes(text: string, under: Holds): string {
+    if (text.length > MAX_ATTRIBUTES) return ""
+    let out = ""
+    for (const [, name, double, single] of text.matchAll(/([A-Za-z_][\w.:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) out += ` ${name}="${leaf(local(name), double ?? single ?? "", under)}"`
+    return out
 }
 
 /**
- * Text that is neither, where nothing can be told apart for sure: what
- * looks like a pair of a name and its value, in any of three spellings,
- * goes by the same rules.
+ * The older XML, element by element: the same rules by each element's
+ * name, and by the names of the elements it is inside. The elements that
+ * are open are followed, so a picture's address inside its picture goes
+ * with it, and what comes after the picture's element is kept as ever.
+ *
+ * It is read from start to end once, bracket by bracket, so a body made
+ * to be slow to read is no slower than any other.
  */
-function redactLoose(text: string): string {
-    return redactXml(text)
+function redactXml(xml: string, under: Holds = null): string {
+    // The elements that are open, each with what it holds: its own, or else what the one around it holds.
+    const open: { tag: string; holds: Holds }[] = []
+    const opened = new Map<string, number>()
+    const within = (): Holds => (open.length > 0 ? open[open.length - 1].holds : under)
+    let out = ""
+    let at = 0
+    // Where the next closing bracket is: looked for again only once it is passed.
+    let closes = -2
+    while (at < xml.length) {
+        const bracket = xml.indexOf("<", at)
+        if (bracket !== at) {
+            // Text up to the next bracket: it has none in it.
+            const text = xml.slice(at, bracket < 0 ? xml.length : bracket)
+            out += text.trim() ? leaf(open.length > 0 ? local(open[open.length - 1].tag) : "", text, within()) : text
+            if (bracket < 0) break
+            at = bracket
+        }
+        // What a CDATA section holds can't be told apart, nor a comment: each goes whole, and so does one that never ends.
+        if (xml.startsWith("<![CDATA[", at)) {
+            const ends = xml.indexOf("]]>", at)
+            out += "[text removed]"
+            if (ends < 0) break
+            at = ends + 3
+            continue
+        }
+        if (xml.startsWith("<!--", at)) {
+            const ends = xml.indexOf("-->", at)
+            out += "<!--[removed]-->"
+            if (ends < 0) break
+            at = ends + 3
+            continue
+        }
+        if (closes !== -1 && closes <= at) closes = xml.indexOf(">", at + 1)
+        const piece = closes > at && xml.lastIndexOf("<", closes) === at ? xml.slice(at, closes + 1) : null
+        const closing = piece && /^<\/([A-Za-z_][\w.:-]*)\s*>$/.exec(piece)
+        const declared = piece && /^<\?([A-Za-z_][\w.:-]*)([\s\S]*)\?>$/.exec(piece)
+        const opening = piece && /^<([A-Za-z_][\w.:-]*)((?:\s[\s\S]*)?)>$/.exec(piece)
+        if (!piece || !(closing || declared || opening || piece.startsWith("<!"))) {
+            // A bracket that opens nothing: what follows it is text.
+            out += "<"
+            at += 1
+            continue
+        }
+        at = closes + 1
+        if (closing) {
+            // Closes its own element, and with it any left open inside it. One that was never opened closes nothing.
+            while ((opened.get(closing[1]) ?? 0) > 0) {
+                const last = open.pop()!
+                opened.set(last.tag, opened.get(last.tag)! - 1)
+                if (last.tag === closing[1]) break
+            }
+            out += `</${closing[1]}>`
+        } else if (declared) out += `<?${declared[1]}${attributes(declared[2], null)}?>`
+        else if (opening) {
+            const own = holds(local(opening[1]))
+            const alone = /\/\s*$/.test(opening[2])
+            const inside = own ?? within()
+            out += `<${opening[1]}${attributes(opening[2], inside)}${alone ? "/" : ""}>`
+            if (!alone) {
+                open.push({ tag: opening[1], holds: inside })
+                opened.set(opening[1], (opened.get(opening[1]) ?? 0) + 1)
+            }
+        } else out += "<![removed]>"
+    }
+    return out
+}
+
+/** Pairs of a name and its value inside a text, in two spellings: each value by the same rules. Read twice, it says the same. */
+function pairs(text: string): string {
+    return text
         .replace(/("([\w.-]*)"\s*:\s*)"((?:[^"\\]|\\.)*)"/g, (whole, lead: string, key: string, value: string) => {
             const kept = leaf(key, value)
             return kept === value ? whole : `${lead}"${kept}"`
         })
-        .replace(/(^|[&?;\s])([\w.-]+)=([^&;\s]*)/g, (whole, lead: string, key: string, value: string) => {
+        // A note of what was taken out is one value, its brackets and all.
+        .replace(/(^|[&?;\s])([\w.-]+)=(\[[^\]\n]*\]|[^&;\s]*)/g, (whole, lead: string, key: string, value: string) => {
             const kept = leaf(key, value)
             return kept === value ? whole : `${lead}${key}=${kept}`
         })
+}
+
+/**
+ * Text where nothing can be told apart for sure: what looks like markup
+ * goes element by element, and what looks like a pair of a name and its
+ * value goes by the same rules.
+ */
+function loose(text: string): string {
+    return text.includes("<") ? redactXml(text) : pairs(text)
 }
 
 const cut = (text: string, max: number) => (text.length > max ? `${text.slice(0, max)} … [cut: ${count(text.length)} characters in all]` : text)
@@ -173,14 +278,21 @@ const cut = (text: string, max: number) => (text.length > max ? `${text.slice(0,
  * What is kept of a body's text, and the kind of each event in it. JSON
  * is kept a field to a line, as it reads; XML as it came; anything else
  * to its first 600 characters.
+ *
+ * `field`: the name of the form's field it came in, if it came in one. A
+ * field's own name says what it holds as much as a name inside an event
+ * does: a field called `name` is somebody's name (review on PR 294).
  */
-export function textOf(text: string): { body: string; kinds: string[] } {
+export function textOf(text: string, field = ""): { body: string; kinds: string[] } {
     const body = text.trim()
+    const under = holds(field)
+    if (under === "name") return { body: body ? NAME_REMOVED : body, kinds: [] }
+    if (under === "card") return { body: body ? CARD_REMOVED : body, kinds: [] }
     if (body.startsWith("{") || body.startsWith("[")) {
         try {
             const parsed: unknown = JSON.parse(body)
             const events = Array.isArray(parsed) ? parsed : [parsed]
-            return { body: JSON.stringify(walk(parsed, "", false, 0), null, 2), kinds: events.map(kindOfEvent).filter((k): k is string => k !== null) }
+            return { body: JSON.stringify(walk(parsed, field, false, 0), null, 2), kinds: events.map(kindOfEvent).filter((k): k is string => k !== null) }
         } catch {
             // Not JSON after all: kept as text that is neither, below.
         }
@@ -188,9 +300,12 @@ export function textOf(text: string): { body: string; kinds: string[] } {
     if (body.startsWith("<") && body.includes("<EventNotificationAlert")) {
         const type = word(element(body, "eventType")) || "event"
         const access = /<AccessControllerEvent[\s>]/.test(body)
-        return { body: redactXml(body), kinds: [access ? `${type} ${code(element(body, "majorEventType"))}/${code(element(body, "subEventType"))}` : type] }
+        return { body: redactXml(body, under), kinds: [access ? `${type} ${code(element(body, "majorEventType"))}/${code(element(body, "subEventType"))}` : type] }
     }
-    return { body: cut(redactLoose(body), MAX_UNREAD_TEXT), kinds: [] }
+    if (under === "picture") return { body: leaf(field, body), kinds: [] }
+    // Only its start is kept, so only its start is read.
+    const start = loose(body.slice(0, MAX_UNREAD_TEXT * 4))
+    return { body: body.length > MAX_UNREAD_TEXT || start.length > MAX_UNREAD_TEXT ? `${start.slice(0, MAX_UNREAD_TEXT)} … [cut: ${count(body.length)} characters in all]` : start, kinds: [] }
 }
 
 /** What kind of file a part is, without its own name: a file's name can be a person's. */
@@ -219,8 +334,8 @@ export async function bodyOf(req: Request, secret: string): Promise<{ body: stri
         pieces.push(piece)
         any = true
     }
-    const take = (label: string, text: string) => {
-        const read = textOf(text)
+    const take = (label: string, text: string, field = "") => {
+        const read = textOf(text, field)
         note(label ? `${label}\n${read.body}` : read.body)
         for (const kind of read.kinds) kinds.add(kind)
     }
@@ -237,12 +352,12 @@ export async function bodyOf(req: Request, secret: string): Promise<{ body: stri
             const label = `part "${word(name) || "?"}"`
             if (typeof part === "string") {
                 if (tooLong(part)) note(`${label}: text, ${count(part.length)} characters, more than is read, not kept`)
-                else take(`${label}: text, ${count(part.length)} characters`, part)
+                else take(`${label}: text, ${count(part.length)} characters`, part, name)
             } else if (isPicture(part) || part.size > MAX_EVENT_BYTES) {
                 note(`${label}: ${fileOf(part)}, not opened`)
             } else {
                 const text = await part.text()
-                if (isText(text)) take(`${label}: ${fileOf(part)}, ${count(text.length)} characters`, text)
+                if (isText(text)) take(`${label}: ${fileOf(part)}, ${count(text.length)} characters`, text, name)
                 else note(`${label}: ${fileOf(part)}, not kept: it isn't text`)
             }
         }
