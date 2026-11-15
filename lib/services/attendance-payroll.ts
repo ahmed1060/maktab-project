@@ -193,13 +193,22 @@ export async function reconcileEntries(
 /**
  * Stamps the month's days with the run that paid them: the record of which approval froze each.
  *
- * A day is frozen as it was priced, its mission allowance with it: the
- * payslips carry the allowance from PR 288. A month approved between PR 287
- * and then was frozen with none, no payslip having carried one.
+ * What a frozen day holds is what was paid. A day's deduction and overtime
+ * stay as priced whether or not attendance reached this payroll: that is
+ * how a dry run is read afterwards. Its mission allowance stays only for
+ * those in `allowancePaidTo`, whose payslips carried one. For anyone else
+ * (the whole company in a month approved before attendance reaches
+ * payroll, someone left out of the run) it is cleared on the days frozen
+ * now, so that nothing reads as paid that wasn't (review on PR 288).
  */
-export async function stampDays(tx: Db, companyId: string, year: number, month: number, payrollRunId: string) {
+export async function stampDays(tx: Db, companyId: string, year: number, month: number, payrollRunId: string, allowancePaidTo: readonly string[]) {
+    const freezing = { companyId, lockedByPayrollRunId: null, date: { gte: monthStart(year, month), lt: nextMonthStart(year, month) } }
+    await tx.attendanceDay.updateMany({
+        where: { ...freezing, missionAllowanceMinor: { gt: 0 }, ...(allowancePaidTo.length > 0 ? { userId: { notIn: [...allowancePaidTo] } } : {}) },
+        data: { missionAllowanceMinor: 0 },
+    })
     return (await tx.attendanceDay.updateMany({
-        where: { companyId, lockedByPayrollRunId: null, date: { gte: monthStart(year, month), lt: nextMonthStart(year, month) } },
+        where: freezing,
         data: { lockedByPayrollRunId: payrollRunId },
     })).count
 }

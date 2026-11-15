@@ -295,5 +295,68 @@ describe.skipIf(!ADMIN_URL)("each mission day priced, in Postgres", () => {
             expect(await paid("e1", "2026-10-30")).toEqual(["REST", 0, 20_000])
             expect((await db.query(`SELECT "amountMinor" FROM "AttendancePayrollEntry" WHERE "userId" = 'e1' AND category = 'MISSION_ALLOWANCE'`)).rows).toEqual([{ amountMinor: 60_000 }])
         })
+
+        /** November's days that hold an allowance, by person, as a transaction sees them. */
+        const held = async (tx: { attendanceDay: { findMany: (args: object) => Promise<{ userId: string; missionAllowanceMinor: number }[]> } }) => {
+            const days = await tx.attendanceDay.findMany({
+                where: { companyId: "c1", date: { gte: new Date("2026-11-01T00:00:00Z"), lt: new Date("2026-12-01T00:00:00Z") }, missionAllowanceMinor: { gt: 0 } },
+                select: { userId: true, missionAllowanceMinor: true },
+            })
+            const by: Record<string, number> = {}
+            for (const d of days) by[d.userId] = (by[d.userId] ?? 0) + d.missionAllowanceMinor
+            return by
+        }
+
+        it("freezes a day with its allowance only for those whose payslips carried one (review on PR 288)", async () => {
+            const { stampDays } = await import("@/lib/services/attendance-payroll")
+            const { prisma } = await import("@/lib/prisma")
+            // November as it stands: Ehab's mission by hours on the 1st, Eman's days, Hessa's one day.
+            expect(await held(prisma)).toEqual({ e1: 10_000, e2: 60_000, e4: 20_000 })
+            // Frozen with only Eman paid: hers stay, the others' are cleared. Undone after, to leave November open.
+            let after: Record<string, number> = {}
+            await expect(prisma.$transaction(async tx => {
+                expect(await stampDays(tx, "c1", 2026, 11, runId, ["e2"])).toBeGreaterThan(30)
+                after = await held(tx)
+                throw new Error("UNDO")
+            })).rejects.toThrow("UNDO")
+            expect(after).toEqual({ e2: 60_000 })
+            // And with nobody paid, none stays.
+            await expect(prisma.$transaction(async tx => {
+                await stampDays(tx, "c1", 2026, 11, runId, [])
+                after = await held(tx)
+                throw new Error("UNDO")
+            })).rejects.toThrow("UNDO")
+            expect(after).toEqual({})
+            expect(await held(prisma)).toEqual({ e1: 10_000, e2: 60_000, e4: 20_000 })
+            // October's days, frozen already, were never touched.
+            expect(await paid("e1", "2026-10-29")).toEqual(["MISSION", 0, 20_000])
+        })
+
+        it("freezes a month approved before attendance reaches payroll with no allowance: nothing paid it (review on PR 288)", async () => {
+            // Attendance reaches payroll from December, so November's is a dry run.
+            await db.query(`UPDATE "Company" SET "attendancePayrollFrom" = '2026-12-01' WHERE id = 'c1'`)
+            const dry = await Payroll.compute("c1", 2026, 11)
+            expect(dry.attendance.reachesPayroll).toBe(false)
+            expect(dry.attendance.byPerson.e2.missionAllowance).toBe(60_000)
+            const result = await Payroll.approve("c1", 2026, 11, SESSION, { acknowledgePending: true })
+            expect(result).toHaveProperty("runId")
+            const november = (result as { runId: string }).runId
+            expect((await db.query(`SELECT status, "attendanceIncluded" FROM "PayrollRun" WHERE id = $1`, [november])).rows[0]).toEqual({ status: "APPROVED", attendanceIncluded: false })
+            // No payslip carried it, and no entry was written.
+            expect((await db.query(`SELECT count(*)::int AS n FROM "PayslipLine" l JOIN "Payslip" p ON p.id = l."payslipId" WHERE p."payrollRunId" = $1 AND l.source = 'ATTENDANCE'`, [november])).rows[0].n).toBe(0)
+            expect((await db.query(`SELECT count(*)::int AS n FROM "AttendancePayrollEntry" WHERE year = 2026 AND month = 11`)).rows[0].n).toBe(0)
+            // So the days are frozen with none, still reading as the missions they were.
+            expect(await paid("e2", "2026-11-03")).toEqual(["MISSION", 0, 0])
+            expect(await paid("e2", "2026-11-07")).toEqual(["REST", 0, 0])
+            expect(await paid("e4", "2026-11-03")).toEqual(["MISSION", 0, 0])
+            expect((await day("e2", "2026-11-03")).lockedByPayrollRunId).toBe(november)
+            const { rows: [left] } = await db.query(`SELECT coalesce(sum("missionAllowanceMinor"), 0)::int AS total FROM "AttendanceDay" WHERE "companyId" = 'c1' AND date >= '2026-11-01'`)
+            expect(left.total).toBe(0)
+            // The approved month's register, read again, says nothing of an allowance either.
+            const after = await Payroll.compute("c1", 2026, 11)
+            expect(Object.values(after.attendance.byPerson).reduce((s, m) => s + m.missionAllowance, 0)).toBe(0)
+            // October, paid with attendance, keeps what its payslips carried.
+            expect(await paid("e1", "2026-10-29")).toEqual(["MISSION", 0, 20_000])
+        })
     })
 })

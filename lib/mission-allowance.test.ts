@@ -271,9 +271,15 @@ describe("paid with salary (PR 288)", () => {
         expect(run).toContain(`missionAllowance: of("MISSION_ALLOWANCE")`)
     })
 
-    it("freezes a month's days with the allowance their payslips carried, where PR 287 froze them with none", () => {
-        expect(payroll).toContain("data: { lockedByPayrollRunId: payrollRunId },")
-        expect(payroll).not.toContain("missionAllowanceMinor: 0")
+    it("freezes a day with its allowance only where a payslip carried it: none in a dry run, none for someone left out (review on PR 288)", () => {
+        // Cleared on the days being frozen now, for everyone but those paid, then stamped.
+        expect(payroll).toContain("export async function stampDays(tx: Db, companyId: string, year: number, month: number, payrollRunId: string, allowancePaidTo: readonly string[]) {")
+        expect(payroll).toContain("where: { ...freezing, missionAllowanceMinor: { gt: 0 }, ...(allowancePaidTo.length > 0 ? { userId: { notIn: [...allowancePaidTo] } } : {}) },")
+        expect(payroll.indexOf("data: { missionAllowanceMinor: 0 },")).toBeLessThan(payroll.indexOf("data: { lockedByPayrollRunId: payrollRunId },"))
+        // Approval names those paid from the payslips' own lines, and nobody when attendance doesn't reach payroll.
+        const run = readFileSync("lib/services/payroll-run.service.ts", "utf8")
+        expect(run).toContain("const allowancePaidTo = reaches ? people.filter(p => !p.excluded && p.attendance.missionAllowance > 0).map(p => p.userId) : []")
+        expect(run).toContain("const daysLocked = await stampDays(tx, companyId, year, month, draft.id, allowancePaidTo)")
     })
 
     it("is named on Payroll's register, on the payslip's line and in what attendance puts there", () => {
