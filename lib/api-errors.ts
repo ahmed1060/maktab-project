@@ -227,6 +227,12 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     // A terminal's brand, picked by an Admin (§17.9, PR 280).
     DEVICE_BRAND_PROTOCOL: { status: 409, message: "That brand's terminals speak another protocol than this one, so this terminal can't have it. Pick one that speaks its protocol." },
     DEVICE_BRAND_RETIRED: { status: 409, message: "That brand has been retired, so it isn't offered for terminals any more. Pick another, or ask a Super Admin to put it back." },
+    // A terminal added by hand, and its address (§17.7, PR 292).
+    DEVICE_SERIAL_REQUIRED: { status: 400, message: "Give the terminal's serial number, as printed on it." },
+    DEVICE_SERIAL_TAKEN: { status: 409, message: "This company already has a terminal with that serial number. If it was retired, restore it instead." },
+    DEVICE_DIRECT_NOT_ALLOWED: { status: 409, message: "Terminals that send their scans straight to Nizmo aren't turned on for this company. A Super Admin turns them on." },
+    DEVICE_CONNECTION_NOT_BUILT: { status: 409, message: "Nizmo can't connect this brand's terminals that way yet." },
+    DEVICE_NO_ADDRESS: { status: 409, message: "Only a terminal that sends its scans straight to Nizmo has an address to issue." },
     PHONE_KEY_INVALID: { status: 400, message: "The phone's key isn't one we can use. Update the app and try again." },
     PHONE_SIGNATURE_INVALID: { status: 400, message: "The phone's signature didn't check out. Try again." },
     PHONE_CHALLENGE_INVALID: { status: 400, message: "That request has expired or was already used. Try again." },

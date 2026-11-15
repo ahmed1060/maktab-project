@@ -1240,6 +1240,26 @@
   line-height: var(--leading-sm);
   text-align: start;
 }
+/* What to set on a device, shown once (DESIGN.md §5.5, Dialog; PR 292): each
+   setting under the name the device gives it, one under the other. */
+.ui-device-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+}
+.ui-device-settings dt {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.ui-device-settings dd {
+  min-width: 0;
+  margin: var(--space-1) 0 0;
+}
+.ui-device-settings .ui-guide-code {
+  margin-block-start: 0;
+}
 /* What's typed inside a sentence, such as a file's name. */
 .ui-guide-inline {
   padding-inline: var(--space-1);

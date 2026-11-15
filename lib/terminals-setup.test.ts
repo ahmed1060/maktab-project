@@ -127,19 +127,36 @@ describe("who reaches Fingerprint terminals", () => {
 
 describe("its routes", () => {
     const source = (path: string) => stripComments(readFileSync(path, "utf8"))
-    const ASKS = ["app/api/attendance/agents/route.ts", "app/api/attendance/agents/[id]/code/route.ts", "app/api/attendance/devices/[id]/route.ts"]
+    // A terminal's address, issued when one is added straight to Nizmo or issued again, asks too (PR 292).
+    const ASKS = [
+        "app/api/attendance/agents/route.ts", "app/api/attendance/agents/[id]/code/route.ts", "app/api/attendance/devices/[id]/route.ts",
+        "app/api/attendance/devices/route.ts", "app/api/attendance/devices/[id]/address/route.ts",
+    ]
 
-    it("ask for the step-up code where an agent's code is issued or a terminal retired", () => {
+    it("ask for the step-up code where an agent's code or a terminal's address is issued, or a terminal retired", () => {
         for (const path of ASKS) expect(source(path), path).toContain(`assertStepUp(session, "attendance.manage_terminals")`)
         // Retiring is DELETE; renaming and setting a mode, PATCH, don't ask.
         const device = source("app/api/attendance/devices/[id]/route.ts")
         expect(device.indexOf("assertStepUp(session")).toBeGreaterThan(device.indexOf("export const DELETE"))
+        // Adding a terminal asks only when its address is issued: through the agent, nothing is (§17.7, PR 292).
+        const devices = source("app/api/attendance/devices/route.ts")
+        expect(devices).toContain(`if (input.connection === "DIRECT") await assertStepUp(session, "attendance.manage_terminals")`)
+        expect(devices.match(/assertStepUp\(session/g)).toHaveLength(1)
+        expect(devices.indexOf("assertStepUp(session")).toBeGreaterThan(devices.indexOf("export const POST"))
+        // After who may reach it, and before anything is issued.
+        for (const path of ["app/api/attendance/devices/route.ts", "app/api/attendance/devices/[id]/address/route.ts"]) {
+            const route = source(path)
+            expect(route.lastIndexOf("denyTerminals(session")).toBeLessThan(route.indexOf("assertStepUp(session"))
+            expect(route.indexOf("assertStepUp(session")).toBeLessThan(route.search(/AttendanceDeviceService\.(add|issueAddress)\(/))
+        }
     })
 
     it("don't ask to look, to revoke an agent or to put a terminal back", () => {
-        for (const path of ["app/api/attendance/devices/route.ts", "app/api/attendance/agents/[id]/route.ts", "app/api/attendance/devices/[id]/restore/route.ts"]) {
+        for (const path of ["app/api/attendance/agents/[id]/route.ts", "app/api/attendance/devices/[id]/restore/route.ts"]) {
             expect(source(path), path).not.toContain("assertStepUp")
         }
+        const devices = source("app/api/attendance/devices/route.ts")
+        expect(devices.slice(devices.indexOf("export const GET"), devices.indexOf("export const POST"))).not.toContain("assertStepUp")
     })
 
     it("ask the same one question, with no view-or-edit of the Attendance tab left", () => {

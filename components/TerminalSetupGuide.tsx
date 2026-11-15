@@ -4,6 +4,7 @@ import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 're
 import { CheckIcon, CopyIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { inlineCode, setupGuide, type GuideLine, type TerminalProtocol } from '@/lib/attendance/setup-guide'
+import { mayConnect } from '@/lib/attendance/terminal-connections'
 import { Button, Dialog, Field, Select } from '@/components/ui'
 
 /**
@@ -13,16 +14,22 @@ import { Button, Dialog, Field, Select } from '@/components/ui'
  * its only button. The model is picked at the top, from the Super Admin's
  * brands not retired, and the steps follow its protocol, with the model's
  * notes where its address is found.
+ *
+ * A model Nizmo doesn't read through the agent has no steps here. Where the
+ * company may connect it straight to Nizmo (§17.8), the guide points to Add
+ * a terminal, which shows what to set on it (PR 292).
  */
 
 /** A brand the terminals list offers, with the Super Admin's notes on it. */
 export type GuideBrand = { id: string; name: string; protocol: TerminalProtocol; notesEn: string | null; notesAr: string | null }
 
-export default function TerminalSetupGuide({ brands, loadFailed = false, superAdmin, server, onClose }: {
+export default function TerminalSetupGuide({ brands, loadFailed = false, superAdmin, directAllowed = false, server, onClose }: {
     /** null until the terminals list, which offers them, has loaded. */
     brands: GuideBrand[] | null
     loadFailed?: boolean
     superAdmin: boolean
+    /** Whether the company may connect terminals straight to Nizmo (§17.8). */
+    directAllowed?: boolean
     /** This Nizmo's address, which the agent sends to. */
     server: string
     onClose: () => void
@@ -42,7 +49,7 @@ export default function TerminalSetupGuide({ brands, loadFailed = false, superAd
                     <Field label={t('att_guide_model')}>{p => (
                         <Select {...p} name="model" value={brandId} disabled={brands === null} onChange={e => setBrandId(e.target.value)} options={options} />
                     )}</Field>
-                    {brand ? <SetupGuideSteps brand={brand} superAdmin={superAdmin} server={server} /> : <p className="ui-card-note">{t('att_guide_pick_first')}</p>}
+                    {brand ? <SetupGuideSteps brand={brand} superAdmin={superAdmin} directAllowed={directAllowed} server={server} /> : <p className="ui-card-note">{t('att_guide_pick_first')}</p>}
                 </>}
             </div>
         </Dialog>
@@ -57,25 +64,33 @@ function named(text: string, slot: string, name: string): ReactNode {
 }
 
 /** A sentence, what's typed in it left to right and untranslated, and the model's name in its slot. */
-function Sentence({ text, brand }: { text: string; brand?: string }) {
+export function Sentence({ text, brand }: { text: string; brand?: string }) {
     return <>{inlineCode(text).map((part, i) => 'code' in part
         ? <code key={i} className="ui-guide-inline" dir="ltr" translate="no">{part.code}</code>
         : <Fragment key={i}>{brand === undefined ? part.text : named(part.text, '{brand}', brand)}</Fragment>)}</>
 }
 
-/** The steps for the model picked, numbered in the page's digits; or that Nizmo can't read it yet. */
-export function SetupGuideSteps({ brand, superAdmin, server }: { brand: GuideBrand; superAdmin: boolean; server: string }) {
+/** The model's notes, the Super Admin's, in the page's language, or else the other's, marked as that language; null when it has none. */
+export function ModelNotes({ brand }: { brand: Pick<GuideBrand, 'name' | 'notesEn' | 'notesAr'> }) {
     const { t, locale } = useLanguage()
-    const steps = setupGuide(brand.protocol, { superAdmin, server })
-    if (!steps) return <p className="ui-card-note">{t('att_guide_not_read')}</p>
-    const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
-
-    // The model's notes in the page's language, or else the other's, marked as that language.
     const own = locale === 'ar' ? brand.notesAr : brand.notesEn
     const other = locale === 'ar' ? brand.notesEn : brand.notesAr
-    const notes = own
-        ? <>{named(`${t('att_guide_model_notes')} `, '{model}', brand.name)}<bdi>{own}</bdi></>
-        : other ? <>{named(`${t('att_guide_model_notes_other')} `, '{model}', brand.name)}<bdi lang={locale === 'ar' ? 'en' : 'ar'}>{other}</bdi></> : null
+    if (own) return <>{named(`${t('att_guide_model_notes')} `, '{model}', brand.name)}<bdi>{own}</bdi></>
+    if (other) return <>{named(`${t('att_guide_model_notes_other')} `, '{model}', brand.name)}<bdi lang={locale === 'ar' ? 'en' : 'ar'}>{other}</bdi></>
+    return null
+}
+
+/**
+ * The steps for the model picked, numbered in the page's digits; or, for one
+ * with none, that Nizmo can't read it yet, or where it is added when the
+ * company may connect it straight to Nizmo.
+ */
+export function SetupGuideSteps({ brand, superAdmin, directAllowed = false, server }: { brand: GuideBrand; superAdmin: boolean; directAllowed?: boolean; server: string }) {
+    const { t, locale } = useLanguage()
+    const steps = setupGuide(brand.protocol, { superAdmin, server })
+    if (!steps) return <p className="ui-card-note">{t(mayConnect(brand.protocol, 'DIRECT', directAllowed) ? 'att_guide_direct' : 'att_guide_not_read')}</p>
+    const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
+    const notes = (brand.notesEn || brand.notesAr) ? <ModelNotes brand={brand} /> : null
 
     const line = (l: GuideLine) => {
         if (l.notes) return notes && <li key={l.text}><p className="ui-guide-notes">{notes}</p></li>
@@ -108,7 +123,7 @@ export function SetupGuideSteps({ brand, superAdmin, server }: { brand: GuideBra
  * with Copy beside it, which says what it copies. Without the clipboard, the
  * box is chosen whole instead, ready to copy by hand.
  */
-function CodeBox({ code }: { code: string }) {
+export function CodeBox({ code }: { code: string }) {
     const { t } = useLanguage()
     const id = useId()
     const box = useRef<HTMLPreElement>(null)

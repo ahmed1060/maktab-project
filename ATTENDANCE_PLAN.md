@@ -11,7 +11,8 @@ for the companies already there in #278; part 3, terminal brands, is
 built in two PRs, the Super Admin's list in #279 and the brand on each
 terminal in #280; part 4, one terminal whichever way it connects, is
 built in #290; part 5, Hikvision straight to Nizmo, is split in four PRs,
-the first, the address a terminal sends to, built in #291; the rest is
+the first, the address a terminal sends to, built in #291, and the
+second, Add a terminal with its address shown once, in #292; the rest is
 not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
@@ -2269,6 +2270,74 @@ The Convoy trial's week, and what passes it, stay on the trial's own
 page, outside Nizmo. For the guide, the brands the terminals list offers
 (`GET /api/attendance/devices`) carry their notes.
 
+**Built in #292: Add a terminal, and its address shown once** (part 5's
+second PR, §20). What the build settled:
+
+- **Add a terminal** is beside Add an agent on the section's card. It
+  asks for the terminal's name, its brand, from those not retired, its
+  serial number, how it reads scans, and how it connects.
+- **How it connects follows the brand's protocol and what is built.** A
+  ZKTeco terminal connects through the office agent; straight to Nizmo
+  waits for part 6. A Hikvision terminal connects straight to Nizmo; the
+  agent reads it from part 7. The way that isn't built yet is listed,
+  greyed, with why beside the choice (`DESIGN.md` §5.3). Straight to
+  Nizmo is listed only where the Super Admin has turned it on for the
+  company (§17.8): until part 5's last PR nobody has, so a Hikvision
+  terminal can't be added yet, and the dialog says so. The server
+  refuses the same.
+- **Through the agent**, the terminal is added waiting: once an agent of
+  the company reports a terminal with that serial number, it is this
+  one, with the name, brand and mode it was given. Nothing is issued, so
+  no step-up code is asked for.
+- **Straight to Nizmo**, adding it issues its address, so it asks for
+  the step-up code (§17.10). What to set on the terminal is then shown
+  once (`DESIGN.md` §5.5, Dialog), each setting under the name
+  Hikvision's HTTP listening gives it:
+  - the destination, Nizmo's own address as the page was opened on: a
+    setting, not written into the code (§18, 6), as the agent's guide
+    has it (#282);
+  - the URL, with the secret in it, port 443 and HTTPS, with Copy beside
+    the destination and the URL;
+  - where that setting is on the terminal's web page, and how to stop
+    the terminal sending pictures, which Nizmo never opens (§17.5);
+  - above them, the brand's notes, the Super Admin's (§17.9).
+
+  The menu's names are from Hikvision's manual for its DS-K1T670 series
+  (V4.17, December 2025) and differ by model; the trial checks them
+  (§17.8).
+- **Issue a new address**, in the menu of a Hikvision terminal straight
+  to Nizmo, asks first, then for the step-up code: the address it has
+  stops working at once, and the new one is shown once, the same way. It
+  works whether the company's switch is on or off: it only replaces a
+  secret.
+- **A serial number is one terminal's.** One the company already has is
+  refused, saying to restore it if it was retired; one in use at another
+  company is refused as it is when restoring. As with an agent's report,
+  whoever names a serial number nobody uses has it, one company at a
+  time (above); one named in error is retired, by its company or the
+  Super Admin, and is then free again.
+- **Only a terminal added by hand waits.** One an agent brought in was
+  heard of when it was, so with no contact kept it reads as it did.
+- **Waiting for its first contact:** a terminal added by hand shows so
+  until it is heard from, reported by an agent or calling Nizmo itself.
+  No alert is raised about it meanwhile.
+- **The card of a terminal straight to Nizmo** says so among its facts,
+  with its last contact, the address it calls from, and how many of its
+  scans were refused, with the latest reason in words.
+- **Working, for a terminal straight to Nizmo, is heard from in the last
+  24 hours,** not the agent's 15 minutes. A terminal calls when someone
+  scans, and whether it sends heartbeats between scans is the trial's to
+  answer (§18, 4). Past that it reads Not heard from in working hours,
+  and Quiet outside them. No alert is raised for one yet: that, and the
+  threshold, follow the trial's answer.
+- **The setup guide** (#282), for a Hikvision model where straight to
+  Nizmo is on, points to Add a terminal in place of saying Nizmo can't
+  read the model yet.
+- **Not in this PR:** Change connection, since no protocol has both ways
+  yet. It comes with part 6, the first that gives a protocol both (§20).
+  The Super Admin's terminals list showing each terminal's connection
+  comes with first contacts, part 5's third PR.
+
 ### 17.8 Proving it on real terminals
 
 None of this can be tried without the terminals, and the build has none. So:
@@ -2584,7 +2653,7 @@ matching with liveness, fallback to flagged.
 It stays switched off meanwhile, on the face check meant for testing only;
 choosing a commercial SDK (§18, question 1) waits with it.
 
-### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 begun in #291
+### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 begun in #291 and #292
 
 Planned in #269, for ZKTeco and Hikvision alike (§17.1–§17.11). It replaces
 the earlier Phase 4, a listener for pushes on the agent and nothing else,
@@ -2620,17 +2689,21 @@ which becomes part 8 below. Each part is its own PR:
    switch off:
    1. The address a terminal sends to, which answers nobody yet (§17.2).
       Built in #291.
-   2. Add a terminal, with its connection, the secret address shown once,
-      Issue a new address and Change connection; and the terminal's card
-      for one straight to Nizmo (§17.7). `DESIGN.md` first. Straight to
-      Nizmo is offered only where the switch is on.
-   3. First contacts kept, for the Super Admin (§17.8), and what a scan
-      keeps of its event (`rawPayload`, §17.5).
+   2. Add a terminal, with its connection and the secret address shown
+      once, Issue a new address, and the terminal's card for one straight
+      to Nizmo (§17.7). `DESIGN.md` first. Straight to Nizmo is offered
+      only where the switch is on. Built in #292. Change connection moves
+      to part 6: until then no protocol has both ways to change between.
+   3. First contacts kept, for the Super Admin (§17.8), with each
+      terminal's connection on the Super Admin's terminals list (§17.7),
+      and what a scan keeps of its event (`rawPayload`, §17.5).
    4. The straight-to-Nizmo switch on the company's Attendance tab
       (§17.8), last, when everything it turns on is there.
 6. **ZKTeco straight to Nizmo** (§17.3): the `/iclock` routes, outside the
    proxy; the options answer, scans, and `getrequest` as its heartbeat; the
-   office address check; ZKTeco's protocol in Add a terminal.
+   office address check; ZKTeco's protocol in Add a terminal; and Change
+   connection (§17.7), which a ZKTeco terminal is the first to have both
+   ways for.
 7. **The agent reads Hikvision** (§17.4): ISAPI beside the ZKTeco protocol,
    `probe`, `agent.json`; a new agent release.
 8. **Only when a customer needs it: the agent listens on the office network**,

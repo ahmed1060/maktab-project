@@ -3,7 +3,7 @@
 import { Fragment, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
-import { ArrowsClockwiseIcon, PencilSimpleIcon, PlusIcon, ProhibitIcon, ArrowCounterClockwiseIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { ArrowsClockwiseIcon, KeyIcon, PencilSimpleIcon, PlusIcon, ProhibitIcon, ArrowCounterClockwiseIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { fetcher, type SWRError } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -13,6 +13,8 @@ import type { TranslationKey } from '@/lib/translations'
 import { Button, Card, Dialog, DialogActions, EmptyState, Field, GuideButton, Row, RowMenu, Select, StatusBadge, TextInput, type MenuItem, type StatusTone } from '@/components/ui'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import TerminalSetupGuide, { type GuideBrand } from '@/components/TerminalSetupGuide'
+import { TerminalAddDialog, TerminalAddressDialog } from '@/components/TerminalAddDialog'
+import { hasAddress, refusalWords } from '@/lib/attendance/terminal-connections'
 
 /**
  * Fingerprint terminals and the Local Sync Agent (ATTENDANCE_PLAN.md §17,
@@ -33,6 +35,12 @@ import TerminalSetupGuide, { type GuideBrand } from '@/components/TerminalSetupG
  *
  * A round "i" beside its title opens How to set up a fingerprint terminal
  * (§17.7, PR 282), its steps by the model picked from the brands offered.
+ *
+ * A terminal is also added by hand (§17.7, PR 292), with how it connects:
+ * through the agent, where it waits for an agent to report it, or straight
+ * to Nizmo, where what to set on it is shown once. One straight to Nizmo
+ * says so on its row, with where it calls from and what was refused, and
+ * its menu issues a new address.
  */
 
 type Agent = {
@@ -45,16 +53,20 @@ type Device = {
     id: string; serialNumber: string; name: string; model: string | null; mode: 'ANY' | 'ENTRANCE' | 'EXIT'
     // What it speaks, and the brand printed on it (ATTENDANCE_PLAN.md §17.9, PR 280).
     protocol: 'ZKTECO' | 'HIKVISION'; brand: { id: string; name: string; retired: boolean } | null
+    // How its scans come, and for one straight to Nizmo, where it calls from and what was refused (§17.7, PR 292).
+    connection: 'AGENT' | 'DIRECT'; lastAddress: string | null; refusedCount: number; lastRefusedAt: string | null; lastRefusal: string | null
     lastSeenAt: string | null; lastPunchAt: string | null; reachable: boolean; lastError: string | null
     clockDriftSeconds: number | null; recordCount: number | null; recordCapacity: number | null; retiredAt: string | null
-    health: { state: 'RETIRED' | 'OK' | 'UNREACHABLE' | 'SILENT' | 'QUIET'; memoryFull: boolean; clockOff: boolean }
+    health: { state: 'RETIRED' | 'WAITING' | 'OK' | 'UNREACHABLE' | 'SILENT' | 'QUIET'; memoryFull: boolean; clockOff: boolean }
 }
 type Shown = { name: string; code: string; expiresAt: string | null }
+/** A terminal's address to set on it, with its secret: held only while its dialog is open. */
+type ShownAddress = { name: string; path: string; brandId: string | null }
 /** A brand one may give a terminal: the Super Admin's, not retired, with their notes for the setup guide (PR 282). */
 type OfferedBrand = GuideBrand
 
 const AGENT_TONE: Record<Agent['health'], StatusTone> = { OK: 'good', SILENT: 'problem', QUIET: 'neutral', WAITING: 'waiting', REVOKED: 'neutral' }
-const DEVICE_TONE: Record<Device['health']['state'], StatusTone> = { OK: 'good', UNREACHABLE: 'problem', SILENT: 'problem', QUIET: 'neutral', RETIRED: 'neutral' }
+const DEVICE_TONE: Record<Device['health']['state'], StatusTone> = { OK: 'good', WAITING: 'waiting', UNREACHABLE: 'problem', SILENT: 'problem', QUIET: 'neutral', RETIRED: 'neutral' }
 const MODES: Device['mode'][] = ['ANY', 'ENTRANCE', 'EXIT']
 const MODE_LABEL = { ANY: 'audit_value_ANY', ENTRANCE: 'audit_value_ENTRANCE', EXIT: 'audit_value_EXIT' } as const
 
@@ -68,7 +80,10 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
     const { data: agentsBody, error: agentsError, isValidating, mutate: reloadAgents } = useSWR(`/api/attendance/agents${q}`, fetcher, { refreshInterval: 60_000 })
     const { data: devicesBody, error: devicesError, mutate: reloadDevices } = useSWR(agentsBody ? `/api/attendance/devices${q}` : null, fetcher, { refreshInterval: 60_000 })
     const [adding, setAdding] = useState(false)
+    const [addingDevice, setAddingDevice] = useState(false)
     const [shownCode, setShownCode] = useState<Shown | null>(null)
+    const [shownAddress, setShownAddress] = useState<ShownAddress | null>(null)
+    const [reissuing, setReissuing] = useState<Device | null>(null)
     const [revoking, setRevoking] = useState<Agent | null>(null)
     const [editing, setEditing] = useState<Device | null>(null)
     const [retiring, setRetiring] = useState<Device | null>(null)
@@ -93,6 +108,8 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
     const agents: Agent[] = agentsBody.data.agents
     const devices: Device[] = devicesBody?.data?.devices ?? []
     const brands: OfferedBrand[] = devicesBody?.data?.brands ?? []
+    // Whether the Super Admin has turned terminals straight to Nizmo on for this company (§17.8).
+    const directAllowed: boolean = devicesBody?.data?.directAllowed ?? false
     const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
     const number = (n: number) => n.toLocaleString(intl)
     // Each fact kept apart from the next, so a host name or a version can't
@@ -117,10 +134,24 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
         if (minutes < 60) return t('att_term_minutes_ago').replace('{n}', number(minutes))
         return new Date(iso).toLocaleString(intl, { dateStyle: 'medium', timeStyle: 'short' })
     }
+    /** Where a terminal straight to Nizmo last called from: an address, left to right and never translated (web audit, PR 292). */
+    const callsFrom = (d: Device): ReactNode => {
+        if (d.connection !== 'DIRECT' || !d.lastAddress) return null
+        const [before, after] = t('att_term_calls_from').split('{address}')
+        return <>{before}<bdi dir="ltr" translate="no">{d.lastAddress}</bdi>{after}</>
+    }
+    /** What was refused of a terminal's own scans: how many, when last, and why, in words where there are some (§17.5). */
+    const refusedLine = (d: Device): ReactNode => {
+        // None, or a list from before the count was sent: nothing to say.
+        if (!(d.refusedCount > 0)) return null
+        const words = d.lastRefusal ? refusalWords(d.lastRefusal) : null
+        const reason = words ? t(words.key).replace('{type}', words.type ?? '') : (d.lastRefusal ?? '')
+        return t('att_term_refused_line').replace('{n}', number(d.refusedCount)).replace('{when}', ago(d.lastRefusedAt)).replace('{reason}', reason)
+    }
     const drift = (s: number | null) => s === null ? '' : Math.abs(s) < 60 ? t('att_term_drift_s').replace('{n}', number(Math.abs(s))) : t('att_term_drift_m').replace('{n}', number(Math.round(Math.abs(s) / 60)))
 
     /** Sends one change, then reloads; the server's refusal is shown as it said it. */
-    const send = async (url: string, init: RequestInit, done: TranslationKey, then?: (body: { agent?: Agent & { codeExpiresAt: string | null }; code?: string } | undefined) => void) => {
+    const send = async (url: string, init: RequestInit, done: TranslationKey, then?: (body: { agent?: Agent & { codeExpiresAt: string | null }; code?: string; device?: { name: string; brand: { id: string } | null }; path?: string | null } | undefined) => void) => {
         if (inFlight.current) return false
         inFlight.current = true
         setBusy(true)
@@ -158,14 +189,24 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
         ? [{ key: 'restore', label: t('att_term_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void send(`/api/attendance/devices/${d.id}/restore`, { method: 'POST' }, 'att_term_restored') }, disabled: busy }]
         : [
             { key: 'edit', label: t('edit'), icon: PencilSimpleIcon, onSelect: () => setEditing(d) },
+            // A Hikvision terminal straight to Nizmo has an address of its own (§17.2, PR 292).
+            ...(hasAddress(d) ? [{ key: 'address', label: t('att_term_new_address'), icon: KeyIcon, onSelect: () => setReissuing(d) }] : []),
             { key: 'retire', label: t('att_term_retire'), icon: ProhibitIcon, danger: true, onSelect: () => setRetiring(d) },
         ]
+    /** The address just issued, to show once: the path with its secret is kept nowhere else. */
+    const showAddress = (d: { device?: { name: string; brand: { id: string } | null }; path?: string | null } | undefined) => {
+        if (d?.device && d.path) setShownAddress({ name: d.device.name, path: d.path, brandId: d.device.brand?.id ?? null })
+    }
 
     return (
         <Card
             title={t('att_term_title')}
             titleAside={<GuideButton label={t('att_guide_button')} onClick={() => setGuiding(true)} />}
-            actions={<Button variant="primary" icon={PlusIcon} disabled={busy} onClick={() => setAdding(true)}>{t('att_term_add_agent')}</Button>}
+            actions={<>
+                {/* It asks for a brand, so it waits for the terminals list, which offers them. */}
+                <Button icon={PlusIcon} disabled={busy || !devicesBody} onClick={() => setAddingDevice(true)}>{t('att_term_add_device')}</Button>
+                <Button variant="primary" icon={PlusIcon} disabled={busy} onClick={() => setAdding(true)}>{t('att_term_add_agent')}</Button>
+            </>}
         >
             {/* A refresh that failed after it loaded keeps what's here, and anything open, and says so (Codex on PR 164). */}
             {agentsError && <p className="ui-card-note" role="status">{t('ui_refresh_failed')} <Button size="sm" busy={isValidating} onClick={() => { void reloadAgents() }}>{t('try_again')}</Button></p>}
@@ -216,9 +257,15 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
                                     brandLine(d),
                                     d.model,
                                     t('att_term_mode_line').replace('{mode}', t(MODE_LABEL[d.mode])),
-                                    t('att_term_last_seen').replace('{when}', ago(d.lastSeenAt)),
+                                    d.connection === 'DIRECT' && t('att_term_connection_DIRECT'),
+                                    // Added by hand and not heard from yet: what it waits for, in place of "seen never".
+                                    d.health.state === 'WAITING'
+                                        ? d.connection === 'AGENT' && t('att_term_waiting_agent')
+                                        : t('att_term_last_seen').replace('{when}', ago(d.lastSeenAt)),
                                     d.lastPunchAt && t('att_term_last_punch').replace('{when}', ago(d.lastPunchAt)),
-                                    !d.reachable && d.lastError,
+                                    callsFrom(d),
+                                    refusedLine(d),
+                                    d.connection === 'AGENT' && !d.reachable && d.lastError,
                                 ])}
                                 end={<RowMenu label={t('ui_more_actions_for').replace('{name}', d.name)} tooltip={t('ui_more_actions')} items={deviceMenu(d)} />}
                             />
@@ -238,8 +285,21 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
                 }} />
             )}
             {shownCode && <CodeDialog shown={shownCode} onClose={() => setShownCode(null)} />}
+            {addingDevice && (
+                <TerminalAddDialog brands={brands} directAllowed={directAllowed} busy={busy} onClose={() => setAddingDevice(false)} onSubmit={async terminal => {
+                    await send('/api/attendance/devices', { method: 'POST', body: JSON.stringify({ companyId, ...terminal }) }, 'att_term_device_added', d => {
+                        showAddress(d)
+                        setAddingDevice(false)
+                    })
+                }} />
+            )}
+            {/* What to set on the terminal names this Nizmo's own address, as the page was opened on (§18, 6). */}
+            {shownAddress && (
+                <TerminalAddressDialog name={shownAddress.name} path={shownAddress.path} host={window.location.host}
+                    brand={brands.find(b => b.id === shownAddress.brandId) ?? null} onClose={() => setShownAddress(null)} />
+            )}
             {/* The agent sends to this Nizmo, so its settings name the address it's opened on. */}
-            {guiding && <TerminalSetupGuide brands={devicesBody ? brands : null} loadFailed={!!devicesError} superAdmin={session?.user?.role === 'SUPER_ADMIN'} server={window.location.origin} onClose={() => setGuiding(false)} />}
+            {guiding && <TerminalSetupGuide brands={devicesBody ? brands : null} loadFailed={!!devicesError} superAdmin={session?.user?.role === 'SUPER_ADMIN'} directAllowed={directAllowed} server={window.location.origin} onClose={() => setGuiding(false)} />}
             {editing && (
                 <TerminalDialog device={editing} brands={brands} busy={busy} onClose={() => setEditing(null)} onSubmit={async change => {
                     await send(`/api/attendance/devices/${editing.id}`, { method: 'PATCH', body: JSON.stringify(change) }, 'att_term_saved', () => setEditing(null))
@@ -257,6 +317,20 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
                 </>}
             >
                 <p>{t('att_term_revoke_body')}</p>
+            </Dialog>
+            {/* The address it has stops working at once, so it's asked about first; it isn't a loss, so the button isn't the danger one. */}
+            <Dialog
+                open={!!reissuing}
+                onClose={() => { if (!busy) setReissuing(null) }}
+                title={t('att_term_new_address_title').replace('{name}', reissuing?.name ?? '')}
+                actions={<>
+                    <Button onClick={() => setReissuing(null)} disabled={busy}>{t('cancel')}</Button>
+                    <Button variant="primary" busy={busy} onClick={() => {
+                        if (reissuing) void send(`/api/attendance/devices/${reissuing.id}/address`, { method: 'POST' }, 'att_term_address_issued', d => { showAddress(d); setReissuing(null) })
+                    }}>{t('att_term_new_address')}</Button>
+                </>}
+            >
+                <p>{t('att_term_new_address_body')}</p>
             </Dialog>
             <Dialog
                 open={!!retiring}

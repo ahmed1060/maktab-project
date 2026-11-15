@@ -741,7 +741,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      the masculine, merged in #289 on 2026-11-15; then Phase 4 part 4,
      one terminal whichever way it connects, which changes no screen,
      merged in #290 on 2026-11-15; then part 5's first PR, the address a
-     Hikvision terminal sends to, which changes no screen either, #291;
+     Hikvision terminal sends to, which changes no screen either, merged
+     in #291 on 2026-11-15; then its second, Add a terminal with its
+     address shown once, on Fingerprint terminals, #292;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6371,3 +6373,18 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   screens come with the next PRs: Add a terminal and its card, `DESIGN.md`
   first, then first contacts for the Super Admin, then the switch on the
   company's Attendance tab.
+- **2026-11-15:** Add a terminal, and its address shown once (#292;
+  `ATTENDANCE_PLAN.md` §17.7, Phase 4 part 5, the second of its four PRs),
+  on Fingerprint terminals in the company's Attendance settings.
+  `DESIGN.md` first (§5.3, §5.5).
+  - Add a terminal, beside Add an agent, asks for its name, brand, serial
+    number, how it reads scans and how it connects. The way that isn't
+    built for the brand's protocol is greyed, with why. Straight to Nizmo
+    is listed only where the Super Admin has turned it on, which no
+    company has yet.
+  - One added shows Waiting for its first contact until it's heard from.
+  - For one straight to Nizmo, what to set on the terminal is shown once,
+    the address with Copy, and Issue a new address is in its menu. Its
+    card says how it connects, where it calls from and what was refused.
+  - Change connection waits for part 6, the first protocol with both
+    ways.

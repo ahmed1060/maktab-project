@@ -5,10 +5,14 @@ import { offsetMsIn } from "@/lib/time"
 import type { AuthenticatedAgent } from "./attendance-agent.service"
 import type { Heartbeat } from "@/lib/attendance/agent-payloads"
 import { deviceHealth } from "@/lib/attendance/terminal-health"
+import { hashSecret } from "@/lib/attendance/agent-credentials"
+import { newPushSecret } from "@/lib/attendance/terminal-secrets"
+import { hasAddress, hikvisionPath, mayConnect, type TerminalConnection, type TerminalProtocol } from "@/lib/attendance/terminal-connections"
 import { workingNow } from "./attendance-terminal-status"
 
 /**
- * Fingerprint terminals (ATTENDANCE_PLAN.md §17), as the agents report them.
+ * Fingerprint terminals (ATTENDANCE_PLAN.md §17), as the agents report them
+ * or as someone adds them by hand (§17.7, PR 292).
  *
  * An agent's heartbeat says what it is (version, what it still holds, its
  * clock) and which terminals it reads, each with its own clock and how full
@@ -16,6 +20,10 @@ import { workingNow } from "./attendance-terminal-status"
  * company reports it, and is in use by one company at a time; one retired
  * here is ignored until it is restored. Nothing an agent sends names a
  * company: it is the agent's.
+ *
+ * One added by hand waits for its first contact: an agent's report of its
+ * serial number, or, set straight to Nizmo, its own call to the address
+ * issued for it here, whose secret is returned once and never kept.
  */
 
 function fail(code: string): never {
@@ -50,6 +58,9 @@ const SHOWN = {
     firstSeenAt: true, lastSeenAt: true, reachable: true, lastError: true, clockDriftSeconds: true,
     userCount: true, recordCount: true, recordCapacity: true, lastPunchAt: true, retiredAt: true,
     protocol: true, brand: { select: { id: true, name: true, retiredAt: true } },
+    // How its scans come, and for one straight to Nizmo, where it calls from
+    // and what was refused (§17.7, PR 292). Never its secret's hash.
+    connection: true, lastAddress: true, refusedCount: true, lastRefusedAt: true, lastRefusal: true,
 } as const
 
 /** The brand printed on it (§17.9, PR 280), and whether the Super Admin has retired it since. */
@@ -61,15 +72,107 @@ export class AttendanceDeviceService {
     /** With each one's health now (§13.2). */
     static async list(companyId: string) {
         const [devices, working] = await Promise.all([
-            prisma.attendanceDevice.findMany({ where: { companyId }, orderBy: [{ retiredAt: { sort: "desc", nulls: "first" } }, { name: "asc" }], select: SHOWN }),
+            // Who added it says whether it waits for its first contact (PR 292); it isn't sent on.
+            prisma.attendanceDevice.findMany({ where: { companyId }, orderBy: [{ retiredAt: { sort: "desc", nulls: "first" } }, { name: "asc" }], select: { ...SHOWN, addedById: true } }),
             workingNow(companyId),
         ])
         const now = new Date()
-        return devices.map(d => ({ ...withBrand(d), health: deviceHealth(d, now, working) }))
+        return devices.map(({ addedById, ...d }) => ({ ...withBrand(d), health: deviceHealth({ ...d, addedById }, now, working) }))
     }
 
     static async deviceOf(id: string) {
         return prisma.attendanceDevice.findUnique({ where: { id }, select: { id: true, companyId: true } })
+    }
+
+    /** Whether the Super Admin has turned terminals straight to Nizmo on for the company (§17.8). */
+    static async directAllowed(companyId: string): Promise<boolean> {
+        const company = await prisma.company.findUnique({ where: { id: companyId }, select: { terminalsDirectAllowed: true } })
+        return company?.terminalsDirectAllowed ?? false
+    }
+
+    /**
+     * A terminal added by hand (§17.7, PR 292): its name, its brand, which
+     * gives its protocol, its serial number, how it reads scans, and how it
+     * connects, which must be a way built for its protocol and, straight to
+     * Nizmo, one the company is allowed (§17.8).
+     *
+     * Through the agent it waits for an agent of the company to report its
+     * serial number, and is then this one. Straight to Nizmo, its address
+     * is issued: `path` is returned once, and only its secret's hash kept.
+     *
+     * A serial number is one terminal's: one the company already has,
+     * retired or not, is refused, and so is one in use at another company.
+     * The brand's row is held meanwhile, as when one is picked (PR 280).
+     */
+    static async add(
+        companyId: string,
+        input: { name: string; serialNumber: string; brandId: string; mode?: "ANY" | "ENTRANCE" | "EXIT"; connection: TerminalConnection },
+        actorId: string,
+    ) {
+        const name = input.name.trim()
+        if (!name) fail("DEVICE_NAME_REQUIRED")
+        const serialNumber = input.serialNumber.trim()
+        if (!serialNumber) fail("DEVICE_SERIAL_REQUIRED")
+        const secret = input.connection === "DIRECT" ? newPushSecret() : null
+        const taken = async (tx: Prisma.TransactionClient | typeof prisma) => {
+            if (await tx.attendanceDevice.findUnique({ where: { companyId_serialNumber: { companyId, serialNumber } }, select: { id: true } })) return "DEVICE_SERIAL_TAKEN"
+            // Another company's only: one that became this company's since the line above runs into the insert, and is read again.
+            if (await tx.attendanceDevice.findFirst({ where: { serialNumber, retiredAt: null, companyId: { not: companyId } }, select: { id: true } })) return "DEVICE_IN_USE_ELSEWHERE"
+            return null
+        }
+        try {
+            const device = await prisma.$transaction(async tx => {
+                const company = await tx.company.findUnique({ where: { id: companyId }, select: { terminalsDirectAllowed: true } }) ?? fail("COMPANY_NOT_FOUND")
+                const [brand] = await tx.$queryRaw<{ name: string; protocol: TerminalProtocol; retiredAt: Date | null }[]>`SELECT name, protocol::text AS protocol, "retiredAt" FROM "TerminalBrand" WHERE id = ${input.brandId} FOR SHARE`
+                if (!brand) fail("BRAND_NOT_FOUND")
+                if (brand.retiredAt) fail("DEVICE_BRAND_RETIRED")
+                if (input.connection === "DIRECT" && !company.terminalsDirectAllowed) fail("DEVICE_DIRECT_NOT_ALLOWED")
+                if (!mayConnect(brand.protocol, input.connection, company.terminalsDirectAllowed)) fail("DEVICE_CONNECTION_NOT_BUILT")
+                const clash = await taken(tx)
+                if (clash) fail(clash)
+                const created = await tx.attendanceDevice.create({
+                    data: {
+                        companyId, serialNumber, name, mode: input.mode ?? "ANY", protocol: brand.protocol, brandId: input.brandId,
+                        connection: input.connection, pushSecretHash: secret && hashSecret(secret), addedById: actorId,
+                    },
+                    select: SHOWN,
+                })
+                await AuditLogService.log("ADD_ATTENDANCE_DEVICE", "ATTENDANCE_DEVICE", created.id, {
+                    tx, ...(await actorOf(tx, actorId)),
+                    // The connection is said when it isn't the agent's: an agent's is how every terminal came until now.
+                    details: { companyId, serialNumber, name, brand: brand.name, mode: created.mode, ...(input.connection === "DIRECT" && { connection: "DIRECT" }) },
+                })
+                return created
+            })
+            return { device: withBrand(device), path: secret && hikvisionPath(secret) }
+        } catch (e) {
+            if (!isUniqueViolation(e)) throw e
+            // Added at the same moment, here by another request or an agent's report, or at another company.
+            fail((await taken(prisma)) ?? "DEVICE_SERIAL_TAKEN")
+        }
+    }
+
+    /**
+     * A new address for a Hikvision terminal straight to Nizmo (§17.2,
+     * PR 292): the one it has stops working at once, and the terminal is
+     * set to the new one. `path` is returned once. It only replaces a
+     * secret, so it works whether the company's switch is on or off.
+     */
+    static async issueAddress(id: string, actorId: string) {
+        const secret = newPushSecret()
+        const device = await prisma.$transaction(async tx => {
+            const d = await tx.attendanceDevice.findUnique({
+                where: { id }, select: { companyId: true, name: true, serialNumber: true, protocol: true, connection: true, retiredAt: true },
+            }) ?? fail("DEVICE_NOT_FOUND")
+            if (d.retiredAt) fail("DEVICE_RETIRED")
+            if (!hasAddress(d)) fail("DEVICE_NO_ADDRESS")
+            const updated = await tx.attendanceDevice.update({ where: { id }, data: { pushSecretHash: hashSecret(secret) }, select: SHOWN })
+            await AuditLogService.log("ISSUE_TERMINAL_ADDRESS", "ATTENDANCE_DEVICE", id, {
+                tx, ...(await actorOf(tx, actorId)), details: { companyId: d.companyId, name: d.name, serialNumber: d.serialNumber },
+            })
+            return updated
+        })
+        return { device: withBrand(device), path: hikvisionPath(secret) }
     }
 
     /**
