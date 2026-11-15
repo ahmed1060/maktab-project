@@ -738,7 +738,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      register, merged in #288 on 2026-11-15; then its last, the
      allowance across a closed month, on Payroll's Attendance changed
      after payroll card, with that card's Arabic note asking no one in
-     the masculine, #289;
+     the masculine, merged in #289 on 2026-11-15; then Phase 4 part 4,
+     one terminal whichever way it connects, which changes no screen,
+     #290;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6353,3 +6355,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   It said "سوِّ" and "علِّمها", two commands the five parts of #255 to
   #259 missed: the check didn't know the verbs. It asks with "يُرجى" now,
   and the check knows them. One string; the English doesn't change.
+- **2026-11-15:** One terminal whichever way it connects (#290;
+  `ATTENDANCE_PLAN.md` §17.6, Phase 4 part 4). No screen changes: a
+  terminal's connection, through the agent or straight to Nizmo, and the
+  Super Admin's switch for the second are in the database, with nothing
+  yet to set them. Add a terminal and the switch come with part 5. The
+  Punches list is ready for it: a scan a terminal sent itself reads
+  "Terminal: name" there, as the agent's does, where it would have read
+  "Imported".
