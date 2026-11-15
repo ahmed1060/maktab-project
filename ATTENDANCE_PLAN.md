@@ -2441,8 +2441,16 @@ to Nizmo (part 5's fourth PR, §20). What the build settled:
   - A picture's address, or its file's name, is taken out whatever its
     field is called.
   - A text that holds fields of its own, such as an event sent as text
-    or an address with a query, is read by the same rules.
-  - (The first three from the review on #294.)
+    or an address with a query, is read by the same rules, with its
+    escapes undone first.
+  - Text that can't be read as JSON or XML, such as an event cut short,
+    is read field by field all the same: a value goes by its field's
+    name and by what its field is under, whether it is text or a number.
+    There a number of 6 digits or more is taken out wherever it is: a
+    field's name can't always be relied on, and such a number can't be
+    told from a card's.
+  - (The first three from the first review on #294, the last from the
+    second.)
 - **Only the Super Admin reads them**, from the terminal's menu on
   Fingerprint terminals: **First contacts** (`DESIGN.md` §5.5, Dialog),
   in the order they came, each a row that opens onto what it sent. A
