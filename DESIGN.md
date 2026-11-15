@@ -586,6 +586,9 @@ These are built once, in the building-blocks PR, and every page uses them
   from, is a set of radio buttons under a visible group label, each 36px
   tall (44px on phones). An option that can't be picked says why beside
   the group.
+  - An option that isn't this company's to pick at all, such as a way of
+    connecting a terminal that the Super Admin hasn't turned on for it
+    (`ATTENDANCE_PLAN.md` §17.8), isn't listed.
 - **A colour choice,** such as the brand colour (§2.1):
   - a row of round swatches, 32px across (44px to tap on phones), each a
     radio button named by its colour for screen readers, with a 2px ring
@@ -897,6 +900,16 @@ These are built once, in the building-blocks PR, and every page uses them
     be shown again. A longer one, such as a password, is a size smaller,
     so it stays on one line on a phone. Done closes it, and then it's
     gone.
+  - What to set on a device, shown once, such as the address a
+    fingerprint terminal sends its scans to (`ATTENDANCE_PLAN.md` §17.7),
+    is a short list: each setting under the name the device gives it,
+    with its value, left to right and never translated in either
+    language.
+    - A value too long to type, such as the address, is in a box of its
+      own with Copy beside it, as in a guide.
+    - A line says which value is secret and won't be shown again, and how
+      a new one is issued.
+    - Done closes it, and then the secret is gone.
   - One that can't be undone, such as restoring a backup, asks for a word
     typed first, such as RESTORE: the word is shown as the code has it,
     left to right and never translated, in both languages, and the main
@@ -2255,3 +2268,9 @@ changed:
   each saying who and where, what to type in boxes with Copy, and a
   picker at the top where the steps depend on a choice. First for setting
   up a fingerprint terminal, by its model, as the product owner asked.
+- **2026-11-15:** What to set on a device, shown once (§5.5, Dialog): a
+  short list of each setting and its value, the long one in a box with
+  Copy, with a line on which is secret and how a new one is issued. And
+  an option that isn't a company's to pick isn't listed (§5.3). First for
+  a fingerprint terminal that sends its scans straight to Nizmo
+  (`ATTENDANCE_PLAN.md` §17.7).
