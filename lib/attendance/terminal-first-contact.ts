@@ -100,6 +100,16 @@ const CARD_REMOVED = "[card number removed]"
 const count = (n: number) => n.toLocaleString("en-US")
 
 /**
+ * What a value holds, by its own field's name and by what its field is
+ * under: a name's or a card's own field says so first, then what is
+ * around it, then a picture's own field.
+ */
+function context(key: string, under: Holds): Holds {
+    const own = holds(key)
+    return own === "name" || own === "card" ? own : under ?? own
+}
+
+/**
  * One text value under its key, and under what its key is under: what is
  * kept of it, or a note of what was there. A text that is kept may hold
  * fields of its own, an event sent as text or an address with a query, and
@@ -107,8 +117,7 @@ const count = (n: number) => n.toLocaleString("en-US")
  */
 function leaf(key: string, value: string, under: Holds = null): string {
     if (!value) return value
-    const own = holds(key)
-    const what = own === "name" || own === "card" ? own : under ?? own
+    const what = context(key, under)
     if (what === "name") return NAME_REMOVED
     if (what === "card") return CARD_REMOVED
     if (what === "picture" || isPictureAddress(value)) return `[removed, ${count(value.length)} characters]`
@@ -161,14 +170,35 @@ const element = (xml: string, name: string): string | undefined => new RegExp(`<
 /** An element's own name, without the prefix of its namespace. */
 const local = (tag: string) => tag.replace(/^.*:/, "")
 
+const ENTITIES: Readonly<Record<string, string>> = { lt: "<", gt: ">", amp: "&", quot: '"', apos: "'" }
+/** XML's text as it reads once its escapes are undone, so markup or fields sent inside it are read as what they are. */
+function unescapedXml(text: string): string {
+    if (!text.includes("&")) return text
+    return text.replace(/&(?:(lt|gt|amp|quot|apos)|#(\d{1,7})|#x([0-9a-fA-F]{1,6}));/g, (whole, named?: string, decimal?: string, hex?: string) => {
+        if (named) return ENTITIES[named]
+        const code = decimal ? parseInt(decimal, 10) : parseInt(hex ?? "", 16)
+        return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : whole
+    })
+}
+const escapedXml = (text: string) => text.replace(/[&<>"]/g, ch => (ch === "&" ? "&amp;" : ch === "<" ? "&lt;" : ch === ">" ? "&gt;" : "&quot;"))
+/** One piece of XML's text under its element: as it came if all of it is kept, or what is kept of it, escaped again. */
+function xmlText(key: string, text: string, under: Holds): string {
+    const value = unescapedXml(text)
+    const kept = leaf(key, value, under)
+    return kept === value ? text : escapedXml(kept)
+}
+
 /** Past this an element's attributes aren't read: a terminal's own are a few dozen characters. */
 const MAX_ATTRIBUTES = 400
 
 /** An element's attributes, each by the same rules as a field: what doesn't read as one is dropped. */
-function attributes(text: string, under: Holds): string {
+function attributes(text: string, under: Holds, source: boolean): string {
     if (text.length > MAX_ATTRIBUTES) return ""
     let out = ""
-    for (const [, name, double, single] of text.matchAll(/([A-Za-z_][\w.:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) out += ` ${name}="${leaf(local(name), double ?? single ?? "", under)}"`
+    for (const [, name, double, single] of text.matchAll(/([A-Za-z_][\w.:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
+        const value = double ?? single ?? ""
+        out += ` ${name}="${(source ? xmlText(local(name), value, under) : leaf(local(name), value, under)).replace(/"/g, "&quot;")}"`
+    }
     return out
 }
 
@@ -180,8 +210,12 @@ function attributes(text: string, under: Holds): string {
  *
  * It is read from start to end once, bracket by bracket, so a body made
  * to be slow to read is no slower than any other.
+ *
+ * `source`: it is XML as it came, its text escaped. Markup found inside
+ * a text that was already read isn't: its escapes were undone with the
+ * text's.
  */
-function redactXml(xml: string, under: Holds = null): string {
+function redactXml(xml: string, under: Holds = null, source = true): string {
     // The elements that are open, each with what it holds: its own, or else what the one around it holds.
     const open: { tag: string; holds: Holds }[] = []
     const opened = new Map<string, number>()
@@ -195,7 +229,8 @@ function redactXml(xml: string, under: Holds = null): string {
         if (bracket !== at) {
             // Text up to the next bracket: it has none in it.
             const text = xml.slice(at, bracket < 0 ? xml.length : bracket)
-            out += text.trim() ? leaf(open.length > 0 ? local(open[open.length - 1].tag) : "", text, within()) : text
+            const key = open.length > 0 ? local(open[open.length - 1].tag) : ""
+            out += !text.trim() ? text : source ? xmlText(key, text, within()) : leaf(key, text, within())
             if (bracket < 0) break
             at = bracket
         }
@@ -234,12 +269,12 @@ function redactXml(xml: string, under: Holds = null): string {
                 if (last.tag === closing[1]) break
             }
             out += `</${closing[1]}>`
-        } else if (declared) out += `<?${declared[1]}${attributes(declared[2], null)}?>`
+        } else if (declared) out += `<?${declared[1]}${attributes(declared[2], null, source)}?>`
         else if (opening) {
             const own = holds(local(opening[1]))
             const alone = /\/\s*$/.test(opening[2])
             const inside = own ?? within()
-            out += `<${opening[1]}${attributes(opening[2], inside)}${alone ? "/" : ""}>`
+            out += `<${opening[1]}${attributes(opening[2], inside, source)}${alone ? "/" : ""}>`
             if (!alone) {
                 open.push({ tag: opening[1], holds: inside })
                 opened.set(opening[1], (opened.get(opening[1]) ?? 0) + 1)
@@ -249,28 +284,153 @@ function redactXml(xml: string, under: Holds = null): string {
     return out
 }
 
-/** Pairs of a name and its value inside a text, in two spellings: each value by the same rules. Read twice, it says the same. */
+/** A value as JSON writes it without quotes: kept as it is, unless its field is a name's or a card's. */
+const LITERAL = /^(?:-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null)$/
+
+/**
+ * Text written as fields that can't be read as JSON, such as an event cut
+ * short: read once from start to end with the fields that are open
+ * followed, as the XML is. A value goes by its own field's name and by
+ * what its field is under, whether it is text or a number, in quotes of
+ * either kind or in none (second review on PR 294).
+ */
+function fields(text: string, under: Holds = null): string {
+    // The objects and lists that are open, each with its field's name and what it holds. A list's values share its field.
+    const open: { list: boolean; key: string; holds: Holds }[] = [{ list: false, key: "", holds: under }]
+    const top = () => open[open.length - 1]
+    /** After a value, an object's next value waits for its own field's name. */
+    const valued = () => {
+        if (!top().list) top().key = ""
+    }
+    const colon = /\s*:/y
+    const run = /[^\s"'{}[\]:,]+/y
+    const rest = /[^,}\]\n"']*/y
+    const named = (at: number) => {
+        colon.lastIndex = at
+        return !top().list && colon.test(text)
+    }
+    let out = ""
+    let at = 0
+    while (at < text.length) {
+        const ch = text[at]
+        if (ch === "{" || ch === "[") {
+            const around = top()
+            open.push({ list: ch === "[", key: ch === "[" ? around.key : "", holds: context(around.key, around.holds) })
+            out += ch
+            at += 1
+        } else if (ch === "}" || ch === "]") {
+            if (open.length > 1) open.pop()
+            valued()
+            out += ch
+            at += 1
+        } else if (ch === '"' || ch === "'") {
+            // A text, to its closing quote or to the end.
+            const from = at
+            let end = at + 1
+            while (end < text.length && text[end] !== ch) end += text[end] === "\\" ? 2 : 1
+            const closed = end < text.length
+            const raw = text.slice(from + 1, Math.min(end, text.length))
+            at = closed ? end + 1 : text.length
+            // As it reads once its escapes are undone: a field's name written with one is still its name, and an event sent inside a text is read as one.
+            let value = raw
+            if (ch === '"' && raw.includes("\\")) {
+                try {
+                    const read: unknown = JSON.parse(`"${raw}"`)
+                    if (typeof read === "string") value = read
+                } catch {
+                    // Its escapes can't be read: it goes as it came.
+                }
+            }
+            if (closed && named(at)) {
+                top().key = value.slice(0, 80)
+                out += text.slice(from, at)
+                continue
+            }
+            const kept = leaf(top().key, value, top().holds)
+            out += kept === value ? text.slice(from, at) : closed ? JSON.stringify(kept) : JSON.stringify(kept).slice(0, -1)
+            valued()
+        } else if (ch === ":" || ch === "," || /\s/.test(ch)) {
+            out += ch
+            at += 1
+        } else {
+            run.lastIndex = at
+            const word = run.exec(text)?.[0] ?? ch
+            at += word.length
+            if (named(at)) {
+                top().key = word.slice(0, 80)
+                out += word
+                continue
+            }
+            const what = context(top().key, top().holds)
+            if (what === "name" || what === "card") {
+                // The rest of the value goes with it: a name has spaces in it.
+                rest.lastIndex = at
+                at += rest.exec(text)?.[0].length ?? 0
+                out += JSON.stringify(what === "name" ? NAME_REMOVED : CARD_REMOVED)
+            } else out += LITERAL.test(word) ? word : leaf(top().key, word, top().holds)
+            valued()
+        }
+    }
+    return out
+}
+
+/**
+ * Pairs of a name and its value joined by an equals sign, as a form or an
+ * address writes them: each value by the same rules. A name's or a card's
+ * value runs to the end of its pair, spaces and all. Read twice, it says
+ * the same: a note of what was taken out is one value, its brackets and all.
+ */
 function pairs(text: string): string {
-    return text
-        .replace(/("([\w.-]*)"\s*:\s*)"((?:[^"\\]|\\.)*)"/g, (whole, lead: string, key: string, value: string) => {
-            const kept = leaf(key, value)
-            return kept === value ? whole : `${lead}"${kept}"`
-        })
-        // A note of what was taken out is one value, its brackets and all.
-        .replace(/(^|[&?;\s])([\w.-]+)=(\[[^\]\n]*\]|[^&;\s]*)/g, (whole, lead: string, key: string, value: string) => {
-            const kept = leaf(key, value)
-            return kept === value ? whole : `${lead}${key}=${kept}`
-        })
+    const pair = /(^|[&?;\s])([\w.-]+)=/g
+    const note = /\[[^\]\n]*\]/y
+    const whole = /[^&;\n]*/y
+    const token = /[^&;\s]*/y
+    let out = ""
+    let at = 0
+    for (let found = pair.exec(text); found; found = pair.exec(text)) {
+        const from = found.index + found[0].length
+        const own = holds(found[2])
+        let value: string | undefined
+        if (text[from] === "[") {
+            note.lastIndex = from
+            value = note.exec(text)?.[0]
+        }
+        if (value === undefined) {
+            const until = own === "name" || own === "card" ? whole : token
+            until.lastIndex = from
+            value = until.exec(text)?.[0] ?? ""
+        }
+        out += text.slice(at, from) + leaf(found[2], value)
+        at = from + value.length
+        pair.lastIndex = at
+    }
+    return out + text.slice(at)
 }
 
 /**
  * Text where nothing can be told apart for sure: what looks like markup
- * goes element by element, and what looks like a pair of a name and its
- * value goes by the same rules.
+ * goes element by element, what looks like fields goes field by field,
+ * and what looks like a pair of a name and its value goes by the same
+ * rules. Each reads only text shorter than what it was given, so it ends.
  */
 function loose(text: string): string {
-    return text.includes("<") ? redactXml(text) : pairs(text)
+    // Markup or fields sent with their brackets and quotes escaped are read as what they are. What is taken out
+    // of them is said with that escaping undone: it is shorter each time, so this ends.
+    const plain = unescapedXml(text)
+    if (plain !== text) {
+        const kept = loose(plain)
+        if (kept !== plain) return kept
+    }
+    if (text.includes("<")) return redactXml(text, null, false)
+    return /["'{}[\]]/.test(text) ? fields(text) : pairs(text)
 }
+
+/**
+ * In text that can't be read, a field's name can't always be relied on: a
+ * number of 6 digits or more is taken out wherever it is, since there it
+ * can't be told from a card's.
+ */
+const withoutLongNumbers = (text: string) => text.replace(/\d{6,}/g, "[number removed]")
 
 const cut = (text: string, max: number) => (text.length > max ? `${text.slice(0, max)} … [cut: ${count(text.length)} characters in all]` : text)
 
@@ -304,7 +464,7 @@ export function textOf(text: string, field = ""): { body: string; kinds: string[
     }
     if (under === "picture") return { body: leaf(field, body), kinds: [] }
     // Only its start is kept, so only its start is read.
-    const start = loose(body.slice(0, MAX_UNREAD_TEXT * 4))
+    const start = withoutLongNumbers(loose(body.slice(0, MAX_UNREAD_TEXT * 4)))
     return { body: body.length > MAX_UNREAD_TEXT || start.length > MAX_UNREAD_TEXT ? `${start.slice(0, MAX_UNREAD_TEXT)} … [cut: ${count(body.length)} characters in all]` : start, kinds: [] }
 }
 

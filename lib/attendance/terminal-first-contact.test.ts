@@ -201,6 +201,11 @@ describe("a body's text", () => {
             textOf(slow)
             textOf(`{"broken": ${slow}`)
         }
+        // And text made to be read over and over: escaped many times, or one pair inside another.
+        const nested = `&${"amp;".repeat(40)}lt;name&${"amp;".repeat(40)}gt;Ehab`
+        expect(textOf(JSON.stringify({ remark: nested })).body).not.toContain("Ehab")
+        textOf(JSON.stringify(Object.fromEntries(Array.from({ length: 200 }, (_, i) => [`k${i}`, "a=".repeat(100)]))))
+        textOf(JSON.stringify(Object.fromEntries(Array.from({ length: 200 }, (_, i) => [`k${i}`, `${"[".repeat(99)}"${"x".repeat(99)}`]))))
         expect(Date.now() - started).toBeLessThan(5_000)
     })
 
@@ -222,6 +227,40 @@ describe("a body's text", () => {
         // What was taken out is said once, however many times the text is read.
         const address = textOf(`{"url":"http://192.0.2.10/x?name=Ehab&id=3","broken`).body
         expect(address).toBe(`{"url":"http://192.0.2.10/x?name=[name removed]&id=3","broken`)
+    })
+
+    it("reads JSON that is cut short or broken field by field all the same: a number, and what is under a name or a picture (second review on PR 294)", () => {
+        // A card's number written as a number, in an event cut short.
+        expect(textOf(`{"cardNo":1234567890,`).body).toBe(`{"cardNo":"[card number removed]",`)
+        expect(textOf(`{"eventType":"AccessControllerEvent","AccessControllerEvent":{"cardNo": 1234567890, "name": 7, "employeeNoString":"7","serialNo":223`).body)
+            .toBe(`{"eventType":"AccessControllerEvent","AccessControllerEvent":{"cardNo": "[card number removed]", "name": "[name removed]", "employeeNoString":"7","serialNo":223`)
+        // What is under a name, a card or a picture goes with it, in a list as well.
+        expect(textOf(`{"name":{"first":"Ehab","age":41},"PicInfo":{"url":"http://192.0.2.10/s/1","n":2},"doorNo":1`).body)
+            .toBe(`{"name":{"first":"[name removed]","age":"[name removed]"},"PicInfo":{"url":"[removed, 21 characters]","n":2},"doorNo":1`)
+        expect(textOf(`{"cardNo":[123,456],"names":["Ehab","Mona"],"doorNo":[1,2]`).body)
+            .toBe(`{"cardNo":["[card number removed]","[card number removed]"],"names":["[name removed]","[name removed]"],"doorNo":[1,2]`)
+        // Once a name's field closes, what follows is kept as ever.
+        expect(textOf(`{"name":{"first":"Ehab"},"doorNo":1,"remark":"late"`).body).toBe(`{"name":{"first":"[name removed]"},"doorNo":1,"remark":"late"`)
+        // A value cut off in its middle is still its field's.
+        expect(textOf(`{"doorNo":1,"name":"Ehab Has`).body).toBe(`{"doorNo":1,"name":"[name removed]`)
+        // Fields written without quotes, or with single ones, and a name with a space in it.
+        expect(textOf(`{name: Ehab Hassan, cardNo: 1234567890, doorNo: 1}x`).body).toBe(`{name: "[name removed]", cardNo: "[card number removed]", doorNo: 1}x`)
+        expect(textOf(`{'name':'Ehab Hassan','doorNo':'1'`).body).toBe(`{'name':"[name removed]",'doorNo':'1'`)
+        expect(textOf("name=Ehab Hassan&cardNo=12 34&door=1 open").body).toBe("name=[name removed]&cardNo=[card number removed]&door=1 open")
+        // An event sent as text inside a text, its quotes escaped.
+        expect(textOf(`{"data":"{\\"name\\":\\"Ehab\\",\\"cardNo\\":99,\\"doorNo\\":1}","x`).body).toBe(`{"data":"{\\"name\\":\\"[name removed]\\",\\"cardNo\\":\\"[card number removed]\\",\\"doorNo\\":1}","x`)
+        // A field's name written with an escape is still its name.
+        expect(textOf(`{"na\\u006de":"Ehab","doorNo":1`).body).toBe(`{"na\\u006de":"[name removed]","doorNo":1`)
+        // Markup and fields sent inside XML's text, their brackets and quotes escaped.
+        const inside = (remark: string) => `<EventNotificationAlert><eventType>heartBeat</eventType><remark>${remark}</remark><door title="${remark}">1</door></EventNotificationAlert>`
+        expect(textOf(inside(`&lt;name&gt;Ehab&lt;/name&gt; &amp; {&quot;cardNo&quot;:99} &#60;doorNo&#x3e;1&lt;/doorNo&gt;`)).body)
+            .toBe(inside(`&lt;name&gt;[name removed]&lt;/name&gt; &amp; {&quot;cardNo&quot;:&quot;[card number removed]&quot;} &lt;doorNo&gt;1&lt;/doorNo&gt;`))
+        expect(textOf(inside("open &amp; shut &#0; &bogus;")).body).toBe(inside("open &amp; shut &#0; &bogus;"))
+        // Where a field's name can't be relied on, a long number is taken out wherever it is: there it can't be told from a card's.
+        expect(textOf(`Hassan","cardNo":1234567890,"doorNo":1}`).body).not.toContain("1234567890")
+        expect(textOf("card 1234567890 at door 12345 on 2026-09-14T09:05:00").body).toBe("card [number removed] at door 12345 on 2026-09-14T09:05:00")
+        // What was taken out is said once, however many times the text is read.
+        for (const text of [`{"cardNo":1234567890,`, `{name: Ehab Hassan, doorNo: 1`, "name=Ehab Hassan&door=1"]) expect(textOf(textOf(text).body).body).toBe(textOf(text).body)
     })
 
     it("keeps the start of what is neither, with what looks like a name or a card number taken out", () => {
