@@ -38,7 +38,8 @@ const NO_REQUESTS: ToSettle['requests'] = { permissions: 0, missing: 0, overtime
 
 type Line = { kind: 'EARNING' | 'DEDUCTION'; label: string; amountMinor: number; source: string; sourceId?: string | null }
 type Debt = { id: string; userId: string; name: string; amount: number; originalAmount: number; recoveredAmount: number; dueDate: string; dueDay: string; source: string }
-type AttendanceMoney = { lateness: number; earlyLeave: number; absence: number; overtime: number }
+/** The mission allowance (ATTENDANCE_PLAN.md §6.10, PR 288) is absent from a server still on the code before it. */
+type AttendanceMoney = { lateness: number; earlyLeave: number; absence: number; overtime: number; missionAllowance?: number }
 type Discrepancy = { id: string; userId: string; name: string; date: string; paidStatus: string; nowStatus: string | null; differenceMinor: number; resolvedAt: string | null; resolution: string | null }
 type Entry = {
     userId: string
@@ -389,9 +390,11 @@ export default function PayrollRegisterPage() {
     // Attendance's dry run: each person on the register it would deduct from or pay.
     const dryRun = view?.attendance && !view.attendance.reachesPayroll
         ? Object.entries(view.attendance.byPerson)
-            .map(([userId, m]) => ({ userId, name: register?.entries.find(e => e.userId === userId)?.name ?? '', ...m, deductions: m.lateness + m.earlyLeave + m.absence }))
-            .filter(r => r.name && (r.deductions > 0 || r.overtime > 0))
+            // What it would add is the overtime and the mission allowance (PR 288).
+            .map(([userId, m]) => ({ userId, name: register?.entries.find(e => e.userId === userId)?.name ?? '', ...m, deductions: m.lateness + m.earlyLeave + m.absence, additions: m.overtime + (m.missionAllowance ?? 0) }))
+            .filter(r => r.name && (r.deductions > 0 || r.additions > 0))
         : []
+    const dryAllowance = dryRun.reduce((s, r) => s + (r.missionAllowance ?? 0), 0)
 
     const totals: Tile[] = register ? [
         { label: t('payroll_payable'), value: money(register.payableMinor) },
@@ -604,11 +607,12 @@ export default function PayrollRegisterPage() {
                     <p>{t('attpay_dry_msg')
                         .replace('{deductions}', money(dryRun.reduce((s, r) => s + r.deductions, 0)))
                         .replace('{overtime}', money(dryRun.reduce((s, r) => s + r.overtime, 0)))}</p>
+                    {dryAllowance > 0 && <p>{t('attpay_dry_allowance').replace('{amount}', money(dryAllowance))}</p>}
                     <ul className="ui-rows" aria-label={t('attpay_dry_title')}>
                         {dryRun.map(r => (
                             <Row key={r.userId} title={r.name} end={(
                                 <span className="ui-num">
-                                    {[r.deductions > 0 ? `−${money(r.deductions)}` : null, r.overtime > 0 ? `+${money(r.overtime)}` : null].filter(Boolean).join(' · ')}
+                                    {[r.deductions > 0 ? `−${money(r.deductions)}` : null, r.additions > 0 ? `+${money(r.additions)}` : null].filter(Boolean).join(' · ')}
                                 </span>
                             )} />
                         ))}

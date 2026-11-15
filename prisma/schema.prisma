@@ -2691,6 +2691,7 @@ enum AttendanceCategory {
   EARLY_LEAVE
   ABSENCE
   OVERTIME
+  MISSION_ALLOWANCE
 }
 
 /// What one person's attendance put on one month's payslip, by category, as

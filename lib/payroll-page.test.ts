@@ -368,12 +368,24 @@ describe("attendance in payroll", () => {
     const entries = [{ userId: "a", name: "Mona Adel", lines: [], totals: { earningsMinor: 0, deductionsMinor: 0, netMinor: 0, carriedMinor: 0 }, daysPaid: 31, wholeMonth: true, undecidedDays: 0, excluded: false }]
 
     it("before it reaches payslips, shows what it would cost each person, deducted from nobody", async () => {
-        const part = reviewCard(await page({ shows: view({ attendance: { reachesPayroll: false, from: null, discrepanciesOpen: 0, byPerson: { a: { lateness: 5000, earlyLeave: 0, absence: 10000, overtime: 2500 } } } }, { entries }) }), en.attpay_dry_title)
+        const part = reviewCard(await page({ shows: view({ attendance: { reachesPayroll: false, from: null, discrepanciesOpen: 0, byPerson: { a: { lateness: 5000, earlyLeave: 0, absence: 10000, overtime: 2500, missionAllowance: 0 } } } }, { entries }) }), en.attpay_dry_title)
         expect(part).toMatch(/^<section class="ui-panel ui-card">/)
         expect(part).toContain("150.00")
         expect(part).toContain('<span class="ui-item-title">Mona Adel</span>')
         expect(part).toContain('<span class="ui-num">−150.00 · +25.00</span>')
         expect(part).not.toContain("style=")
+        // No mission allowance that month: nothing is said of one.
+        expect(part).not.toContain("mission allowance")
+    })
+
+    it("counts what the mission allowance would add with each person's overtime, and says its total (§6.10, PR 288)", async () => {
+        const part = reviewCard(await page({ shows: view({ attendance: { reachesPayroll: false, from: null, discrepanciesOpen: 0, byPerson: { a: { lateness: 0, earlyLeave: 0, absence: 10000, overtime: 2500, missionAllowance: 60000 } } } }, { entries }) }), en.attpay_dry_title)
+        expect(part).toContain(`<p>${en.attpay_dry_allowance.replace("{amount}", "600.00")}</p>`)
+        expect(part).toContain('<span class="ui-num">−100.00 · +625.00</span>')
+        // Somebody the allowance alone would pay is listed too.
+        const only = reviewCard(await page({ shows: view({ attendance: { reachesPayroll: false, from: null, discrepanciesOpen: 0, byPerson: { a: { lateness: 0, earlyLeave: 0, absence: 0, overtime: 0, missionAllowance: 20000 } } } }, { entries }) }), en.attpay_dry_title)
+        expect(only).toContain('<span class="ui-item-title">Mona Adel</span>')
+        expect(only).toContain('<span class="ui-num">+200.00</span>')
     })
 
     it("once it does, says so under its title", async () => {

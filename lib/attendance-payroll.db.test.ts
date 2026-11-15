@@ -101,7 +101,7 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
     it("before the company's chosen month, shows what attendance would cost and deducts nothing (the dry run)", async () => {
         const out = await Payroll.compute("c1", 2026, 9)
         expect(out.attendance).toMatchObject({ reachesPayroll: false, from: null })
-        expect(out.attendance.byPerson.e1).toEqual({ lateness: 15500, earlyLeave: 0, absence: 31000, overtime: 0 })
+        expect(out.attendance.byPerson.e1).toEqual({ lateness: 15500, earlyLeave: 0, absence: 31000, overtime: 0, missionAllowance: 0 })
         expect(attendanceLines(ehab(out.register).lines)).toEqual([])
         expect(ehab(out.register).totals.netMinor).toBe(930000)
     })
@@ -184,9 +184,9 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
     it("reconciles entries rather than appending: writing the same again changes nothing, a category gone is removed", async () => {
         const { prisma } = await import("@/lib/prisma")
         const { rows: [run] } = await db.query(`SELECT id FROM "PayrollRun" WHERE "companyId" = 'c1'`)
-        const people = [{ userId: "e1", excluded: false, attendance: { lateness: 15500, earlyLeave: 0, absence: 31000, overtime: 0 } }]
+        const people = [{ userId: "e1", excluded: false, attendance: { lateness: 15500, earlyLeave: 0, absence: 31000, overtime: 0, missionAllowance: 0 } }]
         expect(await prisma.$transaction(tx => reconcileEntries(tx, "c1", 2026, 9, run.id, people))).toEqual({ written: 0, removed: 0 })
-        const fewer = [{ userId: "e1", excluded: false, attendance: { lateness: 15500, earlyLeave: 0, absence: 0, overtime: 0 } }]
+        const fewer = [{ userId: "e1", excluded: false, attendance: { lateness: 15500, earlyLeave: 0, absence: 0, overtime: 0, missionAllowance: 0 } }]
         expect(await prisma.$transaction(tx => reconcileEntries(tx, "c1", 2026, 9, run.id, fewer))).toEqual({ written: 0, removed: 1 })
         expect((await db.query(`SELECT count(*)::int AS n FROM "AttendancePayrollEntry" WHERE "userId" = 'e1'`)).rows[0].n).toBe(1)
     })
@@ -197,7 +197,7 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
         await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c2', 'Two', now())`)
         await db.query(`INSERT INTO "PayrollRun"(id, "companyId", year, month, status, "payrollDay", "updatedAt") VALUES ('c2run', 'c2', 2026, 9, 'APPROVED', 25, now())`)
         await db.query(`INSERT INTO "AttendancePayrollEntry"(id, "companyId", "userId", year, month, category, "amountMinor", "payrollRunId", "updatedAt") VALUES ('c2e', 'c2', 'e1', 2026, 9, 'ABSENCE', 5000, 'c2run', now())`)
-        const people = [{ userId: "e1", excluded: false, attendance: { lateness: 15500, earlyLeave: 0, absence: 31000, overtime: 0 } }]
+        const people = [{ userId: "e1", excluded: false, attendance: { lateness: 15500, earlyLeave: 0, absence: 31000, overtime: 0, missionAllowance: 0 } }]
         expect(await prisma.$transaction(tx => reconcileEntries(tx, "c1", 2026, 9, run.id, people))).toEqual({ written: 1, removed: 0 })
         const { rows } = await db.query(`SELECT "companyId", category, "amountMinor", "payrollRunId" FROM "AttendancePayrollEntry" WHERE "userId" = 'e1' ORDER BY "companyId", category`)
         expect(rows).toEqual([

@@ -19,8 +19,9 @@ missions, is split in four PRs, the first, a mission's day, built in
 missions for the companies already there, in #284, and the fourth,
 cancelling an approved mission, in #285; part 5, the mission allowance,
 is split in four PRs, the first, the allowance's settings in the policy,
-built in #286, the second, each mission day priced, in #287, and the rest
-not built. A template for the file import
+built in #286, the second, each mission day priced, in #287, the third,
+the allowance paid with salary, in #288, and the last not built. A template
+for the file import
 (§13.9) is built in #272.
 This document is the design those PRs follow: what was decided, and why, so
 that whoever changes it is not re-arguing settled points. Where the build
@@ -891,6 +892,34 @@ payslip.
   carried one: what a frozen day holds is what was paid, so nothing reads
   as paid that wasn't. A month whose payroll is approved keeps its days
   as paid; the allowance across it is the PR after.
+
+**Built in #288: paid with salary.** The third of part 5's four PRs
+(§20).
+
+- **On the payslip**: from the month a company's attendance reaches its
+  payroll (§12), each person's allowance for the month is an earning on
+  their payslip, "Mission allowance", after Overtime. It is the sum of
+  their days' allowances as priced in #287, never worked out again at a
+  month-end rate.
+- **Written at approval** as its own attendance entry, category
+  `MISSION_ALLOWANCE`, reconciled like the others (§12.2): approving
+  again never pays it twice, and one that no longer applies is removed.
+  The migration only adds the category.
+- **Frozen as paid**: a month's days are frozen with the allowance their
+  payslips carried, where #287 froze them with none. What a frozen day
+  holds is what was paid, so a day whose allowance no payslip carried is
+  frozen with none: every day of a month approved before attendance
+  reaches payroll, and the days of someone left out of the run (review
+  on #288).
+- **Before attendance reaches payroll**, the dry run says what the
+  allowance would add, with what attendance would deduct, and pays
+  nobody: a company pays the allowance by using attendance in payroll.
+  Once such a month is approved, its days say nothing of an allowance.
+- **Someone left out of the run** is paid no allowance, as nothing else
+  of their month is paid.
+- **Not in it**: a mission approved or cancelled after the month's
+  payroll is approved. Its allowance across the closed month is the PR
+  after.
 
 ---
 
@@ -2512,7 +2541,7 @@ With no push, it stays on the agent and tries the agent alone. Parts 4 to 7
 are built all the same, switched off, and tried when a terminal that pushes,
 or a Hikvision, is on hand (round 9, decision 13).
 
-### Phase 5 — Reading scans first and last, and missions — parts 2 and 3 built in #273 to #276, part 4 in #281, #283, #284 and #285, part 5's first two PRs in #286 and #287
+### Phase 5 — Reading scans first and last, and missions — parts 2 and 3 built in #273 to #276, part 4 in #281, #283, #284 and #285, part 5's first three PRs in #286, #287 and #288
 
 Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
 
@@ -2564,14 +2593,14 @@ Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
       scans: by days, every date in it, rest days and holidays included
       (decision 9); by hours, its one date. A mission that didn't happen
       is cancelled (decision 25), which takes its allowance back.
-   3. **Paid with salary**: written at approval as its own entry (§12.2);
-      the register's and the payslip's Mission allowance line. From then
-      a month's days are frozen with the allowance their payslips carried;
-      #287 freezes them with none.
+   3. **Paid with salary**, built in #288: written at approval as its
+      own entry (§12.2); the register's and the payslip's Mission
+      allowance line. From then a month's days are frozen with the
+      allowance their payslips carried; #287 froze them with none.
    4. **Across a closed month**: a discrepancy carries the allowance, paid
       or taken back on the next payslip (decisions 16, 25). A month
-      approved between #287 and the PR before this one was frozen with
-      none, so what its missions pay shows here as owed.
+      approved between #287 and #288 was frozen with none, so what its
+      missions pay shows here as owed.
 
 Part 2 needs none of the rest, and helps the first customer at once: a
 second scan on arriving no longer leaves a day incomplete.

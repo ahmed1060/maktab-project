@@ -118,7 +118,7 @@ describe("adjustments are days, valued at this month's rate", () => {
 
 describe("attendance is money already priced, one line per category (§12.2)", () => {
     it("adds overtime as an earning and each deduction as its own line, skipping what cost nothing", () => {
-        const entry = buildEntry(person({ attendance: { lateness: toMinor(250), earlyLeave: 0, absence: toMinor(1000), overtime: toMinor(321.43) } }))
+        const entry = buildEntry(person({ attendance: { lateness: toMinor(250), earlyLeave: 0, absence: toMinor(1000), overtime: toMinor(321.43), missionAllowance: 0 } }))
         expect(entry.lines.slice(1).map(l => [l.kind, l.label, formatMinor(l.amountMinor), l.source, l.sourceId])).toEqual([
             ["EARNING", "Overtime", "321.43", "ATTENDANCE", "OVERTIME"],
             ["DEDUCTION", "Lateness", "250.00", "ATTENDANCE", "LATENESS"],
@@ -127,9 +127,22 @@ describe("attendance is money already priced, one line per category (§12.2)", (
         expect(formatMinor(entry.totals.netMinor)).toBe("29071.43")
     })
 
+    it("adds the mission allowance as an earning of its own, after overtime (§6.10, PR 288)", () => {
+        const entry = buildEntry(person({ attendance: { lateness: 0, earlyLeave: 0, absence: toMinor(310), overtime: toMinor(50), missionAllowance: toMinor(600) } }))
+        expect(entry.lines.slice(1).map(l => [l.kind, l.label, formatMinor(l.amountMinor), l.source, l.sourceId])).toEqual([
+            ["EARNING", "Overtime", "50.00", "ATTENDANCE", "OVERTIME"],
+            ["EARNING", "Mission allowance", "600.00", "ATTENDANCE", "MISSION_ALLOWANCE"],
+            ["DEDUCTION", "Absence", "310.00", "ATTENDANCE", "ABSENCE"],
+        ])
+        expect(formatMinor(entry.totals.netMinor)).toBe("30340.00")
+        // With no mission that month, no line.
+        const none = buildEntry(person({ attendance: { lateness: 0, earlyLeave: 0, absence: 0, overtime: 0, missionAllowance: 0 } }))
+        expect(none.lines.filter(l => l.source === "ATTENDANCE")).toEqual([])
+    })
+
     it("is taken before a debt is recovered, so recovery sees the net after attendance", () => {
         const entry = buildEntry(person({
-            attendance: { lateness: 0, earlyLeave: 0, absence: toMinor(29_000), overtime: 0 },
+            attendance: { lateness: 0, earlyLeave: 0, absence: toMinor(29_000), overtime: 0, missionAllowance: 0 },
             debts: [{ id: "d1", outstandingMinor: toMinor(5_000), dueDate: new Date(0) }],
         }))
         expect(entry.lines.find(l => l.source !== "SALARY" && l.source !== "ATTENDANCE")?.amountMinor).toBe(toMinor(1_000))

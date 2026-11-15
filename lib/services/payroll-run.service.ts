@@ -514,14 +514,13 @@ export class PayrollRunService {
                     if (late && late.count > 0) throw new SettleRefused(settleRefusal(waitingOf(late)))
                 }
                 const draft = await this.writeDraft(tx, companyId, year, month, final, payrollDay)
-                const entries = reaches
-                    ? await reconcileEntries(tx, companyId, year, month, draft.id, final.entries.map(e => ({
-                        userId: e.userId,
-                        excluded: e.excluded,
-                        attendance: attendanceOf(e.lines),
-                    })))
-                    : null
-                const daysLocked = await stampDays(tx, companyId, year, month, draft.id)
+                const people = final.entries.map(e => ({ userId: e.userId, excluded: e.excluded, attendance: attendanceOf(e.lines) }))
+                const entries = reaches ? await reconcileEntries(tx, companyId, year, month, draft.id, people) : null
+                // The days are frozen with a mission allowance only for those these
+                // payslips paid one: nobody, when attendance doesn't reach this
+                // payroll (review on PR 288).
+                const allowancePaidTo = reaches ? people.filter(p => !p.excluded && p.attendance.missionAllowance > 0).map(p => p.userId) : []
+                const daysLocked = await stampDays(tx, companyId, year, month, draft.id, allowancePaidTo)
 
                 const run = await tx.payrollRun.update({
                     where: { companyId_month_year: { companyId, month, year } },
@@ -640,7 +639,7 @@ export class PayrollRunService {
 /** What attendance put on one payslip, read back from its lines: exactly what is paid. */
 function attendanceOf(lines: { source: string; sourceId?: string | null; amountMinor: number }[]) {
     const of = (category: string) => lines.filter(l => l.source === ATTENDANCE_SOURCE && l.sourceId === category).reduce((s, l) => s + l.amountMinor, 0)
-    return { lateness: of("LATENESS"), earlyLeave: of("EARLY_LEAVE"), absence: of("ABSENCE"), overtime: of("OVERTIME") }
+    return { lateness: of("LATENESS"), earlyLeave: of("EARLY_LEAVE"), absence: of("ABSENCE"), overtime: of("OVERTIME"), missionAllowance: of("MISSION_ALLOWANCE") }
 }
 
 /** The last instant of a calendar month in a given zone. */
