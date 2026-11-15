@@ -20,7 +20,8 @@ missions for the companies already there, in #284, and the fourth,
 cancelling an approved mission, in #285; part 5, the mission allowance,
 is split in four PRs, the first, the allowance's settings in the policy,
 built in #286, the second, each mission day priced, in #287, the third,
-the allowance paid with salary, in #288, and the last not built. A template
+the allowance paid with salary, in #288, and the last, the allowance
+across a closed month, in #289. A template
 for the file import
 (§13.9) is built in #272.
 This document is the design those PRs follow: what was decided, and why, so
@@ -920,6 +921,37 @@ payslip.
 - **Not in it**: a mission approved or cancelled after the month's
   payroll is approved. Its allowance across the closed month is the PR
   after.
+
+**Built in #289: across a closed month.** The last of part 5's four PRs
+(§20, decisions 16 and 25).
+
+- **A difference carries the allowance** (§12.3): where a day of a month
+  whose payroll is approved would now pay a different allowance than its
+  payslip carried, the day is listed under Attendance changed after
+  payroll, and what is owed counts the allowance with the deduction and
+  the overtime. A mission approved after the month was paid is owed its
+  allowance. A paid mission cancelled owes it back, for its rest days
+  and holidays too, where nothing else of the day changes.
+- **Paid stays as paid**: the month's days, entries and payslips are not
+  rewritten. Whoever prepares payroll settles the difference with an
+  adjustment in the current month and marks it resolved, as any other.
+- **Measured from what was paid, or last settled**: a day that comes back
+  to it closes its difference, and one that changes again after being
+  settled opens a new one from there.
+- **Only for those the run paid**: someone left out of the run, or with
+  no payslip in it, was paid no allowance by it, and theirs is not
+  compared: being left out is not a change. And only for a month whose
+  payslips carried attendance, as with every difference.
+- **A month approved between #287 and #288** was frozen with no
+  allowance, so what its missions pay shows as owed the next time the
+  month is worked out.
+- **On the row**, under the day's change of status: "Mission allowance:
+  200.00 more than paid", or less than paid, where the allowance is part
+  of the difference.
+- **The migration only adds two columns** to a difference: what the
+  allowance was paid at, and what it is now. They are empty on a
+  difference recorded before them, whose paid allowance is read from the
+  day.
 
 ---
 
@@ -2541,7 +2573,7 @@ With no push, it stays on the agent and tries the agent alone. Parts 4 to 7
 are built all the same, switched off, and tried when a terminal that pushes,
 or a Hikvision, is on hand (round 9, decision 13).
 
-### Phase 5 — Reading scans first and last, and missions — parts 2 and 3 built in #273 to #276, part 4 in #281, #283, #284 and #285, part 5's first three PRs in #286, #287 and #288
+### Phase 5 — Reading scans first and last, and missions — parts 2 and 3 built in #273 to #276, part 4 in #281, #283, #284 and #285, part 5 in #286 to #289
 
 Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
 
@@ -2597,10 +2629,11 @@ Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
       own entry (§12.2); the register's and the payslip's Mission
       allowance line. From then a month's days are frozen with the
       allowance their payslips carried; #287 froze them with none.
-   4. **Across a closed month**: a discrepancy carries the allowance, paid
-      or taken back on the next payslip (decisions 16, 25). A month
-      approved between #287 and #288 was frozen with none, so what its
-      missions pay shows here as owed.
+   4. **Across a closed month**, built in #289: a discrepancy carries
+      the allowance, paid or taken back on the next payslip (decisions
+      16, 25), for those the run paid. A month approved between #287 and
+      #288 was frozen with none, so what its missions pay shows here as
+      owed.
 
 Part 2 needs none of the rest, and helps the first customer at once: a
 second scan on arriving no longer leaves a day incomplete.
