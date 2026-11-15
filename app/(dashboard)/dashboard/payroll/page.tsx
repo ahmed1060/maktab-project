@@ -40,7 +40,7 @@ type Line = { kind: 'EARNING' | 'DEDUCTION'; label: string; amountMinor: number;
 type Debt = { id: string; userId: string; name: string; amount: number; originalAmount: number; recoveredAmount: number; dueDate: string; dueDay: string; source: string }
 /** The mission allowance (ATTENDANCE_PLAN.md §6.10, PR 288) is absent from a server still on the code before it. */
 type AttendanceMoney = { lateness: number; earlyLeave: number; absence: number; overtime: number; missionAllowance?: number }
-type Discrepancy = { id: string; userId: string; name: string; date: string; paidStatus: string; nowStatus: string | null; differenceMinor: number; resolvedAt: string | null; resolution: string | null }
+type Discrepancy = { id: string; userId: string; name: string; date: string; paidStatus: string; nowStatus: string | null; differenceMinor: number; allowanceMinor?: number; resolvedAt: string | null; resolution: string | null }
 type Entry = {
     userId: string
     name: string
@@ -634,6 +634,9 @@ export default function PayrollRegisterPage() {
                                 title={<>{dayLabel(d.date, locale)} · <bdi>{d.name}</bdi></>}
                                 // The arrow points the way the page reads.
                                 detail={`${t(`audit_value_${d.paidStatus}` as TranslationKey)} ${isRtl ? '←' : '→'} ${d.nowStatus ? t(`audit_value_${d.nowStatus}` as TranslationKey) : '—'}`}
+                                // How much of the difference is mission allowance (PR 289): a rest day inside a
+                                // mission changes in nothing else, so its row would otherwise not say why it's here.
+                                note={d.allowanceMinor ? t(d.allowanceMinor > 0 ? 'attpay_changed_allowance_more' : 'attpay_changed_allowance_less').replace('{amount}', money(Math.abs(d.allowanceMinor))) : undefined}
                                 end={<>
                                     <span className="ui-num">
                                         {d.differenceMinor > 0 ? t('attpay_owed_to').replace('{amount}', money(d.differenceMinor)) : t('attpay_owed_by').replace('{amount}', money(-d.differenceMinor))}

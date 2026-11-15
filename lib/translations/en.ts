@@ -2407,6 +2407,8 @@ export const en = {
         attpay_changed_title: "Attendance changed after payroll",
         attpay_changed_msg: "These days changed after their month's payroll was approved. The paid month stays as it was; settle each with an adjustment in the current month, then mark it resolved.",
         attpay_show_more: "Show more",
+        attpay_changed_allowance_more: "Mission allowance: {amount} more than paid",
+        attpay_changed_allowance_less: "Mission allowance: {amount} less than paid",
         attpay_owed_to: "{amount} owed to them",
         attpay_owed_by: "{amount} owed by them",
         attpay_resolve: "Mark resolved",

@@ -8,7 +8,8 @@ import { AuditLogService } from "./audit-log.service"
  * (ATTENDANCE_PLAN.md §12.3). The paid days are never rewritten; each
  * difference is listed here, beside the payroll it concerns, for whoever
  * prepares payroll to settle with an adjustment in the current period and
- * then mark resolved, saying how.
+ * then mark resolved, saying how. A difference counts the day's deduction,
+ * its overtime and its mission allowance (§6.10, PR 289).
  */
 
 function fail(code: string): never {
@@ -27,13 +28,19 @@ function parseCursor(cursor: string) {
 }
 
 type Row = Prisma.AttendanceDiscrepancyGetPayload<{ include: { user: { select: { firstName: true; lastName: true } } } }>
-const shape = ({ user, date, ...d }: Row) => ({
-    ...d,
-    date: toDateString(date),
-    name: `${user.firstName} ${user.lastName}`.trim(),
-    // What the person would be owed (positive) or would owe (negative) now.
-    differenceMinor: (d.paidDeductionMinor - d.nowDeductionMinor) + (d.nowOvertimeMinor - d.paidOvertimeMinor),
-})
+const shape = ({ user, date, ...d }: Row) => {
+    // How much more (positive) or less mission allowance the day would pay now than was paid
+    // (§6.10, PR 289). Nothing on a difference recorded before the allowance was carried.
+    const allowanceMinor = (d.nowAllowanceMinor ?? 0) - (d.paidAllowanceMinor ?? 0)
+    return {
+        ...d,
+        date: toDateString(date),
+        name: `${user.firstName} ${user.lastName}`.trim(),
+        allowanceMinor,
+        // What the person would be owed (positive) or would owe (negative) now.
+        differenceMinor: (d.paidDeductionMinor - d.nowDeductionMinor) + (d.nowOvertimeMinor - d.paidOvertimeMinor) + allowanceMinor,
+    }
+}
 
 export class AttendanceDiscrepancyService {
     /**

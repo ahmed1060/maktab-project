@@ -735,7 +735,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      its second, each mission day's allowance priced and shown on
      Attendance's Days list, merged in #287 on 2026-11-15; then its third,
      the allowance paid with salary, on the payslip and in Payroll's
-     register, #288;
+     register, merged in #288 on 2026-11-15; then its last, the
+     allowance across a closed month, on Payroll's Attendance changed
+     after payroll card, with that card's Arabic note asking no one in
+     the masculine, #289;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6338,3 +6341,15 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   `ATTENDANCE_PLAN.md` §6.10). Once such a month is approved, its
   "Attendance, not deducted yet" card and its days say nothing of an
   allowance. No screen changed.
+- **2026-11-15:** The mission allowance across a closed month (#289;
+  `ATTENDANCE_PLAN.md` §6.10, §12.3, Phase 5 part 5). Payroll's
+  "Attendance changed after payroll" card counts the allowance in what
+  each day owes, and its row says under the day's change of status how
+  much more or less mission allowance than was paid. A day whose
+  allowance alone changed, such as a rest day inside a mission approved
+  or cancelled after its month was paid, is now listed.
+- **2026-11-15:** The note on Payroll's "Attendance changed after
+  payroll" card asks no one in the masculine (`DESIGN.md` §3.4, #289).
+  It said "سوِّ" and "علِّمها", two commands the five parts of #255 to
+  #259 missed: the check didn't know the verbs. It asks with "يُرجى" now,
+  and the check knows them. One string; the English doesn't change.

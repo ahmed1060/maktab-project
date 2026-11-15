@@ -417,6 +417,18 @@ describe("attendance changed after a month was approved", () => {
         expect(reviewCard(await page({ shows, discrepancies: pages }), en.attpay_changed_title)).not.toContain("Mark resolved")
     })
 
+    it("says how much more or less mission allowance than was paid, where it is part of the difference (PR 289)", async () => {
+        const open = [changed({ allowanceMinor: 20000 }), changed({ id: "d2", differenceMinor: -2000, allowanceMinor: -2000 }), changed({ id: "d3", allowanceMinor: 0 })]
+        const part = reviewCard(await page({ shows, discrepancies: [{ data: { open, openCount: 3, nextCursor: null } }] }), en.attpay_changed_title)
+        expect(part).toContain(`<span class="ui-item-note">${en.attpay_changed_allowance_more.replace("{amount}", "200.00")}</span>`)
+        expect(part).toContain(`<span class="ui-item-note">${en.attpay_changed_allowance_less.replace("{amount}", "20.00")}</span>`)
+        // Once each: the third day's allowance didn't change, and one recorded before the allowance has none.
+        expect(part.split('class="ui-item-note"').length - 1).toBe(2)
+        expect(reviewCard(await page({ shows, discrepancies: [{ data: { open: [changed()], openCount: 1, nextCursor: null } }] }), en.attpay_changed_title)).not.toContain("ui-item-note")
+        const arabic = reviewCard(await page({ shows, locale: "ar", discrepancies: [{ data: { open: [changed({ allowanceMinor: 20000 })], openCount: 1, nextCursor: null } }] }), ar.attpay_changed_title)
+        expect(arabic).toContain(ar.attpay_changed_allowance_more.replace("{amount}", "٢٠٠٫٠٠"))
+    })
+
     it("points its arrow the way Arabic reads", async () => {
         const part = reviewCard(await page({ shows, locale: "ar", discrepancies: [{ data: { open: [changed()], openCount: 1, nextCursor: null } }] }), ar.attpay_changed_title)
         expect(part).toContain(`${ar.audit_value_ABSENT} ← ${ar.audit_value_PRESENT}`)

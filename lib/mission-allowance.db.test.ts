@@ -11,13 +11,16 @@ import { STANDARD_OFFICE, type MissionAllowance } from "@/lib/attendance/policy"
  * date; nothing on leave or suspended; taken back when the mission is
  * cancelled; and paid with salary (PR 288): what the dry run says it would
  * add, the payslip's line and the entry written at approval, and the days
- * frozen with what was paid.
+ * frozen with what was paid; and across a closed month (PR 289): the
+ * difference that carries the allowance, for those the run paid.
  *
  * The clock is held at 10:00 on Saturday 14 November 2026 in Cairo (+02:00),
  * so days are worked out up to Friday the 13th. The office works Sunday to
  * Thursday, 09:00–17:00, with an hour's break. Ehab and Eman are paid
  * 9,300.00 a month, Ehab 12,000.00 from 10 November; Hessa is suspended on
- * 4 and 5 November. Attendance starts with Eman's scans on 1 October.
+ * 4 and 5 November. Nour has no employment on record, so no payroll run
+ * holds a payslip of theirs. Attendance starts with Eman's scans on
+ * 1 October.
  *
  * From 1 October one day of the allowance is worth 200.00, a mission by
  * days paying one for each date and a mission by hours a half; from
@@ -38,7 +41,8 @@ INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayO
  ('a1', 'a1@x', 'p', 'Amal', 'One', 'ADMIN', 2026, 'a1', 'c1', NULL),
  ('e1', 'e1@x', 'p', 'Ehab', 'One', 'EMPLOYEE', 2026, 'e1', 'c1', NULL),
  ('e2', 'e2@x', 'p', 'Eman', 'Two', 'EMPLOYEE', 2026, 'e2', 'c1', NULL),
- ('e4', 'e4@x', 'p', 'Hessa', 'Four', 'EMPLOYEE', 2026, 'e4', 'c1', NULL);
+ ('e4', 'e4@x', 'p', 'Hessa', 'Four', 'EMPLOYEE', 2026, 'e4', 'c1', NULL),
+ ('e5', 'e5@x', 'p', 'Nour', 'Five', 'EMPLOYEE', 2026, 'e5', 'c1', NULL);
 `
 
 const NOW = new Date("2026-11-14T08:00:00Z")
@@ -244,6 +248,9 @@ describe.skipIf(!ADMIN_URL)("each mission day priced, in Postgres", () => {
         })
 
         it("is written at approval as its own entry, on the payslip's own line, and the days are frozen with what was paid", async () => {
+            // Nour's mission is priced like anyone's, and the run, which has no payslip of theirs, pays none of it.
+            await approved("e5", { kind: "DAYS", startDate: "2026-10-20", endDate: "2026-10-20" })
+            expect(await paid("e5", "2026-10-20")).toEqual(["MISSION", 0, 20_000])
             const result = await Payroll.approve("c1", 2026, 10, SESSION)
             expect(result).toHaveProperty("runId")
             runId = (result as { runId: string }).runId
@@ -251,8 +258,10 @@ describe.skipIf(!ADMIN_URL)("each mission day priced, in Postgres", () => {
             expect(entries).toEqual([{ category: "MISSION_ALLOWANCE", amountMinor: 60_000, payrollRunId: runId }])
             const { rows: lines } = await db.query(`SELECT l.kind, l.label, l.amount::text, l."sourceId" FROM "PayslipLine" l JOIN "Payslip" p ON p.id = l."payslipId" WHERE p."userId" = 'e1' AND l.source = 'ATTENDANCE' AND l.kind = 'EARNING'`)
             expect(lines).toEqual([{ kind: "EARNING", label: "Mission allowance", amount: "600.00", sourceId: "MISSION_ALLOWANCE" }])
-            // Nobody else had a mission in October, so nobody else has the entry.
+            // Nobody else the run paid had a mission in October, so nobody else has the entry.
             expect((await db.query(`SELECT count(*)::int AS n FROM "AttendancePayrollEntry" WHERE category = 'MISSION_ALLOWANCE'`)).rows[0].n).toBe(1)
+            expect((await db.query(`SELECT count(*)::int AS n FROM "Payslip" WHERE "userId" = 'e5'`)).rows[0].n).toBe(0)
+            expect(await paid("e5", "2026-10-20")).toEqual(["MISSION", 0, 0])
             // Frozen as paid: the mission's days keep their allowance, where PR 287 froze them with none.
             expect(await paid("e1", "2026-10-29")).toEqual(["MISSION", 0, 20_000])
             expect(await paid("e1", "2026-10-30")).toEqual(["REST", 0, 20_000])
@@ -357,6 +366,100 @@ describe.skipIf(!ADMIN_URL)("each mission day priced, in Postgres", () => {
             expect(Object.values(after.attendance.byPerson).reduce((s, m) => s + m.missionAllowance, 0)).toBe(0)
             // October, paid with attendance, keeps what its payslips carried.
             expect(await paid("e1", "2026-10-29")).toEqual(["MISSION", 0, 20_000])
+        })
+    })
+
+    /**
+     * October's payroll is approved, with attendance on its payslips. Since
+     * then a mission of Ehab's was approved over the 28th, paid as absent,
+     * and the one paid for, the 29th to the 31st, was cancelled.
+     */
+    describe("across a closed month (PR 289)", () => {
+        let Discrepancies: typeof import("@/lib/services/attendance-discrepancy.service").AttendanceDiscrepancyService
+        const open = async (userId: string) => (await Discrepancies.list("c1")).open.filter(d => d.userId === userId).sort((a, b) => a.date.localeCompare(b.date))
+        const on = async (userId: string, date: string) => (await open(userId)).find(d => d.date === date)
+
+        beforeAll(async () => {
+            Discrepancies = (await import("@/lib/services/attendance-discrepancy.service")).AttendanceDiscrepancyService
+        })
+
+        it("keeps what the allowance was paid at and what it is now on the difference, empty where it wasn't recorded", async () => {
+            const { rows } = await db.query(`SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_name = 'AttendanceDiscrepancy' AND column_name LIKE '%AllowanceMinor' ORDER BY column_name`)
+            expect(rows).toEqual([
+                { column_name: "nowAllowanceMinor", data_type: "integer", is_nullable: "YES", column_default: null },
+                { column_name: "paidAllowanceMinor", data_type: "integer", is_nullable: "YES", column_default: null },
+            ])
+        })
+
+        it("owes the allowance of a mission approved after its month was paid, with the absence it was charged (decision 16)", async () => {
+            expect(await on("e1", "2026-10-28")).toMatchObject({
+                paidStatus: "ABSENT", nowStatus: "MISSION",
+                paidDeductionMinor: 30_000, nowDeductionMinor: 0,
+                paidAllowanceMinor: 0, nowAllowanceMinor: 20_000,
+                // 300.00 of absence to give back and 200.00 of allowance never paid.
+                allowanceMinor: 20_000, differenceMinor: 50_000,
+            })
+        })
+
+        it("takes back the allowance of a paid mission cancelled, on its rest days too, where nothing else changed (decision 25)", async () => {
+            expect(await on("e1", "2026-10-29")).toMatchObject({
+                paidStatus: "MISSION", nowStatus: "ABSENT",
+                paidAllowanceMinor: 20_000, nowAllowanceMinor: 0,
+                // 200.00 of allowance and 300.00 of absence, both owed by them.
+                allowanceMinor: -20_000, differenceMinor: -50_000,
+            })
+            for (const date of ["2026-10-30", "2026-10-31"]) {
+                expect(await on("e1", date), date).toMatchObject({
+                    paidStatus: "REST", nowStatus: "REST", paidDeductionMinor: 0, nowDeductionMinor: 0,
+                    paidAllowanceMinor: 20_000, nowAllowanceMinor: 0, allowanceMinor: -20_000, differenceMinor: -20_000,
+                })
+            }
+            expect((await open("e1")).map(d => d.date)).toEqual(["2026-10-28", "2026-10-29", "2026-10-30", "2026-10-31"])
+            // The paid days themselves are as they were paid.
+            expect(await paid("e1", "2026-10-30")).toEqual(["REST", 0, 20_000])
+            expect(await paid("e1", "2026-10-28")).toEqual(["ABSENT", 30_000, 0])
+        })
+
+        it("compares nothing of the allowance for someone the run didn't pay, and lists no day that didn't change", async () => {
+            // Nour's mission stands, and would pay 200.00: the run paid none of it, which is no change since.
+            expect((await db.query(`SELECT status FROM "MissionRequest" WHERE "userId" = 'e5'`)).rows).toEqual([{ status: "APPROVED" }])
+            // The whole month worked out again, as the nightly run does.
+            expect(await Engine.recomputeMonth("c1", "2026-10")).toMatchObject({ locked: true, discrepancies: 4 })
+            expect(await open("e5")).toEqual([])
+            expect(await open("e2")).toEqual([])
+            expect((await db.query(`SELECT count(*)::int AS n FROM "AttendanceDiscrepancy"`)).rows[0].n).toBe(4)
+        })
+
+        it("closes a difference when the day comes back to what was paid", async () => {
+            // The trip is on again: the 29th to the 31st read and pay as they were paid.
+            await approved("e1", { kind: "DAYS", startDate: "2026-10-29", endDate: "2026-10-31" })
+            expect((await open("e1")).map(d => d.date)).toEqual(["2026-10-28"])
+        })
+
+        it("measures a day that changes again from what was last settled, the settled difference kept as it was", async () => {
+            const settled = (await on("e1", "2026-10-28"))!
+            await Discrepancies.resolve(settled.id, "Paid with November's salary", "a1", false)
+            // The mission over the 28th cancelled: the allowance and the absence settled are owed back.
+            const { rows: [m] } = await db.query(`SELECT id FROM "MissionRequest" WHERE "userId" = 'e1' AND "startDate" = '2026-10-28' AND status = 'APPROVED'`)
+            await Missions.cancel(m.id, "Visit called off", "a1")
+            expect(await on("e1", "2026-10-28")).toMatchObject({
+                paidStatus: "MISSION", nowStatus: "ABSENT",
+                paidDeductionMinor: 0, nowDeductionMinor: 30_000,
+                paidAllowanceMinor: 20_000, nowAllowanceMinor: 0, differenceMinor: -50_000,
+            })
+            const { rows: [kept] } = await db.query(`SELECT "paidAllowanceMinor", "nowAllowanceMinor", resolution FROM "AttendanceDiscrepancy" WHERE id = $1`, [settled.id])
+            expect(kept).toEqual({ paidAllowanceMinor: 0, nowAllowanceMinor: 20_000, resolution: "Paid with November's salary" })
+        })
+
+        it("reads what was paid from the day for a difference recorded before the allowance was carried", async () => {
+            // The paid mission cancelled again, and its first day's difference left as the code before recorded it: no allowance on it.
+            const { rows: [m] } = await db.query(`SELECT id FROM "MissionRequest" WHERE "userId" = 'e1' AND "startDate" = '2026-10-29' AND status = 'APPROVED'`)
+            await Missions.cancel(m.id, "Trip called off again", "a1")
+            await db.query(`UPDATE "AttendanceDiscrepancy" SET "paidAllowanceMinor" = NULL, "nowAllowanceMinor" = NULL WHERE "userId" = 'e1' AND date = '2026-10-29' AND "resolvedAt" IS NULL`)
+            expect(await on("e1", "2026-10-29")).toMatchObject({ paidAllowanceMinor: null, nowAllowanceMinor: null, allowanceMinor: 0, differenceMinor: -30_000 })
+            // Worked out again, it carries the allowance the day was paid with.
+            await Engine.recomputeMonth("c1", "2026-10", ["e1"])
+            expect(await on("e1", "2026-10-29")).toMatchObject({ paidAllowanceMinor: 20_000, nowAllowanceMinor: 0, allowanceMinor: -20_000, differenceMinor: -50_000 })
         })
     })
 })
