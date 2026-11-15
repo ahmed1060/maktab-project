@@ -31,7 +31,7 @@ import {
 } from '@/components/ui'
 import { AskDayOff, DecideDayOff } from './DayOffDialogs'
 import {
-    AskMission, AskPermission, MISSION_KIND_LABEL, PERMISSION_TYPE_LABEL, RejectRequest, ReportMissingPunch, RevokePhone, WithdrawAttendance, clockText, decideRequest, permissionDay, punchDay, punchTime,
+    AskMission, AskPermission, CancelMission, MISSION_KIND_LABEL, PERMISSION_TYPE_LABEL, RejectRequest, ReportMissingPunch, RevokePhone, WithdrawAttendance, clockText, decideRequest, permissionDay, punchDay, punchTime,
 } from './AttendanceDialogs'
 
 /**
@@ -54,6 +54,12 @@ const STATUS: Record<string, { tone: StatusTone; label: TranslationKey }> = {
     FLAGGED: { tone: 'waiting', label: 'status_pending' },
     ACCEPTED: { tone: 'good', label: 'requests_flagged_accepted' },
 }
+
+/**
+ * An approved mission cancelled by whoever decides it: not the asker's own
+ * doing, as Withdrawn is (ATTENDANCE_PLAN.md §6.10, PR 285).
+ */
+const MISSION_CANCELLED: { tone: StatusTone; label: TranslationKey } = { tone: 'problem', label: 'requests_mission_cancelled' }
 
 /** A phone revoked because a new one of theirs was approved: no problem. */
 const REPLACED: { tone: StatusTone; label: TranslationKey } = { tone: 'neutral', label: 'requests_phone_replaced' }
@@ -153,6 +159,8 @@ export default function RequestsClient({
     const [rejecting, setRejecting] = useState<FeedRow | null>(null)
     const [withdrawing, setWithdrawing] = useState<FeedRow | null>(null)
     const [revoking, setRevoking] = useState<FeedRow | null>(null)
+    // An approved mission, being cancelled (ATTENDANCE_PLAN.md §6.10, PR 285).
+    const [cancelling, setCancelling] = useState<FeedRow | null>(null)
     // A flagged check-in whose face check failed, open beside the reference photo (§2.3, part 4c).
     const [faceOf, setFaceOf] = useState<FeedRow | null>(null)
 
@@ -324,6 +332,8 @@ export default function RequestsClient({
         if (d && r.status === 'APPROVED') return t(d.deductedFrom === 'SALARY' ? 'day_off_deducted_salary' : 'day_off_deducted_credit').replace('{days}', countOf(t, locale, d.deducted, 'days'))
         // A phone revoked, and why, if someone said.
         if (r.status === 'REVOKED' && why) return `${t('requests_phone_revoke_reason')}: ${why}`
+        // A mission cancelled, and why: it has to be said (PR 285).
+        if (r.mission && r.status === 'CANCELLED' && r.mission.cancelReason) return `${t('requests_mission_cancel_reason')}: ${r.mission.cancelReason}`
         return r.status === 'REJECTED' && why ? `${t('rejected_reason_prefix')}: ${why}` : null
     }
     // Under its name: its kind, once there's more than one, and a day off's days or permission's hours.
@@ -336,7 +346,7 @@ export default function RequestsClient({
         return parts.length ? <span>{parts.join(sep)}</span> : undefined
     }
     const badge = (r: FeedRow) => {
-        const s = r.phone?.replaced ? REPLACED : STATUS[r.status]
+        const s = r.phone?.replaced ? REPLACED : r.mission && r.status === 'CANCELLED' ? MISSION_CANCELLED : STATUS[r.status]
         return s ? <StatusBadge tone={s.tone}>{t(s.label)}</StatusBadge> : null
     }
     // Its day and time together: a narrow column broke "9:25 pm" from its day.
@@ -371,6 +381,7 @@ export default function RequestsClient({
                 ...(r.flagged?.mayViewFace ? [{ key: 'face', icon: UserFocusIcon, label: t('face_flag_see'), onSelect: () => setFaceOf(r) }] : []),
                 ...(r.mayWithdraw ? [{ key: 'withdraw', icon: ArrowUUpLeftIcon, label: r.overtime ? t('requests_overtime_withdraw') : t('req_withdraw'), danger: true, onSelect: () => setWithdrawing(r) }] : []),
                 ...(r.mayRevoke ? [{ key: 'revoke', icon: ProhibitIcon, label: t('requests_phone_revoke'), danger: true, onSelect: () => setRevoking(r) }] : []),
+                ...(r.mayCancel ? [{ key: 'cancel', icon: ProhibitIcon, label: t('requests_mission_cancel'), danger: true, onSelect: () => setCancelling(r) }] : []),
                 ...(r.mayDelete ? [{ key: 'delete', icon: TrashIcon, label: t('delete'), danger: true, onSelect: () => setDeleting(r) }] : []),
             ]}
         />
@@ -387,8 +398,9 @@ export default function RequestsClient({
         if (r.overtime) return t('requests_overtime_reject_question').replace('{name}', r.who.name).replace('{date}', permissionDay(r.overtime.date, locale))
         return t('requests_permission_reject_question').replace('{name}', r.who.name).replace('{date}', permissionDay(r.permission!.date, locale))
     }
-    // When it ended: done, decided, withdrawn by whoever asked, or a phone revoked or replaced.
+    // When it ended: done, decided, withdrawn by whoever asked, a mission cancelled, or a phone revoked or replaced.
     const finishedLabel = (r: FeedRow): TranslationKey => r.kind === 'internal' ? 'finished_at'
+        : r.mission && r.status === 'CANCELLED' ? 'requests_mission_cancelled_on'
         : r.status === 'CANCELLED' || r.status === 'WITHDRAWN' ? 'requests_withdrawn_on'
             : r.phone?.replaced ? 'requests_phone_replaced_on'
                 : r.status === 'REVOKED' ? 'requests_phone_revoked_on' : 'requests_decided_on'
@@ -621,6 +633,11 @@ export default function RequestsClient({
                 {revoking && (
                     <RevokePhone key={revoking.id} request={revoking}
                         onClose={() => setRevoking(null)} onRevoked={() => { setRevoking(null); setViewing(null); refreshed() }} />
+                )}
+                {cancelling && (
+                    <CancelMission key={cancelling.id} request={cancelling}
+                        question={t('requests_mission_cancel_question').replace('{name}', cancelling.who.name).replace('{dates}', missionDates(cancelling))}
+                        onClose={() => setCancelling(null)} onCancelled={() => { setCancelling(null); setViewing(null); refreshed() }} />
                 )}
 
                 <NewRequest open={asking} mayAskDayOff={mayAskDayOff} today={mayAskAttendance ? attendanceToday : null} mayAskMission={mayAskMission} onClose={() => setAsking(false)} onAsked={() => {

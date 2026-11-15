@@ -22,7 +22,9 @@ import { lockMonths, lockPersonDates } from "./attendance-lock"
  * with a task that isn't one of theirs and open. A month whose payroll is
  * approved is no refusal (decision 16): once approved, the mission's days
  * are worked out again, and those in a closed month become discrepancies
- * (§12.3) through the recompute's own rule.
+ * (§12.3) through the recompute's own rule. Cancelling an approved one
+ * (decision 25, PR 285) works them out again the same way, the other way
+ * round.
  */
 
 function fail(code: string): never {
@@ -133,7 +135,7 @@ export class MissionRequestService {
         return prisma.missionRequest.findUnique({ where: { id }, include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true } } } })
     }
 
-    /** Withdraws one's own mission while it waits (decision 25). Cancelling an approved one is part 4's last PR. */
+    /** Withdraws one's own mission while it waits (decision 25). An approved one is cancelled instead, below. */
     static async withdraw(id: string, userId: string) {
         await prisma.$transaction(async tx => {
             const m = await tx.missionRequest.findUnique({ where: { id }, select: { userId: true, companyId: true, startDate: true, endDate: true } })
@@ -177,11 +179,44 @@ export class MissionRequestService {
         })
         if (decision.approve) await reworkMission(out.companyId, out.userId, out.from, out.to)
     }
+
+    /**
+     * Cancels somebody else's approved mission, with a reason (decision 25,
+     * PR 285), never one's own. The asker hears why; its days are worked out
+     * again from its first, so they count as they would without it, a closed
+     * month's becoming discrepancies the other way round from approving it.
+     * Its dates are free again for another mission or a day off.
+     */
+    static async cancel(id: string, why: string, actorId: string) {
+        const reason = why.trim()
+        if (!reason) fail("REASON_REQUIRED")
+        const out = await prisma.$transaction(async tx => {
+            const m = await tx.missionRequest.findUnique({ where: { id } }) ?? fail("REQUEST_NOT_FOUND")
+            if (m.userId === actorId) fail("CANNOT_DECIDE_OWN")
+            const from = toDateString(m.startDate), to = toDateString(m.endDate)
+            await lockMonths(tx, m.companyId, datesOf(from, to).map(d => d.slice(0, 7)))
+            // Only an approved one: one waiting is rejected or withdrawn, and one cancelled meanwhile stays as it was.
+            const { count } = await tx.missionRequest.updateMany({
+                where: { id, status: "APPROVED" },
+                data: { status: "CANCELLED", cancelledById: actorId, cancelledAt: new Date(), cancelReason: reason },
+            })
+            if (count === 0) fail("MISSION_NOT_APPROVED")
+            await AuditLogService.log("CANCEL_ATTENDANCE_MISSION", "MISSION_REQUEST", id, {
+                tx, ...(await actorOf(tx, actorId)), details: { companyId: m.companyId, userId: m.userId, from, to, reason },
+            })
+            await NotificationService.notify(m.userId, "ATTENDANCE_REQUEST", {
+                key: "notice_att_mission_cancelled",
+                params: { when: whenParam(from, to), reason: reasonParam(reason) },
+            }, id, tx)
+            return { companyId: m.companyId, userId: m.userId, from, to }
+        })
+        await reworkMission(out.companyId, out.userId, out.from, out.to)
+    }
 }
 
 /**
- * Once approved, a mission's days are worked out again from its first, and
- * the days after them, as after any change. The engine's own cascade reaches
+ * Once approved, or cancelled after it, a mission's days are worked out
+ * again from its first, and the days after them, as after any change. The engine's own cascade reaches
  * a year back at most, which a mission asked near that edge can have passed
  * while it waited: its months before that are worked out by name (found by
  * Codex on PR 283).

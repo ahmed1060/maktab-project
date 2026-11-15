@@ -18,7 +18,8 @@ import { Button, Choice, Dialog, DialogActions, Field, Select, TextArea, TextInp
  * punch (part 3b), rejecting and withdrawing either, deciding overtime (part
  * 4a), check-in phones (part 4b) and flagged check-ins (part 4c), as the
  * Attendance page's Requests tab did; and deciding a name change (part 5a)
- * or a role request, or withdrawing one's own role request (part 5b).
+ * or a role request, or withdrawing one's own role request (part 5b); and
+ * cancelling an approved mission (ATTENDANCE_PLAN.md §6.10, PR 285).
  */
 
 /** The attendance kinds, and each one's API (app/api/attendance). */
@@ -71,6 +72,8 @@ const REFUSED: Record<string, TranslationKey> = {
     MISSION_OVERLAPS: 'requests_mission_overlaps',
     MISSION_OVERLAPS_DAY_OFF: 'requests_mission_overlaps_day_off',
     MISSION_TASK_NOT_OPEN: 'requests_mission_task_not_open',
+    // Cancelling one that someone else cancelled first, or that isn't approved any more (PR 285).
+    MISSION_NOT_APPROVED: 'requests_mission_not_approved',
     PAYROLL_MONTH_LOCKED: 'requests_month_locked',
     REQUEST_ALREADY_DECIDED: 'requests_already_decided',
     REQUEST_ALREADY_STARTED: 'requests_permission_started',
@@ -323,6 +326,73 @@ export function RevokePhone({ request, onClose, onRevoked }: {
             <p>{t('req_phone_revoke_confirm').replace('{name}', request.who.name)}</p>
             <Field label={t('requests_phone_revoke_reason')} hint={t('ui_characters_used').replace('{used}', num(reason.length)).replace('{max}', num(REASON_MAX))}>{p => (
                 <TextArea {...p} name="revoke-reason" dir="auto" placeholder={t('requests_phone_revoke_placeholder')} value={reason} onChange={e => setReason(e.target.value)} maxLength={500} />
+            )}</Field>
+        </Dialog>
+    )
+}
+
+/**
+ * Cancelling somebody's approved mission, with the reason it must have: its
+ * days count again as they would without it, and whoever asked is told why
+ * (ATTENDANCE_PLAN.md §6.10, decision 25, PR 285).
+ */
+export function CancelMission({ request, question, onClose, onCancelled }: {
+    request: FeedRow
+    /** Whose mission, and its day or dates. */
+    question: string
+    onClose: () => void
+    onCancelled: () => void
+}) {
+    const { t, locale } = useLanguage()
+    const { showToast } = useToast()
+    const action = useBusyAction()
+    const num = digits(locale)
+    const [reason, setReason] = useState('')
+    const [missing, setMissing] = useState(false)
+
+    const cancel = () => {
+        if (!reason.trim()) {
+            setMissing(true)
+            // To the field, once it's marked, as a form's first error is.
+            requestAnimationFrame(() => document.querySelector<HTMLElement>('textarea[name="cancel-reason"]')?.focus())
+            return
+        }
+        void action.run('cancel', async () => {
+            try {
+                const res = await fetch(`${ATTENDANCE_API.mission}/${request.id}/cancel`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason: reason.trim() }),
+                })
+                if (!res.ok) {
+                    showToast(t(await refusal(res, 'error_generic')), 'error')
+                    return
+                }
+                showToast(t('requests_mission_cancelled_done'), 'success')
+                onCancelled()
+            } catch {
+                showToast(t('error_generic'), 'error')
+            }
+        })
+    }
+
+    return (
+        <Dialog
+            open
+            onClose={onClose}
+            title={t('requests_mission_cancel_title')}
+            actions={<>
+                {/* Not "Cancel", beside "Cancel mission": which of the two keeps it. */}
+                <Button onClick={onClose}>{t('requests_mission_keep')}</Button>
+                <Button variant="danger" onClick={cancel} disabled={action.running} busy={action.is('cancel')}>{t('requests_mission_cancel')}</Button>
+            </>}
+        >
+            <p>{question}</p>
+            <p className="ui-hint">{t('requests_mission_cancel_hint')}</p>
+            <Field label={t('requests_mission_cancel_reason')} hint={t('ui_characters_used').replace('{used}', num(reason.length)).replace('{max}', num(REASON_MAX))}
+                error={missing ? t('requests_mission_cancel_reason_missing') : undefined}>{p => (
+                <TextArea {...p} name="cancel-reason" dir="auto" placeholder={t('requests_mission_cancel_placeholder')} value={reason} required
+                    onChange={e => { setReason(e.target.value); setMissing(false) }} maxLength={REASON_MAX} />
             )}</Field>
         </Dialog>
     )

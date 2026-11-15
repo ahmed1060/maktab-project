@@ -270,8 +270,101 @@ describe.skipIf(!ADMIN_URL)("missions asked for and decided, in Postgres", () =>
         })
     })
 
+    describe("cancelling an approved mission (decision 25, PR 285)", () => {
+        it("is an approved one's alone, by somebody else, with a reason; the asker hears why, and it's in the audit log", async () => {
+            const m = await Missions.ask("c1", "e1", byDays("2026-11-16", "2026-11-17"))
+            // One waiting is rejected or withdrawn instead.
+            await expect(Missions.cancel(m.id, "Trip called off", "a1")).rejects.toThrow("MISSION_NOT_APPROVED")
+            await Missions.decide(m.id, { approve: true }, "a1")
+            await expect(Missions.cancel(m.id, "  ", "a1")).rejects.toThrow("REASON_REQUIRED")
+            await expect(Missions.cancel(m.id, "Mine", "e1")).rejects.toThrow("CANNOT_DECIDE_OWN")
+            await expect(Missions.cancel("none", "Trip called off", "a1")).rejects.toThrow("REQUEST_NOT_FOUND")
+            expect(await mission(m.id)).toMatchObject({ status: "APPROVED", cancelledById: null, cancelReason: null })
+
+            await Missions.cancel(m.id, " Trip called off ", "a1")
+            const cancelled = await mission(m.id)
+            expect(cancelled).toMatchObject({ status: "CANCELLED", cancelledById: "a1", cancelReason: "Trip called off", reviewedById: "a1" })
+            expect(cancelled.cancelledAt).toBeInstanceOf(Date)
+            expect(await audit(m.id)).toEqual(["APPROVE_ATTENDANCE_MISSION", "CANCEL_ATTENDANCE_MISSION", "REQUEST_ATTENDANCE_MISSION"])
+            const notice = (await told(m.id)).find(n => n.messageKey === "notice_att_mission_cancelled")
+            expect(notice).toMatchObject({ type: "ATTENDANCE_REQUEST", userId: "e1" })
+            expect(notice.messageParams.when).toMatchObject({ key: "notice_mission_days" })
+            expect(JSON.stringify(notice.messageParams.reason)).toContain("Trip called off")
+            // Once only.
+            await expect(Missions.cancel(m.id, "Again", "a1")).rejects.toThrow("MISSION_NOT_APPROVED")
+            await clear()
+        })
+
+        it("has its days count again as they would without it", async () => {
+            const m = await Missions.ask("c1", "e1", byDays("2026-11-12", "2026-11-12"))
+            await Missions.decide(m.id, { approve: true }, "a1")
+            expect(await day("e1", "2026-11-12")).toMatchObject({ status: "MISSION", deductionMinor: 0 })
+            await Missions.cancel(m.id, "Didn't go", "a1")
+            const after = await day("e1", "2026-11-12")
+            expect(after.status).toBe("ABSENT")
+            expect(after.deductionMinor).toBeGreaterThan(0)
+            expect(after.breakdown).not.toHaveProperty("mission")
+            await clear()
+        })
+
+        it("frees its dates for another mission, or a day off", async () => {
+            const m = await Missions.ask("c1", "e1", byDays("2026-11-16", "2026-11-17"))
+            await Missions.decide(m.id, { approve: true }, "a1")
+            await expect(Missions.ask("c1", "e1", byDays("2026-11-17", "2026-11-18"))).rejects.toThrow("MISSION_OVERLAPS")
+            await Missions.cancel(m.id, "Trip called off", "a1")
+            expect((await Missions.ask("c1", "e1", byDays("2026-11-17", "2026-11-18"))).status).toBe("PENDING")
+            await clear()
+        })
+
+        it("in a month whose payroll is approved, closes the discrepancy approving it opened: the day is back to what was paid", async () => {
+            const paid = (await day("e1", "2026-10-27")).deductionMinor
+            expect(paid).toBeGreaterThan(0)
+            const open = async () => (await db.query(`SELECT * FROM "AttendanceDiscrepancy" WHERE "userId" = 'e1' AND date = '2026-10-27' AND "resolvedAt" IS NULL`)).rows
+            const m = await Missions.ask("c1", "e1", byDays("2026-10-27", "2026-10-27"))
+            await Missions.decide(m.id, { approve: true }, "a1")
+            expect(await open()).toMatchObject([{ paidDeductionMinor: paid, nowDeductionMinor: 0, nowStatus: "MISSION" }])
+            await Missions.cancel(m.id, "Didn't go", "a1")
+            expect(await open()).toEqual([])
+            // What was paid isn't rewritten.
+            expect(await day("e1", "2026-10-27")).toMatchObject({ status: "ABSENT", deductionMinor: paid })
+            await clear()
+        })
+
+        it("and once that one was settled, opens a new one the other way round: the deduction charged", async () => {
+            const paid = (await day("e1", "2026-10-26")).deductionMinor
+            expect(paid).toBeGreaterThan(0)
+            const m = await Missions.ask("c1", "e1", byDays("2026-10-26", "2026-10-26"))
+            await Missions.decide(m.id, { approve: true }, "a1")
+            // HR settles it on the next payslip: the deduction refunded.
+            await db.query(`UPDATE "AttendanceDiscrepancy" SET "resolvedAt" = now(), "resolvedById" = 'a1', resolution = 'Refunded' WHERE "userId" = 'e1' AND date = '2026-10-26'`)
+            await Missions.cancel(m.id, "Didn't go", "a1")
+            const { rows } = await db.query(`SELECT * FROM "AttendanceDiscrepancy" WHERE "userId" = 'e1' AND date = '2026-10-26' ORDER BY "resolvedAt" NULLS LAST`)
+            expect(rows).toHaveLength(2)
+            expect(rows[0]).toMatchObject({ paidDeductionMinor: paid, nowDeductionMinor: 0, nowStatus: "MISSION", resolution: "Refunded" })
+            expect(rows[1]).toMatchObject({ resolvedAt: null, paidDeductionMinor: 0, paidStatus: "MISSION", nowDeductionMinor: paid, nowStatus: "ABSENT" })
+            await clear()
+        })
+    })
+
     describe("on the Requests page", () => {
         const q = { show: "waiting" as const, kind: "mission" as const, search: "", personId: "", companyId: null, page: 1, limit: 10 }
+
+        it("is cancelled from To review's Done by whoever decides it, and is then Cancelled for both, with why (PR 285)", { timeout: 60_000 }, async () => {
+            const { requestFeed } = await import("@/lib/requests/feed")
+            const m = await Missions.ask("c1", "e1", byDays("2026-11-18", "2026-11-19"))
+            await Missions.decide(m.id, { approve: true }, "a1")
+            const ehab = withGrants({ id: "e1", role: "EMPLOYEE", companyId: "c1" })
+            const amal = withGrants({ id: "a1", role: "ADMIN", companyId: "c1" })
+            const done = { ...q, show: "done" as const }
+            expect((await requestFeed(amal, { ...done, tab: "review" })).rows.find(r => r.id === m.id)).toMatchObject({ status: "APPROVED", mayCancel: true })
+            expect((await requestFeed(ehab, { ...done, tab: "mine" })).rows.find(r => r.id === m.id)).toMatchObject({ status: "APPROVED", mayCancel: false })
+            await Missions.cancel(m.id, "Trip called off", "a1")
+            for (const [who, tab] of [[amal, "review"], [ehab, "mine"]] as const) {
+                expect((await requestFeed(who, { ...done, tab })).rows.find(r => r.id === m.id), tab)
+                    .toMatchObject({ status: "CANCELLED", mayCancel: false, mission: { cancelReason: "Trip called off" } })
+            }
+            await clear()
+        })
 
         it("are the asker's on Mine, and on To review for whoever decides them, with the scans so far", { timeout: 60_000 }, async () => {
             const { requestFeed } = await import("@/lib/requests/feed")

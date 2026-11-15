@@ -35,6 +35,8 @@ export type FeedRow = {
     mayDelete: boolean
     /** Whether whoever asked may take it back: permission hours and missing punches (§2.3, part 3). */
     mayWithdraw?: boolean
+    /** Whether whoever decides it may cancel it: an approved mission (ATTENDANCE_PLAN.md §6.10, decision 25, PR 285). */
+    mayCancel?: boolean
     /** A day off's own facts (§2.3, part 2c). Its `what` is its type. */
     dayOff?: DayOffFacts
     /** Permission hours' own facts (§2.3, part 3a). Its `what` is its type. */
@@ -85,6 +87,8 @@ export type MissionFacts = {
     /** The task it names, as its title was kept (decision 18), or none. */
     task: string | null
     rejectionReason: string | null
+    /** Why an approved one was cancelled (decision 25, PR 285). */
+    cancelReason: string | null
     /**
      * For whoever may decide it (decision 20): each of its days up to today
      * that has scans, with them as the clock read them. Null for anyone else.
