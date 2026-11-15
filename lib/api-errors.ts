@@ -153,6 +153,7 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     BANDS_OPEN_BEFORE_END: { status: 400, message: "Only the last band can be open-ended." },
     BANDS_NOT_OPEN_ENDED: { status: 400, message: "The last band must be open-ended, so every minute late is covered." },
     PERMISSION_LIMITS_REVERSED: { status: 400, message: "The shortest permission can't be longer than the longest." },
+    MISSION_ALLOWANCE_AMOUNT_MISSING: { status: 400, message: "Say what one day of the mission allowance is worth." },
     PERMISSION_REQUEST_OVER_ALLOWANCE: { status: 400, message: "One permission can't be longer than the whole month's allowance." },
     TEMPLATE_NOT_FOUND: { status: 404, message: "Template not found." },
     TEMPLATE_NAME_REQUIRED: { status: 400, message: "Give the template a name." },

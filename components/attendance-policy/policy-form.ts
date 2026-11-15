@@ -1,5 +1,6 @@
 import type { TranslationKey } from '@/lib/translations'
-import { PERMISSION_TYPES, type DeductionRule, type PolicyBody } from '@/lib/attendance/policy'
+import { MISSION_AMOUNT_MAX_MINOR, PERMISSION_TYPES, type DeductionRule, type MissionAllowance, type PolicyBody } from '@/lib/attendance/policy'
+import { toMajor, toMinor } from '@/lib/payroll'
 
 /**
  * The attendance policy as its dialog edits it (company settings part 3b):
@@ -47,9 +48,18 @@ export type PolicyForm = {
     departureThresholdMinutes: string
     faceVerificationAvailable: boolean
     faceReverifyMonths: string
-    /** Whether missions may be asked for (ATTENDANCE_PLAN.md §6.10, PR 283). */
-    missions: { enabled: boolean }
+    /**
+     * Whether missions may be asked for (ATTENDANCE_PLAN.md §6.10, PR 283),
+     * and their allowance (decisions 6 and 12, PR 286): what one day is
+     * worth, the amount as typed in the currency's own units, and the days
+     * each kind pays.
+     */
+    missions: { enabled: boolean; dayWorth: MissionAllowance['dayWorth']; amount: string; days: MissionAllowance['days']; hours: MissionAllowance['hours'] }
 }
+
+/** The least and the most one day of the mission allowance can be worth, typed in. */
+export const MISSION_AMOUNT_MIN = 0.01
+export const MISSION_AMOUNT_MAX = toMajor(MISSION_AMOUNT_MAX_MINOR)
 
 /** What's wrong with a field: the words, and the range they name. */
 export type FieldError = { key: TranslationKey; min?: number; max?: number }
@@ -103,7 +113,14 @@ export function formFromBody(body: PolicyBody): PolicyForm {
         departureThresholdMinutes: text(body.departureThresholdMinutes),
         faceVerificationAvailable: body.faceVerificationAvailable,
         faceReverifyMonths: text(body.faceReverifyMonths),
-        missions: { enabled: body.missions.enabled },
+        missions: {
+            enabled: body.missions.enabled,
+            dayWorth: body.missions.allowance.dayWorth,
+            // Empty while there's none: nothing typed yet.
+            amount: body.missions.allowance.amountMinor === 0 ? '' : text(toMajor(body.missions.allowance.amountMinor)),
+            days: body.missions.allowance.days,
+            hours: body.missions.allowance.hours,
+        },
     }
 }
 
@@ -260,6 +277,22 @@ export function bodyFromForm(form: PolicyForm, base: PolicyBody): { ok: true; bo
     const departureThresholdMinutes = wholeIn(true, 'departureThresholdMinutes', form.departureThresholdMinutes, 1, 720, base.departureThresholdMinutes)
     const faceReverifyMonths = optionalWhole(form.faceVerificationAvailable, 'faceReverifyMonths', form.faceReverifyMonths, 1, 36, base.faceReverifyMonths)
 
+    // The mission allowance (§6.10, PR 286). Its amount is read once one day
+    // is worth an amount and either kind pays; otherwise what's typed is
+    // kept if it reads, and the version's own stands if it doesn't. Whether
+    // missions can be asked for changes none of it: one approved before
+    // still counts.
+    const m = form.missions
+    const amountRead = m.dayWorth === 'AMOUNT' && (m.days > 0 || m.hours > 0)
+    const typed = decimal(m.amount, MISSION_AMOUNT_MIN, MISSION_AMOUNT_MAX)
+    const amount = read(amountRead, 'missions.amount', typed, null, { key: 'number_between', min: MISSION_AMOUNT_MIN, max: MISSION_AMOUNT_MAX })
+    const allowance: MissionAllowance = {
+        dayWorth: m.dayWorth,
+        amountMinor: amount === null ? base.missions.allowance.amountMinor : toMinor(amount),
+        days: m.days,
+        hours: m.hours,
+    }
+
     if (Object.keys(errors).length > 0) return { ok: false, errors }
     return {
         ok: true,
@@ -275,7 +308,7 @@ export function bodyFromForm(form: PolicyForm, base: PolicyBody): { ok: true; bo
             departureThresholdMinutes,
             faceVerificationAvailable: form.faceVerificationAvailable,
             faceReverifyMonths,
-            missions: { enabled: form.missions.enabled },
+            missions: { enabled: form.missions.enabled, allowance },
         },
     }
 }

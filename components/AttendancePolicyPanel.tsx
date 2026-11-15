@@ -8,7 +8,8 @@ import { useToast } from '@/context/ToastContext'
 import { fetcher, type SWRError } from '@/lib/swr-fetcher'
 import { apiErrorText } from '@/lib/api-error-text'
 import { countOf } from '@/lib/plural'
-import { policyOn, type DeductionRule, type PolicyBody, type PolicyVersion } from '@/lib/attendance/policy'
+import { policyOn, type DeductionRule, type MissionAllowance, type PolicyBody, type PolicyVersion } from '@/lib/attendance/policy'
+import { toMajor } from '@/lib/payroll'
 import { Button, Card, Choice, Details, Dialog, EmptyState, Row } from '@/components/ui'
 import { firstOfNextMonth } from '@/components/attendance-calendar/hours-form'
 import PolicyDialog from '@/components/attendance-policy/PolicyDialog'
@@ -78,6 +79,22 @@ export default function AttendancePolicyPanel({ companyId, readOnly, onChanged }
         if (rule.freePerMonth > 0) out.push(t('attendance_free_line').replace('{times}', countOf(t, locale, rule.freePerMonth, 'times')))
         if (rule.monthlyCapDays !== null) out.push(t('attendance_cap_line').replace('{days}', countOf(t, locale, rule.monthlyCapDays, 'days')))
         return lines(out)
+    }
+
+    /**
+     * The mission allowance in words (§6.10, decisions 6 and 12, PR 286): what
+     * each kind pays, and what one day is worth; or that there's none.
+     */
+    const allowanceLines = (a: MissionAllowance) => {
+        if (a.days === 0 && a.hours === 0) return [t('attendance_mission_allowance_none_line')]
+        const pays = (days: number) => days > 1 ? countOf(t, locale, days, 'days') : fraction(days)
+        return [
+            ...(a.days > 0 ? [t('attendance_mission_days_line').replace('{days}', pays(a.days))] : []),
+            ...(a.hours > 0 ? [t('attendance_mission_hours_line').replace('{days}', pays(a.hours))] : []),
+            a.dayWorth === 'AMOUNT'
+                ? t('attendance_mission_worth_amount_line').replace('{amount}', number(toMajor(a.amountMinor)))
+                : t('attendance_mission_worth_own_line'),
+        ]
     }
 
     const save = async (payload: { effectiveFrom: string; body: PolicyBody; appliedTemplateId: string | null }) => {
@@ -176,8 +193,8 @@ export default function AttendancePolicyPanel({ companyId, readOnly, onChanged }
                             ? lines([t('attendance_permission_line').replace('{hours}', countOf(t, locale, shown.body.permissionHours.monthlyAllowanceMinutes / 60, 'hours'))])
                             : t('attendance_rule_off'),
                     },
-                    // Whether missions may be asked for (§6.10, PR 283).
-                    { label: t('attendance_missions'), value: shown.body.missions.enabled ? t('attendance_missions_line') : t('attendance_rule_off') },
+                    // Whether missions may be asked for (§6.10, PR 283), and what they pay (PR 286).
+                    { label: t('attendance_missions'), value: lines([shown.body.missions.enabled ? t('attendance_missions_line') : t('attendance_missions_off_line'), ...allowanceLines(shown.body.missions.allowance)]) },
                 ]} />
             )}
 
