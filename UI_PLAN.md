@@ -748,7 +748,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      terminal's time zone on its row there, merged in #293 on 2026-11-15;
      then its fourth, a terminal's first contacts kept for the Super
      Admin, read from its menu there, with how terminals connect on System
-     health, #294;
+     health, merged in #294 on 2026-11-15; then its fifth and last, the
+     Super Admin's straight-to-Nizmo switch on the company's Attendance
+     tab, #295;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6411,3 +6413,21 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   first). On System health, the terminals list includes a company whose
   terminals are all straight to Nizmo, and says how many of a company's
   terminals connect that way. The switch comes next, the last of part 5.
+- **2026-11-15:** The straight-to-Nizmo switch (#295;
+  `ATTENDANCE_PLAN.md` §17.8, Phase 4 part 5, the last of its five PRs).
+  On a company's Attendance tab the Super Admin has a second card,
+  **Terminals straight to Nizmo**, under Who sets up fingerprint
+  terminals: a row saying whether the company's terminals may send their
+  scans straight to Nizmo, with On or Off and Turn on or Turn off, the
+  short words the other settings' switches have. Allowing asks first.
+  Stopping asks only when a terminal would be held, saying how many, and
+  its button isn't in the danger colour, since nothing is deleted. Each
+  question's button says in full what it does. Once it's allowed, Add a
+  terminal on the same page offers Straight to Nizmo without the page
+  loaded again. No `DESIGN.md` change: it is a row, a badge and a
+  confirmation as they are.
+  - **Found on a phone:** a button longer than a row's end holds lay
+    over the row's words. The card above it, Who sets up fingerprint
+    terminals (#277), had that in English, so it has Turn on and Turn
+    off too, and its question's button still says in full what turning
+    it on does.

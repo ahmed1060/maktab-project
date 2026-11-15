@@ -51,7 +51,7 @@ describe("the attendance plan", () => {
             expect(ATTENDANCE, phase).toMatch(new RegExp(`### ${phase.trim()} — .* — built \\(#`))
         }
         // Phase 4 is built part by part (§20): its heading names the parts that are, and isn't "built" yet.
-        expect(ATTENDANCE).toMatch(/### Phase 4 — .* — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 begun in #291 to #294\n/)
+        expect(ATTENDANCE).toMatch(/### Phase 4 — .* — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 in #291 to #295\n/)
         expect(ATTENDANCE).not.toMatch(/### Phase 4 — .* — (not built|built \(#)/)
     })
 })
