@@ -2432,14 +2432,27 @@ to Nizmo (part 5's fourth PR, §20). What the build settled:
   characters. A body, or a part of a form, longer than Nizmo reads an
   event from (256 KB) isn't opened: only its length is kept. Employee
   numbers stay, as on the punch.
+  - What a field's name says it holds, everything under it holds: a
+    picture's address inside its picture goes with it, in XML as in
+    JSON, and so does what is under a name or a card. An XML element's
+    attributes go by the same rules as its elements.
+  - A form's field goes by its own name too: one called `name` is
+    somebody's name, whatever it holds.
+  - A picture's address, or its file's name, is taken out whatever its
+    field is called.
+  - A text that holds fields of its own, such as an event sent as text
+    or an address with a query, is read by the same rules.
+  - (The first three from the review on #294.)
 - **Only the Super Admin reads them**, from the terminal's menu on
   Fingerprint terminals: **First contacts** (`DESIGN.md` §5.5, Dialog),
   in the order they came, each a row that opens onto what it sent. A
   company's own people are refused by the server. While it's open the
   list is read again every 10 seconds, so a request appears as the
   terminal sends it during a trial.
-- **Keeping never holds a terminal.** If keeping fails, the request is
-  answered all the same, and the failure is recorded without the secret.
+- **Keeping never holds a terminal.** If keeping fails, or counting
+  what is kept does before the request is taken, the request is taken
+  and answered all the same, and the failure is recorded without the
+  secret.
 - **System health:** the Super Admin's terminals list (#177) now lists a
   company whose only terminals are straight to Nizmo, and says how many
   of a company's terminals connect that way (§17.7).
