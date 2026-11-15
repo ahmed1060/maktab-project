@@ -2274,6 +2274,8 @@ export const en = {
         day_mission_days: "on a mission",
         day_mission_to_end: "a mission until the end of the day, so early leave isn't counted",
         day_mission_from_start: "a mission from the start of the day, so lateness isn't counted",
+        day_mission_allowance: "Mission allowance",
+        day_total_mission_allowance: "Total mission allowance",
         day_unpriced_no_policy: "no policy yet, measured only",
         day_unpriced_no_salary: "no salary on record, so not priced",
         day_overtime_pending: "overtime awaiting approval",

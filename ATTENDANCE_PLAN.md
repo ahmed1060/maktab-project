@@ -19,7 +19,8 @@ missions, is split in four PRs, the first, a mission's day, built in
 missions for the companies already there, in #284, and the fourth,
 cancelling an approved mission, in #285; part 5, the mission allowance,
 is split in four PRs, the first, the allowance's settings in the policy,
-built in #286, and the rest not built. A template for the file import
+built in #286, the second, each mission day priced, in #287, and the rest
+not built. A template for the file import
 (§13.9) is built in #272.
 This document is the design those PRs follow: what was decided, and why, so
 that whoever changes it is not re-arguing settled points. Where the build
@@ -858,6 +859,39 @@ prices each mission day.
   what one day is worth.
 - **Audit**: saved with the policy, as its other rules are.
 
+**Built in #287: each mission day priced.** The second of part 5's four
+PRs (§20). Priced and shown, not yet paid: the next PR writes it to the
+payslip.
+
+- **Which days**: the allowance follows the approved mission, not the
+  day's scans. A mission by days pays for every date in it, rest days and
+  holidays included (decision 9); a mission by hours pays once, on its
+  date. Not a date the employee is on leave or suspended, which come
+  before a mission as they do when a day is read. A mission that didn't
+  happen is cancelled (decision 25), which takes its allowance back.
+- **How much**: the days its kind pays, times what one day is worth, both
+  by the policy in force on that date. One day is the amount typed in, or
+  the employee's own day's pay: their monthly salary in force that date
+  over the month's days, as a deduction is priced (§6.3). Each day is
+  rounded to the piastre on its own. With no salary on a date, one day
+  worth the employee's own pays nothing that day.
+- **Kept on the day**, `AttendanceDay.missionAllowanceMinor`, beside its
+  deduction and overtime, and worked out again whenever the day is: a
+  mission approved or cancelled, the policy changed, a salary changed.
+  The migration only adds the column, and a day with no allowance keeps
+  the hash it had, so no day is written again for the column alone.
+- **Shown** on Attendance's Days list and on the employee's own days, on
+  the day and in the month's totals, to whoever may see that person's
+  pay, as a deduction is. Anyone else is sent no allowance, there or on
+  Exceptions: where one day is worth the employee's own pay, it would
+  give their salary away.
+- **Not yet paid**: the next PR writes it at approval as its own entry,
+  on the payslip's Mission allowance line. Until it does, approving a
+  month's payroll freezes its days with no allowance, since no payslip
+  carried one: what a frozen day holds is what was paid, so nothing reads
+  as paid that wasn't. A month whose payroll is approved keeps its days
+  as paid; the allowance across it is the PR after.
+
 ---
 
 ## 7. Calendar
@@ -1073,6 +1107,7 @@ model AttendanceDay
   companyId, userId, date
   scheduleVersionId?, overrideId?, policyId   // the exact, immutable inputs
   deductionMinor, overtimeMinor              // money, at that day's rate (§6.3)
+  missionAllowanceMinor                      // the mission allowance for the day (§6.10, #287)
   firstInAt?, lastOutAt?
   workedMinutes, lateMinutes, earlyLeaveMinutes, overtimeMinutes
   excusedMinutes              // covered by approved permission hours
@@ -2477,7 +2512,7 @@ With no push, it stays on the agent and tries the agent alone. Parts 4 to 7
 are built all the same, switched off, and tried when a terminal that pushes,
 or a Hikvision, is on hand (round 9, decision 13).
 
-### Phase 5 — Reading scans first and last, and missions — parts 2 and 3 built in #273 to #276, part 4 in #281, #283, #284 and #285, part 5's first PR in #286
+### Phase 5 — Reading scans first and last, and missions — parts 2 and 3 built in #273 to #276, part 4 in #281, #283, #284 and #285, part 5's first two PRs in #286 and #287
 
 Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
 
@@ -2522,17 +2557,21 @@ Planned in #270 and #271 (round 10, §6.9, §6.10). Each part is its own PR:
    1. **The allowance's settings**, built in #286: the policy's Missions
       section, what each kind pays and what one day is worth, nothing to
       start (decisions 6, 12). Nothing priced yet.
-   2. **Each mission day priced**: at its date, by the policy in force on
-      it and, where one day is worth the employee's own day's pay, the
-      salary in force on it (§6.3); shown on the day. The allowance
-      follows the approved mission, not the day's scans: by days, every
-      date in it, rest days and holidays included (decision 9); by hours,
-      its one date. A mission that didn't happen is cancelled (decision
-      25), which takes its allowance back.
+   2. **Each mission day priced**, built in #287: at its date, by the
+      policy in force on it and, where one day is worth the employee's own
+      day's pay, the salary in force on it (§6.3); kept and shown on the
+      day. The allowance follows the approved mission, not the day's
+      scans: by days, every date in it, rest days and holidays included
+      (decision 9); by hours, its one date. A mission that didn't happen
+      is cancelled (decision 25), which takes its allowance back.
    3. **Paid with salary**: written at approval as its own entry (§12.2);
-      the register's and the payslip's Mission allowance line.
+      the register's and the payslip's Mission allowance line. From then
+      a month's days are frozen with the allowance their payslips carried;
+      #287 freezes them with none.
    4. **Across a closed month**: a discrepancy carries the allowance, paid
-      or taken back on the next payslip (decisions 16, 25).
+      or taken back on the next payslip (decisions 16, 25). A month
+      approved between #287 and the PR before this one was frozen with
+      none, so what its missions pay shows here as owed.
 
 Part 2 needs none of the rest, and helps the first customer at once: a
 second scan on arriving no longer leaves a day incomplete.

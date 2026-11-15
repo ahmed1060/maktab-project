@@ -1,14 +1,14 @@
 import { describe, it, expect } from "vitest"
 import { assignPunches, debounce, measureDay, priceMonth, paidMinutesOf, type EnginePunch, type PricingInput, type MeasuredDay } from "./engine"
-import { STANDARD_OFFICE, MEASURE_ONLY, type PolicyBody } from "./policy"
+import { STANDARD_OFFICE, MEASURE_ONLY, type MissionAllowance, type PolicyBody } from "./policy"
 import type { ExpectedDay } from "./calendar"
 
 /**
  * The derivation engine (ATTENDANCE_PLAN.md §11): grouping punches by shift,
  * counting scans close together as one, reading a day first and last (§6.9,
  * round 10, PR 273), a departure to confirm (PR 274), an incomplete day
- * settled (PR 275), a mission's day (§6.10, PR 281), and pricing the month
- * in order (§6.3–6.5).
+ * settled (PR 275), a mission's day (§6.10, PR 281), pricing the month
+ * in order (§6.3–6.5), and each date's mission allowance (§6.10, PR 287).
  */
 
 const work = (startMinutes = 540, endMinutes = 1020, breakMinutes = 60): ExpectedDay =>
@@ -427,5 +427,121 @@ describe("pricing a month", () => {
         expect(paidMinutesOf(work(540, 1020, 60), null)).toBe(420)
         expect(paidMinutesOf(REST, { startMinutes: 480, endMinutes: 960, breakMinutes: 0 })).toBe(480)
         expect(paidMinutesOf(REST, null)).toBe(480)
+    })
+})
+
+describe("a mission's allowance, date by date (§6.10, decisions 6, 9 and 12, PR 287)", () => {
+    const day = (date: string, m: Partial<MeasuredDay> = {}): MeasuredDay => ({
+        date, status: "MISSION", punchCount: 0, firstIn: null, lastOut: null, workedMinutes: 0,
+        lateMinutes: 0, earlyLeaveMinutes: 0, overtimeMinutes: 0, excusedMinutes: 0, unpaidHoliday: false, excusedAbsence: false, ...m,
+    })
+    // One day worth 200.00, a mission by days paying one for each date and a mission by hours a half: the plan's example.
+    const paying = (allowance: Partial<MissionAllowance> = {}): PolicyBody =>
+        ({ ...STANDARD_OFFICE, missions: { enabled: true, allowance: { dayWorth: "AMOUNT", amountMinor: 20_000, days: 1, hours: 0.5, ...allowance } } })
+    // 9,300.00 a month in a 31-day month: 300.00 a day.
+    const input = (d: MeasuredDay, extra: Partial<PricingInput> = {}): PricingInput =>
+        ({ day: d, policy: paying(), monthlyMinor: 930_000, daysInMonth: 31, paidMinutes: 420, mission: "DAYS", ...extra })
+    const allowance = (...inputs: PricingInput[]) => priceMonth(inputs).map(x => x.missionAllowanceMinor)
+
+    it("is nothing until the policy says what a mission pays (decision 12)", () => {
+        expect(STANDARD_OFFICE.missions.allowance).toMatchObject({ days: 0, hours: 0 })
+        expect(allowance(input(day("2026-10-04"), { policy: STANDARD_OFFICE }), input(day("2026-10-05"), { policy: STANDARD_OFFICE, mission: "TO_END" }))).toEqual([0, 0])
+    })
+
+    it("pays a mission by days for each of its dates, a rest day and a holiday included (decision 9)", () => {
+        // Thursday to Saturday: the plan's three-day mission, 600.00 in all.
+        const paid = allowance(
+            input(day("2026-10-08")),
+            input(day("2026-10-09", { status: "REST", mission: "DAYS" })),
+            input(day("2026-10-10", { status: "HOLIDAY", mission: "DAYS" })),
+        )
+        expect(paid).toEqual([20_000, 20_000, 20_000])
+    })
+
+    it("pays a mission by hours what its kind pays, whichever part of the day it covers", () => {
+        expect(allowance(
+            input(day("2026-10-04", { status: "PRESENT", mission: "TO_END" }), { mission: "TO_END" }),
+            input(day("2026-10-05", { status: "PRESENT", mission: "FROM_START" }), { mission: "FROM_START" }),
+        )).toEqual([10_000, 10_000])
+        expect(allowance(input(day("2026-10-04"), { policy: paying({ hours: 0 }), mission: "TO_END" }))).toEqual([0])
+        expect(allowance(input(day("2026-10-04"), { policy: paying({ days: 0 }) }))).toEqual([0])
+    })
+
+    it("follows the approved mission, not the day's scans: absent, incomplete or waiting, its date is paid", () => {
+        const paid = priceMonth([
+            input(day("2026-10-04", { status: "ABSENT", mission: "TO_END" }), { mission: "TO_END" }),
+            input(day("2026-10-05", { status: "TO_CONFIRM", mission: "FROM_START", earlyLeaveMinutes: 200 }), { mission: "FROM_START" }),
+            input(day("2026-10-06", { status: "INCOMPLETE" }), { mission: "TO_END" }),
+            // A mission by hours on a day off, which the day itself doesn't read (PR 281).
+            input(day("2026-10-09", { status: "REST" }), { mission: "TO_END" }),
+        ])
+        expect(paid.map(x => [x.missionAllowanceMinor, x.unpriced])).toEqual([[10_000, null], [10_000, "TO_CONFIRM"], [10_000, "INCOMPLETE"], [10_000, null]])
+        // The absence is still an absence.
+        expect(paid[0]).toMatchObject({ absenceDays: 1, deductionMinor: 30_000 })
+    })
+
+    it("pays nothing on a date with no mission, whatever the day read", () => {
+        expect(allowance(input(day("2026-10-04", { status: "PRESENT" }), { mission: null }), input(day("2026-10-05"), { mission: undefined }))).toEqual([0, 0])
+    })
+
+    it("takes one day as the amount typed in, the same for everyone, with a salary or none", () => {
+        const policy = paying({ days: 2, hours: 0.25 })
+        expect(allowance(
+            input(day("2026-10-04"), { policy }),
+            input(day("2026-10-05"), { policy, monthlyMinor: 310_000 }),
+            input(day("2026-10-06"), { policy, monthlyMinor: null }),
+            input(day("2026-10-07", { status: "PRESENT" }), { policy, mission: "TO_END", monthlyMinor: null }),
+        )).toEqual([40_000, 40_000, 40_000, 5_000])
+    })
+
+    it("takes one day as the employee's own day's pay: that date's salary over its month's days, as a deduction is priced", () => {
+        const policy = paying({ dayWorth: "OWN_PAY", amountMinor: 0, days: 1, hours: 0.5 })
+        expect(allowance(
+            // 9,300.00 over October's 31 days, then 12,000.00 from a raise mid-month, then a 30-day month.
+            input(day("2026-10-04"), { policy }),
+            input(day("2026-10-20"), { policy, monthlyMinor: 1_200_000 }),
+            input(day("2026-11-03"), { policy, daysInMonth: 30 }),
+            input(day("2026-11-04", { status: "PRESENT" }), { policy, daysInMonth: 30, mission: "FROM_START" }),
+        )).toEqual([30_000, 38_710, 31_000, 15_500])
+        // An amount left typed in from before counts for nothing once a day is their own pay.
+        expect(allowance(input(day("2026-10-04"), { policy: paying({ dayWorth: "OWN_PAY", amountMinor: 99_900 }) }))).toEqual([30_000])
+    })
+
+    it("pays nothing that date when one day is their own pay and they have no salary", () => {
+        const [d] = priceMonth([input(day("2026-10-04"), { policy: paying({ dayWorth: "OWN_PAY" }), monthlyMinor: null })])
+        expect(d).toMatchObject({ missionAllowanceMinor: 0, unpriced: "NO_SALARY" })
+    })
+
+    it("rounds each date to the piastre on its own", () => {
+        // 10,000.00 over 31 days is 322.5806… a day: a quarter of it 80.65, and twice it 645.16.
+        const own = (days: 0.25 | 2) => paying({ dayWorth: "OWN_PAY", days })
+        expect(allowance(input(day("2026-10-04"), { policy: own(0.25), monthlyMinor: 1_000_000 }), input(day("2026-10-05"), { policy: own(2), monthlyMinor: 1_000_000 }))).toEqual([8_065, 64_516])
+        // A quarter of 0.01 rounds to nothing; a half rounds up.
+        expect(allowance(input(day("2026-10-04"), { policy: paying({ amountMinor: 1, days: 0.25 }) }), input(day("2026-10-05"), { policy: paying({ amountMinor: 1, days: 0.5 }) }))).toEqual([0, 1])
+    })
+
+    it("pays nothing before the company has a policy", () => {
+        expect(priceMonth([input(day("2026-10-04"), { policy: null })])[0]).toMatchObject({ missionAllowanceMinor: 0, unpriced: "NO_POLICY" })
+    })
+
+    it("pays by the policy in force on each date", () => {
+        expect(allowance(input(day("2026-10-04")), input(day("2026-10-05"), { policy: paying({ amountMinor: 35_000 }) }), input(day("2026-10-06"), { policy: STANDARD_OFFICE }))).toEqual([20_000, 35_000, 0])
+    })
+
+    it("pays whether or not missions can still be asked for: one approved before still counts", () => {
+        const off: PolicyBody = { ...paying(), missions: { ...paying().missions, enabled: false } }
+        expect(allowance(input(day("2026-10-04"), { policy: off }))).toEqual([20_000])
+    })
+
+    it("leaves the day's deduction and overtime as they were", () => {
+        const late = day("2026-10-06", { status: "PRESENT", mission: "TO_END", lateMinutes: 90, overtimeMinutes: 60 })
+        const noApproval: PolicyBody = { ...paying(), lateness: { ...STANDARD_OFFICE.lateness, freePerMonth: 0 }, overtime: { ...STANDARD_OFFICE.overtime, requiresApproval: false } }
+        const [withMission] = priceMonth([input(late, { policy: noApproval, mission: "TO_END" })])
+        const [without] = priceMonth([input(late, { policy: noApproval, mission: null })])
+        expect(withMission.missionAllowanceMinor).toBe(10_000)
+        expect(without.missionAllowanceMinor).toBe(0)
+        expect([withMission.deductionMinor, withMission.overtimeMinor]).toEqual([without.deductionMinor, without.overtimeMinor])
+        expect(withMission.deductionMinor).toBeGreaterThan(0)
+        expect(withMission.overtimeMinor).toBeGreaterThan(0)
     })
 })

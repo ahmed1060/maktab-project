@@ -731,7 +731,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      there, merged in #284 on 2026-11-15; then cancelling an approved
      mission, with a reason, from To review's Done, merged in #285 on
      2026-11-15; then Phase 5 part 5's first PR, the mission allowance's
-     settings in the attendance policy, #286;
+     settings in the attendance policy, merged in #286 on 2026-11-15; then
+     its second, each mission day's allowance priced and shown on
+     Attendance's Days list, #287;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6314,3 +6316,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   1 or 2 days, and what one day is worth, the employee's own day's pay or
   an amount typed in. Both pay nothing to start, and the policy's card
   says what's set. Nothing is priced or paid yet.
+- **2026-11-15:** Each mission day's allowance is priced and shown (#287;
+  `ATTENDANCE_PLAN.md` §6.10, Phase 5 part 5). Attendance's Days list
+  says what a mission's day pays, under its status and on its card, and
+  the month's totals have a Mission allowance line, for whoever may see
+  that person's pay. It follows the approved mission, not the day's
+  scans. It isn't paid yet: the next PR puts it on the payslip, and a
+  month approved before then freezes its days with none.

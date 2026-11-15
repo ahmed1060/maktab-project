@@ -353,6 +353,12 @@ export type PricedDay = MeasuredDay & {
     deductionParts: { lateness: number; earlyLeave: number; absence: number }
     overtimeStatus: "NONE" | "PENDING" | "APPROVED" | "REJECTED" | "NOT_COUNTED"
     overtimeMinor: number
+    /**
+     * The mission allowance for the date, in minor units (§6.10, PR 287):
+     * money added to pay, apart from the deduction and the overtime, and
+     * priced on a day that is otherwise unpriced too.
+     */
+    missionAllowanceMinor: number
     /** Why nothing was priced, when nothing could be. */
     unpriced: "NO_POLICY" | "NO_SALARY" | "INCOMPLETE" | "TO_CONFIRM" | null
 }
@@ -372,6 +378,12 @@ export type PricingInput = {
      * minutes, or rejected. Read only when the policy requires approval.
      */
     overtimeDecision?: { status: "APPROVED" | "REJECTED"; minutes: number } | null
+    /**
+     * The approved mission the date's allowance is for (§6.10, PR 287):
+     * whatever the day read, since the allowance follows the mission and
+     * not the scans, and none on a date the person is on leave or suspended.
+     */
+    mission?: DayMission | null
 }
 
 const roundHalfUp = (v: number) => Math.sign(v) * Math.round(Math.abs(v))
@@ -403,6 +415,24 @@ function applyRule(rule: DeductionRule, minutes: number, paidMinutes: number, ta
 }
 
 /**
+ * A date's mission allowance, in minor units (§6.10, decisions 6, 9 and 12,
+ * PR 287): the days its kind of mission pays, times what one day is worth,
+ * both by the policy in force that date. One day is the amount typed in,
+ * or the person's own day's pay, a 1/n of that date's salary as a deduction
+ * is priced, which without a salary is nothing. Rounded on its own, so the
+ * month's allowance is the exact sum of its dates. Whether missions can
+ * still be asked for doesn't come into it: one approved before counts.
+ */
+function missionAllowanceOf({ mission, policy, monthlyMinor, daysInMonth }: PricingInput): number {
+    if (!mission || !policy) return 0
+    const { dayWorth, amountMinor, days, hours } = policy.missions.allowance
+    const pays = mission === "DAYS" ? days : hours
+    if (pays === 0) return 0
+    if (dayWorth === "AMOUNT") return roundHalfUp(amountMinor * pays)
+    return monthlyMinor === null ? 0 : roundHalfUp(monthlyMinor / daysInMonth * pays)
+}
+
+/**
  * Prices one person's month, its days in date order (§6.3–6.5, §11).
  *
  * Money is computed per day at that day's salary — a day is a 1/n of the
@@ -410,7 +440,8 @@ function applyRule(rule: DeductionRule, minutes: number, paidMinutes: number, ta
  * (lib/payroll.ts) — so a deduction from before a mid-month raise is priced at
  * the old salary. Overtime is per hour of the day's paid minutes, times the
  * multiplier for the kind of day; when the policy requires approval it is
- * priced only as far as somebody approved it.
+ * priced only as far as somebody approved it. A date of an approved mission
+ * has its allowance beside them (§6.10, PR 287).
  */
 export function priceMonth(days: readonly PricingInput[]): PricedDay[] {
     const lateTally: Tally = { occurrences: 0, charged: 0 }
@@ -421,6 +452,8 @@ export function priceMonth(days: readonly PricingInput[]): PricedDay[] {
             ...day, lateness: NO_RULE, earlyLeave: NO_RULE, absenceDays: 0, deductionDays: 0, deductionMinor: 0,
             deductionParts: { lateness: 0, earlyLeave: 0, absence: 0 },
             overtimeStatus: "NONE", overtimeMinor: 0, unpriced: null,
+            // Paid whatever follows: the allowance is for the mission, not for how the day read (PR 287).
+            missionAllowanceMinor: missionAllowanceOf(input),
         }
         // A day waiting on a punch, or on its departure, is charged nothing until it is settled.
         if (day.status === "INCOMPLETE" || day.status === "TO_CONFIRM") return { ...none, unpriced: day.status }

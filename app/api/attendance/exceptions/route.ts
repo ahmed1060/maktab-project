@@ -27,11 +27,11 @@ export const GET = withStandardHandler(async (req, session) => {
     })
     // What a day cost is a share of that person's salary: theirs to see, and
     // others' only where salary.view reaches them — as on the days list
-    // (review on #15).
+    // (review on #15). So is what a mission day pays (PR 287).
     const me = session.user.id
-    const redact = <T extends { userId: string; teamLeaderId: string | null; deductionMinor: number | null; overtimeMinor: number | null }>(rows: T[]) =>
+    const redact = <T extends { userId: string; teamLeaderId: string | null; deductionMinor: number | null; overtimeMinor: number | null; missionAllowanceMinor: number | null }>(rows: T[]) =>
         rows.map(d => d.userId === me || can(session.user, "salary.view", { companyId: access.companyId, userId: d.userId, teamLeaderId: d.teamLeaderId })
-            ? d : { ...d, deductionMinor: null, overtimeMinor: null })
+            ? d : { ...d, deductionMinor: null, overtimeMinor: null, missionAllowanceMinor: null })
     // Re-verifications left undone (§9.5), counted for those who decide face verification; they open on its tab.
     const decidesFace = canCompanyWide(session.user, "attendance.approve_face") && can(session.user, "attendance.approve_face", { companyId: access.companyId })
     const faceOverdue = decidesFace ? (await FaceVerificationService.overdueReverifications(access.companyId)).filter(o => o.userId !== me).length : null
