@@ -25,7 +25,7 @@ export async function terminalsOverview(now = new Date()) {
         select: {
             id: true, name: true,
             attendanceAgents: { where: { status: { not: "REVOKED" } }, select: { id: true, name: true, status: true, lastSeenAt: true, lastSyncAt: true, agentVersion: true, queueDepth: true, clockDriftSeconds: true }, orderBy: { name: "asc" } },
-            attendanceDevices: { where: { retiredAt: null }, select: { retiredAt: true, reachable: true, lastSeenAt: true, recordCount: true, recordCapacity: true, clockDriftSeconds: true } },
+            attendanceDevices: { where: { retiredAt: null }, select: { retiredAt: true, reachable: true, lastSeenAt: true, recordCount: true, recordCapacity: true, clockDriftSeconds: true, connection: true, addedById: true } },
         },
         orderBy: { name: "asc" },
     })

@@ -50,6 +50,9 @@ vi.mock("@/lib/services/attendance-agent.service", () => ({
 vi.mock("@/lib/services/attendance-device.service", () => ({
     AttendanceDeviceService: {
         list: async (companyId: string) => { reached.push(`devices:${companyId}`); return [] },
+        directAllowed: async () => false,
+        add: async (companyId: string, input: any) => { reached.push(`addDevice:${companyId}:${input.serialNumber}:${input.connection}`); return { device: { id: "new" }, path: input.connection === "DIRECT" ? "/api/terminals/hikvision/shown-once" : null } },
+        issueAddress: async (id: string) => { reached.push(`address:${id}`); return { device: { id }, path: "/api/terminals/hikvision/shown-once" } },
         deviceOf: async (id: string) => ({ d1: { id: "d1", companyId: "c1" }, d2: { id: "d2", companyId: "c2" } } as any)[id] ?? null,
         update: async (id: string, input: any) => { reached.push(`updateDevice:${id}:${input.mode ?? ""}`); return {} },
         retire: async (id: string) => { reached.push(`retire:${id}`) },
@@ -205,6 +208,10 @@ const devices = async () => (await import("@/app/api/attendance/devices/route"))
 const patchDevice = async (id: string, body: unknown) => (await import("@/app/api/attendance/devices/[id]/route")).PATCH(withBody("PATCH", `/api/attendance/devices/${id}`, body), params(id))
 const retire = async (id: string) => (await import("@/app/api/attendance/devices/[id]/route")).DELETE(new Request(url(`/api/attendance/devices/${id}`), { method: "DELETE" }), params(id))
 const restore = async (id: string) => (await import("@/app/api/attendance/devices/[id]/restore/route")).POST(new Request(url(`/api/attendance/devices/${id}/restore`), { method: "POST" }), params(id))
+// A terminal added by hand, and its address issued again (§17.7, PR 292).
+const TERMINAL = { name: "Lobby", serialNumber: "SN-9", brandId: "b1", mode: "ANY" }
+const addDevice = async (body: unknown) => (await import("@/app/api/attendance/devices/route")).POST(withBody("POST", "/api/attendance/devices", body))
+const newAddress = async (id: string) => (await import("@/app/api/attendance/devices/[id]/address/route")).POST(new Request(url(`/api/attendance/devices/${id}/address`), { method: "POST" }), params(id))
 
 describe("terminals on the website", () => {
     it("are listed, renamed, given a mode, retired and restored by whoever may set terminals up", async () => {
@@ -254,7 +261,68 @@ describe("terminals on the website", () => {
         admin(MOBILE_ONLY)
         expect((await devices()).status).toBe(403)
         expect((await retire("d1")).status).toBe(403)
+        expect((await addDevice({ ...TERMINAL, connection: "AGENT" })).status).toBe(403)
+        expect((await newAddress("d1")).status).toBe(403)
         expect(reached).toEqual([])
+    })
+
+    it("are added by hand, and given a new address, by whoever may set terminals up (PR 292)", async () => {
+        for (const who of [() => admin(), installer]) {
+            who()
+            const added = await addDevice({ ...TERMINAL, connection: "DIRECT" })
+            expect(added.status).toBe(201)
+            // The address, with its secret, is in the answer once.
+            expect((await added.json()).data.path).toBe("/api/terminals/hikvision/shown-once")
+            const through = await addDevice({ ...TERMINAL, connection: "AGENT" })
+            expect((await through.json()).data.path).toBeNull()
+            expect((await (await newAddress("d1")).json()).data.path).toBe("/api/terminals/hikvision/shown-once")
+        }
+        expect(reached).toEqual(["addDevice:c1:SN-9:DIRECT", "addDevice:c1:SN-9:AGENT", "address:d1", "addDevice:c1:SN-9:DIRECT", "addDevice:c1:SN-9:AGENT", "address:d1"])
+    })
+
+    it("are added only in the right shape, to the person's own company (PR 292)", async () => {
+        admin()
+        for (const bad of [{ ...TERMINAL }, { ...TERMINAL, connection: "SIDEWAYS" }, { ...TERMINAL, connection: "AGENT", mode: "SIDEWAYS" }, { ...TERMINAL, connection: "AGENT", brandId: "" }, { connection: "AGENT" }]) {
+            expect((await addDevice(bad)).status).toBe(400)
+        }
+        // A company named in the body is ignored for anyone but the Super Admin.
+        expect((await addDevice({ ...TERMINAL, connection: "AGENT", companyId: "c2" })).status).toBe(201)
+        expect((await newAddress("d2")).status).toBe(404)
+        expect((await newAddress("nope")).status).toBe(404)
+        expect(reached).toEqual(["addDevice:c1:SN-9:AGENT"])
+    })
+
+    it("ask for the step-up code where a terminal's address is issued, not to add one through the agent (PR 292)", async () => {
+        admin()
+        unconfirmed()
+        const direct = await addDevice({ ...TERMINAL, connection: "DIRECT" })
+        expect(direct.status).toBe(403)
+        expect((await direct.json()).code).toBe("STEP_UP_REQUIRED")
+        const again = await newAddress("d1")
+        expect(again.status).toBe(403)
+        expect((await again.json()).code).toBe("STEP_UP_REQUIRED")
+        expect((await addDevice({ ...TERMINAL, connection: "AGENT" })).status).toBe(201)
+        expect(reached).toEqual(["addDevice:c1:SN-9:AGENT"])
+    })
+
+    it("aren't added, or given an address, by anyone else (PR 292)", async () => {
+        for (const who of [viewer, settingsEditor, employee]) {
+            who()
+            expect((await addDevice({ ...TERMINAL, connection: "AGENT" })).status).toBe(404)
+            expect((await addDevice({ ...TERMINAL, connection: "DIRECT" })).status).toBe(404)
+            expect((await newAddress("d1")).status).toBe(404)
+        }
+        companies.c1.terminalsSetupByCompany = false
+        admin()
+        expect((await addDevice({ ...TERMINAL, connection: "AGENT" })).status).toBe(404)
+        expect((await newAddress("d1")).status).toBe(404)
+        expect(reached).toEqual([])
+        // The Super Admin does, for the company they name, its switch off or on.
+        superAdmin()
+        expect((await addDevice({ ...TERMINAL, connection: "AGENT" })).status).toBe(400)
+        expect((await addDevice({ ...TERMINAL, connection: "DIRECT", companyId: "c1" })).status).toBe(201)
+        expect((await newAddress("d1")).status).toBe(200)
+        expect(reached).toEqual(["addDevice:c1:SN-9:DIRECT", "address:d1"])
     })
 })
 
