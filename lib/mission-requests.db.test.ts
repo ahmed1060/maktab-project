@@ -249,6 +249,25 @@ describe.skipIf(!ADMIN_URL)("missions asked for and decided, in Postgres", () =>
             expect(await day("e1", "2026-11-02")).toMatchObject({ status: "MISSION" })
             await clear()
         })
+
+        it("approving one whose days have since passed the year the engine reworks by itself still works them out again (found by Codex on PR 283)", { timeout: 120_000 }, async () => {
+            const paid = (await day("e1", "2026-10-28")).deductionMinor
+            expect(paid).toBeGreaterThan(0)
+            const m = await Missions.ask("c1", "e1", byDays("2026-10-28", "2026-10-28"))
+            // Decided a year on, when the engine's own reworking starts at November 2026.
+            vi.setSystemTime(new Date("2027-11-02T08:00:00Z"))
+            try {
+                await Missions.decide(m.id, { approve: true }, "a1")
+            } finally {
+                vi.setSystemTime(NOW)
+            }
+            const { rows } = await db.query(`SELECT * FROM "AttendanceDiscrepancy" WHERE "userId" = 'e1' AND date = '2026-10-28'`)
+            expect(rows).toHaveLength(1)
+            expect(rows[0]).toMatchObject({ payrollRunId: "run10", paidDeductionMinor: paid, nowDeductionMinor: 0, nowStatus: "MISSION" })
+            // The days that clock reached, gone again for the tests after.
+            await db.query(`DELETE FROM "AttendanceDay" WHERE "userId" = 'e1' AND date >= '2026-11-14'`)
+            await clear()
+        })
     })
 
     describe("on the Requests page", () => {
@@ -278,6 +297,32 @@ describe.skipIf(!ADMIN_URL)("missions asked for and decided, in Postgres", () =>
             const laila = withGrants({ id: "l1", role: "TEAM_LEADER", companyId: "c1" })
             expect((await requestFeed(laila, { ...q, tab: "review" })).rows).toEqual([])
             await clear()
+        })
+
+        it("give every scan on each mission shown, read for the page shown alone (found by Codex on PR 283)", { timeout: 60_000 }, async () => {
+            const { requestFeed } = await import("@/lib/requests/feed")
+            // Eman's 90 days, with a scan an hour for 2,100 hours of them: more than one read for the page once stopped at.
+            const long = await Missions.ask("c1", "e2", byDays("2026-08-20", "2026-11-17"))
+            await db.query(`
+                INSERT INTO "AttendancePunch"(id, "companyId", "userId", source, "sourceKey", "punchAtLocal", "punchAt", "resolvedWithTimeZone")
+                SELECT 'bulk-' || g, 'c1', 'e2', 'MANUAL', 'bulk-' || g, timestamp '2026-08-20 08:00' + g * interval '1 hour',
+                    timestamp '2026-08-20 05:00' + g * interval '1 hour', 'Africa/Cairo'
+                FROM generate_series(0, 2099) g`)
+            const short = await Missions.ask("c1", "e1", byDays("2026-11-20", "2026-11-20"))
+            try {
+                const amal = withGrants({ id: "a1", role: "ADMIN", companyId: "c1" })
+                const pages = [await requestFeed(amal, { ...q, tab: "review", limit: 1, page: 1 }), await requestFeed(amal, { ...q, tab: "review", limit: 1, page: 2 })]
+                const rows = pages.flatMap(p => p.rows)
+                expect(rows.map(r => r.id).sort()).toEqual([long.id, short.id].sort())
+                const eman = rows.find(r => r.id === long.id)!
+                // Those, and her scan on 1 October.
+                expect(eman.mission!.scans!.reduce((n, d) => n + d.times.length, 0)).toBe(2101)
+                expect(eman.mission!.scans![0]).toMatchObject({ date: "2026-08-20", times: expect.arrayContaining(["08:00", "09:00"]) })
+                expect(rows.find(r => r.id === short.id)!.mission!.scans).toEqual([])
+            } finally {
+                await db.query(`DELETE FROM "AttendancePunch" WHERE id LIKE 'bulk-%'`)
+                await clear()
+            }
         })
     })
 

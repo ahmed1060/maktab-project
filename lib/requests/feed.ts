@@ -50,6 +50,8 @@ type Source = {
     /** Which of this kind this person has on this tab; null when none. */
     where: (v: Viewer, q: FeedQuery) => Record<string, any> | null
     list: (v: Viewer, q: FeedQuery, where: Record<string, any>, take: number) => Promise<Listed>
+    /** What it adds to its rows on the page shown, once the page is cut: read for those alone. */
+    complete?: (rows: FeedRow[]) => Promise<FeedRow[]>
 }
 
 // --- Internal requests: a title and details, started then done ----------
@@ -473,24 +475,31 @@ const mission: Source = {
             }),
             prisma.missionRequest.count({ where }),
         ])
-        // The scans so far on the days of those waiting, for whoever decides them (decision 20): one read for the page.
-        const waiting = rows.filter(r => r.status === "PENDING" && r.userId !== v.id)
-        const punches = waiting.length === 0 ? [] : await prisma.attendancePunch.findMany({
-            where: {
-                status: "ACCEPTED", voidedAt: null,
-                OR: waiting.map(r => ({ userId: r.userId, punchAtLocal: { gte: r.startDate, lt: new Date(r.endDate.getTime() + 86_400_000) } })),
-            },
+        // Their scans come once the page is cut (complete, below).
+        return { rows: rows.map(r => missionRow(v, r, null)), total }
+    },
+    /**
+     * The scans so far on the days of those shown that whoever looks may
+     * decide (decision 20), every one of them: one read, for the page shown
+     * alone, which is ten missions at most, of 90 days each at most. Read for
+     * every row up to the page and stopped at a number, they came short (found
+     * by Codex on PR 283).
+     */
+    complete: async rows => {
+        const deciding = rows.filter(r => r.mission?.scans)
+        if (deciding.length === 0) return rows
+        const span = (r: FeedRow) => ({ gte: new Date(`${r.mission!.from}T00:00:00Z`), lt: new Date(`${addDays(r.mission!.to, 1)}T00:00:00Z`) })
+        const punches = await prisma.attendancePunch.findMany({
+            where: { status: "ACCEPTED", voidedAt: null, OR: deciding.map(r => ({ userId: r.who.id, punchAtLocal: span(r) })) },
             select: { userId: true, punchAtLocal: true },
             orderBy: { punchAtLocal: "asc" },
-            take: 2000,
         })
-        return {
-            rows: rows.map(r => {
-                const mine = punches.filter(p => p.userId === r.userId && p.punchAtLocal >= r.startDate && p.punchAtLocal.getTime() < r.endDate.getTime() + 86_400_000)
-                return missionRow(v, r, missionScans(mine))
-            }),
-            total,
-        }
+        return rows.map(r => {
+            if (!r.mission?.scans) return r
+            const { gte, lt } = span(r)
+            const theirs = punches.filter(p => p.userId === r.who.id && p.punchAtLocal >= gte && p.punchAtLocal < lt)
+            return { ...r, mission: { ...r.mission, scans: missionScans(theirs) } }
+        })
     },
 }
 
@@ -1288,5 +1297,14 @@ export async function requestFeed(v: Viewer, q: FeedQuery) {
     const shown = offered.filter(o => !q.kind || o.source.kind === q.kind)
     // Each kind's rows up to the end of the page shown, so the merge has them all.
     const lists = await Promise.all(shown.map(o => o.source.list(v, q, o.where, q.page * q.limit)))
-    return { ...pageOf(lists, q.page, q.limit), kinds }
+    const page = pageOf(lists, q.page, q.limit)
+    // What a kind adds to its rows, for the page shown alone.
+    let rows = page.rows
+    for (const { source } of shown) {
+        const own = source.complete ? rows.filter(r => r.kind === source.kind) : []
+        if (own.length === 0) continue
+        const done = new Map((await source.complete!(own)).map(r => [r.id, r]))
+        rows = rows.map(r => (r.kind === source.kind ? done.get(r.id) ?? r : r))
+    }
+    return { ...page, rows, kinds }
 }

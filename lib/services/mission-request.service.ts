@@ -173,8 +173,29 @@ export class MissionRequestService {
                 key: decision.approve ? "notice_att_mission_approved" : "notice_att_mission_rejected",
                 params: { when: whenParam(from, to), reason: reasonParam(rejectionReason) },
             }, id, tx)
-            return { companyId: m.companyId, userId: m.userId, from }
+            return { companyId: m.companyId, userId: m.userId, from, to }
         })
-        if (decision.approve) await recomputeAfter(out.companyId, out.from, [out.userId])
+        if (decision.approve) await reworkMission(out.companyId, out.userId, out.from, out.to)
     }
+}
+
+/**
+ * Once approved, a mission's days are worked out again from its first, and
+ * the days after them, as after any change. The engine's own cascade reaches
+ * a year back at most, which a mission asked near that edge can have passed
+ * while it waited: its months before that are worked out by name (found by
+ * Codex on PR 283).
+ */
+async function reworkMission(companyId: string, userId: string, from: string, to: string) {
+    const { AttendanceEngineService: Engine, monthsBetween, reworkFloor } = await import("./attendance-engine.service")
+    const floor = reworkFloor(await AttendanceCalendarService.today(companyId)).slice(0, 7)
+    for (const month of monthsBetween(from, to).filter(m => m < floor)) {
+        try {
+            await Engine.recomputeMonth(companyId, month, [userId])
+        } catch (error) {
+            // Never undoing the decision, as after any change (AttendanceEngineService.afterChange).
+            console.error("[attendance] recompute after a mission failed", companyId, month, error)
+        }
+    }
+    await recomputeAfter(companyId, from, [userId])
 }
