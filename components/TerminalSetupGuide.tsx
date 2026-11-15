@@ -123,7 +123,11 @@ export function SetupGuideSteps({ brand, superAdmin, directAllowed = false, serv
  * with Copy beside it, which says what it copies. Without the clipboard, the
  * box is chosen whole instead, ready to copy by hand.
  */
-export function CodeBox({ code }: { code: string }) {
+export function CodeBox({ code, scrolls = false }: {
+    code: string
+    /** Its box scrolls up and down as well as sideways, as a long body does (PR 294): the keyboard reaches it then, to scroll it. */
+    scrolls?: boolean
+}) {
     const { t } = useLanguage()
     const id = useId()
     const box = useRef<HTMLPreElement>(null)
@@ -144,7 +148,7 @@ export function CodeBox({ code }: { code: string }) {
     }
     return (
         <div className="ui-guide-code">
-            <pre ref={box} id={id} dir="ltr" translate="no"><code>{code}</code></pre>
+            <pre ref={box} id={id} dir="ltr" translate="no" tabIndex={scrolls ? 0 : undefined}><code>{code}</code></pre>
             <Button size="sm" icon={copied ? CheckIcon : CopyIcon} aria-describedby={id} onClick={() => { void copy() }}>
                 {copied ? t('att_guide_copied') : t('att_guide_copy')}
             </Button>

@@ -2,8 +2,10 @@ import { RateLimiter, getClientIp } from "@/lib/api-utils"
 import { AuditLogService } from "@/lib/services/audit-log.service"
 import { SystemSettingsService } from "@/lib/services/system-settings.service"
 import { AttendanceTerminalPushService } from "@/lib/services/attendance-terminal-push.service"
+import { TerminalFirstContactService } from "@/lib/services/terminal-first-contact.service"
 import { isNextInternalError } from "@/lib/next-internal-error"
-import { eventsOf } from "./hikvision-events"
+import { eventsOf, type TerminalEvent } from "./hikvision-events"
+import { bodyOf, headersOf, keepingFor, outcomeOf, roomFor } from "./terminal-first-contact"
 import { HIKVISION_ROUTE, isPushSecret } from "./terminal-secrets"
 
 /**
@@ -54,7 +56,15 @@ export async function receiveHikvision(req: Request, secret: string): Promise<Re
         if (terminal.refused) return answer(403)
         const { limited } = await RateLimiter.getLimitData(`terminal:${terminal.deviceId}`, PER_TERMINAL_PER_MINUTE, 60_000)
         if (limited) return answer(429)
-        await AttendanceTerminalPushService.receive(terminal.deviceId, await eventsOf(req), getClientIp(req.headers))
+        // Its first contacts are kept for the Super Admin (§17.8, PR 294). A
+        // body is read once, so a copy is taken first, only while one may
+        // still be kept: past its first 7 days nothing is looked up. What
+        // is kept is counted again when it is, with the terminal held.
+        const counts = terminal.live && keepingFor(terminal.firstContactAt, new Date()) ? await TerminalFirstContactService.counts(terminal.deviceId) : null
+        const copy = counts && roomFor(counts) ? req.clone() : null
+        const events = await eventsOf(req)
+        const taken = await AttendanceTerminalPushService.receive(terminal.deviceId, events, getClientIp(req.headers))
+        if (copy) await keepContact(terminal.deviceId, copy, secret, events, taken.stored)
         return answer(200)
     } catch (error) {
         if (isNextInternalError(error)) throw error
@@ -62,5 +72,23 @@ export async function receiveHikvision(req: Request, secret: string): Promise<Re
         console.error("Terminal API error:", HIKVISION_ROUTE, error)
         await AuditLogService.logSystemError({ error, route: HIKVISION_ROUTE, method: req.method, extra: { deviceId } })
         return answer(500)
+    }
+}
+
+/**
+ * Keeps a request among its terminal's first contacts. Only one that was
+ * taken is kept: one held is sent again until it is, and would fill the 50
+ * with copies. Keeping never holds a terminal: the request is answered
+ * whatever happens here, and a failure is recorded without the secret.
+ */
+async function keepContact(deviceId: string, copy: Request, secret: string, events: readonly TerminalEvent[] | null, stored: Parameters<typeof outcomeOf>[1]): Promise<void> {
+    try {
+        const { headers, others } = headersOf(copy.headers, secret)
+        const { body, kind } = await bodyOf(copy, secret)
+        await TerminalFirstContactService.keep(deviceId, { method: copy.method, path: HIKVISION_ROUTE, headers, otherHeaders: others, body, kind, outcome: outcomeOf(events, stored) })
+    } catch (error) {
+        if (isNextInternalError(error)) throw error
+        console.error("Terminal first contact not kept:", HIKVISION_ROUTE, error)
+        await AuditLogService.logSystemError({ error, route: HIKVISION_ROUTE, method: copy.method, extra: { deviceId, step: "first contact" } }).catch(() => {})
     }
 }

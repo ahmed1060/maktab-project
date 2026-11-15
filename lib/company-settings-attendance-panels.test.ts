@@ -209,7 +209,9 @@ describe("the fingerprint terminals", () => {
         expect(arabic).toContain(`aria-label="${ar.att_guide_button}" title="${ar.att_guide_button}"`)
         // The steps follow the brands the list offers, and whether a Super Admin reads them.
         const source = readFileSync("components/AttendanceTerminalsPanel.tsx", "utf8")
-        expect(source).toContain("<TerminalSetupGuide brands={devicesBody ? brands : null} loadFailed={!!devicesError} superAdmin={session?.user?.role === 'SUPER_ADMIN'}")
+        // Who is a Super Admin is worked out once, for the guide and for a terminal's first contacts (PR 294).
+        expect(source).toContain("const superAdmin = session?.user?.role === 'SUPER_ADMIN'")
+        expect(source).toContain("<TerminalSetupGuide brands={devicesBody ? brands : null} loadFailed={!!devicesError} superAdmin={superAdmin}")
     })
 
     it("are a card listing the agents and the terminals as rows, each with its state as a badge", async () => {

@@ -18,10 +18,14 @@ export async function workingNow(companyId: string, now = new Date()): Promise<b
 /**
  * Every company's agents and terminals, worst first, for the Super Admin's
  * System Health page: the same health the company's own tab shows.
+ *
+ * A company is listed for an agent it has, or for a terminal straight to
+ * Nizmo, which needs none (§17.7, PR 294); `direct` is how many of its
+ * terminals connect that way.
  */
 export async function terminalsOverview(now = new Date()) {
     const companies = await prisma.company.findMany({
-        where: { attendanceAgents: { some: { status: { not: "REVOKED" } } } },
+        where: { OR: [{ attendanceAgents: { some: { status: { not: "REVOKED" } } } }, { attendanceDevices: { some: { connection: "DIRECT", retiredAt: null } } }] },
         select: {
             id: true, name: true,
             attendanceAgents: { where: { status: { not: "REVOKED" } }, select: { id: true, name: true, status: true, lastSeenAt: true, lastSyncAt: true, agentVersion: true, queueDepth: true, clockDriftSeconds: true }, orderBy: { name: "asc" } },
@@ -40,6 +44,7 @@ export async function terminalsOverview(now = new Date()) {
             silent: devices.filter(d => d.state === "SILENT").length,
             memoryFull: devices.filter(d => d.memoryFull).length,
             clockOff: devices.filter(d => d.clockOff).length,
+            direct: c.attendanceDevices.filter(d => d.connection === "DIRECT").length,
         }
         const bad = agents.some(a => a.health === "SILENT") || terminals.unreachable + terminals.silent > 0
         const warn = terminals.memoryFull + terminals.clockOff > 0 || agents.some(a => (a.queueDepth ?? 0) > 0 && a.health !== "OK")

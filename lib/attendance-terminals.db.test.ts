@@ -416,7 +416,29 @@ describe.skipIf(!ADMIN_URL)("attendance agents, in Postgres", () => {
         const overview = await terminalsOverview(thursday)
         expect(overview.map(r => [r.name, r.tone, r.working])).toEqual([["One", "bad", true], ["Two", "ok", true]])
         expect(overview[0].agents.map(a => a.health)).toEqual(["SILENT"])
-        expect(overview[0].terminals).toEqual({ total: 1, ok: 0, unreachable: 1, silent: 0, memoryFull: 1, clockOff: 0 })
+        expect(overview[0].terminals).toEqual({ total: 1, ok: 0, unreachable: 1, silent: 0, memoryFull: 1, clockOff: 0, direct: 0 })
+        // A terminal straight to Nizmo is counted as one, and a company with no agent is listed for it (§17.7, PR 294).
+        await db.query(`INSERT INTO "Company"(id, name, timezone, "updatedAt") VALUES ('c-direct', 'Direct only', 'Africa/Cairo', now())`)
+        await db.query(
+            `INSERT INTO "AttendanceDevice"(id, "companyId", "serialNumber", name, protocol, connection, "lastSeenAt", "addedById", "updatedAt") VALUES
+             ('hk-own', 'c-direct', 'HK-1', 'Gate', 'HIKVISION', 'DIRECT', $1, 'a1', now()),
+             ('hk-gone', 'c-direct', 'HK-2', 'Old gate', 'HIKVISION', 'DIRECT', $1, 'a1', now()),
+             ('hk-two', 'c2', 'HK-3', 'Side door', 'HIKVISION', 'DIRECT', $1, 'a1', now())`,
+            [new Date(thursday.getTime() - 3_600_000)],
+        )
+        await db.query(`UPDATE "AttendanceDevice" SET "retiredAt" = now() WHERE id = 'hk-gone'`)
+        const withDirect = await terminalsOverview(thursday)
+        expect(withDirect.map(r => [r.name, r.tone, r.agents.length, r.terminals.total, r.terminals.ok, r.terminals.direct])).toEqual([
+            ["One", "bad", 1, 1, 0, 0],
+            // Heard from an hour ago: working, for a terminal that calls when someone scans.
+            ["Direct only", "ok", 0, 1, 1, 1],
+            ["Two", "ok", 1, 2, 2, 1],
+        ])
+        // A company whose only terminal straight to Nizmo is retired isn't listed for it.
+        await db.query(`UPDATE "AttendanceDevice" SET "retiredAt" = now() WHERE id = 'hk-own'`)
+        expect((await terminalsOverview(thursday)).map(r => r.name)).toEqual(["One", "Two"])
+        await db.query(`DELETE FROM "AttendanceDevice" WHERE id IN ('hk-own', 'hk-gone', 'hk-two')`)
+        await db.query(`DELETE FROM "Company" WHERE id = 'c-direct'`)
         // Friday: a PC switched off is not an alarm.
         const friday = new Date("2026-10-02T07:00:00Z")
         await db.query(`UPDATE "AttendanceAgent" SET "lastSeenAt" = $2 WHERE id = $1`, [quiet.id, new Date(friday.getTime() - 3_600_000)])

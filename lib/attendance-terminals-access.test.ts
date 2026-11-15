@@ -61,6 +61,12 @@ vi.mock("@/lib/services/attendance-device.service", () => ({
     },
 }))
 
+vi.mock("@/lib/services/terminal-first-contact.service", () => ({
+    TerminalFirstContactService: {
+        list: async (id: string) => { reached.push(`contacts:${id}`); return id === "d1" ? { name: "Lobby", firstContactAt: null, keptUntil: null, keeping: true, contacts: [] } : null },
+    },
+}))
+
 vi.mock("@/lib/services/attendance-ingest.service", () => ({
     AttendanceIngestService: {
         punches: async (agent: { companyId: string }, batch: any) => { reached.push(`punches:${agent.companyId}:${batch.punches.length}`); return { accepted: batch.punches.length, duplicates: 0, refused: [] } },
@@ -334,6 +340,21 @@ describe("the Super Admin's view of every company's terminals", () => {
         expect((await overview()).status).toBe(200)
         admin()
         expect((await overview()).status).toBe(403)
+    })
+
+    it("reads a terminal's first contacts alone: a company's own people are refused, whatever they hold (PR 294)", async () => {
+        const contacts = async (id: string) => (await import("@/app/api/attendance/devices/[id]/first-contacts/route")).GET(new Request(url(`/api/attendance/devices/${id}/first-contacts`)), params(id))
+        superAdmin()
+        expect((await contacts("d1")).status).toBe(200)
+        expect((await contacts("nobody")).status).toBe(404)
+        // Its own company's Admin, and whoever may set its terminals up, see what the terminal sends nowhere.
+        for (const who of [admin, installer, settingsEditor, viewer, employee]) {
+            who()
+            expect((await contacts("d1")).status).toBe(403)
+        }
+        state.session = null
+        expect((await contacts("d1")).status).toBe(401)
+        expect(reached).toEqual(["contacts:d1", "contacts:nobody"])
     })
 })
 

@@ -2410,14 +2410,47 @@ model AttendanceDevice {
   lastRefusal       String?
   /// Who added it by hand; empty for one an agent brought in.
   addedById         String?
+  /// When the first request was taken from it, straight to Nizmo: its
+  /// first contacts are kept for 7 days from then (§17.8).
+  firstContactAt    DateTime?
   company           Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   agent             AttendanceAgent?  @relation(fields: [agentId], references: [id], onDelete: SetNull)
   brand             TerminalBrand?    @relation(fields: [brandId], references: [id], onDelete: Restrict)
   punches           AttendancePunch[]
+  firstContacts     TerminalFirstContact[]
 
   @@unique([companyId, serialNumber])
   @@index([agentId])
   @@index([brandId])
+}
+
+/// One of the first requests a terminal straight to Nizmo sent, kept for
+/// the Super Admin to compare with what Nizmo expects (ATTENDANCE_PLAN.md
+/// §17.8): the first 50 for each terminal, 5 of a kind, in its first 7 days,
+/// each deleted after 7 days by the nightly job. Never the secret: `path`
+/// is the route's pattern.
+model TerminalFirstContact {
+  id           String           @id @default(uuid())
+  deviceId     String
+  receivedAt   DateTime         @default(now())
+  method       String
+  path         String
+  /// The headers that say how a terminal speaks, with their values; a
+  /// credential's scheme at most.
+  headers      Json
+  /// Every other header, by its name alone.
+  otherHeaders String[]         @default([])
+  /// Its body, with names, card numbers, pictures and templates taken out.
+  body         String
+  /// Its events' types, or `empty`, or `unreadable`.
+  kind         String
+  /// What Nizmo made of it: STORED, ALREADY, SKIPPED, REFUSED:<why>,
+  /// NOTHING, UNREADABLE or EMPTY.
+  outcome      String[]         @default([])
+  device       AttendanceDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, receivedAt])
+  @@index([receivedAt])
 }
 
 /// The protocols Nizmo and the agent speak to a terminal (ATTENDANCE_PLAN.md
