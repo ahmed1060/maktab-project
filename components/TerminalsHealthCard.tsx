@@ -23,7 +23,8 @@ import type { TranslationKey } from '@/lib/translations'
 type Company = {
     companyId: string; name: string; working: boolean; tone: 'ok' | 'warn' | 'bad'
     agents: { id: string; name: string; health: 'OK' | 'SILENT' | 'QUIET' | 'WAITING' | 'REVOKED'; queueDepth: number | null }[]
-    terminals: { total: number; ok: number; unreachable: number; silent: number; memoryFull: number; clockOff: number }
+    // `direct`: how many connect straight to Nizmo, with no agent between (§17.7, PR 294).
+    terminals: { total: number; ok: number; unreachable: number; silent: number; memoryFull: number; clockOff: number; direct?: number }
 }
 
 const TONE: Record<Company['tone'], StatusTone> = { ok: 'good', warn: 'waiting', bad: 'problem' }
@@ -72,6 +73,7 @@ export default function TerminalsHealthCard() {
                                 // The name in a run of its own, so it can't swap places with its state in Arabic.
                                 ...r.agents.map(a => <><bdi>{a.name}</bdi>: {t(`att_term_agent_${a.health}`)}</>),
                                 t('att_term_health_terminals').replace('{ok}', num(r.terminals.ok)).replace('{total}', num(r.terminals.total)),
+                                (r.terminals.direct ?? 0) > 0 && t('att_term_health_direct').replace('{n}', num(r.terminals.direct ?? 0)),
                                 r.terminals.unreachable > 0 && t('att_term_health_unreachable').replace('{n}', num(r.terminals.unreachable)),
                                 r.terminals.memoryFull > 0 && t('att_term_health_memory').replace('{n}', num(r.terminals.memoryFull)),
                                 r.terminals.clockOff > 0 && t('att_term_health_clock').replace('{n}', num(r.terminals.clockOff)),

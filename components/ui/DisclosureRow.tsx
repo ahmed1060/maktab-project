@@ -13,8 +13,11 @@ import { Icon } from './Icon'
  *
  * The lines are there while it's closed, hidden, so the button always names
  * what it opens.
+ *
+ * Where what it opens isn't lines of amounts, such as what a device sent
+ * (PR 294), it is given as children and drawn as given, under the row.
  */
-export function DisclosureRow({ title, detail, end, open, onToggle, label, lines }: {
+export function DisclosureRow({ title, detail, end, open, onToggle, label, lines, children }: {
     title: ReactNode
     detail?: ReactNode
     end?: ReactNode
@@ -23,7 +26,9 @@ export function DisclosureRow({ title, detail, end, open, onToggle, label, lines
     /** What the lines are, for screen readers ("Hana Ali's pay"). */
     label: string
     /** Each with its amount or value at the end. */
-    lines: { label: ReactNode; value: ReactNode }[]
+    lines?: { label: ReactNode; value: ReactNode }[]
+    /** What it opens when that isn't lines of amounts: drawn as given, in place of the lines. */
+    children?: ReactNode
 }) {
     const id = useId()
     return (
@@ -35,9 +40,13 @@ export function DisclosureRow({ title, detail, end, open, onToggle, label, lines
                 </button>
                 {end && <span className="ui-row-end">{end}</span>}
             </div>
-            <ul id={id} className="ui-row-lines" aria-label={label} hidden={!open}>
-                {lines.map((line, i) => <li key={i}><span>{line.label}</span><span className="ui-num">{line.value}</span></li>)}
-            </ul>
+            {children !== undefined
+                ? <div id={id} className="ui-row-more" role="group" aria-label={label} hidden={!open}>{children}</div>
+                : (
+                    <ul id={id} className="ui-row-lines" aria-label={label} hidden={!open}>
+                        {(lines ?? []).map((line, i) => <li key={i}><span>{line.label}</span><span className="ui-num">{line.value}</span></li>)}
+                    </ul>
+                )}
         </li>
     )
 }

@@ -745,7 +745,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      in #291 on 2026-11-15; then its second, Add a terminal with its
      address shown once, on Fingerprint terminals, merged in #292 on
      2026-11-15; then its third, what a scan keeps of its event, with the
-     terminal's time zone on its row there, #293;
+     terminal's time zone on its row there, merged in #293 on 2026-11-15;
+     then its fourth, a terminal's first contacts kept for the Super
+     Admin, read from its menu there, with how terminals connect on System
+     health, #294;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6397,3 +6400,14 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   beside Clock off, as "Time zone UTC+08:00, not the company's". No
   `DESIGN.md` change: it is a row's badge, as Clock off is. First
   contacts for the Super Admin come next, then the switch.
+- **2026-11-15:** First contacts kept for the Super Admin (#294;
+  `ATTENDANCE_PLAN.md` §17.8, Phase 4 part 5, the fourth of its five
+  PRs). Two things show, both to the Super Admin alone. On Fingerprint
+  terminals, the menu of a terminal straight to Nizmo gains **First
+  contacts**: a dialog listing the first requests it sent, in the order
+  they came, each a row that says what Nizmo made of it and when, and
+  opens onto what it sent, with names, card numbers, pictures and the
+  secret taken out (`DESIGN.md` §5.5, Dialog and Rows, in its own commit
+  first). On System health, the terminals list includes a company whose
+  terminals are all straight to Nizmo, and says how many of a company's
+  terminals connect that way. The switch comes next, the last of part 5.

@@ -57,7 +57,7 @@ export const NOT_SCANS: ReadonlySet<number> = new Set([
 export const MAX_USER_NUMBER = 32
 
 /** An event's text is a few hundred bytes. Past this, a part isn't one and isn't opened. */
-const MAX_EVENT_BYTES = 256 * 1024
+export const MAX_EVENT_BYTES = 256 * 1024
 
 /** What a scan keeps of its event (§17.5, PR 293): the event's own shape, with only the fields listed below. */
 export type KeptEvent = { [field: string]: string | number | boolean } & { AccessControllerEvent: { [field: string]: string | number | boolean } }
@@ -185,7 +185,7 @@ export function readEventText(text: string): TerminalEvent[] | null {
 }
 
 /** A picture by what it says it is, or by its name: never opened (§17.5). */
-const isPicture = (file: File) => file.type.startsWith("image/") || /\.(jpe?g|png|bmp|gif|webp)$/i.test(file.name)
+export const isPicture = (file: File) => file.type.startsWith("image/") || /\.(jpe?g|png|bmp|gif|webp)$/i.test(file.name)
 
 /**
  * A request's events, in whichever of the three shapes its body comes: a

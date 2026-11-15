@@ -3,7 +3,7 @@
 import { Fragment, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
-import { ArrowsClockwiseIcon, KeyIcon, PencilSimpleIcon, PlusIcon, ProhibitIcon, ArrowCounterClockwiseIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { ArrowsClockwiseIcon, KeyIcon, ListMagnifyingGlassIcon, PencilSimpleIcon, PlusIcon, ProhibitIcon, ArrowCounterClockwiseIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { fetcher, type SWRError } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -14,6 +14,7 @@ import { Button, Card, Dialog, DialogActions, EmptyState, Field, GuideButton, Ro
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import TerminalSetupGuide, { type GuideBrand } from '@/components/TerminalSetupGuide'
 import { TerminalAddDialog, TerminalAddressDialog } from '@/components/TerminalAddDialog'
+import { TerminalContactsDialog } from '@/components/TerminalContactsDialog'
 import { hasAddress, refusalWords } from '@/lib/attendance/terminal-connections'
 import { utcOffsetLabel } from '@/lib/attendance/terminal-health'
 
@@ -77,6 +78,7 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const { data: session } = useSession()
+    const superAdmin = session?.user?.role === 'SUPER_ADMIN'
     const now = useNow(30_000)
     const q = `?companyId=${encodeURIComponent(companyId)}`
     // Refreshed as heartbeats come in: health is the point of the panel.
@@ -87,6 +89,8 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
     const [shownCode, setShownCode] = useState<Shown | null>(null)
     const [shownAddress, setShownAddress] = useState<ShownAddress | null>(null)
     const [reissuing, setReissuing] = useState<Device | null>(null)
+    /** The terminal whose first contacts the Super Admin is reading (§17.8, PR 294). */
+    const [contactsOf, setContactsOf] = useState<Device | null>(null)
     const [revoking, setRevoking] = useState<Agent | null>(null)
     const [editing, setEditing] = useState<Device | null>(null)
     const [retiring, setRetiring] = useState<Device | null>(null)
@@ -198,12 +202,18 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
         { key: 'code', label: t(a.status === 'PENDING' ? 'att_term_new_code' : 'att_term_move_pc'), icon: ArrowsClockwiseIcon, onSelect: () => { void newCode(a) }, disabled: busy },
         { key: 'revoke', label: t('att_term_revoke'), icon: ProhibitIcon, danger: true, onSelect: () => setRevoking(a) },
     ]
+    // What a terminal straight to Nizmo sent in its first requests, for the Super Admin alone (§17.8, PR 294): the server refuses anyone else.
+    const contactsItem = (d: Device): MenuItem[] => (superAdmin && hasAddress(d) ? [{ key: 'contacts', label: t('att_term_contacts'), icon: ListMagnifyingGlassIcon, onSelect: () => setContactsOf(d) }] : [])
     const deviceMenu = (d: Device): MenuItem[] => d.retiredAt
-        ? [{ key: 'restore', label: t('att_term_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void send(`/api/attendance/devices/${d.id}/restore`, { method: 'POST' }, 'att_term_restored') }, disabled: busy }]
+        ? [
+            { key: 'restore', label: t('att_term_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void send(`/api/attendance/devices/${d.id}/restore`, { method: 'POST' }, 'att_term_restored') }, disabled: busy },
+            ...contactsItem(d),
+        ]
         : [
             { key: 'edit', label: t('edit'), icon: PencilSimpleIcon, onSelect: () => setEditing(d) },
             // A Hikvision terminal straight to Nizmo has an address of its own (§17.2, PR 292).
             ...(hasAddress(d) ? [{ key: 'address', label: t('att_term_new_address'), icon: KeyIcon, onSelect: () => setReissuing(d) }] : []),
+            ...contactsItem(d),
             { key: 'retire', label: t('att_term_retire'), icon: ProhibitIcon, danger: true, onSelect: () => setRetiring(d) },
         ]
     /** The address just issued, to show once: the path with its secret is kept nowhere else. */
@@ -312,8 +322,9 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
                 <TerminalAddressDialog name={shownAddress.name} path={shownAddress.path} host={window.location.host}
                     brand={brands.find(b => b.id === shownAddress.brandId) ?? null} onClose={() => setShownAddress(null)} />
             )}
+            {contactsOf && <TerminalContactsDialog deviceId={contactsOf.id} name={contactsOf.name} onClose={() => setContactsOf(null)} />}
             {/* The agent sends to this Nizmo, so its settings name the address it's opened on. */}
-            {guiding && <TerminalSetupGuide brands={devicesBody ? brands : null} loadFailed={!!devicesError} superAdmin={session?.user?.role === 'SUPER_ADMIN'} directAllowed={directAllowed} server={window.location.origin} onClose={() => setGuiding(false)} />}
+            {guiding && <TerminalSetupGuide brands={devicesBody ? brands : null} loadFailed={!!devicesError} superAdmin={superAdmin} directAllowed={directAllowed} server={window.location.origin} onClose={() => setGuiding(false)} />}
             {editing && (
                 <TerminalDialog device={editing} brands={brands} busy={busy} onClose={() => setEditing(null)} onSubmit={async change => {
                     await send(`/api/attendance/devices/${editing.id}`, { method: 'PATCH', body: JSON.stringify(change) }, 'att_term_saved', () => setEditing(null))

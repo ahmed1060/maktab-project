@@ -9,6 +9,7 @@ import { JobHeartbeatService } from "@/lib/services/job-heartbeat.service"
 import { AttendanceChallengeService } from "@/lib/services/attendance-challenge.service"
 import { sweepExpiredCounts } from "@/lib/sign-in-lock"
 import { UserService } from "@/lib/services/user.service"
+import { TerminalFirstContactService } from "@/lib/services/terminal-first-contact.service"
 
 // F-18: pruneOldLogs/pruneOldNotifications existed already (used by the
 // manual maintenance-page buttons) but nothing scheduled them, so audit
@@ -30,7 +31,7 @@ export async function GET(req: Request) {
             return ApiResponse.unauthorized("Unauthorized")
         }
 
-        const [logs, notifications, challenges, counts, tabs] = await JobHeartbeatService.run("prune", () => Promise.all([
+        const [logs, notifications, challenges, counts, tabs, contacts] = await JobHeartbeatService.run("prune", () => Promise.all([
             MaintenanceService.pruneOldLogs(),
             MaintenanceService.pruneOldNotifications(),
             // The check-in app's one-time numbers, a day after they ran out (ATTENDANCE_PLAN.md §9.2).
@@ -40,9 +41,11 @@ export async function GET(req: Request) {
             sweepExpiredCounts(),
             // Open tabs that left unheard, past the window (lib/presence.ts).
             UserService.pruneOpenTabs(),
+            // A terminal's first contacts, 7 days after each came (ATTENDANCE_PLAN.md §17.8).
+            TerminalFirstContactService.prune(),
         ]))
 
-        return ApiResponse.success({ logs, notifications, challenges: challenges.count, counts, tabs })
+        return ApiResponse.success({ logs, notifications, challenges: challenges.count, counts, tabs, contacts })
     } catch (error: any) {
         if (isNextInternalError(error)) throw error
         console.error('Prune cron failed:', error)

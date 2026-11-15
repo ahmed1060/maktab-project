@@ -12,8 +12,9 @@ built in two PRs, the Super Admin's list in #279 and the brand on each
 terminal in #280; part 4, one terminal whichever way it connects, is
 built in #290; part 5, Hikvision straight to Nizmo, is split in five PRs,
 the first, the address a terminal sends to, built in #291, the second,
-Add a terminal with its address shown once, in #292, and the third, what
-a scan keeps of its event, in #293; the rest is not built.
+Add a terminal with its address shown once, in #292, the third, what
+a scan keeps of its event, in #293, and the fourth, first contacts kept
+for the Super Admin, in #294; the rest is not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
@@ -1134,10 +1135,15 @@ model AttendanceDevice, DeviceCredential, UserDeviceMapping   // terminals, §17
 //   id, name (unique, case aside), protocol ZKTECO | HIKVISION,
 //   notesEn?, notesAr? (where its settings are in its menu),
 //   createdById, createdAt, updatedAt, retiredAt?
-// model TerminalFirstContact: deviceId, receivedAt, method, path (secret
-//   removed), headers Json, body (pictures, templates and names taken out);
-//   the first 50 for each terminal straight to Nizmo, deleted after 7 days
-//   by the nightly job (§17.8).
+// model TerminalFirstContact: deviceId, receivedAt, method, path (the
+//   route's pattern, never the secret), headers Json (the ones Nizmo knows),
+//   otherHeaders String[] (every other header, by name alone), body (names,
+//   card numbers, pictures and templates taken out), kind (its events'
+//   types), outcome String[] (what Nizmo made of it); the first 50 for each
+//   terminal straight to Nizmo, 5 of a kind, deleted after 7 days by the
+//   nightly job (§17.8).
+// On AttendanceDevice: firstContactAt DateTime?, when the first request
+//   was taken from it: first contacts are kept for 7 days from then.
 // On AttendancePunch: a partial unique index over (companyId, sourceKey)
 //   where source is AGENT or DEVICE_PUSH, so a scan is counted once whichever
 //   way it came (§17.6).
@@ -2036,9 +2042,9 @@ yet (Add a terminal does, §20, part 5), and the company's switch is off
   failure names the route as `/api/terminals/hikvision/[secret]`, and
   anything sent to the error tracker has the secret taken out of every
   address in it.
-- **Not yet:** first contacts kept, what a scan keeps of its event
-  (`rawPayload`), and saying on the terminal's card that its offset and
-  the company's time zone disagree. They come with the PRs below (§20).
+- **Since then:** what a scan keeps of its event (`rawPayload`) and the
+  terminal's own time zone on its card came in #293 (§17.5), and first
+  contacts kept in #294 (§17.8).
 
 ### 17.3 Straight to Nizmo: ZKTeco
 
@@ -2371,7 +2377,7 @@ second PR, §20). What the build settled:
 - **Not in this PR:** Change connection, since no protocol has both ways
   yet. It comes with part 6, the first that gives a protocol both (§20).
   The Super Admin's terminals list showing each terminal's connection
-  comes with first contacts, part 5's third PR.
+  came with first contacts, in #294 (§17.8).
 
 ### 17.8 Proving it on real terminals
 
@@ -2389,6 +2395,79 @@ None of this can be tried without the terminals, and the build has none. So:
 - **The trial:** one terminal for each protocol, at a company that agrees, on
   the production address, for a week. It answers the questions in §18, and
   the switch stays off for everyone else until it passes.
+
+**Built in #294: first contacts kept**, for a Hikvision terminal straight
+to Nizmo (part 5's fourth PR, §20). What the build settled:
+
+- **What is kept:** a request Nizmo takes from the terminal, answered
+  200, in the terminal's first 7 days: up to 50 in all, and up to 5 of a
+  kind. A kind is the request's event types, such as a heartbeat or a
+  passed check by face, or a body that couldn't be read, or an empty one.
+  Without the 5, a terminal that sends a heartbeat every few seconds
+  would fill the 50 before anyone scanned. Both limits hold when
+  requests come at once: what is kept is counted again as each is kept,
+  one at a time for a terminal.
+- **A request held isn't kept.** One answered 403, 429 or 500 is sent
+  again until it is taken, so keeping it would fill the 50 with copies.
+- **Each is kept for 7 days**, then deleted by the nightly job that
+  prunes the logs. After the terminal's first 7 days nothing more is
+  kept, and nothing is looked up for it.
+- **With each:** when it came, its method, the route by its pattern
+  (never the address, which is the secret), its headers, its body, its
+  kind, and what Nizmo made of it: a scan stored, already there or from
+  before the company's terminals started, what was refused and why,
+  nothing to keep, unreadable, or empty.
+- **Headers:** the ones a terminal sends that say how it speaks (content
+  type and length, user agent, what it accepts, connection, host) are
+  kept with their values. `Authorization` keeps its scheme alone, and a
+  cookie only that it was there. Every other header is kept by name
+  alone: the hosting adds its own, and some of those are credentials.
+- **Bodies:** JSON and XML are kept with every name but the terminal's
+  own, card numbers, pictures and their addresses, templates and any
+  long text taken out, each replaced by a note of what was there. A
+  form's pictures are never opened: the part's name, type and size are
+  kept. Text that is neither JSON nor XML is kept to its first 600
+  characters, with what looks like a name or a card number taken out.
+  The secret is replaced wherever it appears, and a body is cut at 8,000
+  characters. A body, or a part of a form, longer than Nizmo reads an
+  event from (256 KB) isn't opened: only its length is kept. Employee
+  numbers stay, as on the punch.
+  - What a field's name says it holds, everything under it holds: a
+    picture's address inside its picture goes with it, in XML as in
+    JSON, and so does what is under a name or a card. An XML element's
+    attributes go by the same rules as its elements.
+  - A form's field goes by its own name too: one called `name` is
+    somebody's name, whatever it holds.
+  - A picture's address, or its file's name, is taken out whatever its
+    field is called.
+  - A text that holds fields of its own, such as an event sent as text
+    or an address with a query, is read by the same rules, with its
+    escapes undone first.
+  - Text that can't be read as JSON or XML, such as an event cut short,
+    is read field by field all the same: a value goes by its field's
+    name and by what its field is under, whether it is text or a number.
+    There a number of 6 digits or more is taken out wherever it is: a
+    field's name can't always be relied on, and such a number can't be
+    told from a card's.
+  - (The first three from the first review on #294, the last from the
+    second.)
+- **Only the Super Admin reads them**, from the terminal's menu on
+  Fingerprint terminals: **First contacts** (`DESIGN.md` §5.5, Dialog),
+  in the order they came, each a row that opens onto what it sent. A
+  company's own people are refused by the server. While it's open the
+  list is read again every 10 seconds, so a request appears as the
+  terminal sends it during a trial.
+- **Keeping never holds a terminal.** If keeping fails, or counting
+  what is kept does before the request is taken, the request is taken
+  and answered all the same, and the failure is recorded without the
+  secret.
+- **System health:** the Super Admin's terminals list (#177) now lists a
+  company whose only terminals are straight to Nizmo, and says how many
+  of a company's terminals connect that way (§17.7).
+- **Not in this PR:** looking again once the 7 days are over. If the
+  trial needs it, a Super Admin action reopens it.
+- **The migration only adds:** the `TerminalFirstContact` table, and
+  `firstContactAt` on a terminal, empty until its first request is taken.
 
 ### 17.9 Terminal brands, a list kept from the screen (round 9)
 
@@ -2688,7 +2767,7 @@ matching with liveness, fallback to flagged.
 It stays switched off meanwhile, on the face check meant for testing only;
 choosing a commercial SDK (§18, question 1) waits with it.
 
-### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 begun in #291 to #293
+### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 begun in #291 to #294
 
 Planned in #269, for ZKTeco and Hikvision alike (§17.1–§17.11). It replaces
 the earlier Phase 4, a listener for pushes on the agent and nothing else,
@@ -2734,6 +2813,7 @@ which becomes part 8 below. Each part is its own PR:
       with first contacts, and is its own to keep each small.
    4. First contacts kept, for the Super Admin (§17.8), with each
       terminal's connection on the Super Admin's terminals list (§17.7).
+      Built in #294.
    5. The straight-to-Nizmo switch on the company's Attendance tab
       (§17.8), last, when everything it turns on is there.
 6. **ZKTeco straight to Nizmo** (§17.3): the `/iclock` routes, outside the

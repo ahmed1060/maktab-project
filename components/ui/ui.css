@@ -1240,6 +1240,30 @@
   line-height: var(--leading-sm);
   text-align: start;
 }
+/* What a device sent, kept to be read (DESIGN.md §5.5, Dialog; PR 294): a
+   list in the order it came, each a row that opens onto what it sent, in
+   boxes that scroll inside themselves. */
+.ui-dialog:has(.ui-contacts) {
+  width: min(100%, 640px);
+}
+.ui-contacts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.ui-contacts > p {
+  margin: 0;
+}
+/* A long body stays a few lines tall, and scrolls inside its box both ways. */
+.ui-contacts .ui-guide-code pre {
+  max-height: calc(var(--leading-sm) * 16);
+  overflow: auto;
+}
+/* A box the keyboard reaches to scroll shows where the focus is. */
+.ui-guide-code pre:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 2px;
+}
 /* What to set on a device, shown once (DESIGN.md §5.5, Dialog; PR 292): each
    setting under the name the device gives it, one under the other. */
 .ui-device-settings {
@@ -3530,6 +3554,15 @@ a.ui-row:focus-visible {
 }
 .ui-card .ui-row-lines {
   padding-inline: var(--space-4) 0;
+}
+/* What a row opens when that isn't lines of amounts, such as what a device
+   sent (PR 294): drawn as given, under the row, as wide as it. */
+.ui-row-more {
+  min-width: 0;
+  padding-block: 0 var(--space-3);
+}
+.ui-row-more[hidden] {
+  display: none;
 }
 /* A link of the row's own at its end, such as a person's payslip. */
 .ui-row-link {

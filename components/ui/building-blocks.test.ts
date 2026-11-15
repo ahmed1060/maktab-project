@@ -417,6 +417,18 @@ describe("page layout, sections, rows and tiles", () => {
         expect(opened).toMatch(/<ul id="[^"]+" class="ui-row-lines" aria-label="Hana Ali&#x27;s pay">/)
     })
 
+    it("a row that opens onto something other than lines of amounts draws it as given, hidden until it's open (PR 294)", () => {
+        const row = (open: boolean) => render(h("ol", { className: "ui-rows" }, h(ui.DisclosureRow, {
+            title: "A scan, stored", detail: "14 Sept 2026", open, onToggle: () => {}, label: "What it sent",
+        }, h("pre", null, "POST /x"))))
+        const closed = row(false)
+        const id = closed.match(/aria-controls="([^"]+)"/)![1]
+        expect(closed).toContain(`<div id="${id}" class="ui-row-more" role="group" aria-label="What it sent" hidden=""><pre>POST /x</pre></div>`)
+        // In place of the lines, never beside them.
+        expect(closed).not.toContain("ui-row-lines")
+        expect(row(true)).toMatch(/aria-expanded="true".*<div id="[^"]+" class="ui-row-more" role="group" aria-label="What it sent"><pre>/)
+    })
+
     it("a tile can link to what it counts and carry a note", () => {
         const html = render(h(ui.TotalTiles, { items: [
             { label: "Task reviews", value: 3, href: "/dashboard/tasks?status=PENDING_CONFIRMATION" },

@@ -24,12 +24,16 @@ export class AttendanceTerminalPushService {
      * add-on, and with terminals straight to Nizmo switched on (§17.8).
      * Null when the secret is nobody's, or its terminal speaks another
      * protocol.
+     *
+     * `firstContactAt`: when its first request was taken, for keeping its
+     * first contacts (§17.8, PR 294); `live`: it is straight to Nizmo and
+     * not retired, the only terminal whose contacts are kept.
      */
-    static async bySecret(secret: string, protocol: "HIKVISION"): Promise<{ deviceId: string; refused: PushRefusal | null } | null> {
+    static async bySecret(secret: string, protocol: "HIKVISION"): Promise<{ deviceId: string; refused: PushRefusal | null; firstContactAt: Date | null; live: boolean } | null> {
         const device = await prisma.attendanceDevice.findUnique({
             where: { pushSecretHash: hashSecret(secret) },
             select: {
-                id: true, protocol: true,
+                id: true, protocol: true, connection: true, retiredAt: true, firstContactAt: true,
                 company: { select: { isBanned: true, terminalsDirectAllowed: true, package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } } } },
             },
         })
@@ -37,7 +41,7 @@ export class AttendanceTerminalPushService {
         const refused = device.company.isBanned ? "COMPANY_BANNED"
             : !hasBundle(resolveBundles(device.company.package), "ATTENDANCE_TERMINALS") ? "TERMINALS_NOT_INCLUDED"
                 : !device.company.terminalsDirectAllowed ? "DIRECT_NOT_ALLOWED" : null
-        return { deviceId: device.id, refused }
+        return { deviceId: device.id, refused, firstContactAt: device.firstContactAt, live: device.connection === "DIRECT" && !device.retiredAt }
     }
 
     /**
