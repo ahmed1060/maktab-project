@@ -3,7 +3,7 @@ import { request } from "node:http"
 import { connect, type Socket } from "node:net"
 import * as agent from "../src/zk/adms"
 import * as nizmo from "../../lib/attendance/zkteco-adms"
-import { callerAddress, listen, type PushListener, type PushSink } from "../src/zk/listener"
+import { callerAddress, canonicalAddress, listen, type PushListener, type PushSink } from "../src/zk/listener"
 import type { Logger } from "../src/sync"
 
 /**
@@ -97,16 +97,16 @@ describe("what the agent takes of a request, and answers", () => {
 
     it("never opens changes to the people it holds, and moves their stamp", () => {
         const taken = agent.take(asked("POST", "/iclock/cdata?SN=CB123&table=OPERLOG&OpStamp=11"), null, "ATTLOG=120;OPERLOG=9", 0)
-        expect(taken).toEqual({ answer: "OK\n", scans: [], unreadable: 0, cursor: "ATTLOG=120;OPERLOG=11", info: null })
+        expect(taken).toEqual({ kind: "people", answer: "OK\n", scans: [], unreadable: 0, cursor: "ATTLOG=120;OPERLOG=11", info: null })
     })
 
     it("answers a poll with no command, and keeps what it says of itself", () => {
         const taken = agent.take(asked("GET", "/iclock/getrequest?SN=CB123&INFO=Ver 6.60,12,3,4501"), null, null, 0)
-        expect(taken).toEqual({ answer: "OK\n", scans: [], unreadable: 0, cursor: null, info: { firmware: "Ver 6.60", userCount: 12, recordCount: 4501 } })
+        expect(taken).toEqual({ kind: "poll", answer: "OK\n", scans: [], unreadable: 0, cursor: null, info: { firmware: "Ver 6.60", userCount: 12, recordCount: 4501 } })
     })
 
     it("answers anything else and drops it unread", () => {
-        expect(agent.take(asked("POST", "/iclock/devicecmd?SN=CB123"), null, null, 0)).toEqual({ answer: "OK\n", scans: [], unreadable: 0, cursor: null, info: null })
+        expect(agent.take(asked("POST", "/iclock/devicecmd?SN=CB123"), null, null, 0)).toEqual({ kind: "other", answer: "OK\n", scans: [], unreadable: 0, cursor: null, info: null })
     })
 })
 
@@ -117,6 +117,18 @@ describe("the address a request comes from", () => {
         expect(callerAddress("FE80::1")).toBe("fe80::1")
         expect(callerAddress(undefined)).toBeNull()
         expect(callerAddress("::ffff:not-an-address")).toBe("::ffff:not-an-address")
+    })
+
+    // Codex on PR 305: an IPv6 address written out in full arrives in its shortest form.
+    it("is compared in one form, however agent.json writes it", () => {
+        expect(canonicalAddress("0:0:0:0:0:0:0:1")).toBe("::1")
+        expect(canonicalAddress("FE80:0000:0000:0000:0000:0000:0000:0001")).toBe("fe80::1")
+        expect(canonicalAddress("2001:db8:0:0:1:0:0:1")).toBe("2001:db8::1:0:0:1")
+        expect(canonicalAddress("::FFFF:192.168.1.40")).toBe("192.168.1.40")
+        expect(canonicalAddress("::ffff:c0a8:128")).toBe("192.168.1.40")
+        expect(canonicalAddress(" 192.168.1.40 ")).toBe("192.168.1.40")
+        expect(canonicalAddress("side-door.office")).toBeNull()
+        expect(callerAddress("0:0:0:0:0:0:0:1")).toBe("::1")
     })
 })
 
@@ -203,7 +215,12 @@ describe("the listener on the office network, against a simulated terminal", () 
         const { base, sink } = await start(["127.0.0.1"])
         const res = await send(base, "POST", "/iclock/cdata?SN=CB123&table=OPERLOG&OpStamp=4", "USER PIN=7\tName=Somebody\n7\t2026-11-16 09:05:00\n")
         expect(res).toMatchObject({ status: 200, text: "OK\n" })
-        expect(sink.kept[0].taken).toEqual({ answer: "OK\n", scans: [], unreadable: 0, cursor: "ATTLOG=0;OPERLOG=4", info: null })
+        expect(sink.kept[0].taken).toEqual({ kind: "people", answer: "OK\n", scans: [], unreadable: 0, cursor: "ATTLOG=0;OPERLOG=4", info: null })
+    })
+
+    it("takes a terminal named in another form of its address (Codex on PR 305)", async () => {
+        const { base } = await start(["::FFFF:127.0.0.1"])
+        expect((await send(base, "GET", "/iclock/cdata?SN=CB123&options=all")).status).toBe(200)
     })
 
     it("refuses an address no terminal in agent.json is at, with nothing in it, and logs it once an hour", async () => {

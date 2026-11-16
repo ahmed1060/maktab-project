@@ -31,8 +31,10 @@ describe("the config file, for a terminal that pushes", () => {
         expect(c.pushers).toEqual([{ host: "192.168.1.40", name: "Side door" }])
         expect(c.listenPort).toBe(8081)
         expect(config([{ host: "192.168.1.40", push: true, protocol: "ZKTeco" }], { listenPort: 9000 })).toMatchObject({ pushers: [{ host: "192.168.1.40", name: null }], listenPort: 9000 })
-        // As a request's address is read: an IPv6 one in small letters.
+        // As a request's address is read: an IPv6 one in its shortest form, in small letters (Codex on PR 305).
         expect(config([{ host: "FE80::1", push: true }]).pushers[0].host).toBe("fe80::1")
+        expect(config([{ host: "0:0:0:0:0:0:0:1", push: true }]).pushers[0].host).toBe("::1")
+        expect(config([{ host: "::ffff:192.168.1.40", push: true }]).pushers[0].host).toBe("192.168.1.40")
         // "push": false is a terminal the agent reads, as without it.
         expect(config([{ host: "192.168.1.40", push: false }]).devices).toHaveLength(1)
         expect(config([]).pushers).toEqual([])
@@ -47,6 +49,9 @@ describe("the config file, for a terminal that pushes", () => {
         expect(refused({ name: "x".repeat(81) })).toThrow("80 characters")
         expect(refused({ host: "192.168.1.20" })).toThrow("Terminal 2 is at 192.168.1.20, where a terminal the agent reads is: one terminal is read or pushes, not both.")
         expect(() => config([{ host: "192.168.1.40", push: true }, { host: "192.168.1.40", push: true }])).toThrow("The same terminal is listed twice.")
+        // The same address, written two ways.
+        expect(() => config([{ host: "::1", push: true }, { host: "0:0:0:0:0:0:0:1", push: true }])).toThrow("The same terminal is listed twice.")
+        expect(() => config([{ host: "0:0:0:0:0:0:0:1" }, { host: "::1", push: true }])).toThrow("one terminal is read or pushes, not both")
         for (const listenPort of [0, 70000, "x", 80.5]) expect(refused({}, { listenPort })).toThrow('"listenPort" must be a number from 1 to 65535.')
     })
 
@@ -242,7 +247,15 @@ describe("a terminal that pushes to the agent", () => {
         await agent.round()
         expect(saved().pushers["127.0.0.1"].pushCursor).toBeNull()
         await agent.listen(0, "127.0.0.1")
+        // What it sends before it asks for its options doesn't undo that (Codex on PR 305): its scans are taken, its stamps stay at 0.
+        expect((await upload(6, "8\t2026-11-16 09:10:00\n")).status).toBe(200)
+        expect(saved().queue.map(p => p.userNumber)).toEqual(["8"])
+        expect(saved().pushers["127.0.0.1"]).toMatchObject({ pushCursor: null, resend: true })
         expect((await options()).text).toContain("\nStamp=0\n")
+        // Told 0, it sends from there, and its stamps move on as before.
+        expect(saved().pushers["127.0.0.1"].resend).toBeUndefined()
+        expect((await upload(7, "7\t2026-11-16 09:05:00\n")).status).toBe(200)
+        expect(saved().pushers["127.0.0.1"].pushCursor).toBe("ATTLOG=7;OPERLOG=0")
     })
 
     it("doesn't listen without a terminal that pushes", async () => {

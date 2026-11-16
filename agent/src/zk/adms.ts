@@ -166,6 +166,8 @@ export function infoOf(value: string | null): TerminalInfo | null {
 
 /** What the agent takes of one request that is a named terminal's, and answers it. */
 export type Taken = {
+    /** What the request was: its options asked for, scans, and so on (PR 305). */
+    kind: AdmsRequest["kind"]
     /** The answer's text, sent with 200 once what's below is kept. */
     answer: string
     /** Its scans, for the queue. */
@@ -187,7 +189,7 @@ export type Taken = {
  * again.
  */
 export function take(asked: AdmsRequest, body: string | null, kept: string | null, offsetMinutes: number | null): Taken {
-    const nothing: Taken = { answer: "OK\n", scans: [], unreadable: 0, cursor: null, info: null }
+    const nothing: Taken = { kind: asked.kind, answer: "OK\n", scans: [], unreadable: 0, cursor: null, info: null }
     switch (asked.kind) {
         case "options":
             return { ...nothing, answer: optionsAnswer(asked.serial, cursorOf(kept), offsetMinutes) }

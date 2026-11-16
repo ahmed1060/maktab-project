@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs"
-import { isIP } from "node:net"
+import { canonicalAddress } from "./zk/listener"
 
 /**
  * What an office sets up once, in agent.json beside the agent: where the
@@ -99,11 +99,11 @@ export function parseConfig(raw: unknown): AgentConfig {
         if (d.push !== undefined && typeof d.push !== "boolean") throw new ConfigError(`${which}: "push" must be true or false.`)
         if (d.push === true) {
             if (protocol !== "zkteco") throw new ConfigError(`${which}: "push" is for a ZKTeco terminal.`)
-            const host = d.host.trim()
-            if (!isIP(host)) throw new ConfigError(`${which}: "host" must be its IP address on this network, such as 192.168.1.40, for a terminal that pushes.`)
+            // In the form a request's address is read in (agent/src/zk/listener.ts), however it's written here.
+            const host = canonicalAddress(d.host)
+            if (!host) throw new ConfigError(`${which}: "host" must be its IP address on this network, such as 192.168.1.40, for a terminal that pushes.`)
             if (d.port !== undefined) throw new ConfigError(`${which} pushes to the agent on "listenPort": it has no "port" of its own.`)
-            // As a request's address is read (agent/src/zk/listener.ts): an IPv6 one in small letters.
-            pushers.push({ host: host.toLowerCase(), name, which })
+            pushers.push({ host, name, which })
         } else {
             devices.push(readDevice(d, which, protocol, name))
         }
@@ -113,7 +113,7 @@ export function parseConfig(raw: unknown): AgentConfig {
     const pushed = pushers.map(p => p.host)
     if (new Set(pushed).size !== pushed.length) throw new ConfigError("The same terminal is listed twice.")
     for (const p of pushers) {
-        if (devices.some(d => d.host.toLowerCase() === p.host)) throw new ConfigError(`${p.which} is at ${p.host}, where a terminal the agent reads is: one terminal is read or pushes, not both.`)
+        if (devices.some(d => (canonicalAddress(d.host) ?? d.host.toLowerCase()) === p.host)) throw new ConfigError(`${p.which} is at ${p.host}, where a terminal the agent reads is: one terminal is read or pushes, not both.`)
     }
     const listenPort = c.listenPort === undefined ? 8081 : c.listenPort
     if (typeof listenPort !== "number" || !Number.isInteger(listenPort) || listenPort < 1 || listenPort > 65535) throw new ConfigError('"listenPort" must be a number from 1 to 65535.')

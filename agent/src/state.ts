@@ -20,10 +20,12 @@ export type QueuedPunch = { serialNumber: string; userNumber: string; at: string
  * A terminal that pushes to the agent (ATTENDANCE_PLAN.md §17.12, PR 305),
  * by its address: which terminal called from there; where it had got to,
  * as Nizmo keeps it for one straight to Nizmo ("ATTLOG=120;OPERLOG=9");
- * `direct` when Nizmo has it set straight to Nizmo, so it's held; and what
- * its polls say of it.
+ * `direct` when Nizmo has it set straight to Nizmo, so it's held; what
+ * its polls say of it; and `resend` when its stamps were started again
+ * from 0 and it hasn't asked for its options since: until it does, what
+ * it sends doesn't move them (Codex on PR 305).
  */
-export type Pusher = { serialNumber: string | null; pushCursor: string | null; direct?: boolean; info?: TerminalInfo | null }
+export type Pusher = { serialNumber: string | null; pushCursor: string | null; direct?: boolean; info?: TerminalInfo | null; resend?: boolean }
 
 /** How far into a terminal's log the agent has read: its position, and the last record there to be sure. */
 export type Cursor = { count: number; lastKey: string | null }

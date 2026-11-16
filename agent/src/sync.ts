@@ -234,7 +234,11 @@ export class SyncAgent {
                 remembered.hikCursor = null
             }
             // A terminal that pushes sends from the stamps it's told when it asks for its options, as it does when it restarts.
-            for (const pusher of Object.values(this.state.pushers)) pusher.pushCursor = null
+            // They stay at 0 until it does: what it sends meanwhile mustn't move them on again (Codex on PR 305).
+            for (const pusher of Object.values(this.state.pushers)) {
+                pusher.pushCursor = null
+                pusher.resend = true
+            }
             // Kept now: a round with no terminal to read saves nothing else.
             this.state.readFrom = from
             this.save()
@@ -522,7 +526,9 @@ export class SyncAgent {
 
     /**
      * Keeps what was taken of a terminal's request: its scans queued from
-     * sendFrom on, its stamps moved, and the state saved, in one write. If
+     * sendFrom on, its stamps moved, and the state saved, in one write. Its
+     * stamps started again from 0 stay there until it has asked for its
+     * options and been told so (`resend`). If
      * the write fails, the queue and the terminal are put back as they were
      * and the error passes on, so the terminal is answered 500 and sends it
      * again.
@@ -535,10 +541,9 @@ export class SyncAgent {
             : { serialNumber: serial, pushCursor: null, direct: false, info: null }
         if (taken.info) pusher.info = taken.info
         const queued = this.enqueue(serial, taken.scans, this.config.sendFrom ?? this.state.sendFrom)
-        if (taken.cursor) pusher.pushCursor = taken.cursor
-        const changed = before?.serialNumber !== serial || taken.scans.length > 0 || pusher.pushCursor !== before?.pushCursor
-            || JSON.stringify(pusher.info ?? null) !== JSON.stringify(before?.info ?? null)
-        if (!changed) return
+        if (taken.kind === "options") delete pusher.resend
+        else if (taken.cursor && !pusher.resend) pusher.pushCursor = taken.cursor
+        if (taken.scans.length === 0 && JSON.stringify(pusher) === JSON.stringify(before ?? null)) return
         this.state.pushers[host] = pusher
         try {
             this.save()
