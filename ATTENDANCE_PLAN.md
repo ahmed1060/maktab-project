@@ -3246,7 +3246,10 @@ second PR), released as agent 0.4.0. What the build settled:
   `"push": true` and its IP address: a name such as `side-door.office`
   can't be matched against where a request comes from. It takes no
   `"port"`: it calls the agent's `"listenPort"`. One address can't be both
-  read and pushing.
+  read and pushing. The address is compared in one form however it's
+  written: an IPv6 one in its shortest form, so `0:0:0:0:0:0:0:1` is
+  `::1`, and an IPv4 one written inside an IPv6 one as the IPv4 address
+  (Codex on #305).
 - What the agent keeps of it is apart from the terminals it reads, by its
   address: its serial number, where it had got to, whether Nizmo has it
   set straight to Nizmo, and what its polls say of it.
@@ -3257,8 +3260,9 @@ second PR), released as agent 0.4.0. What the build settled:
   were, and the terminal sends it again.
 - Its scans before `sendFrom` aren't queued, and its stamp moves past them,
   as a read terminal's cursor does. Set earlier, its stamps start again
-  from 0, and it sends its memory again the next time it asks for its
-  options, as it does when it restarts.
+  from 0 and stay there, whatever it sends meanwhile, until it next asks
+  for its options, as it does when it restarts (Codex on #305). Told 0,
+  it sends its memory again.
 - The service starts listening before its first round. If it can't, as
   when another program holds the port, it says so in the log, reads the
   other terminals, reports each that pushes as unreachable with the reason,
