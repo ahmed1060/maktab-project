@@ -310,11 +310,16 @@ export class AttendanceDeviceService {
      * terminal is saved, so the Super Admin can't change its protocol,
      * retire it or delete it meanwhile: whichever comes second sees the
      * first. Once picked, a brand can be changed but not taken off.
+     *
+     * The terminal's own row is held first, so a heartbeat changing its
+     * protocol at that moment (takeProtocol) is waited for, and the brand is
+     * checked against the protocol it then has (Codex on PR 301).
      */
     static async update(id: string, input: { name?: string; mode?: "ANY" | "ENTRANCE" | "EXIT"; brandId?: string }, actorId: string) {
         const name = input.name?.trim()
         if (input.name !== undefined && !name) fail("DEVICE_NAME_REQUIRED")
         return prisma.$transaction(async tx => {
+            await tx.$queryRaw`SELECT id FROM "AttendanceDevice" WHERE id = ${id} FOR UPDATE`
             const before = await tx.attendanceDevice.findUnique({
                 where: { id }, select: { companyId: true, name: true, mode: true, serialNumber: true, protocol: true, brandId: true, brand: { select: { name: true } } },
             }) ?? fail("DEVICE_NOT_FOUND")

@@ -222,25 +222,29 @@ describe("on Fingerprint terminals", () => {
         expect(PANEL).toContain("d.connection === 'AGENT' && !d.reachable && d.lastError,")
     })
 
-    it("points the setup guide to Add a terminal for a model the company may connect straight to Nizmo, above the agent's steps", async () => {
+    it("points the setup guide to Add a terminal for a model the company may connect straight to Nizmo", async () => {
         const { SetupGuideSteps } = await import("@/components/TerminalSetupGuide")
         const steps = (locale: "en" | "ar", props: object) => {
             state.locale = locale
             return renderToStaticMarkup(h(SetupGuideSteps, { brand: HIK, superAdmin: false, server: "https://nizmo.example", ...props }))
         }
-        // Every model the agent reads keeps its steps either way, Hikvision's too from PR 301; where it may be added straight to Nizmo, a line above them says so (PR 297).
-        for (const brand of [ZK, HIK]) {
-            expect(steps("en", { brand, directAllowed: false })).toMatch(/^<ol class="ui-guide-steps"/)
-            expect(steps("en", { brand })).toMatch(/^<ol class="ui-guide-steps"/)
-            expect(steps("en", { brand, directAllowed: true }).startsWith(`<p class="ui-card-note">${esc(en.att_guide_direct_too)}</p><ol class="ui-guide-steps"`)).toBe(true)
-            expect(steps("ar", { brand, directAllowed: true }).startsWith(`<p class="ui-card-note">${esc(ar.att_guide_direct_too)}</p><ol class="ui-guide-steps"`)).toBe(true)
-        }
+        expect(steps("en", { directAllowed: true })).toBe(`<p class="ui-card-note">${en.att_guide_direct}</p>`)
+        expect(steps("ar", { directAllowed: true })).toBe(`<p class="ui-card-note">${ar.att_guide_direct}</p>`)
+        // Off, it can't be read: its steps are written (PR 301) but held back until the agent reads Hikvision's, part 7's third PR (Codex on PR 301).
+        expect(steps("en", { directAllowed: false })).toBe(`<p class="ui-card-note">${esc(en.att_guide_not_read)}</p>`)
+        expect(steps("en", {})).toBe(`<p class="ui-card-note">${esc(en.att_guide_not_read)}</p>`)
+        // A model the agent reads keeps its steps either way; where it may be added straight to Nizmo too, a line above them says so (PR 297).
+        expect(steps("en", { brand: ZK, directAllowed: false })).toMatch(/^<ol class="ui-guide-steps"/)
+        expect(steps("en", { brand: ZK, directAllowed: true }).startsWith(`<p class="ui-card-note">${esc(en.att_guide_direct_too)}</p><ol class="ui-guide-steps"`)).toBe(true)
+        expect(steps("ar", { brand: ZK, directAllowed: true }).startsWith(`<p class="ui-card-note">${esc(ar.att_guide_direct_too)}</p><ol class="ui-guide-steps"`)).toBe(true)
         expect(PANEL).toContain("directAllowed={directAllowed} server={window.location.origin}")
+        // Held back by what's built, not by the brand: part 7's third PR shows them by building the agent's way.
+        expect(readFileSync("components/TerminalSetupGuide.tsx", "utf8")).toContain("if (!mayConnect(brand.protocol, 'AGENT', directAllowed)) return <p className=\"ui-card-note\">")
     })
 })
 
 describe("the words", () => {
-    const KEYS = Object.keys(en).filter(k => /^att_term_(add_device|device_added|device_WAITING|serial_(label|hint|required)|brand_(pick|required)|add_brand_hint|connection|waiting_agent|calls_from|refused_line|refusal_|new_address|address_)/.test(k)).concat("att_guide_direct_too")
+    const KEYS = Object.keys(en).filter(k => /^att_term_(add_device|device_added|device_WAITING|serial_(label|hint|required)|brand_(pick|required)|add_brand_hint|connection|waiting_agent|calls_from|refused_line|refusal_|new_address|address_)/.test(k)).concat("att_guide_direct")
 
     it("are there in both languages, with the same slots", () => {
         expect(KEYS.length).toBeGreaterThanOrEqual(40)

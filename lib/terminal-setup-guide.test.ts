@@ -95,7 +95,7 @@ describe("the steps, by the model's protocol", () => {
         expect(connect.lines.find(l => l.text === "att_guide_brand")).toEqual({ text: "att_guide_brand", brand: true })
     })
 
-    it("walks Hikvision's through the agent in the same five steps (PR 301)", () => {
+    it("walks Hikvision's through the agent in the same five steps, written in PR 301 and shown once the agent reads them", () => {
         const steps = setupGuide("HIKVISION", { superAdmin: true, server: SERVER })
         expect(steps.map(s => [s.title, s.who])).toEqual(setupGuide("ZKTECO", { superAdmin: true, server: SERVER }).map(s => [s.title, s.who]))
     })
@@ -146,7 +146,7 @@ describe("the steps, by the model's protocol", () => {
 
 describe("its words", () => {
     const used = () => {
-        const keys = new Set<string>(["att_guide_button", "att_guide_model", "att_guide_model_pick", "att_guide_pick_first", "att_guide_direct_too", "att_guide_no_models", "att_guide_copy", "att_guide_copied", "att_guide_model_notes", "att_guide_model_notes_other"])
+        const keys = new Set<string>(["att_guide_button", "att_guide_model", "att_guide_model_pick", "att_guide_pick_first", "att_guide_not_read", "att_guide_direct", "att_guide_direct_too", "att_guide_no_models", "att_guide_copy", "att_guide_copied", "att_guide_model_notes", "att_guide_model_notes_other"])
         for (const [superAdmin, protocol] of [[true, "ZKTECO"], [false, "ZKTECO"], [true, "HIKVISION"], [false, "HIKVISION"]] as const) {
             for (const step of setupGuide(protocol, { superAdmin, server: SERVER })) {
                 keys.add(step.title)
@@ -192,6 +192,8 @@ describe("its words", () => {
         expect(ar.att_guide_silent).toContain(ar.att_term_agent_SILENT)
         expect(en.att_guide_unreachable).toContain(en.att_term_device_UNREACHABLE)
         expect(ar.att_guide_unreachable).toContain(ar.att_term_device_UNREACHABLE)
+        expect(en.att_guide_not_read).toContain(en.punch_tab_import)
+        expect(ar.att_guide_not_read).toContain(ar.punch_tab_import)
     })
 })
 
@@ -258,12 +260,11 @@ describe("the guide's steps on screen", () => {
         expect(other).toContain(esc(en.att_guide_download_other.split("`")[0]))
     })
 
-    it("shows Hikvision's steps, the agent's settings for it in their box", async () => {
+    it("says a model the agent can't read yet isn't, with no steps: Hikvision's are held back until the agent that reads them is released (Codex on PR 301)", async () => {
         for (const locale of ["en", "ar"] as const) {
             const html = await guide({ brand: HIK }, locale)
-            expect(html).toMatch(/^<ol class="ui-guide-steps"/)
-            expect(html).toContain(esc('"protocol": "hikvision",'))
-            expect(html).toContain("nizmo-agent.exe probe hikvision TERMINAL-ADDRESS AGENT-USER")
+            expect(html).toBe(`<p class="ui-card-note">${esc((locale === "ar" ? ar : en).att_guide_not_read)}</p>`)
+            expect(html).not.toContain("nizmo-agent.exe probe hikvision")
         }
     })
 })

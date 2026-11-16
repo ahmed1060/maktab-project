@@ -193,7 +193,8 @@ describe.skipIf(!ADMIN_URL)("changing how a terminal connects, in Postgres", () 
     })
 
     describe("a Hikvision terminal", () => {
-        it("set to the agent, moved straight to Nizmo, is issued its address, shown once, and moves back to the agent, its secret gone (PR 301)", async () => {
+        it("set to the agent, moved straight to Nizmo, is issued its address, shown once; it can't move back until the agent reads Hikvision", async () => {
+            // Only the database, or an agent of part 7's third PR reporting one, can hold one; until that agent is released, none moves to it (Codex on PR 301).
             const hik = (await db.query(`SELECT id FROM "TerminalBrand" WHERE name = 'Hikvision'`)).rows[0].id
             await db.query(
                 `INSERT INTO "AttendanceDevice"(id, "companyId", "serialNumber", name, protocol, "brandId", connection, "addedById", "updatedAt") VALUES ('hik-1', 'c1', 'HK-1', 'Lobby', 'HIKVISION', $1, 'AGENT', 'a1', now())`,
@@ -204,13 +205,8 @@ describe.skipIf(!ADMIN_URL)("changing how a terminal connects, in Postgres", () 
             const secret = moved.path!.split("/").at(-1)!
             expect(isPushSecret(secret)).toBe(true)
             expect(await row("hik-1")).toMatchObject({ connection: "DIRECT", pushSecretHash: hashSecret(secret), allowedAddresses: [] })
-            const back = await Devices.changeConnection("hik-1", { connection: "AGENT" }, "a1")
-            expect(back.path).toBeNull()
-            expect(await row("hik-1")).toMatchObject({ connection: "AGENT", protocol: "HIKVISION", brandId: hik, pushSecretHash: null, pushCursor: null })
-            expect((await audit("hik-1")).at(-1)).toEqual({
-                action: "UPDATE_ATTENDANCE_DEVICE", userId: "a1",
-                details: { companyId: "c1", serialNumber: "HK-1", name: "Lobby", connection: { from: "DIRECT", to: "AGENT" } },
-            })
+            await expect(Devices.changeConnection("hik-1", { connection: "AGENT" }, "a1")).rejects.toThrow("DEVICE_CONNECTION_NOT_BUILT")
+            expect((await row("hik-1")).pushSecretHash).toBe(hashSecret(secret))
         })
     })
 

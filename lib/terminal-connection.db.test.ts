@@ -405,6 +405,30 @@ describe.skipIf(!ADMIN_URL)("one terminal whichever way it connects, in Postgres
             expect((await protocolChanges(id))[1]).toMatchObject({ protocol: { from: "HIKVISION", to: "ZKTECO" }, brand: { from: "Hikvision", to: null } })
         })
 
+        // Codex on PR 301: a brand picked while a heartbeat corrects the protocol was checked against the old one.
+        it("holds a brand being picked until a heartbeat changing its protocol is done, then refuses one that no longer speaks it", async () => {
+            const agent = await agentOf("c1", "Race PC")
+            const [{ deviceId }] = (await Devices.heartbeat(agent, beat([{ serialNumber: "PROTO-3", reachable: true }]))).devices
+            const id = deviceId!
+            const heartbeat = new Client({ connectionString: process.env.POSTGRES_PRISMA_URL })
+            await heartbeat.connect()
+            try {
+                // The heartbeat holds the terminal's row, as takeProtocol does, while an Admin picks a ZKTeco brand.
+                await heartbeat.query("BEGIN")
+                await heartbeat.query(`SELECT id FROM "AttendanceDevice" WHERE id = $1 FOR UPDATE`, [id])
+                const picking = Devices.update(id, { brandId: await brandId("Convoy") }, "a1").then(() => "saved", (e: Error) => e.message)
+                const waiting = async () => Number((await db.query(`SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'`)).rows[0].count)
+                for (let i = 0; i < 100 && await waiting() === 0; i++) await new Promise(r => setTimeout(r, 50))
+                expect(await waiting()).toBe(1)
+                await heartbeat.query(`UPDATE "AttendanceDevice" SET protocol = 'HIKVISION', "brandId" = NULL WHERE id = $1`, [id])
+                await heartbeat.query("COMMIT")
+                expect(await picking).toContain("DEVICE_BRAND_PROTOCOL")
+            } finally {
+                await heartbeat.end()
+            }
+            expect(await device(id)).toMatchObject({ protocol: "HIKVISION", brandId: null })
+        })
+
         it("is left alone on a terminal straight to Nizmo or retired", async () => {
             const agent = await agentOf("c1", "Left alone PC")
             const [{ deviceId }] = (await Devices.heartbeat(agent, beat([{ serialNumber: "PROTO-2", reachable: true }]))).devices

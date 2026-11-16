@@ -11,7 +11,8 @@ import type { TranslationKey } from "@/lib/translations"
  * something goes wrong. ZKTeco's and Hikvision's differ at the office, in
  * `agent.json` and `probe`, and in what goes wrong with signing in
  * (§17.4): Hikvision's terminal has a user made on it for the agent, where
- * ZKTeco's has a comm key (PR 301).
+ * ZKTeco's has a comm key (PR 301). The guide shows a protocol's steps only
+ * once the agent's way is built for it (terminal-connections.ts).
  *
  * Each line is a translation key, with what's typed after it in a box of its
  * own, exactly as the agent takes it, never translated. Inside a sentence,
