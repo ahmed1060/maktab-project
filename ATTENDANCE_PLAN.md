@@ -2250,13 +2250,28 @@ Hikvision terminal until part 7's third PR. What the build settled:
   minor types Nizmo counts as one when a terminal sends straight to it
   (§17.2), held in step by a test. Each keeps its employee number and
   its wall time; one with no employee number, such as a card issued to
-  nobody, is no one's scan and is skipped.
+  nobody, is no one's scan and is skipped. The number is read as text,
+  or as a number where the text is empty, as Nizmo reads one sent
+  straight to it (found by Codex on #300).
 - **Where it had got to** is the last event read: its serial number,
   which is the terminal's own order, and its time. The search asks from
   a day before that time, so a clock set back by hours still shows, and
   keeps the events past that serial number. If every event it finds is
-  numbered below it, the terminal's log was cleared or restarted: those
-  from the cursor's time on are kept, and Nizmo stores each scan once.
+  numbered below it, or the one numbered as it isn't the event it was
+  (a new log already numbered that far), the terminal's log was cleared
+  or restarted: those from the cursor's time on are kept, and Nizmo
+  stores each scan once.
+- **The first read** asks from a day before its first day too, and keeps
+  the scans from that day on by the terminal's wall clock. So a terminal
+  whose clock doesn't say its offset from UTC loses none of that day's
+  first hours.
+- **A long history,** such as a first read from months back or a
+  terminal the agent hasn't reached for weeks, is read over several
+  rounds: a read takes at most 1,000 pages (30,000 events), and the next
+  goes on from where it stopped. One that can't get past where it had
+  got to, more events in a day than a read takes, is an error rather
+  than a read that never moves. The last three were found by Codex on
+  #300.
 - **A terminal that doesn't answer** is given up on: each request has
   one deadline, ten seconds unless set, over opening the connection, the
   handshake over HTTPS and the reply. Past it the connection is closed,
