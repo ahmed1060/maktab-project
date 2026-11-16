@@ -761,7 +761,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      Nizmo, merged in #298 on 2026-11-16; then its fourth, first contacts
      kept for a ZKTeco terminal, for the Super Admin, merged in #299 on
      2026-11-16; then part 7's first PR, the agent's Hikvision client,
-     which changes no screen, #300;
+     which changes no screen, merged in #300 on 2026-11-16; then its
+     second, Hikvision through the office agent in Add a terminal,
+     Change connection and the setup guide, with Nizmo taking a
+     terminal's protocol from the agent, #301;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6496,3 +6499,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   PRs). The office agent can sign in to a Hikvision terminal and read
   who it is, its clock and its passed checks, though nothing uses it
   yet. No screen changes.
+- **2026-11-16:** Hikvision through the office agent on the screens
+  (#301; `ATTENDANCE_PLAN.md` §17.4, §17.7, Phase 4 part 7, the second
+  of its three PRs). Add a terminal offers a Hikvision terminal through
+  the office agent as well as straight to Nizmo, and Change connection
+  moves it between the two. The setup guide has Hikvision's steps
+  through the agent. Nizmo takes each terminal's protocol from the
+  agent that reads it.
