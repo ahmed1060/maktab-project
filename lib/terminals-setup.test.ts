@@ -75,8 +75,9 @@ describe("for the companies already there (PR 278)", () => {
 describe("the company's switch", () => {
     it("is a field of the Attendance tab only the Super Admin sets", () => {
         const tab = settingsTab("attendance")!
-        expect(tab.fields).toEqual(["terminalsSetupByCompany"])
-        expect(tab.superAdminOnly).toEqual(["terminalsSetupByCompany"])
+        // With the straight-to-Nizmo switch beside it (PR 295, lib/terminals-direct-switch.test.ts).
+        expect(tab.fields).toEqual(["terminalsSetupByCompany", "terminalsDirectAllowed"])
+        expect(tab.superAdminOnly).toEqual(["terminalsSetupByCompany", "terminalsDirectAllowed"])
         expect(maySetField({ role: "ADMIN", companyId: "c1" }, "attendance", "terminalsSetupByCompany")).toBe(false)
         expect(maySetField({ role: "SUPER_ADMIN" }, "attendance", "terminalsSetupByCompany")).toBe(true)
     })
@@ -189,17 +190,28 @@ describe("on the Attendance tab", () => {
         expect(off).toContain(en.att_term_setup_label)
         expect(off).toContain(en.att_term_setup_off_hint.replace(/'/g, "&#x27;"))
         expect(off).toContain(`>${en.att_term_setup_off_badge}<`)
-        expect(off).toContain(`>${en.att_term_setup_turn_on}<`)
+        expect(off).toContain(`>${en.settings_turn_on}<`)
         const on = await card(true)
         expect(on).toContain(en.att_term_setup_on_hint.replace(/'/g, "&#x27;"))
         expect(on).toContain(`>${en.att_term_setup_on_badge}<`)
-        expect(on).toContain(`>${en.att_term_setup_turn_off}<`)
+        expect(on).toContain(`>${en.settings_turn_off}<`)
+    })
+
+    it("its row's button is the short one the other settings' switches have, and the question's says in full what it does (PR 295)", () => {
+        // On a phone in English its longer button lay over the row's words: a row's end is at most 60% of the row.
+        const source = stripComments(readFileSync("components/TerminalsSetupCard.tsx", "utf8"))
+        expect(source).toContain("onClick={() => { void save(false) }}>{t('settings_turn_off')}</Button>")
+        expect(source).toContain("onClick={() => setAsking(true)}>{t('settings_turn_on')}</Button>")
+        expect(source).toContain("}}>{t('att_term_setup_turn_on')}</Button>")
+        // Turning it off asks nothing, so its longer words have no place left.
+        expect("att_term_setup_turn_off" in en).toBe(false)
+        expect("att_term_setup_turn_off" in ar).toBe(false)
     })
 
     it("in Arabic, its badge saying what its hint does", async () => {
         const off = await card(false, "ar")
         expect(off).toContain(ar.att_term_setup_title)
-        expect(off).toContain(ar.att_term_setup_turn_on)
+        expect(off).toContain(`>${ar.settings_turn_on}<`)
         expect(ar.att_term_setup_off_hint.startsWith(`${ar.att_term_setup_off_badge}:`)).toBe(true)
         expect(ar.att_term_setup_on_hint.startsWith(`${ar.att_term_setup_on_badge}:`)).toBe(true)
         expect(en.att_term_setup_off_hint.startsWith(`${en.att_term_setup_off_badge}:`)).toBe(true)
@@ -214,7 +226,7 @@ describe("on the Attendance tab", () => {
 
     it("shows the card to the Super Admin alone, for a company holding the Terminals add-on", () => {
         const tabs = readFileSync("components/CompanySettingsTabs.tsx", "utf8")
-        expect(tabs).toMatch(/superAdmin && company\.terminalsOffered && \(\s*<TerminalsSetupCard/)
+        expect(tabs).toMatch(/superAdmin && company\.terminalsOffered && \(\s*<>\s*<TerminalsSetupCard/)
         const route = readFileSync("app/api/company-settings/route.ts", "utf8")
         expect(route).toContain(`shown.terminalsOffered = hasBundle(resolveBundles(company.package), "ATTENDANCE_TERMINALS")`)
     })

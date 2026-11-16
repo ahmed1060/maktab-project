@@ -14,13 +14,18 @@ import { offsetMsIn } from "@/lib/time"
  * migrations: whose request it is, what is held and what is answered, what
  * is stored, and what is counted on the terminal.
  *
- * Nothing gives a terminal its secret or turns a company's switch on yet,
- * so the tests set both in the database.
+ * The tests give a terminal its secret and turn its company's switch on in
+ * the database. The switch itself, the Super Admin's on the company's
+ * Attendance tab (§17.8, PR 295), is saved through the service in its own
+ * tests at the end.
  */
 
 const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
 const MIGRATIONS = readdirSync("prisma/migrations").filter(m => m !== "migration_lock.toml").sort((a, b) => (a === "0_init" ? -1 : b === "0_init" ? 1 : a.localeCompare(b)))
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
+
+// The company service reaches for the logo's storage when it loads: nothing here uploads.
+vi.mock("@/lib/storage", () => ({ supabase: { storage: { from: () => ({ exists: async () => ({ data: true }), remove: async () => ({ data: [], error: null }) }) } }, uploadToCloud: async () => { throw new Error("no uploads here") } }))
 
 const BEFORE_ROLES = `
 INSERT INTO "Company"(id, name, timezone, "updatedAt") VALUES ('c1', 'One', 'Africa/Cairo', now()), ('c2', 'Two', 'Africa/Cairo', now());
@@ -387,6 +392,55 @@ describe.skipIf(!ADMIN_URL)("the address a Hikvision terminal sends to, in Postg
             expect(listed.get("first")).toMatchObject({ utcOffsetMinutes: null, health: { zoneOff: false } })
             // What a punch keeps is never on the list.
             expect(JSON.stringify([...listed.values()])).not.toContain("rawPayload")
+        })
+    })
+    describe("the Super Admin's switch (PR 295)", () => {
+        const SARA = { user: { id: "sa1", role: "SUPER_ADMIN", name: "Sara Admin" } } as any
+        const allowed = async (id: string) => (await db.query(`SELECT "terminalsDirectAllowed" AS on FROM "Company" WHERE id = $1`, [id])).rows[0].on as boolean
+        const logged = async (id: string) => (await db.query(
+            `SELECT "userId", "superAdminId", details->'terminalsDirectAllowed' AS change FROM "AuditLog" WHERE action::text = 'UPDATE_COMPANY' AND "entityId" = $1 AND details ? 'terminalsDirectAllowed' ORDER BY "createdAt"`, [id],
+        )).rows
+
+        it("holds a terminal's scans once it is off and takes them once it is on again, each turn written to the audit log", async () => {
+            await db.query(`INSERT INTO "SuperAdmin"(id, email, password, "firstName", "lastName", username, "updatedAt") VALUES ('sa1', 'sa1@x', 'p', 'Sara', 'Admin', 'sa1', now()) ON CONFLICT (id) DO NOTHING`)
+            const { CompanyService } = await import("@/lib/services/company.service")
+            const secret = await terminal("switched")
+            const scan = json(access("7", "2026-09-22T09:00:00"))
+            try {
+                // On, as the tests above left it: saving the same again changes nothing and logs nothing.
+                expect(await allowed("c1")).toBe(true)
+                await CompanyService.update({ id: "c1", terminalsDirectAllowed: true } as any, SARA)
+                expect(await logged("c1")).toEqual([])
+
+                await CompanyService.update({ id: "c1", terminalsDirectAllowed: false } as any, SARA)
+                expect(await allowed("c1")).toBe(false)
+                // Held, not dropped: nothing of the request is on the terminal or stored.
+                expect((await send(secret, ...scan)).status).toBe(403)
+                expect(await punchesOf("switched")).toEqual([])
+                expect(await device("switched")).toMatchObject({ lastSeenAt: null, refusedCount: 0, firstContactAt: null })
+
+                await CompanyService.update({ id: "c1", terminalsDirectAllowed: true } as any, SARA)
+                // The terminal sends it again, and it is taken.
+                expect((await send(secret, ...scan)).status).toBe(200)
+                expect(await punchesOf("switched")).toMatchObject([{ userId: "e1", hardwareUserId: "7", at: "2026-09-22T09:00:00" }])
+
+                expect(await logged("c1")).toEqual([
+                    { userId: null, superAdminId: "sa1", change: { old: true, new: false } },
+                    { userId: null, superAdminId: "sa1", change: { old: false, new: true } },
+                ])
+            } finally {
+                await db.query(`UPDATE "Company" SET "terminalsDirectAllowed" = true WHERE id = 'c1'`)
+            }
+        })
+
+        it("leaves a terminal through the agent, and every other company, as they were", async () => {
+            const { CompanyService } = await import("@/lib/services/company.service")
+            await db.query(`INSERT INTO "Company"(id, name, timezone, "updatedAt") VALUES ('c9', 'Nine', 'Africa/Cairo', now())`)
+            await CompanyService.update({ id: "c9", terminalsDirectAllowed: true } as any, SARA)
+            expect(await allowed("c9")).toBe(true)
+            expect(await allowed("c1")).toBe(true)
+            // Nothing about who sets its terminals up moved with it.
+            expect((await db.query(`SELECT "terminalsSetupByCompany" AS on FROM "Company" WHERE id = 'c9'`)).rows[0].on).toBe(false)
         })
     })
 })

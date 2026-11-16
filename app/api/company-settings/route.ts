@@ -35,6 +35,7 @@ export const GET = withStandardHandler(async (req, session) => {
             autoVerifyLocation: true, cashAdvancesAllowed: true, cashAdvancesOn: true, costNamesFromListOnly: true, confirmHighRisk: true, logoUrl: true, brandColour: true,
             payrollDay: true, payslipsVisible: true, timezone: true, debtRecoveryPercent: true,
             terminalsSetupByCompany: true,
+            terminalsDirectAllowed: true,
         },
     })
     if (!company) return ApiResponse.notFound("Company not found")

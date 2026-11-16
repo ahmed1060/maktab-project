@@ -56,9 +56,12 @@ export default function TerminalsSetupCard({ companyId, on, onSaved }: {
                     detail={t(on ? 'att_term_setup_on_hint' : 'att_term_setup_off_hint')}
                     end={<>
                         <StatusBadge tone={on ? 'good' : 'neutral'}>{t(on ? 'att_term_setup_on_badge' : 'att_term_setup_off_badge')}</StatusBadge>
+                        {/* The short words the other settings' switches use (PR 295): a
+                            longer button lay over the row's words on a phone. The
+                            question's button says in full what turning it on does. */}
                         {on
-                            ? <Button size="sm" busy={saving} onClick={() => { void save(false) }}>{t('att_term_setup_turn_off')}</Button>
-                            : <Button size="sm" variant="primary" disabled={saving} onClick={() => setAsking(true)}>{t('att_term_setup_turn_on')}</Button>}
+                            ? <Button size="sm" busy={saving} onClick={() => { void save(false) }}>{t('settings_turn_off')}</Button>
+                            : <Button size="sm" variant="primary" disabled={saving} onClick={() => setAsking(true)}>{t('settings_turn_on')}</Button>}
                     </>}
                 />
             </ul>

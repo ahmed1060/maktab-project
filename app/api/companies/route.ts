@@ -19,7 +19,8 @@ export const GET = withStandardHandler(async (req, session) => {
             where: { id },
             select: {
                 id: true, name: true, isBanned: true, autoVerifyLocation: true, cashAdvancesAllowed: true, cashAdvancesOn: true, costNamesFromListOnly: true, confirmHighRisk: true,
-                terminalsSetupByCompany: true,
+                // The Attendance tab's two switches, the Super Admin's (ATTENDANCE_PLAN.md §17.10, §17.8).
+                terminalsSetupByCompany: true, terminalsDirectAllowed: true,
                 moduleLabels: true, moduleIcons: true, logoUrl: true, brandColour: true,
                 payrollDay: true, payslipsVisible: true, timezone: true, debtRecoveryPercent: true,
                 adminSettingsEnabled: true, adminSettingsTabs: true,
