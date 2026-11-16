@@ -769,7 +769,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      reading Hikvision, released as 0.3.0, which changes no screen,
      merged in #302 on 2026-11-16; then its fourth and last, Hikvision
      through the office agent offered in Add a terminal, Change
-     connection and the setup guide, #303;
+     connection and the setup guide, merged in #303 on 2026-11-16; then
+     part 8's first PR, the agent's listener on the office network for
+     ZKTeco terminals that push only plain HTTP, which changes no
+     screen, #304;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6525,3 +6528,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   where to see it and how to update an older one, and what to do when
   a terminal's certificate changes. Moving one to the agent says so
   when none of the company's agents reads Hikvision yet.
+- **2026-11-16:** The office agent's listener, for terminals that push
+  only plain HTTP (#304; `ATTENDANCE_PLAN.md` §17.12, Phase 4 part 8,
+  the first of its three PRs). The agent can answer a ZKTeco terminal
+  that sends its scans to the agent's PC on the office network, as
+  Nizmo answers one that sends to it, though nothing starts it yet.
+  No screen changes.
