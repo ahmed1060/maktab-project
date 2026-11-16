@@ -3275,6 +3275,40 @@ second PR), released as agent 0.4.0. What the build settled:
 - Its options carry the company's time zone, the one the agent was given
   when it was enrolled.
 
+**Built in #306: the setup guide's steps for a terminal that sends**
+(part 8's third and last PR, §20). The agent that listens, 0.4.0, is
+built by the Attendance agent workflow (#305). What the build settled:
+
+- **Which way, asked in the guide.** For a ZKTeco model, the guide asks
+  under the model how its scans reach the agent: the agent reads them,
+  picked to start with, or the terminal sends them to the agent
+  (`DESIGN.md` §5.5, Dialog). A line under it says which terminals the
+  way picked is for. The brand doesn't say it: one model can do either,
+  by its firmware, and Nizmo sees both as a ZKTeco terminal through the
+  office agent.
+- **Its steps:** at the office, the terminal's address and the PC's
+  made fixed, since each knows the other by it; installing 0.4.0 or
+  later, with where to see an installed agent's version and how to
+  update an older one, as for Hikvision (#303); `agent.json` naming it
+  by its address with `"push": true`; the Windows Firewall rule, from
+  its address alone, as the README has it, and the network profile the
+  rule needs; and its Cloud Server Setting. There's no `probe` for it:
+  the agent's log says when it first calls.
+- **The firewall rule is one line,** wider than the guide's box at every
+  width, so its box scrolls sideways and takes focus, to be scrolled from
+  the keyboard, as a long body's does (#294). Found in the web interface
+  audit.
+- **Older scans:** `sendFrom` set earlier takes the service restarted,
+  then the terminal, which asks for its options as it starts and is
+  told to send its memory again (#305).
+- **What goes wrong:** not heard from, the agent's log saying it hasn't
+  called yet, the agent's port in use, a call from an address
+  `agent.json` doesn't name, and the agent's key revoked and the clock,
+  as for a terminal read.
+- **Not for it:** straight to Nizmo, which takes only HTTPS (§17.1). The
+  line saying a model can be added straight to Nizmo too isn't shown for
+  a terminal that sends to the agent.
+
 ---
 
 ## 18. Open questions
@@ -3407,7 +3441,7 @@ matching with liveness, fallback to flagged.
 It stays switched off meanwhile, on the face check meant for testing only;
 choosing a commercial SDK (§18, question 1) waits with it.
 
-### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 in #291 to #295, part 6 in #296 to #299, part 7 in #300 to #303, part 8 from #304
+### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 in #291 to #295, part 6 in #296 to #299, part 7 in #300 to #303, part 8 in #304 to #306
 
 Planned in #269, for ZKTeco and Hikvision alike (§17.1–§17.11). It replaces
 the earlier Phase 4, a listener for pushes on the agent and nothing else,
@@ -3512,7 +3546,7 @@ which becomes part 8 below. Each part is its own PR:
       0.4.0. No screen changes. Built in #305.
    3. The setup guide's steps for a ZKTeco terminal that pushes to the
       office agent, with the agent version that listens (§17.7), once
-      the 0.4.0 package is built.
+      the 0.4.0 package is built. Built in #306.
 
 Hikvision goes first because its secret address is the safer first step;
 parts 5 and 6 share the screen, so whichever comes second adds its protocol

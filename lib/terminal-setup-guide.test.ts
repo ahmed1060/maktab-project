@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { readFileSync } from "node:fs"
 import { ar } from "./translations/ar"
 import { en } from "./translations/en"
-import { setupGuide, inlineCode, type GuideLine } from "./attendance/setup-guide"
+import { setupGuide, inlineCode, PUSH_AGENT_VERSION, type GuideLine } from "./attendance/setup-guide"
 import { HIKVISION_AGENT_VERSION } from "./attendance/terminal-connections"
 
 /**
@@ -177,11 +177,130 @@ describe("the steps, by the model's protocol", () => {
     })
 })
 
+// ATTENDANCE_PLAN.md §17.12, PR 306: a ZKTeco terminal that sends its scans
+// to the agent's PC over plain HTTP, which the agent (0.4.0) listens for.
+describe("a terminal that sends its scans to the agent (PR 306)", () => {
+    const push = (superAdmin = false) => setupGuide("ZKTECO", { superAdmin, server: SERVER, pushes: true })
+    const read = (superAdmin = false) => setupGuide("ZKTECO", { superAdmin, server: SERVER })
+    const readme = () => readFileSync("agent/README.md", "utf8")
+    const flat = (text: string) => text.replace(/\s+/g, " ")
+
+    it("walks it through the same five steps, each saying who and where", () => {
+        expect(push().map(s => [s.key, s.title, s.who])).toEqual(read().map(s => [s.key, s.title, s.who]))
+    })
+
+    it("has the office fix the terminal's address and the PC's, with the model's notes by its address, and nothing of reading it", () => {
+        expect(push()[0].lines).toEqual([
+            { text: "att_guide_push_address" },
+            { text: "att_guide_model_notes", notes: true },
+            { text: "att_guide_office_clock" },
+            { text: "att_guide_office_pc" },
+            { text: "att_guide_push_pc_address" },
+        ])
+    })
+
+    it("installs the agent that listens, names the terminal by its address with push, lets it through the firewall, and sets the terminal to send, with no probe", () => {
+        expect(keysOf(push(true)[1].lines)).toEqual(["att_guide_download_sa", "att_guide_push_version", "att_guide_push_installed", "att_guide_unzip", "att_guide_push_settings", "att_guide_push_firewall", "att_guide_push_profile", "att_guide_push_terminal", "att_guide_unknown_publisher"])
+        expect(keysOf(push()[1].lines)[0]).toBe("att_guide_download_other")
+        // Its comm key and probe are for a terminal the agent reads.
+        for (const key of ["att_guide_settings", "att_guide_password", "att_guide_probe", "att_guide_probe_key", "att_guide_auth", "att_guide_unreachable", "att_guide_office_address", "att_guide_office_delete", "att_guide_office_connected"]) {
+            expect(push().flatMap(s => keysOf(s.lines)), key).not.toContain(key)
+        }
+        expect(codes(push())).not.toEqual(expect.arrayContaining([expect.stringContaining("probe")]))
+    })
+
+    it("gives agent.json the terminal by its address with \"push\": true, no port or comm key, as the agent reads it", () => {
+        const settings = push()[1].lines.find(l => l.text === "att_guide_push_settings")!.code!
+        expect(JSON.parse(settings)).toEqual({ server: SERVER, devices: [{ host: "TERMINAL-ADDRESS", push: true, name: "Front door" }], pollSeconds: 60 })
+        expect(Math.max(...settings.split("\n").map(l => l.length))).toBeLessThanOrEqual(50)
+        // As the agent's README and example list one, and as its config reads it.
+        expect(readme()).toContain('{ "host": "192.168.1.40", "push": true, "name": "Side door" }')
+        expect(readFileSync("agent/agent.example.json", "utf8")).toContain('"push": true')
+        expect(readFileSync("agent/src/config.ts", "utf8")).toContain("if (d.push === true) {")
+    })
+
+    it("lets the terminal through Windows Firewall from its address alone, on the agent's port, as the README has it", () => {
+        const line = push()[1].lines.find(l => l.text === "att_guide_push_firewall")!
+        const firewall = line.code!
+        expect(firewall).toBe('netsh advfirewall firewall add rule name="Nizmo agent" dir=in action=allow protocol=TCP localport=8081 remoteip=TERMINAL-ADDRESS profile=private,domain')
+        // One line, longer than the guide's box is wide: it scrolls sideways (found in the browser).
+        expect(line.wide).toBe(true)
+        expect(push().flatMap(st => st.lines).filter(l => l.wide).map(l => l.text)).toEqual(["att_guide_push_firewall"])
+        expect(readme()).toContain(firewall.replace("TERMINAL-ADDRESS", "192.168.1.40"))
+        // 8081 is the agent's own, unless agent.json sets "listenPort".
+        expect(readFileSync("agent/src/config.ts", "utf8")).toContain("c.listenPort === undefined ? 8081")
+        for (const w of [en, ar]) {
+            expect(w.att_guide_push_firewall).toContain("`8081`")
+            expect(w.att_guide_push_profile).toContain("`remoteip=`")
+        }
+        expect(flat(readme())).toContain("list their addresses after `remoteip=`, separated by commas")
+    })
+
+    it("names the terminal's Cloud Server Setting as the README does: domain name off, the PC's address, the agent's port, HTTPS and proxy off", () => {
+        for (const w of [en, ar]) {
+            for (const name of ["`Cloud Server Setting`", "`Domain Name`", "`Server Address`", "`Server Port`", "`8081`", "`HTTPS`", "`Proxy`"]) expect(w.att_guide_push_terminal, name).toContain(name)
+        }
+        for (const name of ["**Domain Name** off", "**Server Address** to the PC's address", "**Server Port** to 8081", "**HTTPS** and **Proxy** off"]) expect(flat(readme()), name).toContain(name)
+    })
+
+    it("says which agent version takes it, where to see it, and how an agent already installed takes the terminal", () => {
+        expect(PUSH_AGENT_VERSION).toBe("0.4.0")
+        expect(push()[1].lines.find(l => l.text === "att_guide_push_version")!.code).toBe("nizmo-agent.exe version")
+        for (const w of [en, ar]) {
+            expect(w.att_guide_push_version).toContain(`\`${PUSH_AGENT_VERSION}\``)
+            expect(w.att_guide_push_installed).toContain(`\`${PUSH_AGENT_VERSION}\``)
+            for (const typed of ["`nizmo-agent-service.exe stop`", "`nizmo-agent-service.exe start`", "`agent.json`"]) expect(w.att_guide_push_installed, typed).toContain(typed)
+            expect(w.att_guide_push_installed.indexOf("`nizmo-agent-service.exe stop`")).toBeLessThan(w.att_guide_push_installed.indexOf("`nizmo-agent-service.exe start`"))
+        }
+        // As the README an office reads updates an agent, and as the agent released with it says it (PR 305).
+        expect(flat(readme())).toContain(`a terminal that pushes to the agent ${PUSH_AGENT_VERSION} or later`)
+        expect(flat(readme())).toContain(`From version ${PUSH_AGENT_VERSION} it also takes the scans of a ZKTeco terminal that pushes`)
+        // A terminal the agent reads needs none of it.
+        for (const key of ["att_guide_push_version", "att_guide_push_installed"]) expect(read(true).flatMap(st => keysOf(st.lines))).not.toContain(key)
+    })
+
+    it("connects it as a terminal read is connected, with the agent's log saying it called, and older scans sent again once the terminal restarts", () => {
+        const connect = push()[2]
+        expect(keysOf(connect.lines)).toEqual(["att_guide_add", "att_guide_enrol", "att_guide_service", "att_guide_push_called", "att_guide_brand", "att_guide_push_older"])
+        expect(connect.lines.find(l => l.text === "att_guide_brand")).toEqual({ text: "att_guide_brand", brand: true })
+        expect(connect.lines.find(l => l.text === "att_guide_push_older")!.code).toBe("\"sendFrom\": \"YYYY-MM-DD\"")
+        // The agent's own words when it first takes what the terminal sends (PR 305).
+        for (const w of [en, ar]) expect(w.att_guide_push_called).toContain("`called for the first time`")
+        expect(readFileSync("agent/src/sync.ts", "utf8")).toContain("called for the first time.")
+        // Told to send its memory again only when it next asks for its options, as it does when it starts (PR 305).
+        expect(en.att_guide_push_older).toMatch(/restart the service, then restart the terminal/)
+        expect(push()[3]).toEqual(read()[3])
+    })
+
+    it("names what goes wrong in the agent's own words: not heard from, never called, its port taken, a call from an address not named", () => {
+        expect(keysOf(push()[4].lines)).toEqual(["att_guide_silent", "att_guide_push_unreachable", "att_guide_push_never", "att_guide_push_port", "att_guide_push_stranger", "att_guide_revoked", "att_guide_clock"])
+        const sync = readFileSync("agent/src/sync.ts", "utf8")
+        const listener = readFileSync("agent/src/zk/listener.ts", "utf8")
+        expect(en.att_guide_push_unreachable).toContain("`Not heard from since`")
+        expect(sync).toContain("error: `Not heard from since ${since}.`")
+        expect(en.att_guide_push_never.startsWith("`hasn't called yet`")).toBe(true)
+        expect(sync).toContain("pushes to this agent and hasn't called yet.")
+        expect(en.att_guide_push_port.startsWith("`Port 8081 is in use`")).toBe(true)
+        expect(listener).toContain("`Port ${options.port} is in use by another program on this PC.`")
+        expect(en.att_guide_push_stranger.startsWith("`no terminal in agent.json is at that address`")).toBe(true)
+        expect(listener).toContain("called the agent, but no terminal in agent.json is at that address.")
+        for (const w of [ar]) {
+            for (const key of ["att_guide_push_never", "att_guide_push_port", "att_guide_push_stranger"] as const) expect(w[key].startsWith(en[key].slice(0, en[key].indexOf("`", 1) + 1)), key).toBe(true)
+        }
+        expect(en.att_guide_push_port).toContain('`"listenPort"`')
+    })
+
+    it("leaves a Hikvision model's steps as they are", () => {
+        expect(setupGuide("HIKVISION", { superAdmin: true, server: SERVER, pushes: true })).toEqual(setupGuide("HIKVISION", { superAdmin: true, server: SERVER }))
+    })
+})
+
 describe("its words", () => {
     const used = () => {
-        const keys = new Set<string>(["att_guide_button", "att_guide_model", "att_guide_model_pick", "att_guide_pick_first", "att_guide_direct_too", "att_guide_no_models", "att_guide_copy", "att_guide_copied", "att_guide_model_notes", "att_guide_model_notes_other"])
-        for (const [superAdmin, protocol] of [[true, "ZKTECO"], [false, "ZKTECO"], [true, "HIKVISION"], [false, "HIKVISION"]] as const) {
-            for (const step of setupGuide(protocol, { superAdmin, server: SERVER })) {
+        const keys = new Set<string>(["att_guide_button", "att_guide_model", "att_guide_model_pick", "att_guide_pick_first", "att_guide_direct_too", "att_guide_no_models", "att_guide_copy", "att_guide_copied", "att_guide_model_notes", "att_guide_model_notes_other",
+            "att_guide_way", "att_guide_way_READ", "att_guide_way_PUSH", "att_guide_way_READ_hint", "att_guide_way_PUSH_hint"])
+        for (const [superAdmin, protocol, pushes] of [[true, "ZKTECO", false], [false, "ZKTECO", false], [true, "ZKTECO", true], [false, "ZKTECO", true], [true, "HIKVISION", false], [false, "HIKVISION", false]] as const) {
+            for (const step of setupGuide(protocol, { superAdmin, server: SERVER, pushes })) {
                 keys.add(step.title)
                 keys.add(step.who)
                 for (const line of step.lines) keys.add(line.text)
@@ -225,15 +344,24 @@ describe("its words", () => {
         expect(ar.att_guide_silent).toContain(ar.att_term_agent_SILENT)
         expect(en.att_guide_unreachable).toContain(en.att_term_device_UNREACHABLE)
         expect(ar.att_guide_unreachable).toContain(ar.att_term_device_UNREACHABLE)
+        expect(en.att_guide_push_unreachable).toContain(en.att_term_device_UNREACHABLE)
+        expect(ar.att_guide_push_unreachable).toContain(ar.att_term_device_UNREACHABLE)
     })
 })
 
 type Brand = import("@/components/TerminalSetupGuide").GuideBrand
 
-async function guide(props: { brand: Brand; superAdmin?: boolean }, locale: "en" | "ar" = "en") {
+async function guide(props: { brand: Brand; superAdmin?: boolean; pushes?: boolean; directAllowed?: boolean }, locale: "en" | "ar" = "en") {
     state.locale = locale
     const { SetupGuideSteps } = await import("@/components/TerminalSetupGuide")
     return renderToStaticMarkup(h(SetupGuideSteps, { superAdmin: false, server: SERVER, ...props }))
+}
+
+/** The model's guide as the dialog shows it once the model is picked: how its scans reach the agent, then its steps (PR 306). */
+async function guideFor(props: { brand: Brand; directAllowed?: boolean }, locale: "en" | "ar" = "en") {
+    state.locale = locale
+    const { SetupGuideFor } = await import("@/components/TerminalSetupGuide")
+    return renderToStaticMarkup(h(SetupGuideFor, { superAdmin: false, server: SERVER, ...props }))
 }
 
 describe("the guide's steps on screen", () => {
@@ -304,6 +432,52 @@ describe("the guide's steps on screen", () => {
     })
 })
 
+describe("how a ZKTeco terminal's scans reach the agent, on screen (PR 306)", () => {
+    it("is asked under the model as a choice, the agent reading them picked to start with, with a line saying which terminals that's for, then the steps", async () => {
+        for (const locale of ["en", "ar"] as const) {
+            const w = locale === "ar" ? ar : en
+            const html = await guideFor({ brand: CONVOY }, locale)
+            const choice = html.indexOf(`<fieldset class="ui-choices"><legend class="ui-label">${esc(w.att_guide_way)}</legend>`)
+            expect(choice).toBe(0)
+            expect(html).toContain(`<input type="radio" class="ui-radio" name="way" checked="" value="READ"/>${esc(w.att_guide_way_READ)}</label>`)
+            expect(html).toContain(`<input type="radio" class="ui-radio" name="way" value="PUSH"/>${esc(w.att_guide_way_PUSH)}</label>`)
+            const hint = html.indexOf(`<p class="ui-hint">${esc(w.att_guide_way_READ_hint.split("`")[0])}<code class="ui-guide-inline" dir="ltr" translate="no">4370</code>`)
+            expect(hint).toBeGreaterThan(choice)
+            expect(html.indexOf(`<ol class="ui-guide-steps"`)).toBeGreaterThan(hint)
+            expect(html).toContain("nizmo-agent.exe probe TERMINAL-ADDRESS")
+            expect(html).not.toContain(esc(w.att_guide_way_PUSH_hint.split("`")[0]))
+        }
+    })
+
+    it("isn't asked for a Hikvision model, which the agent always reads", async () => {
+        const html = await guideFor({ brand: HIK })
+        expect(html).not.toContain("ui-choices")
+        expect(html).not.toContain(esc(en.att_guide_way))
+        expect(html).toMatch(/^<ol class="ui-guide-steps"/)
+    })
+
+    it("shows the steps for one that sends: agent.json with push, the firewall rule, its Cloud Server Setting, and no probe", async () => {
+        for (const locale of ["en", "ar"] as const) {
+            const html = await guide({ brand: CONVOY, pushes: true }, locale)
+            expect(html).toContain(esc('"push": true,'))
+            expect(html).toContain(esc('netsh advfirewall firewall add rule name="Nizmo agent"'))
+            // Its box scrolls sideways, so the keyboard reaches it, to scroll it; the others don't take focus.
+            expect(html).toMatch(/<pre id="[^"]+" dir="ltr" translate="no" tabindex="0"><code>netsh advfirewall/)
+            expect(html.match(/tabindex="0"/g)).toHaveLength(1)
+            expect(html).toContain(`<code class="ui-guide-inline" dir="ltr" translate="no">Cloud Server Setting</code>`)
+            expect(html).toContain("nizmo-agent.exe version")
+            expect(html).not.toContain("nizmo-agent.exe probe")
+            // The model's notes stay by its address.
+            expect(html).toContain("ui-guide-notes")
+        }
+    })
+
+    it("never says one that sends can be added straight to Nizmo, which takes only HTTPS", async () => {
+        expect(await guide({ brand: CONVOY, directAllowed: true })).toContain(esc(en.att_guide_direct_too))
+        expect(await guide({ brand: CONVOY, directAllowed: true, pushes: true })).not.toContain(esc(en.att_guide_direct_too))
+    })
+})
+
 describe("the guide's dialog", () => {
     async function dialog(brands: Brand[] | null, locale: "en" | "ar" = "en", loadFailed = false) {
         state.locale = locale
@@ -324,6 +498,8 @@ describe("the guide's dialog", () => {
         expect(html).toContain(`<option value="" selected="">${en.att_guide_model_pick}</option><option value="b1">Convoy</option><option value="b2">Hikvision</option><option value="b3">ZKTeco</option>`)
         expect(html).toContain(`<p class="ui-card-note">${esc(en.att_guide_pick_first)}</p>`)
         expect(html).not.toContain("ui-guide-steps")
+        // How its scans reach the agent is asked once the model is picked (PR 306).
+        expect(html).not.toContain("ui-choices")
     })
 
     it("changes nothing: Close is its only button", async () => {
