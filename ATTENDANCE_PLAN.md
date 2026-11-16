@@ -2556,6 +2556,11 @@ build settled:
   already connects, straight to Nizmo where the switch is off, a way not
   built for its protocol, and an office's address that's missing, isn't
   one, or isn't asked for.
+- **From the review:** an agent's heartbeat that read the terminal as
+  its own just before a move straight to Nizmo committed writes nothing
+  over the move. What an agent says of a terminal is taken only while the
+  terminal is still the agent's and not retired; otherwise the heartbeat
+  reads it again, and hears it's set straight to Nizmo (§17.6).
 - **Not in this PR:** first contacts kept for a ZKTeco terminal (part
   6's fourth, §20).
 

@@ -6473,3 +6473,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   asks for the office's internet address and the step-up code, then shows
   what to set on it, and its row waits for its first contact. Moving it
   to the agent asks first. Its scans and history stay.
+- **2026-11-16:** From #298's review (`ATTENDANCE_PLAN.md` §17.6, §17.7):
+  an agent's heartbeat at the moment a terminal moves straight to Nizmo no
+  longer writes over the move, so the terminal still waits for its first
+  contact. No screen changes.
