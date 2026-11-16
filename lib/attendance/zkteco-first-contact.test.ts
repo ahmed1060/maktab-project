@@ -104,6 +104,16 @@ describe("the scans it sends, the one body opened", () => {
         expect(scansKept(`7\t${"x".repeat(900)}`).length).toBeLessThan(700)
     })
 
+    it("reads such a line as unreadable text whatever its shape: as JSON or XML too, it keeps no long number (review on PR 299)", () => {
+        for (const line of ['{"employee":7,"credential":1234567890}', "[7, 1234567890]", "<Event><credential>1234567890</credential></Event>", '<EventNotificationAlert><credential>1234567890</credential></EventNotificationAlert>']) {
+            const kept = scansKept(line)
+            expect(kept, line).not.toContain("1234567890")
+            expect(kept, line).toContain("[number removed]")
+        }
+        // A name is still taken out by its field's name.
+        expect(scansKept('{"name":"Ehab Hassan","employee":7}')).not.toContain("Ehab")
+    })
+
     it("is cut at 8,000 characters, saying how many lines there were", () => {
         const many = Array.from({ length: 1_000 }, (_, i) => `${i}\t2026-11-16 08:01:02\t0\t1\t0`).join("\n")
         const kept = scansKept(many)

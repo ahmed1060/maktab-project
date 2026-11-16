@@ -1,4 +1,4 @@
-import { MAX_KEPT_BODY, headersOf, outcomeOf, textOf } from "./terminal-first-contact"
+import { MAX_KEPT_BODY, headersOf, outcomeOf, unreadableText } from "./terminal-first-contact"
 import { attlogOf, type AdmsLine, type AdmsRequest } from "./zkteco-adms"
 
 /**
@@ -113,11 +113,12 @@ const KEPT_ON_A_SCAN = [/^\d{4}-\d{2}-\d{2}$/, /^\d{2}:\d{2}:\d{2}$/, /^\d{4}-\d
  * employee number, as the punch does, its date and time, and the short
  * numbers beside them, its tabs and spaces as they came; anything else on
  * it is replaced by a note of what was there. A line that isn't a scan
- * goes by the rules for text that is neither JSON nor XML, where no name,
- * card number or long number is kept.
+ * goes by the rules for unreadable text, where no name, card number or
+ * long number is kept, whatever its shape: JSON or XML on a line of scans
+ * is no event of a kind Nizmo reads (review on PR 299).
  */
 function scanLineKept(line: string): string {
-    if (attlogOf(line)[0]?.kind !== "scan") return textOf(line).body
+    if (attlogOf(line)[0]?.kind !== "scan") return unreadableText(line)
     let number = true
     return line.split(/(\s+)/).map(token => {
         if (token === "" || /^\s+$/.test(token)) return token
