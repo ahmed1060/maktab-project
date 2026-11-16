@@ -132,6 +132,8 @@ export const config = {
         /*
          * Match all request paths except for the ones starting with:
          * - api (API routes)
+         * - iclock (where a ZKTeco terminal calls, ATTENDANCE_PLAN.md
+         *   §17.3: sent to the sign-in page, it would never follow)
          * - _next/static (static files)
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
@@ -144,6 +146,6 @@ export const config = {
          * long ago, there's no local public/uploads/ path this app ever
          * serves from.
          */
-        '/((?!api|_next/static|_next/image|favicon.ico|monitoring|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        '/((?!api|iclock|_next/static|_next/image|favicon.ico|monitoring|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
     ],
 }

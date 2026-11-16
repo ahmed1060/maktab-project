@@ -61,7 +61,8 @@ describe("what a punch keeps", () => {
         const fromAgent = ingest.slice(ingest.indexOf("static async punches("), ingest.indexOf("static async fromTerminal("))
         expect(fromAgent).not.toContain("kept")
         const push = source("lib/services/attendance-terminal-push.service.ts")
-        expect(push).toContain("AttendanceIngestService.fromTerminal(deviceId, scans.map(({ userNumber, at, kept }) => ({ userNumber, at, kept })))")
+        // A thousand at a time since PR 296: a ZKTeco terminal can send its whole memory.
+        expect(push).toContain("AttendanceIngestService.fromTerminal(deviceId, scans.slice(from, from + SCANS_AT_A_TIME).map(({ userNumber, at, kept }) => ({ userNumber, at, kept })))")
     })
 
     it("is the event's listed fields: no name, card or picture is on either list", () => {
@@ -80,7 +81,8 @@ describe("what a punch keeps", () => {
 describe("the terminal's own time zone", () => {
     it("is noted with the contact, from the last scan that states one, on a terminal straight to Nizmo that isn't retired", () => {
         const push = source("lib/services/attendance-terminal-push.service.ts")
-        expect(push).toContain("const stated = scans.filter(s => s.offsetMinutes !== null)")
+        // A ZKTeco terminal's line states none at all (PR 296), so it is a number or it isn't noted.
+        expect(push).toContain(`const stated = scans.filter(s => typeof s.offsetMinutes === "number")`)
         expect(push).toContain(`where: { id: deviceId, connection: "DIRECT", retiredAt: null },`)
         expect(push).toContain("...(stated.length > 0 && { utcOffsetMinutes: stated[stated.length - 1].offsetMinutes })")
     })
