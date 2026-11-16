@@ -2364,13 +2364,18 @@ the build settled:
   the queue as a ZKTeco terminal's do, and are delivered the same way.
   `sendFrom`, a terminal set straight to Nizmo, another terminal put at
   its address, and one that doesn't answer are handled as for ZKTeco.
+  Whichever the protocol, a terminal's new scans are all in the queue
+  before its cursor moves past them, however long its log (Codex on
+  #302: a log of 150,000 failed to queue after its cursor had moved).
 - **The heartbeat says each terminal's protocol**, `ZKTECO` or
   `HIKVISION` (#301), with a Hikvision terminal's serial number, model,
   firmware and clock. It says nothing of how full its memory is, and
   the agent never clears it (§17.4).
 - **Its certificate** is pinned the first time a round reads it over
-  HTTPS, and the log says so with its fingerprint. A terminal showing
-  another later is refused (`HIK_CERTIFICATE_CHANGED`), as another
+  HTTPS, and the log says so with its fingerprint. That round's later
+  requests, each a connection of its own, hold to it too (Codex on
+  #302). A terminal showing another later is refused
+  (`HIK_CERTIFICATE_CHANGED`), as another
   machine could be answering at its address. If it is the same
   terminal, whose certificate was renewed, as after a reset or a
   firmware update, `nizmo-agent.exe trust TERMINAL-ADDRESS`, with the
