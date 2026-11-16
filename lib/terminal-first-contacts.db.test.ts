@@ -179,6 +179,24 @@ describe.skipIf(!ADMIN_URL)("a terminal's first contacts, in Postgres", () => {
             expect(((await device("at-once")).firstContactAt as Date).getTime()).toBe((rows[0].receivedAt as Date).getTime())
         })
 
+        it("dates none kept before the terminal's first, whichever of those at once is let in first (PR 295)", async () => {
+            // Dated as each arrived, one let in later could be dated a moment before the first: about one run in six.
+            for (let n = 0; n < 10; n++) {
+                const id = `in-order-${n}`
+                const secret = await terminal(id)
+                await Promise.all(Array.from({ length: 12 }, () => send(secret, ...json(heartbeat))))
+                const rows = await kept(id)
+                expect(rows).toHaveLength(5)
+                const first = ((await device(id)).firstContactAt as Date).getTime()
+                expect(rows.map(r => (r.receivedAt as Date).getTime() >= first), id).toEqual([true, true, true, true, true])
+                expect((rows[0].receivedAt as Date).getTime(), id).toBe(first)
+            }
+            // The clock is read once the terminal's row is held.
+            const service = readFileSync("lib/services/terminal-first-contact.service.ts", "utf8")
+            expect(service.indexOf("const now = at ?? new Date()")).toBeGreaterThan(service.indexOf("FOR NO KEY UPDATE`"))
+            expect(service).toContain("static async keep(deviceId: string, contact: KeptContact, at?: Date): Promise<boolean> {")
+        })
+
         it("keeps no more than 50 when the last ones come at once", async () => {
             const secret = await terminal("last-ones")
             await db.query(`INSERT INTO "TerminalFirstContact"(id, "deviceId", method, path, headers, body, kind) SELECT 'lo-' || n, 'last-ones', 'POST', '/x', '{}', '', 'kind' || (n % 12) FROM generate_series(1, 48) AS n`)

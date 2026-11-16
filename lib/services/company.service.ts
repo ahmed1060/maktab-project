@@ -260,7 +260,7 @@ export class CompanyService {
     }
 
     static async update(input: UpdateCompanyInput, session: any) {
-        const { id, name, usernameCode, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs, brandColour, cashAdvancesAllowed, cashAdvancesOn, costNamesFromListOnly, confirmHighRisk, terminalsSetupByCompany } = input
+        const { id, name, usernameCode, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs, brandColour, cashAdvancesAllowed, cashAdvancesOn, costNamesFromListOnly, confirmHighRisk, terminalsSetupByCompany, terminalsDirectAllowed } = input
         const existing = await prisma.company.findUnique({ where: { id } })
         if (!existing) throw new Error("COMPANY_NOT_FOUND")
 
@@ -326,6 +326,8 @@ export class CompanyService {
             ...(confirmHighRisk !== undefined && { confirmHighRisk }),
             // Who sets the company's fingerprint terminals up (ATTENDANCE_PLAN.md §17.10).
             ...(terminalsSetupByCompany !== undefined && { terminalsSetupByCompany }),
+            // Whether its terminals may send their scans straight to Nizmo (§17.8, PR 295).
+            ...(terminalsDirectAllowed !== undefined && { terminalsDirectAllowed }),
         }
         // Switching cash advances off waits for any advance being recorded,
         // and is refused while anyone holds advance money (§7.6).
@@ -409,6 +411,9 @@ export class CompanyService {
         }
         if (terminalsSetupByCompany !== undefined && terminalsSetupByCompany !== existing.terminalsSetupByCompany) {
             changes.terminalsSetupByCompany = { old: existing.terminalsSetupByCompany, new: terminalsSetupByCompany }
+        }
+        if (terminalsDirectAllowed !== undefined && terminalsDirectAllowed !== existing.terminalsDirectAllowed) {
+            changes.terminalsDirectAllowed = { old: existing.terminalsDirectAllowed, new: terminalsDirectAllowed }
         }
 
         if (Object.keys(changes).length > 0) {

@@ -36,11 +36,17 @@ export class TerminalFirstContactService {
      * room for the last one, so what is kept is counted again here, with
      * the terminal's row held. Not FOR UPDATE: that also holds up a scan
      * being stored for the terminal, which takes a key share on its row.
+     *
+     * The clock is read with the row held (PR 295): requests at once are
+     * dated in the order they are let in, so none kept is dated before
+     * the terminal's first. Read as each arrived, one let in later could
+     * be dated a moment earlier.
      */
-    static async keep(deviceId: string, contact: KeptContact, now = new Date()): Promise<boolean> {
+    static async keep(deviceId: string, contact: KeptContact, at?: Date): Promise<boolean> {
         return prisma.$transaction(async tx => {
             const held = await tx.$queryRaw<{ firstContactAt: Date | null }[]>`SELECT "firstContactAt" FROM "AttendanceDevice" WHERE id = ${deviceId} FOR NO KEY UPDATE`
             if (held.length === 0) return false
+            const now = at ?? new Date()
             if (!held[0].firstContactAt) await tx.attendanceDevice.update({ where: { id: deviceId }, data: { firstContactAt: now } })
             if (!roomFor(await TerminalFirstContactService.counts(deviceId, tx), contact.kind)) return false
             await tx.terminalFirstContact.create({

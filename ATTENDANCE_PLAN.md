@@ -13,8 +13,10 @@ terminal in #280; part 4, one terminal whichever way it connects, is
 built in #290; part 5, Hikvision straight to Nizmo, is split in five PRs,
 the first, the address a terminal sends to, built in #291, the second,
 Add a terminal with its address shown once, in #292, the third, what
-a scan keeps of its event, in #293, and the fourth, first contacts kept
-for the Super Admin, in #294; the rest is not built.
+a scan keeps of its event, in #293, the fourth, first contacts kept for
+the Super Admin, in #294, and the fifth, the straight-to-Nizmo switch on
+the company's Attendance tab, in #295: part 5 is built, switched off for
+every company. Parts 6 and 7 are not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
@@ -2396,6 +2398,59 @@ None of this can be tried without the terminals, and the build has none. So:
   the production address, for a week. It answers the questions in §18, and
   the switch stays off for everyone else until it passes.
 
+**Built in #295: the switch**, the Super Admin's, on the company's
+Attendance tab (part 5's fifth and last PR, §20). What the build settled:
+
+- **Where:** a card of its own, Terminals straight to Nizmo, under Who
+  sets up fingerprint terminals and above Fingerprint terminals, shown
+  to the Super Admin alone for a company holding the Terminals add-on.
+  It is a field of the Attendance tab only the Super Admin sets, as the
+  other switch is (§17.10). Its column came with part 4 (#290), off for
+  every company: this PR has no migration.
+- **Off:** a terminal can't be added straight to Nizmo, and one already
+  set that way is held: its requests are answered 403, so it keeps its
+  scans and sends them again (§17.2). Nothing is deleted, its address
+  stays its own, and the agent doesn't read it meanwhile (§17.6).
+- **On:** whoever sets the company's terminals up can add one straight
+  to Nizmo (§17.7), its requests are taken, and its first contacts are
+  kept (above).
+- **Its row** has On or Off and one button, Turn on or Turn off, the
+  short words the other settings' switches have: a row's end holds no
+  wider a button on a phone. The question's button says in full what it
+  does: Allow straight to Nizmo, or Stop straight to Nizmo.
+- **Allowing asks first,** since what a terminal sends counts towards
+  pay.
+- **Stopping asks only when it would hold a terminal:** it says how many
+  send straight to Nizmo now, and that each keeps its scans and sends
+  them again. With none, it stops nothing and doesn't ask. Its button
+  isn't in the danger colour: nothing is deleted and allowing again
+  undoes it (`DESIGN.md` §5.5, Dialog).
+- **How many** is read from the list Fingerprint terminals shows, so a
+  terminal added or retired on the same page is counted at once; and
+  once the switch is saved that list is asked for again, so Add a
+  terminal offers Straight to Nizmo without the page loaded again. Turn
+  off can't be pressed until that list is read: before then nothing
+  says whether a terminal would be held. A list that couldn't be read
+  isn't a list with no terminals: the card says so, with Try again, and
+  Turn off waits (review on #295).
+- **Written to the audit log** each time it turns, by name, with who
+  turned it.
+- **It stays off** for every company until the trial with a real
+  terminal passes (above). No alert is raised for a silent terminal
+  straight to Nizmo yet: that follows the trial too (§17.7).
+- **The card above it** (§17.10, #277) got the same short button here.
+  On a phone in English its longer one, Set them up for the company,
+  lay over the row's words. Its question's button still says in full
+  what turning it on does.
+- **The Super Admin's page** reads a company from the companies list's
+  route, not the settings route: both return the switch, or the card
+  read Off once the page was loaded again.
+- **A first contact is dated with the terminal's row held** (a fix to
+  #294, found by its own test failing about one run in six). Requests
+  that come at once are now dated in the order they are let in, so none
+  kept is dated before the terminal's first. Before, each was dated as
+  it arrived, and one let in later could be dated a moment earlier.
+
 **Built in #294: first contacts kept**, for a Hikvision terminal straight
 to Nizmo (part 5's fourth PR, §20). What the build settled:
 
@@ -2767,7 +2822,7 @@ matching with liveness, fallback to flagged.
 It stays switched off meanwhile, on the face check meant for testing only;
 choosing a commercial SDK (§18, question 1) waits with it.
 
-### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 begun in #291 to #294
+### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 in #291 to #295
 
 Planned in #269, for ZKTeco and Hikvision alike (§17.1–§17.11). It replaces
 the earlier Phase 4, a listener for pushes on the agent and nothing else,
@@ -2815,7 +2870,7 @@ which becomes part 8 below. Each part is its own PR:
       terminal's connection on the Super Admin's terminals list (§17.7).
       Built in #294.
    5. The straight-to-Nizmo switch on the company's Attendance tab
-      (§17.8), last, when everything it turns on is there.
+      (§17.8), last, when everything it turns on is there. Built in #295.
 6. **ZKTeco straight to Nizmo** (§17.3): the `/iclock` routes, outside the
    proxy; the options answer, scans, and `getrequest` as its heartbeat; the
    office address check; ZKTeco's protocol in Add a terminal; and Change

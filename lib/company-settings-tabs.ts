@@ -53,10 +53,11 @@ export const COMPANY_SETTINGS_TABS = [
     // §7). Its own API under /api/attendance, which asks the same questions.
     {
         key: "attendance", labelKey: "settings_tab_attendance", adminEligible: true, module: "ATTENDANCE",
-        fields: ["terminalsSetupByCompany"],
+        fields: ["terminalsSetupByCompany", "terminalsDirectAllowed"],
         // Whether the company sets its own fingerprint terminals up, or the
-        // Super Admin does (ATTENDANCE_PLAN.md §17.10).
-        superAdminOnly: ["terminalsSetupByCompany"],
+        // Super Admin does (ATTENDANCE_PLAN.md §17.10), and whether its
+        // terminals may send their scans straight to Nizmo (§17.8, PR 295).
+        superAdminOnly: ["terminalsSetupByCompany", "terminalsDirectAllowed"],
     },
     { key: "roles", labelKey: "settings_tab_roles", adminEligible: false, fields: [] },
     { key: "modules", labelKey: "settings_tab_modules", adminEligible: false, fields: [] },

@@ -130,6 +130,9 @@ export const updateCompanySchema = z.object({
     // Whether the company's people set its fingerprint terminals up: the
     // Super Admin's switch (ATTENDANCE_PLAN.md §17.10).
     terminalsSetupByCompany: z.boolean().optional(),
+    // Whether its terminals may send their scans straight to Nizmo: the
+    // Super Admin's switch too (ATTENDANCE_PLAN.md §17.8, PR 295).
+    terminalsDirectAllowed: z.boolean().optional(),
 
     // Trial extension, in days, added on top of whichever preset was chosen.
     // A delta rather than a new total: "give them another week" is how the

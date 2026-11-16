@@ -14,6 +14,7 @@ import CashAdvancesCard from '@/components/cash-advances/CashAdvancesCard'
 import CostNamesCard from '@/components/lists/CostNamesCard'
 import HighRiskCard from '@/components/HighRiskCard'
 import TerminalsSetupCard from '@/components/TerminalsSetupCard'
+import TerminalsDirectCard from '@/components/TerminalsDirectCard'
 import { Button, Dialog, Tabs } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { COMPANY_SETTINGS_TABS, type CompanySettingsTabKey } from '@/lib/company-settings-tabs'
@@ -64,6 +65,8 @@ export type CompanySettings = {
      */
     terminalsSetupByCompany?: boolean
     terminalsOffered?: boolean
+    /** Whether its terminals may send their scans straight to Nizmo (ATTENDANCE_PLAN.md §17.8, PR 295). */
+    terminalsDirectAllowed?: boolean
     moduleLabels: unknown
     moduleIcons: unknown
     logoUrl: string | null
@@ -222,14 +225,18 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
 
                 {/* Schedules, seasonal hours, who works which, and holidays
                     (ATTENDANCE_PLAN.md §7). Saves each change as it is made.
-                    The Super Admin's switch for who sets the company's
-                    fingerprint terminals up goes above them (§17.10). */}
+                    The Super Admin's switches go above them: who sets the
+                    company's fingerprint terminals up (§17.10), and whether
+                    they may send their scans straight to Nizmo (§17.8). */}
                 {tab === 'attendance' && (
                     <CompanyAttendanceCard
                         companyId={companyId}
                         readOnly={readOnly}
                         terminalsSetup={superAdmin && company.terminalsOffered && (
-                            <TerminalsSetupCard companyId={companyId} on={!!company.terminalsSetupByCompany} onSaved={onSaved} />
+                            <>
+                                <TerminalsSetupCard companyId={companyId} on={!!company.terminalsSetupByCompany} onSaved={onSaved} />
+                                <TerminalsDirectCard companyId={companyId} on={!!company.terminalsDirectAllowed} onSaved={onSaved} />
+                            </>
                         )}
                     />
                 )}
