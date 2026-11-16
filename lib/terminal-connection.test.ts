@@ -108,8 +108,8 @@ describe("the Punches list", () => {
 describe("the agent", () => {
     it("is a new version, the same everywhere it is written", () => {
         const version = /AGENT_VERSION = "([\d.]+)"/.exec(read("agent/src/version.ts"))![1]
-        // 0.2.0 knew a terminal straight to Nizmo (PR 290); 0.3.0 reads Hikvision (PR 302).
-        expect(version).toBe("0.3.0")
+        // 0.2.0 knew a terminal straight to Nizmo (PR 290); 0.3.0 reads Hikvision (PR 302); 0.4.0 listens for terminals that push (PR 305).
+        expect(version).toBe("0.4.0")
         expect(JSON.parse(read("agent/package.json")).version).toBe(version)
         const lock = JSON.parse(read("agent/package-lock.json"))
         expect(lock.version).toBe(version)

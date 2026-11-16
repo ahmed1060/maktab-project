@@ -192,16 +192,19 @@ describe("nizmo-agent and a Hikvision terminal", () => {
         expect(readFileSync(join(home, "logs", "agent.log"), "utf8")).toContain("over HTTP, there is no certificate to trust")
     })
 
-    it("says so in its help, and is 0.3.0, the version that reads Hikvision, in its package too", () => {
+    it("says so in its help, and is 0.4.0, the version that listens for terminals that push, in its package too", () => {
         expect(HELP).toContain("nizmo-agent probe hikvision <address> <user> [port] [--http]")
         expect(HELP).toContain("nizmo-agent trust <address> [port]")
-        expect(AGENT_VERSION).toBe("0.3.0")
+        expect(HELP).toContain("listens for terminals that push")
+        expect(AGENT_VERSION).toBe("0.4.0")
         expect(JSON.parse(readFileSync("agent/package.json", "utf8")).version).toBe(AGENT_VERSION)
         const lock = JSON.parse(readFileSync("agent/package-lock.json", "utf8"))
         expect([lock.version, lock.packages[""].version]).toEqual([AGENT_VERSION, AGENT_VERSION])
         // As the README an office reads tells it.
         const readme = readFileSync("agent/README.md", "utf8")
-        for (const said of ["nizmo-agent.exe probe hikvision 192.168.1.30 nizmo-agent", "nizmo-agent.exe trust 192.168.1.30", "HIK_CERTIFICATE_CHANGED", "from version 0.3.0"]) expect(readme).toContain(said)
+        for (const said of ["nizmo-agent.exe probe hikvision 192.168.1.30 nizmo-agent", "nizmo-agent.exe trust 192.168.1.30", "HIK_CERTIFICATE_CHANGED", "from version 0.3.0",
+            // PR 305: a terminal that pushes, and the firewall rule that lets it in from its address alone.
+            '"push": true', "From version 0.4.0 it also takes the scans of a ZKTeco terminal that pushes", "and a\nterminal that pushes to the agent 0.4.0 or later", 'netsh advfirewall firewall add rule name="Nizmo agent" dir=in action=allow protocol=TCP localport=8081 remoteip=192.168.1.40 profile=private,domain']) expect(readme).toContain(said)
         // As the setup guide names it, written in PR 301 (lib/attendance/setup-guide.ts).
         expect(readFileSync("lib/attendance/setup-guide.ts", "utf8")).toContain('"nizmo-agent.exe probe hikvision TERMINAL-ADDRESS AGENT-USER"')
     })

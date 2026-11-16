@@ -422,6 +422,8 @@ describe("the config file", () => {
         expect(parseConfig({ server: "https://app.example.com/", devices: [{ host: "192.168.1.20" }] })).toEqual({
             server: "https://app.example.com", devices: [{ protocol: "zkteco", host: "192.168.1.20", port: 4370, password: 0, name: null }],
             pollSeconds: 60, sendFrom: null, clearWhenFull: false, clearAtRatio: 0.9,
+            // None pushes to the agent; it would listen on 8081 for one that did (PR 305).
+            pushers: [], listenPort: 8081,
         })
     })
 

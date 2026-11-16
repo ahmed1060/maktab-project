@@ -91,9 +91,10 @@ export function cursorWith(kept: string | null, change: Partial<AdmsCursor>): st
  * Nizmo answers them (§17.3): where it had got to, when to try again and
  * how often to ask, and what to send, attendance records and nothing
  * else. `TimeZone` is the company's offset from UTC in whole hours, and
- * none for a zone off the hour. No command is among them (§19).
+ * none for a zone off the hour, or when the company's zone isn't known:
+ * 0 would be UTC's (PR 305). No command is among them (§19).
  */
-export function optionsAnswer(serial: string, cursor: AdmsCursor, offsetMinutes: number): string {
+export function optionsAnswer(serial: string, cursor: AdmsCursor, offsetMinutes: number | null): string {
     const lines = [
         `GET OPTION FROM: ${serial}`,
         `Stamp=${cursor.scans}`,
@@ -109,7 +110,7 @@ export function optionsAnswer(serial: string, cursor: AdmsCursor, offsetMinutes:
         "Realtime=1",
         "Encrypt=0",
     ]
-    if (offsetMinutes % 60 === 0) lines.push(`TimeZone=${offsetMinutes / 60}`)
+    if (offsetMinutes !== null && offsetMinutes % 60 === 0) lines.push(`TimeZone=${offsetMinutes / 60}`)
     return `${lines.join("\n")}\n`
 }
 
@@ -165,6 +166,8 @@ export function infoOf(value: string | null): TerminalInfo | null {
 
 /** What the agent takes of one request that is a named terminal's, and answers it. */
 export type Taken = {
+    /** What the request was: its options asked for, scans, and so on (PR 305). */
+    kind: AdmsRequest["kind"]
     /** The answer's text, sent with 200 once what's below is kept. */
     answer: string
     /** Its scans, for the queue. */
@@ -185,8 +188,8 @@ export type Taken = {
  * are never opened, their stamp moved all the same so they aren't sent
  * again.
  */
-export function take(asked: AdmsRequest, body: string | null, kept: string | null, offsetMinutes: number): Taken {
-    const nothing: Taken = { answer: "OK\n", scans: [], unreadable: 0, cursor: null, info: null }
+export function take(asked: AdmsRequest, body: string | null, kept: string | null, offsetMinutes: number | null): Taken {
+    const nothing: Taken = { kind: asked.kind, answer: "OK\n", scans: [], unreadable: 0, cursor: null, info: null }
     switch (asked.kind) {
         case "options":
             return { ...nothing, answer: optionsAnswer(asked.serial, cursorOf(kept), offsetMinutes) }

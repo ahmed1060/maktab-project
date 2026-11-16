@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http"
-import { isIPv4, type AddressInfo } from "node:net"
+import { isIPv4, isIPv6, type AddressInfo } from "node:net"
 import type { Logger } from "../sync"
 import { admsRequest, take, type Taken } from "./adms"
 
@@ -20,16 +20,16 @@ import { admsRequest, take, type Taken } from "./adms"
  * kept (`PushSink.keep`, scans queued and stamps moved in one write), 503
  * while Nizmo says it is set straight to Nizmo, 500 when keeping fails.
  *
- * Nothing in the agent starts it yet: agent.json names terminals that
- * push from Phase 4 part 8's second PR.
+ * The service starts it when agent.json names a terminal that pushes
+ * (SyncAgent.listen, PR 305).
  */
 
-/** Where the listener keeps what it takes: the agent's state (part 8's second PR); in memory in tests. */
+/** Where the listener keeps what it takes: the agent's state (SyncAgent, PR 305); in memory in tests. */
 export type PushSink = {
     /** Where a named terminal had got to, as kept, and whether it's held: set straight to Nizmo. */
     terminal(host: string, serial: string): { cursor: string | null; held: boolean }
-    /** The company's offset from UTC now, in minutes, for its options. */
-    offsetMinutes(): number
+    /** The company's offset from UTC now, in minutes, for its options; null when it isn't known. */
+    offsetMinutes(): number | null
     /** Keeps what was taken of a request, in one write. Throws when it can't: the terminal sends it again. */
     keep(host: string, serial: string, taken: Taken): void
 }
@@ -64,14 +64,30 @@ export type ListenOptions = {
 export type PushListener = { port: number; close(): Promise<void> }
 
 /**
- * Where a request came from, as agent.json would name it: an IPv4
- * address arrives inside an IPv6 one (`::ffff:192.168.1.40`) where the PC
- * listens on both.
+ * An IP address in the one form both sides are compared in (Codex on PR
+ * 305): an IPv6 one in its shortest form, in small letters, so
+ * `0:0:0:0:0:0:0:1` is `::1`, as a request from it arrives; and an IPv4
+ * one inside an IPv6 one (`::ffff:192.168.1.40`, as it arrives where the
+ * PC listens on both) as the IPv4 address. Null for what isn't an IP
+ * address.
  */
+export function canonicalAddress(address: string): string | null {
+    const plain = address.trim()
+    if (isIPv4(plain)) return plain
+    if (!isIPv6(plain)) return null
+    // A link-local one with its interface (fe80::1%eth0), which the URL parser doesn't take: as written.
+    if (plain.includes("%")) return plain.toLowerCase()
+    const shortest = new URL(`http://[${plain}]/`).hostname.slice(1, -1)
+    const mapped = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(shortest)
+    if (!mapped) return shortest
+    const [high, low] = [parseInt(mapped[1], 16), parseInt(mapped[2], 16)]
+    return `${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`
+}
+
+/** Where a request came from, in the form agent.json's addresses are compared in. */
 export function callerAddress(remote: string | undefined): string | null {
     if (!remote) return null
-    const mapped = /^::ffff:(.+)$/i.exec(remote)?.[1]
-    return mapped && isIPv4(mapped) ? mapped : remote.toLowerCase()
+    return canonicalAddress(remote) ?? remote.toLowerCase()
 }
 
 function answer(res: ServerResponse, status: number, text: string | null, close = false) {

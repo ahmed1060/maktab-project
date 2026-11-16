@@ -17,7 +17,7 @@ import { AGENT_VERSION } from "./version"
  *   nizmo-agent trust <address> [port]              pin a Hikvision terminal's renewed certificate
  *   nizmo-agent enrol <code>                        connect this PC to the company
  *   nizmo-agent check                               one round, then stop
- *   nizmo-agent run                                 keep going (what the service runs)
+ *   nizmo-agent run                                 keep going (what the service runs), listening for terminals that push
  *
  * Its files live in NIZMO_AGENT_HOME, or beside the program: agent.json
  * (set up by hand), state.json (written by the agent; holds its token) and
@@ -41,7 +41,8 @@ export const HELP = `Nizmo attendance agent ${AGENT_VERSION}
   nizmo-agent check
       Reads the terminals in agent.json and sends their new scans once.
   nizmo-agent run
-      Keeps reading and sending every pollSeconds. This is what the Windows service runs.
+      Keeps reading and sending every pollSeconds, and listens for terminals that push to it,
+      named in agent.json with "push": true. This is what the Windows service runs.
 `
 
 function home(): string {
@@ -140,20 +141,27 @@ async function locked(command: string, args: string[], config: ReturnType<typeof
     if (command === "run") {
         const stop = new AbortController()
         for (const signal of ["SIGINT", "SIGTERM"] as const) process.on(signal, () => { log.info(`Stopping (${signal}).`); stop.abort() })
-        log.info(`Agent ${AGENT_VERSION} started: ${config.devices.length} terminal(s), every ${config.pollSeconds} s, sending to ${config.server}.`)
+        const pushing = config.pushers.length ? `, ${config.pushers.length} pushing to port ${config.listenPort}` : ""
+        log.info(`Agent ${AGENT_VERSION} started: ${config.devices.length} terminal(s) read${pushing}, every ${config.pollSeconds} s, sending to ${config.server}.`)
         const agent = new SyncAgent(config, state, paths.state, log)
-        while (!stop.signal.aborted) {
-            let wait = config.pollSeconds * 1000
-            try {
-                const r = await agent.round()
-                if (r.queued || r.delivered || r.refused || r.cleared.length) log.info(`Read ${r.read}, queued ${r.queued}, delivered ${r.delivered}, already there ${r.duplicates}, refused ${r.refused}${r.cleared.length ? `, cleared ${r.cleared.join(", ")}` : ""}.`)
-                // Not enrolled: there is nothing to do until someone is, so ask less often.
-                if (r.stopped === "REENROL") wait = Math.max(wait, 10 * 60_000)
-            } catch (e) {
-                log.error(`Round failed: ${(e as Error).stack ?? e}`)
+        try {
+            while (!stop.signal.aborted) {
+                let wait = config.pollSeconds * 1000
+                try {
+                    // Before each round: one that couldn't start, as when another program held the port, is tried again (PR 305).
+                    await agent.listen()
+                    const r = await agent.round()
+                    if (r.queued || r.pushed || r.delivered || r.refused || r.cleared.length) log.info(`Read ${r.read}, queued ${r.queued}, pushed ${r.pushed}, delivered ${r.delivered}, already there ${r.duplicates}, refused ${r.refused}${r.cleared.length ? `, cleared ${r.cleared.join(", ")}` : ""}.`)
+                    // Not enrolled: there is nothing to do until someone is, so ask less often.
+                    if (r.stopped === "REENROL") wait = Math.max(wait, 10 * 60_000)
+                } catch (e) {
+                    log.error(`Round failed: ${(e as Error).stack ?? e}`)
+                }
+                // A little jitter, so many offices do not all arrive on the same second.
+                await sleep(wait + Math.floor(Math.random() * 5000), stop.signal)
             }
-            // A little jitter, so many offices do not all arrive on the same second.
-            await sleep(wait + Math.floor(Math.random() * 5000), stop.signal)
+        } finally {
+            await agent.stopListening()
         }
         return 0
     }

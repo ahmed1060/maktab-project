@@ -772,7 +772,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      connection and the setup guide, merged in #303 on 2026-11-16; then
      part 8's first PR, the agent's listener on the office network for
      ZKTeco terminals that push only plain HTTP, which changes no
-     screen, #304;
+     screen, merged in #304 on 2026-11-16; then its second, terminals
+     that push named in `agent.json` and the agent listening for them,
+     released as 0.4.0, which changes no screen, #305;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6534,3 +6536,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   that sends its scans to the agent's PC on the office network, as
   Nizmo answers one that sends to it, though nothing starts it yet.
   No screen changes.
+- **2026-11-16:** The office agent listens for terminals that push
+  (#305; `ATTENDANCE_PLAN.md` §17.12, Phase 4 part 8, the second of
+  its three PRs). `agent.json` can name a ZKTeco terminal that sends
+  its scans to the agent's PC, the service listens for it, and its
+  scans reach Nizmo with the agent's own; the agent is 0.4.0. No
+  screen changes: the third PR adds its steps to the setup guide.
