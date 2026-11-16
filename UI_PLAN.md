@@ -751,7 +751,11 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      health, merged in #294 on 2026-11-15; then its fifth and last, the
      Super Admin's straight-to-Nizmo switch on the company's Attendance
      tab, merged in #295 on 2026-11-16; then part 6's first PR, the
-     addresses a ZKTeco terminal calls, which changes no screen, #296;
+     addresses a ZKTeco terminal calls, which changes no screen, merged
+     in #296 on 2026-11-16; then its second, Add a terminal for ZKTeco
+     straight to Nizmo, with the office's address asked for, what to set
+     on the terminal shown after it's added and again from its menu, and
+     the office's address on its row and changed from its menu, #297;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6447,3 +6451,14 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   ZKTeco terminal's attendance log and its log of changes to people each
   keep their own place when uploads of both arrive at once. No screen
   changes.
+- **2026-11-16:** Add a terminal for ZKTeco straight to Nizmo (#297;
+  `ATTENDANCE_PLAN.md` §17.7, Phase 4 part 6, the second of its four
+  PRs; `DESIGN.md` §5.5, Dialog). On Fingerprint terminals, Add a terminal
+  lets a ZKTeco brand be added straight to Nizmo where the Super Admin
+  has turned that on, and asks for the office's internet address, one
+  per line. Once it's added, what to set on the terminal is shown, and
+  its menu shows it again (What to set on it) and changes the office's
+  address (Change office address), both changes asking for the step-up
+  code. Its row says the office's address, and a call from elsewhere is
+  said in words. The setup guide says a ZKTeco model can be added
+  straight to Nizmo too where that's on.
