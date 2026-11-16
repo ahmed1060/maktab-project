@@ -1,4 +1,4 @@
-import { MAX_EVENT_BYTES, isPicture, type TerminalEvent } from "./hikvision-events"
+import { MAX_EVENT_BYTES, isPicture } from "./hikvision-events"
 
 /**
  * A terminal's first contacts, kept to compare what a real terminal sends
@@ -542,7 +542,8 @@ export async function bodyOf(req: Request, secret: string): Promise<{ body: stri
  * and why, nothing to keep, unreadable, or empty.
  */
 export function outcomeOf(
-    events: readonly TerminalEvent[] | null,
+    // A Hikvision terminal's events, or a ZKTeco terminal's lines (PR 299): what each was, and why one was refused.
+    events: readonly ({ kind: "scan" | "other" } | { kind: "refused"; reason: string })[] | null,
     stored: { accepted: number; duplicates: number; skipped: number; refused: readonly { reason: string }[] } | null,
 ): string[] {
     if (events === null) return ["UNREADABLE"]
