@@ -2443,6 +2443,11 @@ Attendance tab (part 5's fifth and last PR, §20). What the build settled:
 - **The Super Admin's page** reads a company from the companies list's
   route, not the settings route: both return the switch, or the card
   read Off once the page was loaded again.
+- **A first contact is dated with the terminal's row held** (a fix to
+  #294, found by its own test failing about one run in six). Requests
+  that come at once are now dated in the order they are let in, so none
+  kept is dated before the terminal's first. Before, each was dated as
+  it arrived, and one let in later could be dated a moment earlier.
 
 **Built in #294: first contacts kept**, for a Hikvision terminal straight
 to Nizmo (part 5's fourth PR, §20). What the build settled:
