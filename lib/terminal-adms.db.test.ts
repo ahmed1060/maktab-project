@@ -376,6 +376,35 @@ describe.skipIf(!ADMIN_URL)("the addresses a ZKTeco terminal calls, in Postgres"
             expect(await punchesOf("halfway")).toHaveLength(1001)
             expect((await device("halfway")).pushCursor).toBe("ATTLOG=1001;OPERLOG=0")
         }, 120_000)
+
+        it("sent while its log of changes to people is, leave each log where its own upload got it to", async () => {
+            const serial = await terminal("both")
+            await call("POST", `/iclock/cdata?SN=${serial}&table=ATTLOG&Stamp=12`, { body: "7\t2026-09-19 09:00:00\t0\t1" })
+            expect((await device("both")).pushCursor).toBe("ATTLOG=12;OPERLOG=0")
+            // The scans' upload has read where the terminal had got to and is storing them when the
+            // people's log arrives and is answered. Each writes its own log's stamp and leaves the
+            // other's as the row holds it then, not as it was when the upload arrived (review on #296).
+            const real = Ingest.fromTerminal.bind(Ingest)
+            const meanwhile = vi.spyOn(Ingest, "fromTerminal").mockImplementation(async (...args) => {
+                const stored = await real(...args)
+                expect(await status("POST", `/iclock/cdata?SN=${serial}&table=OPERLOG&OpStamp=77`, { body: "USER PIN=7\tName=Ehab One" })).toBe(200)
+                return stored
+            })
+            try {
+                expect(await (await call("POST", `/iclock/cdata?SN=${serial}&table=ATTLOG&Stamp=13`, { body: "7\t2026-09-19 17:00:00\t1\t1" })).res.text()).toBe("OK: 1\n")
+            } finally {
+                meanwhile.mockRestore()
+            }
+            expect((await device("both")).pushCursor).toBe("ATTLOG=13;OPERLOG=77")
+            // And at the same moment, one of each: both are kept.
+            const [scans, people] = await Promise.all([
+                status("POST", `/iclock/cdata?SN=${serial}&table=ATTLOG&Stamp=20`, { body: "7\t2026-09-20 09:00:00\t0\t1" }),
+                status("POST", `/iclock/cdata?SN=${serial}&table=OPERLOG&OpStamp=90`, { body: "USER PIN=7\tName=Ehab One" }),
+            ])
+            expect([scans, people]).toEqual([200, 200])
+            expect((await device("both")).pushCursor).toBe("ATTLOG=20;OPERLOG=90")
+            expect((await punchesOf("both")).map(p => p.at)).toEqual(["2026-09-19T09:00:00", "2026-09-19T17:00:00", "2026-09-20T09:00:00"])
+        })
     })
 
     describe("what is dropped unread", () => {

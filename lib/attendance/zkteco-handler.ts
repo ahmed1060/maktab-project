@@ -79,16 +79,19 @@ export async function receiveZkteco(req: Request): Promise<Response> {
                 return say(optionsAnswer(terminal.serial, cursorOf(terminal.cursor), offsetMinutes))
             }
             case "scans": {
+                const { stamp } = asked
                 const lines = attlogOf(await req.text())
                 await AttendanceTerminalPushService.receive(terminal.deviceId, lines, address)
                 // Only once they are taken: were this to fail before, the terminal sends them again from where it was.
-                if (asked.stamp) await AttendanceTerminalPushService.gotTo(terminal.deviceId, cursorWith(terminal.cursor, { scans: asked.stamp }))
+                // This log's stamp alone, beside the other's as the row holds it then, not as this request read it.
+                if (stamp) await AttendanceTerminalPushService.gotTo(terminal.deviceId, kept => cursorWith(kept, { scans: stamp }))
                 return say(`OK: ${lines.length}\n`)
             }
             case "people": {
+                const { stamp } = asked
                 // Names are in it: the body is never read (§17.5).
                 await AttendanceTerminalPushService.receive(terminal.deviceId, [], address)
-                if (asked.stamp) await AttendanceTerminalPushService.gotTo(terminal.deviceId, cursorWith(terminal.cursor, { people: asked.stamp }))
+                if (stamp) await AttendanceTerminalPushService.gotTo(terminal.deviceId, kept => cursorWith(kept, { people: stamp }))
                 return say("OK\n")
             }
             case "poll":

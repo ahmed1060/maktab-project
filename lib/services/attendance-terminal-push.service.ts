@@ -100,9 +100,28 @@ export class AttendanceTerminalPushService {
         })
     }
 
-    /** Where a terminal had got to in its logs, once what it sent up to there is taken (§17.3). */
-    static async gotTo(deviceId: string, cursor: string): Promise<void> {
-        await prisma.attendanceDevice.updateMany({ where: { id: deviceId, connection: "DIRECT", retiredAt: null }, data: { pushCursor: cursor } })
+    /**
+     * Where a terminal had got to in its logs, once what it sent up to
+     * there is taken (§17.3). `moved` is given what the terminal's row
+     * holds now, with the row held, and returns what it is to hold.
+     *
+     * A ZKTeco terminal's two logs are kept together, and uploads of both
+     * can arrive at once: each written from what its request read on
+     * arriving, the later would undo the other's, and the terminal would
+     * be told to send again what was already answered (review on PR 296).
+     * Within one log the upload answered last has the say, even to a
+     * lower stamp: a terminal whose clock or log was reset counts from
+     * lower again, and going back only has it send what is already there.
+     *
+     * Not FOR UPDATE: that also holds up a scan being stored for the
+     * terminal, which takes a key share on its row.
+     */
+    static async gotTo(deviceId: string, moved: (kept: string | null) => string): Promise<void> {
+        await prisma.$transaction(async tx => {
+            const held = await tx.$queryRaw<{ pushCursor: string | null }[]>`SELECT "pushCursor" FROM "AttendanceDevice" WHERE id = ${deviceId} AND "connection" = 'DIRECT' AND "retiredAt" IS NULL FOR NO KEY UPDATE`
+            if (held.length === 0) return
+            await tx.attendanceDevice.update({ where: { id: deviceId }, data: { pushCursor: moved(held[0].pushCursor) } })
+        })
     }
 
     /**

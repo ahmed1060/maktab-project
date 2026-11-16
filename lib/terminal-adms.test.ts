@@ -73,9 +73,22 @@ describe("whose request it is", () => {
 
     it("moves a terminal on only once what it sent is taken", () => {
         const taken = handler.indexOf("await AttendanceTerminalPushService.receive(terminal.deviceId, lines, address)")
-        const movedOn = handler.indexOf("cursorWith(terminal.cursor, { scans: asked.stamp })")
+        const movedOn = handler.indexOf("kept => cursorWith(kept, { scans: stamp })")
         expect(taken).toBeGreaterThan(-1)
         expect(movedOn).toBeGreaterThan(taken)
+    })
+
+    it("moves one log on beside the other's place as the terminal's row holds it then, with the row held", () => {
+        // Never from what the request read when it arrived: uploads of both logs at once would undo one another's.
+        expect(handler).not.toContain("cursorWith(terminal.cursor")
+        expect(handler).toContain("kept => cursorWith(kept, { people: stamp })")
+        const push = source("lib/services/attendance-terminal-push.service.ts")
+        const gotTo = push.slice(push.indexOf("static async gotTo("), push.indexOf("static async receive("))
+        expect(gotTo).toContain(`WHERE id = \${deviceId} AND "connection" = 'DIRECT' AND "retiredAt" IS NULL FOR NO KEY UPDATE`)
+        expect(gotTo).toContain("data: { pushCursor: moved(held[0].pushCursor) }")
+        // One after the other on the transaction, and nothing written outside it.
+        expect(gotTo).not.toContain("Promise.all")
+        expect(gotTo).not.toContain("prisma.attendanceDevice")
     })
 
     it("has the limits a Hikvision terminal has, and notes a call from elsewhere once an hour", () => {
