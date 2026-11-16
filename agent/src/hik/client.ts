@@ -215,10 +215,11 @@ export class HikClient {
      * doesn't say its offset, read here as UTC, still has all of that day
      * searched. Which are new is the events' own numbering
      * (agent/src/hik/events.ts), and on the first read their wall date. A
-     * history longer than one read takes is read over several.
+     * history longer than one read takes is read over several. The clock is
+     * read here unless the round has just read it (PR 302).
      */
-    async passedChecks(cursor: HikCursor, from: string | null): Promise<{ records: HikRecord[]; cursor: HikCursor }> {
-        const clock = await this.clock()
+    async passedChecks(cursor: HikCursor, from: string | null, read?: HikClock): Promise<{ records: HikRecord[]; cursor: HikCursor }> {
+        const clock = read ?? await this.clock()
         const offset = clock.offsetMinutes ?? 0
         const cursorAt = cursor ? Date.parse(cursor.time) : NaN
         const startMs = (!Number.isNaN(cursorAt) ? cursorAt : Date.parse(`${from ?? "2000-01-01"}T00:00:00Z`) - offset * 60_000) - DAY

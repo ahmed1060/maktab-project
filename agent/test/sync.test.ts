@@ -81,7 +81,8 @@ describe("a round of the agent", () => {
         device.scan("8", at(today, "09:07:00"))
         const first = await agent().round()
         expect(first).toMatchObject({ read: 2, queued: 2, delivered: 2, duplicates: 0, refused: 0, stopped: null })
-        expect(server.heartbeats[0].devices[0]).toMatchObject({ serialNumber: "ZK-A1", name: "Front door", model: "Simulated K40", reachable: true, recordCount: 2, recordCapacity: 100000 })
+        // Its protocol said, for Nizmo to keep (PR 301, PR 302).
+        expect(server.heartbeats[0].devices[0]).toMatchObject({ serialNumber: "ZK-A1", name: "Front door", model: "Simulated K40", protocol: "ZKTECO", reachable: true, recordCount: 2, recordCapacity: 100000 })
         expect(server.heartbeats[0]).toMatchObject({ agentVersion: expect.any(String), queueDepth: 2 })
 
         expect(await agent().round()).toMatchObject({ read: 2, queued: 0, delivered: 0 })
@@ -201,7 +202,7 @@ describe("a round of the agent", () => {
         await agent().round()
         await device.stop()
         expect((await agent().round()).unreachable).toHaveLength(1)
-        expect(server.heartbeats.at(-1).devices[0]).toMatchObject({ serialNumber: "ZK-A1", reachable: false, error: expect.stringMatching(/ZK_/) })
+        expect(server.heartbeats.at(-1).devices[0]).toMatchObject({ serialNumber: "ZK-A1", protocol: "ZKTECO", reachable: false, error: expect.stringMatching(/ZK_/) })
         await device.start().catch(() => {})
     })
 
@@ -403,9 +404,44 @@ describe("a round of the agent", () => {
 describe("the config file", () => {
     it("fills in sensible defaults", () => {
         expect(parseConfig({ server: "https://app.example.com/", devices: [{ host: "192.168.1.20" }] })).toEqual({
-            server: "https://app.example.com", devices: [{ host: "192.168.1.20", port: 4370, password: 0, name: null }],
+            server: "https://app.example.com", devices: [{ protocol: "zkteco", host: "192.168.1.20", port: 4370, password: 0, name: null }],
             pollSeconds: 60, sendFrom: null, clearWhenFull: false, clearAtRatio: 0.9,
         })
+    })
+
+    // PR 302: a Hikvision terminal, read over HTTPS with the user made on it for the agent (ATTENDANCE_PLAN.md §17.4).
+    it("names a Hikvision terminal by its protocol, the agent's user and password, over HTTPS on 443 unless it says otherwise", () => {
+        const hik = (d: object) => parseConfig({ server: "https://x.co", devices: [{ protocol: "hikvision", host: " 192.168.1.30 ", user: "nizmo-agent", password: "Correct Horse 9", ...d }] }).devices[0]
+        expect(hik({})).toEqual({ protocol: "hikvision", host: "192.168.1.30", port: 443, https: true, user: "nizmo-agent", password: "Correct Horse 9", name: null })
+        expect(hik({ https: false })).toMatchObject({ port: 80, https: false })
+        expect(hik({ port: 8443, name: "Lobby" })).toMatchObject({ port: 8443, https: true, name: "Lobby" })
+        // Written as people write it.
+        expect(hik({ protocol: "Hikvision" }).protocol).toBe("hikvision")
+        expect(parseConfig({ server: "https://x.co", devices: [{ protocol: "ZKTeco", host: "a" }] }).devices[0]).toEqual({ protocol: "zkteco", host: "a", port: 4370, password: 0, name: null })
+        // A password kept as typed: spaces and a leading zero are the password's own.
+        expect(hik({ password: " 0123 " }).password).toBe(" 0123 ")
+    })
+
+    it("refuses a Hikvision terminal missing what it's read with, or with the wrong kind of value, saying which and what to set", () => {
+        const refused = (d: object) => () => parseConfig({ server: "https://x.co", devices: [{ host: "a" }, { protocol: "hikvision", host: "b", user: "nizmo-agent", password: "pw", ...d }] })
+        expect(refused({ protocol: "suprema" })).toThrow('Terminal 2: "protocol" must be "zkteco" or "hikvision".')
+        expect(refused({ user: undefined })).toThrow('Terminal 2 needs a "user"')
+        expect(refused({ user: "  " })).toThrow('Terminal 2 needs a "user"')
+        expect(refused({ password: undefined })).toThrow('Terminal 2 needs a "password"')
+        expect(refused({ password: "" })).toThrow('Terminal 2 needs a "password"')
+        // A number loses what a password can hold, such as a leading zero: it goes in quotes.
+        expect(refused({ password: 1234 })).toThrow('Terminal 2: "password" must be in quotes')
+        expect(refused({ https: "no" })).toThrow('Terminal 2: "https" must be true or false.')
+        expect(refused({ port: 0 })).toThrow('Terminal 2: "port" must be a number from 1 to 65535.')
+        expect(refused({ name: "x".repeat(81) })).toThrow("80 characters")
+        // The same terminal twice, whatever its protocol.
+        expect(() => parseConfig({ server: "https://x.co", devices: [{ host: "a", port: 443 }, { protocol: "hikvision", host: "a", user: "u", password: "p" }] })).toThrow("twice")
+    })
+
+    it("reads the example an office copies, a Hikvision terminal among its own", () => {
+        const example = parseConfig(JSON.parse(readFileSync("agent/agent.example.json", "utf8")))
+        expect(example.devices.map(d => d.protocol)).toEqual(["zkteco", "zkteco", "hikvision"])
+        expect(example.devices[2]).toMatchObject({ https: true, port: 443, user: expect.any(String), password: expect.any(String) })
     })
     it("refuses what would be unsafe or cannot work, saying what to fix", () => {
         expect(() => parseConfig({ server: "http://app.example.com", devices: [] })).toThrow("https://")

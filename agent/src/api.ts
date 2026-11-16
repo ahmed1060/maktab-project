@@ -25,6 +25,8 @@ export type Enrolled = { token: string; agentId: string; name: string; company: 
 
 export type DeviceReport = {
     serialNumber: string; name?: string; model?: string; firmware?: string
+    /** What the agent reads it with, for Nizmo to keep (PR 301, PR 302). */
+    protocol: "ZKTECO" | "HIKVISION"
     reachable: boolean; error?: string; clock?: string
     userCount?: number; recordCount?: number; recordCapacity?: number
 }

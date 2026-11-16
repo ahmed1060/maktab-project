@@ -68,11 +68,14 @@ export class FakeHikDevice {
         }
     }
 
-    /** Starts listening on a free port on this machine; over HTTPS with a certificate and its key. */
-    async start(tls?: { cert: string; key: string }): Promise<number> {
+    /**
+     * Starts listening on this machine, on a free port or the one given (another terminal at the address the agent
+     * knows, PR 302); over HTTPS with a certificate and its key.
+     */
+    async start(tls?: { cert: string; key: string }, port = 0): Promise<number> {
         const handler = (req: IncomingMessage, res: ServerResponse) => { void this.answer(req, res) }
         this.server = tls ? createHttps({ cert: tls.cert, key: tls.key }, handler) : createHttp(handler)
-        await new Promise<void>(resolve => this.server!.listen(0, "127.0.0.1", resolve))
+        await new Promise<void>(resolve => this.server!.listen(port, "127.0.0.1", resolve))
         return (this.server.address() as AddressInfo).port
     }
 

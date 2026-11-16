@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http"
+import { heartbeatSchema, punchBatchSchema } from "../../lib/attendance/agent-payloads"
 
 /**
  * A stand-in for the website's agent API (/api/agent/*), behaving as the
@@ -6,6 +7,8 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
  * stored once by its terminal, number and time, a terminal must be reported
  * in a heartbeat before its punches are taken, one set straight to Nizmo is
  * answered `DIRECT`, and a rotated token replaces the old one once used.
+ * What the agent sends is checked against the website's own schemas, so a
+ * field the website would refuse fails here too (PR 302).
  * Failures can be switched on to test the agent's patience.
  */
 
@@ -69,6 +72,7 @@ export class FakeServer {
         if (!this.tokens.has(token)) return fail(401, "UNAUTHENTICATED")
 
         if (req.url === "/api/agent/heartbeat") {
+            if (!heartbeatSchema.safeParse(body).success) return fail(400, "INVALID_INPUT")
             this.heartbeats.push(body)
             const devices = body.devices.map((d: any) => {
                 const known = this.devices.get(d.serialNumber) ?? { state: "ACTIVE" as const, mode: "ANY" }
@@ -86,6 +90,7 @@ export class FakeServer {
         }
         if (req.url === "/api/agent/punches") {
             if (this.failPunches.times > 0) { this.failPunches.times--; return fail(this.failPunches.status, "SERVER_ERROR") }
+            if (!punchBatchSchema.safeParse(body).success) return fail(400, "INVALID_INPUT")
             this.batches.push(body.punches.length)
             let accepted = 0, duplicates = 0
             const refused: { index: number; reason: string; retry: boolean }[] = []
