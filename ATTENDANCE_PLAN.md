@@ -16,7 +16,9 @@ Add a terminal with its address shown once, in #292, the third, what
 a scan keeps of its event, in #293, the fourth, first contacts kept for
 the Super Admin, in #294, and the fifth, the straight-to-Nizmo switch on
 the company's Attendance tab, in #295: part 5 is built, switched off for
-every company. Parts 6 and 7 are not built.
+every company; part 6, ZKTeco straight to Nizmo, is split in four PRs,
+the first, the addresses a terminal calls, built in #296. Part 7 is not
+built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
@@ -2107,6 +2109,88 @@ internet address**:
   the agent. If the trial (§17.8) finds firmware that proves itself with a
   secret, this is looked at again for those models.
 
+**Built in #296: the addresses a ZKTeco terminal calls**, everything under
+`/iclock/` at the root of Nizmo's address (part 6's first PR, §20). Nothing
+lets a ZKTeco terminal be added straight to Nizmo yet (part 6's second PR
+does), and every company's switch is off (§17.8), so they answer nobody
+until then. What the build settled:
+
+- **Left alone by the proxy:** its matcher skips `/iclock` as it skips
+  `/api`, so a terminal is never sent to the sign-in page.
+- **Whose request it is:** the serial number in the request (`SN`) names a
+  ZKTeco terminal added straight to Nizmo and not retired, and the request
+  comes from one of the addresses kept for it. The caller's address is
+  read from `x-vercel-forwarded-for` alone: a request without it is
+  refused, and so is a terminal with no address kept.
+- **Nothing says whether a serial number is known.** An unknown one, a
+  known one called from elsewhere, and a request with no serial number are
+  all answered 403 with nothing in it. Each is counted against the address
+  it came from: past 30 in 15 minutes, 429.
+- **A call from elsewhere is noted on the terminal**, as refused, with the
+  address it came from (`ADDRESS_NOT_ALLOWED:<address>`): at most once an
+  hour for a terminal, so a terminal that polls every few seconds from an
+  office whose address changed doesn't count thousands. Its card then
+  says which address to add (the card is part 6's second PR).
+- **Held, not dropped,** as for Hikvision (§17.2): 503 during
+  maintenance; 403 while the company is suspended, its package has no
+  Terminals add-on, or its switch is off; 429 past 600 requests a minute
+  from one terminal; 500 when something fails that shouldn't. A terminal
+  counts anything but 200 as a failure and tries again.
+- **Its first call, `GET /iclock/cdata?SN=…&options=all`,** is answered
+  with its options, a line each, as ZKTeco's own document has them (HTTP
+  PUSH SDK 2.0.1, §17.11):
+  - `GET OPTION FROM: <serial number>`;
+  - `Stamp`, and `ATTLOGStamp`, later firmware's name for it: where it
+    had got to in its attendance log, 0 for one never heard from, so it
+    sends its whole memory (§17.6);
+  - `OpStamp`, and `OPERLOGStamp`: where it had got to in its log of
+    changes to people, kept so it doesn't offer them again;
+  - `ErrorDelay=60`, `Delay=30`, `TransTimes=00:00;14:05`,
+    `TransInterval=1` and `Realtime=1`: try again a minute after a
+    failure, ask for commands every 30 seconds, and send a scan as it
+    happens;
+  - `TransFlag=1000000000`: attendance records and nothing else (§17.5).
+    The document's own example is `1111000000`, which also sends changes
+    to people and photos;
+  - `Encrypt=0`, as the document asks;
+  - `TimeZone`, the company's offset from UTC now in whole hours
+    (`TimeZone=2`), and none for a zone off the hour. The 2.0.1 document
+    has no such option; later firmware reads one, and what a terminal
+    does with it is the trial's to answer (§18, 5). One that sets its
+    clock from the server's time and this option shows the company's
+    wall clock, which is how its scans are read (§17.5); one that ignores
+    it is as it was. Left out, such a terminal might take the server's
+    time as it is, which is UTC. No command is sent (§19).
+- **Scans** are a `POST` to `/iclock/cdata` with `table=ATTLOG`, or, from
+  firmware as old as the 2.0.1 document, with a `Stamp` and no table. A
+  line each: employee number, `YYYY-MM-DD HH:MM:SS`, status, how the
+  person was identified, and on later firmware a work code and more,
+  separated by tabs. Each goes through the same steps as any terminal's
+  own scan (§17.6), keeps its time as sent, its status, how the person
+  was identified and its work code (`rawPayload`, §17.5), and is answered
+  `OK: <lines>`. The request's `Stamp` is then kept as where the terminal
+  had got to.
+- **Counted on the terminal as refused, with the reason** (§17.5): a line
+  that can't be read (`UNREADABLE`), an employee number longer than 32
+  characters (`INVALID_NUMBER`), and what any terminal's own scan is
+  refused for (§17.6). They are answered `OK` all the same.
+- **Dropped unread, and answered `OK`:** the log of changes to people
+  (`table=OPERLOG`, or an `OpStamp`), which carries names, with its stamp
+  kept so it isn't sent again; and any other table or path under
+  `/iclock/`, among them `devicecmd`, a command's result, though Nizmo
+  sends none.
+- **`GET /iclock/getrequest`** is always answered `OK`: there are no
+  commands (§19). It is the terminal's heartbeat, and what it says of
+  itself in `INFO` is kept on it: its firmware, how many people it holds
+  and how many records. Its address on the office network, which `INFO`
+  also carries, isn't.
+- **Each request is the terminal's contact:** when, and from which
+  address.
+- **Not in this PR:** Add a terminal for ZKTeco straight to Nizmo with
+  the office's address, and its card; Change connection; and first
+  contacts kept for a ZKTeco terminal (§17.8). They are part 6's other
+  three PRs (§20).
+
 ### 17.4 Through the agent: Hikvision
 
 The agent learns Hikvision's ISAPI beside the ZKTeco protocol it speaks:
@@ -2693,6 +2777,10 @@ word.
 - ADMS's paths and handshake, from open implementations:
   [zkteco-adms (Go)](https://pkg.go.dev/github.com/s0x90/zkteco-adms) and
   [the PUSH protocol, described](https://www.linkedin.com/pulse/zkteco-adms-protocol-link-your-zk-device-server-herbin-tsobeng-qg0ze).
+- ZKTeco, [HTTP PUSH SDK 2.0.1](http://f02.s.alicdn.com/kf/HTB1PANmFVXXXXaCXVXX.PRXFXXXk.pdf)
+  (read on 16 November 2026, for #296): the options a server answers a
+  terminal's first call with, the lines of an attendance upload and its
+  `Stamp`, `getrequest` and its `INFO`, and `devicecmd`.
 
 ---
 
@@ -2722,7 +2810,11 @@ the trial on real terminals (§17.8) unless they say otherwise.
    doesn't, its health is the working-hours silence alert alone.
 5. **Does a ZKTeco terminal set its clock from Nizmo** by itself, from the
    answer's date or an option in it, with no command sent (§19)? If it does,
-   clock drift mostly goes away for terminals straight to Nizmo.
+   clock drift mostly goes away for terminals straight to Nizmo. Nizmo
+   answers its first call with the company's offset from UTC as
+   `TimeZone` (#296, §17.3): the trial says whether a terminal reads it,
+   in what form for a zone off the hour, and what it does when summer
+   time changes the offset after that call.
 6. **The address terminals are pointed at** (before the first terminal is
    installed at a customer, not in the trial). A terminal is set by hand, so
    moving Nizmo to its own domain later means visiting every terminal. The
@@ -2822,7 +2914,7 @@ matching with liveness, fallback to flagged.
 It stays switched off meanwhile, on the face check meant for testing only;
 choosing a commercial SDK (§18, question 1) waits with it.
 
-### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 in #291 to #295
+### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 in #291 to #295, part 6 from #296
 
 Planned in #269, for ZKTeco and Hikvision alike (§17.1–§17.11). It replaces
 the earlier Phase 4, a listener for pushes on the agent and nothing else,
@@ -2875,7 +2967,17 @@ which becomes part 8 below. Each part is its own PR:
    proxy; the options answer, scans, and `getrequest` as its heartbeat; the
    office address check; ZKTeco's protocol in Add a terminal; and Change
    connection (§17.7), which a ZKTeco terminal is the first to have both
-   ways for.
+   ways for. In four PRs, each safe with the switch off:
+   1. The addresses a terminal calls, which answer nobody yet: the
+      routes, whose request it is by serial number and office address,
+      the options answer, scans stored, and `getrequest` as its
+      heartbeat (§17.3). Built in #296.
+   2. Add a terminal for ZKTeco straight to Nizmo, with the office's
+      internet address, what to set on the terminal, its card, and the
+      office's address changed later (§17.7).
+   3. Change connection (§17.7).
+   4. First contacts kept for a ZKTeco terminal (§17.8): what is kept of
+      what it sends, with names never opened.
 7. **The agent reads Hikvision** (§17.4): ISAPI beside the ZKTeco protocol,
    `probe`, `agent.json`; a new agent release.
 8. **Only when a customer needs it: the agent listens on the office network**,

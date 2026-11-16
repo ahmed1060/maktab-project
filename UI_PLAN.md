@@ -750,7 +750,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      Admin, read from its menu there, with how terminals connect on System
      health, merged in #294 on 2026-11-15; then its fifth and last, the
      Super Admin's straight-to-Nizmo switch on the company's Attendance
-     tab, #295;
+     tab, merged in #295 on 2026-11-16; then part 6's first PR, the
+     addresses a ZKTeco terminal calls, which changes no screen, #296;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6435,3 +6436,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     it loads the button can't be pressed. If it couldn't be read, the
     card says so above its row, with Try again, as Fingerprint terminals
     says a refresh failed.
+- **2026-11-16:** The addresses a ZKTeco terminal calls (#296;
+  `ATTENDANCE_PLAN.md` §17.3, Phase 4 part 6, the first of its four PRs).
+  No screen changes, and nothing answers yet: no ZKTeco terminal can be
+  added straight to Nizmo until the next PR, and every company's switch
+  is off. The screens come with the next PRs: Add a terminal for ZKTeco
+  with the office's address and its card, then Change connection, then
+  its first contacts for the Super Admin.
