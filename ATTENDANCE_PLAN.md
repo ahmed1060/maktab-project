@@ -3239,6 +3239,38 @@ the agent starts yet. What the build settled:
   408 and closed. Past 32 connections, one more is closed as it comes. A
   port another program holds is named when the listener starts.
 
+**Built in #305: terminals that push, named in `agent.json`** (part 8's
+second PR), released as agent 0.4.0. What the build settled:
+
+- A terminal that pushes is listed under `"devices"` with the others, with
+  `"push": true` and its IP address: a name such as `side-door.office`
+  can't be matched against where a request comes from. It takes no
+  `"port"`: it calls the agent's `"listenPort"`. One address can't be both
+  read and pushing.
+- What the agent keeps of it is apart from the terminals it reads, by its
+  address: its serial number, where it had got to, whether Nizmo has it
+  set straight to Nizmo, and what its polls say of it.
+- It's held, answered 503, until the agent is enrolled, and whenever Nizmo
+  no longer accepts the agent.
+- What it sends is queued, its stamps moved and the state saved in one
+  write. If the write fails, the queue and the stamps are put back as they
+  were, and the terminal sends it again.
+- Its scans before `sendFrom` aren't queued, and its stamp moves past them,
+  as a read terminal's cursor does. Set earlier, its stamps start again
+  from 0, and it sends its memory again the next time it asks for its
+  options, as it does when it restarts.
+- The service starts listening before its first round. If it can't, as
+  when another program holds the port, it says so in the log, reads the
+  other terminals, reports each that pushes as unreachable with the reason,
+  and tries again each round.
+- It's reported reachable while it was heard from in the last 3 minutes,
+  even when it's held. In the first 3 minutes after the agent starts
+  listening, one not heard from yet isn't reported either way. `check`
+  doesn't listen, so it reports none of them, and logs any that has never
+  called.
+- Its options carry the company's time zone, the one the agent was given
+  when it was enrolled.
+
 ---
 
 ## 18. Open questions
@@ -3473,7 +3505,7 @@ which becomes part 8 below. Each part is its own PR:
       the service listens; its scans join the queue, with its stamps moved
       in the same write; the heartbeat reports it; one set straight to
       Nizmo is held; the README's firewall step; a new agent release,
-      0.4.0. No screen changes.
+      0.4.0. No screen changes. Built in #305.
    3. The setup guide's steps for a ZKTeco terminal that pushes to the
       office agent, with the agent version that listens (§17.7), once
       the 0.4.0 package is built.
