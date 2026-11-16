@@ -19,7 +19,8 @@ the company's Attendance tab, in #295: part 5 is built, switched off for
 every company; part 6, ZKTeco straight to Nizmo, is split in four PRs,
 the first, the addresses a terminal calls, built in #296, and the
 second, Add a terminal for ZKTeco straight to Nizmo with the office's
-address, in #297. Part 7 is not built.
+address, in #297, and the third, Change connection, in #298. Part 7 is
+not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
@@ -2517,6 +2518,47 @@ second PR, §20). What the build settled:
   contacts kept for a ZKTeco terminal (its fourth): until then its menu
   has no Read first contacts.
 
+**Built in #298: Change connection** (part 6's third PR, §20). What the
+build settled:
+
+- **Change connection** is in the menu of a terminal that isn't retired,
+  where its protocol has another way built that the company may use
+  (`DESIGN.md` §5.5, Dialog). A ZKTeco terminal moves between the office
+  agent and straight to Nizmo, straight to Nizmo only where the Super
+  Admin has turned that on (§17.8). A Hikvision terminal has no other
+  way until the agent reads it (part 7).
+- **Moving straight to Nizmo** asks for the office's internet address,
+  as adding it does, then the step-up code (§17.10), and what to set on
+  the terminal is shown after. At its next heartbeat the agent hears the
+  terminal is set straight to Nizmo, sends what it has already read, and
+  reads no more (§17.6). Where the terminal had got to starts again, so
+  once set it sends its whole memory, and each scan the agent already
+  delivered is stored once (§17.6).
+- **Moving to the agent** asks first, with no step-up code: nothing is
+  let in. Nizmo stops taking the terminal's own calls at once, and the
+  agent reads on from where it stopped once it reports the terminal. The
+  dialog says to turn the terminal's Cloud Server Setting off, so it
+  stops calling.
+- **What stays, and what starts again.** Its scans, name, brand, mode,
+  the employee numbers mapped to people, and when it was first seen
+  stay (§17.6). What belonged to the way it connected starts again:
+  straight to Nizmo, the office's addresses or its secret address, where
+  it had got to, where it last called from, and what was refused;
+  through the agent, whether the agent reached it, and its clock's drift,
+  which the agent measures again. Moved straight to Nizmo, it waits for
+  its first contact until it calls, as one just added that way.
+- **The audit log** has the connection before and after, and the
+  office's addresses when it moves straight to Nizmo.
+- **No silence alert for a terminal straight to Nizmo** (above): one
+  moved from the agent keeps the agent that last reported it, and the
+  agent's silence check now leaves it out.
+- **The server refuses** a retired terminal, a move to the way it
+  already connects, straight to Nizmo where the switch is off, a way not
+  built for its protocol, and an office's address that's missing, isn't
+  one, or isn't asked for.
+- **Not in this PR:** first contacts kept for a ZKTeco terminal (part
+  6's fourth, §20).
+
 ### 17.8 Proving it on real terminals
 
 None of this can be tried without the terminals, and the build has none. So:
@@ -3027,7 +3069,7 @@ which becomes part 8 below. Each part is its own PR:
    2. Add a terminal for ZKTeco straight to Nizmo, with the office's
       internet address, what to set on the terminal, its card, and the
       office's address changed later (§17.7). Built in #297.
-   3. Change connection (§17.7).
+   3. Change connection (§17.7). Built in #298.
    4. First contacts kept for a ZKTeco terminal (§17.8): what is kept of
       what it sends, with names never opened.
 7. **The agent reads Hikvision** (§17.4): ISAPI beside the ZKTeco protocol,
