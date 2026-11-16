@@ -22,10 +22,11 @@ Add a terminal for ZKTeco straight to Nizmo with the office's address,
 in #297, the third, Change connection, in #298, and the fourth, first
 contacts kept for a ZKTeco terminal, in #299: part 6 is built, switched
 off for every company; part 7, the agent reads Hikvision, is split in
-three PRs, the first, the agent's Hikvision client, in #300, and the
+four PRs, the first, the agent's Hikvision client, in #300, the
 second, Nizmo taking a terminal's protocol from the agent, with
 Hikvision through the office agent ready on the screens and held back
-until the agent reads it, in #301.
+until the agent reads it, in #301, and the third, the agent reading a
+Hikvision terminal named in `agent.json`, released as 0.3.0, in #302.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
@@ -2344,6 +2345,51 @@ the agent reads it** (part 7's second PR, §20). What the build settled:
     `HIK_AUTH_FAILED` among them, so the guide names what the agent
     will say.
 
+**Built in #302: the agent reads Hikvision** (part 7's third PR, §20).
+Its screens stay as they are: Hikvision's way through the agent is
+built in the fourth PR, once the package that reads it exists. What
+the build settled:
+
+- **`agent.json`** names a Hikvision terminal with `"protocol":
+  "hikvision"`, its `"host"`, the `"user"` made on it for the agent and
+  that user's `"password"`, in quotes, and a `"name"` if wanted. It's
+  read over HTTPS on port 443, or over HTTP on port 80 where it says
+  `"https": false`; `"port"` sets another. A terminal that names no
+  protocol is ZKTeco's, as every `agent.json` before it is. What's
+  missing or the wrong kind is refused when the agent starts, saying
+  which terminal and what to set, as for ZKTeco.
+- **Each round reads it** with the client built in #300: who it is, its
+  clock, and its passed checks from where the agent had got to, kept
+  in the agent's state file beside its pinned certificate. They join
+  the queue as a ZKTeco terminal's do, and are delivered the same way.
+  `sendFrom`, a terminal set straight to Nizmo, another terminal put at
+  its address, and one that doesn't answer are handled as for ZKTeco.
+- **The heartbeat says each terminal's protocol**, `ZKTECO` or
+  `HIKVISION` (#301), with a Hikvision terminal's serial number, model,
+  firmware and clock. It says nothing of how full its memory is, and
+  the agent never clears it (§17.4).
+- **Its certificate** is pinned the first time a round reads it over
+  HTTPS, and the log says so with its fingerprint. A terminal showing
+  another later is refused (`HIK_CERTIFICATE_CHANGED`), as another
+  machine could be answering at its address. If it is the same
+  terminal, whose certificate was renewed, as after a reset or a
+  firmware update, `nizmo-agent.exe trust TERMINAL-ADDRESS`, with the
+  service stopped, reads it, shows its serial number and its new
+  fingerprint, and pins that one instead. Over HTTP there's none to pin.
+- **`probe hikvision TERMINAL-ADDRESS AGENT-USER`** asks for the user's
+  password without showing it as it's typed, then shows the terminal's
+  serial number, model, firmware, clock and, over HTTPS, its
+  certificate's fingerprint, and sends nothing. `--http` reads one
+  whose HTTPS is off; a port can follow the user.
+- **The release:** the agent is 0.3.0. Its package is built by the
+  Attendance agent workflow, run by hand once this is merged, as
+  before (§17).
+- **The fourth PR** builds Hikvision's way through the agent, so Add a
+  terminal, Change connection and the setup guide offer it (#301), and
+  adds to the guide that the agent reads Hikvision from 0.3.0, how to
+  check the version installed, and what to do on
+  `HIK_CERTIFICATE_CHANGED`.
+
 ### 17.5 What a terminal sends, and what Nizmo keeps
 
 - **Kept**, for each scan: the terminal, the employee number and the
@@ -3253,7 +3299,7 @@ which becomes part 8 below. Each part is its own PR:
    4. First contacts kept for a ZKTeco terminal (§17.8): what is kept of
       what it sends, with names never opened. Built in #299.
 7. **The agent reads Hikvision** (§17.4): ISAPI beside the ZKTeco protocol,
-   `probe`, `agent.json`; a new agent release. In three PRs, each safe
+   `probe`, `agent.json`; a new agent release. In four PRs, each safe
    with nothing set up to use it:
    1. The agent's Hikvision client, which nothing uses yet: HTTP digest
       authentication, the terminal's identity, its clock, and its passed
@@ -3268,9 +3314,13 @@ which becomes part 8 below. Each part is its own PR:
       protocol, and its terminals are ZKTeco's as before. Built in #301.
    3. `agent.json` names a Hikvision terminal, with the user made on it
       for the agent and its password; the agent's rounds read it and
-      report its protocol; `probe` reads one; a new agent release
-      (§17.4); and, with it, Hikvision's way through the agent is
-      built, so the screens offer it.
+      report its protocol; `probe` reads one; `trust` pins a renewed
+      certificate; a new agent release, 0.3.0 (§17.4). No screen
+      changes. Built in #302.
+   4. Hikvision's way through the agent is built, so the screens offer
+      it, once the 0.3.0 package is built; the setup guide says which
+      agent version reads Hikvision, and what to do when a terminal's
+      certificate changes.
 8. **Only when a customer needs it: the agent listens on the office network**,
    for terminals that push only plain HTTP. The terminal pushes to the agent's
    address on the office network, and the agent sends on over HTTPS, as for
