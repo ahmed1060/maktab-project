@@ -38,6 +38,11 @@ export const heartbeatSchema = z.object({
         name: z.string().trim().max(80).optional(),
         model: z.string().trim().max(80).optional(),
         firmware: z.string().trim().max(80).optional(),
+        /**
+         * What the agent reads it with (PR 301). An agent before part 7's
+         * third PR says none, and reads ZKTeco's protocol only.
+         */
+        protocol: z.enum(["ZKTECO", "HIKVISION"]).optional(),
         /** Whether the agent reached it this time. */
         reachable: z.boolean(),
         error: z.string().max(500).optional(),

@@ -230,7 +230,7 @@ describe("on Fingerprint terminals", () => {
         }
         expect(steps("en", { directAllowed: true })).toBe(`<p class="ui-card-note">${en.att_guide_direct}</p>`)
         expect(steps("ar", { directAllowed: true })).toBe(`<p class="ui-card-note">${ar.att_guide_direct}</p>`)
-        // Off, as for every company today, it still can't be read.
+        // Off, it can't be read: its steps are written (PR 301) but held back until the agent reads Hikvision's, part 7's third PR (Codex on PR 301).
         expect(steps("en", { directAllowed: false })).toBe(`<p class="ui-card-note">${esc(en.att_guide_not_read)}</p>`)
         expect(steps("en", {})).toBe(`<p class="ui-card-note">${esc(en.att_guide_not_read)}</p>`)
         // A model the agent reads keeps its steps either way; where it may be added straight to Nizmo too, a line above them says so (PR 297).
@@ -238,6 +238,8 @@ describe("on Fingerprint terminals", () => {
         expect(steps("en", { brand: ZK, directAllowed: true }).startsWith(`<p class="ui-card-note">${esc(en.att_guide_direct_too)}</p><ol class="ui-guide-steps"`)).toBe(true)
         expect(steps("ar", { brand: ZK, directAllowed: true }).startsWith(`<p class="ui-card-note">${esc(ar.att_guide_direct_too)}</p><ol class="ui-guide-steps"`)).toBe(true)
         expect(PANEL).toContain("directAllowed={directAllowed} server={window.location.origin}")
+        // Held back by what's built, not by the brand: part 7's third PR shows them by building the agent's way.
+        expect(readFileSync("components/TerminalSetupGuide.tsx", "utf8")).toContain("if (!mayConnect(brand.protocol, 'AGENT', directAllowed)) return <p className=\"ui-card-note\">")
     })
 })
 

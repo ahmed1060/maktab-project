@@ -194,7 +194,7 @@ describe.skipIf(!ADMIN_URL)("changing how a terminal connects, in Postgres", () 
 
     describe("a Hikvision terminal", () => {
         it("set to the agent, moved straight to Nizmo, is issued its address, shown once; it can't move back until the agent reads Hikvision", async () => {
-            // Only the database can hold one: the agent can't read Hikvision yet (part 7).
+            // Only the database, or an agent of part 7's third PR reporting one, can hold one; until that agent is released, none moves to it (Codex on PR 301).
             const hik = (await db.query(`SELECT id FROM "TerminalBrand" WHERE name = 'Hikvision'`)).rows[0].id
             await db.query(
                 `INSERT INTO "AttendanceDevice"(id, "companyId", "serialNumber", name, protocol, "brandId", connection, "addedById", "updatedAt") VALUES ('hik-1', 'c1', 'HK-1', 'Lobby', 'HIKVISION', $1, 'AGENT', 'a1', now())`,

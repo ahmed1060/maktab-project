@@ -37,6 +37,7 @@ export type HikInfo = { serialNumber: string; model: string | null; name: string
 /** The terminal's wall time, and its offset from UTC in minutes when it states one. */
 export type HikClock = { wall: string; offsetMinutes: number | null }
 
+/** An error reading a Hikvision terminal. Its code starts `HIK_`, as ZKTeco's start `ZK_` (§17.4, PR 301): the setup guide names them. */
 export class HikError extends Error {
     constructor(readonly code: string, readonly detail?: string) {
         super(detail ? `${code}: ${detail}` : code)
@@ -98,14 +99,14 @@ export class HikClient {
             // One deadline for all of it: opening the connection, the handshake over HTTPS, and the reply. A request
             // that never got its socket never says it failed, so it is refused here, and the socket being opened closed.
             const deadline = setTimeout(() => {
-                const late = new HikError("TIMEOUT", `no answer in ${timeoutMs / 1000} seconds`)
+                const late = new HikError("HIK_TIMEOUT", `no answer in ${timeoutMs / 1000} seconds`)
                 fail(late)
                 opening?.destroy()
                 req.destroy(late)
             }, timeoutMs)
             const fail = (e: unknown) => {
                 clearTimeout(deadline)
-                reject(e instanceof HikError ? e : new HikError("UNREACHABLE", (e as Error).message))
+                reject(e instanceof HikError ? e : new HikError("HIK_UNREACHABLE", (e as Error).message))
             }
             // The socket is handed over only once it is open and, over HTTPS, its certificate checked: nothing is written before.
             const createConnection = (_options: unknown, ready: (err: Error | null, socket?: Socket) => void) => {
@@ -129,7 +130,7 @@ export class HikClient {
                     this.seenFingerprint = seen
                     if (pin && seen !== pin) {
                         socket.destroy()
-                        return once(new HikError("CERTIFICATE_CHANGED", "the terminal shows another certificate than the one it showed first: another machine may be answering at its address"))
+                        return once(new HikError("HIK_CERTIFICATE_CHANGED", "the terminal shows another certificate than the one it showed first: another machine may be answering at its address"))
                     }
                     once(null, socket)
                 })
@@ -142,7 +143,7 @@ export class HikClient {
                 let size = 0
                 res.on("data", (chunk: Buffer) => {
                     size += chunk.length
-                    if (size > MAX_REPLY) return req.destroy(new HikError("BAD_REPLY", "the terminal's reply is far longer than asked for"))
+                    if (size > MAX_REPLY) return req.destroy(new HikError("HIK_BAD_REPLY", "the terminal's reply is far longer than asked for"))
                     chunks.push(chunk)
                 })
                 res.on("end", () => {
@@ -171,19 +172,19 @@ export class HikClient {
             const reply = await this.send(method, path, headers, body)
             if (reply.status !== 401) return reply
             const next = parseChallenge(reply.headers["www-authenticate"])
-            if (!next) throw new HikError("AUTH_UNSUPPORTED", "the terminal asks for a sign-in other than digest authentication")
+            if (!next) throw new HikError("HIK_AUTH_UNSUPPORTED", "the terminal asks for a sign-in other than digest authentication")
             if (signed && fresh && !next.stale) break
             this.challenge = next
             this.nc = 0
             fresh = true
         }
         this.challenge = null
-        throw new HikError("AUTH_FAILED", "the terminal refused the user or the password")
+        throw new HikError("HIK_AUTH_FAILED", "the terminal refused the user or the password")
     }
 
     private async ok(method: string, path: string, body?: string): Promise<string> {
         const reply = await this.call(method, path, body)
-        if (reply.status !== 200) throw new HikError(`HTTP_${reply.status}`, `the terminal answered ${path.split("?")[0]} with ${reply.status}`)
+        if (reply.status !== 200) throw new HikError(`HIK_HTTP_${reply.status}`, `the terminal answered ${path.split("?")[0]} with ${reply.status}`)
         return reply.text
     }
 
@@ -191,7 +192,7 @@ export class HikClient {
     async info(): Promise<HikInfo> {
         const xml = await this.ok("GET", "/ISAPI/System/deviceInfo")
         const serialNumber = tag(xml, "serialNumber")
-        if (!serialNumber) throw new HikError("BAD_REPLY", "the terminal didn't say its serial number")
+        if (!serialNumber) throw new HikError("HIK_BAD_REPLY", "the terminal didn't say its serial number")
         return { serialNumber, model: tag(xml, "model"), name: tag(xml, "deviceName"), firmware: tag(xml, "firmwareVersion") }
     }
 
@@ -199,7 +200,7 @@ export class HikClient {
     async clock(): Promise<HikClock> {
         const local = tag(await this.ok("GET", "/ISAPI/System/time"), "localTime")
         const m = local ? /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/.exec(local) : null
-        if (!m) throw new HikError("BAD_REPLY", "the terminal didn't say its time")
+        if (!m) throw new HikError("HIK_BAD_REPLY", "the terminal didn't say its time")
         const zone = m[2]
         const offsetMinutes = zone === undefined ? null : zone === "Z" ? 0
             : (zone[0] === "-" ? -1 : 1) * (Number(zone.slice(1, 3)) * 60 + Number(zone.slice(-2)))
@@ -239,15 +240,15 @@ export class HikClient {
             try {
                 reply = JSON.parse(text)
             } catch {
-                throw new HikError("BAD_REPLY", "the terminal's events aren't JSON")
+                throw new HikError("HIK_BAD_REPLY", "the terminal's events aren't JSON")
             }
             const found = (reply as { AcsEvent?: { responseStatusStrg?: unknown; InfoList?: unknown } } | null)?.AcsEvent
-            if (!found || typeof found !== "object") throw new HikError("BAD_REPLY", "the terminal's reply holds no events")
+            if (!found || typeof found !== "object") throw new HikError("HIK_BAD_REPLY", "the terminal's reply holds no events")
             const list = found.InfoList === undefined ? [] : found.InfoList
-            if (!Array.isArray(list)) throw new HikError("BAD_REPLY", "the terminal's events aren't a list")
+            if (!Array.isArray(list)) throw new HikError("HIK_BAD_REPLY", "the terminal's events aren't a list")
             for (const e of list as Record<string, unknown>[]) {
                 if (typeof e?.major !== "number" || typeof e.minor !== "number" || typeof e.time !== "string" || typeof e.serialNo !== "number") {
-                    throw new HikError("BAD_REPLY", "an event without its type, time or serial number")
+                    throw new HikError("HIK_BAD_REPLY", "an event without its type, time or serial number")
                 }
                 events.push({ major: e.major, minor: e.minor, time: e.time, serialNo: e.serialNo, employeeNoString: typeof e.employeeNoString === "string" ? e.employeeNoString : undefined, employeeNo: typeof e.employeeNo === "number" || typeof e.employeeNo === "string" ? e.employeeNo : undefined })
             }
@@ -257,7 +258,7 @@ export class HikClient {
         const picked = pickNew(events, cursor)
         // Stopped short, a read must get past where it had got to, or every read after it would stop at the same place.
         if (stopped && cursor && !(picked.cursor && picked.cursor.serialNo > cursor.serialNo)) {
-            throw new HikError("TOO_MANY", "more events in a day than one read can take")
+            throw new HikError("HIK_TOO_MANY", "more events in a day than one read can take")
         }
         if (cursor || !from) return picked
         return { records: picked.records.filter(r => r.at.slice(0, 10) >= from), cursor: picked.cursor }

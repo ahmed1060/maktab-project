@@ -13,7 +13,9 @@ import { ar } from "../translations/ar"
 
 describe("the ways a terminal connects", () => {
     it("are either way for ZKTeco's, and straight to Nizmo for Hikvision's", () => {
-        // Part 6 (PR 297) added ZKTeco's straight to Nizmo; part 7 (§20) adds the agent for Hikvision's.
+        // Part 6 (PR 297) added ZKTeco's straight to Nizmo. The agent for Hikvision's is held back until part 7's
+        // third PR, whose released agent reads it: offered sooner, a working terminal could be moved to an agent
+        // that can't (Codex on PR 301).
         expect(CONNECTIONS_BUILT).toEqual({ ZKTECO: ["AGENT", "DIRECT"], HIKVISION: ["DIRECT"] })
     })
 

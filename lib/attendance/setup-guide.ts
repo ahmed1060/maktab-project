@@ -5,11 +5,14 @@ import type { TranslationKey } from "@/lib/translations"
  * DESIGN.md §5.5, Dialog): the guide behind the round "i" on Fingerprint
  * terminals, its steps following the protocol of the model picked.
  *
- * ZKTeco's is read through the Local Sync Agent, so its steps are the
- * agent's README in order: at the office, installing the agent, connecting
- * it, matching terminal numbers to people, and what to do when something
- * goes wrong. Hikvision's isn't read yet (§20, parts 5 and 7): it has no
- * steps.
+ * Each protocol's steps read it through the Local Sync Agent, so they are
+ * the agent's README in order: at the office, installing the agent,
+ * connecting it, matching terminal numbers to people, and what to do when
+ * something goes wrong. ZKTeco's and Hikvision's differ at the office, in
+ * `agent.json` and `probe`, and in what goes wrong with signing in
+ * (§17.4): Hikvision's terminal has a user made on it for the agent, where
+ * ZKTeco's has a comm key (PR 301). The guide shows a protocol's steps only
+ * once the agent's way is built for it (terminal-connections.ts).
  *
  * Each line is a translation key, with what's typed after it in a box of its
  * own, exactly as the agent takes it, never translated. Inside a sentence,
@@ -35,16 +38,20 @@ const FOLDER = "C:\\Program Files\\Nizmo Agent"
 
 /**
  * agent.json as the README sets it, sending to this Nizmo, with the
- * terminal's address to fill in: a key to a line, so no line runs past the
- * guide's box (found in the browser).
+ * terminal's address to fill in, and for Hikvision's the user made on it
+ * for the agent (§17.4): a key to a line, so no line runs past the guide's
+ * box (found in the browser).
  */
-function settingsFor(server: string): string {
+function settingsFor(server: string, protocol: TerminalProtocol): string {
+    const terminal = protocol === "HIKVISION"
+        ? [`      "protocol": "hikvision",`, `      "host": "TERMINAL-ADDRESS",`, `      "user": "AGENT-USER",`, `      "password": "AGENT-PASSWORD",`]
+        : [`      "host": "TERMINAL-ADDRESS",`]
     return [
         "{",
         `  "server": "${server}",`,
         `  "devices": [`,
         `    {`,
-        `      "host": "TERMINAL-ADDRESS",`,
+        ...terminal,
         `      "name": "Front door"`,
         `    }`,
         `  ],`,
@@ -53,35 +60,58 @@ function settingsFor(server: string): string {
     ].join("\n")
 }
 
-/**
- * The steps for a model speaking this protocol, or null where Nizmo doesn't
- * read it yet. The Super Admin is told where the agent is built; anyone else,
- * to ask the Super Admin for it.
- */
-export function setupGuide(protocol: TerminalProtocol, { superAdmin, server }: { superAdmin: boolean; server: string }): GuideStep[] | null {
-    if (protocol !== "ZKTECO") return null
+/** At the office, before the agent: what each protocol's terminal needs. The model's notes go with finding its address. */
+const OFFICE: Record<TerminalProtocol, GuideLine[]> = {
+    ZKTECO: [
+        { text: "att_guide_office_delete" },
+        { text: "att_guide_office_connected" },
+        { text: "att_guide_office_address" },
+        { text: "att_guide_model_notes", notes: true },
+        { text: "att_guide_office_clock" },
+        { text: "att_guide_office_pc" },
+    ],
+    HIKVISION: [
+        { text: "att_guide_hik_user" },
+        { text: "att_guide_hik_address" },
+        { text: "att_guide_model_notes", notes: true },
+        { text: "att_guide_hik_clock" },
+        { text: "att_guide_hik_listening" },
+        { text: "att_guide_office_pc" },
+    ],
+}
+
+/** Setting the agent to read it, and checking it answers. */
+function reading(protocol: TerminalProtocol, server: string): GuideLine[] {
+    if (protocol === "HIKVISION") {
+        return [
+            { text: "att_guide_hik_settings", code: settingsFor(server, protocol) },
+            { text: "att_guide_hik_https" },
+            // The password is asked for, never typed on the command line, where it would stay in its history (§17.4).
+            { text: "att_guide_hik_probe", code: "nizmo-agent.exe probe hikvision TERMINAL-ADDRESS AGENT-USER" },
+        ]
+    }
     return [
-        {
-            key: "office", title: "att_guide_office_title", who: "att_guide_office_who",
-            lines: [
-                { text: "att_guide_office_delete" },
-                { text: "att_guide_office_connected" },
-                { text: "att_guide_office_address" },
-                { text: "att_guide_model_notes", notes: true },
-                { text: "att_guide_office_clock" },
-                { text: "att_guide_office_pc" },
-            ],
-        },
+        { text: "att_guide_settings", code: settingsFor(server, protocol) },
+        { text: "att_guide_password" },
+        { text: "att_guide_probe", code: "nizmo-agent.exe probe TERMINAL-ADDRESS" },
+        // probe reads only what it's given, never agent.json (Codex on PR 282).
+        { text: "att_guide_probe_key", code: "nizmo-agent.exe probe TERMINAL-ADDRESS 4370 1234" },
+    ]
+}
+
+/**
+ * The steps for a model speaking this protocol. The Super Admin is told
+ * where the agent is built; anyone else, to ask the Super Admin for it.
+ */
+export function setupGuide(protocol: TerminalProtocol, { superAdmin, server }: { superAdmin: boolean; server: string }): GuideStep[] {
+    return [
+        { key: "office", title: "att_guide_office_title", who: "att_guide_office_who", lines: OFFICE[protocol] },
         {
             key: "install", title: "att_guide_install_title", who: "att_guide_install_who",
             lines: [
                 { text: superAdmin ? "att_guide_download_sa" : "att_guide_download_other" },
                 { text: "att_guide_unzip", code: FOLDER },
-                { text: "att_guide_settings", code: settingsFor(server) },
-                { text: "att_guide_password" },
-                { text: "att_guide_probe", code: "nizmo-agent.exe probe TERMINAL-ADDRESS" },
-                // probe reads only what it's given, never agent.json (Codex on PR 282).
-                { text: "att_guide_probe_key", code: "nizmo-agent.exe probe TERMINAL-ADDRESS 4370 1234" },
+                ...reading(protocol, server),
                 { text: "att_guide_unknown_publisher" },
             ],
         },
@@ -107,7 +137,7 @@ export function setupGuide(protocol: TerminalProtocol, { superAdmin, server }: {
             lines: [
                 { text: "att_guide_silent", code: "nizmo-agent-service.exe status" },
                 { text: "att_guide_unreachable" },
-                { text: "att_guide_auth" },
+                { text: protocol === "HIKVISION" ? "att_guide_hik_auth" : "att_guide_auth" },
                 { text: "att_guide_revoked" },
                 { text: "att_guide_clock" },
             ],

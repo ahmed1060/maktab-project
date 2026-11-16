@@ -2,7 +2,7 @@
 
 import { useId, useRef, useState, type FormEvent } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
-import { addressLines, connectionChoices, hasOfficeAddress, hikvisionSettings, zktecoSettings, type TerminalConnection } from '@/lib/attendance/terminal-connections'
+import { addressLines, connectionChoices, hasOfficeAddress, hikvisionSettings, zktecoSettings, type TerminalConnection, type TerminalProtocol } from '@/lib/attendance/terminal-connections'
 import { Button, Choice, Dialog, DialogActions, Field, Select, TextArea, TextInput } from '@/components/ui'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import { CodeBox, ModelNotes, Sentence, type GuideBrand } from '@/components/TerminalSetupGuide'
@@ -270,11 +270,13 @@ export function OfficeAddressDialog({ name, addresses, busy, onClose, onSubmit }
  * Straight to Nizmo, a ZKTeco terminal's office's address is asked for and
  * needed, as adding it does, and the server asks for the step-up code. To
  * the agent nothing is asked: it's a confirmation, not in the danger
- * colour, since nothing is lost.
+ * colour, since nothing is lost. What to turn off on the terminal is named
+ * as its own screen names it, ZKTeco's or Hikvision's (PR 301).
  */
-export function ConnectionDialog({ name, to, officeAsked, busy, onClose, onSubmit }: {
+export function ConnectionDialog({ name, to, protocol, officeAsked, busy, onClose, onSubmit }: {
     name: string
     to: TerminalConnection
+    protocol: TerminalProtocol
     /** Whether, moved, it's let in from its office's address alone, which is then asked for. */
     officeAsked: boolean
     busy: boolean
@@ -294,7 +296,7 @@ export function ConnectionDialog({ name, to, officeAsked, busy, onClose, onSubmi
     return (
         <Dialog open onClose={() => { if (!busy) onClose() }} title={t(`att_term_move_${to}_title`).replace('{name}', name)}>
             <form ref={formRef} className="ui-form" noValidate onSubmit={submit}>
-                <p><Sentence text={t(`att_term_move_${to}_body`)} /></p>
+                <p><Sentence text={t(to === 'AGENT' && protocol === 'HIKVISION' ? 'att_term_move_AGENT_HIKVISION_body' : `att_term_move_${to}_body`)} /></p>
                 {officeAsked && <OfficeField value={office} error={error} onChange={v => { setOffice(v); setError(undefined) }} />}
                 <DialogActions>
                     <Button onClick={onClose} disabled={busy}>{t('cancel')}</Button>

@@ -385,7 +385,7 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
                 }} />
             )}
             {moving && movingTo && (
-                <ConnectionDialog name={moving.name} to={movingTo} officeAsked={hasOfficeAddress({ protocol: moving.protocol, connection: movingTo })} busy={busy} onClose={() => setMoving(null)} onSubmit={async officeAddresses => {
+                <ConnectionDialog name={moving.name} to={movingTo} protocol={moving.protocol} officeAsked={hasOfficeAddress({ protocol: moving.protocol, connection: movingTo })} busy={busy} onClose={() => setMoving(null)} onSubmit={async officeAddresses => {
                     await send(`/api/attendance/devices/${moving.id}/connection`, { method: 'PUT', body: JSON.stringify({ connection: movingTo, ...(officeAddresses && { officeAddresses }) }) }, `att_term_moved_${movingTo}`, d => { showAddress(d); setMoving(null) })
                 }} />
             )}
