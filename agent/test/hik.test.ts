@@ -10,6 +10,7 @@ import { HikClient, HikError } from "../src/hik/client"
 import { PASSED_CHECKS, pickNew, type HikEvent } from "../src/hik/events"
 import { PASSED_CHECKS as NIZMO_PASSED_CHECKS } from "../../lib/attendance/hikvision-events"
 import { FakeHikDevice, type FakeHikEvent } from "./fake-hik-device"
+import { selfSigned } from "./tls"
 
 /**
  * The agent's Hikvision client (ATTENDANCE_PLAN.md §17.4, Phase 4 part 7,
@@ -293,6 +294,18 @@ describe("a terminal, read", () => {
             const before = device.seen.length
             await expect(client(port, { https: true, pin: "AA:".repeat(31) + "AA" }).info()).rejects.toMatchObject({ code: "HIK_CERTIFICATE_CHANGED" })
             expect(device.seen.length).toBe(before)
+        })
+
+        // Codex on PR 302: each request is a connection of its own, so the first one's certificate holds for the rest.
+        it("holds to the first certificate it saw for every later request, when it was given none to pin", async () => {
+            const other = selfSigned("DS-K1T341AM-other")
+            device = new FakeHikDevice({ renewAfter: { path: "/ISAPI/System/deviceInfo", cert: other.cert, key: other.key } })
+            const c = client(await device.start(tls), { https: true, pin: null })
+            expect((await c.info()).serialNumber).toBe("DS-K1T341AM0020201234")
+            const before = device.seen.length
+            await expect(c.clock()).rejects.toMatchObject({ code: "HIK_CERTIFICATE_CHANGED" })
+            expect(device.seen.length).toBe(before)
+            expect(c.seenFingerprint).toBe(new X509Certificate(tls.cert).fingerprint256)
         })
     })
 })

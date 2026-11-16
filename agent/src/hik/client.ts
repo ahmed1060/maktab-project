@@ -15,7 +15,9 @@ import { MAJOR_EVENT, pickNew, type HikCursor, type HikEvent, type HikRecord } f
  * its own and signed by nobody, so instead of a list of authorities its
  * fingerprint is pinned. On the first contact the client says which it saw,
  * for the agent to keep; after that a terminal showing another is refused
- * before anything is sent to it. Otherwise over HTTP, on the office network
+ * before anything is sent to it. Each request is a connection of its own, so
+ * a client given none to pin holds to the first one it saw for its later
+ * requests (Codex on PR 302). Otherwise over HTTP, on the office network
  * only, as the ZKTeco protocol is.
  */
 
@@ -127,8 +129,10 @@ export class HikClient {
                 opening = socket
                 socket.once("secureConnect", () => {
                     const seen = socket.getPeerCertificate().fingerprint256 ?? null
-                    this.seenFingerprint = seen
-                    if (pin && seen !== pin) {
+                    // The one pinned, or the one this client saw first.
+                    const expected = pin ?? this.seenFingerprint
+                    if (!expected) this.seenFingerprint = seen
+                    if (expected && seen !== expected) {
                         socket.destroy()
                         return once(new HikError("HIK_CERTIFICATE_CHANGED", "the terminal shows another certificate than the one it showed first: another machine may be answering at its address"))
                     }

@@ -188,6 +188,22 @@ describe("a round of the agent", () => {
         expect(server.tokens).toEqual(new Set(["mka_2"]))
     })
 
+    // Codex on PR 302: a log too long to push in one go threw after the cursor had passed it, and was never sent.
+    it("queues a very long log whole before moving past it, and keeps both when the server can't be reached", async () => {
+        await agent().enrol("K7QD-2MXP")
+        const records = Array.from({ length: 250_000 }, (_, i) => ({ uid: i + 1, userNumber: String(i % 500), at: at(today, `${String(8 + Math.floor(i / 36_000)).padStart(2, "0")}:${String(Math.floor(i / 600) % 60).padStart(2, "0")}:${String(Math.floor(i / 10) % 60).padStart(2, "0")}`), status: 1, punch: 0 }))
+        const big: DeviceAccess = async (_options, work) => work({
+            info: async () => ({ serialNumber: "ZK-BIG", name: null, firmware: null, clock: at(today, "12:00:00"), users: 500, records: records.length, recordsCapacity: 500_000 }),
+            attendance: async () => records,
+            enable: async () => {},
+        } as never)
+        server.failPunches = { times: 1, status: 503 }
+        expect(await agent(big).round()).toMatchObject({ read: 250_000, queued: 250_000, unreachable: [], stopped: "NETWORK" })
+        const saved = loadState(statePath())
+        expect(saved.queue).toHaveLength(250_000)
+        expect(Object.values(saved.devices)[0].cursor.count).toBe(250_000)
+    }, 60_000)
+
     it("cuts what a terminal says about itself to what the server takes (review on #18)", async () => {
         device.state.name = "M".repeat(120)
         device.state.firmware = "F".repeat(120)

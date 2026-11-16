@@ -214,17 +214,17 @@ export class SyncAgent {
     }
 
     /**
-     * Queues a terminal's new scans from sendFrom on. The caller has moved its
-     * cursor past them: the queue and the cursor go in one write, so a record
-     * is either queued and passed, or neither. `read` is how many records the
-     * terminal gave this round.
+     * Adds a terminal's new scans from sendFrom on to the queue, one by one: a
+     * log of hundreds of thousands is too long to push in one call (Codex on
+     * PR 302). The caller moves its cursor past them only after, and saves
+     * both in one write, so a record is either queued and passed, or neither.
      */
-    private queue(serialNumber: string, fresh: { userNumber: string; at: string }[], read: number, sendFrom: string | null, result: RoundResult) {
-        const wanted = fresh.filter(r => !sendFrom || r.at.slice(0, 10) >= sendFrom)
-        this.state.queue.push(...wanted.map((r): QueuedPunch => ({ serialNumber, userNumber: r.userNumber, at: r.at })))
-        this.save()
-        result.read += read
-        result.queued += wanted.length
+    private enqueue(serialNumber: string, fresh: { userNumber: string; at: string }[], sendFrom: string | null, result: RoundResult) {
+        for (const r of fresh) {
+            if (sendFrom && r.at.slice(0, 10) < sendFrom) continue
+            this.state.queue.push({ serialNumber, userNumber: r.userNumber, at: r.at } satisfies QueuedPunch)
+            result.queued++
+        }
     }
 
     private async readZk(d: ZkDeviceConfig, key: string, remembered: Remembered, sendFrom: string | null, result: RoundResult): Promise<Report> {
@@ -252,8 +252,10 @@ export class SyncAgent {
         remembered.serialNumber = info.serialNumber
         if (records) {
             const { fresh, cursor } = newRecords(records, remembered.cursor)
+            this.enqueue(info.serialNumber, fresh, sendFrom, result)
             remembered.cursor = cursor
-            this.queue(info.serialNumber, fresh, records.length, sendFrom, result)
+            this.save()
+            result.read += records.length
         }
         return {
             // What the terminal says about itself, cut to what the server takes.
@@ -288,8 +290,10 @@ export class SyncAgent {
         // Set to connect straight to Nizmo: its events are its own to send.
         if (remembered.direct !== true) {
             const { records, cursor } = await client.passedChecks(remembered.hikCursor ?? null, sendFrom, clock)
+            this.enqueue(info.serialNumber, records, sendFrom, result)
             remembered.hikCursor = cursor
-            this.queue(info.serialNumber, records, records.length, sendFrom, result)
+            this.save()
+            result.read += records.length
         }
         return {
             serialNumber: info.serialNumber, ...(d.name ? { name: d.name } : {}), ...(info.model ? { model: info.model.slice(0, 80) } : {}), ...(info.firmware ? { firmware: info.firmware.slice(0, 80) } : {}),

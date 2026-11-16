@@ -102,6 +102,18 @@ describe("a round reading a Hikvision terminal", () => {
         expect(log.lines.some(l => l.includes("nizmo-agent trust 127.0.0.1"))).toBe(true)
     })
 
+    // Codex on PR 302: the pin saved on the first read holds for the rest of that round too.
+    it("refuses another certificate later in the very round that pinned the first, and reads none of its events", async () => {
+        device = new FakeHikDevice({ localTime: "2026-11-16T13:00:00+02:00", events: [scan(1, "2026-11-16T09:05:00")], renewAfter: { path: "/ISAPI/System/deviceInfo", cert: other.cert, key: other.key } })
+        const port = await device.start(tls)
+        config = hikConfig(port)
+        await agent().enrol("K7QD-2MXP")
+        expect(await agent().round()).toMatchObject({ queued: 0, delivered: 0, unreachable: [`127.0.0.1:${port}`] })
+        expect(device.seen.filter(r => r.status === 200).map(r => r.path)).toEqual(["/ISAPI/System/deviceInfo"])
+        expect(remembered().certificate).toBe(tls.fingerprint)
+        expect(server.stored.size).toBe(0)
+    })
+
     it("reads one over HTTP when it says so, with nothing to pin", async () => {
         config = hikConfig(await device.start(), { https: false })
         await agent().enrol("K7QD-2MXP")
