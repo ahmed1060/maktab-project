@@ -54,6 +54,8 @@ describe("what the agent reads of a terminal's requests, held in step with Nizmo
             expect(agent.cursorWith(kept, { scans: "130" })).toBe(nizmo.cursorWith(kept, { scans: "130" }))
             expect(agent.cursorWith(kept, { people: "11" })).toBe(nizmo.cursorWith(kept, { people: "11" }))
         }
+        // Without the company's time zone, no TimeZone at all: 0 would be UTC's (PR 305).
+        expect(agent.optionsAnswer("CB123", { scans: "0", people: "0" }, null)).not.toContain("TimeZone")
         for (const offset of [120, 0, -300, 330]) {
             expect(agent.optionsAnswer("CB123", { scans: "120", people: "9" }, offset)).toBe(nizmo.optionsAnswer("CB123", { scans: "120", people: "9" }, offset))
         }

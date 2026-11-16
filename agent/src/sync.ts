@@ -1,10 +1,12 @@
 import { hostname } from "node:os"
 import { AgentApi, ApiError, type DeviceReport } from "./api"
 import type { AgentConfig, DeviceConfig, HikDeviceConfig, ZkDeviceConfig } from "./config"
-import { saveState, type AgentState, type Cursor, type QueuedPunch } from "./state"
+import { saveState, type AgentState, type Cursor, type Pusher, type QueuedPunch } from "./state"
 import { HikClient, HikError, type HikOptions } from "./hik/client"
 import { withDevice, type ZkOptions } from "./zk/client"
 import type { AttendanceRecord } from "./zk/protocol"
+import type { Taken } from "./zk/adms"
+import { listen as listenOn, type PushListener, type PushSink } from "./zk/listener"
 import { AGENT_VERSION } from "./version"
 
 /**
@@ -37,6 +39,14 @@ import { AGENT_VERSION } from "./version"
  * the first time it is read over HTTPS, and one showing another is refused
  * until `nizmo-agent trust` is run for it. Its scans join the same queue;
  * its memory is never cleared (ATTENDANCE_PLAN.md §17.4).
+ *
+ * A ZKTeco terminal that pushes (`"push": true` in agent.json, §17.12,
+ * PR 305) isn't read: the service listens for it (agent/src/zk/listener.ts),
+ * and what it sends is queued, its stamps moved and saved in one write, put
+ * back if the write fails. It's held, answered 503 so it keeps its scans,
+ * until the agent is enrolled and while Nizmo has it set straight to Nizmo.
+ * It's reported once it has called, reachable while heard from in the last
+ * 3 minutes. Its memory is never cleared.
  */
 
 export const BATCH_SIZE = 500
@@ -50,11 +60,33 @@ export type DeviceAccess = typeof withDevice
 export type HikAccess = (options: HikOptions) => HikClient
 const hikClient: HikAccess = options => new HikClient(options)
 
+/** A terminal that pushes is reachable while it was heard from this recently: it polls every 30 seconds (PR 305). */
+export const PUSH_HEARD_WITHIN_MS = 3 * 60_000
+
+/**
+ * A time zone's offset from UTC at a moment, in minutes east: for a
+ * terminal's options (PR 305). Null when the zone isn't known.
+ */
+export function offsetMinutesIn(timeZone: string | null, at: Date): number | null {
+    if (!timeZone) return null
+    try {
+        const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+            timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
+        }).formatToParts(at).map(part => [part.type, part.value]))
+        const wall = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute), Number(parts.second))
+        return Math.round((wall - Math.floor(at.getTime() / 1000) * 1000) / 60_000)
+    } catch {
+        return null
+    }
+}
+
 type Remembered = AgentState["devices"][string]
 type Report = DeviceReport & { ratio: number }
 
 export type RoundResult = {
     read: number
+    /** Scans terminals pushed to the agent since the last round, queued as they came (PR 305). */
+    pushed: number
     queued: number
     delivered: number
     duplicates: number
@@ -110,6 +142,16 @@ export const trustCommand = (d: HikDeviceConfig) => `nizmo-agent trust ${d.host}
 export class SyncAgent {
     readonly api: AgentApi
 
+    // The terminals that push (PR 305): the listener, why it isn't listening, since when it is,
+    // when each was last heard from (this run only), which have been said to have never called,
+    // and how many scans they pushed since the last round.
+    private listener: PushListener | null = null
+    private listenError: string | null = null
+    private listeningSince: number | null = null
+    private readonly heardAt = new Map<string, number>()
+    private readonly saidNeverCalled = new Set<string>()
+    private pushed = 0
+
     constructor(
         private readonly config: AgentConfig,
         private readonly state: AgentState,
@@ -117,6 +159,8 @@ export class SyncAgent {
         private readonly log: Logger,
         private readonly device: DeviceAccess = withDevice,
         private readonly hik: HikAccess = hikClient,
+        /** The time, in milliseconds; replaced in tests. */
+        private readonly clock: () => number = Date.now,
     ) {
         this.api = new AgentApi(config.server, () => this.state.token)
     }
@@ -141,7 +185,8 @@ export class SyncAgent {
     }
 
     async round(): Promise<RoundResult> {
-        const result: RoundResult = { read: 0, queued: 0, delivered: 0, duplicates: 0, refused: 0, unreachable: [], cleared: [], stopped: null }
+        const result: RoundResult = { read: 0, pushed: this.pushed, queued: 0, delivered: 0, duplicates: 0, refused: 0, unreachable: [], cleared: [], stopped: null }
+        this.pushed = 0
         if (!this.state.token || this.state.needsEnrolment) {
             this.log.error("This agent is not enrolled. Run it with `enrol <code>` using a code from Company Settings → Attendance.")
             result.stopped = "REENROL"
@@ -188,6 +233,11 @@ export class SyncAgent {
                 remembered.cursor = { count: 0, lastKey: null }
                 remembered.hikCursor = null
             }
+            // A terminal that pushes sends from the stamps it's told when it asks for its options, as it does when it restarts.
+            for (const pusher of Object.values(this.state.pushers)) pusher.pushCursor = null
+            // Kept now: a round with no terminal to read saves nothing else.
+            this.state.readFrom = from
+            this.save()
         }
         this.state.readFrom = from
         for (const d of this.config.devices) {
@@ -210,6 +260,7 @@ export class SyncAgent {
                 }
             }
         }
+        this.pushReports(reports)
         return reports
     }
 
@@ -219,12 +270,14 @@ export class SyncAgent {
      * PR 302). The caller moves its cursor past them only after, and saves
      * both in one write, so a record is either queued and passed, or neither.
      */
-    private enqueue(serialNumber: string, fresh: { userNumber: string; at: string }[], sendFrom: string | null, result: RoundResult) {
+    private enqueue(serialNumber: string, fresh: { userNumber: string; at: string }[], sendFrom: string | null): number {
+        let queued = 0
         for (const r of fresh) {
             if (sendFrom && r.at.slice(0, 10) < sendFrom) continue
             this.state.queue.push({ serialNumber, userNumber: r.userNumber, at: r.at } satisfies QueuedPunch)
-            result.queued++
+            queued++
         }
+        return queued
     }
 
     private async readZk(d: ZkDeviceConfig, key: string, remembered: Remembered, sendFrom: string | null, result: RoundResult): Promise<Report> {
@@ -252,7 +305,7 @@ export class SyncAgent {
         remembered.serialNumber = info.serialNumber
         if (records) {
             const { fresh, cursor } = newRecords(records, remembered.cursor)
-            this.enqueue(info.serialNumber, fresh, sendFrom, result)
+            result.queued += this.enqueue(info.serialNumber, fresh, sendFrom)
             remembered.cursor = cursor
             this.save()
             result.read += records.length
@@ -290,7 +343,7 @@ export class SyncAgent {
         // Set to connect straight to Nizmo: its events are its own to send.
         if (remembered.direct !== true) {
             const { records, cursor } = await client.passedChecks(remembered.hikCursor ?? null, sendFrom, clock)
-            this.enqueue(info.serialNumber, records, sendFrom, result)
+            result.queued += this.enqueue(info.serialNumber, records, sendFrom)
             remembered.hikCursor = cursor
             this.save()
             result.read += records.length
@@ -324,6 +377,18 @@ export class SyncAgent {
                     remembered.direct = false
                     changed = true
                     this.log.info(`Terminal ${d.serialNumber} is set back to this agent. Its log is read from where it stopped.`)
+                }
+            }
+            // One that pushes is held while it's set straight to Nizmo, so it keeps its scans for Nizmo (PR 305).
+            for (const pusher of Object.values(this.state.pushers).filter(p => p.serialNumber === d.serialNumber)) {
+                if (d.state === "DIRECT" && !pusher.direct) {
+                    pusher.direct = true
+                    changed = true
+                    this.log.info(`Terminal ${d.serialNumber} is set to connect straight to Nizmo. What it pushes to this agent is refused, so it keeps its scans, until it's set back here or sends them to Nizmo.`)
+                } else if (d.state === "ACTIVE" && pusher.direct) {
+                    pusher.direct = false
+                    changed = true
+                    this.log.info(`Terminal ${d.serialNumber} is set back to this agent. What it pushes is taken again.`)
                 }
             }
         }
@@ -401,6 +466,127 @@ export class SyncAgent {
                     this.save()
                 }
             }).catch(e => this.log.warn(`Could not clear terminal ${d.name ?? key}: ${(e as Error).message}`))
+        }
+    }
+
+    // --- 5. terminals that push (PR 305) --------------------------------------------
+
+    /** The port the agent listens on for terminals that push, or null when it isn't. */
+    get listeningPort(): number | null {
+        return this.listener?.port ?? null
+    }
+
+    /**
+     * Starts listening for the terminals that push, if agent.json names any
+     * and it isn't already: the service calls it before each round, so one
+     * that couldn't start, as when another program holds the port, is tried
+     * again. Why it couldn't is logged once, and reported on each terminal.
+     */
+    async listen(port = this.config.listenPort, address?: string): Promise<void> {
+        if (this.listener || this.config.pushers.length === 0) return
+        const hosts = this.config.pushers.map(p => p.host)
+        try {
+            this.listener = await listenOn({ port, address, hosts, sink: this.sink(), log: this.log })
+        } catch (e) {
+            const message = (e as Error).message
+            if (message !== this.listenError) this.log.error(`Can't listen for terminals that push: ${message} Trying again each round.`)
+            this.listenError = message
+            return
+        }
+        this.listenError = null
+        this.listeningSince = this.clock()
+        this.log.info(`Listening on port ${this.listener.port} for ${hosts.length} terminal(s) that push: ${hosts.join(", ")}.`)
+    }
+
+    async stopListening(): Promise<void> {
+        await this.listener?.close()
+        this.listener = null
+    }
+
+    /** What the listener keeps what it takes through: this agent's state. */
+    private sink(): PushSink {
+        return {
+            terminal: (host, serial) => {
+                // A request from it, whatever it's answered: it's heard from.
+                this.heardAt.set(host, this.clock())
+                const pusher = this.state.pushers[host] as Pusher | undefined
+                const same = pusher?.serialNumber === serial
+                // Until the agent is enrolled its scans have nowhere to go, and nothing says from when to send.
+                const enrolled = Boolean(this.state.token) && !this.state.needsEnrolment
+                return { cursor: same ? pusher.pushCursor : null, held: !enrolled || (same && pusher.direct === true) }
+            },
+            offsetMinutes: () => offsetMinutesIn(this.state.timeZone, new Date(this.clock())),
+            keep: (host, serial, taken) => this.keepPushed(host, serial, taken),
+        }
+    }
+
+    /**
+     * Keeps what was taken of a terminal's request: its scans queued from
+     * sendFrom on, its stamps moved, and the state saved, in one write. If
+     * the write fails, the queue and the terminal are put back as they were
+     * and the error passes on, so the terminal is answered 500 and sends it
+     * again.
+     */
+    private keepPushed(host: string, serial: string, taken: Taken): void {
+        const before = this.state.pushers[host] as Pusher | undefined
+        const queueLength = this.state.queue.length
+        const pusher: Pusher = before?.serialNumber === serial
+            ? { ...before }
+            : { serialNumber: serial, pushCursor: null, direct: false, info: null }
+        if (taken.info) pusher.info = taken.info
+        const queued = this.enqueue(serial, taken.scans, this.config.sendFrom ?? this.state.sendFrom)
+        if (taken.cursor) pusher.pushCursor = taken.cursor
+        const changed = before?.serialNumber !== serial || taken.scans.length > 0 || pusher.pushCursor !== before?.pushCursor
+            || JSON.stringify(pusher.info ?? null) !== JSON.stringify(before?.info ?? null)
+        if (!changed) return
+        this.state.pushers[host] = pusher
+        try {
+            this.save()
+        } catch (e) {
+            this.state.queue.length = queueLength
+            if (before) this.state.pushers[host] = before
+            else delete this.state.pushers[host]
+            throw e
+        }
+        this.pushed += queued
+        if (before?.serialNumber && before.serialNumber !== serial) this.log.warn(`${host} is now terminal ${serial} (was ${before.serialNumber}); it sends its memory from the start.`)
+        else if (!before?.serialNumber) this.log.info(`Terminal ${serial} at ${host} called for the first time.`)
+    }
+
+    /**
+     * Each terminal that pushes, for the heartbeat, once it has called:
+     * reachable while heard from in the last 3 minutes; unreachable, with
+     * why, when the agent can't listen, or after 3 minutes of listening
+     * without a word. In the first 3 minutes of listening, one not yet heard
+     * from isn't reported either way, nor any when the agent isn't
+     * listening, as for `check`.
+     */
+    private pushReports(reports: Map<string, Report>): void {
+        const now = this.clock()
+        for (const d of this.config.pushers) {
+            const pusher = this.state.pushers[d.host] as Pusher | undefined
+            if (!pusher?.serialNumber) {
+                if (!this.saidNeverCalled.has(d.host)) {
+                    this.saidNeverCalled.add(d.host)
+                    this.log.info(`Terminal at ${d.host} pushes to this agent and hasn't called yet. On it, Cloud Server Setting names this PC's address and port ${this.config.listenPort}, with HTTPS off.`)
+                }
+                continue
+            }
+            const info = pusher.info ?? null
+            const report: Report = {
+                serialNumber: pusher.serialNumber, ...(d.name ? { name: d.name } : {}), ...(info?.firmware ? { firmware: info.firmware } : {}),
+                ...(info?.userCount != null ? { userCount: info.userCount } : {}), ...(info?.recordCount != null ? { recordCount: info.recordCount } : {}),
+                protocol: "ZKTECO", reachable: true, ratio: 0,
+            }
+            const heard = this.heardAt.get(d.host)
+            if (heard !== undefined && now - heard <= PUSH_HEARD_WITHIN_MS) {
+                reports.set(`push:${d.host}`, report)
+            } else if (this.listenError) {
+                reports.set(`push:${d.host}`, { ...report, reachable: false, error: `The agent can't listen for it: ${this.listenError}`.slice(0, 500) })
+            } else if (this.listeningSince !== null && now - this.listeningSince > PUSH_HEARD_WITHIN_MS) {
+                const since = heard === undefined ? "the agent started" : new Date(heard).toISOString()
+                reports.set(`push:${d.host}`, { ...report, reachable: false, error: `Not heard from since ${since}.` })
+            }
         }
     }
 }

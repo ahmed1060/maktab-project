@@ -4,6 +4,9 @@ The Local Sync Agent runs on a Windows PC in the office. It reads the ZKTeco
 and Hikvision fingerprint terminals on the office network, and sends their
 scans to Nizmo over HTTPS. Nothing reaches the terminals from the internet:
 the agent only connects out. It reads Hikvision terminals from version 0.3.0.
+From version 0.4.0 it also takes the scans of a ZKTeco terminal that pushes
+them to the agent's PC over the office network. See
+[A terminal that pushes to the agent](#a-terminal-that-pushes-to-the-agent).
 
 ## What you need
 
@@ -113,6 +116,48 @@ made on it for the agent. Its password is that user's, in quotes:
   that one from now on. Then start the service again.
 - The agent never clears a Hikvision terminal's memory.
 
+## A terminal that pushes to the agent
+
+Some ZKTeco terminals send their scans themselves, to a server set under
+**Menu → Comm. → Cloud Server Setting** (ADMS), and only over plain HTTP, and
+can't be read on port 4370. Such a terminal sends its scans to the agent's PC
+instead, on the office network, and the agent sends them on to Nizmo over
+HTTPS with the others. Nothing it sends leaves the building any other way.
+
+1. Give the PC a fixed address on the office network, such as a reservation
+   for it on the office's router: the terminal names the PC by its address.
+2. In `agent.json`, list the terminal by **its IP address**, with
+   `"push": true`. It has no `"port"` or `"password"` of its own:
+
+   ```json
+   { "host": "192.168.1.40", "push": true, "name": "Side door" }
+   ```
+
+   The agent listens on port 8081. `"listenPort"` at the top of `agent.json`
+   sets another, for all of them.
+3. Let the terminal reach the agent through Windows Firewall, from its
+   address alone, in **Command Prompt as administrator**:
+
+   ```
+   netsh advfirewall firewall add rule name="Nizmo agent" dir=in action=allow protocol=TCP localport=8081 remoteip=192.168.1.40 profile=private,domain
+   ```
+
+   For several terminals, list their addresses after `remoteip=`, separated
+   by commas. The rule holds on a private or work network: if Windows calls
+   the office network public, set it to private under **Settings → Network
+   & internet**. Nothing is opened on the office's router.
+4. On the terminal, under **Cloud Server Setting**: turn **Domain Name** off,
+   set **Server Address** to the PC's address and **Server Port** to 8081,
+   and leave **HTTPS** and **Proxy** off. The names differ a little by model.
+5. Restart the service (`nizmo-agent-service.exe stop`, then `start`). Within
+   a minute or two the log says the terminal called, and it appears in
+   Nizmo under the agent.
+
+Until the agent is enrolled, it refuses what the terminal sends, and the
+terminal keeps its scans and sends them again later. Each scan is stored
+once, however often it's sent. The agent never clears such a terminal's
+memory, and never sends it commands.
+
 ## Day to day
 
 - The agent starts with Windows and restarts itself if it stops.
@@ -141,6 +186,10 @@ once, whichever way it arrives. Set back to the agent, the terminal is read
 again from where the agent stopped. The terminal can stay in `agent.json`
 meanwhile.
 
+A terminal that pushes to the agent and is set to connect straight to Nizmo
+has what it sends refused by the agent, so it keeps its scans until its
+**Cloud Server Setting** names Nizmo, or it is set back to the agent.
+
 ## Updating the agent
 
 A newer package is unzipped over the old one, with the service stopped:
@@ -151,7 +200,8 @@ A newer package is unzipped over the old one, with the service stopped:
 3. `nizmo-agent-service.exe start`
 
 `nizmo-agent.exe version` shows the version installed, and Nizmo shows it on
-the agent's card too. A Hikvision terminal needs 0.3.0 or later.
+the agent's card too. A Hikvision terminal needs 0.3.0 or later, and a
+terminal that pushes to the agent 0.4.0 or later.
 
 ## Moving to another PC
 
@@ -170,6 +220,9 @@ as the new one is enrolled.
 | `HIK_CERTIFICATE_CHANGED` | The Hikvision terminal shows another certificate than before. If it's the same terminal, run `nizmo-agent.exe trust <address>` with the service stopped. See [A Hikvision terminal](#a-hikvision-terminal). |
 | `HIK_UNREACHABLE` | Check the terminal's address, and that its HTTPS is on, or that `agent.json` says `"https": false`. Run `nizmo-agent.exe probe hikvision <address> <user>`. |
 | `The server no longer accepts this agent` | It was revoked or moved. Get a new code in Nizmo, then `nizmo-agent-service.exe stop`, `nizmo-agent.exe enrol <code>`, `nizmo-agent-service.exe start`. |
+| `… pushes to this agent and hasn't called yet` | On the terminal, check **Cloud Server Setting** names this PC's address and port 8081 (or `"listenPort"`), with HTTPS off, and that the firewall rule lets its address in. See [A terminal that pushes to the agent](#a-terminal-that-pushes-to-the-agent). |
+| `Can't listen for terminals that push: Port 8081 is in use` | Another program on the PC holds the port. Set `"listenPort"` in `agent.json` to a free one, the same on the terminal and in the firewall rule, and restart the service. |
+| `… called the agent, but no terminal in agent.json is at that address` | A terminal's address changed, or it isn't listed. Put its address in `agent.json`, and in the firewall rule. |
 | `Another nizmo-agent … is using this folder` | The service is running. Stop it before `enrol` or `check`, and start it again after. |
 | **Clock off** on a terminal | Set the terminal's date and time. Scans are recorded by its clock. |
 

@@ -1,6 +1,7 @@
 import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, writeSync } from "node:fs"
 import { dirname } from "node:path"
 import type { HikCursor } from "./hik/events"
+import type { TerminalInfo } from "./zk/adms"
 
 /**
  * What the agent remembers between rounds and restarts, in one file written
@@ -14,6 +15,15 @@ import type { HikCursor } from "./hik/events"
  */
 
 export type QueuedPunch = { serialNumber: string; userNumber: string; at: string }
+
+/**
+ * A terminal that pushes to the agent (ATTENDANCE_PLAN.md §17.12, PR 305),
+ * by its address: which terminal called from there; where it had got to,
+ * as Nizmo keeps it for one straight to Nizmo ("ATTLOG=120;OPERLOG=9");
+ * `direct` when Nizmo has it set straight to Nizmo, so it's held; and what
+ * its polls say of it.
+ */
+export type Pusher = { serialNumber: string | null; pushCursor: string | null; direct?: boolean; info?: TerminalInfo | null }
 
 /** How far into a terminal's log the agent has read: its position, and the last record there to be sure. */
 export type Cursor = { count: number; lastKey: string | null }
@@ -39,6 +49,8 @@ export type AgentState = {
      * fingerprint pinned on the first read over HTTPS (PR 302).
      */
     devices: Record<string, { serialNumber: string | null; cursor: Cursor; mustEnable?: boolean; direct?: boolean; hikCursor?: HikCursor; certificate?: string | null }>
+    /** The terminals that push to the agent, by their address (PR 305); none in a state file before it. */
+    pushers: Record<string, Pusher>
     queue: QueuedPunch[]
     /** Set when the server no longer accepts the token: nothing is sent until the agent is enrolled again. */
     needsEnrolment: boolean
@@ -46,7 +58,7 @@ export type AgentState = {
 
 export const emptyState = (): AgentState => ({
     version: 1, token: null, agentId: null, company: null, timeZone: null, enrolledAt: null, sendFrom: null,
-    devices: {}, queue: [], needsEnrolment: false,
+    devices: {}, pushers: {}, queue: [], needsEnrolment: false,
 })
 
 export function loadState(path: string): AgentState {

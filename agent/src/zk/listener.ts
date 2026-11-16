@@ -20,16 +20,16 @@ import { admsRequest, take, type Taken } from "./adms"
  * kept (`PushSink.keep`, scans queued and stamps moved in one write), 503
  * while Nizmo says it is set straight to Nizmo, 500 when keeping fails.
  *
- * Nothing in the agent starts it yet: agent.json names terminals that
- * push from Phase 4 part 8's second PR.
+ * The service starts it when agent.json names a terminal that pushes
+ * (SyncAgent.listen, PR 305).
  */
 
-/** Where the listener keeps what it takes: the agent's state (part 8's second PR); in memory in tests. */
+/** Where the listener keeps what it takes: the agent's state (SyncAgent, PR 305); in memory in tests. */
 export type PushSink = {
     /** Where a named terminal had got to, as kept, and whether it's held: set straight to Nizmo. */
     terminal(host: string, serial: string): { cursor: string | null; held: boolean }
-    /** The company's offset from UTC now, in minutes, for its options. */
-    offsetMinutes(): number
+    /** The company's offset from UTC now, in minutes, for its options; null when it isn't known. */
+    offsetMinutes(): number | null
     /** Keeps what was taken of a request, in one write. Throws when it can't: the terminal sends it again. */
     keep(host: string, serial: string, taken: Taken): void
 }
