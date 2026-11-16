@@ -6431,3 +6431,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     terminals (#277), had that in English, so it has Turn on and Turn
     off too, and its question's button still says in full what turning
     it on does.
+  - **From its review:** Turn off needs the terminals list read. While
+    it loads the button can't be pressed. If it couldn't be read, the
+    card says so above its row, with Try again, as Fingerprint terminals
+    says a refresh failed.

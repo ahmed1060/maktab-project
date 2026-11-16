@@ -2430,7 +2430,9 @@ Attendance tab (part 5's fifth and last PR, §20). What the build settled:
   once the switch is saved that list is asked for again, so Add a
   terminal offers Straight to Nizmo without the page loaded again. Turn
   off can't be pressed until that list is read: before then nothing
-  says whether a terminal would be held.
+  says whether a terminal would be held. A list that couldn't be read
+  isn't a list with no terminals: the card says so, with Try again, and
+  Turn off waits (review on #295).
 - **Written to the audit log** each time it turns, by name, with who
   turned it.
 - **It stays off** for every company until the trial with a real
