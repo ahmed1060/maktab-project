@@ -44,7 +44,7 @@ const when = (locale: "en" | "ar", iso: string) => new Date(iso).toLocaleString(
 async function render(swr: Loaded | undefined, locale: "en" | "ar" = "en") {
     Object.assign(state, { locale, swr: swr ? { [KEY]: swr } : {} })
     const { TerminalContactsDialog } = await import("@/components/TerminalContactsDialog")
-    return renderToStaticMarkup(h(TerminalContactsDialog, { deviceId: "d1", name: "Lobby", onClose: () => {} }))
+    return renderToStaticMarkup(h(TerminalContactsDialog, { deviceId: "d1", name: "Lobby", protocol: "HIKVISION", onClose: () => {} }))
 }
 
 describe("First contacts, the Super Admin's dialog", () => {
@@ -161,10 +161,11 @@ describe("where it opens from", () => {
 
     it("is in the menu of a terminal straight to Nizmo, for the Super Admin alone, retired or not", () => {
         expect(PANEL).toContain("const superAdmin = session?.user?.role === 'SUPER_ADMIN'")
-        expect(PANEL).toContain("const contactsItem = (d: Device): MenuItem[] => (superAdmin && hasAddress(d) ? [{ key: 'contacts', label: t('att_term_contacts'), icon: ListMagnifyingGlassIcon, onSelect: () => setContactsOf(d) }] : [])")
+        // Every terminal straight to Nizmo, a ZKTeco terminal's too since PR 299.
+        expect(PANEL).toContain("const contactsItem = (d: Device): MenuItem[] => (superAdmin && keepsFirstContacts(d) ? [{ key: 'contacts', label: t('att_term_contacts'), icon: ListMagnifyingGlassIcon, onSelect: () => setContactsOf(d) }] : [])")
         // In both menus: a retired terminal's contacts can still be read.
         expect(PANEL.split("...contactsItem(d),")).toHaveLength(3)
-        expect(PANEL).toContain("{contactsOf && <TerminalContactsDialog deviceId={contactsOf.id} name={contactsOf.name} onClose={() => setContactsOf(null)} />}")
+        expect(PANEL).toContain("{contactsOf && <TerminalContactsDialog deviceId={contactsOf.id} name={contactsOf.name} protocol={contactsOf.protocol} onClose={() => setContactsOf(null)} />}")
     })
 
     it("is asked of a route that answers the Super Admin alone", () => {

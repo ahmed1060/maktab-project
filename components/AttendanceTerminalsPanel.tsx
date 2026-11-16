@@ -15,7 +15,7 @@ import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import TerminalSetupGuide, { type GuideBrand } from '@/components/TerminalSetupGuide'
 import { ConnectionDialog, OfficeAddressDialog, TerminalAddDialog, TerminalAddressDialog, TerminalSettingsDialog } from '@/components/TerminalAddDialog'
 import { TerminalContactsDialog } from '@/components/TerminalContactsDialog'
-import { hasAddress, hasOfficeAddress, otherConnection, refusalWords } from '@/lib/attendance/terminal-connections'
+import { hasAddress, hasOfficeAddress, keepsFirstContacts, otherConnection, refusalWords } from '@/lib/attendance/terminal-connections'
 import { utcOffsetLabel } from '@/lib/attendance/terminal-health'
 
 /**
@@ -241,7 +241,7 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
         { key: 'revoke', label: t('att_term_revoke'), icon: ProhibitIcon, danger: true, onSelect: () => setRevoking(a) },
     ]
     // What a terminal straight to Nizmo sent in its first requests, for the Super Admin alone (§17.8, PR 294): the server refuses anyone else.
-    const contactsItem = (d: Device): MenuItem[] => (superAdmin && hasAddress(d) ? [{ key: 'contacts', label: t('att_term_contacts'), icon: ListMagnifyingGlassIcon, onSelect: () => setContactsOf(d) }] : [])
+    const contactsItem = (d: Device): MenuItem[] => (superAdmin && keepsFirstContacts(d) ? [{ key: 'contacts', label: t('att_term_contacts'), icon: ListMagnifyingGlassIcon, onSelect: () => setContactsOf(d) }] : [])
     const deviceMenu = (d: Device): MenuItem[] => d.retiredAt
         ? [
             { key: 'restore', label: t('att_term_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void send(`/api/attendance/devices/${d.id}/restore`, { method: 'POST' }, 'att_term_restored') }, disabled: busy },
@@ -389,7 +389,7 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
                     await send(`/api/attendance/devices/${moving.id}/connection`, { method: 'PUT', body: JSON.stringify({ connection: movingTo, ...(officeAddresses && { officeAddresses }) }) }, `att_term_moved_${movingTo}`, d => { showAddress(d); setMoving(null) })
                 }} />
             )}
-            {contactsOf && <TerminalContactsDialog deviceId={contactsOf.id} name={contactsOf.name} onClose={() => setContactsOf(null)} />}
+            {contactsOf && <TerminalContactsDialog deviceId={contactsOf.id} name={contactsOf.name} protocol={contactsOf.protocol} onClose={() => setContactsOf(null)} />}
             {/* The agent sends to this Nizmo, so its settings name the address it's opened on. */}
             {guiding && <TerminalSetupGuide brands={devicesBody ? brands : null} loadFailed={!!devicesError} superAdmin={superAdmin} directAllowed={directAllowed} server={window.location.origin} onClose={() => setGuiding(false)} />}
             {editing && (

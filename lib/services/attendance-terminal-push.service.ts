@@ -67,24 +67,25 @@ export class AttendanceTerminalPushService {
      * The ZKTeco terminal a serial number names (§17.3, PR 296): one added
      * straight to Nizmo and not retired. With it, the addresses it may
      * call from, where it had got to in its logs, its company's time zone,
-     * and whether its company may use it now. Null when the serial number
-     * is nobody's: one an agent brought in, a retired one, and one on
-     * another protocol's terminal are nobody's here.
+     * and whether its company may use it now; and when its first request
+     * was taken, for keeping its first contacts (§17.8, PR 299). Null when
+     * the serial number is nobody's: one an agent brought in, a retired
+     * one, and one on another protocol's terminal are nobody's here.
      *
      * A serial number is one terminal's, one company at a time (§17.7):
      * the database holds one that isn't retired for each serial number
      * (`AttendanceDevice_serialNumber_active_key`), and that index is
      * what finds it, a heartbeat every half minute.
      */
-    static async bySerial(serial: string): Promise<{ deviceId: string; serial: string; allowedAddresses: string[]; cursor: string | null; timeZone: string; refused: PushRefusal | null } | null> {
+    static async bySerial(serial: string): Promise<{ deviceId: string; serial: string; allowedAddresses: string[]; cursor: string | null; timeZone: string; refused: PushRefusal | null; firstContactAt: Date | null } | null> {
         const device = await prisma.attendanceDevice.findFirst({
             where: { serialNumber: serial, retiredAt: null },
-            select: { id: true, serialNumber: true, protocol: true, connection: true, allowedAddresses: true, pushCursor: true, company: { select: COMPANY } },
+            select: { id: true, serialNumber: true, protocol: true, connection: true, allowedAddresses: true, pushCursor: true, firstContactAt: true, company: { select: COMPANY } },
         })
         if (!device || device.protocol !== "ZKTECO" || device.connection !== "DIRECT") return null
         return {
             deviceId: device.id, serial: device.serialNumber, allowedAddresses: device.allowedAddresses, cursor: device.pushCursor,
-            timeZone: device.company.timezone, refused: heldFor(device.company),
+            timeZone: device.company.timezone, refused: heldFor(device.company), firstContactAt: device.firstContactAt,
         }
     }
 

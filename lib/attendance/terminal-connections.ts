@@ -58,6 +58,16 @@ export function hasAddress(terminal: { protocol: TerminalProtocol; connection: T
 }
 
 /**
+ * Whether a terminal's first requests are kept for the Super Admin to
+ * read: any straight to Nizmo, whichever its protocol (§17.8, PR 294 for
+ * Hikvision, PR 299 for ZKTeco). One the agent reads sends Nizmo nothing
+ * of its own.
+ */
+export function keepsFirstContacts(terminal: { connection: TerminalConnection }): boolean {
+    return terminal.connection === "DIRECT"
+}
+
+/**
  * Whether a terminal is let in from its office's internet address alone:
  * ZKTeco's, straight to Nizmo, which names itself by its serial number and
  * has no secret (§17.3, PR 297).

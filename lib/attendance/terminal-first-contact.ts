@@ -1,4 +1,4 @@
-import { MAX_EVENT_BYTES, isPicture, type TerminalEvent } from "./hikvision-events"
+import { MAX_EVENT_BYTES, isPicture } from "./hikvision-events"
 
 /**
  * A terminal's first contacts, kept to compare what a real terminal sends
@@ -432,6 +432,20 @@ function loose(text: string): string {
  */
 const withoutLongNumbers = (text: string) => text.replace(/\d{6,}/g, "[number removed]")
 
+/**
+ * Text that can't be read as anything Nizmo knows, whatever its shape, to
+ * its first 600 characters: read field by field, with no name, card
+ * number or picture, and no number of 6 digits or more. A ZKTeco
+ * terminal's line that isn't a scan goes by it too, JSON or XML though it
+ * may look (review on PR 299).
+ */
+export function unreadableText(text: string): string {
+    const body = text.trim()
+    // Only its start is kept, so only its start is read.
+    const start = withoutLongNumbers(loose(body.slice(0, MAX_UNREAD_TEXT * 4)))
+    return body.length > MAX_UNREAD_TEXT || start.length > MAX_UNREAD_TEXT ? `${start.slice(0, MAX_UNREAD_TEXT)} … [cut: ${count(body.length)} characters in all]` : start
+}
+
 const cut = (text: string, max: number) => (text.length > max ? `${text.slice(0, max)} … [cut: ${count(text.length)} characters in all]` : text)
 
 /**
@@ -463,9 +477,7 @@ export function textOf(text: string, field = ""): { body: string; kinds: string[
         return { body: redactXml(body, under), kinds: [access ? `${type} ${code(element(body, "majorEventType"))}/${code(element(body, "subEventType"))}` : type] }
     }
     if (under === "picture") return { body: leaf(field, body), kinds: [] }
-    // Only its start is kept, so only its start is read.
-    const start = withoutLongNumbers(loose(body.slice(0, MAX_UNREAD_TEXT * 4)))
-    return { body: body.length > MAX_UNREAD_TEXT || start.length > MAX_UNREAD_TEXT ? `${start.slice(0, MAX_UNREAD_TEXT)} … [cut: ${count(body.length)} characters in all]` : start, kinds: [] }
+    return { body: unreadableText(body), kinds: [] }
 }
 
 /** What kind of file a part is, without its own name: a file's name can be a person's. */
@@ -542,7 +554,8 @@ export async function bodyOf(req: Request, secret: string): Promise<{ body: stri
  * and why, nothing to keep, unreadable, or empty.
  */
 export function outcomeOf(
-    events: readonly TerminalEvent[] | null,
+    // A Hikvision terminal's events, or a ZKTeco terminal's lines (PR 299): what each was, and why one was refused.
+    events: readonly ({ kind: "scan" | "other" } | { kind: "refused"; reason: string })[] | null,
     stored: { accepted: number; duplicates: number; skipped: number; refused: readonly { reason: string }[] } | null,
 ): string[] {
     if (events === null) return ["UNREADABLE"]

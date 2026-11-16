@@ -17,10 +17,11 @@ a scan keeps of its event, in #293, the fourth, first contacts kept for
 the Super Admin, in #294, and the fifth, the straight-to-Nizmo switch on
 the company's Attendance tab, in #295: part 5 is built, switched off for
 every company; part 6, ZKTeco straight to Nizmo, is split in four PRs,
-the first, the addresses a terminal calls, built in #296, and the
-second, Add a terminal for ZKTeco straight to Nizmo with the office's
-address, in #297, and the third, Change connection, in #298. Part 7 is
-not built.
+the first, the addresses a terminal calls, built in #296, the second,
+Add a terminal for ZKTeco straight to Nizmo with the office's address,
+in #297, the third, Change connection, in #298, and the fourth, first
+contacts kept for a ZKTeco terminal, in #299: part 6 is built, switched
+off for every company. Part 7 is not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
@@ -2707,6 +2708,59 @@ to Nizmo (part 5's fourth PR, §20). What the build settled:
 - **The migration only adds:** the `TerminalFirstContact` table, and
   `firstContactAt` on a terminal, empty until its first request is taken.
 
+**Built in #299: first contacts kept for a ZKTeco terminal** straight to
+Nizmo (part 6's fourth and last PR, §20), as a Hikvision terminal's are
+(#294): a request Nizmo takes in the terminal's first 7 days, up to 50
+in all and 5 of a kind, each kept for 7 days, for the Super Admin alone.
+A request held, and one from elsewhere, isn't kept. What the build
+settled:
+
+- **A kind is what the request is:** its options (`options`), its scans
+  (`ATTLOG`), changes to the people it holds (`OPERLOG`), its heartbeat
+  (`getrequest`), or anything else by its method, path and table, such as
+  `POST cdata table=ATTPHOTO`. It is known before the body is read, so
+  once 5 heartbeats are kept the next is counted, not kept.
+- **Its request line:** the path under `/iclock/` as it came, and its
+  query a parameter at a time, in the order sent. Those the protocol
+  names keep their values: the serial number, `options`, `table`, the
+  stamps, `pushver`, `language`, `INFO` and a few more. Any other keeps
+  its name alone, with how long its value was: a later firmware's could
+  carry something drawn from the comm key (§18).
+- **`INFO`** keeps the firmware and the counts. The terminal's address on
+  the office network is taken out, as it isn't kept on the terminal
+  either (§17.3).
+- **Headers** go by Hikvision's rules. The office's own internet address,
+  in the hosting's header, is kept by name alone.
+- **Only scans are opened.** Each line is kept as it came, its tabs and
+  spaces too, up to 8,000 characters. A line read as a scan keeps its
+  employee number, as the punch does, its date and time, and short
+  numbers; anything else on it is replaced by a note of what was there.
+  A line that can't be read as a scan goes by the rules for text that is
+  neither JSON nor XML (#294), where a number of 6 digits or more is
+  taken out.
+- **Nothing else is opened:** changes to the people a terminal holds
+  carry their names, and its other tables carry pictures and
+  fingerprints. A note says so in place of the body; its length is in
+  its headers.
+- **What Nizmo made of it:** answered with its options; a scan stored,
+  already there, from before the company's terminals started, or refused
+  and why; nothing to keep, for a heartbeat or an upload with no lines;
+  or not opened.
+- **First contacts is in the menu** of every terminal straight to Nizmo,
+  whichever its protocol, for the Super Admin alone. For a ZKTeco
+  terminal, its line above the list says only scans are opened and its
+  address on the office network is taken out.
+- **Keeping never holds a terminal,** as for Hikvision: if keeping fails,
+  or counting what is kept does, or working out what to keep of it does,
+  the request is taken and answered all the same, and the failure is
+  recorded.
+- **No migration:** the table came with #294.
+- **From the review:** a line that can't be read as a scan goes by the
+  rules for unreadable text whatever its shape. One that happened to be
+  JSON or XML was read as JSON or XML, where a long number under a field
+  whose name says nothing, such as a card's under another name, was
+  kept. Now it is taken out there too.
+
 ### 17.9 Terminal brands, a list kept from the screen (round 9)
 
 A terminal's **brand** is what is printed on it. Its **protocol** is the
@@ -3013,7 +3067,7 @@ matching with liveness, fallback to flagged.
 It stays switched off meanwhile, on the face check meant for testing only;
 choosing a commercial SDK (§18, question 1) waits with it.
 
-### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 in #291 to #295, part 6 from #296
+### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 in #291 to #295, part 6 in #296 to #299
 
 Planned in #269, for ZKTeco and Hikvision alike (§17.1–§17.11). It replaces
 the earlier Phase 4, a listener for pushes on the agent and nothing else,
@@ -3076,7 +3130,7 @@ which becomes part 8 below. Each part is its own PR:
       office's address changed later (§17.7). Built in #297.
    3. Change connection (§17.7). Built in #298.
    4. First contacts kept for a ZKTeco terminal (§17.8): what is kept of
-      what it sends, with names never opened.
+      what it sends, with names never opened. Built in #299.
 7. **The agent reads Hikvision** (§17.4): ISAPI beside the ZKTeco protocol,
    `probe`, `agent.json`; a new agent release.
 8. **Only when a customer needs it: the agent listens on the office network**,

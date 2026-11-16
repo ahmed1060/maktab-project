@@ -6,13 +6,14 @@ import { WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { Button, Dialog, DisclosureRow, EmptyState } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { fetcher, type SWRError } from '@/lib/swr-fetcher'
-import { refusalWords } from '@/lib/attendance/terminal-connections'
+import { refusalWords, type TerminalProtocol } from '@/lib/attendance/terminal-connections'
 import { CodeBox } from '@/components/TerminalSetupGuide'
 import type { TranslationKey } from '@/lib/translations'
 
 /**
  * A terminal's first contacts, for the Super Admin (ATTENDANCE_PLAN.md
- * §17.8, PR 294; DESIGN.md §5.5, Dialog): what a terminal straight to Nizmo
+ * §17.8, PR 294, and a ZKTeco terminal's from PR 299; DESIGN.md §5.5,
+ * Dialog): what a terminal straight to Nizmo
  * sent in its first requests, in the order they came, to compare with what
  * Nizmo expects. Each is a row that opens (§5.5, Rows): it says what Nizmo
  * made of the request and when it came, and opens onto what it sent, in
@@ -33,9 +34,11 @@ const REFRESH_MS = 10_000
 const OUTCOME: Record<string, TranslationKey> = {
     STORED: 'att_term_contact_STORED', ALREADY: 'att_term_contact_ALREADY', SKIPPED: 'att_term_contact_SKIPPED',
     NOTHING: 'att_term_contact_NOTHING', UNREADABLE: 'att_term_contact_UNREADABLE', EMPTY: 'att_term_contact_EMPTY',
+    // A ZKTeco terminal's (PR 299).
+    OPTIONS: 'att_term_contact_OPTIONS', NOT_OPENED: 'att_term_contact_NOT_OPENED',
 }
 
-export function TerminalContactsDialog({ deviceId, name, onClose }: { deviceId: string; name: string; onClose: () => void }) {
+export function TerminalContactsDialog({ deviceId, name, protocol, onClose }: { deviceId: string; name: string; protocol: TerminalProtocol; onClose: () => void }) {
     const { t, locale } = useLanguage()
     // Asked again while it's open: someone trying a terminal watches its requests arrive, each added at the end.
     const { data, error, isValidating, mutate } = useSWR(`/api/attendance/devices/${deviceId}/first-contacts`, fetcher, { refreshInterval: REFRESH_MS })
@@ -72,7 +75,8 @@ export function TerminalContactsDialog({ deviceId, name, onClose }: { deviceId: 
     return (
         <Dialog open onClose={onClose} title={t('att_term_contacts_title').replace('{name}', name)} actions={<Button variant="primary" onClick={onClose}>{t('close')}</Button>}>
             <div className="ui-contacts">
-                <p className="ui-hint">{t('att_term_contacts_intro')}</p>
+                {/* What is taken out differs: a ZKTeco terminal has no secret address, and only its scans are opened (PR 299). */}
+                <p className="ui-hint">{t(protocol === 'ZKTECO' ? 'att_term_contacts_intro_zkteco' : 'att_term_contacts_intro')}</p>
                 {!kept ? (
                     error
                         ? <EmptyState icon={WarningCircleIcon} title={t('att_term_contacts_failed')} detail={(error as SWRError).info?.error}
