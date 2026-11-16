@@ -220,8 +220,12 @@ describe("a terminal that sends its scans to the agent (PR 306)", () => {
     })
 
     it("lets the terminal through Windows Firewall from its address alone, on the agent's port, as the README has it", () => {
-        const firewall = push()[1].lines.find(l => l.text === "att_guide_push_firewall")!.code!
+        const line = push()[1].lines.find(l => l.text === "att_guide_push_firewall")!
+        const firewall = line.code!
         expect(firewall).toBe('netsh advfirewall firewall add rule name="Nizmo agent" dir=in action=allow protocol=TCP localport=8081 remoteip=TERMINAL-ADDRESS profile=private,domain')
+        // One line, longer than the guide's box is wide: it scrolls sideways (found in the browser).
+        expect(line.wide).toBe(true)
+        expect(push().flatMap(st => st.lines).filter(l => l.wide).map(l => l.text)).toEqual(["att_guide_push_firewall"])
         expect(readme()).toContain(firewall.replace("TERMINAL-ADDRESS", "192.168.1.40"))
         // 8081 is the agent's own, unless agent.json sets "listenPort".
         expect(readFileSync("agent/src/config.ts", "utf8")).toContain("c.listenPort === undefined ? 8081")
@@ -457,6 +461,9 @@ describe("how a ZKTeco terminal's scans reach the agent, on screen (PR 306)", ()
             const html = await guide({ brand: CONVOY, pushes: true }, locale)
             expect(html).toContain(esc('"push": true,'))
             expect(html).toContain(esc('netsh advfirewall firewall add rule name="Nizmo agent"'))
+            // Its box scrolls sideways, so the keyboard reaches it, to scroll it; the others don't take focus.
+            expect(html).toMatch(/<pre id="[^"]+" dir="ltr" translate="no" tabindex="0"><code>netsh advfirewall/)
+            expect(html.match(/tabindex="0"/g)).toHaveLength(1)
             expect(html).toContain(`<code class="ui-guide-inline" dir="ltr" translate="no">Cloud Server Setting</code>`)
             expect(html).toContain("nizmo-agent.exe version")
             expect(html).not.toContain("nizmo-agent.exe probe")

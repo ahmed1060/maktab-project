@@ -36,6 +36,8 @@ export type GuideLine = {
     notes?: true
     /** The line names the model picked, as {brand}. */
     brand?: true
+    /** What's typed is one line longer than the guide's box is wide, so its box scrolls sideways (PR 306). */
+    wide?: true
 }
 
 export type GuideStep = { key: string; title: TranslationKey; who: TranslationKey; lines: GuideLine[] }
@@ -173,7 +175,7 @@ function refused(protocol: TerminalProtocol): GuideLine[] {
 function listening(server: string): GuideLine[] {
     return [
         { text: "att_guide_push_settings", code: settingsFor(server, "ZKTECO", true) },
-        { text: "att_guide_push_firewall", code: FIREWALL },
+        { text: "att_guide_push_firewall", code: FIREWALL, wide: true },
         { text: "att_guide_push_profile" },
         { text: "att_guide_push_terminal" },
     ]

@@ -127,7 +127,8 @@ export function SetupGuideSteps({ brand, superAdmin, directAllowed = false, serv
         return (
             <li key={l.text}>
                 <p><Sentence text={t(l.text)} brand={l.brand ? brand.name : undefined} /></p>
-                {l.code && <CodeBox code={l.code} />}
+                {/* A box that scrolls sideways takes focus, to be scrolled from the keyboard. */}
+                {l.code && <CodeBox code={l.code} scrolls={l.wide} />}
             </li>
         )
     }
@@ -157,7 +158,7 @@ export function SetupGuideSteps({ brand, superAdmin, directAllowed = false, serv
  */
 export function CodeBox({ code, scrolls = false }: {
     code: string
-    /** Its box scrolls up and down as well as sideways, as a long body does (PR 294): the keyboard reaches it then, to scroll it. */
+    /** Its box scrolls, up and down as a long body does (PR 294), or sideways as a long command does (PR 306): the keyboard reaches it then, to scroll it. */
     scrolls?: boolean
 }) {
     const { t } = useLanguage()
