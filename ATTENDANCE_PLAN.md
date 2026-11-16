@@ -3294,6 +3294,10 @@ built by the Attendance agent workflow (#305). What the build settled:
   its address alone, as the README has it, and the network profile the
   rule needs; and its Cloud Server Setting. There's no `probe` for it:
   the agent's log says when it first calls.
+- **The firewall rule is one line,** wider than the guide's box at every
+  width, so its box scrolls sideways and takes focus, to be scrolled from
+  the keyboard, as a long body's does (#294). Found in the web interface
+  audit.
 - **Older scans:** `sendFrom` set earlier takes the service restarted,
   then the terminal, which asks for its options as it starts and is
   told to send its memory again (#305).
