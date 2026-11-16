@@ -26,7 +26,8 @@ import { workingNow } from "./attendance-terminal-status"
  * serial number, or, set straight to Nizmo, its own call: a Hikvision
  * terminal's to the address issued for it here, whose secret is returned
  * once and never kept, and a ZKTeco terminal's from its office's internet
- * address, kept here (PR 297).
+ * address, kept here (PR 297). Either way, it can be moved to the other
+ * later (PR 298).
  */
 
 function fail(code: string): never {
@@ -239,6 +240,64 @@ export class AttendanceDeviceService {
             })
             return withBrand(after)
         })
+    }
+
+    /**
+     * A terminal moved to its other way of connecting (§17.6, §17.7, PR 298):
+     * one built for its protocol, and straight to Nizmo only where the
+     * company may use it, as when it's added. Its scans, name, brand, mode
+     * and employee numbers stay.
+     *
+     * One connection at a time, so what belonged to the way it leaves starts
+     * again: straight to Nizmo, the office's addresses or its secret, where
+     * it had got to, where it last called from and what was refused; through
+     * the agent, whether the agent reached it and its clock's drift, which
+     * the agent measures again. Moved straight to Nizmo, it waits for its
+     * first contact until it calls: what the agent saw of it isn't its own
+     * call. A ZKTeco terminal needs its office's address, as when it's
+     * added; a Hikvision terminal is issued its address, and `path` is
+     * returned once.
+     *
+     * Its row is held meanwhile: of two moves at once, the second finds it
+     * moved.
+     */
+    static async changeConnection(id: string, input: { connection: TerminalConnection; officeAddresses?: string[] }, actorId: string) {
+        const to = input.connection
+        const { device, secret } = await prisma.$transaction(async tx => {
+            const [d] = await tx.$queryRaw<{ companyId: string; name: string; serialNumber: string; protocol: TerminalProtocol; connection: TerminalConnection; retiredAt: Date | null }[]>`
+                SELECT "companyId", name, "serialNumber", protocol::text AS protocol, "connection"::text AS "connection", "retiredAt"
+                FROM "AttendanceDevice" WHERE id = ${id} FOR UPDATE`
+            if (!d) fail("DEVICE_NOT_FOUND")
+            if (d.retiredAt) fail("DEVICE_RETIRED")
+            if (d.connection === to) fail("DEVICE_SAME_CONNECTION")
+            const company = await tx.company.findUnique({ where: { id: d.companyId }, select: { terminalsDirectAllowed: true } }) ?? fail("COMPANY_NOT_FOUND")
+            if (to === "DIRECT" && !company.terminalsDirectAllowed) fail("DEVICE_DIRECT_NOT_ALLOWED")
+            if (!mayConnect(d.protocol, to, company.terminalsDirectAllowed)) fail("DEVICE_CONNECTION_NOT_BUILT")
+            const terminal = { protocol: d.protocol, connection: to }
+            const office = hasOfficeAddress(terminal)
+            if (!office && (input.officeAddresses ?? []).some(a => a.trim())) fail("DEVICE_NO_OFFICE_ADDRESS")
+            const allowedAddresses = office ? officeAddressesOf(input.officeAddresses ?? []) : []
+            const secret = hasAddress(terminal) ? newPushSecret() : null
+            const moved = await tx.attendanceDevice.update({
+                where: { id },
+                data: {
+                    connection: to, allowedAddresses, pushSecretHash: secret && hashSecret(secret),
+                    pushCursor: null, lastAddress: null, refusedCount: 0, lastRefusedAt: null, lastRefusal: null,
+                    reachable: true, lastError: null, clockDriftSeconds: null,
+                    ...(to === "DIRECT" && { lastSeenAt: null }),
+                },
+                select: SHOWN,
+            })
+            await AuditLogService.log("UPDATE_ATTENDANCE_DEVICE", "ATTENDANCE_DEVICE", id, {
+                tx, ...(await actorOf(tx, actorId)),
+                details: {
+                    companyId: d.companyId, serialNumber: d.serialNumber, name: d.name, connection: { from: d.connection, to },
+                    ...(office && { officeAddresses: allowedAddresses.join(", ") }),
+                },
+            })
+            return { device: moved, secret }
+        })
+        return { device: withBrand(device), path: secret && hikvisionPath(secret) }
     }
 
     /**

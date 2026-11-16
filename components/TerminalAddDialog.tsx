@@ -12,7 +12,8 @@ import { CodeBox, ModelNotes, Sentence, type GuideBrand } from '@/components/Ter
  * straight to Nizmo (ATTENDANCE_PLAN.md §17.7, PR 292): a Hikvision
  * terminal's secret address, shown once, and a ZKTeco terminal's settings,
  * with nothing secret in them, and the office's internet address it's let
- * in from (§17.3, PR 297).
+ * in from (§17.3, PR 297). And a terminal moved to its other way of
+ * connecting (PR 298).
  */
 
 type Mode = 'ANY' | 'ENTRANCE' | 'EXIT'
@@ -256,6 +257,48 @@ export function OfficeAddressDialog({ name, addresses, busy, onClose, onSubmit }
                 <DialogActions>
                     <Button onClick={onClose} disabled={busy}>{t('cancel')}</Button>
                     <Button type="submit" variant="primary" busy={busy}>{t('save')}</Button>
+                </DialogActions>
+            </form>
+        </Dialog>
+    )
+}
+
+/**
+ * A terminal moved to its other way of connecting (ATTENDANCE_PLAN.md
+ * §17.6, §17.7, PR 298; DESIGN.md §5.5, Dialog): titled with where it moves
+ * to, saying what changes and what stays, its main button saying the move.
+ * Straight to Nizmo, a ZKTeco terminal's office's address is asked for and
+ * needed, as adding it does, and the server asks for the step-up code. To
+ * the agent nothing is asked: it's a confirmation, not in the danger
+ * colour, since nothing is lost.
+ */
+export function ConnectionDialog({ name, to, officeAsked, busy, onClose, onSubmit }: {
+    name: string
+    to: TerminalConnection
+    /** Whether, moved, it's let in from its office's address alone, which is then asked for. */
+    officeAsked: boolean
+    busy: boolean
+    onClose: () => void
+    onSubmit: (officeAddresses?: string[]) => Promise<void>
+}) {
+    const { t } = useLanguage()
+    const formRef = useRef<HTMLFormElement>(null)
+    const [office, setOffice] = useState('')
+    const [error, setError] = useState<string | undefined>()
+    const submit = async (e: FormEvent) => {
+        e.preventDefault()
+        const typed = addressLines(office)
+        if (officeAsked && typed.length === 0) { setError(t('att_term_office_required')); focusFirstWrong(formRef.current); return }
+        await onSubmit(officeAsked ? typed : undefined)
+    }
+    return (
+        <Dialog open onClose={() => { if (!busy) onClose() }} title={t(`att_term_move_${to}_title`).replace('{name}', name)}>
+            <form ref={formRef} className="ui-form" noValidate onSubmit={submit}>
+                <p><Sentence text={t(`att_term_move_${to}_body`)} /></p>
+                {officeAsked && <OfficeField value={office} error={error} onChange={v => { setOffice(v); setError(undefined) }} />}
+                <DialogActions>
+                    <Button onClick={onClose} disabled={busy}>{t('cancel')}</Button>
+                    <Button type="submit" variant="primary" busy={busy}>{t(`att_term_move_${to}`)}</Button>
                 </DialogActions>
             </form>
         </Dialog>

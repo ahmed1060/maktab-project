@@ -60,6 +60,16 @@ describe("terminal health (ATTENDANCE_PLAN.md §13.2)", () => {
         }
     })
 
+    it("waits for a terminal moved straight to Nizmo until it calls, whoever brought it in (PR 298)", () => {
+        const now = at("2026-10-01T10:00:00")
+        // An agent brought it in; moved straight to Nizmo, nothing is heard of it until it calls itself.
+        const moved = { retiredAt: null, reachable: true, lastSeenAt: null, recordCount: null, recordCapacity: null, clockDriftSeconds: null, addedById: null, connection: "DIRECT" as const }
+        for (const working of [true, false]) expect(deviceHealth(moved, now, working).state).toBe("WAITING")
+        // Whether an agent last reached it says nothing of it now.
+        expect(deviceHealth({ ...moved, reachable: false }, now, true).state).toBe("WAITING")
+        expect(deviceHealth({ ...moved, lastSeenAt: now }, now, true).state).toBe("OK")
+    })
+
     it("calls a terminal straight to Nizmo working while it was heard from within a day (PR 292)", () => {
         const now = at("2026-10-01T10:00:00")
         const ago = (minutes: number) => new Date(now.getTime() - minutes * 60_000)

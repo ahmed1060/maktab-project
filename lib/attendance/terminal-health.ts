@@ -43,7 +43,9 @@ export function agentHealth(agent: { status: string; lastSeenAt: Date | null }, 
 /**
  * `WAITING`: added by hand and not heard from yet, by an agent's report or
  * its own call (§17.7, PR 292). Only one added by hand waits: one an agent
- * brought in was heard of when it was, so its silence is silence.
+ * brought in was heard of when it was, so its silence is silence. One set
+ * straight to Nizmo since waits too, whoever brought it in, until it calls
+ * (PR 298): what the agent saw of it isn't its own call.
  */
 export type DeviceHealth = {
     state: "RETIRED" | "WAITING" | "OK" | "UNREACHABLE" | "SILENT" | "QUIET"; memoryFull: boolean; clockOff: boolean
@@ -80,7 +82,7 @@ export function deviceHealth(
     const direct = device.connection === "DIRECT"
     const zoneOff = direct && companyOffsetMinutes !== undefined && typeof device.utcOffsetMinutes === "number" && device.utcOffsetMinutes !== companyOffsetMinutes
     const state = !direct && !device.reachable ? "UNREACHABLE"
-        : !device.lastSeenAt && device.addedById ? "WAITING"
+        : !device.lastSeenAt && (device.addedById || direct) ? "WAITING"
             : !silent(device.lastSeenAt, now, direct ? DIRECT_SILENT_AFTER_MINUTES : SILENT_AFTER_MINUTES) ? "OK"
                 : working ? "SILENT" : "QUIET"
     return { state, memoryFull, clockOff, zoneOff }
