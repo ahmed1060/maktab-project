@@ -33,7 +33,7 @@ const drawn = (s: string) => esc(s).replace(/`([^`]+)`/g, '<code class="ui-guide
 const words = (locale: "en" | "ar") => (locale === "ar" ? ar : en)
 
 describe("the Change connection dialog", () => {
-    const render = async (locale: "en" | "ar", props: { to: "AGENT" | "DIRECT"; officeAsked: boolean; protocol?: "ZKTECO" | "HIKVISION" }) => {
+    const render = async (locale: "en" | "ar", props: { to: "AGENT" | "DIRECT"; officeAsked: boolean; protocol?: "ZKTECO" | "HIKVISION"; noAgentReadsIt?: boolean }) => {
         state.locale = locale
         const { ConnectionDialog } = await import("@/components/TerminalAddDialog")
         return renderToStaticMarkup(h(ConnectionDialog, { name: "Front door", protocol: "ZKTECO", busy: false, onClose: () => {}, onSubmit: async () => {}, ...props }))
@@ -85,6 +85,23 @@ describe("the Change connection dialog", () => {
         }
     })
 
+    it("moving a Hikvision terminal to the agent: names the agent version that reads it, and says so when none of the company's agents does yet (PR 303)", async () => {
+        const none = (w: typeof en) => `<p>${drawn(w.att_term_move_AGENT_HIKVISION_none)}</p>`
+        for (const locale of ["en", "ar"] as const) {
+            const w = words(locale)
+            const read = await render(locale, { to: "AGENT", officeAsked: false, protocol: "HIKVISION" })
+            expect(read).toContain('<code class="ui-guide-inline" dir="ltr" translate="no">0.3.0</code>')
+            expect(read).not.toContain(none(w))
+            // Said, not refused: the office may update its agent next, and the terminal keeps its scans meanwhile.
+            const unread = await render(locale, { to: "AGENT", officeAsked: false, protocol: "HIKVISION", noAgentReadsIt: true })
+            expect(unread).toContain(none(w))
+            expect(unread.indexOf(none(w))).toBeGreaterThan(unread.indexOf(drawn(w.att_term_move_AGENT_HIKVISION_body)))
+            expect(buttons(unread)).toEqual([["ui-btn-secondary", w.cancel], ["ui-btn-primary", w.att_term_move_AGENT]])
+            // Moving straight to Nizmo needs no agent.
+            expect(await render(locale, { to: "DIRECT", officeAsked: false, protocol: "HIKVISION", noAgentReadsIt: true })).not.toContain(none(w))
+        }
+    })
+
     it("needs the office's address before anything is sent, and sends it only where it's asked for", () => {
         const dialog = DIALOGS.slice(DIALOGS.indexOf("export function ConnectionDialog("))
         expect(dialog).toContain("if (officeAsked && typed.length === 0) { setError(t('att_term_office_required')); focusFirstWrong(formRef.current); return }")
@@ -106,6 +123,11 @@ describe("on Fingerprint terminals", () => {
         expect(PANEL).toContain("const movingTo = moving ? otherConnection(moving, directAllowed) : null")
         expect(PANEL).toContain("<ConnectionDialog name={moving.name} to={movingTo} protocol={moving.protocol} officeAsked={hasOfficeAddress({ protocol: moving.protocol, connection: movingTo })}")
         expect(PANEL).toContain("send(`/api/attendance/devices/${moving.id}/connection`, { method: 'PUT', body: JSON.stringify({ connection: movingTo, ...(officeAddresses && { officeAddresses }) }) }, `att_term_moved_${movingTo}`, d => { showAddress(d); setMoving(null) })")
+    })
+
+    it("tells the dialog when none of the company's agents reads a Hikvision terminal moving to it (PR 303)", () => {
+        // An agent reporting its version, whose token works: one waiting for its code has said none, and one revoked reads nothing.
+        expect(PANEL).toContain("noAgentReadsIt={movingTo === 'AGENT' && moving.protocol === 'HIKVISION' && !agents.some(a => a.status === 'ACTIVE' && agentReads('HIKVISION', a.agentVersion))}")
     })
 
     it("says nothing of what an agent saw on the row of a terminal straight to Nizmo", () => {
@@ -141,7 +163,7 @@ describe("the silence check", () => {
 describe("the words", () => {
     const KEYS = [
         "att_term_change_connection", "att_term_move_DIRECT_title", "att_term_move_AGENT_title", "att_term_move_DIRECT", "att_term_move_AGENT",
-        "att_term_move_DIRECT_body", "att_term_move_AGENT_body", "att_term_move_AGENT_HIKVISION_body", "att_term_moved_DIRECT", "att_term_moved_AGENT",
+        "att_term_move_DIRECT_body", "att_term_move_AGENT_body", "att_term_move_AGENT_HIKVISION_body", "att_term_move_AGENT_HIKVISION_none", "att_term_moved_DIRECT", "att_term_moved_AGENT",
     ] as const
 
     it("are there in both languages, with the same slots", () => {
@@ -160,8 +182,11 @@ describe("the words", () => {
         expect(literals(en.att_term_move_AGENT_body)).toEqual(["`Cloud Server Setting`"])
         expect(literals(ar.att_term_move_AGENT_body)).toEqual(literals(en.att_term_move_AGENT_body))
         // Hikvision's, as its HTTP Listening page names it, beside the agent's own file (PR 301).
-        expect(literals(en.att_term_move_AGENT_HIKVISION_body)).toEqual(["`agent.json`", "`HTTP Listening`"])
+        // And the agent version that reads it, as `nizmo-agent.exe version` prints it (PR 303).
+        expect(literals(en.att_term_move_AGENT_HIKVISION_body)).toEqual(["`agent.json`", "`0.3.0`", "`HTTP Listening`"])
         expect(literals(ar.att_term_move_AGENT_HIKVISION_body)).toEqual(literals(en.att_term_move_AGENT_HIKVISION_body))
+        expect(literals(en.att_term_move_AGENT_HIKVISION_none)).toEqual(["`0.3.0`"])
+        expect(literals(ar.att_term_move_AGENT_HIKVISION_none)).toEqual(literals(en.att_term_move_AGENT_HIKVISION_none))
         expect(en.att_term_address_intro).toContain("`HTTP Listening`")
     })
 

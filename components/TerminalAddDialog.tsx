@@ -2,7 +2,7 @@
 
 import { useId, useRef, useState, type FormEvent } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
-import { addressLines, connectionChoices, hasOfficeAddress, hikvisionSettings, zktecoSettings, type TerminalConnection, type TerminalProtocol } from '@/lib/attendance/terminal-connections'
+import { addressLines, connectionChoices, connectionHint, hasOfficeAddress, hikvisionSettings, zktecoSettings, type TerminalConnection, type TerminalProtocol } from '@/lib/attendance/terminal-connections'
 import { Button, Choice, Dialog, DialogActions, Field, Select, TextArea, TextInput } from '@/components/ui'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import { CodeBox, ModelNotes, Sentence, type GuideBrand } from '@/components/TerminalSetupGuide'
@@ -109,7 +109,7 @@ export function TerminalAddDialog({ brands, directAllowed, busy, onClose, onSubm
                         options={choices.map(c => ({ value: c.connection, label: t(`att_term_connection_${c.connection}`), disabled: !c.built }))}
                         warning={whyNot || undefined}
                     />
-                    {connection && <p className="ui-hint">{t(officeAsked ? 'att_term_connection_DIRECT_ZKTECO_hint' : `att_term_connection_${connection}_hint`)}</p>}
+                    {connection && <p className="ui-hint"><Sentence text={t(connectionHint(brand.protocol, connection))} /></p>}
                     {officeAsked && <OfficeField value={office} error={errors.office} onChange={v => { setOffice(v); setErrors(x => ({ ...x, office: undefined })) }} />}
                     {blocked && <p id={noneId} className="ui-hint">{t('att_term_connection_none')}</p>}
                 </> : <p className="ui-hint">{t('att_term_connection_pick_brand')}</p>}
@@ -271,14 +271,19 @@ export function OfficeAddressDialog({ name, addresses, busy, onClose, onSubmit }
  * needed, as adding it does, and the server asks for the step-up code. To
  * the agent nothing is asked: it's a confirmation, not in the danger
  * colour, since nothing is lost. What to turn off on the terminal is named
- * as its own screen names it, ZKTeco's or Hikvision's (PR 301).
+ * as its own screen names it, ZKTeco's or Hikvision's (PR 301). A
+ * Hikvision terminal moved to the agent names the agent version that
+ * reads it, and says so where none of the company's agents does yet:
+ * said, not refused, as the office may update its agent next (PR 303).
  */
-export function ConnectionDialog({ name, to, protocol, officeAsked, busy, onClose, onSubmit }: {
+export function ConnectionDialog({ name, to, protocol, officeAsked, noAgentReadsIt = false, busy, onClose, onSubmit }: {
     name: string
     to: TerminalConnection
     protocol: TerminalProtocol
     /** Whether, moved, it's let in from its office's address alone, which is then asked for. */
     officeAsked: boolean
+    /** Whether, moved to the agent, none of the company's agents reads a Hikvision terminal yet. */
+    noAgentReadsIt?: boolean
     busy: boolean
     onClose: () => void
     onSubmit: (officeAddresses?: string[]) => Promise<void>
@@ -297,6 +302,7 @@ export function ConnectionDialog({ name, to, protocol, officeAsked, busy, onClos
         <Dialog open onClose={() => { if (!busy) onClose() }} title={t(`att_term_move_${to}_title`).replace('{name}', name)}>
             <form ref={formRef} className="ui-form" noValidate onSubmit={submit}>
                 <p><Sentence text={t(to === 'AGENT' && protocol === 'HIKVISION' ? 'att_term_move_AGENT_HIKVISION_body' : `att_term_move_${to}_body`)} /></p>
+                {to === 'AGENT' && protocol === 'HIKVISION' && noAgentReadsIt && <p><Sentence text={t('att_term_move_AGENT_HIKVISION_none')} /></p>}
                 {officeAsked && <OfficeField value={office} error={error} onChange={v => { setOffice(v); setError(undefined) }} />}
                 <DialogActions>
                     <Button onClick={onClose} disabled={busy}>{t('cancel')}</Button>

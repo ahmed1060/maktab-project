@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { CONNECTIONS_BUILT, addressLines, connectionChoices, hasAddress, hasOfficeAddress, hikvisionPath, hikvisionSettings, mayConnect, otherConnection, refusalWords, zktecoSettings } from "./terminal-connections"
+import { CONNECTIONS_BUILT, HIKVISION_AGENT_VERSION, addressLines, agentReads, connectionChoices, connectionHint, hasAddress, hasOfficeAddress, hikvisionPath, hikvisionSettings, mayConnect, otherConnection, refusalWords, zktecoSettings } from "./terminal-connections"
+import { readFileSync } from "node:fs"
 import { isPushSecret, newPushSecret, withoutTerminalSecrets, HIKVISION_ROUTE } from "./terminal-secrets"
 import { en } from "../translations/en"
 import { ar } from "../translations/ar"
@@ -12,18 +13,17 @@ import { ar } from "../translations/ar"
  */
 
 describe("the ways a terminal connects", () => {
-    it("are either way for ZKTeco's, and straight to Nizmo for Hikvision's", () => {
-        // Part 6 (PR 297) added ZKTeco's straight to Nizmo. The agent for Hikvision's is held back until part 7's
-        // third PR, whose released agent reads it: offered sooner, a working terminal could be moved to an agent
-        // that can't (Codex on PR 301).
-        expect(CONNECTIONS_BUILT).toEqual({ ZKTECO: ["AGENT", "DIRECT"], HIKVISION: ["DIRECT"] })
+    it("are either way for ZKTeco's and Hikvision's alike", () => {
+        // Part 6 (PR 297) added ZKTeco's straight to Nizmo; part 7, the agent for Hikvision's, written in PR 301 and built
+        // in PR 303, once the agent that reads it, 0.3.0, was released (PR 302).
+        expect(CONNECTIONS_BUILT).toEqual({ ZKTECO: ["AGENT", "DIRECT"], HIKVISION: ["AGENT", "DIRECT"] })
     })
 
     it("list straight to Nizmo only where the Super Admin has turned it on for the company", () => {
         expect(connectionChoices("ZKTECO", false)).toEqual([{ connection: "AGENT", built: true }])
-        expect(connectionChoices("HIKVISION", false)).toEqual([{ connection: "AGENT", built: false }])
+        expect(connectionChoices("HIKVISION", false)).toEqual([{ connection: "AGENT", built: true }])
         expect(connectionChoices("ZKTECO", true)).toEqual([{ connection: "AGENT", built: true }, { connection: "DIRECT", built: true }])
-        expect(connectionChoices("HIKVISION", true)).toEqual([{ connection: "AGENT", built: false }, { connection: "DIRECT", built: true }])
+        expect(connectionChoices("HIKVISION", true)).toEqual([{ connection: "AGENT", built: true }, { connection: "DIRECT", built: true }])
     })
 
     it("can be picked only when listed and built", () => {
@@ -31,11 +31,11 @@ describe("the ways a terminal connects", () => {
         expect(mayConnect("ZKTECO", "AGENT", true)).toBe(true)
         expect(mayConnect("ZKTECO", "DIRECT", true)).toBe(true)
         expect(mayConnect("HIKVISION", "DIRECT", true)).toBe(true)
+        expect(mayConnect("HIKVISION", "AGENT", false)).toBe(true)
+        expect(mayConnect("HIKVISION", "AGENT", true)).toBe(true)
         // Built, but not this company's to pick: its switch is off.
         expect(mayConnect("ZKTECO", "DIRECT", false)).toBe(false)
         expect(mayConnect("HIKVISION", "DIRECT", false)).toBe(false)
-        expect(mayConnect("HIKVISION", "AGENT", false)).toBe(false)
-        expect(mayConnect("HIKVISION", "AGENT", true)).toBe(false)
     })
 
     it("give an address of its own to a Hikvision terminal straight to Nizmo, and no other", () => {
@@ -61,8 +61,9 @@ describe("where a terminal's connection can change to (PR 298)", () => {
         expect(otherConnection({ protocol: "ZKTECO", connection: "DIRECT" }, false)).toBe("AGENT")
     })
 
-    it("is nowhere for a Hikvision terminal straight to Nizmo, until the agent reads Hikvision", () => {
-        expect(otherConnection({ protocol: "HIKVISION", connection: "DIRECT" }, true)).toBeNull()
+    it("is the other way for a Hikvision terminal too, now the agent reads Hikvision (PR 303)", () => {
+        expect(otherConnection({ protocol: "HIKVISION", connection: "DIRECT" }, true)).toBe("AGENT")
+        expect(otherConnection({ protocol: "HIKVISION", connection: "DIRECT" }, false)).toBe("AGENT")
         expect(otherConnection({ protocol: "HIKVISION", connection: "AGENT" }, true)).toBe("DIRECT")
         expect(otherConnection({ protocol: "HIKVISION", connection: "AGENT" }, false)).toBeNull()
     })
@@ -159,5 +160,39 @@ describe("why a terminal's own scan was refused", () => {
         for (const reason of KEPT) expect(ingest + events + push, reason).toContain(`"${reason}"`)
         // A call from elsewhere, with its address (PR 296).
         expect(push).toContain("lastRefusal: `ADDRESS_NOT_ALLOWED:${")
+    })
+})
+
+describe("which agent reads a terminal (PR 303)", () => {
+    it("reads ZKTeco's whatever version it says, and Hikvision's from 0.3.0, the release that reads them (PR 302)", () => {
+        expect(HIKVISION_AGENT_VERSION).toBe("0.3.0")
+        for (const v of ["0.1.0", "0.2.0", "0.3.0", "1.0.0"]) expect(agentReads("ZKTECO", v), v).toBe(true)
+        // Compared as numbers, part by part: 0.10.0 is after 0.3.0.
+        for (const v of ["0.3.0", "0.3.1", "0.4.0", "0.10.0", "1.0.0"]) expect(agentReads("HIKVISION", v), v).toBe(true)
+        for (const v of ["0.2.0", "0.2.9", "0.1.12", "0.0.3"]) expect(agentReads("HIKVISION", v), v).toBe(false)
+    })
+
+    it("reads nothing for an agent that hasn't said its version, and Hikvision's for none that says one Nizmo can't read", () => {
+        for (const protocol of ["ZKTECO", "HIKVISION"] as const) {
+            expect(agentReads(protocol, null)).toBe(false)
+            expect(agentReads(protocol, "")).toBe(false)
+        }
+        expect(agentReads("HIKVISION", "beta")).toBe(false)
+        expect(agentReads("HIKVISION", "0.3")).toBe(false)
+    })
+
+    it("counts the agent released now as one that reads Hikvision's", () => {
+        const released = /AGENT_VERSION = "([\d.]+)"/.exec(readFileSync("agent/src/version.ts", "utf8"))![1]
+        expect(agentReads("HIKVISION", released)).toBe(true)
+    })
+})
+
+describe("what Add a terminal says under the way picked (PR 303)", () => {
+    it("names the agent version a Hikvision terminal needs, and the office's address for a ZKTeco one straight to Nizmo (PR 297)", () => {
+        expect(connectionHint("ZKTECO", "AGENT")).toBe("att_term_connection_AGENT_hint")
+        expect(connectionHint("HIKVISION", "AGENT")).toBe("att_term_connection_AGENT_HIKVISION_hint")
+        expect(connectionHint("ZKTECO", "DIRECT")).toBe("att_term_connection_DIRECT_ZKTECO_hint")
+        expect(connectionHint("HIKVISION", "DIRECT")).toBe("att_term_connection_DIRECT_hint")
+        for (const w of [en, ar]) expect(w.att_term_connection_AGENT_HIKVISION_hint).toContain(`\`${HIKVISION_AGENT_VERSION}\``)
     })
 })

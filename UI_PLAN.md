@@ -767,7 +767,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      the agent reads it, with Nizmo taking a terminal's protocol from
      the agent, merged in #301 on 2026-11-16; then its third, the agent
      reading Hikvision, released as 0.3.0, which changes no screen,
-     #302;
+     merged in #302 on 2026-11-16; then its fourth and last, Hikvision
+     through the office agent offered in Add a terminal, Change
+     connection and the setup guide, #303;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6515,3 +6517,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   one, and `trust` pins a renewed certificate; the agent is 0.3.0. No
   screen changes: the fourth PR offers Hikvision through the agent on
   the screens once the new package is built.
+- **2026-11-16:** Hikvision through the office agent, on the screens
+  (#303; `ATTENDANCE_PLAN.md` §17.4, §17.7, Phase 4 part 7, the fourth
+  and last). Add a terminal offers a Hikvision terminal through the
+  office agent, Change connection moves one there and back, and the
+  setup guide shows its steps: which agent version reads it, 0.3.0,
+  where to see it and how to update an older one, and what to do when
+  a terminal's certificate changes. Moving one to the agent says so
+  when none of the company's agents reads Hikvision yet.

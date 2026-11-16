@@ -17,16 +17,50 @@ export type { TerminalProtocol }
 export type TerminalConnection = "AGENT" | "DIRECT"
 
 /**
- * The ways Nizmo can connect a terminal of each protocol today. ZKTeco's
- * terminals straight to Nizmo came with part 6 (PR 297). Hikvision's
- * through the agent is written (PR 301), its guide and words with it, but
- * built only with part 7's third PR, whose released agent reads it: offered
- * sooner, a working terminal could be moved to an agent that can't (Codex
- * on PR 301).
+ * The ways Nizmo can connect a terminal of each protocol today: both, for
+ * each. ZKTeco's terminals straight to Nizmo came with part 6 (PR 297),
+ * and Hikvision's through the agent with part 7: written in PR 301, built
+ * in PR 303 once the agent that reads it was released (PR 302).
  */
 export const CONNECTIONS_BUILT: Record<TerminalProtocol, readonly TerminalConnection[]> = {
     ZKTECO: ["AGENT", "DIRECT"],
-    HIKVISION: ["DIRECT"],
+    HIKVISION: ["AGENT", "DIRECT"],
+}
+
+/** The first agent release that reads Hikvision's terminals (§17.4, PR 302), as `nizmo-agent.exe version` prints it. */
+export const HIKVISION_AGENT_VERSION = "0.3.0"
+
+/** A version as the agent says it, in its three numbers, or null where it isn't one. */
+function versionParts(version: string): number[] | null {
+    const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version)
+    return match ? match.slice(1).map(Number) : null
+}
+
+/**
+ * Whether an agent of the version it reported reads a terminal of this
+ * protocol (§17.4, PR 303): ZKTeco's, any; Hikvision's, from 0.3.0. One
+ * that has reported none, as one waiting for its code, reads nothing yet.
+ * Compared number by number, so 0.10.0 comes after 0.3.0.
+ */
+export function agentReads(protocol: TerminalProtocol, version: string | null): boolean {
+    if (!version) return false
+    if (protocol === "ZKTECO") return true
+    const have = versionParts(version)
+    const need = versionParts(HIKVISION_AGENT_VERSION)!
+    if (!have) return false
+    for (let i = 0; i < need.length; i++) if (have[i] !== need[i]) return have[i] > need[i]
+    return true
+}
+
+/**
+ * What Add a terminal says under the way picked: a ZKTeco terminal
+ * straight to Nizmo is let in from its office's address (PR 297), and a
+ * Hikvision one through the agent needs the agent from 0.3.0 (PR 303).
+ */
+export function connectionHint(protocol: TerminalProtocol, connection: TerminalConnection): TranslationKey {
+    if (hasOfficeAddress({ protocol, connection })) return "att_term_connection_DIRECT_ZKTECO_hint"
+    if (protocol === "HIKVISION" && connection === "AGENT") return "att_term_connection_AGENT_HIKVISION_hint"
+    return `att_term_connection_${connection}_hint`
 }
 
 /**

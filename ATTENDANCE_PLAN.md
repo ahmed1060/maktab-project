@@ -25,8 +25,10 @@ off for every company; part 7, the agent reads Hikvision, is split in
 four PRs, the first, the agent's Hikvision client, in #300, the
 second, Nizmo taking a terminal's protocol from the agent, with
 Hikvision through the office agent ready on the screens and held back
-until the agent reads it, in #301, and the third, the agent reading a
-Hikvision terminal named in `agent.json`, released as 0.3.0, in #302.
+until the agent reads it, in #301, the third, the agent reading a
+Hikvision terminal named in `agent.json`, released as 0.3.0, in #302,
+and the fourth, Hikvision through the office agent offered on the
+screens, in #303: part 7 is built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
@@ -2395,6 +2397,40 @@ the build settled:
   check the version installed, and what to do on
   `HIK_CERTIFICATE_CHANGED`.
 
+**Built in #303: Hikvision through the office agent, on the screens**
+(part 7's fourth and last PR, §20). The agent that reads it, 0.3.0, is
+built by the Attendance agent workflow (#302). What the build settled:
+
+- **Built both ways** (`CONNECTIONS_BUILT`): Add a terminal offers a
+  Hikvision terminal through the office agent, Change connection moves
+  one between the two ways, and the server takes both, as #301 wrote
+  them. The setup guide shows Hikvision's steps through the agent. Its
+  line for a model the agent can't read, and the one sending such a
+  model to Add a terminal, are gone: the agent reads every protocol
+  Nizmo knows.
+- **No switch:** through the office agent, a Hikvision terminal is any
+  company's to add, as a ZKTeco one is. The Super Admin's switch is for
+  terminals straight to Nizmo, which call Nizmo from the internet
+  (§17.8). The office's own agent reads this one, and `probe` shows
+  first that it answers.
+- **Which agent reads it:** 0.3.0 or later. The guide says so before
+  installing, with where to see an installed agent's version, on its
+  card in Fingerprint terminals or with `nizmo-agent.exe version`, and
+  how to update an older one: its service stopped, the new package
+  unzipped over its folder, which keeps `agent.json` and what the agent
+  holds, and the service started again. No new code is needed. Add a
+  terminal says it under Through the office agent for a Hikvision
+  brand, and Change connection says it when moving one to the agent.
+- **Moved to the agent where none reads it yet:** Change connection
+  says so when none of the company's agents has reported 0.3.0 or
+  later: until one does, nothing reads the terminal, which keeps its
+  scans in its memory meanwhile. It's said, not refused: the office may
+  update its agent next, and nothing is lost.
+- **What goes wrong:** the guide's last step has
+  `HIK_CERTIFICATE_CHANGED`: if it's the same terminal, its certificate
+  renewed, `trust`, with the service stopped, pins the new one. Where a
+  terminal's HTTPS is off, the guide says `probe` takes `--http` (#302).
+
 ### 17.5 What a terminal sends, and what Nizmo keeps
 
 - **Kept**, for each scan: the terminal, the employee number and the
@@ -3239,7 +3275,7 @@ matching with liveness, fallback to flagged.
 It stays switched off meanwhile, on the face check meant for testing only;
 choosing a commercial SDK (§18, question 1) waits with it.
 
-### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 in #291 to #295, part 6 in #296 to #299, part 7 from #300
+### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 in #291 to #295, part 6 in #296 to #299, part 7 in #300 to #303
 
 Planned in #269, for ZKTeco and Hikvision alike (§17.1–§17.11). It replaces
 the earlier Phase 4, a listener for pushes on the agent and nothing else,
@@ -3325,7 +3361,7 @@ which becomes part 8 below. Each part is its own PR:
    4. Hikvision's way through the agent is built, so the screens offer
       it, once the 0.3.0 package is built; the setup guide says which
       agent version reads Hikvision, and what to do when a terminal's
-      certificate changes.
+      certificate changes. Built in #303.
 8. **Only when a customer needs it: the agent listens on the office network**,
    for terminals that push only plain HTTP. The terminal pushes to the agent's
    address on the office network, and the agent sends on over HTTPS, as for
@@ -3336,7 +3372,10 @@ parts 5 and 6 share the screen, so whichever comes second adds its protocol
 to it. Parts 4 to 7 are built now, switched off, though no terminal on hand
 can try them (round 9, decision 13). The trial (§17.8) of each way follows
 when a terminal that uses it is on hand, and the switch stays off for every
-company until it passes. Part 7 changes nothing in how the agent reads
+company until it passes. Through the office agent, a Hikvision
+terminal has no switch, as a ZKTeco one has none: the office's own
+agent reads it, once `probe` has shown it answers (#303). Part 7
+changes nothing in how the agent reads
 ZKTeco's terminals, so a new agent with it still reads the Convoy as
 before.
 
