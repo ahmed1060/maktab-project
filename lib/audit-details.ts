@@ -69,6 +69,8 @@ export function describeValue(value: unknown, field: string, { t, locale }: Read
         if (value === "[REDACTED]") return t("audit_value_redacted")
         // Separation-of-duties pairs, by their key (lib/permissions/separation.ts).
         if (field === "pairs") return t(`sod_${value}` as TranslationKey) || value
+        // How a terminal connects, as Fingerprint terminals says it, not as a punch's source (PR 298).
+        if (field === "connection") return t(`att_term_connection_${value}` as TranslationKey) || value
         if (isPermission(value)) return t(permissionLabelKey(value))
         if (DATE.test(value)) return new Date(value).toLocaleDateString(locale, { timeZone: "UTC" })
         if (DATE_TIME.test(value)) {

@@ -921,6 +921,19 @@ These are built once, in the building-blocks PR, and every page uses them
       address or range per line, as a check-in location's office IPs do,
       left to right in either language. The device's row says it, and its
       menu changes it, asking for the step-up code as adding it did.
+  - Changing how a device connects, such as a fingerprint terminal moved
+    between the office agent and straight to Nizmo (`ATTENDANCE_PLAN.md`
+    §17.6, §17.7), is in its menu as Change connection, only where there
+    is another way open to it (§5.3). Its dialog is titled with where it
+    moves to, says in a sentence or two what changes and what stays, and
+    its main button says the move, such as "Move straight to Nizmo".
+    - Moved where Nizmo lets it in from its office's internet address,
+      the dialog asks for that address as adding it does, then the
+      step-up code. What to set on it follows, as after adding it.
+    - Moved where nothing is asked, it's a confirmation (below), not in
+      the danger colour: nothing is lost, and its scans stay.
+    - Moved straight to Nizmo, its row reads as one just added that way,
+      waiting for its first contact until it calls.
   - What a device sent, kept to be read, such as a fingerprint terminal's
     first requests (`ATTENDANCE_PLAN.md` §17.8), is a list in the order
     they came, up to 640px wide. It changes nothing: Close is its only
@@ -2319,3 +2332,8 @@ changed:
   address, says it on its row, and changes it from its menu. First for a
   ZKTeco terminal that sends its scans straight to Nizmo
   (`ATTENDANCE_PLAN.md` §17.3, §17.7).
+- **2026-11-16:** Changing how a device connects (§5.5, Dialog) is in
+  its menu where another way is open to it: a dialog titled with where it
+  moves to, asking only what that way needs, its main button saying the
+  move. First for a fingerprint terminal moved between the office agent
+  and straight to Nizmo (`ATTENDANCE_PLAN.md` §17.6, §17.7).

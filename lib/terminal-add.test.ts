@@ -296,11 +296,11 @@ describe("the server's side", () => {
         expect(shown).not.toContain("pushSecretHash")
         // Who added it tells waiting from silent, on the server; the list leaves it out of what it sends.
         expect(service).toContain("return devices.map(({ addedById, ...d }) => ({ ...withBrand(d), health: deviceHealth({ ...d, addedById }, now, working, zone) }))")
-        // The secret is made, hashed and returned in one place each for adding and issuing again.
-        expect(service.match(/newPushSecret\(\)/g)).toHaveLength(2)
-        expect(service.match(/hashSecret\(secret\)/g)).toHaveLength(2)
-        expect(service.match(/hikvisionPath\(secret\)/g)).toHaveLength(2)
-        for (const route of ["app/api/attendance/devices/route.ts", "app/api/attendance/devices/[id]/address/route.ts"]) {
+        // The secret is made, hashed and returned in one place each for adding, issuing again, and moving straight to Nizmo (PR 298).
+        expect(service.match(/newPushSecret\(\)/g)).toHaveLength(3)
+        expect(service.match(/hashSecret\(secret\)/g)).toHaveLength(3)
+        expect(service.match(/hikvisionPath\(secret\)/g)).toHaveLength(3)
+        for (const route of ["app/api/attendance/devices/route.ts", "app/api/attendance/devices/[id]/address/route.ts", "app/api/attendance/devices/[id]/connection/route.ts"]) {
             expect(source(route), route).not.toMatch(/newPushSecret|hashSecret|pushSecretHash/)
         }
     })

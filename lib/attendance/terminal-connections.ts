@@ -42,6 +42,16 @@ export function mayConnect(protocol: TerminalProtocol, connection: TerminalConne
     return connectionChoices(protocol, directAllowed).some(c => c.connection === connection && c.built)
 }
 
+/**
+ * Where a terminal's connection can change to (§17.6, §17.7, PR 298): its
+ * other way, where that is built for its protocol and the company may use
+ * it. Null where there's none, and Change connection isn't offered.
+ */
+export function otherConnection(terminal: { protocol: TerminalProtocol; connection: TerminalConnection }, directAllowed: boolean): TerminalConnection | null {
+    const other: TerminalConnection = terminal.connection === "AGENT" ? "DIRECT" : "AGENT"
+    return mayConnect(terminal.protocol, other, directAllowed) ? other : null
+}
+
 /** Whether a terminal has an address of its own to issue again: Hikvision's, straight to Nizmo (§17.2). */
 export function hasAddress(terminal: { protocol: TerminalProtocol; connection: TerminalConnection }): boolean {
     return terminal.protocol === "HIKVISION" && terminal.connection === "DIRECT"

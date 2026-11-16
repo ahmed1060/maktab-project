@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { CONNECTIONS_BUILT, addressLines, connectionChoices, hasAddress, hasOfficeAddress, hikvisionPath, hikvisionSettings, mayConnect, refusalWords, zktecoSettings } from "./terminal-connections"
+import { CONNECTIONS_BUILT, addressLines, connectionChoices, hasAddress, hasOfficeAddress, hikvisionPath, hikvisionSettings, mayConnect, otherConnection, refusalWords, zktecoSettings } from "./terminal-connections"
 import { isPushSecret, newPushSecret, withoutTerminalSecrets, HIKVISION_ROUTE } from "./terminal-secrets"
 import { en } from "../translations/en"
 import { ar } from "../translations/ar"
@@ -48,6 +48,21 @@ describe("the ways a terminal connects", () => {
         expect(hasOfficeAddress({ protocol: "ZKTECO", connection: "AGENT" })).toBe(false)
         expect(hasOfficeAddress({ protocol: "HIKVISION", connection: "DIRECT" })).toBe(false)
         expect(hasOfficeAddress({ protocol: "HIKVISION", connection: "AGENT" })).toBe(false)
+    })
+})
+
+describe("where a terminal's connection can change to (PR 298)", () => {
+    it("is the other way for a ZKTeco terminal: to Nizmo only where the Super Admin has turned it on, back to the agent either way", () => {
+        expect(otherConnection({ protocol: "ZKTECO", connection: "AGENT" }, true)).toBe("DIRECT")
+        expect(otherConnection({ protocol: "ZKTECO", connection: "AGENT" }, false)).toBeNull()
+        expect(otherConnection({ protocol: "ZKTECO", connection: "DIRECT" }, true)).toBe("AGENT")
+        expect(otherConnection({ protocol: "ZKTECO", connection: "DIRECT" }, false)).toBe("AGENT")
+    })
+
+    it("is nowhere for a Hikvision terminal straight to Nizmo, until the agent reads Hikvision", () => {
+        expect(otherConnection({ protocol: "HIKVISION", connection: "DIRECT" }, true)).toBeNull()
+        expect(otherConnection({ protocol: "HIKVISION", connection: "AGENT" }, true)).toBe("DIRECT")
+        expect(otherConnection({ protocol: "HIKVISION", connection: "AGENT" }, false)).toBeNull()
     })
 })
 

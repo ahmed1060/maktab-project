@@ -755,7 +755,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      in #296 on 2026-11-16; then its second, Add a terminal for ZKTeco
      straight to Nizmo, with the office's address asked for, what to set
      on the terminal shown after it's added and again from its menu, and
-     the office's address on its row and changed from its menu, #297;
+     the office's address on its row and changed from its menu, merged
+     in #297 on 2026-11-16; then its third, Change connection, in a
+     terminal's menu, moving it between the office agent and straight to
+     Nizmo, #298;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6462,3 +6465,15 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   code. Its row says the office's address, and a call from elsewhere is
   said in words. The setup guide says a ZKTeco model can be added
   straight to Nizmo too where that's on.
+- **2026-11-16:** Change connection (#298; `ATTENDANCE_PLAN.md` §17.6,
+  §17.7, Phase 4 part 6, the third of its four PRs; `DESIGN.md` §5.5,
+  Dialog). On Fingerprint terminals, a ZKTeco terminal's menu moves it
+  between the office agent and straight to Nizmo, straight to Nizmo only
+  where the Super Admin has turned that on. Moving it straight to Nizmo
+  asks for the office's internet address and the step-up code, then shows
+  what to set on it, and its row waits for its first contact. Moving it
+  to the agent asks first. Its scans and history stay.
+- **2026-11-16:** From #298's review (`ATTENDANCE_PLAN.md` §17.6, §17.7):
+  an agent's heartbeat at the moment a terminal moves straight to Nizmo no
+  longer writes over the move, so the terminal still waits for its first
+  contact. No screen changes.

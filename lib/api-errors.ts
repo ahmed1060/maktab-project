@@ -237,6 +237,7 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     DEVICE_OFFICE_ADDRESS_REQUIRED: { status: 400, message: "Give the office's internet address: the terminal is let in from there alone." },
     DEVICE_INVALID_OFFICE_ADDRESS: { status: 400, message: "Each office address must be an address, such as 203.0.113.7, or a range, such as 203.0.113.0/28." },
     DEVICE_TOO_MANY_OFFICE_ADDRESSES: { status: 400, message: "A terminal can be let in from 20 office addresses at most." },
+    DEVICE_SAME_CONNECTION: { status: 409, message: "The terminal already connects that way." },
     DEVICE_NO_OFFICE_ADDRESS: { status: 409, message: "Only a ZKTeco terminal that sends its scans straight to Nizmo is let in from its office's address." },
     PHONE_KEY_INVALID: { status: 400, message: "The phone's key isn't one we can use. Update the app and try again." },
     PHONE_SIGNATURE_INVALID: { status: 400, message: "The phone's signature didn't check out. Try again." },

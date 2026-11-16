@@ -155,6 +155,26 @@ describe.skipIf(!ADMIN_URL)("silent terminal alerts, in Postgres", () => {
         expect((await notices(unplugged)).map(r => r.read)).toEqual([true])
     })
 
+    it("says nothing of a terminal set straight to Nizmo, though the agent that last reported it is heard, and clears what was raised before it moved (PR 298)", async () => {
+        const agent = await agentHeardAt("c1", "Moving office", minutesBefore(WORKING, 1))
+        const moved = await terminal("c1", agent, "Moved gate", minutesBefore(WORKING, 30))
+        await TerminalAlerts.check({ companyId: "c1" }, WORKING)
+        expect((await notices(moved)).map(r => r.read)).toEqual([false])
+
+        // Moved straight to Nizmo: it keeps the agent that last reported it,
+        // and calls Nizmo itself, when someone scans (§17.7).
+        await db.query(`UPDATE "AttendanceDevice" SET "connection" = 'DIRECT' WHERE id = $1`, [moved])
+        await TerminalAlerts.check({ companyId: "c1" }, WORKING)
+        expect((await notices(moved)).map(r => r.read)).toEqual([true])
+        expect((await db.query(`SELECT "alertedAt" FROM "AttendanceDevice" WHERE id = $1`, [moved])).rows[0].alertedAt).toBeNull()
+
+        // An hour on, with its agent still heard, nothing new is raised.
+        const later = new Date(WORKING.getTime() + 60 * 60_000)
+        await heard("AttendanceAgent", agent, later)
+        await TerminalAlerts.check({ companyId: "c1" }, later)
+        expect((await notices(moved)).map(r => r.read)).toEqual([true])
+    })
+
     it("tells the Super Admin while they set the company's terminals up, though its Admin holds the permission (PR 277)", async () => {
         const id = await agentHeardAt("c1", "Warehouse", minutesBefore(WORKING, 40))
         try {

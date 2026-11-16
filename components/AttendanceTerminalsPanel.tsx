@@ -3,7 +3,7 @@
 import { Fragment, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
-import { ArrowsClockwiseIcon, GlobeSimpleIcon, KeyIcon, ListMagnifyingGlassIcon, PencilSimpleIcon, PlusIcon, ProhibitIcon, ArrowCounterClockwiseIcon, WarningCircleIcon, WrenchIcon } from '@phosphor-icons/react/ssr'
+import { ArrowsClockwiseIcon, GlobeSimpleIcon, KeyIcon, ListMagnifyingGlassIcon, PencilSimpleIcon, PlugsConnectedIcon, PlusIcon, ProhibitIcon, ArrowCounterClockwiseIcon, WarningCircleIcon, WrenchIcon } from '@phosphor-icons/react/ssr'
 import { fetcher, type SWRError } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -13,9 +13,9 @@ import type { TranslationKey } from '@/lib/translations'
 import { Button, Card, Dialog, DialogActions, EmptyState, Field, GuideButton, Row, RowMenu, Select, StatusBadge, TextInput, type MenuItem, type StatusTone } from '@/components/ui'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import TerminalSetupGuide, { type GuideBrand } from '@/components/TerminalSetupGuide'
-import { OfficeAddressDialog, TerminalAddDialog, TerminalAddressDialog, TerminalSettingsDialog } from '@/components/TerminalAddDialog'
+import { ConnectionDialog, OfficeAddressDialog, TerminalAddDialog, TerminalAddressDialog, TerminalSettingsDialog } from '@/components/TerminalAddDialog'
 import { TerminalContactsDialog } from '@/components/TerminalContactsDialog'
-import { hasAddress, hasOfficeAddress, refusalWords } from '@/lib/attendance/terminal-connections'
+import { hasAddress, hasOfficeAddress, otherConnection, refusalWords } from '@/lib/attendance/terminal-connections'
 import { utcOffsetLabel } from '@/lib/attendance/terminal-health'
 
 /**
@@ -47,6 +47,10 @@ import { utcOffsetLabel } from '@/lib/attendance/terminal-health'
  * A ZKTeco terminal straight to Nizmo (PR 297) is let in from its office's
  * internet address, which its row says and its menu changes; what to set
  * on it holds no secret, so its menu shows it again at any time.
+ *
+ * A terminal's menu moves it to its other way of connecting, where one is
+ * open to it (PR 298): straight to Nizmo, then what to set on it is shown,
+ * as after adding it.
  */
 
 type Agent = {
@@ -99,6 +103,8 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
     const [shownSettings, setShownSettings] = useState<ShownSettings | null>(null)
     /** The ZKTeco terminal whose office's address is being changed (PR 297). */
     const [officeOf, setOfficeOf] = useState<Device | null>(null)
+    /** The terminal being moved to its other way of connecting (PR 298). */
+    const [moving, setMoving] = useState<Device | null>(null)
     const [reissuing, setReissuing] = useState<Device | null>(null)
     /** The terminal whose first contacts the Super Admin is reading (§17.8, PR 294). */
     const [contactsOf, setContactsOf] = useState<Device | null>(null)
@@ -243,6 +249,8 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
         ]
         : [
             { key: 'edit', label: t('edit'), icon: PencilSimpleIcon, onSelect: () => setEditing(d) },
+            // Where another way is open to it: the other built for its protocol, straight to Nizmo only where the switch is on (PR 298).
+            ...(otherConnection(d, directAllowed) ? [{ key: 'connection', label: t('att_term_change_connection'), icon: PlugsConnectedIcon, onSelect: () => setMoving(d) }] : []),
             // A Hikvision terminal straight to Nizmo has an address of its own (§17.2, PR 292).
             ...(hasAddress(d) ? [{ key: 'address', label: t('att_term_new_address'), icon: KeyIcon, onSelect: () => setReissuing(d) }] : []),
             // A ZKTeco terminal straight to Nizmo: what to set on it, again, and where it's let in from (PR 297).
@@ -262,6 +270,7 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
         if (d?.device && d.path) setShownAddress({ name: d.device.name, path: d.path, brandId: d.device.brand?.id ?? null })
         else if (d?.device && hasOfficeAddress(d.device)) setShownSettings({ name: d.device.name, brandId: d.device.brand?.id ?? null })
     }
+    const movingTo = moving ? otherConnection(moving, directAllowed) : null
 
     return (
         <Card
@@ -373,6 +382,11 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
             {officeOf && (
                 <OfficeAddressDialog name={officeOf.name} addresses={officeOf.allowedAddresses ?? []} busy={busy} onClose={() => setOfficeOf(null)} onSubmit={async addresses => {
                     await send(`/api/attendance/devices/${officeOf.id}/office-address`, { method: 'PUT', body: JSON.stringify({ addresses }) }, 'att_term_office_saved', () => setOfficeOf(null))
+                }} />
+            )}
+            {moving && movingTo && (
+                <ConnectionDialog name={moving.name} to={movingTo} officeAsked={hasOfficeAddress({ protocol: moving.protocol, connection: movingTo })} busy={busy} onClose={() => setMoving(null)} onSubmit={async officeAddresses => {
+                    await send(`/api/attendance/devices/${moving.id}/connection`, { method: 'PUT', body: JSON.stringify({ connection: movingTo, ...(officeAddresses && { officeAddresses }) }) }, `att_term_moved_${movingTo}`, d => { showAddress(d); setMoving(null) })
                 }} />
             )}
             {contactsOf && <TerminalContactsDialog deviceId={contactsOf.id} name={contactsOf.name} onClose={() => setContactsOf(null)} />}

@@ -68,6 +68,15 @@ describe("an audit entry's details, as the reader reads them", () => {
         expect(line.lines![1]).toEqual({ label: "Acknowledged", value: "Yes" })
     })
 
+    it("names how a terminal connects as Fingerprint terminals does, not as a punch's source (PR 298)", () => {
+        const [line] = describeDetails({ connection: { from: "AGENT", to: "DIRECT" } }, EN)
+        expect(line.change).toEqual({ before: en.att_term_connection_AGENT, after: en.att_term_connection_DIRECT })
+        const [arLine] = describeDetails({ connection: { from: "DIRECT", to: "AGENT" } }, AR)
+        expect(arLine.change).toEqual({ before: ar.att_term_connection_DIRECT, after: ar.att_term_connection_AGENT })
+        // A punch's source keeps its own word.
+        expect(describeDetails({ source: "AGENT" }, EN)[0].value).toBe(en.audit_value_AGENT)
+    })
+
     it("shows dates in the reader's format, a date stored as midnight UTC as the date it is", () => {
         const day = new Date("2026-10-04").toLocaleDateString("en", { timeZone: "UTC" })
         expect(describeDetails({ date: "2026-10-04" }, EN)).toEqual([{ label: "Date", value: day }])

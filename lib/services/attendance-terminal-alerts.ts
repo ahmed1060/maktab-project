@@ -69,10 +69,12 @@ export class TerminalAlerts {
             prisma.attendanceDevice.findMany({
                 where: {
                     ...inScope,
-                    OR: [{ alertedAt: { not: null } }, { retiredAt: null, alertedAt: null, agent: { status: "ACTIVE" }, ...silentSince(cutoff, "firstSeenAt") }],
+                    // Through the agent alone: one straight to Nizmo calls when someone
+                    // scans, and keeps the agent that last reported it, if any (§17.7, PR 298).
+                    OR: [{ alertedAt: { not: null } }, { retiredAt: null, alertedAt: null, connection: "AGENT", agent: { status: "ACTIVE" }, ...silentSince(cutoff, "firstSeenAt") }],
                 },
                 select: {
-                    id: true, name: true, retiredAt: true, lastSeenAt: true, firstSeenAt: true, alertedAt: true,
+                    id: true, name: true, retiredAt: true, connection: true, lastSeenAt: true, firstSeenAt: true, alertedAt: true,
                     agent: { select: { name: true, status: true, lastSeenAt: true } },
                     company: COMPANY,
                 },
@@ -84,7 +86,7 @@ export class TerminalAlerts {
         // notice says so in their place.
         const agentSilent = (a: (typeof agents)[number]) => a.status === "ACTIVE" && holdsTerminals(a.company) && !heard(a.lastSeenAt, cutoff)
         const deviceSilent = (d: (typeof devices)[number]) =>
-            !d.retiredAt && d.agent?.status === "ACTIVE" && heard(d.agent.lastSeenAt, cutoff) && holdsTerminals(d.company) && !heard(d.lastSeenAt, cutoff)
+            !d.retiredAt && d.connection === "AGENT" && d.agent?.status === "ACTIVE" && heard(d.agent.lastSeenAt, cutoff) && holdsTerminals(d.company) && !heard(d.lastSeenAt, cutoff)
 
         // Over: heard again, or no longer expected to be — revoked, retired,
         // the add-on gone, or a terminal now covered by its agent's notice.
