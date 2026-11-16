@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto"
 import { createServer as createHttp, type IncomingMessage, type Server, type ServerResponse } from "node:http"
-import { createServer as createHttps } from "node:https"
+import { createServer as createHttps, type Server as HttpsServer } from "node:https"
 import type { AddressInfo } from "node:net"
 
 /**
@@ -41,6 +41,8 @@ export type FakeHikState = {
     nonceUses: number
     /** Answer every request to this path with this status instead. */
     failing: { path: string; status: number; body?: string } | null
+    /** Once a request to this path is answered with 200, show this certificate instead: another machine taking over the address (PR 302). */
+    renewAfter: { path: string; cert: string; key: string } | null
 }
 
 export type SeenRequest = { method: string; path: string; authorization: string | null; body: string; status: number }
@@ -64,15 +66,26 @@ export class FakeHikDevice {
         this.state = {
             serialNumber: "DS-K1T341AM0020201234", model: "DS-K1T341AM", deviceName: "Lobby", firmware: "V3.2.30 build 220727",
             user: "agent", password: "Correct Horse 9", realm: "DS-K1T341AM", algorithm: null, localTime: "2026-11-16T13:00:00+02:00",
-            events: [], pageLimit: 30, nonceUses: 1000, failing: null, ...state,
+            events: [], pageLimit: 30, nonceUses: 1000, failing: null, renewAfter: null, ...state,
         }
     }
 
-    /** Starts listening on a free port on this machine; over HTTPS with a certificate and its key. */
-    async start(tls?: { cert: string; key: string }): Promise<number> {
-        const handler = (req: IncomingMessage, res: ServerResponse) => { void this.answer(req, res) }
+    /**
+     * Starts listening on this machine, on a free port or the one given (another terminal at the address the agent
+     * knows, PR 302); over HTTPS with a certificate and its key.
+     */
+    async start(tls?: { cert: string; key: string }, port = 0): Promise<number> {
+        const handler = (req: IncomingMessage, res: ServerResponse) => {
+            void this.answer(req, res).then(() => {
+                const renew = this.state.renewAfter
+                // After the answer itself, not the challenge that comes before it.
+                if (!renew || res.statusCode !== 200 || (req.url ?? "").split("?")[0] !== renew.path) return
+                this.state.renewAfter = null
+                ;(this.server as HttpsServer).setSecureContext({ cert: renew.cert, key: renew.key })
+            })
+        }
         this.server = tls ? createHttps({ cert: tls.cert, key: tls.key }, handler) : createHttp(handler)
-        await new Promise<void>(resolve => this.server!.listen(0, "127.0.0.1", resolve))
+        await new Promise<void>(resolve => this.server!.listen(port, "127.0.0.1", resolve))
         return (this.server.address() as AddressInfo).port
     }
 

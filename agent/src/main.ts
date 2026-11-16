@@ -1,16 +1,20 @@
 import { join } from "node:path"
-import { ConfigError, loadConfig } from "./config"
+import { ConfigError, loadConfig, type HikDeviceConfig } from "./config"
 import { fileLogger } from "./log"
-import { loadState } from "./state"
+import { loadState, saveState } from "./state"
 import { LockedError, acquireLock } from "./lock"
 import { SyncAgent } from "./sync"
+import { HikClient, HikError } from "./hik/client"
+import { readSecret } from "./prompt"
 import { withDevice } from "./zk/client"
 import { AGENT_VERSION } from "./version"
 
 /**
  * nizmo-agent — the Local Sync Agent (ATTENDANCE_PLAN.md §17).
  *
- *   nizmo-agent probe <address> [port] [password]   read a terminal, send nothing
+ *   nizmo-agent probe <address> [port] [password]   read a ZKTeco terminal, send nothing
+ *   nizmo-agent probe hikvision <address> <user>    read a Hikvision terminal, asking for the password
+ *   nizmo-agent trust <address> [port]              pin a Hikvision terminal's renewed certificate
  *   nizmo-agent enrol <code>                        connect this PC to the company
  *   nizmo-agent check                               one round, then stop
  *   nizmo-agent run                                 keep going (what the service runs)
@@ -20,10 +24,18 @@ import { AGENT_VERSION } from "./version"
  * logs/agent.log.
  */
 
-const HELP = `Nizmo attendance agent ${AGENT_VERSION}
+export const HELP = `Nizmo attendance agent ${AGENT_VERSION}
 
   nizmo-agent probe <address> [port] [password]
-      Reads one terminal and shows what it is and how many scans it holds. Sends nothing.
+      Reads one ZKTeco terminal and shows what it is and how many scans it holds. Sends nothing.
+  nizmo-agent probe hikvision <address> <user> [port] [--http]
+      Reads one Hikvision terminal with the user made on it for the agent, asking for that
+      user's password without showing it. Shows what it is, its clock and, over HTTPS, its
+      certificate. --http reads one whose HTTPS is off. Sends nothing.
+  nizmo-agent trust <address> [port]
+      For a Hikvision terminal in agent.json whose certificate was renewed, as after a reset
+      or a firmware update: shows its serial number and new certificate, and trusts it from
+      now on. Stop the service first.
   nizmo-agent enrol <code>
       Connects this PC to your company with the code from Company Settings → Attendance.
   nizmo-agent check
@@ -56,13 +68,18 @@ export function sleep(ms: number, signal: AbortSignal): Promise<void> {
     })
 }
 
-export async function main(argv: string[]): Promise<number> {
+/** What main asks of the person at the console; replaced in tests. */
+export type Deps = { secret?: (prompt: string) => Promise<string> }
+
+export async function main(argv: string[], deps: Deps = {}): Promise<number> {
     const [command, ...args] = argv
     const dir = home()
     const paths = { config: join(dir, "agent.json"), state: join(dir, "state.json"), log: join(dir, "logs", "agent.log") }
 
     if (!command || command === "help" || command === "--help") { process.stdout.write(HELP); return 0 }
     if (command === "version" || command === "--version") { process.stdout.write(`${AGENT_VERSION}\n`); return 0 }
+
+    if (command === "probe" && args[0]?.toLowerCase() === "hikvision") return probeHikvision(args.slice(1), deps.secret ?? readSecret)
 
     if (command === "probe") {
         const [host, port, password] = args
@@ -80,7 +97,7 @@ export async function main(argv: string[]): Promise<number> {
         if (e instanceof ConfigError) { log.error(e.message); return 2 }
         throw e
     }
-    if (!["enrol", "enroll", "check", "run"].includes(command)) {
+    if (!["enrol", "enroll", "check", "run", "trust"].includes(command)) {
         process.stderr.write(HELP)
         return 2
     }
@@ -112,6 +129,8 @@ async function locked(command: string, args: string[], config: ReturnType<typeof
         return 0
     }
 
+    if (command === "trust") return trust(args, config, state, paths.state, log)
+
     if (command === "check") {
         const result = await new SyncAgent(config, state, paths.state, log).round()
         log.info(`Round: ${JSON.stringify(result)}`)
@@ -140,6 +159,63 @@ async function locked(command: string, args: string[], config: ReturnType<typeof
     }
 
     return 2
+}
+
+/**
+ * Reads one Hikvision terminal with the user made on it for the agent, and
+ * shows who it is, its clock and, over HTTPS, its certificate's fingerprint.
+ * Sends nothing, and keeps nothing: agent.json and the state are not read.
+ * The password is asked for, never taken from the command line, where the
+ * console's history would keep it (§17.4, PR 302).
+ */
+async function probeHikvision(args: string[], secret: (prompt: string) => Promise<string>): Promise<number> {
+    const http = args.includes("--http")
+    const [host, user, port] = args.filter(a => a !== "--http")
+    if (!host || !user) {
+        process.stderr.write("Give the terminal's address and the user made on it for the agent, such as: nizmo-agent probe hikvision 192.168.1.30 nizmo-agent\n")
+        return 2
+    }
+    const password = await secret(`Password for ${user}: `)
+    const client = new HikClient({ host, port: port ? Number(port) : undefined, https: !http, user, password, pin: null })
+    let info
+    try {
+        info = await client.info()
+    } catch (e) {
+        if (!http && e instanceof HikError && e.code === "HIK_UNREACHABLE") process.stderr.write("Nothing answered over HTTPS. If the terminal's HTTPS is off, add --http.\n")
+        throw e
+    }
+    const clock = await client.clock()
+    process.stdout.write(`${JSON.stringify({ ...info, clock: clock.wall, https: !http, certificate: http ? null : client.seenFingerprint }, null, 2)}\n`)
+    return 0
+}
+
+/**
+ * Trusts a Hikvision terminal's renewed certificate (§17.4, PR 302): one
+ * named in agent.json and read over HTTPS, at this address and, where the
+ * office has several there, this port. It's read once with the user in
+ * agent.json, whatever certificate it shows, and that one is pinned from
+ * now on. Its serial number is shown, to be sure it is the terminal meant;
+ * a round reading another terminal there reads its events from the start.
+ */
+async function trust(args: string[], config: ReturnType<typeof loadConfig>, state: ReturnType<typeof loadState>, statePath: string, log: ReturnType<typeof fileLogger>): Promise<number> {
+    const [host, port] = args
+    if (!host) { log.error("Give the terminal's address, as in agent.json, such as: nizmo-agent trust 192.168.1.30"); return 2 }
+    const named = config.devices.filter((d): d is HikDeviceConfig => d.protocol === "hikvision" && d.host === host && (!port || d.port === Number(port)))
+    if (named.length === 0) { log.error(`No Hikvision terminal at ${host}${port ? ` port ${port}` : ""} in agent.json.`); return 2 }
+    if (named.length > 1) { log.error(`Several Hikvision terminals at ${host} in agent.json: give the port too, such as: nizmo-agent trust ${host} ${named[0].port}`); return 2 }
+    const d = named[0]
+    if (!d.https) { log.error(`Terminal ${d.name ?? host} is read over HTTP, there is no certificate to trust.`); return 2 }
+    const client = new HikClient({ host: d.host, port: d.port, https: true, user: d.user, password: d.password, pin: null })
+    const info = await client.info()
+    const key = `${d.host}:${d.port}`
+    const remembered = (state.devices[key] ??= { serialNumber: null, cursor: { count: 0, lastKey: null } })
+    if (remembered.serialNumber && remembered.serialNumber !== info.serialNumber) {
+        log.warn(`${key} is now terminal ${info.serialNumber}, not ${remembered.serialNumber}. Its events are read from the start.`)
+    }
+    remembered.certificate = client.seenFingerprint
+    saveState(statePath, state)
+    log.info(`Trusting terminal ${info.serialNumber} at ${key}, certificate ${client.seenFingerprint}, from now on.`)
+    return 0
 }
 
 // Run when started as a program, not when imported by a test.

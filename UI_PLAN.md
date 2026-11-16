@@ -765,7 +765,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      second, Hikvision through the office agent ready in Add a
      terminal, Change connection and the setup guide, held back until
      the agent reads it, with Nizmo taking a terminal's protocol from
-     the agent, #301;
+     the agent, merged in #301 on 2026-11-16; then its third, the agent
+     reading Hikvision, released as 0.3.0, which changes no screen,
+     #302;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6507,3 +6509,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   what Change connection says when moving one there, are written, but
   held back until the agent that reads it is released (part 7's third
   PR): until then the screens are as they were for Hikvision.
+- **2026-11-16:** The office agent reads Hikvision terminals (#302;
+  `ATTENDANCE_PLAN.md` §17.4, Phase 4 part 7, now in four PRs, this
+  the third). `agent.json` can name a Hikvision terminal, `probe` reads
+  one, and `trust` pins a renewed certificate; the agent is 0.3.0. No
+  screen changes: the fourth PR offers Hikvision through the agent on
+  the screens once the new package is built.

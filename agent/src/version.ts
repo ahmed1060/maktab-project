@@ -1,2 +1,2 @@
 /** The agent's version, sent with every heartbeat and shown on the Terminals panel. */
-export const AGENT_VERSION = "0.2.0"
+export const AGENT_VERSION = "0.3.0"

@@ -1,5 +1,6 @@
 import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, writeSync } from "node:fs"
 import { dirname } from "node:path"
+import type { HikCursor } from "./hik/events"
 
 /**
  * What the agent remembers between rounds and restarts, in one file written
@@ -32,8 +33,12 @@ export type AgentState = {
      * By "host:port", as configured. `direct`: the server said the terminal
      * is set to connect straight to Nizmo, so its log is left alone until
      * the server says it is this agent's again.
+     *
+     * A Hikvision terminal's place in its events is `hikCursor`, the last
+     * event read (agent/src/hik/events.ts), and `certificate` is the
+     * fingerprint pinned on the first read over HTTPS (PR 302).
      */
-    devices: Record<string, { serialNumber: string | null; cursor: Cursor; mustEnable?: boolean; direct?: boolean }>
+    devices: Record<string, { serialNumber: string | null; cursor: Cursor; mustEnable?: boolean; direct?: boolean; hikCursor?: HikCursor; certificate?: string | null }>
     queue: QueuedPunch[]
     /** Set when the server no longer accepts the token: nothing is sent until the agent is enrolled again. */
     needsEnrolment: boolean

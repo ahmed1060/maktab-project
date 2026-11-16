@@ -1,7 +1,8 @@
 import { hostname } from "node:os"
 import { AgentApi, ApiError, type DeviceReport } from "./api"
-import type { AgentConfig, DeviceConfig } from "./config"
+import type { AgentConfig, DeviceConfig, HikDeviceConfig, ZkDeviceConfig } from "./config"
 import { saveState, type AgentState, type Cursor, type QueuedPunch } from "./state"
+import { HikClient, HikError, type HikOptions } from "./hik/client"
 import { withDevice, type ZkOptions } from "./zk/client"
 import type { AttendanceRecord } from "./zk/protocol"
 import { AGENT_VERSION } from "./version"
@@ -29,6 +30,13 @@ import { AGENT_VERSION } from "./version"
  * it. It still asks which terminal it is and reports it, so that it hears
  * when the terminal is this agent's again, and reads on from where it
  * stopped.
+ *
+ * A Hikvision terminal (`"protocol": "hikvision"` in agent.json, PR 302) is
+ * read over ISAPI (agent/src/hik/client.ts): who it is, its clock, and its
+ * passed checks from where the agent had got to. Its certificate is pinned
+ * the first time it is read over HTTPS, and one showing another is refused
+ * until `nizmo-agent trust` is run for it. Its scans join the same queue;
+ * its memory is never cleared (ATTENDANCE_PLAN.md §17.4).
  */
 
 export const BATCH_SIZE = 500
@@ -37,6 +45,13 @@ export type Logger = { info(m: string): void; warn(m: string): void; error(m: st
 
 /** How the agent reaches a terminal; replaced in tests. */
 export type DeviceAccess = typeof withDevice
+
+/** How the agent reaches a Hikvision terminal; replaced in tests. */
+export type HikAccess = (options: HikOptions) => HikClient
+const hikClient: HikAccess = options => new HikClient(options)
+
+type Remembered = AgentState["devices"][string]
+type Report = DeviceReport & { ratio: number }
 
 export type RoundResult = {
     read: number
@@ -87,7 +102,10 @@ const withoutRatio = (r: DeviceReport & { ratio: number }): DeviceReport => {
 }
 
 const deviceKey = (d: DeviceConfig) => `${d.host}:${d.port}`
-const zkOptions = (d: DeviceConfig): ZkOptions => ({ host: d.host, port: d.port, password: d.password })
+const zkOptions = (d: ZkDeviceConfig): ZkOptions => ({ host: d.host, port: d.port, password: d.password })
+
+/** How to name a Hikvision terminal to `nizmo-agent trust`: its address, and its port where it isn't HTTPS's own. */
+export const trustCommand = (d: HikDeviceConfig) => `nizmo-agent trust ${d.host}${d.port === 443 ? "" : ` ${d.port}`}`
 
 export class SyncAgent {
     readonly api: AgentApi
@@ -98,6 +116,7 @@ export class SyncAgent {
         private readonly statePath: string,
         private readonly log: Logger,
         private readonly device: DeviceAccess = withDevice,
+        private readonly hik: HikAccess = hikClient,
     ) {
         this.api = new AgentApi(config.server, () => this.state.token)
     }
@@ -151,8 +170,8 @@ export class SyncAgent {
 
     // --- 1. the terminals ---------------------------------------------------------
 
-    private async readDevices(result: RoundResult): Promise<Map<string, DeviceReport & { ratio: number }>> {
-        const reports = new Map<string, DeviceReport & { ratio: number }>()
+    private async readDevices(result: RoundResult): Promise<Map<string, Report>> {
+        const reports = new Map<string, Report>()
         const sendFrom = this.config.sendFrom ?? this.state.sendFrom
         // The start moved earlier (sendFrom set back in agent.json): the
         // cursors passed over records it now wants, so every log is read again
@@ -160,71 +179,132 @@ export class SyncAgent {
         const from = sendFrom ?? ""
         // A state file from an agent before readFrom was kept has cursors but no start to compare with: the start may
         // have been moved earlier with the upgrade, so each log is read again, once (review on #62).
-        const unknown = this.state.readFrom == null && Object.values(this.state.devices).some(d => d.cursor.count > 0)
+        const unknown = this.state.readFrom == null && Object.values(this.state.devices).some(d => d.cursor.count > 0 || d.hikCursor != null)
         if (unknown || (this.state.readFrom != null && from < this.state.readFrom)) {
             this.log.info(unknown
                 ? `Sending from ${sendFrom ?? "the beginning"}; this folder doesn't say where reading last started, so each terminal's log is read again.`
                 : `Sending from ${sendFrom ?? "the beginning"} now (was ${this.state.readFrom}); reading each terminal's log again.`)
-            for (const remembered of Object.values(this.state.devices)) remembered.cursor = { count: 0, lastKey: null }
+            for (const remembered of Object.values(this.state.devices)) {
+                remembered.cursor = { count: 0, lastKey: null }
+                remembered.hikCursor = null
+            }
         }
         this.state.readFrom = from
         for (const d of this.config.devices) {
             const key = deviceKey(d)
             const remembered = (this.state.devices[key] ??= { serialNumber: null, cursor: { count: 0, lastKey: null } })
             try {
-                const { info, records } = await this.device(zkOptions(d), async zk => {
-                    // Left disabled when a clear was interrupted: switched back on before anything else.
-                    if (remembered.mustEnable) {
-                        await zk.enable()
-                        remembered.mustEnable = false
-                        this.save()
-                        this.log.info(`Switched terminal ${d.name ?? key} back on after an interrupted clear.`)
-                    }
-                    const info = await zk.info()
-                    // Set to connect straight to Nizmo: its log is its own to send. Only which terminal it is
-                    // is asked, so that another one put at this address is read.
-                    const leftAlone = remembered.direct === true && remembered.serialNumber === info.serialNumber
-                    return { info, records: leftAlone ? null : await zk.attendance() }
-                })
-                // Another terminal at this address now: its log is a different log.
-                if (remembered.serialNumber && remembered.serialNumber !== info.serialNumber) {
-                    this.log.warn(`${key} is now terminal ${info.serialNumber} (was ${remembered.serialNumber}); reading its log from the start.`)
-                    remembered.cursor = { count: 0, lastKey: null }
-                    // What the server said was of the terminal that was here.
-                    remembered.direct = false
-                }
-                remembered.serialNumber = info.serialNumber
-                if (records) {
-                    const { fresh, cursor } = newRecords(records, remembered.cursor)
-                    const wanted = fresh.filter(r => !sendFrom || r.at.slice(0, 10) >= sendFrom)
-                    this.state.queue.push(...wanted.map((r): QueuedPunch => ({ serialNumber: info.serialNumber, userNumber: r.userNumber, at: r.at })))
-                    remembered.cursor = cursor
-                    // The queue and the cursor in one write: a record is either queued and passed, or neither.
-                    this.save()
-                    result.read += records.length
-                    result.queued += wanted.length
-                }
-                reports.set(key, {
-                    // What the terminal says about itself, cut to what the server takes.
-                    serialNumber: info.serialNumber, ...(d.name ? { name: d.name } : {}), ...(info.name ? { model: info.name.slice(0, 80) } : {}), ...(info.firmware ? { firmware: info.firmware.slice(0, 80) } : {}),
-                    reachable: true, clock: info.clock, userCount: info.users, recordCount: info.records, recordCapacity: info.recordsCapacity,
-                    ratio: info.recordsCapacity > 0 ? info.records / info.recordsCapacity : 0,
-                })
+                reports.set(key, d.protocol === "hikvision"
+                    ? await this.readHik(d, key, remembered, sendFrom, result)
+                    : await this.readZk(d, key, remembered, sendFrom, result))
             } catch (e) {
                 const message = (e as Error).message
                 this.log.warn(`Terminal ${d.name ?? key} could not be read: ${message}`)
+                if (d.protocol === "hikvision" && e instanceof HikError && e.code === "HIK_CERTIFICATE_CHANGED") {
+                    this.log.warn(`If it is the same terminal, its certificate was renewed, as after a reset or a firmware update: stop the service, run \`${trustCommand(d)}\`, and start it again.`)
+                }
                 result.unreachable.push(key)
                 // Reported only once its serial number is known; the server knows terminals by it.
-                if (remembered.serialNumber) reports.set(key, { serialNumber: remembered.serialNumber, reachable: false, error: message.slice(0, 500), ratio: 0 })
+                if (remembered.serialNumber) {
+                    reports.set(key, { serialNumber: remembered.serialNumber, protocol: d.protocol === "hikvision" ? "HIKVISION" : "ZKTECO", reachable: false, error: message.slice(0, 500), ratio: 0 })
+                }
             }
         }
         return reports
     }
 
+    /**
+     * Adds a terminal's new scans from sendFrom on to the queue, one by one: a
+     * log of hundreds of thousands is too long to push in one call (Codex on
+     * PR 302). The caller moves its cursor past them only after, and saves
+     * both in one write, so a record is either queued and passed, or neither.
+     */
+    private enqueue(serialNumber: string, fresh: { userNumber: string; at: string }[], sendFrom: string | null, result: RoundResult) {
+        for (const r of fresh) {
+            if (sendFrom && r.at.slice(0, 10) < sendFrom) continue
+            this.state.queue.push({ serialNumber, userNumber: r.userNumber, at: r.at } satisfies QueuedPunch)
+            result.queued++
+        }
+    }
+
+    private async readZk(d: ZkDeviceConfig, key: string, remembered: Remembered, sendFrom: string | null, result: RoundResult): Promise<Report> {
+        const { info, records } = await this.device(zkOptions(d), async zk => {
+            // Left disabled when a clear was interrupted: switched back on before anything else.
+            if (remembered.mustEnable) {
+                await zk.enable()
+                remembered.mustEnable = false
+                this.save()
+                this.log.info(`Switched terminal ${d.name ?? key} back on after an interrupted clear.`)
+            }
+            const info = await zk.info()
+            // Set to connect straight to Nizmo: its log is its own to send. Only which terminal it is
+            // is asked, so that another one put at this address is read.
+            const leftAlone = remembered.direct === true && remembered.serialNumber === info.serialNumber
+            return { info, records: leftAlone ? null : await zk.attendance() }
+        })
+        // Another terminal at this address now: its log is a different log.
+        if (remembered.serialNumber && remembered.serialNumber !== info.serialNumber) {
+            this.log.warn(`${key} is now terminal ${info.serialNumber} (was ${remembered.serialNumber}); reading its log from the start.`)
+            remembered.cursor = { count: 0, lastKey: null }
+            // What the server said was of the terminal that was here.
+            remembered.direct = false
+        }
+        remembered.serialNumber = info.serialNumber
+        if (records) {
+            const { fresh, cursor } = newRecords(records, remembered.cursor)
+            this.enqueue(info.serialNumber, fresh, sendFrom, result)
+            remembered.cursor = cursor
+            this.save()
+            result.read += records.length
+        }
+        return {
+            // What the terminal says about itself, cut to what the server takes.
+            serialNumber: info.serialNumber, ...(d.name ? { name: d.name } : {}), ...(info.name ? { model: info.name.slice(0, 80) } : {}), ...(info.firmware ? { firmware: info.firmware.slice(0, 80) } : {}),
+            protocol: "ZKTECO", reachable: true, clock: info.clock, userCount: info.users, recordCount: info.records, recordCapacity: info.recordsCapacity,
+            ratio: info.recordsCapacity > 0 ? info.records / info.recordsCapacity : 0,
+        }
+    }
+
+    /**
+     * A Hikvision terminal (PR 302): who it is, its clock, and its passed
+     * checks since the last event read. Its certificate is pinned the first
+     * time it's read over HTTPS; after that the client refuses one showing
+     * another before anything is sent to it.
+     */
+    private async readHik(d: HikDeviceConfig, key: string, remembered: Remembered, sendFrom: string | null, result: RoundResult): Promise<Report> {
+        const client = this.hik({ host: d.host, port: d.port, https: d.https, user: d.user, password: d.password, pin: d.https ? remembered.certificate ?? null : null })
+        const info = await client.info()
+        if (d.https && !remembered.certificate && client.seenFingerprint) {
+            remembered.certificate = client.seenFingerprint
+            this.save()
+            this.log.info(`Terminal ${d.name ?? key} (${info.serialNumber}) shows the certificate ${client.seenFingerprint}. It is pinned: a terminal showing another at this address is refused.`)
+        }
+        const clock = await client.clock()
+        // Another terminal at this address now: its events are different events.
+        if (remembered.serialNumber && remembered.serialNumber !== info.serialNumber) {
+            this.log.warn(`${key} is now terminal ${info.serialNumber} (was ${remembered.serialNumber}); reading its events from the start.`)
+            remembered.hikCursor = null
+            remembered.direct = false
+        }
+        remembered.serialNumber = info.serialNumber
+        // Set to connect straight to Nizmo: its events are its own to send.
+        if (remembered.direct !== true) {
+            const { records, cursor } = await client.passedChecks(remembered.hikCursor ?? null, sendFrom, clock)
+            this.enqueue(info.serialNumber, records, sendFrom, result)
+            remembered.hikCursor = cursor
+            this.save()
+            result.read += records.length
+        }
+        return {
+            serialNumber: info.serialNumber, ...(d.name ? { name: d.name } : {}), ...(info.model ? { model: info.model.slice(0, 80) } : {}), ...(info.firmware ? { firmware: info.firmware.slice(0, 80) } : {}),
+            protocol: "HIKVISION", reachable: true, clock: clock.wall, ratio: 0,
+        }
+    }
+
     // --- 2. the heartbeat -----------------------------------------------------------
 
     /** Sends the heartbeat; answers each terminal's state as the server sees it, by serial number. */
-    private async heartbeat(reports: Map<string, DeviceReport & { ratio: number }>): Promise<Map<string, string>> {
+    private async heartbeat(reports: Map<string, Report>): Promise<Map<string, string>> {
         const reply = await this.api.heartbeat({
             agentVersion: AGENT_VERSION, hostname: hostname(), queueDepth: this.state.queue.length, clock: new Date().toISOString(),
             devices: [...reports.values()].map(withoutRatio),
@@ -286,8 +366,10 @@ export class SyncAgent {
 
     // --- 4. clearing a full terminal -------------------------------------------------
 
-    private async clearFull(reports: Map<string, DeviceReport & { ratio: number }>, states: Map<string, string>, result: RoundResult) {
+    private async clearFull(reports: Map<string, Report>, states: Map<string, string>, result: RoundResult) {
         for (const d of this.config.devices) {
+            // ZKTeco's alone: a Hikvision terminal's memory stays as it is until a model needs it (§17.4, PR 302).
+            if (d.protocol !== "zkteco") continue
             const key = deviceKey(d)
             const report = reports.get(key)
             const remembered = this.state.devices[key]

@@ -4,8 +4,13 @@ import { readFileSync } from "node:fs"
  * What an office sets up once, in agent.json beside the agent: where the
  * server is and which terminals are on this network. The company is never
  * here — it comes with the token the agent receives when it is enrolled.
+ *
+ * A terminal speaks ZKTeco's protocol unless it says `"protocol":
+ * "hikvision"` (ATTENDANCE_PLAN.md §17.4, PR 302): every agent.json before
+ * that names only ZKTeco's.
  */
-export type DeviceConfig = {
+export type ZkDeviceConfig = {
+    protocol: "zkteco"
     host: string
     port: number
     /** The terminal's comm password, if one is set on it (Comm. settings). */
@@ -13,6 +18,21 @@ export type DeviceConfig = {
     /** A name for the terminal the first time it is reported, such as "Front door". */
     name: string | null
 }
+
+/** A Hikvision terminal: the user made on it for the agent, read over HTTPS unless it says `"https": false`. */
+export type HikDeviceConfig = {
+    protocol: "hikvision"
+    host: string
+    /** 443 over HTTPS, 80 over HTTP, unless set. */
+    port: number
+    https: boolean
+    user: string
+    /** As typed, in quotes: a number would lose a leading zero. */
+    password: string
+    name: string | null
+}
+
+export type DeviceConfig = ZkDeviceConfig | HikDeviceConfig
 
 export type AgentConfig = {
     /** The website, e.g. https://app.example.com. */
@@ -51,15 +71,29 @@ export function parseConfig(raw: unknown): AgentConfig {
     }
     if (!Array.isArray(c.devices)) throw new ConfigError('"devices" must be a list of terminals, such as [{ "host": "192.168.1.20" }].')
     const devices = c.devices.map((d: any, i: number): DeviceConfig => {
-        if (!d || typeof d.host !== "string" || !d.host.trim()) throw new ConfigError(`Terminal ${i + 1} needs a "host": its address on this network.`)
-        const port = d.port === undefined ? 4370 : Number(d.port)
-        if (!Number.isInteger(port) || port < 1 || port > 65535) throw new ConfigError(`Terminal ${i + 1}: "port" must be a number from 1 to 65535.`)
-        const password = d.password === undefined ? 0 : Number(d.password)
-        if (!Number.isInteger(password) || password < 0) throw new ConfigError(`Terminal ${i + 1}: "password" must be the terminal's numeric comm password.`)
+        const which = `Terminal ${i + 1}`
+        if (!d || typeof d.host !== "string" || !d.host.trim()) throw new ConfigError(`${which} needs a "host": its address on this network.`)
+        const protocol = d.protocol === undefined ? "zkteco" : typeof d.protocol === "string" ? d.protocol.trim().toLowerCase() : ""
+        if (protocol !== "zkteco" && protocol !== "hikvision") throw new ConfigError(`${which}: "protocol" must be "zkteco" or "hikvision".`)
         const name = typeof d.name === "string" && d.name.trim() ? d.name.trim() : null
         // The server takes at most 80; a longer one would fail every heartbeat (review on #18).
-        if (name && name.length > 80) throw new ConfigError(`Terminal ${i + 1}: "name" must be at most 80 characters.`)
-        return { host: d.host.trim(), port, password, name }
+        if (name && name.length > 80) throw new ConfigError(`${which}: "name" must be at most 80 characters.`)
+        const portOr = (fallback: number) => {
+            const port = d.port === undefined ? fallback : Number(d.port)
+            if (!Number.isInteger(port) || port < 1 || port > 65535) throw new ConfigError(`${which}: "port" must be a number from 1 to 65535.`)
+            return port
+        }
+        if (protocol === "hikvision") {
+            if (d.https !== undefined && typeof d.https !== "boolean") throw new ConfigError(`${which}: "https" must be true or false.`)
+            const https = d.https !== false
+            if (typeof d.user !== "string" || !d.user.trim()) throw new ConfigError(`${which} needs a "user": the user made on the terminal for the agent.`)
+            if (d.password === undefined || d.password === "") throw new ConfigError(`${which} needs a "password": that user's password, in quotes.`)
+            if (typeof d.password !== "string") throw new ConfigError(`${which}: "password" must be in quotes, such as "password": "1234".`)
+            return { protocol, host: d.host.trim(), port: portOr(https ? 443 : 80), https, user: d.user.trim(), password: d.password, name }
+        }
+        const password = d.password === undefined ? 0 : Number(d.password)
+        if (!Number.isInteger(password) || password < 0) throw new ConfigError(`${which}: "password" must be the terminal's numeric comm password.`)
+        return { protocol, host: d.host.trim(), port: portOr(4370), password, name }
     })
     const keys = devices.map(d => `${d.host}:${d.port}`)
     if (new Set(keys).size !== keys.length) throw new ConfigError("The same terminal is listed twice.")

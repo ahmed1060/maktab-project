@@ -1,9 +1,9 @@
 # Nizmo attendance agent
 
 The Local Sync Agent runs on a Windows PC in the office. It reads the ZKTeco
-fingerprint terminals on the office network, and sends their scans to Nizmo
-over HTTPS. Nothing reaches the terminals from the internet: the agent only
-connects out.
+and Hikvision fingerprint terminals on the office network, and sends their
+scans to Nizmo over HTTPS. Nothing reaches the terminals from the internet:
+the agent only connects out. It reads Hikvision terminals from version 0.3.0.
 
 ## What you need
 
@@ -13,6 +13,10 @@ connects out.
   **Menu → Comm. → Ethernet**.
 - The terminal's **comm password**, if one is set (**Menu → Comm. → Comm Key**).
   It is usually 0.
+- For a **Hikvision** terminal, a user made on it for the agent, on its web
+  page under **User Management**, with only the rights reading its events
+  needs where the model allows, rather than its admin. See
+  [A Hikvision terminal](#a-hikvision-terminal).
 - An administrator of your company on Nizmo, who can open
   **Company Settings → Attendance → Fingerprint terminals**.
 
@@ -69,6 +73,46 @@ appear under it. Map each employee's terminal number to the person under
 **Attendance → Employee numbers**. Scans from numbers nobody is mapped to wait
 there until they are mapped.
 
+## A Hikvision terminal
+
+A Hikvision terminal is read over its web interface (ISAPI), with the user
+made on it for the agent. Its password is that user's, in quotes:
+
+```json
+{ "protocol": "hikvision", "host": "192.168.1.30", "user": "nizmo-agent", "password": "…", "name": "Lobby" }
+```
+
+- It's read over **HTTPS** on port 443. Check HTTPS is on, under
+  **Network → Network Service → HTTP(S)** on many models. If it can't be
+  turned on, add `"https": false`: it's then read over HTTP on port 80, on
+  the office network only. `"port"` sets another port.
+- Leave its **HTTP Listening** off: that's for sending straight to Nizmo, and a
+  terminal connects one way at a time.
+- Check it answers. `probe` asks for the user's password without showing it as
+  you type, shows the terminal's serial number, model, firmware, clock and
+  certificate, and sends nothing:
+
+  ```
+  nizmo-agent.exe probe hikvision 192.168.1.30 nizmo-agent
+  ```
+
+  Add `--http` for one whose HTTPS is off, and a port after the user if it
+  isn't the usual one.
+- **Its certificate** is its own, signed by nobody, so the agent trusts the one
+  it shows the first time it reads it, and the log says which. After that, a
+  terminal showing another certificate at its address is refused with
+  `HIK_CERTIFICATE_CHANGED`: another machine could be answering there. If it's
+  the same terminal and its certificate was renewed, as after a reset or a
+  firmware update, stop the service, and run:
+
+  ```
+  nizmo-agent.exe trust 192.168.1.30
+  ```
+
+  It shows the terminal's serial number and its new certificate, and trusts
+  that one from now on. Then start the service again.
+- The agent never clears a Hikvision terminal's memory.
+
 ## Day to day
 
 - The agent starts with Windows and restarts itself if it stops.
@@ -110,6 +154,9 @@ as the new one is enrolled.
 | **Not heard from** in Nizmo | Is the PC on, and is the service running (`nizmo-agent-service.exe status`)? Check `logs\agent.log`. |
 | **Agent can't reach it** on a terminal | Check its IP address and network cable. Run `nizmo-agent.exe probe <address>`. |
 | `ZK_AUTH_FAILED` | The terminal has a comm password. Add `"password"` for it in `agent.json`. |
+| `HIK_AUTH_FAILED` | The Hikvision terminal refused the agent's user or password. Check both in `agent.json` and on the terminal. |
+| `HIK_CERTIFICATE_CHANGED` | The Hikvision terminal shows another certificate than before. If it's the same terminal, run `nizmo-agent.exe trust <address>` with the service stopped. See [A Hikvision terminal](#a-hikvision-terminal). |
+| `HIK_UNREACHABLE` | Check the terminal's address, and that its HTTPS is on, or that `agent.json` says `"https": false`. Run `nizmo-agent.exe probe hikvision <address> <user>`. |
 | `The server no longer accepts this agent` | It was revoked or moved. Get a new code in Nizmo, then `nizmo-agent-service.exe stop`, `nizmo-agent.exe enrol <code>`, `nizmo-agent-service.exe start`. |
 | `Another nizmo-agent … is using this folder` | The service is running. Stop it before `enrol` or `check`, and start it again after. |
 | **Clock off** on a terminal | Set the terminal's date and time. Scans are recorded by its clock. |
@@ -127,7 +174,9 @@ npm run build:exe    # also dist/nizmo-agent(.exe), a single executable
 ```
 
 The tests run with the rest of the repository (`npx vitest run agent`), against
-a simulated terminal (`test/fake-zk-device.ts`) and a stand-in for the server
-(`test/fake-server.ts`). The Windows package is built by the **Attendance
+simulated terminals (`test/fake-zk-device.ts`, `test/fake-hik-device.ts`) and a
+stand-in for the server (`test/fake-server.ts`), which checks what the agent
+sends against the website's own schemas. A new version is set in
+`src/version.ts`, `package.json` and `package-lock.json` together. The Windows package is built by the **Attendance
 agent** workflow, run by hand from GitHub Actions. It is signed when the
 `WINDOWS_CERT_PFX` and `WINDOWS_CERT_PASSWORD` secrets are set.
