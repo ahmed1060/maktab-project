@@ -3343,7 +3343,8 @@ agent reads (§20, Phase 4).
 
 **Rehearsed on 16 November 2026**, before the visit (round 11, decision
 3): a simulated CB 3000 speaking ZKTeco's protocol (the one the agent's
-own tests use), the agent built from main (0.4.0), and Nizmo on a scratch
+own tests use), the agent built from main (0.4.0) with an `agent.json`
+naming the terminal, and Nizmo on a scratch
 database, with the Super Admin's and the company Admin's screens in a
 browser. 28 checks passed:
 
@@ -3397,19 +3398,28 @@ batch settles. It is the next PR (§20, Phase 4).
    after downloading them turned off, and the program closed while the
    agent reads, since the terminal takes one connection at a time (§20,
    Phase 4).
-3. `nizmo-agent.exe probe <terminal's address>`: its serial number and
+3. The agent unzipped to `C:\Program Files\Nizmo Agent`, and
+   `agent.example.json` there copied to `agent.json` and filled in, as
+   the agent's README says: `server` set to `https://nizmo.vercel.app`
+   (round 10, decision 21), and the terminal under `devices` by its
+   address, with the name it's to have in Nizmo. `enrol`, `check` and the
+   service all read it; `probe` doesn't (review on #307).
+4. In a Command Prompt opened as administrator in that folder,
+   `nizmo-agent.exe probe <terminal's address>`: its serial number and
    how many scans it holds. Nothing is sent.
-4. Add an agent, on the company's Attendance tab: the authenticator code
-   if it's asked for, then the agent's one-time code, shown once.
-5. `enrol <code>`, then `check`: the scans from the first of the month
-   reach Nizmo.
-6. Install and start the service.
-7. Fingerprint terminals: the agent Connected, and the terminal under
+5. Add an agent, on the company's Attendance tab: the authenticator code
+   if it's asked for, then the agent's one-time code, shown once. It
+   works once, for 30 minutes.
+6. `nizmo-agent.exe enrol <code>`, then `nizmo-agent.exe check`: the
+   scans from the first of the month reach Nizmo.
+7. Install and start the service: `nizmo-agent-service.exe install`, then
+   `nizmo-agent-service.exe start`.
+8. Fingerprint terminals: the agent Connected, and the terminal under
    it. Its brand set to Convoy.
-8. Attendance, Employee numbers: each number the terminal knows matched
+9. Attendance, Employee numbers: each number the terminal knows matched
    to a person. A number with nobody waits there, and its scans become
    the person's once it's matched.
-9. Someone scans: it shows in Punches within a minute or two.
+10. Someone scans: it shows in Punches within a minute or two.
 
 **After it**
 
