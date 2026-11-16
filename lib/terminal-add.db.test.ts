@@ -104,6 +104,14 @@ describe.skipIf(!ADMIN_URL)("a terminal added by hand, in Postgres", () => {
             expect(d.lastSeenAt).not.toBeNull()
             expect((await listed("c1", before)).health.state).toBe("OK")
         })
+
+        it("is a Hikvision terminal too, at a company whose switch is off as well (PR 301)", async () => {
+            const added = await Devices.add("c2", { name: "Back gate", serialNumber: "HK-AGENT", brandId: hik, connection: "AGENT" }, "a2")
+            expect(added.path).toBeNull()
+            expect(added.device).toMatchObject({ name: "Back gate", serialNumber: "HK-AGENT", protocol: "HIKVISION", connection: "AGENT", brand: { id: hik, name: "Hikvision" } })
+            expect(await row(added.device.id)).toMatchObject({ companyId: "c2", connection: "AGENT", protocol: "HIKVISION", brandId: hik, pushSecretHash: null, agentId: null })
+            expect((await listed("c2", added.device.id)).health.state).toBe("WAITING")
+        })
     })
 
     describe("straight to Nizmo", () => {
@@ -189,15 +197,12 @@ describe.skipIf(!ADMIN_URL)("a terminal added by hand, in Postgres", () => {
     })
 
     describe("what is refused", () => {
-        it("is a way that isn't built for the brand's protocol, or isn't the company's to pick", async () => {
+        it("is straight to Nizmo at a company whose switch is off, whatever the brand", async () => {
             const before = await count()
-            // The agent reads Hikvision's from part 7 (§20). ZKTeco's straight to Nizmo came with part 6
-            // (PR 297), asking for the office's address: lib/terminal-office-address.db.test.ts.
-            await expect(Devices.add("c1", { name: "Gate", serialNumber: "HK-1", brandId: hik, connection: "AGENT" }, "a1")).rejects.toThrow("DEVICE_CONNECTION_NOT_BUILT")
-            // The second company's switch is off: whatever the brand, straight to Nizmo isn't its to pick.
+            // Every way is built for both protocols now, Hikvision's through the agent last (PR 301). ZKTeco's
+            // straight to Nizmo asks for the office's address: lib/terminal-office-address.db.test.ts.
             await expect(Devices.add("c2", { name: "Gate", serialNumber: "HK-2", brandId: hik, connection: "DIRECT" }, "a2")).rejects.toThrow("DEVICE_DIRECT_NOT_ALLOWED")
             await expect(Devices.add("c2", { name: "Gate", serialNumber: "ZK-2", brandId: zk, connection: "DIRECT" }, "a2")).rejects.toThrow("DEVICE_DIRECT_NOT_ALLOWED")
-            await expect(Devices.add("c2", { name: "Gate", serialNumber: "HK-2", brandId: hik, connection: "AGENT" }, "a2")).rejects.toThrow("DEVICE_CONNECTION_NOT_BUILT")
             expect(await count()).toBe(before)
             expect(await Devices.directAllowed("c1")).toBe(true)
             expect(await Devices.directAllowed("c2")).toBe(false)

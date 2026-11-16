@@ -26,6 +26,15 @@ describe("what an agent sends (ATTENDANCE_PLAN.md §17)", () => {
         expect(heartbeatSchema.parse(beat).devices[0].clock).toBe("2026-10-01T08:00:10")
     })
 
+    it("takes each terminal's protocol, and none from an agent before part 7's third PR (PR 301)", () => {
+        const one = (protocol: unknown) => ({ ...beat, devices: [{ serialNumber: "SN1", reachable: true, protocol }] })
+        expect(heartbeatSchema.parse(beat).devices[0].protocol).toBeUndefined()
+        expect(heartbeatSchema.parse(one("HIKVISION")).devices[0].protocol).toBe("HIKVISION")
+        expect(heartbeatSchema.parse(one("ZKTECO")).devices[0].protocol).toBe("ZKTECO")
+        // Ours to name: the agent sends Nizmo's own names, as it reads them in its reply.
+        for (const wrong of ["hikvision", "SUPREMA", 3, null]) expect(heartbeatSchema.safeParse(one(wrong)).success, String(wrong)).toBe(false)
+    })
+
     it("keeps nothing it does not know, so a company or person id sent along goes nowhere", () => {
         const parsed = heartbeatSchema.parse({ ...beat, companyId: "c2" })
         expect(parsed).not.toHaveProperty("companyId")

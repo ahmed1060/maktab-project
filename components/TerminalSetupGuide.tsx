@@ -81,14 +81,13 @@ export function ModelNotes({ brand }: { brand: Pick<GuideBrand, 'name' | 'notesE
 }
 
 /**
- * The steps for the model picked, numbered in the page's digits; or, for one
- * with none, that Nizmo can't read it yet, or where it is added when the
- * company may connect it straight to Nizmo.
+ * The steps for the model picked, numbered in the page's digits, through
+ * the office agent; above them, where the company may connect it straight
+ * to Nizmo, that it can be added that way too.
  */
 export function SetupGuideSteps({ brand, superAdmin, directAllowed = false, server }: { brand: GuideBrand; superAdmin: boolean; directAllowed?: boolean; server: string }) {
     const { t, locale } = useLanguage()
     const steps = setupGuide(brand.protocol, { superAdmin, server })
-    if (!steps) return <p className="ui-card-note">{t(mayConnect(brand.protocol, 'DIRECT', directAllowed) ? 'att_guide_direct' : 'att_guide_not_read')}</p>
     const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
     const notes = (brand.notesEn || brand.notesAr) ? <ModelNotes brand={brand} /> : null
 

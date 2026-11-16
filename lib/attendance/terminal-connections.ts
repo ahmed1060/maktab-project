@@ -17,13 +17,13 @@ export type { TerminalProtocol }
 export type TerminalConnection = "AGENT" | "DIRECT"
 
 /**
- * The ways Nizmo can connect a terminal of each protocol today. ZKTeco's
- * terminals straight to Nizmo came with part 6 (PR 297); the agent reads
- * Hikvision's from part 7 (§20), which adds its way here.
+ * The ways Nizmo can connect a terminal of each protocol today: both, for
+ * each. ZKTeco's terminals straight to Nizmo came with part 6 (PR 297),
+ * and Hikvision's through the agent with part 7 (PR 301).
  */
 export const CONNECTIONS_BUILT: Record<TerminalProtocol, readonly TerminalConnection[]> = {
     ZKTECO: ["AGENT", "DIRECT"],
-    HIKVISION: ["DIRECT"],
+    HIKVISION: ["AGENT", "DIRECT"],
 }
 
 /**

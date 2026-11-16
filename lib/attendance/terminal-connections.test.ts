@@ -12,16 +12,16 @@ import { ar } from "../translations/ar"
  */
 
 describe("the ways a terminal connects", () => {
-    it("are either way for ZKTeco's, and straight to Nizmo for Hikvision's", () => {
-        // Part 6 (PR 297) added ZKTeco's straight to Nizmo; part 7 (§20) adds the agent for Hikvision's.
-        expect(CONNECTIONS_BUILT).toEqual({ ZKTECO: ["AGENT", "DIRECT"], HIKVISION: ["DIRECT"] })
+    it("are either way for ZKTeco's and Hikvision's alike", () => {
+        // Part 6 (PR 297) added ZKTeco's straight to Nizmo; part 7 (PR 301), the agent for Hikvision's.
+        expect(CONNECTIONS_BUILT).toEqual({ ZKTECO: ["AGENT", "DIRECT"], HIKVISION: ["AGENT", "DIRECT"] })
     })
 
     it("list straight to Nizmo only where the Super Admin has turned it on for the company", () => {
         expect(connectionChoices("ZKTECO", false)).toEqual([{ connection: "AGENT", built: true }])
-        expect(connectionChoices("HIKVISION", false)).toEqual([{ connection: "AGENT", built: false }])
+        expect(connectionChoices("HIKVISION", false)).toEqual([{ connection: "AGENT", built: true }])
         expect(connectionChoices("ZKTECO", true)).toEqual([{ connection: "AGENT", built: true }, { connection: "DIRECT", built: true }])
-        expect(connectionChoices("HIKVISION", true)).toEqual([{ connection: "AGENT", built: false }, { connection: "DIRECT", built: true }])
+        expect(connectionChoices("HIKVISION", true)).toEqual([{ connection: "AGENT", built: true }, { connection: "DIRECT", built: true }])
     })
 
     it("can be picked only when listed and built", () => {
@@ -29,11 +29,11 @@ describe("the ways a terminal connects", () => {
         expect(mayConnect("ZKTECO", "AGENT", true)).toBe(true)
         expect(mayConnect("ZKTECO", "DIRECT", true)).toBe(true)
         expect(mayConnect("HIKVISION", "DIRECT", true)).toBe(true)
+        expect(mayConnect("HIKVISION", "AGENT", false)).toBe(true)
+        expect(mayConnect("HIKVISION", "AGENT", true)).toBe(true)
         // Built, but not this company's to pick: its switch is off.
         expect(mayConnect("ZKTECO", "DIRECT", false)).toBe(false)
         expect(mayConnect("HIKVISION", "DIRECT", false)).toBe(false)
-        expect(mayConnect("HIKVISION", "AGENT", false)).toBe(false)
-        expect(mayConnect("HIKVISION", "AGENT", true)).toBe(false)
     })
 
     it("give an address of its own to a Hikvision terminal straight to Nizmo, and no other", () => {
@@ -59,8 +59,9 @@ describe("where a terminal's connection can change to (PR 298)", () => {
         expect(otherConnection({ protocol: "ZKTECO", connection: "DIRECT" }, false)).toBe("AGENT")
     })
 
-    it("is nowhere for a Hikvision terminal straight to Nizmo, until the agent reads Hikvision", () => {
-        expect(otherConnection({ protocol: "HIKVISION", connection: "DIRECT" }, true)).toBeNull()
+    it("is the other way for a Hikvision terminal too, now the agent reads Hikvision (PR 301)", () => {
+        expect(otherConnection({ protocol: "HIKVISION", connection: "DIRECT" }, true)).toBe("AGENT")
+        expect(otherConnection({ protocol: "HIKVISION", connection: "DIRECT" }, false)).toBe("AGENT")
         expect(otherConnection({ protocol: "HIKVISION", connection: "AGENT" }, true)).toBe("DIRECT")
         expect(otherConnection({ protocol: "HIKVISION", connection: "AGENT" }, false)).toBeNull()
     })

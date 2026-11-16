@@ -398,22 +398,32 @@ export class AttendanceDeviceService {
                 ...(d.recordCount !== undefined && { recordCount: d.recordCount }),
                 ...(d.recordCapacity !== undefined && { recordCapacity: d.recordCapacity }),
             }
-            devices.push(await this.report(agent, d.serialNumber, d.name, health))
+            // An agent before part 7's third PR says no protocol, and reads ZKTeco's only (PR 301).
+            devices.push(await this.report(agent, d.serialNumber, d.name, health, d.protocol ?? "ZKTECO", d.reachable))
         }
         const rotateToken = !agentRow.tokenIssuedAt || now.getTime() - agentRow.tokenIssuedAt.getTime() > TOKEN_ROTATE_DAYS * 86_400_000
         return { serverTime: now.toISOString(), timeZone: agent.timeZone, devices, rotateToken }
     }
 
-    /** One terminal from a heartbeat: brought in, updated, or turned away. */
-    private static async report(agent: AuthenticatedAgent, serialNumber: string, name: string | undefined, health: Prisma.AttendanceDeviceUncheckedUpdateInput) {
+    /**
+     * One terminal from a heartbeat: brought in, updated, or turned away.
+     * `protocol` is what the agent reads it with, and `reached` whether it
+     * did this time.
+     */
+    private static async report(agent: AuthenticatedAgent, serialNumber: string, name: string | undefined, health: Prisma.AttendanceDeviceUncheckedUpdateInput, protocol: TerminalProtocol, reached: boolean) {
         for (let attempt = 0; attempt < 2; attempt++) {
-            const mine = await prisma.attendanceDevice.findUnique({ where: { companyId_serialNumber: { companyId: agent.companyId, serialNumber } }, select: { id: true, mode: true, retiredAt: true, connection: true } })
+            const mine = await prisma.attendanceDevice.findUnique({ where: { companyId_serialNumber: { companyId: agent.companyId, serialNumber } }, select: { id: true, mode: true, retiredAt: true, connection: true, protocol: true } })
             if (mine?.retiredAt) return { serialNumber, state: "RETIRED" as const, deviceId: mine.id, mode: null }
             // One connection at a time (§17.6, PR 290): set straight to Nizmo,
             // it's the terminal that says how it is, so nothing the agent
             // says of it is taken, not even which agent last saw it.
             if (mine?.connection === "DIRECT") return { serialNumber, state: "DIRECT" as const, deviceId: mine.id, mode: null }
             if (mine) {
+                // Reached with another protocol than the one recorded: the agent reading it shows what it speaks (PR 301).
+                if (reached && mine.protocol !== protocol) {
+                    if (await this.takeProtocol(agent, mine.id, protocol, health)) return { serialNumber, state: "ACTIVE" as const, deviceId: mine.id, mode: mine.mode }
+                    continue
+                }
                 // Only while it's still the agent's: a move straight to Nizmo,
                 // or a retire, that commits after the read above isn't written
                 // over, and it's read again (review on PR 298).
@@ -429,7 +439,7 @@ export class AttendanceDeviceService {
             try {
                 const created = await prisma.$transaction(async tx => {
                     const row = await tx.attendanceDevice.create({
-                        data: { ...(health as Prisma.AttendanceDeviceUncheckedCreateInput), companyId: agent.companyId, serialNumber, name: name || `Terminal ${serialNumber}` },
+                        data: { ...(health as Prisma.AttendanceDeviceUncheckedCreateInput), companyId: agent.companyId, serialNumber, name: name || `Terminal ${serialNumber}`, protocol },
                         select: { id: true, mode: true, name: true },
                     })
                     await AuditLogService.log("ADD_ATTENDANCE_DEVICE", "ATTENDANCE_DEVICE", row.id, {
@@ -444,5 +454,35 @@ export class AttendanceDeviceService {
             }
         }
         return { serialNumber, state: "CLAIMED_ELSEWHERE" as const, deviceId: null, mode: null }
+    }
+
+    /**
+     * A terminal of the agent's, reached with another protocol than the one
+     * recorded (§17.4, PR 301): it speaks the one it was read with, and the
+     * record was wrong. Its brand spoke the old one, so it's cleared, for an
+     * Admin to pick one speaking this; the change is written to the audit
+     * log. Its row is held meanwhile, and taken only while it's still the
+     * agent's and not retired: false otherwise, to be read again.
+     */
+    private static async takeProtocol(agent: AuthenticatedAgent, id: string, protocol: TerminalProtocol, health: Prisma.AttendanceDeviceUncheckedUpdateInput): Promise<boolean> {
+        return prisma.$transaction(async tx => {
+            const [d] = await tx.$queryRaw<{ companyId: string; name: string; serialNumber: string; protocol: TerminalProtocol; connection: TerminalConnection; retiredAt: Date | null; brand: string | null }[]>`
+                SELECT d."companyId", d.name, d."serialNumber", d.protocol::text AS protocol, d."connection"::text AS "connection", d."retiredAt", b.name AS brand
+                FROM "AttendanceDevice" d LEFT JOIN "TerminalBrand" b ON b.id = d."brandId"
+                WHERE d.id = ${id} FOR UPDATE OF d`
+            if (!d || d.connection !== "AGENT" || d.retiredAt) return false
+            // Another heartbeat may have taken it while this one waited for the row.
+            const changed = d.protocol !== protocol
+            await tx.attendanceDevice.update({ where: { id }, data: { ...health, ...(changed && { protocol, brandId: null }) } })
+            if (changed) {
+                await AuditLogService.log("UPDATE_ATTENDANCE_DEVICE", "ATTENDANCE_DEVICE", id, {
+                    tx, details: {
+                        companyId: d.companyId, serialNumber: d.serialNumber, name: d.name, agent: agent.name,
+                        protocol: { from: d.protocol, to: protocol }, ...(d.brand && { brand: { from: d.brand, to: null } }),
+                    },
+                })
+            }
+            return true
+        })
     }
 }

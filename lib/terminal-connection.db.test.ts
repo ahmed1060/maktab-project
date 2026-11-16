@@ -353,4 +353,69 @@ describe.skipIf(!ADMIN_URL)("one terminal whichever way it connects, in Postgres
             expect(await device(id)).toMatchObject({ agentId: other.id, recordCount: 950, reachable: true })
         })
     })
+
+    describe("the protocol the agent read it with (PR 301)", () => {
+        const brandId = async (name: string) => (await db.query(`SELECT id FROM "TerminalBrand" WHERE name = $1`, [name])).rows[0].id as string
+        const protocolChanges = async (id: string) => (await db.query(
+            `SELECT details FROM "AuditLog" WHERE "entityId" = $1 AND action = 'UPDATE_ATTENDANCE_DEVICE' AND details ? 'protocol' ORDER BY "createdAt"`, [id],
+        )).rows.map(r => r.details)
+
+        it("is a terminal's when it's first reported, ZKTeco's from an agent that says none, with no brand", async () => {
+            const agent = await agentOf("c1", "First sight PC")
+            const reply = await Devices.heartbeat(agent, beat([
+                { serialNumber: "PROTO-ZK", reachable: true },
+                { serialNumber: "PROTO-HIK", reachable: true, protocol: "HIKVISION" },
+                { serialNumber: "PROTO-AWAY", reachable: false, error: "HIK_UNREACHABLE: no answer", protocol: "HIKVISION" },
+            ]))
+            expect(reply.devices.map(d => d.state)).toEqual(["ACTIVE", "ACTIVE", "ACTIVE"])
+            for (const [serial, protocol] of [["PROTO-ZK", "ZKTECO"], ["PROTO-HIK", "HIKVISION"], ["PROTO-AWAY", "HIKVISION"]]) {
+                const row = (await db.query(`SELECT protocol::text, "brandId" FROM "AttendanceDevice" WHERE "serialNumber" = $1`, [serial])).rows[0]
+                expect(row, serial).toEqual({ protocol, brandId: null })
+            }
+        })
+
+        it("is the one the agent reached it with, its brand cleared and the change in the audit log; a failed read changes nothing", async () => {
+            const agent = await agentOf("c1", "Protocol PC")
+            const [{ deviceId }] = (await Devices.heartbeat(agent, beat([{ serialNumber: "PROTO-1", reachable: true }]))).devices
+            const id = deviceId!
+            await Devices.update(id, { brandId: await brandId("Convoy") }, "a1")
+
+            // Not reached: a failed read says nothing of what it speaks.
+            await Devices.heartbeat(agent, beat([{ serialNumber: "PROTO-1", reachable: false, error: "HIK_TIMEOUT: no answer", protocol: "HIKVISION" }]))
+            expect(await device(id)).toMatchObject({ protocol: "ZKTECO", brandId: await brandId("Convoy"), reachable: false })
+            expect(await protocolChanges(id)).toEqual([])
+
+            // Reached as Hikvision's: the record was wrong.
+            const reply = await Devices.heartbeat(agent, beat([{ serialNumber: "PROTO-1", reachable: true, protocol: "HIKVISION", model: "DS-K1T341AM" }]))
+            expect(reply.devices).toEqual([{ serialNumber: "PROTO-1", state: "ACTIVE", deviceId: id, mode: "ANY" }])
+            expect(await device(id)).toMatchObject({ protocol: "HIKVISION", brandId: null, reachable: true, model: "DS-K1T341AM", agentId: agent.id })
+            expect(await protocolChanges(id)).toEqual([{
+                companyId: "c1", serialNumber: "PROTO-1", name: "Terminal PROTO-1", agent: "Protocol PC",
+                protocol: { from: "ZKTECO", to: "HIKVISION" }, brand: { from: "Convoy", to: null },
+            }])
+
+            // The same again changes nothing more; a Hikvision brand can be picked now.
+            await Devices.heartbeat(agent, beat([{ serialNumber: "PROTO-1", reachable: true, protocol: "HIKVISION" }]))
+            expect(await protocolChanges(id)).toHaveLength(1)
+            await Devices.update(id, { brandId: await brandId("Hikvision") }, "a1")
+
+            // An agent before part 7's third PR reaching it reads ZKTeco's protocol, so it is ZKTeco's, with no brand said to have been there.
+            await Devices.heartbeat(agent, beat([{ serialNumber: "PROTO-1", reachable: true }]))
+            expect(await device(id)).toMatchObject({ protocol: "ZKTECO", brandId: null })
+            expect((await protocolChanges(id))[1]).toMatchObject({ protocol: { from: "HIKVISION", to: "ZKTECO" }, brand: { from: "Hikvision", to: null } })
+        })
+
+        it("is left alone on a terminal straight to Nizmo or retired", async () => {
+            const agent = await agentOf("c1", "Left alone PC")
+            const [{ deviceId }] = (await Devices.heartbeat(agent, beat([{ serialNumber: "PROTO-2", reachable: true }]))).devices
+            const id = deviceId!
+            await connect(id, "DIRECT")
+            expect((await Devices.heartbeat(agent, beat([{ serialNumber: "PROTO-2", reachable: true, protocol: "HIKVISION" }]))).devices[0].state).toBe("DIRECT")
+            await connect(id, "AGENT")
+            await Devices.retire(id, "a1")
+            expect((await Devices.heartbeat(agent, beat([{ serialNumber: "PROTO-2", reachable: true, protocol: "HIKVISION" }]))).devices[0].state).toBe("RETIRED")
+            expect(await device(id)).toMatchObject({ protocol: "ZKTECO" })
+            expect(await protocolChanges(id)).toEqual([])
+        })
+    })
 })

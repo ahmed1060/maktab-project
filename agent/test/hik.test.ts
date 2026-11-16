@@ -212,7 +212,7 @@ describe("a terminal, read", () => {
         const c = client(await device.start())
         const first = await c.passedChecks(null, "2026-11-16")
         expect(first.cursor?.serialNo).toBe(1000)
-        await expect(c.passedChecks(first.cursor, "2026-11-16")).rejects.toMatchObject({ code: "TOO_MANY" })
+        await expect(c.passedChecks(first.cursor, "2026-11-16")).rejects.toMatchObject({ code: "HIK_TOO_MANY" })
     }, 30_000)
 
     it("asks for a new challenge once where the terminal calls one stale", async () => {
@@ -225,19 +225,20 @@ describe("a terminal, read", () => {
     it("says the user or password is wrong after one more try, and reads nothing", async () => {
         device = new FakeHikDevice()
         const c = client(await device.start(), { password: "wrong" })
-        await expect(c.info()).rejects.toMatchObject({ code: "AUTH_FAILED" })
+        await expect(c.info()).rejects.toMatchObject({ code: "HIK_AUTH_FAILED" })
         expect(device.seen.map(r => r.status)).toEqual([401, 401])
     })
 
     it("is an error saying what, where the terminal answers otherwise than asked", async () => {
         device = new FakeHikDevice({ failing: { path: "/ISAPI/AccessControl/AcsEvent", status: 500 } })
         const c = client(await device.start())
-        await expect(c.passedChecks(null, "2026-11-16")).rejects.toMatchObject({ code: "HTTP_500" })
+        await expect(c.passedChecks(null, "2026-11-16")).rejects.toMatchObject({ code: "HIK_HTTP_500" })
         device.state.failing = { path: "/ISAPI/AccessControl/AcsEvent", status: 200, body: "<html>not json</html>" }
-        await expect(c.passedChecks(null, "2026-11-16")).rejects.toMatchObject({ code: "BAD_REPLY" })
+        await expect(c.passedChecks(null, "2026-11-16")).rejects.toMatchObject({ code: "HIK_BAD_REPLY" })
         device.state.failing = { path: "/ISAPI/System/deviceInfo", status: 200, body: "<DeviceInfo></DeviceInfo>" }
-        await expect(c.info()).rejects.toMatchObject({ code: "BAD_REPLY" })
+        await expect(c.info()).rejects.toMatchObject({ code: "HIK_BAD_REPLY" })
         device.state.failing = null
+        await expect(client(1).info()).rejects.toMatchObject({ code: "HIK_UNREACHABLE" })
         await expect(client(1).info()).rejects.toBeInstanceOf(HikError)
     })
 
@@ -253,7 +254,7 @@ describe("a terminal, read", () => {
         try {
             for (const https of [false, true]) {
                 const started = Date.now()
-                await expect(client(port, { https, timeoutMs: 300 }).info()).rejects.toMatchObject({ code: "TIMEOUT" })
+                await expect(client(port, { https, timeoutMs: 300 }).info()).rejects.toMatchObject({ code: "HIK_TIMEOUT" })
                 expect(Date.now() - started).toBeLessThan(2_000)
             }
             expect(sockets.length).toBe(2)
@@ -290,7 +291,7 @@ describe("a terminal, read", () => {
             const port = await device.start(tls)
             expect((await client(port, { https: true, pin: new X509Certificate(tls.cert).fingerprint256 }).info()).model).toBe("DS-K1T341AM")
             const before = device.seen.length
-            await expect(client(port, { https: true, pin: "AA:".repeat(31) + "AA" }).info()).rejects.toMatchObject({ code: "CERTIFICATE_CHANGED" })
+            await expect(client(port, { https: true, pin: "AA:".repeat(31) + "AA" }).info()).rejects.toMatchObject({ code: "HIK_CERTIFICATE_CHANGED" })
             expect(device.seen.length).toBe(before)
         })
     })

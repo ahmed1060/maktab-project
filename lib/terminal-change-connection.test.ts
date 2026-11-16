@@ -33,10 +33,10 @@ const drawn = (s: string) => esc(s).replace(/`([^`]+)`/g, '<code class="ui-guide
 const words = (locale: "en" | "ar") => (locale === "ar" ? ar : en)
 
 describe("the Change connection dialog", () => {
-    const render = async (locale: "en" | "ar", props: { to: "AGENT" | "DIRECT"; officeAsked: boolean }) => {
+    const render = async (locale: "en" | "ar", props: { to: "AGENT" | "DIRECT"; officeAsked: boolean; protocol?: "ZKTECO" | "HIKVISION" }) => {
         state.locale = locale
         const { ConnectionDialog } = await import("@/components/TerminalAddDialog")
-        return renderToStaticMarkup(h(ConnectionDialog, { name: "Front door", busy: false, onClose: () => {}, onSubmit: async () => {}, ...props }))
+        return renderToStaticMarkup(h(ConnectionDialog, { name: "Front door", protocol: "ZKTECO", busy: false, onClose: () => {}, onSubmit: async () => {}, ...props }))
     }
     const buttons = (html: string) => [...html.matchAll(/<button type="(button|submit)" class="ui-btn ([a-z-]+)"[^>]*>([^<]+)<\/button>/g)].map(m => [m[2], m[3]])
 
@@ -71,6 +71,20 @@ describe("the Change connection dialog", () => {
         }
     })
 
+    it("moving a Hikvision terminal to the agent: says to add it to agent.json and turn its HTTP Listening off (PR 301)", async () => {
+        for (const locale of ["en", "ar"] as const) {
+            const w = words(locale)
+            const html = await render(locale, { to: "AGENT", officeAsked: false, protocol: "HIKVISION" })
+            expect(html).toContain(drawn(w.att_term_move_AGENT_HIKVISION_body))
+            expect(html).toContain('<code class="ui-guide-inline" dir="ltr" translate="no">HTTP Listening</code>')
+            expect(html).toContain('<code class="ui-guide-inline" dir="ltr" translate="no">agent.json</code>')
+            expect(html).not.toContain("Cloud Server Setting")
+            expect(buttons(html)).toEqual([["ui-btn-secondary", w.cancel], ["ui-btn-primary", w.att_term_move_AGENT]])
+            // Moving straight to Nizmo reads the same for either: what to set is shown after.
+            expect(await render(locale, { to: "DIRECT", officeAsked: false, protocol: "HIKVISION" })).toContain(drawn(w.att_term_move_DIRECT_body))
+        }
+    })
+
     it("needs the office's address before anything is sent, and sends it only where it's asked for", () => {
         const dialog = DIALOGS.slice(DIALOGS.indexOf("export function ConnectionDialog("))
         expect(dialog).toContain("if (officeAsked && typed.length === 0) { setError(t('att_term_office_required')); focusFirstWrong(formRef.current); return }")
@@ -90,7 +104,7 @@ describe("on Fingerprint terminals", () => {
 
     it("sends the move to its own route, then shows what to set on it, as after adding it", () => {
         expect(PANEL).toContain("const movingTo = moving ? otherConnection(moving, directAllowed) : null")
-        expect(PANEL).toContain("<ConnectionDialog name={moving.name} to={movingTo} officeAsked={hasOfficeAddress({ protocol: moving.protocol, connection: movingTo })}")
+        expect(PANEL).toContain("<ConnectionDialog name={moving.name} to={movingTo} protocol={moving.protocol} officeAsked={hasOfficeAddress({ protocol: moving.protocol, connection: movingTo })}")
         expect(PANEL).toContain("send(`/api/attendance/devices/${moving.id}/connection`, { method: 'PUT', body: JSON.stringify({ connection: movingTo, ...(officeAddresses && { officeAddresses }) }) }, `att_term_moved_${movingTo}`, d => { showAddress(d); setMoving(null) })")
     })
 
@@ -127,7 +141,7 @@ describe("the silence check", () => {
 describe("the words", () => {
     const KEYS = [
         "att_term_change_connection", "att_term_move_DIRECT_title", "att_term_move_AGENT_title", "att_term_move_DIRECT", "att_term_move_AGENT",
-        "att_term_move_DIRECT_body", "att_term_move_AGENT_body", "att_term_moved_DIRECT", "att_term_moved_AGENT",
+        "att_term_move_DIRECT_body", "att_term_move_AGENT_body", "att_term_move_AGENT_HIKVISION_body", "att_term_moved_DIRECT", "att_term_moved_AGENT",
     ] as const
 
     it("are there in both languages, with the same slots", () => {
@@ -145,6 +159,10 @@ describe("the words", () => {
         const literals = (s: string) => s.match(/`[^`]+`/g) ?? []
         expect(literals(en.att_term_move_AGENT_body)).toEqual(["`Cloud Server Setting`"])
         expect(literals(ar.att_term_move_AGENT_body)).toEqual(literals(en.att_term_move_AGENT_body))
+        // Hikvision's, as its HTTP Listening page names it, beside the agent's own file (PR 301).
+        expect(literals(en.att_term_move_AGENT_HIKVISION_body)).toEqual(["`agent.json`", "`HTTP Listening`"])
+        expect(literals(ar.att_term_move_AGENT_HIKVISION_body)).toEqual(literals(en.att_term_move_AGENT_HIKVISION_body))
+        expect(en.att_term_address_intro).toContain("`HTTP Listening`")
     })
 
     it("say the move on its button, as its title says where it goes", () => {

@@ -27,11 +27,11 @@ const HIK = { id: "b2", name: "Hikvision", protocol: "HIKVISION" as const, notes
 const ZK = { id: "b3", name: "ZKTeco", protocol: "ZKTECO" as const, notesEn: null, notesAr: "العنوان في قائمة الاتصال." }
 
 const keysOf = (lines: GuideLine[]) => lines.map(l => l.text)
-const codes = (steps: NonNullable<ReturnType<typeof setupGuide>>) => steps.flatMap(s => s.lines).map(l => l.code).filter(Boolean)
+const codes = (steps: ReturnType<typeof setupGuide>) => steps.flatMap(s => s.lines).map(l => l.code).filter(Boolean)
 
 describe("the steps, by the model's protocol", () => {
     it("walks ZKTeco's through the agent in five numbered steps, each saying who and where", () => {
-        const steps = setupGuide("ZKTECO", { superAdmin: true, server: SERVER })!
+        const steps = setupGuide("ZKTECO", { superAdmin: true, server: SERVER })
         expect(steps.map(s => [s.title, s.who])).toEqual([
             ["att_guide_office_title", "att_guide_office_who"],
             ["att_guide_install_title", "att_guide_install_who"],
@@ -42,15 +42,15 @@ describe("the steps, by the model's protocol", () => {
     })
 
     it("keeps the model's notes with finding the terminal's address, at the office", () => {
-        const office = setupGuide("ZKTECO", { superAdmin: false, server: SERVER })![0]
+        const office = setupGuide("ZKTECO", { superAdmin: false, server: SERVER })[0]
         const at = keysOf(office.lines).indexOf("att_guide_office_address")
         expect(at).toBeGreaterThanOrEqual(0)
         expect(office.lines[at + 1]).toEqual({ text: "att_guide_model_notes", notes: true })
-        expect(setupGuide("ZKTECO", { superAdmin: false, server: SERVER })!.slice(1).flatMap(s => s.lines).some(l => l.notes)).toBe(false)
+        expect(setupGuide("ZKTECO", { superAdmin: false, server: SERVER }).slice(1).flatMap(s => s.lines).some(l => l.notes)).toBe(false)
     })
 
     it("tells the Super Admin where the agent is built, and anyone else to ask the Super Admin for it", () => {
-        const install = (superAdmin: boolean) => keysOf(setupGuide("ZKTECO", { superAdmin, server: SERVER })![1].lines)
+        const install = (superAdmin: boolean) => keysOf(setupGuide("ZKTECO", { superAdmin, server: SERVER })[1].lines)
         expect(install(true)[0]).toBe("att_guide_download_sa")
         expect(install(true)).not.toContain("att_guide_download_other")
         expect(install(false)[0]).toBe("att_guide_download_other")
@@ -58,7 +58,7 @@ describe("the steps, by the model's protocol", () => {
     })
 
     it("gives agent.json this Nizmo's own address, and the agent's commands exactly as the README has them", () => {
-        const all = codes(setupGuide("ZKTECO", { superAdmin: true, server: SERVER })!)
+        const all = codes(setupGuide("ZKTECO", { superAdmin: true, server: SERVER }))
         const settings = JSON.parse(all.find(c => c!.includes('"server"'))!)
         expect(settings).toEqual({ server: SERVER, devices: [{ host: "TERMINAL-ADDRESS", name: "Front door" }], pollSeconds: 60 })
         // A key to a line, so none runs past the guide's box (found in the browser).
@@ -81,7 +81,7 @@ describe("the steps, by the model's protocol", () => {
     // Codex on PR 282: probe reads only what it's given, never agent.json, so a
     // terminal with a comm key failed it whatever agent.json said.
     it("gives probe the port and comm key itself, right after it, since probe doesn't read agent.json", () => {
-        const install = setupGuide("ZKTECO", { superAdmin: false, server: SERVER })![1].lines
+        const install = setupGuide("ZKTECO", { superAdmin: false, server: SERVER })[1].lines
         const at = install.findIndex(l => l.text === "att_guide_probe")
         expect(install[at + 1]).toEqual({ text: "att_guide_probe_key", code: "nizmo-agent.exe probe TERMINAL-ADDRESS 4370 1234" })
         expect(readFileSync("agent/src/main.ts", "utf8")).toContain("nizmo-agent probe <address> [port] [password]")
@@ -91,12 +91,49 @@ describe("the steps, by the model's protocol", () => {
     })
 
     it("names the brand picked in the step that sets it on the terminal", () => {
-        const connect = setupGuide("ZKTECO", { superAdmin: true, server: SERVER })![2]
+        const connect = setupGuide("ZKTECO", { superAdmin: true, server: SERVER })[2]
         expect(connect.lines.find(l => l.text === "att_guide_brand")).toEqual({ text: "att_guide_brand", brand: true })
     })
 
-    it("has no steps for Hikvision's, which Nizmo doesn't read yet", () => {
-        expect(setupGuide("HIKVISION", { superAdmin: true, server: SERVER })).toBeNull()
+    it("walks Hikvision's through the agent in the same five steps (PR 301)", () => {
+        const steps = setupGuide("HIKVISION", { superAdmin: true, server: SERVER })
+        expect(steps.map(s => [s.title, s.who])).toEqual(setupGuide("ZKTECO", { superAdmin: true, server: SERVER }).map(s => [s.title, s.who]))
+    })
+
+    it("has Hikvision's office make a user for the agent, check its address and HTTPS, its clock, and leave its HTTP Listening off, with the model's notes by its address", () => {
+        expect(setupGuide("HIKVISION", { superAdmin: false, server: SERVER })[0].lines).toEqual([
+            { text: "att_guide_hik_user" },
+            { text: "att_guide_hik_address" },
+            { text: "att_guide_model_notes", notes: true },
+            { text: "att_guide_hik_clock" },
+            { text: "att_guide_hik_listening" },
+            { text: "att_guide_office_pc" },
+        ])
+    })
+
+    it("gives Hikvision's agent.json its protocol, address, the agent's user and password, and probe the user, never the password", () => {
+        const steps = setupGuide("HIKVISION", { superAdmin: false, server: SERVER })
+        expect(keysOf(steps[1].lines)).toEqual(["att_guide_download_other", "att_guide_unzip", "att_guide_hik_settings", "att_guide_hik_https", "att_guide_hik_probe", "att_guide_unknown_publisher"])
+        const settings = steps[1].lines.find(l => l.text === "att_guide_hik_settings")!.code!
+        expect(JSON.parse(settings)).toEqual({
+            server: SERVER, devices: [{ protocol: "hikvision", host: "TERMINAL-ADDRESS", user: "AGENT-USER", password: "AGENT-PASSWORD", name: "Front door" }], pollSeconds: 60,
+        })
+        expect(Math.max(...settings.split("\n").map(l => l.length))).toBeLessThanOrEqual(50)
+        const probe = steps[1].lines.find(l => l.text === "att_guide_hik_probe")!.code!
+        expect(probe).toBe("nizmo-agent.exe probe hikvision TERMINAL-ADDRESS AGENT-USER")
+        // As the plan has it for part 7's third PR, which builds it (§17.4).
+        expect(readFileSync("ATTENDANCE_PLAN.md", "utf8")).toContain(`\`${probe}\``)
+        // Its comm key is ZKTeco's alone.
+        for (const zk of ["att_guide_password", "att_guide_probe_key", "att_guide_auth", "att_guide_office_address"]) expect(steps.flatMap(s => keysOf(s.lines)), zk).not.toContain(zk)
+    })
+
+    it("connects and matches numbers as ZKTeco's do, and names the agent's own error for a refused user", () => {
+        const [hik, zk] = [setupGuide("HIKVISION", { superAdmin: true, server: SERVER }), setupGuide("ZKTECO", { superAdmin: true, server: SERVER })]
+        expect(hik[2]).toEqual(zk[2])
+        expect(hik[3]).toEqual(zk[3])
+        expect(keysOf(hik[4].lines)).toEqual(["att_guide_silent", "att_guide_unreachable", "att_guide_hik_auth", "att_guide_revoked", "att_guide_clock"])
+        expect(en.att_guide_hik_auth.startsWith("`HIK_AUTH_FAILED`")).toBe(true)
+        expect(readFileSync("agent/src/hik/client.ts", "utf8")).toContain('new HikError("HIK_AUTH_FAILED"')
     })
 
     it("marks what's typed inside a sentence, such as a file's name, apart from the words", () => {
@@ -109,9 +146,9 @@ describe("the steps, by the model's protocol", () => {
 
 describe("its words", () => {
     const used = () => {
-        const keys = new Set<string>(["att_guide_button", "att_guide_model", "att_guide_model_pick", "att_guide_pick_first", "att_guide_not_read", "att_guide_no_models", "att_guide_copy", "att_guide_copied", "att_guide_model_notes", "att_guide_model_notes_other"])
-        for (const superAdmin of [true, false]) {
-            for (const step of setupGuide("ZKTECO", { superAdmin, server: SERVER })!) {
+        const keys = new Set<string>(["att_guide_button", "att_guide_model", "att_guide_model_pick", "att_guide_pick_first", "att_guide_direct_too", "att_guide_no_models", "att_guide_copy", "att_guide_copied", "att_guide_model_notes", "att_guide_model_notes_other"])
+        for (const [superAdmin, protocol] of [[true, "ZKTECO"], [false, "ZKTECO"], [true, "HIKVISION"], [false, "HIKVISION"]] as const) {
+            for (const step of setupGuide(protocol, { superAdmin, server: SERVER })) {
                 keys.add(step.title)
                 keys.add(step.who)
                 for (const line of step.lines) keys.add(line.text)
@@ -155,8 +192,6 @@ describe("its words", () => {
         expect(ar.att_guide_silent).toContain(ar.att_term_agent_SILENT)
         expect(en.att_guide_unreachable).toContain(en.att_term_device_UNREACHABLE)
         expect(ar.att_guide_unreachable).toContain(ar.att_term_device_UNREACHABLE)
-        expect(en.att_guide_not_read).toContain(en.punch_tab_import)
-        expect(ar.att_guide_not_read).toContain(ar.punch_tab_import)
     })
 })
 
@@ -223,9 +258,13 @@ describe("the guide's steps on screen", () => {
         expect(other).toContain(esc(en.att_guide_download_other.split("`")[0]))
     })
 
-    it("says a model Nizmo can't read yet isn't, with no steps", async () => {
-        const html = await guide({ brand: HIK })
-        expect(html).toBe(`<p class="ui-card-note">${esc(en.att_guide_not_read)}</p>`)
+    it("shows Hikvision's steps, the agent's settings for it in their box", async () => {
+        for (const locale of ["en", "ar"] as const) {
+            const html = await guide({ brand: HIK }, locale)
+            expect(html).toMatch(/^<ol class="ui-guide-steps"/)
+            expect(html).toContain(esc('"protocol": "hikvision",'))
+            expect(html).toContain("nizmo-agent.exe probe hikvision TERMINAL-ADDRESS AGENT-USER")
+        }
     })
 })
 
