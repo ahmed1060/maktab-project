@@ -84,6 +84,25 @@ describe("which events are new", () => {
         expect(cursor).toEqual({ serialNo: 3, time: "2026-11-16T10:05:00+02:00" })
     })
 
+    it("reads a log cleared and refilled up to the cursor's number as cleared, by the cursor's own event", () => {
+        // Cleared at 10:30: its new events are numbered 1 and 2 again, and 2 isn't the event the cursor was.
+        const events = [event(1, "2026-11-16T11:00:00+02:00", 0x4b, "5"), event(2, "2026-11-16T11:05:00+02:00", 0x4b, "6")]
+        const { records, cursor } = pickNew(events, { serialNo: 2, time: "2026-11-16T10:00:00+02:00" })
+        expect(records.map(r => r.userNumber)).toEqual(["5", "6"])
+        expect(cursor).toEqual({ serialNo: 2, time: "2026-11-16T11:05:00+02:00" })
+        // The cursor's own event found again, written with another offset, is the same event: nothing new.
+        expect(pickNew([event(2, "2026-11-16T09:00:00+01:00")], { serialNo: 2, time: "2026-11-16T10:00:00+02:00" }).records).toEqual([])
+    })
+
+    it("takes the employee number as a number where its text is empty, as Nizmo does", () => {
+        const events: HikEvent[] = [
+            { major: 5, minor: 0x4b, time: "2026-11-16T09:00:00+02:00", serialNo: 1, employeeNoString: " ", employeeNo: 105 },
+            { major: 5, minor: 0x4b, time: "2026-11-16T09:01:00+02:00", serialNo: 2, employeeNoString: "", employeeNo: " 106 " },
+            { major: 5, minor: 0x4b, time: "2026-11-16T09:02:00+02:00", serialNo: 3, employeeNoString: " 107 ", employeeNo: 999 },
+        ]
+        expect(pickNew(events, null).records.map(r => r.userNumber)).toEqual(["105", "106", "107"])
+    })
+
     it("counts as a passed check what Nizmo does when a terminal sends straight to it", () => {
         expect([...PASSED_CHECKS].sort((a, b) => a - b)).toEqual([...NIZMO_PASSED_CHECKS].sort((a, b) => a - b))
     })
@@ -146,7 +165,8 @@ describe("a terminal, read", () => {
         const searches = device.seen.filter(r => r.path.startsWith("/ISAPI/AccessControl/AcsEvent") && r.status === 200).map(r => JSON.parse(r.body).AcsEventCond)
         expect(searches.map(s => s.searchResultPosition)).toEqual([0, 30, 60])
         expect(new Set(searches.map(s => s.searchID)).size).toBe(1)
-        expect(searches[0]).toMatchObject({ major: 5, minor: 0, maxResults: 30, startTime: "2026-11-16T00:00:00+02:00" })
+        // From a day before the first day, its scans kept by the terminal's wall clock.
+        expect(searches[0]).toMatchObject({ major: 5, minor: 0, maxResults: 30, startTime: "2026-11-15T00:00:00+02:00" })
 
         device.state.events.push(...events(3, 66))
         const next = await c.passedChecks(first.cursor, "2026-11-16")
@@ -156,6 +176,44 @@ describe("a terminal, read", () => {
         const last = device.seen.filter(r => r.path.startsWith("/ISAPI/AccessControl/AcsEvent") && r.status === 200).at(-1)!
         expect(JSON.parse(last.body).AcsEventCond.startTime).toBe("2026-11-15T10:05:00+02:00")
     })
+
+    it("reads the first day from its start by the terminal's wall clock, though its clock doesn't say its offset", async () => {
+        device = new FakeHikDevice({
+            localTime: "2026-11-16T13:00:00",
+            events: [
+                { major: 5, minor: 0x4b, time: "2026-11-15T23:30:00+02:00", serialNo: 1, employeeNoString: "101" },
+                { major: 5, minor: 0x4b, time: "2026-11-16T00:30:00+02:00", serialNo: 2, employeeNoString: "102" },
+            ],
+        })
+        const { records, cursor } = await client(await device.start()).passedChecks(null, "2026-11-16")
+        expect(records).toEqual([{ userNumber: "102", at: "2026-11-16T00:30:00" }])
+        expect(cursor?.serialNo).toBe(2)
+    })
+
+    it("reads a long history over several reads, each going on from where the last stopped", async () => {
+        // A terminal answering one event a page, holding 1,001 scans an hour apart: more than one read takes.
+        const hourly = Array.from({ length: 1001 }, (_, i): FakeHikEvent => {
+            const wall = new Date(Date.parse("2026-10-01T08:00:00Z") + i * 3_600_000).toISOString().slice(0, 19)
+            return { major: 5, minor: 0x4b, time: `${wall}+02:00`, serialNo: i + 1, employeeNoString: String(1000 + i + 1) }
+        })
+        device = new FakeHikDevice({ events: hourly, pageLimit: 1 })
+        const c = client(await device.start())
+        const first = await c.passedChecks(null, "2026-10-01")
+        expect(first.records).toHaveLength(1000)
+        expect(first.cursor?.serialNo).toBe(1000)
+        const next = await c.passedChecks(first.cursor, "2026-10-01")
+        expect(next.records.map(r => r.userNumber)).toEqual(["2001"])
+        expect(next.cursor?.serialNo).toBe(1001)
+    }, 30_000)
+
+    it("is an error, not a read that never moves, where a day holds more than one read takes", async () => {
+        // 1,002 events a minute apart, one a page: a read looking back a day over them can't get past where it was.
+        device = new FakeHikDevice({ events: events(1002), localTime: "2026-11-17T06:00:00+02:00", pageLimit: 1 })
+        const c = client(await device.start())
+        const first = await c.passedChecks(null, "2026-11-16")
+        expect(first.cursor?.serialNo).toBe(1000)
+        await expect(c.passedChecks(first.cursor, "2026-11-16")).rejects.toMatchObject({ code: "TOO_MANY" })
+    }, 30_000)
 
     it("asks for a new challenge once where the terminal calls one stale", async () => {
         device = new FakeHikDevice({ nonceUses: 2 })

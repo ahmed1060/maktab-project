@@ -36,21 +36,29 @@ export type HikRecord = { userNumber: string; at: string }
 
 const WALL = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/
 
+/** A value as text, trimmed; as Nizmo reads an event sent straight to it (lib/attendance/hikvision-events.ts). */
+const textOf = (value: unknown): string => (typeof value === "string" || typeof value === "number" ? String(value).trim() : "")
+
+/** The same moment, however it is written. */
+const sameTime = (a: string, b: string) => a === b || (!Number.isNaN(Date.parse(a)) && Date.parse(a) === Date.parse(b))
+
 /**
  * The passed checks among the events that are new since the cursor, and
  * where it is after them.
  *
  * New is past the cursor's serial number. If every event found is numbered
- * below it, the terminal's log was cleared or restarted: the events from the
- * cursor's time on are new, and Nizmo stores each scan once. The cursor
- * moves to the highest numbered event found, passed check or not, so what
- * isn't a scan isn't looked at again.
+ * below it, or the one numbered as it isn't the event it was (a new log
+ * already numbered that far), the terminal's log was cleared or restarted:
+ * the events from the cursor's time on are new, and Nizmo stores each scan
+ * once. The cursor moves to the highest numbered event found, passed check
+ * or not, so what isn't a scan isn't looked at again.
  */
 export function pickNew(events: readonly HikEvent[], cursor: HikCursor): { records: HikRecord[]; cursor: HikCursor } {
     if (events.length === 0) return { records: [], cursor }
     const ordered = [...events].sort((a, b) => a.serialNo - b.serialNo)
     const last = ordered[ordered.length - 1]
-    const restarted = cursor !== null && last.serialNo < cursor.serialNo
+    const restarted = cursor !== null
+        && (last.serialNo < cursor.serialNo || ordered.some(e => e.serialNo === cursor.serialNo && !sameTime(e.time, cursor.time)))
     const since = cursor ? Date.parse(cursor.time) : NaN
     const fresh = cursor === null ? ordered
         : restarted ? ordered.filter(e => Number.isNaN(since) || Date.parse(e.time) >= since)
@@ -58,7 +66,7 @@ export function pickNew(events: readonly HikEvent[], cursor: HikCursor): { recor
     const records: HikRecord[] = []
     for (const e of fresh) {
         if (e.major !== MAJOR_EVENT || !PASSED_CHECKS.has(e.minor)) continue
-        const userNumber = String(e.employeeNoString ?? e.employeeNo ?? "").trim()
+        const userNumber = textOf(e.employeeNoString) || textOf(e.employeeNo)
         // A card issued to nobody is no one's scan.
         if (!userNumber) continue
         const wall = WALL.exec(e.time)

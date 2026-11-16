@@ -48,7 +48,11 @@ export class HikError extends Error {
 const MAX_REPLY = 2 * 1024 * 1024
 /** A page of events, the most the terminals answer. */
 const PAGE = 30
-/** Thirty thousand events in a day before the cursor is no office's terminal: something is wrong. */
+/**
+ * The most one read asks for, 30,000 events. A longer history is read over
+ * several, each going on from where the last stopped; more than this in the
+ * day a read looks back over is no office's terminal.
+ */
 const MAX_PAGES = 1000
 const DAY = 86_400_000
 
@@ -205,20 +209,28 @@ export class HikClient {
     /**
      * The passed checks since the cursor, and where it is after them; from the
      * start of `from` (YYYY-MM-DD, the terminal's day) when there is none yet.
-     * Searched from a day before the cursor's time, so a clock set back by
-     * hours still shows; which are new is the events' own numbering
-     * (agent/src/hik/events.ts).
+     * Searched from a day before: before the cursor's time, so a clock set
+     * back by hours still shows, or before the first day, so a clock that
+     * doesn't say its offset, read here as UTC, still has all of that day
+     * searched. Which are new is the events' own numbering
+     * (agent/src/hik/events.ts), and on the first read their wall date. A
+     * history longer than one read takes is read over several.
      */
     async passedChecks(cursor: HikCursor, from: string | null): Promise<{ records: HikRecord[]; cursor: HikCursor }> {
         const clock = await this.clock()
         const offset = clock.offsetMinutes ?? 0
         const cursorAt = cursor ? Date.parse(cursor.time) : NaN
-        const startMs = !Number.isNaN(cursorAt) ? cursorAt - DAY : Date.parse(`${from ?? "2000-01-01"}T00:00:00Z`) - offset * 60_000
+        const startMs = (!Number.isNaN(cursorAt) ? cursorAt : Date.parse(`${from ?? "2000-01-01"}T00:00:00Z`) - offset * 60_000) - DAY
         const endMs = Date.parse(`${clock.wall}Z`) - offset * 60_000 + DAY
         const searchID = randomUUID()
         const events: HikEvent[] = []
+        let stopped = false
         for (let position = 0, pages = 0; ; pages++) {
-            if (pages === MAX_PAGES) throw new HikError("TOO_MANY", "more events than one read can take")
+            // The terminal answers in time order, so what is read stops at a moment, and the next read goes on from it.
+            if (pages === MAX_PAGES) {
+                stopped = true
+                break
+            }
             const body = JSON.stringify({
                 AcsEventCond: { searchID, searchResultPosition: position, maxResults: PAGE, major: MAJOR_EVENT, minor: 0, startTime: atOffset(startMs, offset), endTime: atOffset(endMs, offset) },
             })
@@ -242,6 +254,12 @@ export class HikClient {
             position += list.length
             if (found.responseStatusStrg !== "MORE" || list.length === 0) break
         }
-        return pickNew(events, cursor)
+        const picked = pickNew(events, cursor)
+        // Stopped short, a read must get past where it had got to, or every read after it would stop at the same place.
+        if (stopped && cursor && !(picked.cursor && picked.cursor.serialNo > cursor.serialNo)) {
+            throw new HikError("TOO_MANY", "more events in a day than one read can take")
+        }
+        if (cursor || !from) return picked
+        return { records: picked.records.filter(r => r.at.slice(0, 10) >= from), cursor: picked.cursor }
     }
 }
