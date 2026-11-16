@@ -860,6 +860,11 @@ These are built once, in the building-blocks PR, and every page uses them
     - Where the steps depend on a choice, such as the terminal's model, a
       picker at the top asks for it, and until something is picked, a
       line says to pick it.
+    - Where what's picked has more than one way to set up, such as a
+      terminal the agent reads or one that sends to it, a choice (§5.3)
+      under the picker asks which, the usual way picked to start with,
+      and a line under it says which ones the way picked is for. A way
+      that doesn't fit what was picked isn't offered.
     - The steps are numbered. Each says who does it and where, then what
       to do, a line each.
     - Anything to type or paste, such as a command or a file's contents,
@@ -2337,3 +2342,8 @@ changed:
   moves to, asking only what that way needs, its main button saying the
   move. First for a fingerprint terminal moved between the office agent
   and straight to Nizmo (`ATTENDANCE_PLAN.md` §17.6, §17.7).
+- **2026-11-16:** A guide whose steps depend on a second choice (§5.5,
+  Dialog) asks it under the picker, as a choice with the usual way
+  picked to start with and a line saying which ones the way picked is
+  for. First for a ZKTeco terminal that sends its scans to the office
+  agent (`ATTENDANCE_PLAN.md` §17.7, §17.12).
