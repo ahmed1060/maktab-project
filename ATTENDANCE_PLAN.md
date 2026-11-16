@@ -21,7 +21,8 @@ the first, the addresses a terminal calls, built in #296, the second,
 Add a terminal for ZKTeco straight to Nizmo with the office's address,
 in #297, the third, Change connection, in #298, and the fourth, first
 contacts kept for a ZKTeco terminal, in #299: part 6 is built, switched
-off for every company. Part 7 is not built.
+off for every company; part 7, the agent reads Hikvision, is split in
+three PRs, the first, the agent's Hikvision client, in #300.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
@@ -2223,6 +2224,62 @@ The agent learns Hikvision's ISAPI beside the ZKTeco protocol it speaks:
   `AGENT` punches, and knows the terminal's protocol from what the agent
   reports, and its brand from its record (§17.9).
 
+**Built in #300: the agent's Hikvision client** (part 7's first PR,
+§20), which nothing in the agent uses yet: `agent.json` names no
+Hikvision terminal until part 7's third PR. What the build settled:
+
+- **Signing in:** HTTP digest authentication (RFC 7616), MD5 or SHA-256,
+  whichever the terminal asks for, with `qop=auth`. The password itself
+  never travels. The terminal's challenge is answered again for each
+  request, counted on; one it calls stale, or refuses, is asked for anew
+  once, and a second refusal is the wrong user or password.
+- **Over HTTPS** where the terminal is set to it. Its certificate is its
+  own, signed by nobody, so it isn't checked against a list: its
+  fingerprint (SHA-256) is pinned instead. On the first contact the
+  client says which it saw, for the agent to keep; after that a terminal
+  showing another is refused, since another machine could be answering
+  at its address. Otherwise over HTTP, on the office network only, as
+  the ZKTeco protocol is.
+- **Its identity:** `/ISAPI/System/deviceInfo`, read as XML: its serial
+  number, model, firmware, and the name set on it.
+- **Its clock:** `/ISAPI/System/time`: its wall time and its offset from
+  UTC, which the search below is asked in.
+- **Its passed checks:** `POST /ISAPI/AccessControl/AcsEvent?format=json`,
+  major type 5, 30 a page, each page asked for by its position until the
+  terminal says there are no more. Only passed checks are kept: the same
+  minor types Nizmo counts as one when a terminal sends straight to it
+  (§17.2), held in step by a test. Each keeps its employee number and
+  its wall time; one with no employee number, such as a card issued to
+  nobody, is no one's scan and is skipped. The number is read as text,
+  or as a number where the text is empty, as Nizmo reads one sent
+  straight to it (found by Codex on #300).
+- **Where it had got to** is the last event read: its serial number,
+  which is the terminal's own order, and its time. The search asks from
+  a day before that time, so a clock set back by hours still shows, and
+  keeps the events past that serial number. If every event it finds is
+  numbered below it, or the one numbered as it isn't the event it was
+  (a new log already numbered that far), the terminal's log was cleared
+  or restarted: those from the cursor's time on are kept, and Nizmo
+  stores each scan once.
+- **The first read** asks from a day before its first day too, and keeps
+  the scans from that day on by the terminal's wall clock. So a terminal
+  whose clock doesn't say its offset from UTC loses none of that day's
+  first hours.
+- **A long history,** such as a first read from months back or a
+  terminal the agent hasn't reached for weeks, is read over several
+  rounds: a read takes at most 1,000 pages (30,000 events), and the next
+  goes on from where it stopped. One that can't get past where it had
+  got to, more events in a day than a read takes, is an error rather
+  than a read that never moves. The last three were found by Codex on
+  #300.
+- **A terminal that doesn't answer** is given up on: each request has
+  one deadline, ten seconds unless set, over opening the connection, the
+  handshake over HTTPS and the reply. Past it the connection is closed,
+  not left open.
+- **A terminal that answers otherwise than asked**, with another status
+  or a body that isn't what was asked for, is an error saying what, as
+  for ZKTeco. Nothing half-read is returned.
+
 ### 17.5 What a terminal sends, and what Nizmo keeps
 
 - **Kept**, for each scan: the terminal, the employee number and the
@@ -3067,7 +3124,7 @@ matching with liveness, fallback to flagged.
 It stays switched off meanwhile, on the face check meant for testing only;
 choosing a commercial SDK (§18, question 1) waits with it.
 
-### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 in #291 to #295, part 6 in #296 to #299
+### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 in #291 to #295, part 6 in #296 to #299, part 7 from #300
 
 Planned in #269, for ZKTeco and Hikvision alike (§17.1–§17.11). It replaces
 the earlier Phase 4, a listener for pushes on the agent and nothing else,
@@ -3132,7 +3189,22 @@ which becomes part 8 below. Each part is its own PR:
    4. First contacts kept for a ZKTeco terminal (§17.8): what is kept of
       what it sends, with names never opened. Built in #299.
 7. **The agent reads Hikvision** (§17.4): ISAPI beside the ZKTeco protocol,
-   `probe`, `agent.json`; a new agent release.
+   `probe`, `agent.json`; a new agent release. In three PRs, each safe
+   with nothing set up to use it:
+   1. The agent's Hikvision client, which nothing uses yet: HTTP digest
+      authentication, the terminal's identity, its clock, and its passed
+      checks a page at a time from where it had got to, over HTTPS with
+      the terminal's certificate pinned on its first contact, or HTTP on
+      the office network. Tried against a simulated terminal, as the
+      ZKTeco client is (§17.4).
+   2. Nizmo takes a terminal's protocol from the agent's heartbeat, and
+      Hikvision through the office agent is offered in Add a terminal,
+      Change connection and the setup guide (§17.7). An agent before it
+      sends no protocol, and its terminals are ZKTeco's as before.
+   3. `agent.json` names a Hikvision terminal, with the user made on it
+      for the agent and its password; the agent's rounds read it and
+      report its protocol; `probe` reads one; and a new agent release
+      (§17.4).
 8. **Only when a customer needs it: the agent listens on the office network**,
    for terminals that push only plain HTTP. The terminal pushes to the agent's
    address on the office network, and the agent sends on over HTTPS, as for

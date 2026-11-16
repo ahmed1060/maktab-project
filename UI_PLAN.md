@@ -759,7 +759,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      in #297 on 2026-11-16; then its third, Change connection, in a
      terminal's menu, moving it between the office agent and straight to
      Nizmo, merged in #298 on 2026-11-16; then its fourth, first contacts
-     kept for a ZKTeco terminal, for the Super Admin, #299;
+     kept for a ZKTeco terminal, for the Super Admin, merged in #299 on
+     2026-11-16; then part 7's first PR, the agent's Hikvision client,
+     which changes no screen, #300;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6489,3 +6491,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   ZKTeco terminal's first contacts, a line of its scans that can't be
   read keeps no number of 6 digits or more, even when it is JSON or XML.
   No screen changes.
+- **2026-11-16:** The agent's Hikvision client (#300;
+  `ATTENDANCE_PLAN.md` §17.4, Phase 4 part 7, the first of its three
+  PRs). The office agent can sign in to a Hikvision terminal and read
+  who it is, its clock and its passed checks, though nothing uses it
+  yet. No screen changes.
