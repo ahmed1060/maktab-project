@@ -23,8 +23,14 @@ vi.mock("@/context/LanguageContext", () => ({
 }))
 vi.mock("@/context/ToastContext", () => ({ useToast: () => ({ showToast: () => {} }) }))
 // The list Fingerprint terminals shows, as the card reads it.
-const list = { devices: [] as { connection: string; retiredAt: string | null }[], key: "", loading: false }
-vi.mock("swr", () => ({ default: (key: string) => { list.key = key; return { data: list.loading ? undefined : { data: { devices: list.devices } }, mutate: () => {}, isLoading: list.loading } } }))
+const list = { devices: [] as { connection: string; retiredAt: string | null }[], key: "", loading: false, failed: false }
+vi.mock("swr", () => ({
+    default: (key: string) => {
+        list.key = key
+        const read = !list.loading && !list.failed
+        return { data: read ? { data: { devices: list.devices } } : undefined, error: list.failed ? new Error("no answer") : undefined, mutate: () => {}, isLoading: list.loading, isValidating: list.loading }
+    },
+}))
 
 const source = (path: string) => stripComments(readFileSync(path, "utf8"))
 const text = (words: string) => words.replace(/'/g, "&#x27;")
@@ -127,8 +133,8 @@ describe("on the Attendance tab", () => {
         // Stopping asks when it holds a terminal's scans, and stops nothing otherwise.
         expect(card).toContain("onClick={() => { if (terminals > 0) setAsking('off'); else void save(false) }}")
         // And waits for the list to be read: before that, nothing says whether a terminal would be held.
-        expect(card).toContain("<Button size=\"sm\" busy={saving} disabled={isLoading} onClick={() => { if (terminals > 0)")
-        expect(card).toContain("const { data, mutate, isLoading } = useSWR(")
+        expect(card).toContain("const read = data !== undefined")
+        expect(card).toContain("<Button size=\"sm\" busy={saving} disabled={!read} onClick={() => { if (terminals > 0)")
         // Its question stays open when saving fails, to try again or cancel.
         expect(card).toContain("if (await save(asking === 'on')) setAsking(null)")
         expect(card).toContain("return false")
@@ -148,6 +154,36 @@ describe("on the Attendance tab", () => {
             list.loading = false
         }
         expect(await card(true, 2)).not.toMatch(/<button[^>]*disabled=""/)
+    })
+
+    it("when the list couldn't be read, keeps Turn off from being pressed and says so, with a way to read it again (Codex on PR 295)", async () => {
+        // A load that failed isn't a list with no terminals: Turn off stopped at once, asking nothing, with terminals to hold.
+        list.failed = true
+        try {
+            const on = await card(true, 2)
+            expect(on).toMatch(new RegExp(`<button[^>]*disabled=""[^>]*>${en.settings_turn_off}</button>`))
+            expect(on).not.toContain("Straight to Nizmo now")
+            expect(on).toContain(`<p class="ui-card-note" role="status">${text(en.att_term_direct_list_failed)} <button`)
+            expect(on).toContain(`>${en.try_again}</button>`)
+            // Off, nothing waits on the list: Turn on asks whatever it holds.
+            const off = await card(false, 2)
+            expect(off).not.toContain(text(en.att_term_direct_list_failed))
+            expect(off).not.toMatch(/<button[^>]*disabled=""/)
+            expect(await card(true, 2, "ar")).toContain(ar.att_term_direct_list_failed)
+        } finally {
+            list.failed = false
+        }
+        // Read, or still being read, it says nothing of the kind.
+        expect(await card(true, 2)).not.toContain(text(en.att_term_direct_list_failed))
+        list.loading = true
+        try {
+            expect(await card(true, 2)).not.toContain(text(en.att_term_direct_list_failed))
+        } finally {
+            list.loading = false
+        }
+        const source295 = source("components/TerminalsDirectCard.tsx")
+        expect(source295).toContain("{on && !read && !!error && (")
+        expect(source295).toContain("busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>")
     })
 
     it("is shown to the Super Admin alone, for a company holding the Terminals add-on, under who sets terminals up", () => {
@@ -175,6 +211,7 @@ describe("the words", () => {
     const KEYS = [
         "att_term_direct_title", "att_term_direct_label", "att_term_direct_off_hint", "att_term_direct_on_hint", "att_term_direct_count",
         "att_term_direct_turn_on", "att_term_direct_turn_off", "att_term_direct_on_title", "att_term_direct_on_msg", "att_term_direct_off_title", "att_term_direct_off_msg",
+        "att_term_direct_list_failed",
         "audit_field_terminalsDirectAllowed",
     ] as const
 

@@ -32,7 +32,10 @@ export default function TerminalsDirectCard({ companyId, on, onSaved }: {
     const { showToast } = useToast()
     const [saving, setSaving] = useState(false)
     const [asking, setAsking] = useState<'on' | 'off' | null>(null)
-    const { data, mutate, isLoading } = useSWR(`/api/attendance/devices?companyId=${encodeURIComponent(companyId)}`, fetcher)
+    const { data, error, mutate, isValidating } = useSWR(`/api/attendance/devices?companyId=${encodeURIComponent(companyId)}`, fetcher)
+    // Read at least once: only then is it known whether turning off would hold a terminal.
+    // A load that failed isn't a list with none (Codex on PR 295).
+    const read = data !== undefined
     const devices: { connection: string; retiredAt: string | null }[] = data?.data?.devices ?? []
     // The terminals that send straight to Nizmo, retired ones aside: what the switch holds, turned off.
     const terminals = devices.filter(d => d.connection === 'DIRECT' && !d.retiredAt).length
@@ -66,6 +69,10 @@ export default function TerminalsDirectCard({ companyId, on, onSaved }: {
     const hint = t(on ? 'att_term_direct_on_hint' : 'att_term_direct_off_hint')
     return (
         <Card title={t('att_term_direct_title')}>
+            {/* The list couldn't be read: the card says why Turn off waits, with a way to read it again. */}
+            {on && !read && !!error && (
+                <p className="ui-card-note" role="status">{t('att_term_direct_list_failed')} <Button size="sm" busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button></p>
+            )}
             <ul className="ui-rows ui-rows-flush" aria-label={t('att_term_direct_title')}>
                 <Row
                     title={t('att_term_direct_label')}
@@ -78,7 +85,7 @@ export default function TerminalsDirectCard({ companyId, on, onSaved }: {
                             button says in full what it does. */}
                         {/* Turn off waits for the list: until it's read, nothing says whether a terminal would be held. */}
                         {on
-                            ? <Button size="sm" busy={saving} disabled={isLoading} onClick={() => { if (terminals > 0) setAsking('off'); else void save(false) }}>{t('settings_turn_off')}</Button>
+                            ? <Button size="sm" busy={saving} disabled={!read} onClick={() => { if (terminals > 0) setAsking('off'); else void save(false) }}>{t('settings_turn_off')}</Button>
                             : <Button size="sm" variant="primary" disabled={saving} onClick={() => setAsking('on')}>{t('settings_turn_on')}</Button>}
                     </>}
                 />

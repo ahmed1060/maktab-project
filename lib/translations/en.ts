@@ -2353,6 +2353,7 @@ export const en = {
         att_term_direct_on_msg: "Whoever sets up its terminals can then add one that sends its scans straight to Nizmo, at its own secret address. What it sends counts towards pay. Each terminal's first requests are kept for 7 days, to read under First contacts.",
         att_term_direct_off_title: "Stop terminals straight to Nizmo?",
         att_term_direct_off_msg: "Terminals that send their scans straight to Nizmo now: {n}. Each is held until this is allowed again: it keeps its scans and sends them again. Nothing is deleted.",
+        att_term_direct_list_failed: "Couldn't read this company's terminals. It can't be turned off until they're read.",
         att_term_hint: "The Local Sync Agent runs on a PC in your office. It reads the fingerprint terminals on the office network and sends their punches here. Terminals appear below once the agent reports them.",
         att_term_add_agent: "Add an agent",
         att_term_agents: "Agents",
