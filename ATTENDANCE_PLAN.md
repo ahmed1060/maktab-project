@@ -28,7 +28,13 @@ Hikvision through the office agent ready on the screens and held back
 until the agent reads it, in #301, the third, the agent reading a
 Hikvision terminal named in `agent.json`, released as 0.3.0, in #302,
 and the fourth, Hikvision through the office agent offered on the
-screens, in #303: part 7 is built.
+screens, in #303: part 7 is built; part 8, the agent listening on the
+office network for ZKTeco terminals that push only plain HTTP, is split
+in three PRs, the listener in #304, the agent listening for terminals
+named in `agent.json`, released as 0.4.0, in #305, and the setup guide's
+steps for them in #306: part 8 is built. The first customer's setup,
+rehearsed against a simulated terminal, with a checklist for it and what
+each way costs to run, is planned in #307 (round 11, §17.13, §17.14).
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
@@ -172,7 +178,7 @@ All thirteen are the owner's: 1, 2 and 9 to 12 on 12 November 2026, 3 to
 | 4 | a Hikvision terminal's credential | **A secret in the address it sends to**, shown once, kept hashed, replaced on demand (§17.2). |
 | 5 | a ZKTeco terminal's credential | **Its serial number, accepted only from the office's fixed internet address.** An office without one connects its ZKTeco terminals through the agent (§17.3). |
 | 6 | one terminal, one count | **A terminal is one record whichever way it connects, and uses one way at a time; a scan is counted once across both** (§17.6). |
-| 7 | switched off to start | **Turned on for each company by the Super Admin**, after a week's trial with a real terminal for each protocol (§17.8). |
+| 7 | switched off to start | **Replaced by round 11, decision 2** (16 November 2026). It was turned on for each company by the Super Admin after a week's trial with a real terminal for each protocol. |
 | 8 | order | **Hikvision straight to Nizmo, then ZKTeco, then the agent reading Hikvision**, unless the terminal on hand for the trial is a ZKTeco, which then goes first (§20, Phase 4). |
 | 9 | Brands | **A list kept from the screen, not written into the code**, with Convoy on it from the start beside ZKTeco and Hikvision. A brand is what is printed on a terminal; each speaks one of the protocols Nizmo knows. A brand speaking a known protocol is added from the screen; one speaking another needs that protocol built first (§17.9). |
 | 10 | Who keeps the list | **The Super Admin only, one list for every company**, on a Terminal brands page under Templates. A company's Admin picks from it and can't add, change or retire a brand (§17.9). |
@@ -216,6 +222,17 @@ owner's (13 November 2026). Decisions 22 to 27 come from a second review, in
 | 25 | Withdrawing and cancelling a mission | **The employee withdraws a mission while it waits. Once approved, someone holding "Decide missions" can cancel it, with a reason, until that month's payroll is approved;** after, its days there become discrepancies, as in decision 16 (§6.10). |
 | 26 | The Exceptions screen | **Incomplete means one scan left after the window, and Departure to confirm gets a tab of its own** (§13.1). |
 | 27 | Summer time on terminals | **The terminal's own setting, not Nizmo's.** Whoever installs it sets its clock, summer time included; Nizmo reads the times as the terminal sends them (§19). |
+
+### Round 11 — the first customer's setup
+
+All four are the owner's, on 16 November 2026, planned in #307.
+
+| # | Topic | Decision |
+|---|---|---|
+| 1 | Proving it on real terminals | **The first customer's setup, not a trial.** The owner sets the company up with the client and fixes whatever goes wrong as it's found, each fix its own PR. Nothing waits on a set week or a pass mark. Where this plan said "the trial", it means this setup now (§17.8, §17.13). |
+| 2 | Straight to Nizmo, switched on | **By the Super Admin, for a company whose terminal needs it, when that terminal is set up,** with the owner there to fix what comes up. It stays off for every other company. Replaces round 9, decision 7 (§17.8). |
+| 3 | Before the setup | **Rehearsed first against a simulated terminal,** and done from a checklist (§17.13). |
+| 4 | Later work | **Four items kept for later, each its own PR when picked:** the agent keeping a pushing terminal's first requests, reopening first contacts for 7 more days, an alert for a terminal straight to Nizmo gone silent, and planning what comes next before building it (§20, Phase 4). |
 
 ---
 
@@ -2047,7 +2064,7 @@ yet (Add a terminal does, §20, part 5), and the company's switch is off
   nothing a real terminal sends is lost without a trace: an event with an
   employee number whose minor type is on neither list
   (`EVENT_NOT_KNOWN:<minor>`: a model that names a passed check otherwise
-  shows up here in the trial, §17.8), an employee number longer than 32
+  shows up here when such a terminal is first set up, §17.8), an employee number longer than 32
   characters (`INVALID_NUMBER`), and a body that can't be read
   (`UNREADABLE`). They are answered 200: sent again, they would only come
   the same, and a terminal waits behind what isn't answered.
@@ -2117,8 +2134,8 @@ internet address**:
   An unknown one is refused, never brought in on its first call, unlike a
   terminal an enrolled agent reports.
 - An office without a fixed address connects its ZKTeco terminals through
-  the agent. If the trial (§17.8) finds firmware that proves itself with a
-  secret, this is looked at again for those models.
+  the agent. If a terminal set up later (§17.8) shows firmware that proves
+  itself with a secret, this is looked at again for those models.
 
 **Built in #296: the addresses a ZKTeco terminal calls**, everything under
 `/iclock/` at the root of Nizmo's address (part 6's first PR, §20). Nothing
@@ -2167,7 +2184,7 @@ until then. What the build settled:
   - `TimeZone`, the company's offset from UTC now in whole hours
     (`TimeZone=2`), and none for a zone off the hour. The 2.0.1 document
     has no such option; later firmware reads one, and what a terminal
-    does with it is the trial's to answer (§18, 5). One that sets its
+    does with it is for the first one set up to show (§18, 5). One that sets its
     clock from the server's time and this option shows the company's
     wall clock, which is how its scans are read (§17.5); one that ignores
     it is as it was. Left out, such a terminal might take the server's
@@ -2613,8 +2630,8 @@ model's protocol:
   Attendance agent workflow's latest run on GitHub; anyone else, to ask
   the Super Admin for it.
 
-The Convoy trial's week, and what passes it, stay on the trial's own
-page, outside Nizmo. For the guide, the brands the terminals list offers
+What to check at the first customer's setup is in §17.13, not in the
+guide. For the guide, the brands the terminals list offers
 (`GET /api/attendance/devices`) carry their notes.
 
 **Built in #292: Add a terminal, and its address shown once** (part 5's
@@ -2650,8 +2667,8 @@ second PR, §20). What the build settled:
   - above them, the brand's notes, the Super Admin's (§17.9).
 
   The menu's names are from Hikvision's manual for its DS-K1T670 series
-  (V4.17, December 2025) and differ by model; the trial checks them
-  (§17.8).
+  (V4.17, December 2025) and differ by model; the first one set up
+  checks them (§17.8).
 - **Issue a new address**, in the menu of a Hikvision terminal straight
   to Nizmo, asks first, then for the step-up code: the address it has
   stops working at once, and the new one is shown once, the same way. It
@@ -2673,10 +2690,10 @@ second PR, §20). What the build settled:
   scans were refused, with the latest reason in words.
 - **Working, for a terminal straight to Nizmo, is heard from in the last
   24 hours,** not the agent's 15 minutes. A terminal calls when someone
-  scans, and whether it sends heartbeats between scans is the trial's to
-  answer (§18, 4). Past that it reads Not heard from in working hours,
-  and Quiet outside them. No alert is raised for one yet: that, and the
-  threshold, follow the trial's answer.
+  scans, and whether it sends heartbeats between scans is for the first
+  one set up to show (§18, 4). Past that it reads Not heard from in
+  working hours, and Quiet outside them. No alert is raised for one yet:
+  it is kept for later, with a threshold to start from (§20, Phase 4).
 - **The setup guide** (#282), for a Hikvision model where straight to
   Nizmo is on, points to Add a terminal in place of saying Nizmo can't
   read the model yet.
@@ -2710,7 +2727,7 @@ second PR, §20). What the build settled:
   Nizmo's own as the page was opened on (§18, 6), with Copy; Server port,
   443; Enable domain name, on; HTTPS, on. The brand's notes, the Super
   Admin's (§17.9), are above them. The names differ by model and
-  firmware; the trial checks them (§17.8).
+  firmware; the first one set up checks them (§17.8).
 - **Its row** says the office's address, each one left to right and
   never translated, beside where it last called from.
 - **A call from elsewhere,** noted on the terminal (#296), is said in
@@ -2787,9 +2804,16 @@ None of this can be tried without the terminals, and the build has none. So:
   Admin: headers without the secret path, and bodies with pictures,
   templates and names taken out. That is how the real formats are checked
   against §17.2 and §17.3.
-- **The trial:** one terminal for each protocol, at a company that agrees, on
-  the production address, for a week. It answers the questions in §18, and
-  the switch stays off for everyone else until it passes.
+- **The first customer's setup** (round 11, decision 1; called the trial
+  until #307): the owner sets the client's company up with them, on the
+  production address, and fixes whatever goes wrong as it's found, each
+  fix its own PR. Nothing waits on a set week or a pass mark. The
+  questions in §18 are answered as real terminals show them, at this
+  customer or a later one. It is rehearsed first against a simulated
+  terminal, and done from a checklist (§17.13).
+- **The switch is turned on** by the Super Admin for a company whose
+  terminal needs it, when that terminal is set up, with the owner there.
+  It stays off for every other company (round 11, decision 2).
 
 **Built in #295: the switch**, the Super Admin's, on the company's
 Attendance tab (part 5's fifth and last PR, §20). What the build settled:
@@ -2828,9 +2852,9 @@ Attendance tab (part 5's fifth and last PR, §20). What the build settled:
   Turn off waits (review on #295).
 - **Written to the audit log** each time it turns, by name, with who
   turned it.
-- **It stays off** for every company until the trial with a real
-  terminal passes (above). No alert is raised for a silent terminal
-  straight to Nizmo yet: that follows the trial too (§17.7).
+- **It stays off** for every company until one's terminal is set up
+  that way (above). No alert is raised for a silent terminal straight
+  to Nizmo yet: it is kept for later (§20, Phase 4).
 - **The card above it** (§17.10, #277) got the same short button here.
   On a phone in English its longer one, Set them up for the company,
   lay over the row's words. Its question's button still says in full
@@ -2904,7 +2928,7 @@ to Nizmo (part 5's fourth PR, §20). What the build settled:
   in the order they came, each a row that opens onto what it sent. A
   company's own people are refused by the server. While it's open the
   list is read again every 10 seconds, so a request appears as the
-  terminal sends it during a trial.
+  terminal sends it during its setup.
 - **Keeping never holds a terminal.** If keeping fails, or counting
   what is kept does before the request is taken, the request is taken
   and answered all the same, and the failure is recorded without the
@@ -2912,8 +2936,8 @@ to Nizmo (part 5's fourth PR, §20). What the build settled:
 - **System health:** the Super Admin's terminals list (#177) now lists a
   company whose only terminals are straight to Nizmo, and says how many
   of a company's terminals connect that way (§17.7).
-- **Not in this PR:** looking again once the 7 days are over. If the
-  trial needs it, a Super Admin action reopens it.
+- **Not in this PR:** looking again once the 7 days are over. A Super
+  Admin action reopening it is kept for later (§20, Phase 4).
 - **The migration only adds:** the `TerminalFirstContact` table, and
   `firstContactAt` on a terminal, empty until its first request is taken.
 
@@ -3124,8 +3148,8 @@ pay. So it stops being part of the Attendance settings tab's own access
 ### 17.11 Sources
 
 Checked on 12 November 2026. Vendor documents vary by model and firmware,
-and some of these are integrators' notes, so the trial (§17.8) has the last
-word.
+and some of these are integrators' notes, so a real terminal, as it is set
+up (§17.8), has the last word.
 
 - Hikvision, [Receive alarm/event in listening mode](https://tpp.hikvision.com/Wiki/ISAPI/Access%20Control%20on%20Person/GUID-0E00BD39-BDB4-4079-A8EE-307A95871C1A.html)
   and [How to get real-time events in HTTP listening mode](https://www.hikvisioneurope.com/eu/portal/portal/Technology%20Partner%20Program/03-How%20to/How%20to%20get%20real-time%20event%20in%20listening%20mode.pdf).
@@ -3201,7 +3225,8 @@ pushes and can't be read is added when one is seen.
 - Anything but `GET` or `POST` under `/iclock/`, or a request naming no
   serial number: 404, its body not read.
 - A body past 16 MB: 413, and logged. A first upload can hold a terminal's
-  whole memory; what a real one sends in one is for the trial to show.
+  whole memory; what a real one sends in one is for the first one set up to
+  show.
 - A slow request: its headers within 10 seconds, all of it within 60, and
   at most 32 at once. A stuck connection holds nothing.
 - While Nizmo says the terminal is set straight to Nizmo (`DIRECT`, §17.6):
@@ -3221,9 +3246,9 @@ sends leaves the building but its punches, over HTTPS, as for a terminal
 read. From Nizmo's side it is a ZKTeco terminal through the office agent,
 like any other; only the setup guide's steps differ (§17.7).
 
-**Its trial** (§17.8) needs a terminal that pushes only plain HTTP. The
-Convoy can't push at all (§20, Phase 4), so it waits for one, as ZKTeco
-straight to Nizmo does.
+**It is first tried** when a customer's terminal pushes only plain HTTP
+(§17.8). The Convoy can't push at all (§20, Phase 4), so it waits for one,
+as ZKTeco straight to Nizmo does.
 
 **Built in #304: the listener** (part 8's first PR, §20), which nothing in
 the agent starts yet. What the build settled:
@@ -3309,12 +3334,132 @@ built by the Attendance agent workflow (#305). What the build settled:
   line saying a model can be added straight to Nizmo too isn't shown for
   a terminal that sends to the agent.
 
+### 17.13 The first customer's setup (round 11)
+
+The owner sets the first customer's company up with them, at their office,
+and fixes what goes wrong as it's found, each fix its own PR (round 11,
+decision 1). Their terminal is a Convoy CB 3000, a ZKTeco terminal the
+agent reads (§20, Phase 4).
+
+**Rehearsed on 16 November 2026**, before the visit (round 11, decision
+3): a simulated CB 3000 speaking ZKTeco's protocol (the one the agent's
+own tests use), the agent built from main (0.4.0), and Nizmo on a scratch
+database, with the Super Admin's and the company Admin's screens in a
+browser. 28 checks passed:
+
+- `probe` read the terminal's serial number, model, firmware, clock and
+  its 5 scans, and sent nothing.
+- The Super Admin added an agent, confirmed it with the authenticator
+  code, and read its one-time code. `enrol` took it; the same code was
+  refused a second time.
+- `check` read the 5 scans and sent them. They kept the terminal's own
+  times, in Cairo.
+- Fingerprint terminals showed the agent Connected, and the terminal
+  under it by the name `agent.json` gives it, with its last scan in
+  Cairo time. Its brand was set to Convoy.
+- The Admin matched numbers 101 and 102 to two people under Attendance,
+  Employee numbers. Their waiting scans became theirs; 103 still waited.
+- Punches listed both people. Days showed yesterday for each, from the
+  first scan to the last; today's day waits until the day is over.
+- A new scan came with the next round, and only it. A round with nothing
+  new sent nothing.
+- A terminal clock 10 minutes fast showed Clock off by 10 min. An agent
+  not heard from for 20 minutes showed Quiet (outside working hours),
+  since the run was at night.
+- Everything the run changed in the scratch database was put back.
+
+**Found, to fix before the visit:** right after a round that sends every
+scan, the agent's card still says they're waiting to send, until the
+agent's next round a minute later, and after `check` alone, until the
+service starts. The agent reports its queue in the heartbeat, which goes
+before the scans are sent. The fix is Nizmo's alone, so no new agent
+release: the punches route lowers the agent's waiting count by what each
+batch settles. It is the next PR (§20, Phase 4).
+
+**Before the visit**
+
+1. The customer's company on Nizmo, with its people added, a work
+   schedule and an attendance policy: Days needs both.
+2. Its package holds the Terminals add-on, and "The company sets up its
+   own fingerprint terminals" stays off, so the Super Admin sets them up
+   (§17.10).
+3. Convoy on Terminal brands, with notes on where its address is found.
+4. The agent: the latest package from the Attendance agent workflow on
+   main, 0.4.0 or later, to carry to the office.
+5. The office PC that will run it: on in working hours, on the same
+   network as the terminal.
+
+**At the office**
+
+1. The terminal: its address fixed, and its clock right. Clock off shows
+   once it is more than 2 minutes out.
+2. Attendance Management: its option to delete the terminal's records
+   after downloading them turned off, and the program closed while the
+   agent reads, since the terminal takes one connection at a time (§20,
+   Phase 4).
+3. `nizmo-agent.exe probe <terminal's address>`: its serial number and
+   how many scans it holds. Nothing is sent.
+4. Add an agent, on the company's Attendance tab: the authenticator code
+   if it's asked for, then the agent's one-time code, shown once.
+5. `enrol <code>`, then `check`: the scans from the first of the month
+   reach Nizmo.
+6. Install and start the service.
+7. Fingerprint terminals: the agent Connected, and the terminal under
+   it. Its brand set to Convoy.
+8. Attendance, Employee numbers: each number the terminal knows matched
+   to a person. A number with nobody waits there, and its scans become
+   the person's once it's matched.
+9. Someone scans: it shows in Punches within a minute or two.
+
+**After it**
+
+- Today's scans show in Punches at once; a day shows in Days the next
+  morning, since a day is worked out once it's over.
+- The agent's PC switched off at night reads Quiet (outside working
+  hours); in working hours it reads Not heard from after 15 minutes.
+- Whatever goes wrong is fixed as it's found, each fix its own PR.
+
+### 17.14 What each way costs to run
+
+Nizmo runs on Vercel's Hobby plan and Supabase's Free plan (`TECH_STACK.md`).
+Worked out from the code on 16 November 2026, not from billing: splitting
+Vercel's usage by route needs its Pro plan.
+
+| | Through the agent, read | Through the agent, pushed | Straight to Nizmo |
+|---|---|---|---|
+| Grows with | each office agent | each office agent | each terminal |
+| Calls to Nizmo a month | about 46,000: a heartbeat a minute (43,200), and a batch when there are new scans | the same: the terminal calls the agent on the office network, which costs nothing | ZKTeco: about 90,000, since it asks every 30 seconds (`Delay=30`, 86,400) and sends its scans besides. Hikvision: a call a scan, and heartbeats if the model sends them (§18, 4) |
+| Share of Hobby's 1,000,000 function calls | about 5% | about 5% | about 9% for each ZKTeco terminal |
+| Database queries a month | about 270,000, 5 or 6 a call | the same | about 450,000 for each ZKTeco terminal |
+| Data | a few MB; a scan is a small row, about 6,000 a month for 50 people | the same | the same |
+
+- **The agent's calls don't grow with its terminals:** one call a minute
+  covers them all, each terminal adding two queries to it. Straight to
+  Nizmo costs per terminal: ten ZKTeco
+  terminals would use nearly all of Hobby's function calls before anyone
+  opens a page.
+- **CPU time:** a call spends most of its time waiting on the database,
+  which isn't counted. At 15 to 40 ms of CPU a call, an agent's month is
+  0.2 to 0.5 of Hobby's 4 hours, and a ZKTeco terminal straight to Nizmo's
+  0.4 to 1.
+- **Supabase:** none of the three sends live updates, and what they store
+  and send back is small. A database an agent calls every minute is never
+  paused for inactivity, which happens to a Free project after a week of
+  little use.
+- **The plans themselves** (proposed, for the owner's decision): Vercel's
+  Hobby plan is for personal, non-commercial use only, and past a limit a
+  feature stops until 30 days have passed, with no paying for more. A
+  paying customer is commercial use, so the move to Vercel Pro comes before
+  the first customer pays. Supabase Pro adds backups that can be
+  downloaded and is never paused: worth it once a paying customer's
+  payroll is kept there.
+
 ---
 
 ## 18. Open questions
 
-The first was deferred to implementation; the rest are round 9's, answered by
-the trial on real terminals (§17.8) unless they say otherwise.
+The first was deferred to implementation; the rest are round 9's, answered as
+real terminals are set up (§17.8) unless they say otherwise.
 
 1. **Face SDK choice** (§9.5) — still open. Phase 3b was built (#27) on a
    face check for testing only, whose recognition weights are licensed for
@@ -3339,17 +3484,17 @@ the trial on real terminals (§17.8) unless they say otherwise.
    answer's date or an option in it, with no command sent (§19)? If it does,
    clock drift mostly goes away for terminals straight to Nizmo. Nizmo
    answers its first call with the company's offset from UTC as
-   `TimeZone` (#296, §17.3): the trial says whether a terminal reads it,
+   `TimeZone` (#296, §17.3): the first one set up says whether a terminal reads it,
    in what form for a zone off the hour, and what it does when summer
    time changes the offset after that call.
 6. **The address terminals are pointed at** (before the first terminal is
-   installed at a customer, not in the trial). A terminal is set by hand, so
+   installed at a customer). A terminal is set by hand, so
    moving Nizmo to its own domain later means visiting every terminal. The
    address in the setup card is a setting, not written into the code.
    Decided in round 10 (decision 21): `nizmo.vercel.app` until the second
    customer, then the owner's own domain. `nizmo.vercel.app` keeps working
    beside it, so the first customer's agent needn't change.
-7. **Signing the agent** (the owner's purchase, not the trial). The Attendance
+7. **Signing the agent** (the owner's purchase, not the setup's). The Attendance
    agent workflow signs with a `.pfx` file from GitHub secrets, but since June
    2023 a code signing key must live on a hardware token or a certificate
    authority's cloud HSM, so no new certificate comes as a `.pfx`. Microsoft's
@@ -3551,15 +3696,35 @@ which becomes part 8 below. Each part is its own PR:
 Hikvision goes first because its secret address is the safer first step;
 parts 5 and 6 share the screen, so whichever comes second adds its protocol
 to it. Parts 4 to 7 are built now, switched off, though no terminal on hand
-can try them (round 9, decision 13). The trial (§17.8) of each way follows
-when a terminal that uses it is on hand, and the switch stays off for every
-company until it passes. Through the office agent, a Hikvision
+can try them (round 9, decision 13). Each way is first tried when a
+customer's terminal uses it, set up by the owner with them (§17.8); until
+then the switch stays off for every company. Through the office agent, a Hikvision
 terminal has no switch, as a ZKTeco one has none: the office's own
 agent reads it, once `probe` has shown it answers (#303). Part 7
 changes nothing in how the agent reads
 ZKTeco's terminals, so a new agent with it still reads the Convoy as
 before. Part 8 changes nothing in it either: a terminal the agent reads
 is read as before, and the agent listens only for one named as pushing.
+
+**Next:** the fix the rehearsal found (§17.13): the agent's card says its
+scans are waiting to send for a minute after they've arrived. Nizmo's
+punches route lowers the waiting count by what each batch settles; no new
+agent release.
+
+**Later** (round 11, decision 4), in no order, each its own PR when it's
+picked:
+
+- **The agent keeps a pushing terminal's first requests,** as Nizmo keeps
+  a terminal's straight to Nizmo (§17.8), in the agent's own folder, to
+  compare with §17.12 when one is first set up.
+- **Reopening first contacts:** a Super Admin action that keeps a
+  terminal's first requests for 7 more days, for one whose formats need
+  another look (§17.8).
+- **An alert for a terminal straight to Nizmo gone silent,** with a
+  threshold to start from until a real terminal shows how often it calls
+  (§17.7, §18, 4).
+- **Planning what comes next** in a plan PR, from what the first setup
+  shows, before any of it is built.
 
 **The first customer's terminal comes before all of it.** It is a Convoy, an
 Egyptian brand that sells other makers' terminals under its own name. Its
@@ -3578,11 +3743,12 @@ screens, photographed by the owner on 14 November 2026, settle what it is:
   tried on it.
 
 So it connects through the agent, built in Phase 2 and never yet tried on a
-real terminal: that trial comes first (`nizmo-agent.exe probe`, then a week
-of scans), ahead of the parts above but parts 2 and 3. Part 2 comes before
+real terminal: that setup comes first (`nizmo-agent.exe probe`, then its
+first days of scans watched, §17.13), ahead of the parts above but parts 2
+and 3. Part 2 comes before
 the terminal is set up, so that only those meant to see the setup do; part
-3 puts Convoy on its card. Two things to settle with the office before the
-trial week:
+3 puts Convoy on its card. Two things to settle with the office at the
+setup:
 
 - **One reader at a time.** Attendance Management and the agent both read
   the terminal on port 4370, and a ZKTeco terminal often takes one
@@ -3590,13 +3756,15 @@ trial week:
   read waits for its next round.
 - **Records cleared after reading.** If Attendance Management is set to
   delete the terminal's records once it has downloaded them, scans it
-  reads first never reach the agent. That option is off for the trial.
+  reads first never reach the agent. That option is turned off at the
+  setup.
 
 Until the agent runs, the office's scans can come in through the import
 (Phase 0), from the file Attendance Management exports, or the template
-(§13.9). The trial checks that the import reads that file's columns.
+(§13.9). The setup checks that the import reads that file's columns.
 
-It is also the first trial terminal (§17.8; the owner, 13 November 2026).
+It is also the first terminal set up at a customer (§17.8; the owner, 13
+November 2026).
 With no push, it stays on the agent and tries the agent alone. Parts 4 to 7
 are built all the same, switched off, and tried when a terminal that pushes,
 or a Hikvision, is on hand (round 9, decision 13).
