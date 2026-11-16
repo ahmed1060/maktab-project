@@ -9,8 +9,8 @@ import { ELSEWHERE_NOTED_EVERY_MS } from "./attendance/zkteco-handler"
  * The addresses a ZKTeco terminal calls, as they are wired
  * (ATTENDANCE_PLAN.md §17.3, Phase 4 part 6, PR 296): outside the proxy,
  * read by Vercel's own word for where a request came from, and answering
- * nobody until a ZKTeco terminal can be added straight to Nizmo. What they
- * do with a request is in lib/terminal-adms.db.test.ts, against a real
+ * a ZKTeco terminal added straight to Nizmo from its office's address
+ * (PR 297). What they do with a request is in lib/terminal-adms.db.test.ts, against a real
  * Postgres, and how a request is read in
  * lib/attendance/zkteco-adms.test.ts.
  */
@@ -105,10 +105,11 @@ describe("whose request it is", () => {
     })
 })
 
-describe("until a ZKTeco terminal can be added straight to Nizmo", () => {
-    it("the addresses answer nobody: Add a terminal offers ZKTeco the agent alone", () => {
-        expect(CONNECTIONS_BUILT.ZKTECO).toEqual(["AGENT"])
-        expect(mayConnect("ZKTECO", "DIRECT", true)).toBe(false)
+describe("once a ZKTeco terminal can be added straight to Nizmo (PR 297)", () => {
+    it("the addresses answer one added that way, where the Super Admin has turned it on for its company", () => {
+        expect(CONNECTIONS_BUILT.ZKTECO).toEqual(["AGENT", "DIRECT"])
+        expect(mayConnect("ZKTECO", "DIRECT", true)).toBe(true)
+        expect(mayConnect("ZKTECO", "DIRECT", false)).toBe(false)
     })
 
     it("no migration comes with them: the columns came with part 4, and the index that finds a terminal with the agent", () => {

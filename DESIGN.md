@@ -912,6 +912,15 @@ These are built once, in the building-blocks PR, and every page uses them
     - A line says which value is secret and won't be shown again, and how
       a new one is issued.
     - Done closes it, and then the secret is gone.
+    - With nothing secret in it, such as what to set on a ZKTeco
+      terminal, it's shown the same way after the device is added, with
+      no line about being shown once, and its menu opens it again at any
+      time, as What to set on it.
+    - Where Nizmo lets the device in from its office's internet address
+      alone, that address is asked for when it's added: a field taking one
+      address or range per line, as a check-in location's office IPs do,
+      left to right in either language. The device's row says it, and its
+      menu changes it, asking for the step-up code as adding it did.
   - What a device sent, kept to be read, such as a fingerprint terminal's
     first requests (`ATTENDANCE_PLAN.md` §17.8), is a list in the order
     they came, up to 640px wide. It changes nothing: Close is its only
@@ -2304,3 +2313,9 @@ changed:
   (§5.5, Rows) can now open onto something other than lines of amounts.
   First for a fingerprint terminal's first requests, for the Super Admin
   (`ATTENDANCE_PLAN.md` §17.8).
+- **2026-11-16:** What to set on a device with nothing secret in it
+  (§5.5, Dialog) is shown after it's added and again from its menu, and a
+  device let in from its office's internet address alone asks for that
+  address, says it on its row, and changes it from its menu. First for a
+  ZKTeco terminal that sends its scans straight to Nizmo
+  (`ATTENDANCE_PLAN.md` §17.3, §17.7).

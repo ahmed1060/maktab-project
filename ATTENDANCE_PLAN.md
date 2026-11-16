@@ -17,8 +17,9 @@ a scan keeps of its event, in #293, the fourth, first contacts kept for
 the Super Admin, in #294, and the fifth, the straight-to-Nizmo switch on
 the company's Attendance tab, in #295: part 5 is built, switched off for
 every company; part 6, ZKTeco straight to Nizmo, is split in four PRs,
-the first, the addresses a terminal calls, built in #296. Part 7 is not
-built.
+the first, the addresses a terminal calls, built in #296, and the
+second, Add a terminal for ZKTeco straight to Nizmo with the office's
+address, in #297. Part 7 is not built.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
@@ -2473,6 +2474,49 @@ second PR, §20). What the build settled:
   The Super Admin's terminals list showing each terminal's connection
   came with first contacts, in #294 (§17.8).
 
+**Built in #297: Add a terminal for ZKTeco straight to Nizmo** (part 6's
+second PR, §20). What the build settled:
+
+- **A ZKTeco terminal connects either way now:** through the office
+  agent, or straight to Nizmo where the Super Admin has turned that on
+  for the company (§17.8). The switch is off for every company, so
+  nobody can add one yet; the first added this way is the first the
+  addresses built in #296 answer (§17.3).
+- **The office's internet address is asked for, and required,** when a
+  ZKTeco terminal is added straight to Nizmo: one address or range per
+  line, as a check-in location's office IPs (§9.4), up to 20. Nizmo lets
+  the terminal in from these alone (§17.3). The server refuses one with
+  none, an entry that isn't an address or a range, and an address for
+  any other terminal: a Hikvision terminal has its secret address
+  instead, and one through the agent is read at the office.
+- **Adding it asks for the step-up code** (§17.10), as a Hikvision
+  terminal's does: from the office's address, scans are let in for any
+  employee number. Nothing is issued and nothing is secret.
+- **What to set on the terminal** is shown once it's added, and its
+  menu shows it again at any time, as What to set on it, since nothing
+  in it is secret (`DESIGN.md` §5.5, Dialog). Each setting is under the
+  name ZKTeco's Cloud Server Setting gives it: Server address, this
+  Nizmo's own as the page was opened on (§18, 6), with Copy; Server port,
+  443; Enable domain name, on; HTTPS, on. The brand's notes, the Super
+  Admin's (§17.9), are above them. The names differ by model and
+  firmware; the trial checks them (§17.8).
+- **Its row** says the office's address, each one left to right and
+  never translated, beside where it last called from.
+- **A call from elsewhere,** noted on the terminal (#296), is said in
+  words on its row as the latest refused: the address it came from, which
+  isn't the office's.
+- **Change office address,** in the menu of a ZKTeco terminal straight
+  to Nizmo that isn't retired, takes the same field, filled with the
+  addresses kept, and asks for the step-up code. The audit log has the
+  addresses before and after. It works whether the company's switch is
+  on or off: it only narrows or moves where the terminal is let in from.
+- **The setup guide** (#282), for a ZKTeco model where straight to Nizmo
+  is on, says above its steps that the model can be added straight to
+  Nizmo too, with Add a terminal.
+- **Not in this PR:** Change connection (part 6's third, §20), and first
+  contacts kept for a ZKTeco terminal (its fourth): until then its menu
+  has no Read first contacts.
+
 ### 17.8 Proving it on real terminals
 
 None of this can be tried without the terminals, and the build has none. So:
@@ -2982,7 +3026,7 @@ which becomes part 8 below. Each part is its own PR:
       heartbeat (§17.3). Built in #296.
    2. Add a terminal for ZKTeco straight to Nizmo, with the office's
       internet address, what to set on the terminal, its card, and the
-      office's address changed later (§17.7).
+      office's address changed later (§17.7). Built in #297.
    3. Change connection (§17.7).
    4. First contacts kept for a ZKTeco terminal (§17.8): what is kept of
       what it sends, with names never opened.

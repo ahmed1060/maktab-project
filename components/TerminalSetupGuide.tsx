@@ -102,7 +102,9 @@ export function SetupGuideSteps({ brand, superAdmin, directAllowed = false, serv
         )
     }
     // role="list": Safari stops reading a list as one once its markers are gone.
-    return (
+    return (<>
+        {/* A model the agent reads that can be added straight to Nizmo too, where that's on (PR 297). */}
+        {mayConnect(brand.protocol, 'DIRECT', directAllowed) && <p className="ui-card-note">{t('att_guide_direct_too')}</p>}
         <ol className="ui-guide-steps" role="list">
             {steps.map((step, i) => (
                 <li key={step.key} className="ui-guide-step">
@@ -115,7 +117,7 @@ export function SetupGuideSteps({ brand, superAdmin, directAllowed = false, serv
                 </li>
             ))}
         </ol>
-    )
+    </>)
 }
 
 /**

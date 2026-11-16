@@ -77,7 +77,8 @@ describe("Add a terminal", () => {
         expect(DIALOGS).toContain("NOT_BUILT = { AGENT: 'att_term_connection_agent_not_built', DIRECT: 'att_term_connection_direct_not_built' }")
         // With one way only, it is picked without asking; what the way means is said under the choice.
         expect(DIALOGS).toContain("built.length === 1 ? built[0] : ''")
-        expect(DIALOGS).toContain("{connection && <p className=\"ui-hint\">{t(`att_term_connection_${connection}_hint`)}</p>}")
+        // A ZKTeco terminal straight to Nizmo has a hint of its own: it is let in from the office's address (PR 297).
+        expect(DIALOGS).toContain("{connection && <p className=\"ui-hint\">{t(officeAsked ? 'att_term_connection_DIRECT_ZKTECO_hint' : `att_term_connection_${connection}_hint`)}</p>}")
     })
 
     it("keeps Add where it is, greyed, with why beside it, where the brand can't be connected (DESIGN.md §5.2)", () => {
@@ -91,7 +92,7 @@ describe("Add a terminal", () => {
     it("says what's missing under its field, and sends nothing until it's there", () => {
         for (const key of ["att_term_device_name_required", "att_term_brand_required", "att_term_serial_required"]) expect(DIALOGS, key).toContain(`t('${key}')`)
         expect(DIALOGS).toContain("focusFirstWrong(formRef.current); return")
-        expect(DIALOGS).toContain("await onSubmit({ name: name.trim(), serialNumber: serialNumber.trim(), brandId: brand.id, mode, connection })")
+        expect(DIALOGS).toContain("await onSubmit({ name: name.trim(), serialNumber: serialNumber.trim(), brandId: brand.id, mode, connection, ...(officeAsked && { officeAddresses: addressLines(office) }) })")
     })
 })
 
@@ -214,7 +215,8 @@ describe("on Fingerprint terminals", () => {
         expect(PANEL).toContain("refusedLine(d),")
         expect(PANEL).toContain("const words = d.lastRefusal ? refusalWords(d.lastRefusal) : null")
         // A reason with no words yet is shown as it was kept, never dropped.
-        expect(PANEL).toContain("words ? t(words.key).replace('{type}', words.type ?? '') : (d.lastRefusal ?? '')")
+        expect(PANEL).toContain("let reason: ReactNode = d.lastRefusal ?? ''")
+        expect(PANEL).toContain("else if (words) reason = t(words.key).replace('{type}', words.type ?? '')")
         expect(PANEL).toContain("if (!(d.refusedCount > 0)) return null")
         // What an agent last said of it isn't shown for one that calls Nizmo itself.
         expect(PANEL).toContain("d.connection === 'AGENT' && !d.reachable && d.lastError,")
@@ -231,8 +233,10 @@ describe("on Fingerprint terminals", () => {
         // Off, as for every company today, it still can't be read.
         expect(steps("en", { directAllowed: false })).toBe(`<p class="ui-card-note">${esc(en.att_guide_not_read)}</p>`)
         expect(steps("en", {})).toBe(`<p class="ui-card-note">${esc(en.att_guide_not_read)}</p>`)
-        // A model the agent reads keeps its steps either way.
-        for (const directAllowed of [true, false]) expect(steps("en", { brand: ZK, directAllowed })).toMatch(/^<ol class="ui-guide-steps"/)
+        // A model the agent reads keeps its steps either way; where it may be added straight to Nizmo too, a line above them says so (PR 297).
+        expect(steps("en", { brand: ZK, directAllowed: false })).toMatch(/^<ol class="ui-guide-steps"/)
+        expect(steps("en", { brand: ZK, directAllowed: true }).startsWith(`<p class="ui-card-note">${esc(en.att_guide_direct_too)}</p><ol class="ui-guide-steps"`)).toBe(true)
+        expect(steps("ar", { brand: ZK, directAllowed: true }).startsWith(`<p class="ui-card-note">${esc(ar.att_guide_direct_too)}</p><ol class="ui-guide-steps"`)).toBe(true)
         expect(PANEL).toContain("directAllowed={directAllowed} server={window.location.origin}")
     })
 })

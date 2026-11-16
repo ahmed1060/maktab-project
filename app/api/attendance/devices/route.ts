@@ -6,6 +6,7 @@ import { TerminalBrandService } from "@/lib/services/terminal-brand.service"
 import { attendanceCompanyFor } from "@/lib/attendance/settings-access"
 import { denyTerminals } from "@/lib/attendance/terminals-access"
 import { assertStepUp } from "@/lib/step-up"
+import { MAX_IP_RANGES } from "@/lib/attendance/ip-ranges"
 
 /**
  * The company's fingerprint terminals, as its agents report them or as they
@@ -33,13 +34,16 @@ const schema = z.object({
     brandId: z.string().min(1).max(64),
     mode: z.enum(["ANY", "ENTRANCE", "EXIT"]).optional(),
     connection: z.enum(["AGENT", "DIRECT"]),
+    // The office's internet addresses, for a ZKTeco terminal straight to Nizmo alone (§17.3, PR 297).
+    officeAddresses: z.array(z.string().max(64)).max(MAX_IP_RANGES).optional(),
 })
 
 /**
- * A terminal added by hand (§17.7, PR 292). Set straight to Nizmo, its
- * address is issued and returned once: it lets scans in for any employee
- * number, so it asks for the step-up code (§17.10). Through the agent
- * nothing is issued, and it isn't asked for.
+ * A terminal added by hand (§17.7, PR 292). Set straight to Nizmo, a
+ * Hikvision terminal's address is issued and returned once, and a ZKTeco
+ * terminal is let in from its office's internet address (PR 297): either
+ * lets scans in for any employee number, so it asks for the step-up code
+ * (§17.10). Through the agent nothing is issued, and it isn't asked for.
  */
 export const POST = withStandardHandler(async (_req, session, json) => {
     const validation = schema.safeParse(json)

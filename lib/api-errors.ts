@@ -233,6 +233,11 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     DEVICE_DIRECT_NOT_ALLOWED: { status: 409, message: "Terminals that send their scans straight to Nizmo aren't turned on for this company. A Super Admin turns them on." },
     DEVICE_CONNECTION_NOT_BUILT: { status: 409, message: "Nizmo can't connect this brand's terminals that way yet." },
     DEVICE_NO_ADDRESS: { status: 409, message: "Only a terminal that sends its scans straight to Nizmo has an address to issue." },
+    // A ZKTeco terminal straight to Nizmo, let in from its office's internet address (§17.3, PR 297).
+    DEVICE_OFFICE_ADDRESS_REQUIRED: { status: 400, message: "Give the office's internet address: the terminal is let in from there alone." },
+    DEVICE_INVALID_OFFICE_ADDRESS: { status: 400, message: "Each office address must be an address, such as 203.0.113.7, or a range, such as 203.0.113.0/28." },
+    DEVICE_TOO_MANY_OFFICE_ADDRESSES: { status: 400, message: "A terminal can be let in from 20 office addresses at most." },
+    DEVICE_NO_OFFICE_ADDRESS: { status: 409, message: "Only a ZKTeco terminal that sends its scans straight to Nizmo is let in from its office's address." },
     PHONE_KEY_INVALID: { status: 400, message: "The phone's key isn't one we can use. Update the app and try again." },
     PHONE_SIGNATURE_INVALID: { status: 400, message: "The phone's signature didn't check out. Try again." },
     PHONE_CHALLENGE_INVALID: { status: 400, message: "That request has expired or was already used. Try again." },

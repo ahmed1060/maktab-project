@@ -3,7 +3,7 @@
 import { Fragment, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
-import { ArrowsClockwiseIcon, KeyIcon, ListMagnifyingGlassIcon, PencilSimpleIcon, PlusIcon, ProhibitIcon, ArrowCounterClockwiseIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { ArrowsClockwiseIcon, GlobeSimpleIcon, KeyIcon, ListMagnifyingGlassIcon, PencilSimpleIcon, PlusIcon, ProhibitIcon, ArrowCounterClockwiseIcon, WarningCircleIcon, WrenchIcon } from '@phosphor-icons/react/ssr'
 import { fetcher, type SWRError } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
@@ -13,9 +13,9 @@ import type { TranslationKey } from '@/lib/translations'
 import { Button, Card, Dialog, DialogActions, EmptyState, Field, GuideButton, Row, RowMenu, Select, StatusBadge, TextInput, type MenuItem, type StatusTone } from '@/components/ui'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import TerminalSetupGuide, { type GuideBrand } from '@/components/TerminalSetupGuide'
-import { TerminalAddDialog, TerminalAddressDialog } from '@/components/TerminalAddDialog'
+import { OfficeAddressDialog, TerminalAddDialog, TerminalAddressDialog, TerminalSettingsDialog } from '@/components/TerminalAddDialog'
 import { TerminalContactsDialog } from '@/components/TerminalContactsDialog'
-import { hasAddress, refusalWords } from '@/lib/attendance/terminal-connections'
+import { hasAddress, hasOfficeAddress, refusalWords } from '@/lib/attendance/terminal-connections'
 import { utcOffsetLabel } from '@/lib/attendance/terminal-health'
 
 /**
@@ -43,6 +43,10 @@ import { utcOffsetLabel } from '@/lib/attendance/terminal-health'
  * to Nizmo, where what to set on it is shown once. One straight to Nizmo
  * says so on its row, with where it calls from and what was refused, and
  * its menu issues a new address.
+ *
+ * A ZKTeco terminal straight to Nizmo (PR 297) is let in from its office's
+ * internet address, which its row says and its menu changes; what to set
+ * on it holds no secret, so its menu shows it again at any time.
  */
 
 type Agent = {
@@ -59,6 +63,8 @@ type Device = {
     connection: 'AGENT' | 'DIRECT'; lastAddress: string | null; refusedCount: number; lastRefusedAt: string | null; lastRefusal: string | null
     // Its own offset from UTC, as its last scan stated it (§17.5, PR 293).
     utcOffsetMinutes: number | null
+    // The office's internet addresses a ZKTeco terminal straight to Nizmo is let in from (§17.3, PR 297).
+    allowedAddresses?: string[]
     lastSeenAt: string | null; lastPunchAt: string | null; reachable: boolean; lastError: string | null
     clockDriftSeconds: number | null; recordCount: number | null; recordCapacity: number | null; retiredAt: string | null
     health: { state: 'RETIRED' | 'WAITING' | 'OK' | 'UNREACHABLE' | 'SILENT' | 'QUIET'; memoryFull: boolean; clockOff: boolean; zoneOff?: boolean }
@@ -66,6 +72,8 @@ type Device = {
 type Shown = { name: string; code: string; expiresAt: string | null }
 /** A terminal's address to set on it, with its secret: held only while its dialog is open. */
 type ShownAddress = { name: string; path: string; brandId: string | null }
+/** A ZKTeco terminal's settings to show: nothing secret in them (PR 297). */
+type ShownSettings = { name: string; brandId: string | null }
 /** A brand one may give a terminal: the Super Admin's, not retired, with their notes for the setup guide (PR 282). */
 type OfferedBrand = GuideBrand
 
@@ -88,6 +96,9 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
     const [addingDevice, setAddingDevice] = useState(false)
     const [shownCode, setShownCode] = useState<Shown | null>(null)
     const [shownAddress, setShownAddress] = useState<ShownAddress | null>(null)
+    const [shownSettings, setShownSettings] = useState<ShownSettings | null>(null)
+    /** The ZKTeco terminal whose office's address is being changed (PR 297). */
+    const [officeOf, setOfficeOf] = useState<Device | null>(null)
     const [reissuing, setReissuing] = useState<Device | null>(null)
     /** The terminal whose first contacts the Super Admin is reading (§17.8, PR 294). */
     const [contactsOf, setContactsOf] = useState<Device | null>(null)
@@ -157,18 +168,39 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
         const [before, after] = t('att_term_calls_from').split('{address}')
         return <>{before}<bdi dir="ltr" translate="no">{d.lastAddress}</bdi>{after}</>
     }
-    /** What was refused of a terminal's own scans: how many, when last, and why, in words where there are some (§17.5). */
+    /**
+     * Where a ZKTeco terminal straight to Nizmo is let in from: its office's
+     * addresses, each left to right and never translated, joined by the
+     * language's own "and", since the facts around them are joined by commas
+     * (web audit, PR 297).
+     */
+    const officeLine = (d: Device): ReactNode => {
+        if (!hasOfficeAddress(d) || !d.allowedAddresses?.length) return null
+        const [before, after] = t('att_term_office_line').split('{addresses}')
+        const parts = new Intl.ListFormat(intl, { type: 'conjunction' }).formatToParts(d.allowedAddresses)
+        return <>{before}{parts.map((p, i) => p.type === 'element' ? <bdi key={i} dir="ltr" translate="no">{p.value}</bdi> : <Fragment key={i}>{p.value}</Fragment>)}{after}</>
+    }
+    /**
+     * What was refused of a terminal's own scans: how many, when last, and
+     * why, in words where there are some (§17.5). A call from an address
+     * that isn't the office's names it, left to right (PR 297).
+     */
     const refusedLine = (d: Device): ReactNode => {
         // None, or a list from before the count was sent: nothing to say.
         if (!(d.refusedCount > 0)) return null
         const words = d.lastRefusal ? refusalWords(d.lastRefusal) : null
-        const reason = words ? t(words.key).replace('{type}', words.type ?? '') : (d.lastRefusal ?? '')
-        return t('att_term_refused_line').replace('{n}', number(d.refusedCount)).replace('{when}', ago(d.lastRefusedAt)).replace('{reason}', reason)
+        let reason: ReactNode = d.lastRefusal ?? ''
+        if (words?.address !== undefined) {
+            const [before, after] = t(words.key).split('{address}')
+            reason = <>{before}<bdi dir="ltr" translate="no">{words.address}</bdi>{after}</>
+        } else if (words) reason = t(words.key).replace('{type}', words.type ?? '')
+        const [head, tail] = t('att_term_refused_line').replace('{n}', number(d.refusedCount)).replace('{when}', ago(d.lastRefusedAt)).split('{reason}')
+        return <>{head}{reason}{tail}</>
     }
     const drift = (s: number | null) => s === null ? '' : Math.abs(s) < 60 ? t('att_term_drift_s').replace('{n}', number(Math.abs(s))) : t('att_term_drift_m').replace('{n}', number(Math.round(Math.abs(s) / 60)))
 
     /** Sends one change, then reloads; the server's refusal is shown as it said it. */
-    const send = async (url: string, init: RequestInit, done: TranslationKey, then?: (body: { agent?: Agent & { codeExpiresAt: string | null }; code?: string; device?: { name: string; brand: { id: string } | null }; path?: string | null } | undefined) => void) => {
+    const send = async (url: string, init: RequestInit, done: TranslationKey, then?: (body: { agent?: Agent & { codeExpiresAt: string | null }; code?: string; device?: Pick<Device, 'name' | 'protocol' | 'connection'> & { brand: { id: string } | null }; path?: string | null } | undefined) => void) => {
         if (inFlight.current) return false
         inFlight.current = true
         setBusy(true)
@@ -213,12 +245,22 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
             { key: 'edit', label: t('edit'), icon: PencilSimpleIcon, onSelect: () => setEditing(d) },
             // A Hikvision terminal straight to Nizmo has an address of its own (§17.2, PR 292).
             ...(hasAddress(d) ? [{ key: 'address', label: t('att_term_new_address'), icon: KeyIcon, onSelect: () => setReissuing(d) }] : []),
+            // A ZKTeco terminal straight to Nizmo: what to set on it, again, and where it's let in from (PR 297).
+            ...(hasOfficeAddress(d) ? [
+                { key: 'settings', label: t('att_term_settings'), icon: WrenchIcon, onSelect: () => setShownSettings({ name: d.name, brandId: d.brand?.id ?? null }) },
+                { key: 'office', label: t('att_term_change_office'), icon: GlobeSimpleIcon, onSelect: () => setOfficeOf(d) },
+            ] : []),
             ...contactsItem(d),
             { key: 'retire', label: t('att_term_retire'), icon: ProhibitIcon, danger: true, onSelect: () => setRetiring(d) },
         ]
-    /** The address just issued, to show once: the path with its secret is kept nowhere else. */
-    const showAddress = (d: { device?: { name: string; brand: { id: string } | null }; path?: string | null } | undefined) => {
+    /**
+     * The address just issued, to show once: the path with its secret is kept
+     * nowhere else. A ZKTeco terminal just added straight to Nizmo has none:
+     * what to set on it is shown instead (PR 297).
+     */
+    const showAddress = (d: { device?: Pick<Device, 'name' | 'protocol' | 'connection'> & { brand: { id: string } | null }; path?: string | null } | undefined) => {
         if (d?.device && d.path) setShownAddress({ name: d.device.name, path: d.path, brandId: d.device.brand?.id ?? null })
+        else if (d?.device && hasOfficeAddress(d.device)) setShownSettings({ name: d.device.name, brandId: d.device.brand?.id ?? null })
     }
 
     return (
@@ -288,6 +330,7 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
                                         : t('att_term_last_seen').replace('{when}', ago(d.lastSeenAt)),
                                     d.lastPunchAt && t('att_term_last_punch').replace('{when}', ago(d.lastPunchAt)),
                                     callsFrom(d),
+                                    officeLine(d),
                                     refusedLine(d),
                                     d.connection === 'AGENT' && !d.reachable && d.lastError,
                                 ])}
@@ -321,6 +364,16 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
             {shownAddress && (
                 <TerminalAddressDialog name={shownAddress.name} path={shownAddress.path} host={window.location.host}
                     brand={brands.find(b => b.id === shownAddress.brandId) ?? null} onClose={() => setShownAddress(null)} />
+            )}
+            {/* What to set on a ZKTeco terminal: this Nizmo's own address, too (§18, 6). */}
+            {shownSettings && (
+                <TerminalSettingsDialog name={shownSettings.name} host={window.location.host}
+                    brand={brands.find(b => b.id === shownSettings.brandId) ?? null} onClose={() => setShownSettings(null)} />
+            )}
+            {officeOf && (
+                <OfficeAddressDialog name={officeOf.name} addresses={officeOf.allowedAddresses ?? []} busy={busy} onClose={() => setOfficeOf(null)} onSubmit={async addresses => {
+                    await send(`/api/attendance/devices/${officeOf.id}/office-address`, { method: 'PUT', body: JSON.stringify({ addresses }) }, 'att_term_office_saved', () => setOfficeOf(null))
+                }} />
             )}
             {contactsOf && <TerminalContactsDialog deviceId={contactsOf.id} name={contactsOf.name} onClose={() => setContactsOf(null)} />}
             {/* The agent sends to this Nizmo, so its settings name the address it's opened on. */}
