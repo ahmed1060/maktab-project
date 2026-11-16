@@ -2170,6 +2170,14 @@ until then. What the build settled:
   was identified and its work code (`rawPayload`, §17.5), and is answered
   `OK: <lines>`. The request's `Stamp` is then kept as where the terminal
   had got to.
+- **Each log's stamp is moved on by its own upload alone.** The two
+  stamps are kept together on the terminal, so an upload writes its own
+  log's and leaves the other's as the terminal's record holds it at that
+  moment, with the record held while it is written. Were each to write
+  both from what it read when it arrived, an attendance upload and a
+  people's-log upload at once would undo one another's, and the terminal
+  would be told to send again what was already answered (review on
+  #296).
 - **Counted on the terminal as refused, with the reason** (§17.5): a line
   that can't be read (`UNREADABLE`), an employee number longer than 32
   characters (`INVALID_NUMBER`), and what any terminal's own scan is

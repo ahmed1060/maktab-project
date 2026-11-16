@@ -6443,3 +6443,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   is off. The screens come with the next PRs: Add a terminal for ZKTeco
   with the office's address and its card, then Change connection, then
   its first contacts for the Super Admin.
+- **2026-11-16:** From #296's review (`ATTENDANCE_PLAN.md` §17.3): a
+  ZKTeco terminal's attendance log and its log of changes to people each
+  keep their own place when uploads of both arrive at once. No screen
+  changes.
