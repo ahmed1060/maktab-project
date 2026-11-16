@@ -758,7 +758,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      the office's address on its row and changed from its menu, merged
      in #297 on 2026-11-16; then its third, Change connection, in a
      terminal's menu, moving it between the office agent and straight to
-     Nizmo, #298;
+     Nizmo, merged in #298 on 2026-11-16; then its fourth, first contacts
+     kept for a ZKTeco terminal, for the Super Admin, #299;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6477,3 +6478,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   an agent's heartbeat at the moment a terminal moves straight to Nizmo no
   longer writes over the move, so the terminal still waits for its first
   contact. No screen changes.
+- **2026-11-16:** First contacts kept for a ZKTeco terminal (#299;
+  `ATTENDANCE_PLAN.md` §17.8, Phase 4 part 6, the last of its four PRs;
+  `DESIGN.md` §5.5, Dialog). On Fingerprint terminals, the Super Admin's
+  First contacts is in the menu of a ZKTeco terminal straight to Nizmo
+  too. Its line above the list says only scans are opened and the
+  terminal's address on the office network is taken out. A request is
+  said as answered with its options, or as not opened.
