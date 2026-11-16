@@ -168,7 +168,7 @@ All thirteen are the owner's: 1, 2 and 9 to 12 on 12 November 2026, 3 to
 |---|---|---|
 | 1 | How a terminal connects | **Two options, chosen for each terminal: through the office agent, or straight to Nizmo over HTTPS** (§17.1). For terminals that push over HTTPS, this replaces round 1's "direct device push is last". |
 | 2 | Protocols | **ZKTeco's and Hikvision's, both ways** (§17.2–§17.4), whatever brand is printed on the terminal (§17.9). |
-| 3 | plain HTTP | **Never over the internet.** A terminal that pushes only plain HTTP connects through the agent (§17.1; Phase 4, part 8). |
+| 3 | plain HTTP | **Never over the internet.** A terminal that pushes only plain HTTP connects through the agent, which listens for it on the office network (§17.1, §17.12; Phase 4, part 8). |
 | 4 | a Hikvision terminal's credential | **A secret in the address it sends to**, shown once, kept hashed, replaced on demand (§17.2). |
 | 5 | a ZKTeco terminal's credential | **Its serial number, accepted only from the office's fixed internet address.** An office without one connects its ZKTeco terminals through the agent (§17.3). |
 | 6 | one terminal, one count | **A terminal is one record whichever way it connects, and uses one way at a time; a scan is counted once across both** (§17.6). |
@@ -1959,7 +1959,8 @@ when the terminal is added, and can change it later:
 Whichever way a terminal connects:
 
 - **HTTPS only over the internet.** A terminal that pushes only plain HTTP
-  connects through the agent (§20, Phase 4, part 8), never straight. Vercel
+  connects through the agent, which listens for it on the office network
+  (§17.12; §20, Phase 4, part 8), never straight. Vercel
   redirects plain HTTP, and terminals don't follow redirects, so this is also
   simply what works.
 - **Nizmo never reaches into the office.** A terminal straight to Nizmo
@@ -3143,6 +3144,101 @@ word.
   terminal's first call with, the lines of an attendance upload and its
   `Stamp`, `getrequest` and its `INFO`, and `devicecmd`.
 
+### 17.12 Through the agent, pushed: terminals that send only plain HTTP
+
+Phase 4, part 8 (§20). Planned for when a customer needs it, and started on
+the owner's word on 16 November 2026, ahead of one, as parts 4 to 7 were
+built ahead of a terminal to try them on (round 9, decision 13).
+
+**Which terminals.** A ZKTeco terminal that pushes with ADMS (its Cloud
+Server Setting, §17.3), but only over plain HTTP, and that can't be read on
+port 4370: firmware made for pushing can leave out the protocol the agent
+reads with. Such a terminal has no way in so far: Nizmo takes only HTTPS
+over the internet (§17.1), and the agent can't read it. Hikvision isn't
+among them: a terminal that pushes ISAPI events answers ISAPI too, so the
+agent reads it (§17.4), with or without HTTPS. A Hikvision model that
+pushes and can't be read is added when one is seen.
+
+**How.**
+
+- The terminal's Cloud Server Setting names the agent's PC: its address on
+  the office network and the agent's port, HTTPS off. It calls the same
+  `/iclock/` paths it would call on Nizmo (§17.3).
+- The agent answers as Nizmo does: its options, with where it had got to;
+  `OK` to its scans once they are in the queue; `OK` to its polls, with no
+  command, ever (§19). What it reads of them is Nizmo's own reading
+  (`lib/attendance/zkteco-adms.ts`), copied into the agent, which imports
+  nothing from Nizmo, and held in step by a test, as Hikvision's passed
+  checks are (§17.4).
+- Its scans join the same queue on disk as scans read, and leave it as
+  those do. Nizmo receives `AGENT` punches: a scan is the same punch
+  whichever way it came (§17.6).
+- Where the terminal had got to (its stamps, as Nizmo keeps them in
+  `pushCursor`) moves only in the write that puts its scans in the queue,
+  so they are queued and passed, or neither, as for a terminal read (#302).
+  Until then it hears something other than 200, keeps them, and sends them
+  again.
+- `agent.json` names it by its address on the office network,
+  `{ "host": "192.168.1.40", "push": true }`. A request is the
+  terminal's only when it comes from that address. Its serial number is
+  learned from its first request, as a read terminal's is from its first
+  read; a different one from that address later is another terminal, whose
+  stamps start again from 0, so it sends its whole memory and Nizmo stores
+  each scan once.
+- `"listenPort"` sets the agent's port: 8081 unless set, not 80, which
+  other software on an office PC often holds. The agent listens only while
+  `agent.json` names a terminal that pushes. Windows Firewall lets the port
+  in from the office network alone, and only from the terminals' addresses
+  (the agent's README gives the command). No port is opened on the router.
+- Its options carry `TimeZone` as Nizmo's do (§17.3), from the company's
+  time zone the agent was given when it was enrolled.
+
+**What it refuses.**
+
+- A request from an address that isn't named: 403, with nothing in it, as
+  Nizmo answers one from elsewhere (§17.3). The address is logged, once an
+  hour at most.
+- Anything but `GET` or `POST` under `/iclock/`, or a request naming no
+  serial number: 404, its body not read.
+- A body past 16 MB: 413, and logged. A first upload can hold a terminal's
+  whole memory; what a real one sends in one is for the trial to show.
+- A slow request: its headers within 10 seconds, all of it within 60, and
+  at most 32 at once. A stuck connection holds nothing.
+- While Nizmo says the terminal is set straight to Nizmo (`DIRECT`, §17.6):
+  503 to everything, so it keeps its scans. Once its setting names Nizmo,
+  Nizmo's options say where Nizmo had got to, and it sends from there.
+
+**What it reports.** The heartbeat reports a terminal that pushes by its
+serial number, with its firmware, people and records from what its polls
+say (`INFO`, as Nizmo keeps them, §17.3). It is reachable while it was
+heard from in the last 3 minutes: it polls every 30 seconds (`Delay=30`).
+Until its first request, its serial number isn't known, so it isn't
+reported, and `check` says it hasn't called yet.
+
+**Unchanged.** No command is ever sent. Its memory is never cleared:
+`clearWhenFull` stays for ZKTeco terminals the agent reads. Nothing it
+sends leaves the building but its punches, over HTTPS, as for a terminal
+read. From Nizmo's side it is a ZKTeco terminal through the office agent,
+like any other; only the setup guide's steps differ (§17.7).
+
+**Its trial** (§17.8) needs a terminal that pushes only plain HTTP. The
+Convoy can't push at all (§20, Phase 4), so it waits for one, as ZKTeco
+straight to Nizmo does.
+
+**Built in #304: the listener** (part 8's first PR, §20), which nothing in
+the agent starts yet. What the build settled:
+
+- The reading is in `agent/src/zk/adms.ts`. Its test reads Nizmo's own
+  module beside it, so one changed without the other fails.
+- Where the terminal had got to is read when its request comes, and again
+  once its body is in, and what's taken is kept with nothing waiting in
+  between: two requests from one terminal can't move its stamps back.
+- Where the PC listens on IPv6 as well, an address arrives as
+  `::ffff:192.168.1.40`; it's read as the IPv4 address `agent.json` names.
+- A request whose headers haven't all come within 10 seconds is answered
+  408 and closed. Past 32 connections, one more is closed as it comes. A
+  port another program holds is named when the listener starts.
+
 ---
 
 ## 18. Open questions
@@ -3275,7 +3371,7 @@ matching with liveness, fallback to flagged.
 It stays switched off meanwhile, on the face check meant for testing only;
 choosing a commercial SDK (§18, question 1) waits with it.
 
-### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 in #291 to #295, part 6 in #296 to #299, part 7 in #300 to #303
+### Phase 4 — Terminals through the agent or straight to Nizmo — parts 2 and 3 built in #277 to #280 and #282, part 4 in #290, part 5 in #291 to #295, part 6 in #296 to #299, part 7 in #300 to #303, part 8 from #304
 
 Planned in #269, for ZKTeco and Hikvision alike (§17.1–§17.11). It replaces
 the earlier Phase 4, a listener for pushes on the agent and nothing else,
@@ -3362,10 +3458,25 @@ which becomes part 8 below. Each part is its own PR:
       it, once the 0.3.0 package is built; the setup guide says which
       agent version reads Hikvision, and what to do when a terminal's
       certificate changes. Built in #303.
-8. **Only when a customer needs it: the agent listens on the office network**,
-   for terminals that push only plain HTTP. The terminal pushes to the agent's
+8. **The agent listens on the office network** (§17.12), for ZKTeco
+   terminals that push only plain HTTP. The terminal pushes to the agent's
    address on the office network, and the agent sends on over HTTPS, as for
-   scans it reads. Plaintext never leaves the building.
+   scans it reads. Plaintext never leaves the building. Planned for when a
+   customer needs it; started on the owner's word on 16 November 2026. In
+   three PRs, each safe with nothing set up to use it:
+   1. The agent's listener on the office network, which nothing starts
+      yet: what a terminal sends under `/iclock/`, read as Nizmo reads it
+      and held in step by a test; the options answer; the addresses
+      named; the limits. Tried against a simulated terminal, as the
+      agent's other clients are (#304).
+   2. `agent.json` names a terminal that pushes, and the agent's port;
+      the service listens; its scans join the queue, with its stamps moved
+      in the same write; the heartbeat reports it; one set straight to
+      Nizmo is held; the README's firewall step; a new agent release,
+      0.4.0. No screen changes.
+   3. The setup guide's steps for a ZKTeco terminal that pushes to the
+      office agent, with the agent version that listens (§17.7), once
+      the 0.4.0 package is built.
 
 Hikvision goes first because its secret address is the safer first step;
 parts 5 and 6 share the screen, so whichever comes second adds its protocol
@@ -3377,7 +3488,8 @@ terminal has no switch, as a ZKTeco one has none: the office's own
 agent reads it, once `probe` has shown it answers (#303). Part 7
 changes nothing in how the agent reads
 ZKTeco's terminals, so a new agent with it still reads the Convoy as
-before.
+before. Part 8 changes nothing in it either: a terminal the agent reads
+is read as before, and the agent listens only for one named as pushing.
 
 **The first customer's terminal comes before all of it.** It is a Convoy, an
 Egyptian brand that sells other makers' terminals under its own name. Its
