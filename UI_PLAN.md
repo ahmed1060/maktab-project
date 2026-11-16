@@ -774,7 +774,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      ZKTeco terminals that push only plain HTTP, which changes no
      screen, merged in #304 on 2026-11-16; then its second, terminals
      that push named in `agent.json` and the agent listening for them,
-     released as 0.4.0, which changes no screen, #305;
+     released as 0.4.0, which changes no screen, merged in #305 on
+     2026-11-16; then its third and last, the setup guide's steps for a
+     ZKTeco terminal that sends its scans to the office agent, #306;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6542,3 +6544,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   its scans to the agent's PC, the service listens for it, and its
   scans reach Nizmo with the agent's own; the agent is 0.4.0. No
   screen changes: the third PR adds its steps to the setup guide.
+- **2026-11-16:** The setup guide's steps for a terminal that sends its
+  scans to the office agent (#306; `ATTENDANCE_PLAN.md` §17.7, §17.12,
+  Phase 4 part 8, the third and last of its PRs). For a ZKTeco model,
+  the guide asks under the model how its scans reach the agent. For one
+  that sends them, its steps are the agent 0.4.0 or later, `agent.json`
+  naming it with `"push": true`, the firewall rule, and the terminal's
+  Cloud Server Setting, then what to do when it hasn't called.
