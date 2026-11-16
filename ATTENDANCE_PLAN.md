@@ -2755,6 +2755,11 @@ settled:
   the request is taken and answered all the same, and the failure is
   recorded.
 - **No migration:** the table came with #294.
+- **From the review:** a line that can't be read as a scan goes by the
+  rules for unreadable text whatever its shape. One that happened to be
+  JSON or XML was read as JSON or XML, where a long number under a field
+  whose name says nothing, such as a card's under another name, was
+  kept. Now it is taken out there too.
 
 ### 17.9 Terminal brands, a list kept from the screen (round 9)
 

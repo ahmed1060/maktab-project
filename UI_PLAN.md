@@ -6485,3 +6485,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   too. Its line above the list says only scans are opened and the
   terminal's address on the office network is taken out. A request is
   said as answered with its options, or as not opened.
+- **2026-11-16:** From #299's review (`ATTENDANCE_PLAN.md` §17.8): in a
+  ZKTeco terminal's first contacts, a line of its scans that can't be
+  read keeps no number of 6 digits or more, even when it is JSON or XML.
+  No screen changes.
