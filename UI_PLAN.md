@@ -776,7 +776,10 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      that push named in `agent.json` and the agent listening for them,
      released as 0.4.0, which changes no screen, merged in #305 on
      2026-11-16; then its third and last, the setup guide's steps for a
-     ZKTeco terminal that sends its scans to the office agent, #306;
+     ZKTeco terminal that sends its scans to the office agent, merged
+     in #306 on 2026-11-16; then the first customer's setup, rehearsed,
+     with its checklist, what each way costs to run, and four items
+     kept for later, which changes no screen, #307;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6551,3 +6554,12 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   that sends them, its steps are the agent 0.4.0 or later, `agent.json`
   naming it with `"push": true`, the firewall rule, and the terminal's
   Cloud Server Setting, then what to do when it hasn't called.
+- **2026-11-16:** The first customer's setup, planned (#307;
+  `ATTENDANCE_PLAN.md` round 11, §17.8, §17.13, §17.14, Phase 4). What
+  the plan called the trial is now the first customer's setup: the owner
+  sets the company up with the client and fixes what goes wrong as it's
+  found, and the straight-to-Nizmo switch is turned on for a company
+  when its terminal is set up that way. Rehearsed against a simulated
+  Convoy, with a checklist for the visit, one thing to fix found (the
+  agent's waiting count lags a minute), what each way costs on Vercel
+  and Supabase, and four items kept for later. No screen changes.
