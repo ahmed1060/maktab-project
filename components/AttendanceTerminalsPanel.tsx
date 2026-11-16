@@ -15,7 +15,7 @@ import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import TerminalSetupGuide, { type GuideBrand } from '@/components/TerminalSetupGuide'
 import { ConnectionDialog, OfficeAddressDialog, TerminalAddDialog, TerminalAddressDialog, TerminalSettingsDialog } from '@/components/TerminalAddDialog'
 import { TerminalContactsDialog } from '@/components/TerminalContactsDialog'
-import { hasAddress, hasOfficeAddress, keepsFirstContacts, otherConnection, refusalWords } from '@/lib/attendance/terminal-connections'
+import { agentReads, hasAddress, hasOfficeAddress, keepsFirstContacts, otherConnection, refusalWords } from '@/lib/attendance/terminal-connections'
 import { utcOffsetLabel } from '@/lib/attendance/terminal-health'
 
 /**
@@ -385,7 +385,7 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
                 }} />
             )}
             {moving && movingTo && (
-                <ConnectionDialog name={moving.name} to={movingTo} protocol={moving.protocol} officeAsked={hasOfficeAddress({ protocol: moving.protocol, connection: movingTo })} busy={busy} onClose={() => setMoving(null)} onSubmit={async officeAddresses => {
+                <ConnectionDialog name={moving.name} to={movingTo} protocol={moving.protocol} officeAsked={hasOfficeAddress({ protocol: moving.protocol, connection: movingTo })} noAgentReadsIt={movingTo === 'AGENT' && moving.protocol === 'HIKVISION' && !agents.some(a => a.status === 'ACTIVE' && agentReads('HIKVISION', a.agentVersion))} busy={busy} onClose={() => setMoving(null)} onSubmit={async officeAddresses => {
                     await send(`/api/attendance/devices/${moving.id}/connection`, { method: 'PUT', body: JSON.stringify({ connection: movingTo, ...(officeAddresses && { officeAddresses }) }) }, `att_term_moved_${movingTo}`, d => { showAddress(d); setMoving(null) })
                 }} />
             )}

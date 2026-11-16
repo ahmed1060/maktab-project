@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs"
 import { ar } from "./translations/ar"
 import { en } from "./translations/en"
 import { setupGuide, inlineCode, type GuideLine } from "./attendance/setup-guide"
+import { HIKVISION_AGENT_VERSION } from "./attendance/terminal-connections"
 
 /**
  * The setup guide behind the round "i" on Fingerprint terminals
@@ -95,7 +96,7 @@ describe("the steps, by the model's protocol", () => {
         expect(connect.lines.find(l => l.text === "att_guide_brand")).toEqual({ text: "att_guide_brand", brand: true })
     })
 
-    it("walks Hikvision's through the agent in the same five steps, written in PR 301 and shown once the agent reads them", () => {
+    it("walks Hikvision's through the agent in the same five steps, written in PR 301 and shown from PR 303", () => {
         const steps = setupGuide("HIKVISION", { superAdmin: true, server: SERVER })
         expect(steps.map(s => [s.title, s.who])).toEqual(setupGuide("ZKTECO", { superAdmin: true, server: SERVER }).map(s => [s.title, s.who]))
     })
@@ -113,7 +114,7 @@ describe("the steps, by the model's protocol", () => {
 
     it("gives Hikvision's agent.json its protocol, address, the agent's user and password, and probe the user, never the password", () => {
         const steps = setupGuide("HIKVISION", { superAdmin: false, server: SERVER })
-        expect(keysOf(steps[1].lines)).toEqual(["att_guide_download_other", "att_guide_unzip", "att_guide_hik_settings", "att_guide_hik_https", "att_guide_hik_probe", "att_guide_unknown_publisher"])
+        expect(keysOf(steps[1].lines)).toEqual(["att_guide_download_other", "att_guide_hik_version", "att_guide_hik_installed", "att_guide_unzip", "att_guide_hik_settings", "att_guide_hik_https", "att_guide_hik_probe", "att_guide_unknown_publisher"])
         const settings = steps[1].lines.find(l => l.text === "att_guide_hik_settings")!.code!
         expect(JSON.parse(settings)).toEqual({
             server: SERVER, devices: [{ protocol: "hikvision", host: "TERMINAL-ADDRESS", user: "AGENT-USER", password: "AGENT-PASSWORD", name: "Front door" }], pollSeconds: 60,
@@ -127,11 +128,43 @@ describe("the steps, by the model's protocol", () => {
         for (const zk of ["att_guide_password", "att_guide_probe_key", "att_guide_auth", "att_guide_office_address"]) expect(steps.flatMap(s => keysOf(s.lines)), zk).not.toContain(zk)
     })
 
-    it("connects and matches numbers as ZKTeco's do, and names the agent's own error for a refused user", () => {
+    it("says which agent version reads Hikvision's, where to see it, and how an agent already installed takes the terminal (PR 303)", () => {
+        const install = setupGuide("HIKVISION", { superAdmin: true, server: SERVER })[1].lines
+        expect(install.find(l => l.text === "att_guide_hik_version")!.code).toBe("nizmo-agent.exe version")
+        expect(readFileSync("agent/src/main.ts", "utf8")).toContain('if (command === "version" || command === "--version")')
+        for (const w of [en, ar]) {
+            // As the agent's version is printed, and as the agent released with it, 0.3.0, says it (PR 302).
+            expect(w.att_guide_hik_version).toContain(`\`${HIKVISION_AGENT_VERSION}\``)
+            expect(w.att_guide_hik_installed).toContain(`\`${HIKVISION_AGENT_VERSION}\``)
+            // Stopped before its folder is unzipped over, and started again once the terminal is in agent.json: as the service is named.
+            for (const typed of ["`nizmo-agent-service.exe stop`", "`nizmo-agent-service.exe start`", "`agent.json`"]) expect(w.att_guide_hik_installed, typed).toContain(typed)
+            expect(w.att_guide_hik_installed.indexOf("`nizmo-agent-service.exe stop`")).toBeLessThan(w.att_guide_hik_installed.indexOf("`nizmo-agent-service.exe start`"))
+        }
+        // As the README an office reads updates an agent.
+        const readme = readFileSync("agent/README.md", "utf8")
+        expect(readme).toContain(`It reads Hikvision terminals from version ${HIKVISION_AGENT_VERSION}.`)
+        const updating = readme.slice(readme.indexOf("## Updating the agent"), readme.indexOf("## Moving to another PC"))
+        for (const said of ["`nizmo-agent-service.exe stop`", "`nizmo-agent-service.exe start`", "`nizmo-agent.exe version`", "needs no new code", `needs ${HIKVISION_AGENT_VERSION} or later`]) expect(updating, said).toContain(said)
+        // ZKTeco's are read by any agent: none of this is in their steps.
+        for (const key of ["att_guide_hik_version", "att_guide_hik_installed"]) expect(setupGuide("ZKTECO", { superAdmin: true, server: SERVER }).flatMap(st => keysOf(st.lines))).not.toContain(key)
+    })
+
+    it("names probe's --http for a terminal whose HTTPS is off, as the agent's help has it (PR 302)", () => {
+        for (const w of [en, ar]) expect(w.att_guide_hik_https).toContain("`--http`")
+        expect(readFileSync("agent/src/main.ts", "utf8")).toContain("nizmo-agent probe hikvision <address> <user> [port] [--http]")
+    })
+
+    it("connects and matches numbers as ZKTeco's do, and names the agent's own errors for a refused user and a certificate changed", () => {
         const [hik, zk] = [setupGuide("HIKVISION", { superAdmin: true, server: SERVER }), setupGuide("ZKTECO", { superAdmin: true, server: SERVER })]
         expect(hik[2]).toEqual(zk[2])
         expect(hik[3]).toEqual(zk[3])
-        expect(keysOf(hik[4].lines)).toEqual(["att_guide_silent", "att_guide_unreachable", "att_guide_hik_auth", "att_guide_revoked", "att_guide_clock"])
+        expect(keysOf(hik[4].lines)).toEqual(["att_guide_silent", "att_guide_unreachable", "att_guide_hik_auth", "att_guide_hik_certificate", "att_guide_revoked", "att_guide_clock"])
+        // A renewed certificate is trusted with the service stopped, as the agent's help says (PR 302, PR 303).
+        expect(hik[4].lines.find(l => l.text === "att_guide_hik_certificate")!.code).toBe("nizmo-agent-service.exe stop\nnizmo-agent.exe trust TERMINAL-ADDRESS\nnizmo-agent-service.exe start")
+        expect(en.att_guide_hik_certificate.startsWith("`HIK_CERTIFICATE_CHANGED`")).toBe(true)
+        expect(ar.att_guide_hik_certificate.startsWith("`HIK_CERTIFICATE_CHANGED`")).toBe(true)
+        expect(readFileSync("agent/src/hik/client.ts", "utf8")).toContain('new HikError("HIK_CERTIFICATE_CHANGED"')
+        expect(readFileSync("agent/src/main.ts", "utf8")).toContain("nizmo-agent trust <address> [port]")
         expect(en.att_guide_hik_auth.startsWith("`HIK_AUTH_FAILED`")).toBe(true)
         expect(readFileSync("agent/src/hik/client.ts", "utf8")).toContain('new HikError("HIK_AUTH_FAILED"')
     })
@@ -146,7 +179,7 @@ describe("the steps, by the model's protocol", () => {
 
 describe("its words", () => {
     const used = () => {
-        const keys = new Set<string>(["att_guide_button", "att_guide_model", "att_guide_model_pick", "att_guide_pick_first", "att_guide_not_read", "att_guide_direct", "att_guide_direct_too", "att_guide_no_models", "att_guide_copy", "att_guide_copied", "att_guide_model_notes", "att_guide_model_notes_other"])
+        const keys = new Set<string>(["att_guide_button", "att_guide_model", "att_guide_model_pick", "att_guide_pick_first", "att_guide_direct_too", "att_guide_no_models", "att_guide_copy", "att_guide_copied", "att_guide_model_notes", "att_guide_model_notes_other"])
         for (const [superAdmin, protocol] of [[true, "ZKTECO"], [false, "ZKTECO"], [true, "HIKVISION"], [false, "HIKVISION"]] as const) {
             for (const step of setupGuide(protocol, { superAdmin, server: SERVER })) {
                 keys.add(step.title)
@@ -192,8 +225,6 @@ describe("its words", () => {
         expect(ar.att_guide_silent).toContain(ar.att_term_agent_SILENT)
         expect(en.att_guide_unreachable).toContain(en.att_term_device_UNREACHABLE)
         expect(ar.att_guide_unreachable).toContain(ar.att_term_device_UNREACHABLE)
-        expect(en.att_guide_not_read).toContain(en.punch_tab_import)
-        expect(ar.att_guide_not_read).toContain(ar.punch_tab_import)
     })
 })
 
@@ -260,11 +291,15 @@ describe("the guide's steps on screen", () => {
         expect(other).toContain(esc(en.att_guide_download_other.split("`")[0]))
     })
 
-    it("says a model the agent can't read yet isn't, with no steps: Hikvision's are held back until the agent that reads them is released (Codex on PR 301)", async () => {
+    it("shows Hikvision's steps, the agent's settings for it in their box", async () => {
         for (const locale of ["en", "ar"] as const) {
             const html = await guide({ brand: HIK }, locale)
-            expect(html).toBe(`<p class="ui-card-note">${esc((locale === "ar" ? ar : en).att_guide_not_read)}</p>`)
-            expect(html).not.toContain("nizmo-agent.exe probe hikvision")
+            expect(html).toMatch(/^<ol class="ui-guide-steps"/)
+            expect(html).toContain(esc('"protocol": "hikvision",'))
+            expect(html).toContain("nizmo-agent.exe probe hikvision TERMINAL-ADDRESS AGENT-USER")
+            // Which agent reads it, and trusting a renewed certificate (PR 303).
+            expect(html).toContain("nizmo-agent.exe version")
+            expect(html).toContain("nizmo-agent.exe trust TERMINAL-ADDRESS")
         }
     })
 })

@@ -141,6 +141,18 @@ once, whichever way it arrives. Set back to the agent, the terminal is read
 again from where the agent stopped. The terminal can stay in `agent.json`
 meanwhile.
 
+## Updating the agent
+
+A newer package is unzipped over the old one, with the service stopped:
+
+1. `nizmo-agent-service.exe stop`
+2. Unzip the new package over `C:\Program Files\Nizmo Agent`. `agent.json`,
+   `state.json` and the log are kept, and the agent needs no new code.
+3. `nizmo-agent-service.exe start`
+
+`nizmo-agent.exe version` shows the version installed, and Nizmo shows it on
+the agent's card too. A Hikvision terminal needs 0.3.0 or later.
+
 ## Moving to another PC
 
 In Nizmo, choose **Move to another PC** on the agent. Install on the new PC with

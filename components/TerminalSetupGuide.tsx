@@ -83,14 +83,10 @@ export function ModelNotes({ brand }: { brand: Pick<GuideBrand, 'name' | 'notesE
 /**
  * The steps for the model picked, numbered in the page's digits, through
  * the office agent; above them, where the company may connect it straight
- * to Nizmo, that it can be added that way too. For a model the agent can't
- * read yet, none: that Nizmo can't read it, or where it is added when the
- * company may connect it straight to Nizmo. Hikvision's steps are written
- * (PR 301), and shown once the agent's way is built for it.
+ * to Nizmo, that it can be added that way too.
  */
 export function SetupGuideSteps({ brand, superAdmin, directAllowed = false, server }: { brand: GuideBrand; superAdmin: boolean; directAllowed?: boolean; server: string }) {
     const { t, locale } = useLanguage()
-    if (!mayConnect(brand.protocol, 'AGENT', directAllowed)) return <p className="ui-card-note">{t(mayConnect(brand.protocol, 'DIRECT', directAllowed) ? 'att_guide_direct' : 'att_guide_not_read')}</p>
     const steps = setupGuide(brand.protocol, { superAdmin, server })
     const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
     const notes = (brand.notesEn || brand.notesAr) ? <ModelNotes brand={brand} /> : null
