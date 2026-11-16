@@ -4,7 +4,7 @@ Which pull requests Codex has reviewed, and which commits it hasn't seen
 yet. When Codex's usage limit stops a review, work goes on; this file is
 the list of what to send Codex once the limit resets.
 
-Last checked: 2026-11-16 20:39 UTC, against GitHub.
+Last checked: 2026-11-16 22:10 UTC, against GitHub.
 
 ## When the limit resets
 
@@ -47,7 +47,7 @@ Nothing is waiting: every open and merged PR has been reviewed.
 
 ## Reviewed
 
-Every merged PR, #1 to #306, has been reviewed in full. Codex's two
+Every merged PR, #1 to #307, has been reviewed in full. Codex's two
 findings on #251, from its review after the merge, were fixed in #253,
 with a third Codex found there; #253 was reviewed at its last commit,
 4d3229e, after that fix. #254 to #261 were reviewed at their last
@@ -82,7 +82,7 @@ its three findings on 9c050e1 and its one on 83eebc7 were fixed there.
 its one finding on aae44de was fixed there.
 #296 was reviewed at its last commit, 3a07d50, with no findings, after
 its one finding on 7d8a6fe was fixed there.
-#297 was reviewed at its last commit, fa0498a, with no findings. #298 was reviewed at its last commit, c81edb5, with no findings, after its one finding on 230a41c was fixed there. #299 was reviewed at its last commit, e8c4d2a, with no findings, after its one finding on ef26b04 was fixed there. #300 was reviewed at its last commit, b183dda, with no findings, after its four findings on 2affc4a were fixed there. #301 was reviewed at its last commit, dffacc7, with no findings, after its two findings on 77924a7 were fixed there. #302 was reviewed at its last commit, 652f05d, with no findings, after its two findings on bd83d40 were fixed there. #303 was reviewed at its last commit, b61e164, with no findings. #304 was reviewed at its last commit, 5e7b16d, with no findings. #305 was reviewed at its last commit, 6d3b75c, with no findings, after its two findings on e737613 were fixed there. #306 was reviewed at its last commit, 26f82ba, with no findings.
+#297 was reviewed at its last commit, fa0498a, with no findings. #298 was reviewed at its last commit, c81edb5, with no findings, after its one finding on 230a41c was fixed there. #299 was reviewed at its last commit, e8c4d2a, with no findings, after its one finding on ef26b04 was fixed there. #300 was reviewed at its last commit, b183dda, with no findings, after its four findings on 2affc4a were fixed there. #301 was reviewed at its last commit, dffacc7, with no findings, after its two findings on 77924a7 were fixed there. #302 was reviewed at its last commit, 652f05d, with no findings, after its two findings on bd83d40 were fixed there. #303 was reviewed at its last commit, b61e164, with no findings. #304 was reviewed at its last commit, 5e7b16d, with no findings. #305 was reviewed at its last commit, 6d3b75c, with no findings, after its two findings on e737613 were fixed there. #306 was reviewed at its last commit, 26f82ba, with no findings. #307 was reviewed at its last commit, b2e7a9d, with no findings, after its one finding on f7471cf was fixed there.
 
 On 2026-11-11, every merged PR from #79 to #250 was checked against GitHub
 for a last commit Codex hadn't seen: a fix pushed after its last review.
@@ -91,7 +91,7 @@ merging, on main at 50e4723 and 124721a, and found nothing.
 
 | PR | How |
 | --- | --- |
-| #4, #7, #8, #30–#32, #34, #39–#44, #46, #47, #49, #72, #79–#101, #103–#240, #242, #243, #245–#250, #252–#306 | At its last commit |
+| #4, #7, #8, #30–#32, #34, #39–#44, #46, #47, #49, #72, #79–#101, #103–#240, #242, #243, #245–#250, #252–#307 | At its last commit |
 | #1, #28, #29, #33, #35–#38, #45, #48, #73–#78, #102, #241, #244, #251 | After merging, on main containing its last commit |
 | #2 | Review-only #71 |
 | #3 | Review-only #69 |
