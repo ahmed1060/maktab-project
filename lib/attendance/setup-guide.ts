@@ -15,6 +15,12 @@ import type { TranslationKey } from "@/lib/translations"
  * version reads them, 0.3.0, how an agent already installed takes the
  * terminal, and what to do when its certificate changes (PR 303).
  *
+ * A ZKTeco terminal can instead send its scans to the agent's PC, over
+ * plain HTTP on the office network, when it can't be read (§17.12, PR 306).
+ * Its steps name it in `agent.json` with `"push": true`, let it through
+ * Windows Firewall, and set its Cloud Server Setting to the PC, as the
+ * agent's README has them, with the agent that listens, 0.4.0.
+ *
  * Each line is a translation key, with what's typed after it in a box of its
  * own, exactly as the agent takes it, never translated. Inside a sentence,
  * what's typed, such as a file's name, is between backticks (`inlineCode`).
@@ -37,15 +43,29 @@ export type GuideStep = { key: string; title: TranslationKey; who: TranslationKe
 /** Where the agent is installed on the office PC (agent/README.md, Install). */
 const FOLDER = "C:\\Program Files\\Nizmo Agent"
 
+/** The first agent that takes the scans a terminal sends it (§17.12, PR 305). */
+export const PUSH_AGENT_VERSION = "0.4.0"
+
+/** The agent's port unless agent.json sets "listenPort" (agent/src/config.ts). */
+const LISTEN_PORT = 8081
+
+/**
+ * Lets a terminal that sends reach the agent through Windows Firewall, on
+ * the office network and from its address alone, as the README has it.
+ */
+const FIREWALL = `netsh advfirewall firewall add rule name="Nizmo agent" dir=in action=allow protocol=TCP localport=${LISTEN_PORT} remoteip=TERMINAL-ADDRESS profile=private,domain`
+
 /**
  * agent.json as the README sets it, sending to this Nizmo, with the
  * terminal's address to fill in, and for Hikvision's the user made on it
  * for the agent (§17.4): a key to a line, so no line runs past the guide's
  * box (found in the browser).
  */
-function settingsFor(server: string, protocol: TerminalProtocol): string {
+function settingsFor(server: string, protocol: TerminalProtocol, pushes = false): string {
     const terminal = protocol === "HIKVISION"
         ? [`      "protocol": "hikvision",`, `      "host": "TERMINAL-ADDRESS",`, `      "user": "AGENT-USER",`, `      "password": "AGENT-PASSWORD",`]
+        // One that sends is named by its IP address, where its requests come from, with no port or comm key (PR 305).
+        : pushes ? [`      "host": "TERMINAL-ADDRESS",`, `      "push": true,`]
         : [`      "host": "TERMINAL-ADDRESS",`]
     return [
         "{",
@@ -82,11 +102,31 @@ const OFFICE: Record<TerminalProtocol, GuideLine[]> = {
 }
 
 /**
- * Before installing: an agent already at the office may be older than the
- * one that reads Hikvision's terminals, 0.3.0 (§17.4, PR 303). ZKTeco's
- * are read by any.
+ * At the office, for a ZKTeco terminal that sends: its address and the
+ * PC's kept fixed, since each finds the other by it (PR 306). Nothing of
+ * reading it: neither the PC software's settings nor its comm key.
  */
-function installed(protocol: TerminalProtocol): GuideLine[] {
+const OFFICE_PUSH: GuideLine[] = [
+    { text: "att_guide_push_address" },
+    { text: "att_guide_model_notes", notes: true },
+    { text: "att_guide_office_clock" },
+    { text: "att_guide_office_pc" },
+    { text: "att_guide_push_pc_address" },
+]
+
+/**
+ * Before installing: an agent already at the office may be older than the
+ * one that reads Hikvision's terminals, 0.3.0 (§17.4, PR 303), or the one
+ * that listens for a terminal that sends, 0.4.0 (PR 306). ZKTeco's are
+ * read by any.
+ */
+function installed(protocol: TerminalProtocol, sends: boolean): GuideLine[] {
+    if (sends) {
+        return [
+            { text: "att_guide_push_version", code: "nizmo-agent.exe version" },
+            { text: "att_guide_push_installed" },
+        ]
+    }
     if (protocol !== "HIKVISION") return []
     return [
         { text: "att_guide_hik_version", code: "nizmo-agent.exe version" },
@@ -126,19 +166,47 @@ function refused(protocol: TerminalProtocol): GuideLine[] {
 }
 
 /**
- * The steps for a model speaking this protocol. The Super Admin is told
- * where the agent is built; anyone else, to ask the Super Admin for it.
+ * Setting the agent to listen for a terminal that sends, and the terminal
+ * to send to it, as the README has them: no `probe`, which reads, and the
+ * agent's log says when it first calls (PR 306).
  */
-export function setupGuide(protocol: TerminalProtocol, { superAdmin, server }: { superAdmin: boolean; server: string }): GuideStep[] {
+function listening(server: string): GuideLine[] {
     return [
-        { key: "office", title: "att_guide_office_title", who: "att_guide_office_who", lines: OFFICE[protocol] },
+        { text: "att_guide_push_settings", code: settingsFor(server, "ZKTECO", true) },
+        { text: "att_guide_push_firewall", code: FIREWALL },
+        { text: "att_guide_push_profile" },
+        { text: "att_guide_push_terminal" },
+    ]
+}
+
+/** What goes wrong with a terminal that sends, in the agent's own words (PR 305). */
+const WRONG_PUSH: GuideLine[] = [
+    { text: "att_guide_push_unreachable" },
+    { text: "att_guide_push_never" },
+    { text: "att_guide_push_port" },
+    { text: "att_guide_push_stranger" },
+]
+
+const SEND_FROM = "\"sendFrom\": \"YYYY-MM-DD\""
+
+/**
+ * The steps for a model speaking this protocol, and for a ZKTeco one, as
+ * the agent reads it or as it sends to the agent (`pushes`, PR 306). The
+ * Super Admin is told where the agent is built; anyone else, to ask the
+ * Super Admin for it.
+ */
+export function setupGuide(protocol: TerminalProtocol, { superAdmin, server, pushes = false }: { superAdmin: boolean; server: string; pushes?: boolean }): GuideStep[] {
+    // Only a ZKTeco terminal sends to the agent (§17.12): a Hikvision one that pushes is read.
+    const sends = pushes && protocol === "ZKTECO"
+    return [
+        { key: "office", title: "att_guide_office_title", who: "att_guide_office_who", lines: sends ? OFFICE_PUSH : OFFICE[protocol] },
         {
             key: "install", title: "att_guide_install_title", who: "att_guide_install_who",
             lines: [
                 { text: superAdmin ? "att_guide_download_sa" : "att_guide_download_other" },
-                ...installed(protocol),
+                ...installed(protocol, sends),
                 { text: "att_guide_unzip", code: FOLDER },
-                ...reading(protocol, server),
+                ...(sends ? listening(server) : reading(protocol, server)),
                 { text: "att_guide_unknown_publisher" },
             ],
         },
@@ -148,8 +216,11 @@ export function setupGuide(protocol: TerminalProtocol, { superAdmin, server }: {
                 { text: "att_guide_add" },
                 { text: "att_guide_enrol", code: "nizmo-agent.exe enrol CODE" },
                 { text: "att_guide_service", code: "nizmo-agent-service.exe install\nnizmo-agent-service.exe start" },
+                // Its first call is the check that it reaches the agent, as probe is for one read.
+                ...(sends ? [{ text: "att_guide_push_called" } as const] : []),
                 { text: "att_guide_brand", brand: true },
-                { text: "att_guide_older", code: "\"sendFrom\": \"YYYY-MM-DD\"" },
+                // Older scans come once it's told to send again, when it next asks for its options, as it does when it starts (PR 305).
+                { text: sends ? "att_guide_push_older" : "att_guide_older", code: SEND_FROM },
             ],
         },
         {
@@ -163,8 +234,7 @@ export function setupGuide(protocol: TerminalProtocol, { superAdmin, server }: {
             key: "wrong", title: "att_guide_wrong_title", who: "att_guide_wrong_who",
             lines: [
                 { text: "att_guide_silent", code: "nizmo-agent-service.exe status" },
-                { text: "att_guide_unreachable" },
-                ...refused(protocol),
+                ...(sends ? WRONG_PUSH : [{ text: "att_guide_unreachable" } as const, ...refused(protocol)]),
                 { text: "att_guide_revoked" },
                 { text: "att_guide_clock" },
             ],

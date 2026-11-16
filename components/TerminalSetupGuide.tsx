@@ -5,7 +5,7 @@ import { CheckIcon, CopyIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { inlineCode, setupGuide, type GuideLine, type TerminalProtocol } from '@/lib/attendance/setup-guide'
 import { mayConnect } from '@/lib/attendance/terminal-connections'
-import { Button, Dialog, Field, Select } from '@/components/ui'
+import { Button, Choice, Dialog, Field, Select } from '@/components/ui'
 
 /**
  * How to set up a fingerprint terminal (ATTENDANCE_PLAN.md §17.7, PR 282),
@@ -18,6 +18,10 @@ import { Button, Dialog, Field, Select } from '@/components/ui'
  * A model Nizmo doesn't read through the agent has no steps here. Where the
  * company may connect it straight to Nizmo (§17.8), the guide points to Add
  * a terminal, which shows what to set on it (PR 292).
+ *
+ * For a ZKTeco model, how its scans reach the agent is asked under the
+ * model: the agent reads them, or the terminal sends them to the agent
+ * (§17.12, PR 306).
  */
 
 /** A brand the terminals list offers, with the Super Admin's notes on it. */
@@ -49,7 +53,8 @@ export default function TerminalSetupGuide({ brands, loadFailed = false, superAd
                     <Field label={t('att_guide_model')}>{p => (
                         <Select {...p} name="model" value={brandId} disabled={brands === null} onChange={e => setBrandId(e.target.value)} options={options} />
                     )}</Field>
-                    {brand ? <SetupGuideSteps brand={brand} superAdmin={superAdmin} directAllowed={directAllowed} server={server} /> : <p className="ui-card-note">{t('att_guide_pick_first')}</p>}
+                    {/* Keyed by the model: picking another starts again from the agent reading its scans (PR 306). */}
+                    {brand ? <SetupGuideFor key={brand.id} brand={brand} superAdmin={superAdmin} directAllowed={directAllowed} server={server} /> : <p className="ui-card-note">{t('att_guide_pick_first')}</p>}
                 </>}
             </div>
         </Dialog>
@@ -80,14 +85,40 @@ export function ModelNotes({ brand }: { brand: Pick<GuideBrand, 'name' | 'notesE
     return null
 }
 
+/** How a ZKTeco terminal's scans reach the agent (§17.12): read by it, as most are, or sent to it. */
+const WAYS = ['READ', 'PUSH'] as const
+type Way = typeof WAYS[number]
+
+/**
+ * The guide for the model picked: for a ZKTeco model, how its scans reach
+ * the agent, the agent reading them picked to start with, and a line on
+ * which terminals the way picked is for (DESIGN.md §5.5, Dialog; PR 306);
+ * then its steps. A Hikvision model is always read (§17.12), so it isn't
+ * asked.
+ */
+export function SetupGuideFor({ brand, superAdmin, directAllowed = false, server }: { brand: GuideBrand; superAdmin: boolean; directAllowed?: boolean; server: string }) {
+    const { t } = useLanguage()
+    const [way, setWay] = useState<Way>('READ')
+    const asked = brand.protocol === 'ZKTECO'
+    return (<>
+        {asked && <>
+            <Choice legend={t('att_guide_way')} name="way" value={way} onChange={setWay} options={WAYS.map(w => ({ value: w, label: t(`att_guide_way_${w}`) }))} />
+            <p className="ui-hint"><Sentence text={t(`att_guide_way_${way}_hint`)} /></p>
+        </>}
+        <SetupGuideSteps brand={brand} superAdmin={superAdmin} directAllowed={directAllowed} server={server} pushes={asked && way === 'PUSH'} />
+    </>)
+}
+
 /**
  * The steps for the model picked, numbered in the page's digits, through
- * the office agent; above them, where the company may connect it straight
- * to Nizmo, that it can be added that way too.
+ * the office agent, which reads it or, for a ZKTeco terminal, which it
+ * sends to (`pushes`, PR 306); above them, where the company may connect
+ * it straight to Nizmo, that it can be added that way too. One that sends
+ * only plain HTTP can't be: Nizmo takes HTTPS alone (§17.1).
  */
-export function SetupGuideSteps({ brand, superAdmin, directAllowed = false, server }: { brand: GuideBrand; superAdmin: boolean; directAllowed?: boolean; server: string }) {
+export function SetupGuideSteps({ brand, superAdmin, directAllowed = false, server, pushes = false }: { brand: GuideBrand; superAdmin: boolean; directAllowed?: boolean; server: string; pushes?: boolean }) {
     const { t, locale } = useLanguage()
-    const steps = setupGuide(brand.protocol, { superAdmin, server })
+    const steps = setupGuide(brand.protocol, { superAdmin, server, pushes })
     const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
     const notes = (brand.notesEn || brand.notesAr) ? <ModelNotes brand={brand} /> : null
 
@@ -103,7 +134,7 @@ export function SetupGuideSteps({ brand, superAdmin, directAllowed = false, serv
     // role="list": Safari stops reading a list as one once its markers are gone.
     return (<>
         {/* A model the agent reads that can be added straight to Nizmo too, where that's on (PR 297). */}
-        {mayConnect(brand.protocol, 'DIRECT', directAllowed) && <p className="ui-card-note">{t('att_guide_direct_too')}</p>}
+        {!pushes && mayConnect(brand.protocol, 'DIRECT', directAllowed) && <p className="ui-card-note">{t('att_guide_direct_too')}</p>}
         <ol className="ui-guide-steps" role="list">
             {steps.map((step, i) => (
                 <li key={step.key} className="ui-guide-step">
