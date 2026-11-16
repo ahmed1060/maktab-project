@@ -414,8 +414,12 @@ export class AttendanceDeviceService {
             // says of it is taken, not even which agent last saw it.
             if (mine?.connection === "DIRECT") return { serialNumber, state: "DIRECT" as const, deviceId: mine.id, mode: null }
             if (mine) {
-                await prisma.attendanceDevice.update({ where: { id: mine.id }, data: health })
-                return { serialNumber, state: "ACTIVE" as const, deviceId: mine.id, mode: mine.mode }
+                // Only while it's still the agent's: a move straight to Nizmo,
+                // or a retire, that commits after the read above isn't written
+                // over, and it's read again (review on PR 298).
+                const { count } = await prisma.attendanceDevice.updateMany({ where: { id: mine.id, connection: "AGENT", retiredAt: null }, data: health as Prisma.AttendanceDeviceUncheckedUpdateManyInput })
+                if (count === 1) return { serialNumber, state: "ACTIVE" as const, deviceId: mine.id, mode: mine.mode }
+                continue
             }
             // Another company's only: one that is this company's was brought
             // in by another of its heartbeats since the lookup above, and the

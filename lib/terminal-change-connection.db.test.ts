@@ -34,6 +34,7 @@ describe.skipIf(!ADMIN_URL)("changing how a terminal connects, in Postgres", () 
     let db: Client
     let zk = ""
     let agent: AuthenticatedAgent
+    let dbUrl = ""
 
     beforeAll(async () => {
         const admin = new Client({ connectionString: ADMIN_URL })
@@ -49,6 +50,7 @@ describe.skipIf(!ADMIN_URL)("changing how a terminal connects, in Postgres", () 
             if (m === "20260920000000_team_leader") await db.query(BEFORE_ROLES)
         }
         process.env.POSTGRES_PRISMA_URL = url.toString()
+        dbUrl = url.toString()
         // The Super Admin has turned terminals straight to Nizmo on for the first company only (§17.8).
         await db.query(`UPDATE "Company" SET "terminalsDirectAllowed" = true WHERE id = 'c1'`)
         zk = (await db.query(`SELECT id FROM "TerminalBrand" WHERE name = 'ZKTeco'`)).rows[0].id
@@ -205,6 +207,32 @@ describe.skipIf(!ADMIN_URL)("changing how a terminal connects, in Postgres", () 
             expect(await row("hik-1")).toMatchObject({ connection: "DIRECT", pushSecretHash: hashSecret(secret), allowedAddresses: [] })
             await expect(Devices.changeConnection("hik-1", { connection: "AGENT" }, "a1")).rejects.toThrow("DEVICE_CONNECTION_NOT_BUILT")
             expect((await row("hik-1")).pushSecretHash).toBe(hashSecret(secret))
+        })
+    })
+
+    describe("a heartbeat at the moment it moves (review on PR 298)", () => {
+        it("writes nothing over a move straight to Nizmo that commits after it read the terminal, and hears it's set straight to Nizmo", async () => {
+            const id = await readByTheAgent("ZK-800", "Race gate")
+            // The move holds the terminal's row, as changeConnection does, while the agent's heartbeat comes.
+            const move = new Client({ connectionString: dbUrl })
+            await move.connect()
+            try {
+                await move.query("BEGIN")
+                await move.query(`SELECT id FROM "AttendanceDevice" WHERE id = $1 FOR UPDATE`, [id])
+                const beating = beat("ZK-800")
+                // The heartbeat has read the terminal as the agent's, and waits to write.
+                const waiting = async () => Number((await db.query(`SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'`)).rows[0].count)
+                for (let i = 0; i < 100 && await waiting() === 0; i++) await new Promise(r => setTimeout(r, 50))
+                expect(await waiting()).toBe(1)
+                await move.query(`UPDATE "AttendanceDevice" SET "connection" = 'DIRECT', "allowedAddresses" = '{203.0.113.7}', "lastSeenAt" = NULL, "clockDriftSeconds" = NULL WHERE id = $1`, [id])
+                await move.query("COMMIT")
+                expect((await beating).devices).toEqual([{ serialNumber: "ZK-800", state: "DIRECT", deviceId: id, mode: null }])
+            } finally {
+                await move.end()
+            }
+            // Still waiting for its first contact: nothing the agent said of it was taken.
+            expect(await row(id)).toMatchObject({ connection: "DIRECT", lastSeenAt: null, clockDriftSeconds: null })
+            expect((await listed("c1", id)).health.state).toBe("WAITING")
         })
     })
 
