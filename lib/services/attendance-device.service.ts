@@ -7,7 +7,8 @@ import type { Heartbeat } from "@/lib/attendance/agent-payloads"
 import { deviceHealth } from "@/lib/attendance/terminal-health"
 import { hashSecret } from "@/lib/attendance/agent-credentials"
 import { newPushSecret } from "@/lib/attendance/terminal-secrets"
-import { hasAddress, hikvisionPath, mayConnect, type TerminalConnection, type TerminalProtocol } from "@/lib/attendance/terminal-connections"
+import { hasAddress, hasOfficeAddress, hikvisionPath, mayConnect, type TerminalConnection, type TerminalProtocol } from "@/lib/attendance/terminal-connections"
+import { MAX_IP_RANGES, normaliseIpRange } from "@/lib/attendance/ip-ranges"
 import { workingNow } from "./attendance-terminal-status"
 
 /**
@@ -22,8 +23,10 @@ import { workingNow } from "./attendance-terminal-status"
  * company: it is the agent's.
  *
  * One added by hand waits for its first contact: an agent's report of its
- * serial number, or, set straight to Nizmo, its own call to the address
- * issued for it here, whose secret is returned once and never kept.
+ * serial number, or, set straight to Nizmo, its own call: a Hikvision
+ * terminal's to the address issued for it here, whose secret is returned
+ * once and never kept, and a ZKTeco terminal's from its office's internet
+ * address, kept here (PR 297).
  */
 
 function fail(code: string): never {
@@ -53,6 +56,22 @@ export function wallClockDrift(reading: string, timeZone: string, now: Date): nu
 
 const isUniqueViolation = (e: unknown) => e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002"
 
+/**
+ * The office's internet addresses a ZKTeco terminal straight to Nizmo is
+ * let in from (§17.3, PR 297), as typed: each an address or a range, as a
+ * check-in location's office IPs (§9.4), written back the one way, each
+ * once, and at least one.
+ */
+function officeAddressesOf(entries: readonly string[]): string[] {
+    const typed = entries.map(e => e.trim()).filter(Boolean)
+    if (typed.length === 0) fail("DEVICE_OFFICE_ADDRESS_REQUIRED")
+    const parsed = typed.map(normaliseIpRange)
+    if (parsed.some(a => a === null)) fail("DEVICE_INVALID_OFFICE_ADDRESS")
+    const addresses = [...new Set(parsed as string[])]
+    if (addresses.length > MAX_IP_RANGES) fail("DEVICE_TOO_MANY_OFFICE_ADDRESSES")
+    return addresses
+}
+
 const SHOWN = {
     id: true, agentId: true, serialNumber: true, name: true, model: true, firmware: true, mode: true,
     firstSeenAt: true, lastSeenAt: true, reachable: true, lastError: true, clockDriftSeconds: true,
@@ -63,6 +82,8 @@ const SHOWN = {
     connection: true, lastAddress: true, refusedCount: true, lastRefusedAt: true, lastRefusal: true,
     // Its own offset from UTC, as its last scan stated it (§17.5, PR 293).
     utcOffsetMinutes: true,
+    // The office's internet addresses a ZKTeco terminal straight to Nizmo is let in from (§17.3, PR 297).
+    allowedAddresses: true,
 } as const
 
 /** The brand printed on it (§17.9, PR 280), and whether the Super Admin has retired it since. */
@@ -102,8 +123,11 @@ export class AttendanceDeviceService {
      * Nizmo, one the company is allowed (§17.8).
      *
      * Through the agent it waits for an agent of the company to report its
-     * serial number, and is then this one. Straight to Nizmo, its address
-     * is issued: `path` is returned once, and only its secret's hash kept.
+     * serial number, and is then this one. Straight to Nizmo, a Hikvision
+     * terminal's address is issued: `path` is returned once, and only its
+     * secret's hash kept. A ZKTeco terminal's is fixed, so nothing is
+     * issued; it is let in from its office's internet address alone, which
+     * it needs, and no other terminal is given one (§17.3, PR 297).
      *
      * A serial number is one terminal's: one the company already has,
      * retired or not, is refused, and so is one in use at another company.
@@ -111,14 +135,13 @@ export class AttendanceDeviceService {
      */
     static async add(
         companyId: string,
-        input: { name: string; serialNumber: string; brandId: string; mode?: "ANY" | "ENTRANCE" | "EXIT"; connection: TerminalConnection },
+        input: { name: string; serialNumber: string; brandId: string; mode?: "ANY" | "ENTRANCE" | "EXIT"; connection: TerminalConnection; officeAddresses?: string[] },
         actorId: string,
     ) {
         const name = input.name.trim()
         if (!name) fail("DEVICE_NAME_REQUIRED")
         const serialNumber = input.serialNumber.trim()
         if (!serialNumber) fail("DEVICE_SERIAL_REQUIRED")
-        const secret = input.connection === "DIRECT" ? newPushSecret() : null
         const taken = async (tx: Prisma.TransactionClient | typeof prisma) => {
             if (await tx.attendanceDevice.findUnique({ where: { companyId_serialNumber: { companyId, serialNumber } }, select: { id: true } })) return "DEVICE_SERIAL_TAKEN"
             // Another company's only: one that became this company's since the line above runs into the insert, and is read again.
@@ -126,28 +149,38 @@ export class AttendanceDeviceService {
             return null
         }
         try {
-            const device = await prisma.$transaction(async tx => {
+            const { device, secret } = await prisma.$transaction(async tx => {
                 const company = await tx.company.findUnique({ where: { id: companyId }, select: { terminalsDirectAllowed: true } }) ?? fail("COMPANY_NOT_FOUND")
                 const [brand] = await tx.$queryRaw<{ name: string; protocol: TerminalProtocol; retiredAt: Date | null }[]>`SELECT name, protocol::text AS protocol, "retiredAt" FROM "TerminalBrand" WHERE id = ${input.brandId} FOR SHARE`
                 if (!brand) fail("BRAND_NOT_FOUND")
                 if (brand.retiredAt) fail("DEVICE_BRAND_RETIRED")
                 if (input.connection === "DIRECT" && !company.terminalsDirectAllowed) fail("DEVICE_DIRECT_NOT_ALLOWED")
                 if (!mayConnect(brand.protocol, input.connection, company.terminalsDirectAllowed)) fail("DEVICE_CONNECTION_NOT_BUILT")
+                const terminal = { protocol: brand.protocol, connection: input.connection }
+                const office = hasOfficeAddress(terminal)
+                if (!office && (input.officeAddresses ?? []).some(a => a.trim())) fail("DEVICE_NO_OFFICE_ADDRESS")
+                const allowedAddresses = office ? officeAddressesOf(input.officeAddresses ?? []) : []
                 const clash = await taken(tx)
                 if (clash) fail(clash)
+                // Issued only for a terminal with an address of its own: which it is, its brand says.
+                const secret = hasAddress(terminal) ? newPushSecret() : null
                 const created = await tx.attendanceDevice.create({
                     data: {
                         companyId, serialNumber, name, mode: input.mode ?? "ANY", protocol: brand.protocol, brandId: input.brandId,
-                        connection: input.connection, pushSecretHash: secret && hashSecret(secret), addedById: actorId,
+                        connection: input.connection, pushSecretHash: secret && hashSecret(secret), allowedAddresses, addedById: actorId,
                     },
                     select: SHOWN,
                 })
                 await AuditLogService.log("ADD_ATTENDANCE_DEVICE", "ATTENDANCE_DEVICE", created.id, {
                     tx, ...(await actorOf(tx, actorId)),
                     // The connection is said when it isn't the agent's: an agent's is how every terminal came until now.
-                    details: { companyId, serialNumber, name, brand: brand.name, mode: created.mode, ...(input.connection === "DIRECT" && { connection: "DIRECT" }) },
+                    details: {
+                        companyId, serialNumber, name, brand: brand.name, mode: created.mode,
+                        ...(input.connection === "DIRECT" && { connection: "DIRECT" }),
+                        ...(office && { officeAddresses: allowedAddresses.join(", ") }),
+                    },
                 })
-                return created
+                return { device: created, secret }
             })
             return { device: withBrand(device), path: secret && hikvisionPath(secret) }
         } catch (e) {
@@ -178,6 +211,34 @@ export class AttendanceDeviceService {
             return updated
         })
         return { device: withBrand(device), path: hikvisionPath(secret) }
+    }
+
+    /**
+     * The office's internet addresses a ZKTeco terminal straight to Nizmo is
+     * let in from, changed (§17.3, §17.7, PR 297): from now on it is let in
+     * from these alone. Written back the one way, each once, and recorded
+     * with the addresses before and after; the same ones again change
+     * nothing. It works whether the company's switch is on or off: it only
+     * moves where the terminal is let in from.
+     */
+    static async setOfficeAddresses(id: string, entries: readonly string[], actorId: string) {
+        const addresses = officeAddressesOf(entries)
+        return prisma.$transaction(async tx => {
+            const d = await tx.attendanceDevice.findUnique({
+                where: { id }, select: { companyId: true, name: true, serialNumber: true, protocol: true, connection: true, retiredAt: true, allowedAddresses: true },
+            }) ?? fail("DEVICE_NOT_FOUND")
+            if (d.retiredAt) fail("DEVICE_RETIRED")
+            if (!hasOfficeAddress(d)) fail("DEVICE_NO_OFFICE_ADDRESS")
+            if (d.allowedAddresses.join("\n") === addresses.join("\n")) {
+                return withBrand(await tx.attendanceDevice.findUniqueOrThrow({ where: { id }, select: SHOWN }))
+            }
+            const after = await tx.attendanceDevice.update({ where: { id }, data: { allowedAddresses: addresses }, select: SHOWN })
+            await AuditLogService.log("UPDATE_ATTENDANCE_DEVICE", "ATTENDANCE_DEVICE", id, {
+                tx, ...(await actorOf(tx, actorId)),
+                details: { companyId: d.companyId, serialNumber: d.serialNumber, name: d.name, officeAddresses: { from: d.allowedAddresses.join(", "), to: addresses.join(", ") } },
+            })
+            return withBrand(after)
+        })
     }
 
     /**

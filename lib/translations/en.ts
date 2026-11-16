@@ -2532,6 +2532,20 @@ export const en = {
         att_term_address_pictures: "Nizmo keeps no pictures. To stop the terminal sending them, turn off `Upload Picture When Authenticating` and `Upload Picture After Linked Capture` under its privacy settings, where the model has them.",
         att_term_address_then: "Then have someone scan. The terminal shows as Working here once Nizmo hears from it.",
         att_guide_direct: "Choose Add a terminal here, then pick this model and Straight to Nizmo. What to set on the terminal is shown there.",
+        att_term_connection_DIRECT_ZKTECO_hint: "The terminal sends its scans itself, over the office's internet connection, and Nizmo lets it in from the office's address alone. What to set on it is shown next, and again from its menu.",
+        att_term_office: "The office's internet address",
+        att_term_office_hint: "As the internet sees the office, such as 203.0.113.7, or a range, such as 203.0.113.0/28: one per line. The office's internet provider, or its router's page, says what it is.",
+        att_term_office_required: "Give the office's internet address: the terminal is let in from there alone.",
+        att_term_office_line: "let in from {addresses}",
+        att_term_settings: "What to set on it",
+        att_term_settings_intro: "On the terminal, open `Comm.`, then `Cloud Server Setting`, and set it like this. The names differ a little from model to model.",
+        att_term_settings_again: "Nothing here is secret: this terminal's menu shows it again, under What to set on it.",
+        att_term_change_office: "Change office address",
+        att_term_change_office_title: "Office address for {name}",
+        att_term_change_office_body: "From now on, the terminal is let in from these addresses alone. A call from any other is refused and noted on its row.",
+        att_term_office_saved: "Office address saved",
+        att_term_refusal_ADDRESS_NOT_ALLOWED: "a call from {address}, which isn't the office's",
+        att_guide_direct_too: "This model can also send its scans straight to Nizmo, with no PC at the office: choose Add a terminal here, then Straight to Nizmo.",
         // How to set up a fingerprint terminal (ATTENDANCE_PLAN.md §17.7, PR 282): the
         // guide behind the round "i" on Fingerprint terminals. What's typed, or read
         // as it is on a screen, is between backticks, and kept the same in Arabic.
@@ -4359,6 +4373,7 @@ export const en = {
         audit_field_mode: "Reads scans as",
         audit_field_brand: "Brand",
         audit_field_connection: "Connection",
+        audit_field_officeAddresses: "Office addresses",
         audit_field_agent: "Agent",
         audit_field_reason: "Reason",
         audit_field_reassignReportsTo: "Team moved to",

@@ -191,8 +191,8 @@ describe.skipIf(!ADMIN_URL)("a terminal added by hand, in Postgres", () => {
     describe("what is refused", () => {
         it("is a way that isn't built for the brand's protocol, or isn't the company's to pick", async () => {
             const before = await count()
-            // ZKTeco's straight to Nizmo comes with part 6, and the agent reads Hikvision's from part 7 (§20).
-            await expect(Devices.add("c1", { name: "Gate", serialNumber: "ZK-1", brandId: zk, connection: "DIRECT" }, "a1")).rejects.toThrow("DEVICE_CONNECTION_NOT_BUILT")
+            // The agent reads Hikvision's from part 7 (§20). ZKTeco's straight to Nizmo came with part 6
+            // (PR 297), asking for the office's address: lib/terminal-office-address.db.test.ts.
             await expect(Devices.add("c1", { name: "Gate", serialNumber: "HK-1", brandId: hik, connection: "AGENT" }, "a1")).rejects.toThrow("DEVICE_CONNECTION_NOT_BUILT")
             // The second company's switch is off: whatever the brand, straight to Nizmo isn't its to pick.
             await expect(Devices.add("c2", { name: "Gate", serialNumber: "HK-2", brandId: hik, connection: "DIRECT" }, "a2")).rejects.toThrow("DEVICE_DIRECT_NOT_ALLOWED")
