@@ -18,6 +18,7 @@ export const PERMISSION_GROUPS: { key: string; permissions: Permission[] }[] = [
     { key: "clients", permissions: [] },
     { key: "records", permissions: [] },
     { key: "costs", permissions: [] },
+    { key: "client_portal", permissions: [] },
     { key: "dayoff", permissions: [] },
     { key: "salaries", permissions: [] },
     { key: "payroll", permissions: [] },
@@ -32,6 +33,7 @@ const GROUP_OF_AREA: Record<string, string> = {
     dayoff: "dayoff", salary: "salaries", salary_adjustments: "salaries",
     payroll: "payroll", settlements: "payroll", debts: "payroll",
     settings: "settings", audit: "settings", attendance: "attendance",
+    tax: "client_portal",
 }
 
 // A reserved permission is not offered: nothing checks it yet (catalogue.ts).

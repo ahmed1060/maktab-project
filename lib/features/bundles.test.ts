@@ -61,7 +61,7 @@ describe("resolving a package into access", () => {
         expect(resolveBundles(null).unrestricted).toBe(true)
         expect(resolveBundles(undefined).unrestricted).toBe(true)
         for (const mod of ALL_MODULES) {
-            expect(hasModule(resolveBundles(null), mod), mod).toBe(true)
+            expect(hasModule(resolveBundles(null), mod), mod).toBe(mod !== 'TAX_POSITION')
         }
     })
 
@@ -132,7 +132,7 @@ describe("surviving the session token's JSON round trip", () => {
         expect(deserializeAccess(null).unrestricted).toBe(true)
         expect(deserializeAccess(undefined).unrestricted).toBe(true)
         for (const mod of ALL_MODULES) {
-            expect(hasModule(deserializeAccess(undefined), mod), mod).toBe(true)
+            expect(hasModule(deserializeAccess(undefined), mod), mod).toBe(mod !== 'TAX_POSITION')
         }
     })
 
@@ -177,7 +177,7 @@ describe("requireFeature", () => {
 
     it("never denies a grandfathered company what came before packages", () => {
         for (const mod of ALL_MODULES) {
-            expect(requireFeature(sessionFor(null), mod, { onDeny: 'lock' }).allowed, mod).toBe(true)
+            expect(requireFeature(sessionFor(null), mod, { onDeny: 'lock' }).allowed, mod).toBe(mod !== 'TAX_POSITION')
         }
     })
 
@@ -258,12 +258,25 @@ describe("the attendance add-ons (ATTENDANCE_PLAN.md §16)", () => {
 describe("the client portal add-on (CLIENT_PORTAL_PLAN.md §2, PR 310)", () => {
     const PORTAL = { ...CM, hasClientPortal: true }
 
-    it("is the one bundle a company only has by buying it, with no module in it yet", () => {
+    it("is the one bundle a company only has by buying it, and holds the tax position", () => {
         expect(OPT_IN_BUNDLES).toEqual(['CLIENT_PORTAL'])
-        // Its first module, a client's tax position, comes with the route
-        // that asks for it (§12 step 2b): no module is gated that nothing
-        // routes to (routes.test.ts).
-        expect(ALL_MODULES.filter(m => bundlesFor(m).includes('CLIENT_PORTAL'))).toEqual([])
+        expect(MODULE_BUNDLE.TAX_POSITION).toBe('CLIENT_PORTAL')
+        expect(ALL_MODULES.filter(m => bundlesFor(m).includes('CLIENT_PORTAL'))).toEqual(['TAX_POSITION'])
+    })
+
+    it("opens the tax position only where the bundle is held (PR 311)", () => {
+        expect(hasModule(resolveBundles(PORTAL), 'TAX_POSITION')).toBe(true)
+        for (const pkg of [CM, HR, BOTH, CORE_ONLY, null]) expect(hasModule(resolveBundles(pkg), 'TAX_POSITION'), JSON.stringify(pkg)).toBe(false)
+        // The Super Admin's, for every company, whatever the token carries.
+        expect(hasModule(resolveBundles(null, { isSuperAdmin: true }), 'TAX_POSITION')).toBe(true)
+        expect(sessionHasModule({ user: { role: 'SUPER_ADMIN' } }, 'TAX_POSITION')).toBe(true)
+        // Refused naming the add-on, to a package without it and to a company with no package.
+        const decision = requireFeature(sessionFor(BOTH), 'TAX_POSITION', { onDeny: 'hide' })
+        expect(decision.allowed).toBe(false)
+        if (decision.allowed) return
+        expect(decision.bundles).toEqual(['CLIENT_PORTAL'])
+        expect(requireFeature(sessionFor(null), 'TAX_POSITION', { onDeny: 'hide' }).allowed).toBe(false)
+        expect(requireFeature(sessionFor(PORTAL), 'TAX_POSITION', { onDeny: 'hide' }).allowed).toBe(true)
     })
 
     it("opens on a package that has it, on top of Company Management", () => {

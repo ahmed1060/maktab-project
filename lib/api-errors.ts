@@ -89,6 +89,8 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     RECORD_CHANGED: { status: 409, message: "Someone changed this record's files since you opened it. Close it and open it again to see them." },
     RECORD_FORBIDDEN: { status: 403, message: "You don't have permission to do that." },
     CLIENT_NOT_FOUND: { status: 404, message: "Client not found." },
+    TAX_CLIENT_REQUIRED: { status: 400, message: "Say which client's tax position to read." },
+    TAX_VIEW_REQUIRED: { status: 403, message: "You may not see clients' tax position." },
     // Archived rather than given new work (CLIENTS_PLAN.md §4.3).
     CLIENT_ARCHIVED: { status: 400, message: "This client is archived. Restore it on the Clients page first." },
     // The places tasks happen at (lib/services/location.service.ts); a

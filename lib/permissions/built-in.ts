@@ -107,6 +107,8 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "records.edit": "COMPANY",
         "records.delete": "COMPANY",
         "clients.view": "COMPANY",
+        // A client's tax position, on its page (CLIENT_PORTAL_PLAN.md §9).
+        "tax.view": "COMPANY",
         "clients.manage": "COMPANY",
         "costs.view": "COMPANY",
         // The places tasks happen at: whoever creates tasks sees and adds

@@ -33,6 +33,7 @@ describe("permission codes", () => {
         "attendance.approve_face": 54,
         "attendance.manage_terminals": 66,
         "attendance.approve_missions": 67,
+        "tax.view": 68,
     }
 
     it("have not changed", () => {
