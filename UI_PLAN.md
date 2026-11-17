@@ -781,9 +781,13 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      with its checklist, what each way costs to run, and four items
      kept for later, which changes no screen, merged in #307 on
      2026-11-16; then the agent's waiting count lowered as its scans
-     arrive, the one thing that rehearsal found, #308;
+     arrive, the one thing that rehearsal found, merged in #308 on
+     2026-11-17;
    - the one Requests page (§2.3), in five parts, the last merged in #139
-     on 2026-10-31.
+     on 2026-10-31;
+   - the client portal (`CLIENT_PORTAL_PLAN.md`), a package add-on where a
+     company's clients sign in and see their tax position: its plan and
+     `DESIGN.md` blocks, #309, then its parts in small PRs (§12 there).
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
 Clients pages) are rebuilt in step 0, so they're fixed there.
@@ -6572,3 +6576,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   the agent reports its queue before it sends. Each batch it delivers now
   lowers the count by what the batch settles. The screen is unchanged; it
   shows the right number sooner.
+- **2026-11-17:** The client portal planned (#309;
+  `CLIENT_PORTAL_PLAN.md`), a package add-on on top of Company
+  Management: a company's clients sign in and see their tax position,
+  kept from the Excel file the owner's export button makes from the Tax
+  Authority's portal, each upload replacing the last, or by hand; and
+  they contact their accountant on WhatsApp. `DESIGN.md` gains the
+  client's area, bars by part, a share bar, the tax position page and
+  the WhatsApp dialog. No screen changes yet.
