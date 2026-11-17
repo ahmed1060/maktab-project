@@ -34,7 +34,9 @@ in three PRs, the listener in #304, the agent listening for terminals
 named in `agent.json`, released as 0.4.0, in #305, and the setup guide's
 steps for them in #306: part 8 is built. The first customer's setup,
 rehearsed against a simulated terminal, with a checklist for it and what
-each way costs to run, is planned in #307 (round 11, §17.13, §17.14).
+each way costs to run, is planned in #307 (round 11, §17.13, §17.14); the
+one thing its rehearsal found, the agent's waiting count lagging behind its
+scans, is fixed in #308.
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
@@ -3375,7 +3377,17 @@ agent's next round a minute later, and after `check` alone, until the
 service starts. The agent reports its queue in the heartbeat, which goes
 before the scans are sent. The fix is Nizmo's alone, so no new agent
 release: the punches route lowers the agent's waiting count by what each
-batch settles. It is the next PR (§20, Phase 4).
+batch settles. Fixed in #308 (below).
+
+**Built in #308: the waiting count follows the scans.** Each batch an agent
+delivers lowers its waiting count by what the batch settles: the scans
+stored, those already there, and those refused for good, the ones the agent
+drops from its queue. A scan refused for now (from a terminal not reported
+yet, or a little ahead of the company's clock) stays in the agent's queue,
+so it still counts. The count never goes below none, and an agent that
+hasn't reported one yet keeps none shown; its next heartbeat sets it again
+from the agent's own queue. Nothing changes in the agent, so it needs no new
+release.
 
 **Before the visit**
 
@@ -3716,10 +3728,10 @@ ZKTeco's terminals, so a new agent with it still reads the Convoy as
 before. Part 8 changes nothing in it either: a terminal the agent reads
 is read as before, and the agent listens only for one named as pushing.
 
-**Next:** the fix the rehearsal found (§17.13): the agent's card says its
-scans are waiting to send for a minute after they've arrived. Nizmo's
-punches route lowers the waiting count by what each batch settles; no new
-agent release.
+**Built in #308:** the fix the rehearsal found (§17.13): the agent's card
+said its scans were waiting to send for a minute after they'd arrived.
+Nizmo's punches route lowers the waiting count by what each batch settles;
+no new agent release.
 
 **Later** (round 11, decision 4), in no order, each its own PR when it's
 picked:

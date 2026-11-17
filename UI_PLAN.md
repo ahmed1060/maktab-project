@@ -779,7 +779,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      ZKTeco terminal that sends its scans to the office agent, merged
      in #306 on 2026-11-16; then the first customer's setup, rehearsed,
      with its checklist, what each way costs to run, and four items
-     kept for later, which changes no screen, #307;
+     kept for later, which changes no screen, merged in #307 on
+     2026-11-16; then the agent's waiting count lowered as its scans
+     arrive, the one thing that rehearsal found, #308;
    - the one Requests page (§2.3), in five parts, the last merged in #139
      on 2026-10-31.
 
@@ -6563,3 +6565,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   Convoy, with a checklist for the visit, one thing to fix found (the
   agent's waiting count lags a minute), what each way costs on Vercel
   and Supabase, and four items kept for later. No screen changes.
+- **2026-11-17:** The agent's waiting count follows its scans (#308;
+  `ATTENDANCE_PLAN.md` §17.13, Phase 4), the one thing the first
+  customer's rehearsal found. Fingerprint terminals said an agent's scans
+  were waiting to send for up to a minute after they had arrived, since
+  the agent reports its queue before it sends. Each batch it delivers now
+  lowers the count by what the batch settles. The screen is unchanged; it
+  shows the right number sooner.
