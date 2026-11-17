@@ -1552,6 +1552,9 @@ These are built once, in the building-blocks PR, and every page uses them
   - With nothing uploaded yet, the section's place is an empty state
     saying so. With a file uploaded and no open claim in it, the line and
     the tiles stay, and the list's place says nothing was owed that day.
+  - When it didn't load, the section's place says so, with Try again (A
+    list that didn't load). So does a page of its claims that didn't
+    load: the claims kept up from another page don't stand in for it.
 - **Contact on WhatsApp:** a dialog for writing to someone on WhatsApp,
   such as a client's accountant. Who it reaches comes first, in a box
   with a `--rule` edge: their initials in a circle, their name, and what
@@ -2487,3 +2490,7 @@ changed:
   (§5.5): the section on a client's page, with the day the figures are
   from, four total tiles, and the claims in a list, five to start with
   and Show all claims at its foot (`CLIENT_PORTAL_PLAN.md` §3.5).
+- **2026-11-17:** A client's tax position for the company's people
+  (§5.5) says it didn't load in the section's place, for a page of its
+  claims too: the claims kept up from another page don't stand in for
+  the page asked for (`CLIENT_PORTAL_PLAN.md` §3.5).
