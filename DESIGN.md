@@ -1529,6 +1529,29 @@ These are built once, in the building-blocks PR, and every page uses them
     accountant about any claim.
   - With no claims kept yet, the page's place is an empty state saying
     the office hasn't added the tax position yet.
+- **A client's tax position, for the company's people:** a section on
+  the client's page, Tax position, for whoever may see it
+  (`CLIENT_PORTAL_PLAN.md` §3.5). It has the figures of the client's own
+  page and less around them, as it's one section among the client's
+  others.
+  - A line under its title says the day the figures are from, and who
+    uploaded the portal's file and when.
+  - Four total tiles: what's owed, open claims, how many are late, and
+    what's paid.
+  - The claims, in a list (§5.4), the longest overdue first. Each has
+    its number, in Latin digits and left to right as on the client's own
+    page; its item; its period; its original, paid and remaining
+    amounts, the remaining one standing out as a charge's total does;
+    its last day to pay, with how many days late under it; and its
+    badges, as on the client's own page.
+  - Five claims to start with, so the client's other sections stay in
+    reach. Show all claims, with how many, at the list's foot lists them
+    20 to a page and becomes Show fewer. It says which it is to screen
+    readers (`aria-expanded`), and stays where it is, with the focus on
+    it.
+  - With nothing uploaded yet, the section's place is an empty state
+    saying so. With a file uploaded and no open claim in it, the line and
+    the tiles stay, and the list's place says nothing was owed that day.
 - **Contact on WhatsApp:** a dialog for writing to someone on WhatsApp,
   such as a client's accountant. Who it reaches comes first, in a box
   with a `--rule` edge: their initials in a circle, their name, and what
@@ -2460,3 +2483,7 @@ changed:
   the page without anyone to write to; and a Waiting on someone badge
   where a client's figures are 30 days old or more, for the company's
   people (`CLIENT_PORTAL_PLAN.md` §4.3, §7).
+- **2026-11-17:** A client's tax position for the company's people
+  (§5.5): the section on a client's page, with the day the figures are
+  from, four total tiles, and the claims in a list, five to start with
+  and Show all claims at its foot (`CLIENT_PORTAL_PLAN.md` §3.5).
