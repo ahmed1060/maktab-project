@@ -58,6 +58,7 @@ export class PackageService {
                 hasHR: input.hasHR,
                 hasAttendanceTerminals: input.hasAttendanceTerminals ?? false,
                 hasAttendanceMobile: input.hasAttendanceMobile ?? false,
+                hasClientPortal: input.hasClientPortal ?? false,
             },
         })
 
@@ -70,6 +71,7 @@ export class PackageService {
                 hasHR: pkg.hasHR,
                 hasAttendanceTerminals: pkg.hasAttendanceTerminals,
                 hasAttendanceMobile: pkg.hasAttendanceMobile,
+                hasClientPortal: pkg.hasClientPortal,
             },
         })
 
@@ -109,6 +111,7 @@ export class PackageService {
         if (rest.hasHR !== undefined) data.hasHR = rest.hasHR
         if (rest.hasAttendanceTerminals !== undefined) data.hasAttendanceTerminals = rest.hasAttendanceTerminals
         if (rest.hasAttendanceMobile !== undefined) data.hasAttendanceMobile = rest.hasAttendanceMobile
+        if (rest.hasClientPortal !== undefined) data.hasClientPortal = rest.hasClientPortal
 
         // Attendance only on top of HR (ATTENDANCE_PLAN.md §16). Turning HR
         // off turns both add-ons off with it, which the form says before
@@ -119,6 +122,18 @@ export class PackageService {
             if (rest.hasAttendanceTerminals || rest.hasAttendanceMobile) throw new Error("ATTENDANCE_REQUIRES_HR")
             data.hasAttendanceTerminals = false
             data.hasAttendanceMobile = false
+        }
+
+        // The client portal only on top of Company Management, where clients
+        // are (CLIENT_PORTAL_PLAN.md §2, PR 310), by the same rule: Company
+        // Management going off takes it too, and asking for it on a package
+        // that won't have Company Management is refused. A package that
+        // never had it is left alone, so an edit about something else
+        // writes nothing of it.
+        const willHaveCompanyManagement = rest.hasCompanyManagement ?? existing.hasCompanyManagement
+        if (!willHaveCompanyManagement) {
+            if (rest.hasClientPortal) throw new Error("CLIENT_PORTAL_REQUIRES_COMPANY_MANAGEMENT")
+            if (existing.hasClientPortal || rest.hasClientPortal !== undefined) data.hasClientPortal = false
         }
 
         const updated = await prisma.package.update({
@@ -138,7 +153,7 @@ export class PackageService {
         }
         // From what was written, not what was asked: an add-on that went off
         // because HR did is a change the log has to show.
-        for (const key of ["hasAttendanceTerminals", "hasAttendanceMobile"] as const) {
+        for (const key of ["hasAttendanceTerminals", "hasAttendanceMobile", "hasClientPortal"] as const) {
             if (updated[key] !== existing[key]) bundleChanges[key] = { from: existing[key], to: updated[key] }
         }
 

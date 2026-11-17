@@ -355,10 +355,12 @@ describe("the package dialog", () => {
         expect(html.match(/inputMode="decimal"/g)).toHaveLength(3)
         expect(html).toContain(esc(en.packages_lifetime_hint))
         expect(html).toContain(`<legend class="ui-label">${en.packages_grants_legend}</legend>`)
-        for (const bundle of [en.bundle_company_management, en.bundle_hr, en.bundle_attendance_terminals, en.bundle_attendance_mobile]) expect(html, bundle).toContain(bundle)
-        // The attendance add-ons sit on HR: without it they can't be picked, and say why.
-        expect(html.match(/<input type="checkbox" class="ui-check" disabled=""[^>]*aria-describedby="[^"]+"/g)).toHaveLength(2)
+        for (const bundle of [en.bundle_company_management, en.bundle_hr, en.bundle_attendance_terminals, en.bundle_attendance_mobile, en.bundle_client_portal]) expect(html, bundle).toContain(bundle)
+        // The attendance add-ons sit on HR, and the client portal on Company
+        // Management (PR 310): without it they can't be picked, and say why.
+        expect(html.match(/<input type="checkbox" class="ui-check" disabled=""[^>]*aria-describedby="[^"]+"/g)).toHaveLength(3)
         expect(html).toContain(esc(en.attendance_requires_hr))
+        expect(html).toContain(esc(en.client_portal_requires_company_management))
         expect(html).toContain(esc(en.packages_core_only_hint))
         expect(html).toContain(`<legend class="ui-label">${en.packages_selling_legend}</legend>`)
         expect(html).toContain(esc(en.packages_active))
@@ -405,11 +407,40 @@ describe("the package dialog", () => {
         const form = { ...emptyPackage(), name: " Growth ", description: " Payroll ", priceMonthly: "50", priceAnnual: "499.99", hasHR: true }
         expect(packagePayload(form, null)).toEqual({
             name: "Growth", description: "Payroll", isActive: true, isPublic: true, priceMonthly: 50, priceAnnual: 499.99, priceLifetime: null,
-            hasCompanyManagement: false, hasHR: true, hasAttendanceTerminals: false, hasAttendanceMobile: false,
+            hasCompanyManagement: false, hasHR: true, hasAttendanceTerminals: false, hasAttendanceMobile: false, hasClientPortal: false,
         })
         expect(packagePayload({ ...form, priceLifetime: "2000" }, pkg())).toMatchObject({ id: "p1", priceLifetime: 2000 })
         // A package's form shows a lifetime price it isn't sold at as empty.
         expect(formOf(pkg())).toMatchObject({ priceMonthly: "50", priceLifetime: "", hasHR: true, hasAttendanceMobile: true })
+    })
+
+    it("turns the client portal off with Company Management, and says so first when that takes it from companies (PR 310)", async () => {
+        const { withBundle, losesClientPortal, formOf, emptyPackage, packagePayload } = await import("@/components/PackageDialog")
+        const held = pkg({ hasCompanyManagement: true, hasClientPortal: true })
+        const form = formOf(held as any)
+        expect(form).toMatchObject({ hasCompanyManagement: true, hasClientPortal: true })
+        expect(emptyPackage().hasClientPortal).toBe(false)
+        expect(withBundle(form, "hasCompanyManagement", false)).toMatchObject({ hasCompanyManagement: false, hasClientPortal: false })
+        // HR going off leaves it: it sits on Company Management.
+        expect(withBundle(form, "hasHR", false)).toMatchObject({ hasCompanyManagement: true, hasClientPortal: true })
+        expect(withBundle(withBundle(form, "hasClientPortal", false), "hasClientPortal", true).hasClientPortal).toBe(true)
+        expect(losesClientPortal(held as any, withBundle(form, "hasCompanyManagement", false))).toBe(true)
+        expect(losesClientPortal(held as any, form)).toBe(false)
+        expect(losesClientPortal(null, withBundle(form, "hasCompanyManagement", false))).toBe(false)
+        expect(losesClientPortal(pkg({ hasCompanyManagement: true, hasClientPortal: false }) as any, withBundle(form, "hasCompanyManagement", false))).toBe(false)
+        expect(packagePayload(form, held as any)).toMatchObject({ hasClientPortal: true })
+    })
+
+    it("offers the client portal in the dialog, greyed without Company Management, with why", () => {
+        const source = readFileSync("components/PackageDialog.tsx", "utf8")
+        expect(source).toMatch(/box\('hasClientPortal', 'bundle_client_portal', 'hasCompanyManagement'\)/)
+        expect(source).toContain("t('client_portal_requires_company_management')")
+        expect(source).toContain("t('client_portal_removed_with_company_management')")
+        const en = readFileSync("lib/translations/en.ts", "utf8"), ar = readFileSync("lib/translations/ar.ts", "utf8")
+        for (const key of ["bundle_client_portal", "client_portal_requires_company_management", "client_portal_removed_with_company_management", "audit_field_hasClientPortal"]) {
+            expect(en, key).toMatch(new RegExp(`\\b${key}: "`))
+            expect(ar, key).toMatch(new RegExp(`\\b${key}: "`))
+        }
     })
 
     it("turns the attendance add-ons off with HR, and says so first when that takes them from companies", async () => {

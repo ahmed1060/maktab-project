@@ -31,10 +31,12 @@ export type ListedPackage = {
     hasHR: boolean
     hasAttendanceTerminals: boolean
     hasAttendanceMobile: boolean
+    /** The client portal add-on (PR 310). A package read before it has none. */
+    hasClientPortal?: boolean
     _count?: { companies: number }
 }
 
-type Bundle = 'hasCompanyManagement' | 'hasHR' | 'hasAttendanceTerminals' | 'hasAttendanceMobile'
+type Bundle = 'hasCompanyManagement' | 'hasHR' | 'hasAttendanceTerminals' | 'hasAttendanceMobile' | 'hasClientPortal'
 export type PackageForm = {
     name: string
     description: string
@@ -51,7 +53,7 @@ export type PackageErrors = Partial<Record<'name' | Price, TranslationKey>>
 export function emptyPackage(): PackageForm {
     return {
         name: '', description: '', priceMonthly: '', priceAnnual: '', priceLifetime: '', isActive: true, isPublic: true,
-        hasCompanyManagement: false, hasHR: false, hasAttendanceTerminals: false, hasAttendanceMobile: false,
+        hasCompanyManagement: false, hasHR: false, hasAttendanceTerminals: false, hasAttendanceMobile: false, hasClientPortal: false,
     }
 }
 
@@ -68,17 +70,31 @@ export function formOf(pkg: ListedPackage): PackageForm {
         hasHR: pkg.hasHR,
         hasAttendanceTerminals: pkg.hasAttendanceTerminals,
         hasAttendanceMobile: pkg.hasAttendanceMobile,
+        hasClientPortal: !!pkg.hasClientPortal,
     }
 }
 
-/** A bundle switched. The attendance add-ons sit on HR, so HR going off takes them with it, as the server does. */
+/**
+ * A bundle switched. The attendance add-ons sit on HR, so HR going off takes
+ * them with it, as the server does; the client portal sits on Company
+ * Management the same way (PR 310).
+ */
 export function withBundle(form: PackageForm, bundle: Bundle, on: boolean): PackageForm {
-    return { ...form, [bundle]: on, ...(bundle === 'hasHR' && !on ? { hasAttendanceTerminals: false, hasAttendanceMobile: false } : {}) }
+    return {
+        ...form, [bundle]: on,
+        ...(bundle === 'hasHR' && !on ? { hasAttendanceTerminals: false, hasAttendanceMobile: false } : {}),
+        ...(bundle === 'hasCompanyManagement' && !on ? { hasClientPortal: false } : {}),
+    }
 }
 
 /** Whether saving takes the attendance add-ons from the companies on a package, with its HR. */
 export function losesAttendance(pkg: ListedPackage | null, form: PackageForm): boolean {
     return !!pkg && !form.hasHR && (pkg.hasAttendanceTerminals || pkg.hasAttendanceMobile)
+}
+
+/** Whether saving takes the client portal from the companies on a package, with its Company Management. */
+export function losesClientPortal(pkg: ListedPackage | null, form: PackageForm): boolean {
+    return !!pkg && !form.hasCompanyManagement && !!pkg.hasClientPortal
 }
 
 const PRICE_ERROR: Record<'missing' | 'wrong' | 'places', TranslationKey> = {
@@ -115,6 +131,7 @@ export function packagePayload(form: PackageForm, pkg: ListedPackage | null) {
         hasHR: form.hasHR,
         hasAttendanceTerminals: form.hasAttendanceTerminals,
         hasAttendanceMobile: form.hasAttendanceMobile,
+        hasClientPortal: form.hasClientPortal,
     }
 }
 
@@ -173,9 +190,10 @@ export function PackageDialog({ pkg, onClose, onSaved }: {
             <TextInput {...p} inputMode="decimal" autoComplete="off" name={field} value={form[field]} onChange={e => set({ [field]: e.target.value }, field)} />
         )}</Field>
     )
-    const box = (field: Bundle | 'isActive' | 'isPublic', label: TranslationKey, needsHR = false) => (
-        <label className="ui-choice" data-disabled={(needsHR && !form.hasHR) || undefined}>
-            <input type="checkbox" className="ui-check" disabled={needsHR && !form.hasHR} aria-describedby={needsHR ? `${id}-needs-hr` : undefined}
+    // An add-on is greyed without the bundle it sits on, with why beside it.
+    const box = (field: Bundle | 'isActive' | 'isPublic', label: TranslationKey, needs?: 'hasHR' | 'hasCompanyManagement') => (
+        <label className="ui-choice" data-disabled={(needs && !form[needs]) || undefined}>
+            <input type="checkbox" className="ui-check" disabled={!!needs && !form[needs]} aria-describedby={needs ? `${id}-needs-${needs}` : undefined}
                 name={field} checked={form[field]}
                 onChange={e => setForm(f => field === 'isActive' || field === 'isPublic' ? { ...f, [field]: e.target.checked } : withBundle(f, field, e.target.checked))} />
             {t(label)}
@@ -206,12 +224,17 @@ export function PackageDialog({ pkg, onClose, onSaved }: {
                     <legend className="ui-label">{t('packages_grants_legend')}</legend>
                     {box('hasCompanyManagement', 'bundle_company_management')}
                     {box('hasHR', 'bundle_hr')}
-                    {box('hasAttendanceTerminals', 'bundle_attendance_terminals', true)}
-                    {box('hasAttendanceMobile', 'bundle_attendance_mobile', true)}
-                    <p id={`${id}-needs-hr`} className="ui-hint">{t('attendance_requires_hr')}</p>
+                    {box('hasAttendanceTerminals', 'bundle_attendance_terminals', 'hasHR')}
+                    {box('hasAttendanceMobile', 'bundle_attendance_mobile', 'hasHR')}
+                    <p id={`${id}-needs-hasHR`} className="ui-hint">{t('attendance_requires_hr')}</p>
+                    {box('hasClientPortal', 'bundle_client_portal', 'hasCompanyManagement')}
+                    <p id={`${id}-needs-hasCompanyManagement`} className="ui-hint">{t('client_portal_requires_company_management')}</p>
                     {!form.hasCompanyManagement && !form.hasHR && <p className="ui-hint">{t('packages_core_only_hint')}</p>}
                     {losesAttendance(pkg, form) && (
                         <div className="ui-dialog-note" data-tone="waiting" role="status"><p>{t('attendance_removed_with_hr')}</p></div>
+                    )}
+                    {losesClientPortal(pkg, form) && (
+                        <div className="ui-dialog-note" data-tone="waiting" role="status"><p>{t('client_portal_removed_with_company_management')}</p></div>
                     )}
                 </fieldset>
                 <fieldset className="ui-choices">

@@ -64,7 +64,7 @@ describe("creating a package", () => {
     it("stores and logs the add-ons it was given", async () => {
         const { PackageService } = await import("./services/package.service")
         state.row = null
-        const created = await PackageService.create({ ...base, hasHR: true, hasAttendanceTerminals: false, hasAttendanceMobile: true, isActive: true, isPublic: true }, session)
+        const created = await PackageService.create({ ...base, hasHR: true, hasAttendanceTerminals: false, hasAttendanceMobile: true, hasClientPortal: false, isActive: true, isPublic: true }, session)
         expect(created.hasAttendanceMobile).toBe(true)
         expect(state.logged[0][3].details).toMatchObject({ hasAttendanceMobile: true, hasAttendanceTerminals: false })
     })

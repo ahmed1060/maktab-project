@@ -1,4 +1,4 @@
-import { deserializeAccess, hasModule, bundlesFor, type Bundle, type FeatureAccess, type Module } from "./bundles"
+import { deserializeAccess, hasModule, bundlesFor, resolveBundles, type Bundle, type FeatureAccess, type Module } from "./bundles"
 
 /**
  * The server-side gate. One helper, called from the API layer; gating logic
@@ -51,9 +51,8 @@ export function requireFeature(
  * token, so it holds even for a session minted before this shipped.
  */
 export function accessFromSession(session: any): FeatureAccess {
-    if (session?.user?.role === 'SUPER_ADMIN') {
-        return { unrestricted: true, bundles: new Set(['COMPANY_MANAGEMENT', 'HR']) }
-    }
+    // Every bundle, what's only ever bought included (PR 310), whatever the token carries.
+    if (session?.user?.role === 'SUPER_ADMIN') return resolveBundles(null, { isSuperAdmin: true })
     return deserializeAccess(session?.user?.featureAccess)
 }
 

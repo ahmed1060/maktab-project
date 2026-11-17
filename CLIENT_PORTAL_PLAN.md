@@ -11,8 +11,9 @@ Each part is marked:
 - **Proposed**: suggested, waiting for the product owner's answer.
 - **Open**: a question that needs answering before that part is built.
 
-Status: **not built.** The plan and its `DESIGN.md` blocks are #309. It's
-built in the small PRs of §12, each its own PR.
+Status: **being built.** The plan and its `DESIGN.md` blocks were merged
+in #309 on 2026-11-17. The add-on on packages (§2, §12 step 2a) is #310.
+The rest is built in the small PRs of §12, each its own PR.
 
 ---
 
@@ -50,6 +51,19 @@ late it is, and each claim.
   - a client account can't sign in (§5.3).
 - Turning it off keeps the claims and the client accounts. Turning it on
   again brings them back as they were.
+- **A company with no package** (Decided, 2026-11-17) hasn't it. Such a
+  company has every other bundle, as it was there before packages
+  (`lib/features/bundles.ts`), but the client portal lets people from
+  outside the company in, so it opens only where the Super Admin puts the
+  company on a package that has it. The Super Admin sees it for every
+  company, to show it.
+- **As built (#310):** the switch on a package, "Client portal", under
+  the other bundles in the package's dialog, greyed without Company
+  Management, with the same rule in `PackageService` and the database. A
+  package's card and a company's row name it among what the package has.
+  Nothing else changes yet. The `TAX_POSITION` module comes with the
+  route that asks for it (step 2b), as no module is gated that nothing
+  routes to.
 
 ---
 
@@ -507,10 +521,16 @@ Each a small PR, tests first, the flows in both languages and at phone
 width:
 
 1. **The plan and its `DESIGN.md` blocks.** #309.
-2. **The add-on and the claims:** the package switch, the bundle and
-   module, `tax.view` and `tax.manage`, the claims' tables, and the Tax
-   position section on a client's page showing them.
-   - **2b.** `tax.view` and `tax.manage` for the built-in Admin of the
+2. **The add-on and the claims,** in three:
+   - **2a. The add-on on packages:** the package switch and the bundle,
+     off for a company with no package (§2). #310.
+   - **2b. The claims:** the `TAX_POSITION` module, `tax.view` and
+     `tax.manage`, the claims' tables, and the Tax position section on a
+     client's page showing them. The module and the permissions come
+     with the route that asks for them, as the gate offers no module
+     that nothing routes to and the catalogue no permission that
+     nothing checks.
+   - **2c.** `tax.view` and `tax.manage` for the built-in Admin of the
      companies already there.
 3. **Uploading the portal's file** on a client's page: reading it,
    checking it's that client's, the check screen, replacing, and the
@@ -730,3 +750,8 @@ templates (§7.1), and the export button moves into Nizmo (§10).
   off to start (§4.4); a line in the privacy policy (§5.5); and no switch
   to stop a company's Admins changing its messages (§7.1, §14). Twelve
   PRs, with three small ones for the permissions (§12).
+- **2026-11-17:** A company with no package hasn't the client portal (the
+  owner): it opens only on a package that has it, and the Super Admin
+  sees it for every company (§2). Step 2 is built in three, the add-on
+  on packages first (#310), with the module and the permissions moved
+  to the PR whose route asks for them (§12).

@@ -787,7 +787,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      on 2026-10-31;
    - the client portal (`CLIENT_PORTAL_PLAN.md`), a package add-on where a
      company's clients sign in and see their tax position: its plan and
-     `DESIGN.md` blocks, #309, then its parts in small PRs (§12 there).
+     `DESIGN.md` blocks, merged in #309 on 2026-11-17, then its parts in
+     small PRs (§12 there), the add-on on packages first, #310.
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
 Clients pages) are rebuilt in step 0, so they're fixed there.
@@ -6584,3 +6585,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   they contact their accountant on WhatsApp. `DESIGN.md` gains the
   client's area, bars by part, a share bar, the tax position page and
   the WhatsApp dialog. No screen changes yet.
+- **2026-11-17:** The client portal's add-on on packages (#310;
+  `CLIENT_PORTAL_PLAN.md` §2, §12 step 2a): a package's dialog gets
+  "Client portal" under the other bundles, greyed without Company
+  Management, which it sits on as the attendance add-ons sit on HR. A
+  company with no package hasn't it, where it has every other bundle. No
+  other screen changes: its first module comes with the claims (step 2b).

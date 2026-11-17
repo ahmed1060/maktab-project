@@ -459,7 +459,7 @@ export class CompanyService {
                 // (ATTENDANCE_PLAN.md §17.10).
                 terminalsSetupByCompany: true,
                 // A tab tied to a module exists only for a company holding it.
-                package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } },
+                package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true, hasClientPortal: true } },
             },
         })
     }
@@ -659,7 +659,7 @@ export class CompanyService {
                 trialPreset: true,
                 trialExtensionDays: true,
                 package: {
-                    select: { id: true, name: true, hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true },
+                    select: { id: true, name: true, hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true, hasClientPortal: true },
                 },
                 // The furthest-reaching confirmed period. Postgres sorts NULLs
                 // first on DESC, so a lifetime row (endDate null) wins — which

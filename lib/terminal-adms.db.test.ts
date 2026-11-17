@@ -201,8 +201,11 @@ describe.skipIf(!ADMIN_URL)("the addresses a ZKTeco terminal calls, in Postgres"
             }
             const { rows } = await db.query(`SELECT indexdef FROM pg_indexes WHERE tablename = 'AttendanceDevice' AND indexname = 'AttendanceDevice_serialNumber_active_key'`)
             expect(rows.map(r => r.indexdef)).toEqual([`CREATE UNIQUE INDEX "AttendanceDevice_serialNumber_active_key" ON public."AttendanceDevice" USING btree ("serialNumber") WHERE ("retiredAt" IS NULL)`])
-            // No migration comes with this PR: the lookup needs nothing the database doesn't have.
-            expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe("20261231000000_terminal_first_contacts")
+            // No migration came with that PR, and none since has changed the terminals' table:
+            // the lookup needs nothing the database didn't have.
+            for (const m of MIGRATIONS.slice(MIGRATIONS.indexOf("20261231000000_terminal_first_contacts") + 1)) {
+                expect(readFileSync(`prisma/migrations/${m}/migration.sql`, "utf8"), m).not.toContain('"AttendanceDevice"')
+            }
         })
     })
 
