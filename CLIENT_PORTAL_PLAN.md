@@ -110,14 +110,13 @@ The portal spells the same item more than one way: أقرار and إقرار,
 ### 4.1 Uploading the portal's file (Decided)
 
 The owner's export button reads the claims table on the portal's
-Payments page and makes an Excel file. It can gather several companies
-into one file. Nizmo reads that file as it is, with no change to the
-button.
+Payments page and makes an Excel file. Nizmo reads that file as it is,
+with no change to the button, one company's file at a time.
 
 - **Who:** whoever has `tax.manage` (§9).
-- **Where:** Upload from the tax portal, on the Clients page, for a file
-  of several companies, and on a client's Tax position, for a file of
-  that client alone.
+- **Where:** only on a client's page, in its Tax position: Upload from
+  the tax portal. The file is that client's (Decided, 2026-11-17), so
+  nothing in it is matched to clients.
 - **Reading it:**
   - Its first sheet. The columns are found by their headings, not where
     they are, as the button writes the headings the portal's table has.
@@ -134,36 +133,33 @@ button.
   are:
   - a claim number, an item and a last day to pay;
   - paid and remaining adding up to the original, to the piastre;
-  - a claim number only once per company in the file.
+  - a claim number only once in the file.
 
   A row with nothing left to pay is left out and counted (§3.2).
-- **Matching companies to clients:** each name in الشركة is matched to one
-  of the company's clients, in this order:
-  1. the name the client had on the portal at its last upload, which Nizmo
-     keeps;
-  2. the client's own name, matched as §3.3 matches items;
-  3. otherwise, it's picked from the clients on the check screen, or the
-     company is left out of this upload.
-
-  What's matched or picked is kept on the client for next time. On a
-  client's page, the file must name one company. Where that name isn't
-  the client's by 1 or 2, the check screen says so, and saving asks to
-  confirm it's this client's file, so one client's claims don't replace
-  another's.
-- **The check screen**, before anything is saved, for each client:
+- **One company to a file:** every row's الشركة must name the same
+  company. The button can gather several companies into one file; such a
+  file is refused, naming the companies in it, with a hint to export each
+  on its own, pressing Clear (مسح) in the button before the next company.
+- **The right client:** Nizmo keeps the company's name from the last file
+  uploaded for the client. Where the file's company is neither that name
+  nor the client's own, matched as §3.3 matches items, the check screen
+  says so, and saving asks to confirm it's this client's file, so one
+  client's claims don't replace another's. Once saved, the file's name is
+  kept for next time.
+- **The check screen**, before anything is saved:
   - how many claims and what remains, against what's shown now;
   - what's new, what changed, and what isn't in this file and will go;
   - the rows with a problem, each with why;
   - the day the figures are from: the date in the file's name, which the
     button writes, or today without one. It can be changed.
 - **Saving:**
-  - For each client in the file, its claims become the file's: **each
-    upload replaces the last** (Decided, 2026-11-17). A claim the new file
-    hasn't goes, which the check screen says before saving.
-  - Each client's are replaced in one go; a client not in the file is
-    left as it was.
-  - The audit log gets one entry for each client: who uploaded, the
-    file's name, and how many claims are new, changed and gone.
+  - The client's claims become the file's: **each upload replaces the
+    last** (Decided, 2026-11-17). A claim the new file hasn't goes, which
+    the check screen says before saving.
+  - In one go, so the page never shows part of one file and part of
+    another.
+  - The audit log gets an entry: who uploaded, the file's name, and how
+    many claims are new, changed and gone.
 
 ### 4.2 By hand (Decided)
 
@@ -311,7 +307,8 @@ people.
 
 ## 10. The export button (the owner's, outside Nizmo)
 
-- Nizmo reads its file as it is today (§4.1).
+- Nizmo reads its file as it is today, one company to a file (§4.1).
+  Its combined file of several companies isn't taken.
 - Two notes for it, neither needed by Nizmo:
   - the date in the file's name is the UTC date, so between midnight and
     2 or 3 in the morning in Cairo it's the day before. The Cairo date
@@ -342,8 +339,9 @@ width:
 2. **The add-on and the claims, by hand:** the package switch, the bundle
    and module, `tax.view` and `tax.manage`, the claims' tables, and the
    Tax position section on a client's page with Add, Edit and Delete.
-3. **Uploading the portal's file:** reading it, matching companies to
-   clients, the check screen, replacing, and the audit log.
+3. **Uploading the portal's file** on a client's page: reading it,
+   checking it's that client's, the check screen, replacing, and the
+   audit log.
 4. **Client accounts:** their table, People who can sign in,
    `client_accounts.manage`, the invitation and setting a password.
 5. **Signing in as a client account, and the client's area:** sign-in
@@ -378,6 +376,9 @@ width:
   stop it, and it would break whenever the portal changes.
 - **Matching by the tax registration number** (2026-11-17): the portal
   doesn't give the export button the number.
+- **One upload for several clients** (2026-11-17), from the Clients page,
+  matching each company in the file to a client: the upload is on a
+  client's page, and the file is that client's.
 - **Client accounts as people with a new role** (2026-11-17): they would
   appear wherever the company's people are listed, and each list would
   have to leave them out.
@@ -394,3 +395,7 @@ width:
   decided: a package add-on; contacting the accountant on WhatsApp; no
   tax registration number; only open claims kept; and each upload
   replacing the last. The page's blocks are in `DESIGN.md` §5.5.
+- **2026-11-17:** The upload is on a client's page alone (#309, the
+  owner): the file is the open client's, one company to a file, with a
+  confirmation where its company isn't the client's. Uploading one file
+  for several clients from the Clients page is turned down (§4.1, §14).
