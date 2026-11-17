@@ -31,7 +31,7 @@ export const GET = withStandardHandler(async (req, session) => {
         where: { id: companyId },
         select: {
             id: true, name: true, adminSettingsEnabled: true, adminSettingsTabs: true,
-            package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } },
+            package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true, hasClientPortal: true } },
             autoVerifyLocation: true, cashAdvancesAllowed: true, cashAdvancesOn: true, costNamesFromListOnly: true, confirmHighRisk: true, logoUrl: true, brandColour: true,
             payrollDay: true, payslipsVisible: true, timezone: true, debtRecoveryPercent: true,
             terminalsSetupByCompany: true,

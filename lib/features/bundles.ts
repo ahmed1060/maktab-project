@@ -7,7 +7,7 @@
  * asking the same question of the same table.
  */
 
-export type Bundle = 'COMPANY_MANAGEMENT' | 'HR' | 'ATTENDANCE_TERMINALS' | 'ATTENDANCE_MOBILE'
+export type Bundle = 'COMPANY_MANAGEMENT' | 'HR' | 'ATTENDANCE_TERMINALS' | 'ATTENDANCE_MOBILE' | 'CLIENT_PORTAL'
 
 /**
  * The two attendance add-ons (ATTENDANCE_PLAN.md §16): how punches arrive —
@@ -15,6 +15,18 @@ export type Bundle = 'COMPANY_MANAGEMENT' | 'HR' | 'ATTENDANCE_TERMINALS' | 'ATT
  * of HR, because attendance feeds payroll.
  */
 export const ATTENDANCE_BUNDLES = ['ATTENDANCE_TERMINALS', 'ATTENDANCE_MOBILE'] as const satisfies readonly Bundle[]
+
+/**
+ * The bundles a company only ever has by buying them (CLIENT_PORTAL_PLAN.md
+ * §2, PR 310). A company with no package has every other bundle, as it was
+ * there before packages, but not these: the client portal lets people from
+ * outside the company in, so it opens only where a package gives it.
+ *
+ * No module is in the client portal yet. Its first, a client's tax
+ * position, comes with the route that asks for it (§12 step 2b), as no
+ * module is gated that nothing routes to.
+ */
+export const OPT_IN_BUNDLES: readonly Bundle[] = ['CLIENT_PORTAL']
 
 /**
  * A module is a nameable area of the product. Core modules belong to no bundle
@@ -68,6 +80,7 @@ export const BUNDLE_LABEL_KEYS: Record<Bundle, string> = {
     HR: 'bundle_hr',
     ATTENDANCE_TERMINALS: 'bundle_attendance_terminals',
     ATTENDANCE_MOBILE: 'bundle_attendance_mobile',
+    CLIENT_PORTAL: 'bundle_client_portal',
 }
 
 /** The same names in English, for API messages, which are not translated. */
@@ -76,6 +89,7 @@ export const BUNDLE_NAMES: Record<Bundle, string> = {
     HR: 'HR',
     ATTENDANCE_TERMINALS: 'Attendance — Terminals',
     ATTENDANCE_MOBILE: 'Attendance — Mobile App',
+    CLIENT_PORTAL: 'Client portal',
 }
 
 export const ALL_MODULES = Object.keys(MODULE_BUNDLE) as Module[]
@@ -91,23 +105,40 @@ export function isModule(value: string): value is Module {
  * Super Admin case, where no gate applies at all. Kept distinct so a screen can
  * tell "this customer bought everything" from "this customer was never
  * packaged", which are the same permissions and very different facts.
+ *
+ * No gate but one: a bundle that's only ever bought (OPT_IN_BUNDLES) is held
+ * only where `bundles` has it, unrestricted or not. The Super Admin's has
+ * it; a grandfathered company's hasn't.
  */
 export type FeatureAccess = {
     unrestricted: boolean
     bundles: Set<Bundle>
 }
 
+const EVERY_BUNDLE: readonly Bundle[] = ['COMPANY_MANAGEMENT', 'HR', ...ATTENDANCE_BUNDLES, ...OPT_IN_BUNDLES]
+
+/** The Super Admin's: every bundle, for every company, to run and to show them. */
 export const UNRESTRICTED: FeatureAccess = {
     unrestricted: true,
-    bundles: new Set<Bundle>(['COMPANY_MANAGEMENT', 'HR', ...ATTENDANCE_BUNDLES]),
+    bundles: new Set<Bundle>(EVERY_BUNDLE),
 }
+
+/** A company with no package: everything that came before packages, and nothing that's only ever bought. */
+export const GRANDFATHERED: FeatureAccess = {
+    unrestricted: true,
+    bundles: new Set<Bundle>(EVERY_BUNDLE.filter(b => !OPT_IN_BUNDLES.includes(b))),
+}
+
+/** A copy, so no caller's change reaches the next one's. */
+const copyOf = (access: FeatureAccess): FeatureAccess => ({ unrestricted: access.unrestricted, bundles: new Set(access.bundles) })
 
 /**
  * A company's package, as far as this module cares.
  *
- * Null means grandfathered — everything on, no limits. Every company that
- * existed before packages shipped resolves this way, and stays that way until
- * somebody deliberately assigns one.
+ * Null means grandfathered — everything on, no limits, but for what's only
+ * ever bought (OPT_IN_BUNDLES). Every company that existed before packages
+ * shipped resolves this way, and stays that way until somebody deliberately
+ * assigns one.
  */
 export type PackageFacts = {
     hasCompanyManagement: boolean
@@ -116,13 +147,14 @@ export type PackageFacts = {
     // absent reads as not bought.
     hasAttendanceTerminals?: boolean
     hasAttendanceMobile?: boolean
+    hasClientPortal?: boolean
 } | null | undefined
 
 export function resolveBundles(pkg: PackageFacts, { isSuperAdmin = false } = {}): FeatureAccess {
     // Super Admin is never gated. They administer the packages; gating them out
     // of a module would lock the person who sells it out of demonstrating it.
-    if (isSuperAdmin) return UNRESTRICTED
-    if (!pkg) return UNRESTRICTED
+    if (isSuperAdmin) return copyOf(UNRESTRICTED)
+    if (!pkg) return copyOf(GRANDFATHERED)
 
     const bundles = new Set<Bundle>()
     if (pkg.hasCompanyManagement) bundles.add('COMPANY_MANAGEMENT')
@@ -132,17 +164,22 @@ export function resolveBundles(pkg: PackageFacts, { isSuperAdmin = false } = {})
     // row edited by hand must not open attendance with no payroll under it.
     if (pkg.hasHR && pkg.hasAttendanceTerminals) bundles.add('ATTENDANCE_TERMINALS')
     if (pkg.hasHR && pkg.hasAttendanceMobile) bundles.add('ATTENDANCE_MOBILE')
+    // Only on top of Company Management, where clients are, by the same
+    // rule: the form and the service refuse it without, and this is the
+    // last line for a row edited by hand.
+    if (pkg.hasCompanyManagement && pkg.hasClientPortal) bundles.add('CLIENT_PORTAL')
     return { unrestricted: false, bundles }
 }
 
 /** Whether a company may use a module at all. Core modules are always allowed. */
 export function hasModule(access: FeatureAccess, module: Module): boolean {
-    if (access.unrestricted) return true
-    return bundlesFor(module).length === 0 || bundlesFor(module).some(b => access.bundles.has(b))
+    const required = bundlesFor(module)
+    return required.length === 0 || required.some(b => hasBundle(access, b))
 }
 
 export function hasBundle(access: FeatureAccess, bundle: Bundle): boolean {
-    return access.unrestricted || access.bundles.has(bundle)
+    // Unrestricted opens everything but what's only ever bought.
+    return access.bundles.has(bundle) || (access.unrestricted && !OPT_IN_BUNDLES.includes(bundle))
 }
 
 /**
@@ -169,6 +206,8 @@ export function deserializeAccess(value: SerializedAccess | null | undefined): F
     // A token minted before this shipped carries nothing here. Falling back to
     // unrestricted is deliberate: the alternative is that everybody signed in at
     // deploy time abruptly loses every gated module until their token refreshes.
-    if (!value) return UNRESTRICTED
+    // As a company with no package, not as the Super Admin: what's only ever
+    // bought isn't opened by a token that says nothing.
+    if (!value) return copyOf(GRANDFATHERED)
     return { unrestricted: value.unrestricted, bundles: new Set(value.bundles) }
 }

@@ -82,7 +82,7 @@ export class RoleService {
             where: { id: roleId },
             select: {
                 id: true, name: true, builtIn: true, baseRole: true, companyId: true,
-                company: { select: { name: true, package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } } } },
+                company: { select: { name: true, package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true, hasClientPortal: true } } } },
                 grants: { select: { permission: true, scope: true } },
             },
         })
@@ -377,7 +377,7 @@ export class RoleService {
     static async accessOf(companyId: string): Promise<SerializedAccess> {
         const company = await prisma.company.findUnique({
             where: { id: companyId },
-            select: { package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } } },
+            select: { package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true, hasClientPortal: true } } },
         })
         if (!company) throw new Error("COMPANY_NOT_FOUND")
         return serializeAccess(resolveBundles(company.package))

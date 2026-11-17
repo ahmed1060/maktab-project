@@ -41,7 +41,7 @@ type Company = {
     usernameCode?: string | null
     usernameLocked?: boolean
     isBanned?: boolean
-    package?: { id: string; name: string; hasCompanyManagement: boolean; hasHR: boolean; hasAttendanceTerminals?: boolean; hasAttendanceMobile?: boolean } | null
+    package?: { id: string; name: string; hasCompanyManagement: boolean; hasHR: boolean; hasAttendanceTerminals?: boolean; hasAttendanceMobile?: boolean; hasClientPortal?: boolean } | null
     hasUnpaidPayment?: boolean
     subscription?: { state: SubscriptionState; date: string | null; daysRemaining: number | null }
 }

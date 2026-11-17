@@ -24,6 +24,9 @@ const bundlesSchema = {
     // script written before them still creates a package; absent is off.
     hasAttendanceTerminals: z.boolean().optional().default(false),
     hasAttendanceMobile: z.boolean().optional().default(false),
+    // The client portal add-on (CLIENT_PORTAL_PLAN.md §2, PR 310), optional
+    // for the same reason.
+    hasClientPortal: z.boolean().optional().default(false),
 }
 
 // A package with neither bundle is Core only — a real thing to sell, since Core
@@ -42,6 +45,8 @@ export const createPackageSchema = z.object({
     ...bundlesSchema,
 }).refine(p => p.hasHR || !(p.hasAttendanceTerminals || p.hasAttendanceMobile), {
     message: "The attendance add-ons need HR", path: ["hasHR"],
+}).refine(p => p.hasCompanyManagement || !p.hasClientPortal, {
+    message: "The client portal needs Company Management", path: ["hasCompanyManagement"],
 })
 
 export const updatePackageSchema = z.object({
@@ -59,6 +64,8 @@ export const updatePackageSchema = z.object({
     // partial update may change one switch and not the other.
     hasAttendanceTerminals: z.boolean().optional(),
     hasAttendanceMobile: z.boolean().optional(),
+    // The same, against the stored package's Company Management.
+    hasClientPortal: z.boolean().optional(),
 })
 
 export type CreatePackageInput = z.infer<typeof createPackageSchema>

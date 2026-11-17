@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import {
     MODULE_BUNDLE, ALL_MODULES, isModule, resolveBundles, hasModule, hasBundle, bundlesFor,
-    serializeAccess, deserializeAccess, UNRESTRICTED, ATTENDANCE_BUNDLES, BUNDLE_LABEL_KEYS, BUNDLE_NAMES,
+    serializeAccess, deserializeAccess, UNRESTRICTED, GRANDFATHERED, OPT_IN_BUNDLES, ATTENDANCE_BUNDLES, BUNDLE_LABEL_KEYS, BUNDLE_NAMES,
     type Bundle, type PackageFacts,
 } from "./bundles"
 import { requireFeature, accessFromSession, sessionHasModule } from "./require"
@@ -55,8 +55,9 @@ describe("the module table", () => {
 })
 
 describe("resolving a package into access", () => {
-    it("no package means grandfathered — everything on", () => {
-        // Every company that existed before packages shipped.
+    it("no package means grandfathered — everything on, but what's only ever bought", () => {
+        // Every company that existed before packages shipped. The client
+        // portal isn't theirs until a package gives it (PR 310).
         expect(resolveBundles(null).unrestricted).toBe(true)
         expect(resolveBundles(undefined).unrestricted).toBe(true)
         for (const mod of ALL_MODULES) {
@@ -135,10 +136,12 @@ describe("surviving the session token's JSON round trip", () => {
         }
     })
 
-    it("UNRESTRICTED is not mutated by a caller", () => {
-        const before = [...UNRESTRICTED.bundles]
-        deserializeAccess(null).bundles.add('HR')
-        expect([...UNRESTRICTED.bundles]).toEqual(before)
+    it("UNRESTRICTED and GRANDFATHERED are not mutated by a caller", () => {
+        const before = [[...UNRESTRICTED.bundles], [...GRANDFATHERED.bundles]]
+        deserializeAccess(null).bundles.add('CLIENT_PORTAL')
+        resolveBundles(null).bundles.add('CLIENT_PORTAL')
+        resolveBundles(null, { isSuperAdmin: true }).bundles.delete('HR')
+        expect([[...UNRESTRICTED.bundles], [...GRANDFATHERED.bundles]]).toEqual(before)
     })
 })
 
@@ -172,7 +175,7 @@ describe("requireFeature", () => {
         }
     })
 
-    it("never denies a grandfathered company", () => {
+    it("never denies a grandfathered company what came before packages", () => {
         for (const mod of ALL_MODULES) {
             expect(requireFeature(sessionFor(null), mod, { onDeny: 'lock' }).allowed, mod).toBe(true)
         }
@@ -244,10 +247,75 @@ describe("the attendance add-ons (ATTENDANCE_PLAN.md §16)", () => {
     })
 
     it("gives every bundle a name on screen and in API messages", () => {
-        const all: Bundle[] = ['COMPANY_MANAGEMENT', 'HR', ...ATTENDANCE_BUNDLES]
+        const all: Bundle[] = ['COMPANY_MANAGEMENT', 'HR', ...ATTENDANCE_BUNDLES, 'CLIENT_PORTAL']
         for (const b of all) {
             expect(BUNDLE_LABEL_KEYS[b], b).toMatch(/^bundle_/)
             expect(BUNDLE_NAMES[b], b).toBeTruthy()
         }
     })
+})
+
+describe("the client portal add-on (CLIENT_PORTAL_PLAN.md §2, PR 310)", () => {
+    const PORTAL = { ...CM, hasClientPortal: true }
+
+    it("is the one bundle a company only has by buying it, with no module in it yet", () => {
+        expect(OPT_IN_BUNDLES).toEqual(['CLIENT_PORTAL'])
+        // Its first module, a client's tax position, comes with the route
+        // that asks for it (§12 step 2b): no module is gated that nothing
+        // routes to (routes.test.ts).
+        expect(ALL_MODULES.filter(m => bundlesFor(m).includes('CLIENT_PORTAL'))).toEqual([])
+    })
+
+    it("opens on a package that has it, on top of Company Management", () => {
+        const access = resolveBundles(PORTAL)
+        expect(hasBundle(access, 'CLIENT_PORTAL')).toBe(true)
+        expect(hasModule(access, 'CLIENTS')).toBe(true)
+        expect(hasModule(access, 'PAYROLL')).toBe(false)
+    })
+
+    it("stays shut on a package without it, whatever else it has", () => {
+        for (const pkg of [CM, HR, BOTH, CORE_ONLY, { ...BOTH, hasAttendanceTerminals: true, hasAttendanceMobile: true }]) {
+            expect(hasBundle(resolveBundles(pkg), 'CLIENT_PORTAL'), JSON.stringify(pkg)).toBe(false)
+        }
+    })
+
+    it("opens nothing without Company Management, even when the row says it was bought", () => {
+        // The form and the service refuse this; a row edited by hand must
+        // not open a client's tax position with no clients under it.
+        const access = resolveBundles({ ...HR, hasClientPortal: true })
+        expect(hasBundle(access, 'CLIENT_PORTAL')).toBe(false)
+    })
+
+    it("isn't a grandfathered company's: no package, no portal", () => {
+        // The owner, 2026-11-17: it lets people from outside the company in,
+        // so it opens only where a package gives it.
+        const access = resolveBundles(null)
+        expect(access.unrestricted).toBe(true)
+        expect(hasBundle(access, 'CLIENT_PORTAL')).toBe(false)
+        expect(GRANDFATHERED.bundles.has('CLIENT_PORTAL')).toBe(false)
+        // Everything else is as it was.
+        for (const b of ['COMPANY_MANAGEMENT', 'HR', ...ATTENDANCE_BUNDLES] as Bundle[]) expect(hasBundle(access, b), b).toBe(true)
+    })
+
+    it("is the Super Admin's for every company, to show it", () => {
+        expect(hasBundle(resolveBundles(CORE_ONLY, { isSuperAdmin: true }), 'CLIENT_PORTAL')).toBe(true)
+        expect(hasBundle(resolveBundles(null, { isSuperAdmin: true }), 'CLIENT_PORTAL')).toBe(true)
+        expect(UNRESTRICTED.bundles.has('CLIENT_PORTAL')).toBe(true)
+        // From the session too, whatever its token carries.
+        expect(hasBundle(accessFromSession({ user: { role: 'SUPER_ADMIN' } }), 'CLIENT_PORTAL')).toBe(true)
+        expect(hasBundle(accessFromSession({ user: { role: 'SUPER_ADMIN', featureAccess: serializeAccess(resolveBundles(null)) } }), 'CLIENT_PORTAL')).toBe(true)
+        // And not a company's, from a session that says nothing or says no package.
+        expect(hasBundle(accessFromSession({ user: { role: 'ADMIN' } }), 'CLIENT_PORTAL')).toBe(false)
+        expect(hasBundle(accessFromSession(sessionFor(null)), 'CLIENT_PORTAL')).toBe(false)
+        expect(hasBundle(accessFromSession(sessionFor(PORTAL)), 'CLIENT_PORTAL')).toBe(true)
+    })
+
+    it("survives the session token's JSON round trip, bought or grandfathered", () => {
+        const round = (pkg: PackageFacts) => deserializeAccess(JSON.parse(JSON.stringify(serializeAccess(resolveBundles(pkg)))))
+        expect(hasBundle(round(PORTAL), 'CLIENT_PORTAL')).toBe(true)
+        expect(hasBundle(round(CM), 'CLIENT_PORTAL')).toBe(false)
+        expect(hasBundle(round(null), 'CLIENT_PORTAL')).toBe(false)
+        expect(hasModule(round(null), 'PAYROLL')).toBe(true)
+    })
+
 })

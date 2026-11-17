@@ -132,6 +132,10 @@ model Package {
   // HR off turns both off.
   hasAttendanceTerminals Boolean   @default(false)
   hasAttendanceMobile    Boolean   @default(false)
+  // The client portal add-on (CLIENT_PORTAL_PLAN.md §2), sold only on top of
+  // Company Management: PackageService refuses it without it, and turning
+  // Company Management off turns it off.
+  hasClientPortal        Boolean   @default(false)
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
   companies              Company[]

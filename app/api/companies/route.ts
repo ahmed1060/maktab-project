@@ -25,7 +25,7 @@ export const GET = withStandardHandler(async (req, session) => {
                 payrollDay: true, payslipsVisible: true, timezone: true, debtRecoveryPercent: true,
                 adminSettingsEnabled: true, adminSettingsTabs: true,
                 packageId: true, trialPreset: true, trialExtensionDays: true, createdAt: true,
-                package: { select: { id: true, name: true, hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true } }
+                package: { select: { id: true, name: true, hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true, hasClientPortal: true } }
             }
         })
         if (!company) return ApiResponse.notFound("Company not found")

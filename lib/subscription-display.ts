@@ -44,6 +44,7 @@ export function bundleLabelKeys(pkg: {
     hasHR: boolean
     hasAttendanceTerminals?: boolean
     hasAttendanceMobile?: boolean
+    hasClientPortal?: boolean
 } | null | undefined): TranslationKey[] {
     if (!pkg) return []
     const keys: TranslationKey[] = []
@@ -51,6 +52,7 @@ export function bundleLabelKeys(pkg: {
     if (pkg.hasHR) keys.push('bundle_hr')
     if (pkg.hasAttendanceTerminals) keys.push('bundle_attendance_terminals')
     if (pkg.hasAttendanceMobile) keys.push('bundle_attendance_mobile')
+    if (pkg.hasClientPortal) keys.push('bundle_client_portal')
     return keys
 }
 

@@ -4,7 +4,7 @@ import { hasModule, resolveBundles, type Module } from "@/lib/features/bundles"
 
 /** A package's switches, as resolveBundles reads them. */
 export const PACKAGE_FACTS = {
-    select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true },
+    select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true, hasClientPortal: true },
 } as const
 
 /**

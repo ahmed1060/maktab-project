@@ -109,6 +109,9 @@ const MISSIONS_GRANTED = "20261225000000_missions_granted"
 // Company.terminalsDirectAllowed, the Super Admin's switch for terminals
 // straight to Nizmo (ATTENDANCE_PLAN.md §17.8, PR 290).
 const TERMINAL_CONNECTION = "20261229000000_terminal_connection"
+// Package.hasClientPortal, the client portal add-on, which a role's preview
+// reads with the package's other switches (CLIENT_PORTAL_PLAN.md §2, PR 310).
+const CLIENT_PORTAL_ADDON = "20270101000000_client_portal_addon"
 
 const BEFORE_ROLES = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now());
@@ -179,6 +182,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(TERMINALS_GRANTED))
         await db.query(sql(MISSIONS_GRANTED))
         await db.query(sql(TERMINAL_CONNECTION))
+        await db.query(sql(CLIENT_PORTAL_ADDON))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).

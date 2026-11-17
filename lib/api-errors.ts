@@ -114,6 +114,7 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     ONLY_PAID_SUPPORTED: { status: 400, message: "A payment can only be marked as paid." },
     UNKNOWN_SUBSCRIPTION_TYPE: { status: 400, message: "This payment's subscription type isn't one the system knows." },
     ATTENDANCE_REQUIRES_HR: { status: 400, message: "The attendance add-ons need HR: attendance feeds payroll." },
+    CLIENT_PORTAL_REQUIRES_COMPANY_MANAGEMENT: { status: 400, message: "The client portal needs Company Management: it shows clients what the company keeps for them." },
     // The attendance calendar (lib/services/attendance-calendar.service.ts).
     PAYROLL_MONTH_LOCKED: { status: 409, message: "That month's payroll is approved, so its attendance can't change." },
     INVALID_DATE: { status: 400, message: "That isn't a real date." },
