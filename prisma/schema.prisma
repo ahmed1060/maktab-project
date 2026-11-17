@@ -324,6 +324,9 @@ model Company {
   tasks                Task[]
   users                User[]
   clients              Client[]
+  /// Its clients' claims on the tax portal (CLIENT_PORTAL_PLAN.md §3).
+  taxClaims TaxClaim[]
+  clientTaxPositions ClientTaxPosition[]
   locations            Location[]
   listEntries          ListEntry[]
   roles                Role[]                    @relation("CompanyRoles")
@@ -536,6 +539,8 @@ model User {
   createdSections            RecordSection[]         @relation("SectionCreatedBy")
   editedSections             RecordSection[]         @relation("SectionEditedBy")
   createdClients             Client[]                @relation("ClientCreatedBy")
+  /// The tax portal files they uploaded last for a client (CLIENT_PORTAL_PLAN.md §3.1).
+  taxUploads ClientTaxPosition[] @relation("TaxPositionUploadedBy")
   createdLocations           Location[]              @relation("LocationCreatedBy")
   createdListEntries         ListEntry[]             @relation("ListEntryCreatedBy")
   dayOffCreditSnapshots      DayOffCreditSnapshot[]
@@ -1242,6 +1247,10 @@ model Client {
   recordSections RecordSection[]
   /// Its places: its HQ, and its branches and sites (CLIENTS_PLAN.md §2).
   locations      Location[]
+  /// Its open claims on the tax portal, and the day they're from
+  /// (CLIENT_PORTAL_PLAN.md §3).
+  taxClaims      TaxClaim[]
+  taxPosition    ClientTaxPosition?
 
   @@unique([name, companyId])
   @@index([companyId])
@@ -3022,4 +3031,64 @@ model CheckInRefusal {
 
   @@index([companyId, at])
   @@index([at])
+}
+
+/// One open claim on the Tax Authority's portal, for one client
+/// (CLIENT_PORTAL_PLAN.md §3.1), as the portal's file had it the day it was
+/// uploaded. Claims come only from that file, each upload replacing the
+/// client's last (§4.1, §4.2), so none is ever edited.
+///
+/// The database also holds what the schema can't say: a claim has a number
+/// and an item, its amounts aren't negative and add up, something is left
+/// to pay (§3.2), and its period's days are in order.
+model TaxClaim {
+  id               String    @id @default(uuid())
+  companyId        String
+  clientId         String
+  /// رقم المطالبة, as text, so its leading zeros stay.
+  claimNumber      String
+  /// نوع الضريبة, such as دخل.
+  taxType          String?
+  /// نوع بند السداد, as the portal wrote it (§3.3).
+  item             String
+  /// نوع التسجيل الضريبي.
+  registrationType String?
+  originalAmount   Decimal   @db.Decimal(14, 2)
+  paidAmount       Decimal   @db.Decimal(14, 2)
+  remainingAmount  Decimal   @db.Decimal(14, 2)
+  /// As the portal wrote them.
+  currency         String?
+  status           String?
+  /// The tax period's first and last days.
+  periodStart      DateTime? @db.Date
+  periodEnd        DateTime? @db.Date
+  /// آخر موعد للسداد قبل الغرامة.
+  dueDate          DateTime  @db.Date
+  createdAt        DateTime  @default(now())
+  company          Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  client           Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, claimNumber])
+  @@index([clientId, dueDate])
+  @@index([companyId])
+}
+
+/// When a client's claims are from, and who uploaded them last
+/// (CLIENT_PORTAL_PLAN.md §3.1): one row for a client whose portal file has
+/// been uploaded, kept with no claims too, where the file had none open.
+model ClientTaxPosition {
+  clientId       String   @id
+  companyId      String
+  /// The day the figures are from, as the check screen said (§4.1).
+  asOf           DateTime @db.Date
+  /// Who uploaded the file, and their name as it was that day.
+  uploadedById   String?
+  uploadedByName String?
+  uploadedAt     DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  uploadedBy     User?    @relation("TaxPositionUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
 }

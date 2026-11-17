@@ -154,6 +154,12 @@ export const PERMISSIONS = {
     "cash_advances.view":       { code: 63, module: "COSTS", scopes: TEAM_OR_COMPANY },
     "cash_advances.give":       { code: 64, module: "COSTS", scopes: COMPANY, implies: ["cash_advances.view"], highRisk: MOVES_MONEY, notOnOwn: true },
 
+    // --- Client portal (CLIENT_PORTAL_PLAN.md §9) ----------------------------
+    // A client's tax position: what it owes on the Tax Authority's portal,
+    // from the portal's file. It's on the client's page, so it's useless
+    // without seeing clients.
+    "tax.view":                 { code: 68, module: "TAX_POSITION", scopes: COMPANY, implies: ["clients.view"] },
+
     // --- Day off -----------------------------------------------------------
     "dayoff.view":              { code: 32, module: "DAY_OFF", scopes: TEAM_OR_COMPANY },
     "dayoff.approve":           { code: 33, module: "DAY_OFF", scopes: TEAM_OR_COMPANY, implies: ["dayoff.view"], notOnOwn: true },
@@ -255,6 +261,9 @@ export type Permission = keyof typeof PERMISSIONS
  * Nor for attendance.manage_terminals (code 66, ATTENDANCE_PLAN.md §17.10,
  * PR 277), for the same reason, nor attendance.approve_missions (code 67,
  * §6.10, PR 283).
+ *
+ * Nor for tax.view (code 68, CLIENT_PORTAL_PLAN.md §9, PR 311): no role
+ * already there holds it until its own migration gives it.
  */
 export const CATALOGUE_VERSION = 4
 

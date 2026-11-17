@@ -46,6 +46,11 @@ const API_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
     // Listed before any route exists under it, so the first one inherits the
     // gate rather than being the one that ships without it.
     ['/api/attendance', 'ATTENDANCE'],
+
+    // --- Client portal ---
+    // A client's claims on the tax portal, shown on its page
+    // (CLIENT_PORTAL_PLAN.md §3.5).
+    ['/api/tax-claims', 'TAX_POSITION'],
 ] as const
 
 /**

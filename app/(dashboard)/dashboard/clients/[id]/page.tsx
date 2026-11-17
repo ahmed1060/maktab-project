@@ -10,6 +10,7 @@ import AccessDenied from '@/components/AccessDenied'
 import { Button, Card, Details, EmptyState, Page, PageHeader, Section, SectionLink, StatusBadge } from '@/components/ui'
 import LocationsList from '@/components/locations/LocationsList'
 import ChargesList from '@/components/charges/ChargesList'
+import TaxPosition from '@/components/tax/TaxPosition'
 import RecordsList from '@/components/records/RecordsList'
 import SectionsCard from '@/components/records/SectionsCard'
 import type { SectionItem } from '@/components/records/types'
@@ -17,6 +18,7 @@ import { googleMapsLink } from '@/lib/attendance/geo'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useModules } from '@/lib/useModules'
 import { useCan, useViewer } from '@/lib/useCan'
+import { useFeatures } from '@/lib/features/useFeatures'
 
 type Client = {
     id: string
@@ -52,6 +54,9 @@ export default function ClientPage() {
     const seesRecords = can('records.view')
     const seesLocations = can('locations.view')
     const seesCharges = can('charges.view')
+    // Its tax position, where the company's package has the client portal (CLIENT_PORTAL_PLAN.md §3.5).
+    const features = useFeatures()
+    const seesTax = features.has('TAX_POSITION') && can('tax.view')
     const [adding, setAdding] = useState(false)
     const [addingLocation, setAddingLocation] = useState(false)
     const [restoring, setRestoring] = useState(false)
@@ -164,6 +169,10 @@ export default function ClientPage() {
                     <EmptyState icon={WarningCircleIcon} title={t('client_details_failed')} action={<Button onClick={() => { void reloadClient() }}>{t('try_again')}</Button>} />
                 </Card>
             )}
+
+            {/* What it owes on the tax portal, from the portal's file (CLIENT_PORTAL_PLAN.md §3.5).
+                Made again for another client, so one client's figures never stand in for the next's while those load. */}
+            {seesTax && <TaxPosition key={id} clientId={id} />}
 
             {seesLocations && (
                 <Section

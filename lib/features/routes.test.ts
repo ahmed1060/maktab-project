@@ -164,7 +164,7 @@ describe("page paths and their guards", () => {
                 ['/dashboard/tasks', '/dashboard/obligations', '/dashboard/records', '/dashboard/clients', '/dashboard/costs', '/dashboard/day-off-requests', '/dashboard/attendance']
                     .some(p => moduleForPagePath(p) === mod) ||
                 ['/api/tasks', '/api/obligations', '/api/records', '/api/clients', '/api/day-off-requests',
-                 '/api/tasks/abc/penalty', '/api/users/abc/salary-history', '/api/tasks/payment/bulk']
+                 '/api/tasks/abc/penalty', '/api/users/abc/salary-history', '/api/tasks/payment/bulk', '/api/tax-claims']
                     .some(p => moduleForApiPath(p) === mod)
             expect(reachable, `${module} is gated but nothing routes to it`).toBe(true)
         }
@@ -179,9 +179,11 @@ describe("what this deploy does on the day it ships", () => {
     // anybody.
     const grandfathered = sessionFor(null)
 
-    it("every module stays open for every existing company", () => {
+    it("every module there was stays open for every existing company", () => {
+        // The tax position came later, in the client portal, which a company
+        // only has on a package that gives it (CLIENT_PORTAL_PLAN.md §2).
         for (const mod of ALL_MODULES) {
-            expect(requireFeature(grandfathered, mod, { onDeny: 'lock' }).allowed, mod).toBe(true)
+            expect(requireFeature(grandfathered, mod, { onDeny: 'lock' }).allowed, mod).toBe(mod !== 'TAX_POSITION')
         }
     })
 

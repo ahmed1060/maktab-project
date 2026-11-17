@@ -112,6 +112,9 @@ const TERMINAL_CONNECTION = "20261229000000_terminal_connection"
 // Package.hasClientPortal, the client portal add-on, which a role's preview
 // reads with the package's other switches (CLIENT_PORTAL_PLAN.md §2, PR 310).
 const CLIENT_PORTAL_ADDON = "20270101000000_client_portal_addon"
+// Given to a new company's built-in roles now, and to the companies there
+// already are by a later migration (CLIENT_PORTAL_PLAN.md §12, PR 311).
+const GRANTED_LATER = ["tax.view"]
 
 const BEFORE_ROLES = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now());
@@ -233,7 +236,8 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                     const grants = Object.fromEntries(rows
                         .filter(r => r.companyId === company && r.builtIn === builtIn)
                         .map(r => [r.permission, r.scope]))
-                    expect(grants, `${company} ${builtIn}`).toEqual(BUILT_IN_GRANTS[builtIn])
+                    const now = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).filter(([permission]) => !GRANTED_LATER.includes(permission)))
+                    expect(grants, `${company} ${builtIn}`).toEqual(now)
                 }
             }
         })

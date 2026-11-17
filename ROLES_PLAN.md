@@ -244,6 +244,7 @@ them, as today.
 | | `records.edit` | Rename a section | `PUT /records/sections` |
 | | `records.delete` | Delete a section or a record — **cannot be undone**, high-risk (§6.15) | `DELETE /records`, `DELETE /records/sections` |
 | **Clients** | `clients.view` / `clients.manage` | See clients; create, edit and delete them (named `vendors.*` until 0b, and in the database until 0c, `CLIENTS_PLAN.md` §0.3) | `clients` |
+| **Client portal** | `tax.view` | See a client's tax position on its page, in a company whose package has the client portal — implies `clients.view` (`CLIENT_PORTAL_PLAN.md` §9) | `GET /tax-claims` |
 | **Costs** | `costs.view` | See costs, including a person's cost history | `users/[id]/costs-history` |
 | **Day off** | `dayoff.view` | See others' leave and balances | `admin/day-off-requests`, `users/[id]/day-off-history` |
 | | `dayoff.approve` | Approve / reject / re-evaluate leave | `admin/day-off-requests/[id]*` |

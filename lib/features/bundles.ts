@@ -22,9 +22,7 @@ export const ATTENDANCE_BUNDLES = ['ATTENDANCE_TERMINALS', 'ATTENDANCE_MOBILE'] 
  * there before packages, but not these: the client portal lets people from
  * outside the company in, so it opens only where a package gives it.
  *
- * No module is in the client portal yet. Its first, a client's tax
- * position, comes with the route that asks for it (§12 step 2b), as no
- * module is gated that nothing routes to.
+ * Its first module is a client's tax position (§3.5, PR 311).
  */
 export const OPT_IN_BUNDLES: readonly Bundle[] = ['CLIENT_PORTAL']
 
@@ -39,6 +37,7 @@ export type Module =
     | 'TASKS' | 'OBLIGATIONS' | 'RECORDS' | 'CLIENTS' | 'COSTS'
     | 'DAY_OFF' | 'PAYROLL' | 'SALARY_ADJUSTMENTS'
     | 'ATTENDANCE'
+    | 'TAX_POSITION'
 
 /**
  * The single table. A module maps to the bundle that owns it, to a list of
@@ -72,6 +71,10 @@ export const MODULE_BUNDLE: Record<Module, Bundle | readonly Bundle[] | null> = 
     // them. Needed however punches arrive, so either add-on opens it (§16);
     // there is no attendance without one of them.
     ATTENDANCE: ATTENDANCE_BUNDLES,
+
+    // The client portal: what a company keeps for its clients to see,
+    // starting with their tax position (CLIENT_PORTAL_PLAN.md §2, §3.5).
+    TAX_POSITION: 'CLIENT_PORTAL',
 }
 
 /** Each bundle's name, as a translation key, for every screen that names one. */
