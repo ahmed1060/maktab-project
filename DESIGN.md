@@ -1438,6 +1438,106 @@ These are built once, in the building-blocks PR, and every page uses them
     order.
   - A period with more charges than one statement holds (200) says so,
     and asks for a shorter one.
+- **The client's area:** where a client's person lands after signing in,
+  to see what the company keeps for their client
+  (`CLIENT_PORTAL_PLAN.md` §5, §6). It isn't the app the company's own
+  people use, so it has none of its frame:
+  - a top bar alone, on `--panel` with a `--rule` line under it: at the
+    start, the company's mark and name as at the top of the side bar
+    (§5.1); at the end, the language switch and the account menu, with
+    Change password and Sign out. No side bar, notifications or search
+    while the area has one page;
+  - its pages are up to 1180px wide and centred, on `--page`;
+  - it's in the company's brand colour (§2.1), so the client sees the
+    office they deal with.
+- **Bars by part:** how an amount splits into a few named parts, to
+  compare them, such as what a client owes by item.
+  - Each part is a row: its name, a bar, and its amount, with a note in
+    `--text-sm` and `--muted` under the amount, such as its share and how
+    many there are. On phones, the bar goes under the name and the amount
+    to the row's end, with the note under the bar.
+  - The bars are 8px high in `--brand`, starting at the start side, with
+    their far end rounded 4px. The largest part fills the space and the
+    rest are drawn to scale; a part too small to see is drawn 4px long, so
+    it's still there. A part at 0 has no bar.
+  - One colour, as the names say which part is which. Largest first,
+    unless the parts have an order of their own, such as how long ago,
+    which they keep.
+  - The amounts and notes are in the text colours, never the bar's.
+    Pointing at a row shows its full name and amount. No axis or grid
+    lines.
+- **Share bar:** how much of a whole is done, such as how much of a
+  client's claims is paid. A line says it in words, such as "16% paid",
+  with the two amounts at its end (under it on phones), over a 10px bar of
+  `--brand` on `--brand-tint-strong`, fully rounded. Screen readers read
+  the line, and the bar is hidden from them.
+- **A client's tax position:** the client's area's page of what their
+  company owes on the Tax Authority's portal, from what the company
+  keeps for it (`CLIENT_PORTAL_PLAN.md` §6).
+  - Its page header: the client's name in `--text-sm` and `--muted` above
+    the title; a subtitle saying where the figures come from, the day they
+    were last updated and the responsible accountant; Contact the
+    accountant as the primary button and Download the statement beside
+    it. Where the client has no one to write to on WhatsApp
+    (`CLIENT_PORTAL_PLAN.md` §7), Contact the accountant isn't there, nor
+    is any claim's Ask about this claim, and the note under the claims
+    says to contact the office.
+  - On a client's page for the company's people, from 30 days after the
+    day the figures are from, a Waiting on someone badge beside that day
+    says how long it's been, such as "Not updated for 34 days", and the
+    Clients list has the same badge in the client's row. The client's own
+    page has the day alone.
+  - What's owed, in a card. Its label, then the amount as the page's one
+    large figure: 48px (36px on phones), weight 600, even-width digits,
+    the currency after it in `--text-lg` and `--muted`. It's the only text
+    larger than `--text-3xl`, and comes as `--text-hero` with the page
+    (§3.2). Under it, a Problem badge while claims are late: "All open
+    claims are late", or how many are. Beside it (under it on phones):
+    how much is paid, as a share bar, then three facts: open claims, paid,
+    and the oldest delay in days. On computers the facts are in a row,
+    each a label above its value in `--text-xl`; on phones, one to a line,
+    the label at the start and the value at the end.
+  - Two cards side by side, stacked on phones, each bars by part: what's
+    owed by item, and how late, by time since the due date (under 6
+    months, 6 months to a year, 1 to 2 years, more than 2 years), in that
+    order.
+  - The claims, by item, in a card: a table on computers and cards on
+    phones (§5.4).
+    - Each item's row is a button that opens its claims under it: a
+      chevron pointing to the end side while closed (flipped in Arabic)
+      and down while open, the item, how many claims, the original, paid
+      and remaining amounts (remaining in weight 700), the earliest due
+      date and the badges its claims have. The largest remaining comes
+      first, and it says it's open (`aria-expanded`).
+    - A claim's row, on `--page`, inset under its item's name: its number
+      above its period, then its amounts, its due date and its badges.
+      The number is in Latin digits, left to right, as it's typed into
+      the portal. At the row's end, Ask about this claim: a 44px icon
+      button with a speech bubble, named for screen readers with the
+      claim's number, opening Contact on WhatsApp with that claim's
+      message. On phones it's at the end of the claim card's first line.
+    - A total row at its foot.
+    - On phones, each item is a card that opens, with how many claims and
+      what remains on one line under its name. Each claim is a card with
+      its number and badges on its first line, its period and due date
+      under them, then the original, paid and remaining amounts in three
+      columns.
+    - Its badges: Late, with the Problem colours, and Partly paid, with
+      the Waiting on someone colours. A claim can have both.
+  - A note under the card: the currency, the day the figures are from,
+    that penalties for paying late aren't counted, and to contact the
+    accountant about any claim.
+  - With no claims kept yet, the page's place is an empty state saying
+    the office hasn't added the tax position yet.
+- **Contact on WhatsApp:** a dialog for writing to someone on WhatsApp,
+  such as a client's accountant. Who it reaches comes first, in a box
+  with a `--rule` edge: their initials in a circle, their name, and what
+  they are to the client. Under it, the message, written for the page it
+  was opened from and in a field it can be changed in, with a hint saying
+  it can also be changed in WhatsApp. Open WhatsApp is its main button,
+  opening a new tab, which it says to screen readers; Cancel beside it. A
+  line at its foot says it opens WhatsApp on a phone, or WhatsApp Web on
+  a computer, and that the conversation stays there.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
@@ -2347,3 +2447,16 @@ changed:
   picked to start with and a line saying which ones the way picked is
   for. First for a ZKTeco terminal that sends its scans to the office
   agent (`ATTENDANCE_PLAN.md` §17.7, §17.12).
+- **2026-11-17:** The client's area (§5.5), where a client's person
+  lands after signing in: a top bar alone with the company's mark, the
+  language switch and the account menu, in the company's colour. With it,
+  bars by part, for comparing a few parts of an amount in one colour; a
+  share bar, for how much of a whole is done; a client's tax position, the
+  area's first page, with one figure larger than `--text-3xl` to come as
+  `--text-hero`; and a dialog for writing to someone on WhatsApp
+  (`CLIENT_PORTAL_PLAN.md`).
+- **2026-11-17:** Ask about this claim, on each claim of a client's tax
+  position (§5.5), opening the WhatsApp dialog with that claim's message;
+  the page without anyone to write to; and a Waiting on someone badge
+  where a client's figures are 30 days old or more, for the company's
+  people (`CLIENT_PORTAL_PLAN.md` §4.3, §7).
