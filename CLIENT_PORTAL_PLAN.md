@@ -54,7 +54,7 @@ late it is, and each claim.
 
 ## 3. The claims
 
-### 3.1 What's kept (Proposed)
+### 3.1 What's kept (Decided, 2026-11-17)
 
 One row per claim, for one client (`TaxClaim`):
 
@@ -80,7 +80,7 @@ The tax position is what's still owed: claims waiting to be paid (في
 pay isn't kept. Read from a file, it's left out, and the check screen
 counts it (§4.1).
 
-### 3.3 The items' names (Proposed)
+### 3.3 The items' names (Decided, 2026-11-17)
 
 The portal spells the same item more than one way: أقرار and إقرار,
 مساهمه تكافليه and مساهمة تكافلية, a dash with and without spaces.
@@ -160,14 +160,14 @@ with no change to the button, one company's file at a time.
     another.
   - The audit log gets an entry: who uploaded, the file's name, and how
     many claims are new, changed and gone.
-- **Keeping a replace safe** (Proposed, 2026-11-17), as an upload
+- **Keeping a replace safe** (Decided, 2026-11-17), as an upload
   replaces all of a client's claims:
   - **A row with a problem stops the save.** Saving the other rows would
     delete that row's claim from Nizmo. The check screen lists each
     problem, and the file is fixed or exported again.
-  - **Asked once more when many go:** where the file would remove more
-    than half of the client's claims, saving asks again. A file exported
-    with a filter on the portal looks like that.
+  - **Many claims going:** the check screen lists them before saving,
+    with no second question (the owner, 2026-11-17). A file exported with
+    a filter on the portal looks like that.
   - **Two uploads at once:** saving checks that the client's claims are
     still as the check screen read them. If someone changed them in the
     meantime, it says so, and the file is checked again.
@@ -191,11 +191,22 @@ The owner asked for a form as well as the upload.
   screen counts those claims among what changes or goes.
 - Each add, edit and delete is in the audit log.
 
+### 4.3 Figures getting old (Decided, 2026-11-17)
+
+- The day the figures are from changes with each upload, to the day the
+  check screen says, and with each change by hand, to that day.
+- From 30 days after it, counted in the company's time zone as late is,
+  the client's Tax position says how long it's been, for the company's
+  people: a Waiting on someone badge by the day, "Not updated for 34
+  days". The Clients list has the same badge in the client's row, so
+  whose file is due shows at a glance.
+- The client's own page shows the day, as always, with no badge.
+
 ---
 
 ## 5. Client accounts
 
-### 5.1 Separate from the company's people (Proposed)
+### 5.1 Separate from the company's people (Decided, 2026-11-17)
 
 - A **client account** belongs to one client. It isn't one of the
   company's people: it's never in Employees, payroll, attendance,
@@ -210,7 +221,7 @@ The owner asked for a form as well as the upload.
   Super Admins and client accounts alike, so signing in finds one
   account.
 
-### 5.2 Adding and removing people (Proposed)
+### 5.2 Adding and removing people (Decided, 2026-11-17)
 
 - On a client's page, **People who can sign in**, with
   `client_accounts.manage` (§9): each person's name, email, and when they
@@ -221,7 +232,7 @@ The owner asked for a form as well as the upload.
 - Remove: their account goes, and so do their open sessions, at once.
 - Each add, resend and remove is in the audit log.
 
-### 5.3 Signing in (Proposed)
+### 5.3 Signing in (Decided, 2026-11-17)
 
 - On the same sign-in page, with their email and password. The same lock
   after too many wrong passwords, and the same Forgot password, as for
@@ -245,7 +256,8 @@ The owner asked for a form as well as the upload.
 ### 5.4 What a client account never sees (Decided)
 
 Anything else of the company's: its people, other than their
-accountant's name; its tasks, costs, charges and records; and its other
+accountant's name, and the accountant's WhatsApp number once WhatsApp
+opens (§7); its tasks, costs, charges and records; and its other
 clients.
 
 ---
@@ -266,6 +278,7 @@ The client's area and A client's tax position).
   and the oldest delay.
 - **By item, and how late:** bars by part.
 - **The claims:** by item, opening to each claim, with a total row.
+  Each claim has Ask about this claim (§7).
 - **A note:** in Egyptian pounds, as they were on the portal that day,
   with penalties for paying late not counted.
 - **Before the first upload:** the page says the office hasn't added the
@@ -279,30 +292,82 @@ The client's area and A client's tax position).
 - Each client gets a **responsible accountant**: one of the company's
   people, picked on the client's page with `clients.manage`. The client
   sees their name.
-- The number is the company's WhatsApp number for clients, in Company
-  settings (Proposed), so no one's own number is shown.
-- Contact the accountant opens a dialog (`DESIGN.md` §5.5, Contact on
-  WhatsApp): the accountant, and a message ready to send, naming the
-  client and the day the figures are from, which can be changed. Open
-  WhatsApp opens `https://wa.me/<number>?text=<message>` in a new tab:
-  the app on a phone, WhatsApp Web on a computer.
+- **The accountant's own number** (Decided, 2026-11-17): the person who
+  answers for the client is the one written to. Each of the company's
+  people can have a WhatsApp number on their profile, set by them or by
+  whoever can edit their profile, with a hint that the clients they're
+  responsible for can write to it.
+  - It's typed as an Egyptian mobile (01…) or with its country code
+    (+…), and kept with its country code.
+- **Contact the accountant** opens a dialog (`DESIGN.md` §5.5, Contact
+  on WhatsApp): the accountant, and a message ready to send, which can be
+  changed. Open WhatsApp opens `https://wa.me/<number>?text=<message>` in
+  a new tab: the app on a phone, WhatsApp Web on a computer.
+- **Ask about this claim** (Decided, 2026-11-17): on each claim, opening
+  the same dialog with that claim's message.
+- **The messages** (Proposed, 2026-11-17), in the page's language, from
+  the client account's name:
+  - From Contact the accountant:
+
+    ```
+    السلام عليكم،
+    أنا منى فؤاد من شركة النموذج للتجارة والتوريدات.
+    استفسار عن الموقف الضريبي بتاريخ ١٦ نوفمبر ٢٠٢٦:
+    ```
+
+  - From a claim:
+
+    ```
+    السلام عليكم،
+    أنا منى فؤاد من شركة النموذج للتجارة والتوريدات.
+    استفسار عن المطالبة رقم 000372722603:
+    البند: إقرار تجاري
+    المتبقي: ١٣٬٧٢٣٫٢٦ جنيه من ٢١٬٠٨٨٫٢٦
+    آخر موعد للسداد: ٣٠ أبريل ٢٠٢٦
+    ```
+
+  - In English: "Hello, / This is Mona Fouad from <client>. / A question
+    about the tax position as of 16 November 2026:", and for a claim "A
+    question about claim 000372722603: / Item: … / Remaining: EGP
+    13,723.26 of 21,088.26 / Last day to pay: 30 April 2026".
+  - The claim number in Latin digits, as it's typed into the portal. The
+    person writes their question under it, here or in WhatsApp.
+- **Without a number:** where the client has no responsible accountant,
+  or theirs has no WhatsApp number or their contract has ended, the
+  client's page has no Contact the accountant and no Ask about this
+  claim, and its note says to contact the office. On the client's page
+  for the company's people, the Tax position says why, with the way to
+  fix it: pick a responsible accountant, or add their WhatsApp number on
+  their profile.
 - Nothing passes through Nizmo, and nothing of the conversation is kept.
-- Without a number set, the button isn't there.
-- Turned down for now: an email form (§14).
+- Turned down: an email form, and one number for the whole company
+  (§14).
 
 ---
 
-## 8. Download the statement (Proposed)
+## 8. Download the statement (Decided, 2026-11-17)
 
-A document to print or save as a PDF, as the client statement is
-(`DESIGN.md` §5.5, Document): the client's open claims as of the day
-they're from, by item, with each item's total and the total in all. The
-same document opens from the client's Tax position for the company's
-people.
+Download the statement opens the client's tax position as a document in
+a new tab, to print or save as a PDF from the browser's print, as the
+client statement is (`DESIGN.md` §5.5, Document). Nothing is kept or
+sent: it's drawn from the claims as they are.
+
+- On it: the company's mark and name; Tax position statement; the
+  client's name, the day the figures are from and the responsible
+  accountant; what remains in all and how many claims are late; the
+  claims by item, each with its number, period, last day to pay,
+  original, paid and remaining amounts and its badges; each item's total
+  and the total in all; the note (Egyptian pounds, as on the portal that
+  day, penalties for paying late not counted); and the day it was
+  printed.
+- In the page's language. Saved as a PDF, it's named for the client and
+  the day the figures are from.
+- The same document opens from the client's Tax position for the
+  company's people, with `tax.view`.
 
 ---
 
-## 9. Permissions (Proposed)
+## 9. Permissions (Decided, 2026-11-17)
 
 | Permission | What it allows | Scope |
 |---|---|---|
@@ -337,6 +402,23 @@ people.
 - Its staff install it by dragging it to the bookmarks bar from its page;
   no store or paid account is needed. A bookmark keeps the copy it was
   made with, so after a change each of them drags the new one once.
+- **In Nizmo** (Proposed, 2026-11-17): the button's code moves into
+  Nizmo, with its tests on a page laid out like the portal's that holds
+  made-up claims. Nizmo makes the bookmark from it and shows it on a page
+  of its own, **The tax portal's export button**, for whoever has
+  `tax.manage` where the package has the add-on:
+  - the button to drag to the bookmarks bar, on a computer;
+  - the steps: open the portal's Payments page for the client's company,
+    press the button on each page of claims, then Download, and upload
+    the file on that client's page in Nizmo;
+  - what it does: it reads the table on the screen and saves a file on
+    the computer. It sends nothing to Nizmo or anywhere else;
+  - the note for a shared computer, and Clear.
+
+  The upload's dialog (How to get this file) and the Tax position section
+  link to it. Staff then always drag the newest copy from one place, and
+  the separate install page goes. The button still runs on the portal's
+  page, in the staff's own browser.
 
 ---
 
@@ -349,7 +431,7 @@ sends sign-in codes.
 
 ---
 
-## 12. Build order (Proposed)
+## 12. Build order (Decided, 2026-11-17)
 
 Each a small PR, tests first, the flows in both languages and at phone
 width:
@@ -361,15 +443,20 @@ width:
 3. **Uploading the portal's file** on a client's page: reading it,
    checking it's that client's, the check screen, replacing, and the
    audit log.
-4. **Client accounts:** their table, People who can sign in,
+4. **The export button in Nizmo** (§10): its code and tests in the
+   repository, its page, and the links to it.
+5. **Figures getting old** (§4.3): the badge on the client's page and the
+   Clients list.
+6. **Client accounts:** their table, People who can sign in,
    `client_accounts.manage`, the invitation and setting a password.
-5. **Signing in as a client account, and the client's area:** sign-in
+7. **Signing in as a client account, and the client's area:** sign-in
    finding them, their session, the proxy keeping them in the area, and
    its top bar and account menu.
-6. **The tax position page.**
-7. **Contact the accountant on WhatsApp:** the responsible accountant,
-   the company's number and the dialog.
-8. **Download the statement.**
+8. **The tax position page.**
+9. **Contacting the accountant on WhatsApp:** the number on people's
+   profiles, the responsible accountant, the dialog, Ask about this
+   claim, and the messages.
+10. **Download the statement.**
 
 ---
 
@@ -388,11 +475,9 @@ width:
 - **Undo the last upload** (proposed, 2026-11-17): Nizmo keeps the claims
   the last upload replaced, and Undo puts them back, while no newer
   upload or edit has followed.
-- **Figures getting old** (proposed, 2026-11-17): a note on the client's
-  page, and a column on the Clients list, where a client's tax position
-  hasn't been updated for 30 days.
-- **Asking about one claim** (proposed, 2026-11-17): a WhatsApp link on
-  each claim, with its number in the message.
+- **The button's copy in its file:** the export button would write which
+  copy it is into its file, so the upload could say when a file comes
+  from an old one, with the link to drag the new one.
 
 ---
 
@@ -411,10 +496,14 @@ width:
   have to leave them out.
 - **An email form for contacting the accountant** (2026-11-17): WhatsApp
   was chosen. It can come back if a written record is wanted.
+- **One WhatsApp number for the whole company** (2026-11-17): the
+  accountant who answers for the client is the one written to (§7).
+- **Asking once more when many claims go** (2026-11-17): the check
+  screen lists them before saving (§4.1).
 
 ---
 
-## 15. How it's tested (Proposed)
+## 15. How it's tested (Decided, 2026-11-17)
 
 Each part's PR has its own tests, written first. The upload button's,
 from the screen to the database:
@@ -462,7 +551,8 @@ from the screen to the database:
    - A claim now partly paid: changed, with Partly paid.
    - A claim not in the new file: listed as going, then gone.
    - A claim added or edited by hand: replaced by the file's, and counted.
-   - More than half going: asked once more.
+   - Many claims going: listed on the check screen, with no second
+     question.
    - Cancel: nothing changes.
    - A failure while saving: nothing changes, with Try again.
    - Two people saving at once: the second is told the claims changed.
@@ -474,6 +564,8 @@ from the screen to the database:
    - Late counted in the company's time zone: a claim due today isn't
      late, one due yesterday is.
    - Items spelled two ways on the portal are one group.
+   - Figures getting old: no badge at 29 days, the badge at 30, and none
+     again after the next upload.
 7. **On screen:** the check screen in both languages, and at phone width.
 
 The export button (the owner's, outside Nizmo), tried on a page laid out
@@ -489,21 +581,17 @@ itself:
 - the file's name: the company and Cairo's date.
 
 The one way staff can still go wrong is exporting with a filter on the
-portal. Nizmo's check screen then lists the claims that would go, and
-asks once more where they're more than half.
+portal. Nizmo's check screen then lists the claims that would go, before
+anything is saved.
 
 ---
 
 ## 16. Open questions
 
-1. **A row with a problem** (§4.1): stop the save, as proposed, or save
-   the other rows and leave that one out? Saving them would delete that
-   row's claim.
-2. **Many claims going** (§4.1): ask once more over half, as proposed?
-3. **The WhatsApp number** (§7): one for the company, as proposed, or
-   each accountant's own?
-4. **The proposed parts** (§3, §5, §8, §9, §12, §15): merging this plan
-   agrees to them.
+1. **The messages** (§7): the words proposed for Contact the accountant
+   and for a claim, or others?
+2. **The export button in Nizmo** (§10): its code and page in Nizmo, as
+   proposed, in place of its separate install page?
 
 ---
 
@@ -526,3 +614,11 @@ asks once more where they're more than half.
   button's from the screen to the database and the export button's;
   keeping a replace safe (§4.1, proposed); three small items for later
   (§13); and the questions still open (§16).
+- **2026-11-17:** The owner's answers (#309): a row with a problem stops
+  the save; no second question when many claims go; each accountant's own
+  WhatsApp number, not the company's; figures getting old in the build
+  (§4.3); Ask about this claim on each claim, its message to be agreed
+  (§7); and the proposed parts agreed. With them: what Download the
+  statement holds (§8), the export button moving into Nizmo (§10,
+  proposed), the build order in ten PRs (§12), and the questions still
+  open (§16).
