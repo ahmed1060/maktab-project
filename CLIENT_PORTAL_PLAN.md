@@ -137,9 +137,9 @@ with no change to the button, one company's file at a time.
 
   A row with nothing left to pay is left out and counted (§3.2).
 - **One company to a file:** every row's الشركة must name the same
-  company. The button can gather several companies into one file; such a
-  file is refused, naming the companies in it, with a hint to export each
-  on its own, pressing Clear (مسح) in the button before the next company.
+  company. The export button holds one company at a time (§10), so its
+  file always does. A file naming several, such as one from an older copy
+  of the button, is refused, naming the companies in it.
 - **The right client:** Nizmo keeps the company's name from the last file
   uploaded for the client. Where the file's company is neither that name
   nor the client's own, matched as §3.3 matches items, the check screen
@@ -307,17 +307,20 @@ people.
 
 ## 10. The export button (the owner's, outside Nizmo)
 
-- Nizmo reads its file as it is today, one company to a file (§4.1).
-  Its combined file of several companies isn't taken.
-- Two notes for it, neither needed by Nizmo:
-  - the date in the file's name is the UTC date, so between midnight and
-    2 or 3 in the morning in Cairo it's the day before. The Cairo date
-    would fix it;
-  - the rows it gathers stay in the browser until Clear (مسح) is pressed,
-    so on a shared computer the next person can see the last client's
-    claims.
+- Changed on 2026-11-17 at the owner's ask, to fit the upload on a
+  client's page (§4.1), and tried on a page laid out like the portal's:
+  - it holds one company at a time. Opening another company starts it
+    again by itself, with no Clear (مسح) to press, so each file is one
+    company's;
+  - its file's name has Cairo's date, not UTC's, which was the day before
+    between midnight and 2 or 3 in the morning. Nizmo takes the day the
+    figures are from from it.
+- The rows it gathers stay in the browser until another company is opened
+  or Clear is pressed, so on a shared computer the next person can see the
+  last client's claims.
 - Its staff install it by dragging it to the bookmarks bar from its page;
-  no store or paid account is needed.
+  no store or paid account is needed. A bookmark keeps the copy it was
+  made with, so after a change each of them drags the new one once.
 
 ---
 
@@ -399,3 +402,6 @@ width:
   owner): the file is the open client's, one company to a file, with a
   confirmation where its company isn't the client's. Uploading one file
   for several clients from the Clients page is turned down (§4.1, §14).
+- **2026-11-17:** The export button holds one company at a time (#309,
+  the owner): opening another company starts it again by itself, with no
+  Clear to press, and its file's name has Cairo's date (§4.1, §10).
