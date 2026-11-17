@@ -143,6 +143,10 @@ A client's page gets a section, Tax position, after the client's details
 - **Before the first upload,** it says there's no tax position yet. A
   file with no open claim in it leaves the day and the totals, at 0.
 - **An archived client's** is still shown: it's what the portal said.
+- **When it didn't load,** the section's place says so, with Try again.
+  A page of claims that didn't load says so too: the claims kept up from
+  another page don't stand in for it. A page gone back to is read again,
+  as what was kept of it may be an earlier file's.
 - It only shows. Uploading the portal's file comes in step 3 (§12).
 
 ---
@@ -801,3 +805,6 @@ templates (§7.1), and the export button moves into Nizmo (§10).
   with the upload, whose route asks for it, and its grant after it, as
   3b (§9, §12). One open question: a client with claims being deleted
   (§16).
+- **2026-11-17:** From Codex's review of #311: a page of claims that
+  didn't load says so, with Try again, where the claims kept up from
+  another page stood in for it (§3.5).
