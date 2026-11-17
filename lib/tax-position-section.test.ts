@@ -13,15 +13,21 @@ import type { TaxPosition } from "./tax-claims"
  * didn't, before anything was uploaded, and with the client's claims.
  */
 
-type Answer = (key: string) => Record<string, unknown>
-const state = { locale: "en", answer: (() => ({})) as Answer, keys: [] as string[] }
+// What one request is answered with. `from` is the address its data was read for where that isn't the one asked
+// for, as rows kept up from an earlier request are, and `of` the client where it isn't this one.
+type Answer = (url: string) => { data?: unknown; from?: string; of?: string } & Record<string, unknown>
+const state = { locale: "en", answer: (() => ({})) as Answer, keys: [] as unknown[] }
 vi.mock("@/context/LanguageContext", () => ({
     useLanguage: () => ({ locale: state.locale, t: (key: string) => ((state.locale === "ar" ? ar : en) as Record<string, string>)[key] ?? key }),
 }))
+// The section's key is [address, client] (lib/swr-scoped.ts): its data comes back saying which address and which
+// client it was read for.
 vi.mock("swr", () => ({
-    default: (key: string) => {
+    default: (key: [string, string]) => {
         state.keys.push(key)
-        return { data: undefined, error: undefined, isLoading: false, isValidating: false, mutate: async () => {}, ...state.answer(key) }
+        const [url, scope] = key
+        const { data, from, of, ...rest } = state.answer(url)
+        return { error: undefined, isLoading: false, isValidating: false, mutate: async () => {}, ...rest, data: data === undefined ? undefined : { scope: of ?? scope, url: from ?? url, body: data } }
     },
 }))
 
@@ -58,9 +64,9 @@ const NOOR: TaxPosition = {
 const shown = (data: TaxPosition) => { state.answer = () => ({ data: { data } }) }
 
 describe("the Tax position section", () => {
-    it("asks for the client's first five claims", () => {
+    it("asks for the client's first five claims, as that client's", () => {
         render()
-        expect(state.keys).toEqual(["/api/tax-claims?clientId=noor&limit=5&page=1"])
+        expect(state.keys).toEqual([["/api/tax-claims?clientId=noor&limit=5&page=1", "noor"]])
     })
 
     it("says it's loading under its title, to screen readers too", () => {
@@ -77,6 +83,34 @@ describe("the Tax position section", () => {
         expect(html).toContain(esc(en.tax_position_failed))
         expect(html).toMatch(new RegExp(`<button[^>]*>${en.try_again}</button>`))
         expect(html).not.toContain(en.tax_position_loading)
+    })
+
+    it("says it didn't load where the page asked for didn't, the claims kept up from another page not standing in for it", () => {
+        // As when Show all claims, or another page, fails with the first five still kept up (keepPreviousData).
+        state.answer = () => ({ data: { data: NOOR }, from: "/api/tax-claims?clientId=noor&limit=20&page=2", error: new Error("no") })
+        const html = render()
+        expect(html).toContain(esc(en.tax_position_failed))
+        expect(html).toMatch(new RegExp(`<button[^>]*>${en.try_again}</button>`))
+        expect(html).not.toContain("000101")
+        expect(html).not.toContain(esc(en.tax_owed))
+        expect(html).not.toContain(en.tax_show_fewer)
+        expect(html).not.toContain(en.tax_no_open_claims)
+    })
+
+    it("keeps its claims up where only reading the same page again failed", () => {
+        state.answer = () => ({ data: { data: NOOR }, error: new Error("no") })
+        const html = render()
+        expect(html).toContain("000101")
+        expect(html).toContain(esc(en.tax_owed))
+        expect(html).not.toContain(esc(en.tax_position_failed))
+    })
+
+    it("shows nothing read for another client, as if nothing had loaded yet", () => {
+        state.answer = () => ({ data: { data: NOOR }, of: "another" })
+        const html = render()
+        expect(html).toContain(en.tax_position_loading)
+        expect(html).not.toContain("000101")
+        expect(html).not.toContain(esc(en.tax_owed))
     })
 
     it("says there's no tax position yet before anything is uploaded, with no totals and no list", () => {

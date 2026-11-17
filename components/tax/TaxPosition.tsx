@@ -6,7 +6,7 @@ import { CalendarBlankIcon, CalendarCheckIcon, CoinsIcon, HourglassIcon, Receipt
 import { useLanguage } from '@/context/LanguageContext'
 import { Button, DataList, EmptyState, ListCard, Pager, pageInRange, Section, StatusBadge, TotalTiles, type Column } from '@/components/ui'
 import { formatDay } from '@/components/records/types'
-import { fetcher } from '@/lib/swr-fetcher'
+import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { countOf } from '@/lib/plural'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { claimBadges, taxClaimsUrl, TAX_PAGE, TAX_PREVIEW, type TaxClaimRow, type TaxPosition as Position } from '@/lib/tax-claims'
@@ -26,9 +26,14 @@ export default function TaxPosition({ clientId }: { clientId: string }) {
     const { t, locale } = useLanguage()
     const [all, setAll] = useState(false)
     const [page, setPage] = useState(1)
-    // A page gone back to is asked for again, however lately it was read: what was kept of it may be an earlier file's.
-    const { data, error, isValidating, mutate } = useSWR<{ data: Position }>(taxClaimsUrl(clientId, all, page), fetcher, { keepPreviousData: true, dedupingInterval: 0 })
-    const body = data?.data
+    const url = taxClaimsUrl(clientId, all, page)
+    // The claims on screen stay up while the next page loads, so what's read says which address and which client
+    // it was read for (lib/swr-scoped.ts). A page gone back to is asked for again, however lately it was read:
+    // what was kept of it may be an earlier file's.
+    const { data: scoped, error, isValidating, mutate } = useSWR(scopedKey(url, clientId), scopedFetcher, { keepPreviousData: true, dedupingInterval: 0 })
+    const body = forScope<{ data: Position }>(scoped, clientId)?.data
+    // The page asked for didn't load: the claims kept up from another page don't stand in for it.
+    const failed = loadFailed(scoped, error, url)
     // All of them are 20 to a page. On a page past the last, as the claims became fewer, it goes to the last there is.
     const pageCount = all ? Math.ceil((body?.total ?? 0) / TAX_PAGE) : 1
     useAdjustOnChange([pageCount], () => setPage(p => pageInRange(p, pageCount)))
@@ -40,7 +45,7 @@ export default function TaxPosition({ clientId }: { clientId: string }) {
     // A day kept on one line, so a period breaks between its two days and not inside one.
     const whole = (d: string) => day(d).replace(/ /g, '\u00a0')
 
-    if (!body) {
+    if (!body || failed) {
         return (
             <Section title={t('tax_position')}>
                 {error
