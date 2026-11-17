@@ -12,8 +12,9 @@ Each part is marked:
 - **Open**: a question that needs answering before that part is built.
 
 Status: **being built.** The plan and its `DESIGN.md` blocks were merged
-in #309 on 2026-11-17. The add-on on packages (§2, §12 step 2a) is #310.
-The rest is built in the small PRs of §12, each its own PR.
+in #309 on 2026-11-17, and the add-on on packages (§2, §12 step 2a) in
+#310 the same day. The claims on a client's page (§3.5, §12 step 2b) are
+#311. The rest is built in the small PRs of §12, each its own PR.
 
 ---
 
@@ -87,6 +88,11 @@ One row per claim, for one client (`TaxClaim`):
 And for each client: the day its claims are from, and who uploaded them
 last. Row-level security on the new tables, as on every table.
 
+As built (#311): `TaxClaim`, and `ClientTaxPosition` for the day and the
+uploader, whose name is kept as it was that day. The database holds a
+claim to its number once for its client, its amounts adding up, and
+something left to pay. They go with their client when it's deleted (§16).
+
 ### 3.2 Only open claims (Decided, 2026-11-17)
 
 The tax position is what's still owed: claims waiting to be paid (في
@@ -116,6 +122,28 @@ The portal spells the same item more than one way: أقرار and إقرار,
   to today.
 - Its badges: Partly paid where something is paid, and Late where it's
   late. A claim can have both; the owner's mockup showed only one.
+
+### 3.5 On the client's page, for the company's people (As built, #311)
+
+A client's page gets a section, Tax position, after the client's details
+(`DESIGN.md` §5.5, A client's tax position, for the company's people):
+
+- **Who sees it:** whoever has `tax.view` (§9), in a company whose
+  package has the client portal (§2). The Super Admin sees it on any
+  company's client.
+- **What it says:** the day the figures are from, and who uploaded the
+  portal's file and when; what's owed, how many claims are open, how
+  many are late, and what's paid; then the claims, the longest overdue
+  first.
+- **Five claims to start with,** so the client's other sections stay in
+  reach, then Show all claims, 20 to a page, as a client can have up to
+  2,000 (§4.1).
+- **Late** is counted on the server, in the company's time zone (§3.4),
+  so this page and the client's own agree.
+- **Before the first upload,** it says there's no tax position yet. A
+  file with no open claim in it leaves the day and the totals, at 0.
+- **An archived client's** is still shown: it's what the portal said.
+- It only shows. Uploading the portal's file comes in step 3 (§12).
 
 ---
 
@@ -441,12 +469,16 @@ sent: it's drawn from the claims as they are.
 
 | Permission | What it allows | Scope |
 |---|---|---|
-| `tax.view` | Seeing a client's tax position on its page | Company |
+| `tax.view` | Seeing a client's tax position on its page; implies `clients.view`, as that's where it is | Company |
 | `tax.manage` | Uploading the portal's file; implies `tax.view` | Company |
 | `client_accounts.manage` | Adding and removing a client's people, and resending invitations; implies `clients.view` | Company |
 | `client_messages.manage` | Changing the company's copy of the WhatsApp messages (§7.1), and the update email's switch (§4.4) | Company |
 
 - All four are in the `TAX_POSITION` module (§2).
+- Each comes with the route that asks for it, as the catalogue offers no
+  permission that nothing checks: `tax.view` with the claims (step 2b),
+  `tax.manage` with the upload (step 3), and the other two with theirs
+  (§12).
 - `client_accounts.manage` is high-risk, as it lets people from outside
   the company in: it asks for the step-up confirmation
   (`ROLES_PLAN.md` §6.15).
@@ -524,17 +556,18 @@ width:
 2. **The add-on and the claims,** in three:
    - **2a. The add-on on packages:** the package switch and the bundle,
      off for a company with no package (§2). #310.
-   - **2b. The claims:** the `TAX_POSITION` module, `tax.view` and
-     `tax.manage`, the claims' tables, and the Tax position section on a
-     client's page showing them. The module and the permissions come
-     with the route that asks for them, as the gate offers no module
-     that nothing routes to and the catalogue no permission that
-     nothing checks.
-   - **2c.** `tax.view` and `tax.manage` for the built-in Admin of the
-     companies already there.
-3. **Uploading the portal's file** on a client's page: reading it,
-   checking it's that client's, the check screen, replacing, and the
-   audit log.
+   - **2b. The claims:** the `TAX_POSITION` module, `tax.view`, the
+     claims' tables, and the Tax position section on a client's page
+     showing them (§3.5). The module and the permission come with the
+     route that asks for them, as the gate offers no module that nothing
+     routes to and the catalogue no permission that nothing checks. #311.
+   - **2c.** `tax.view` for the built-in Admin of the companies already
+     there.
+3. **Uploading the portal's file** on a client's page: `tax.manage`,
+   reading the file, checking it's that client's, the check screen,
+   replacing, and the audit log.
+   - **3b.** `tax.manage` for the built-in Admin of the companies
+     already there.
 4. **The export button in Nizmo** (§10): its code and tests in the
    repository, its page, and the links to it.
 5. **Figures getting old** (§4.3): the badge on the client's page and the
@@ -700,7 +733,14 @@ Nizmo's check screen then lists them as going, before anything is saved.
 
 ## 16. Open questions
 
-None now. The last two were answered on 2026-11-17: the messages are
+- **A client with claims, deleted (Open):** a client with tasks or
+  records is archived instead of deleted (`CLIENTS_PLAN.md` §4.3), and
+  any other is deleted. As built, its claims go with it, as would its
+  people who sign in later (§5). Proposed: a client with claims is
+  archived too, as its tax position is as much its history as its
+  records are. To answer before the upload (step 3) lets claims in.
+
+The two before it were answered on 2026-11-17: the messages are
 templates (§7.1), and the export button moves into Nizmo (§10).
 
 ---
@@ -755,3 +795,9 @@ templates (§7.1), and the export button moves into Nizmo (§10).
   sees it for every company (§2). Step 2 is built in three, the add-on
   on packages first (#310), with the module and the permissions moved
   to the PR whose route asks for them (§12).
+- **2026-11-17:** The claims on a client's page (#311): the section as
+  built (§3.5), and the tables (§3.1). `tax.view` implies `clients.view`,
+  as the tax position is on the client's page (§9). `tax.manage` comes
+  with the upload, whose route asks for it, and its grant after it, as
+  3b (§9, §12). One open question: a client with claims being deleted
+  (§16).
