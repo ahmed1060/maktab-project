@@ -24,8 +24,9 @@ office, keeps each client's open claims from the Tax Authority's portal
 their **tax position** (الموقف الضريبي): what they owe, by item, how
 late it is, and each claim.
 
-- The company's people keep it up to date, by uploading the Excel file
-  their export button makes from the portal (§4.1), or by hand (§4.2).
+- The company's people keep it up to date by uploading the Excel file
+  their export button makes from the portal (§4.1), the only way claims
+  come in (§4.2).
 - The client's people only look, and contact their accountant on
   WhatsApp (§7).
 - The page is the owner's mockup of 2026-11-17, redrawn on the building
@@ -69,9 +70,8 @@ One row per claim, for one client (`TaxClaim`):
 - the tax period's first and last days;
 - the last day to pay before the penalty (آخر موعد للسداد قبل الغرامة).
 
-And for each client: the day its claims are from, who last changed them,
-and whether by an upload or by hand. Row-level security on the new
-tables, as on every table.
+And for each client: the day its claims are from, and who uploaded them
+last. Row-level security on the new tables, as on every table.
 
 ### 3.2 Only open claims (Decided, 2026-11-17)
 
@@ -166,8 +166,11 @@ with no change to the button, one company's file at a time.
     delete that row's claim from Nizmo. The check screen lists each
     problem, and the file is fixed or exported again.
   - **Many claims going:** the check screen lists them before saving,
-    with no second question (the owner, 2026-11-17). A file exported with
-    a filter on the portal looks like that.
+    with no second question (the owner, 2026-11-17).
+  - **The portal's filter** (Decided, 2026-11-17): staff export with the
+    filter they need, as the export button's page says. A claim the filter
+    hides isn't in the file, so, as each upload replaces the last, it's
+    among those the check screen lists as going.
   - **Two uploads at once:** saving checks that the client's claims are
     still as the check screen read them. If someone changed them in the
     meantime, it says so, and the file is checked again.
@@ -177,24 +180,17 @@ with no change to the button, one company's file at a time.
   - **Limits:** an `.xlsx` file of up to 2 MB and 2,000 rows. The day the
     figures are from can't be after today.
 
-### 4.2 By hand (Decided)
+### 4.2 Only from the portal's file (Decided, 2026-11-17)
 
-The owner asked for a form as well as the upload.
-
-- On a client's Tax position: Add claim, and Edit and Delete in each
-  claim's row menu, with `tax.manage`.
-- The fields are §3.1's. Remaining is worked out from the original and
-  paid. The status is worked out from them too, as a typed status could
-  say something else.
-- A claim changed by hand stays as it is until the next upload replaces
-  the client's claims. The section says so under its title, and the check
-  screen counts those claims among what changes or goes.
-- Each add, edit and delete is in the audit log.
+Claims come in only by uploading the portal's file: there's no adding,
+editing or deleting a claim by hand. So a client's tax position is always
+what the portal showed on the file's day. (Planned earlier as Add claim,
+with Edit and Delete in each claim's row menu; the owner dropped it.)
 
 ### 4.3 Figures getting old (Decided, 2026-11-17)
 
 - The day the figures are from changes with each upload, to the day the
-  check screen says, and with each change by hand, to that day.
+  check screen says.
 - From 30 days after it, counted in the company's time zone as late is,
   the client's Tax position says how long it's been, for the company's
   people: a Waiting on someone badge by the day, "Not updated for 34
@@ -305,8 +301,9 @@ The client's area and A client's tax position).
   a new tab: the app on a phone, WhatsApp Web on a computer.
 - **Ask about this claim** (Decided, 2026-11-17): on each claim, opening
   the same dialog with that claim's message.
-- **The messages** (Proposed, 2026-11-17), in the page's language, from
-  the client account's name:
+- **The messages** (Decided, 2026-11-17), in the page's language, from
+  the client account's name, written from templates that can be changed
+  (§7.1). Nizmo's own start as these:
   - From Contact the accountant:
 
     ```
@@ -343,6 +340,40 @@ The client's area and A client's tax position).
 - Turned down: an email form, and one number for the whole company
   (§14).
 
+### 7.1 The messages' templates (Decided, 2026-11-17)
+
+Two messages, Contact the accountant and Ask about this claim, each in
+Arabic and English.
+
+- **Nizmo's own:** the Super Admin writes them, in Templates, Client
+  messages, beside the role and policy templates. They start as §7's.
+- **A company's own:** whoever holds `client_messages.manage` (§9)
+  changes the company's copy, in Company settings, on a Client portal tab
+  shown where the package has the add-on. Until a company changes a
+  message, it uses Nizmo's, with the Super Admin's later changes. Use
+  Nizmo's message puts it back.
+- **Who may change a company's:** the Super Admin ticks
+  `client_messages.manage` on the roles they choose, as only the Super
+  Admin builds roles (`ROLES_PLAN.md` round 5). The built-in Admin role
+  holds it, as it holds every permission and can't be changed
+  (`ROLES_PLAN.md` §4.2, rule 7).
+- **Fields:** put in with buttons, never typed, and shown by their names
+  in the page's language: the person's name, the client's name and the
+  day the figures are from; for a claim, also its number, item, what
+  remains, its original amount and its last day to pay. They're filled in
+  when the dialog opens. A field the message can't fill (a claim's number
+  in Contact the accountant) is refused on saving.
+- **Checks:** a preview with made-up figures beside the text; up to 1,000
+  characters; not empty. Each change is in the audit log, with before and
+  after.
+- **Kept in** `ClientMessageTemplate`: the company (none for Nizmo's),
+  which message, the language, the text, and who changed it and when,
+  with row-level security.
+- The client's person can still change the message in the dialog before
+  sending.
+- Its `DESIGN.md` block, a text with fields put in by buttons, comes with
+  its PR (§12).
+
 ---
 
 ## 8. Download the statement (Decided, 2026-11-17)
@@ -372,15 +403,16 @@ sent: it's drawn from the claims as they are.
 | Permission | What it allows | Scope |
 |---|---|---|
 | `tax.view` | Seeing a client's tax position on its page | Company |
-| `tax.manage` | Uploading the portal's file, and adding, editing and deleting claims; implies `tax.view` | Company |
+| `tax.manage` | Uploading the portal's file; implies `tax.view` | Company |
 | `client_accounts.manage` | Adding and removing a client's people, and resending invitations; implies `clients.view` | Company |
+| `client_messages.manage` | Changing the company's copy of the WhatsApp messages (§7.1) | Company |
 
-- All three are in the `TAX_POSITION` module (§2).
+- All four are in the `TAX_POSITION` module (§2).
 - `client_accounts.manage` is high-risk, as it lets people from outside
   the company in: it asks for the step-up confirmation
   (`ROLES_PLAN.md` §6.15).
-- The built-in Admin holds all three. Other roles get them as the Admin
-  sets them.
+- The built-in Admin holds all four. Other roles get them where the Super
+  Admin ticks them, as only the Super Admin builds roles.
 - They go into `ROLES_PLAN.md`'s tables with the PR that adds them to the
   catalogue, as `lib/plan-docs.test.ts` holds those tables to it.
 
@@ -396,21 +428,30 @@ sent: it's drawn from the claims as they are.
   - its file's name has Cairo's date, not UTC's, which was the day before
     between midnight and 2 or 3 in the morning. Nizmo takes the day the
     figures are from from it.
+- Changed again on 2026-11-17, with the portal's filter kept in its steps
+  at the owner's ask: changing the filter on the same company starts it
+  again by itself, as another company does, so the file holds what the
+  portal shows with the filter chosen. Its panel says all were gathered
+  only when the count equals the portal's "إجمالي النتائج", and warns
+  when there are more. Before this, rows gathered before the filter
+  changed stayed in the file, with the panel saying all were gathered.
 - The rows it gathers stay in the browser until another company is opened
   or Clear is pressed, so on a shared computer the next person can see the
   last client's claims.
 - Its staff install it by dragging it to the bookmarks bar from its page;
   no store or paid account is needed. A bookmark keeps the copy it was
   made with, so after a change each of them drags the new one once.
-- **In Nizmo** (Proposed, 2026-11-17): the button's code moves into
+- **In Nizmo** (Decided, 2026-11-17): the button's code moves into
   Nizmo, with its tests on a page laid out like the portal's that holds
   made-up claims. Nizmo makes the bookmark from it and shows it on a page
   of its own, **The tax portal's export button**, for whoever has
   `tax.manage` where the package has the add-on:
   - the button to drag to the bookmarks bar, on a computer;
   - the steps: open the portal's Payments page for the client's company,
-    press the button on each page of claims, then Download, and upload
-    the file on that client's page in Nizmo;
+    choose the filter needed, press the button, which gathers every page,
+    then Download, and upload the file on that client's page in Nizmo;
+  - that a claim the filter hides isn't in the file, and the upload lists
+    it as going (§4.1);
   - what it does: it reads the table on the screen and saves a file on
     the computer. It sends nothing to Nizmo or anywhere else;
   - the note for a shared computer, and Clear.
@@ -437,9 +478,9 @@ Each a small PR, tests first, the flows in both languages and at phone
 width:
 
 1. **The plan and its `DESIGN.md` blocks.** #309.
-2. **The add-on and the claims, by hand:** the package switch, the bundle
-   and module, `tax.view` and `tax.manage`, the claims' tables, and the
-   Tax position section on a client's page with Add, Edit and Delete.
+2. **The add-on and the claims:** the package switch, the bundle and
+   module, `tax.view` and `tax.manage`, the claims' tables, and the Tax
+   position section on a client's page showing them.
 3. **Uploading the portal's file** on a client's page: reading it,
    checking it's that client's, the check screen, replacing, and the
    audit log.
@@ -456,7 +497,9 @@ width:
 9. **Contacting the accountant on WhatsApp:** the number on people's
    profiles, the responsible accountant, the dialog, Ask about this
    claim, and the messages.
-10. **Download the statement.**
+10. **The messages' templates** (§7.1): the Super Admin's, the company's
+    copy, and `client_messages.manage`.
+11. **Download the statement.**
 
 ---
 
@@ -474,7 +517,7 @@ width:
   client's page.
 - **Undo the last upload** (proposed, 2026-11-17): Nizmo keeps the claims
   the last upload replaced, and Undo puts them back, while no newer
-  upload or edit has followed.
+  upload has followed.
 - **The button's copy in its file:** the export button would write which
   copy it is into its file, so the upload could say when a file comes
   from an old one, with the link to drag the new one.
@@ -500,6 +543,9 @@ width:
   accountant who answers for the client is the one written to (§7).
 - **Asking once more when many claims go** (2026-11-17): the check
   screen lists them before saving (§4.1).
+- **Adding, editing or deleting claims by hand** (2026-11-17): the
+  portal's file is the only way, so Nizmo always shows what the portal
+  showed (§4.2).
 
 ---
 
@@ -550,7 +596,6 @@ from the screen to the database:
      from.
    - A claim now partly paid: changed, with Partly paid.
    - A claim not in the new file: listed as going, then gone.
-   - A claim added or edited by hand: replaced by the file's, and counted.
    - Many claims going: listed on the check screen, with no second
      question.
    - Cancel: nothing changes.
@@ -574,24 +619,26 @@ itself:
 
 - one company's rows, on one page or across several, with the count
   matching the portal's total;
+- a filter chosen before pressing it: the file holds the filtered claims
+  alone, from every page, with the count matching the filtered total;
+- the filter changed on the same company: it starts again by itself, and
+  the file holds the new filter's claims alone. A new visit with the same
+  filter keeps what was gathered, and with another starts again;
 - another company opened in the same tab, or on a new visit: it starts
   again by itself, and the file has that company alone;
 - pressed twice: no row twice;
 - a partly paid claim: its original, paid and remaining;
 - the file's name: the company and Cairo's date.
 
-The one way staff can still go wrong is exporting with a filter on the
-portal. Nizmo's check screen then lists the claims that would go, before
-anything is saved.
+A filter that hides open claims is the one way a file leaves claims out.
+Nizmo's check screen then lists them as going, before anything is saved.
 
 ---
 
 ## 16. Open questions
 
-1. **The messages** (§7): the words proposed for Contact the accountant
-   and for a claim, or others?
-2. **The export button in Nizmo** (§10): its code and page in Nizmo, as
-   proposed, in place of its separate install page?
+None now. The last two were answered on 2026-11-17: the messages are
+templates (§7.1), and the export button moves into Nizmo (§10).
 
 ---
 
@@ -622,3 +669,12 @@ anything is saved.
   statement holds (§8), the export button moving into Nizmo (§10,
   proposed), the build order in ten PRs (§12), and the questions still
   open (§16).
+- **2026-11-17:** The owner's answers (#309): the export button moves
+  into Nizmo (§10); its steps keep the portal's filter, and the button
+  now starts again by itself when the filter changes on the same company,
+  tried on a page laid out like the portal's (§10, §15); claims come in
+  only from the portal's file, with no adding, editing or deleting by hand
+  (§4.2, §14); and the WhatsApp messages are templates the Super Admin
+  writes, with a company's own copy for those the Super Admin gives
+  `client_messages.manage` (§7.1, §9). The build order is eleven PRs
+  (§12).
