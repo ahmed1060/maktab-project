@@ -1478,7 +1478,15 @@ These are built once, in the building-blocks PR, and every page uses them
     the title; a subtitle saying where the figures come from, the day they
     were last updated and the responsible accountant; Contact the
     accountant as the primary button and Download the statement beside
-    it.
+    it. Where the client has no one to write to on WhatsApp
+    (`CLIENT_PORTAL_PLAN.md` §7), Contact the accountant isn't there, nor
+    is any claim's Ask about this claim, and the note under the claims
+    says to contact the office.
+  - On a client's page for the company's people, from 30 days after the
+    day the figures are from, a Waiting on someone badge beside that day
+    says how long it's been, such as "Not updated for 34 days", and the
+    Clients list has the same badge in the client's row. The client's own
+    page has the day alone.
   - What's owed, in a card. Its label, then the amount as the page's one
     large figure: 48px (36px on phones), weight 600, even-width digits,
     the currency after it in `--text-lg` and `--muted`. It's the only text
@@ -1504,7 +1512,10 @@ These are built once, in the building-blocks PR, and every page uses them
     - A claim's row, on `--page`, inset under its item's name: its number
       above its period, then its amounts, its due date and its badges.
       The number is in Latin digits, left to right, as it's typed into
-      the portal.
+      the portal. At the row's end, Ask about this claim: a 44px icon
+      button with a speech bubble, named for screen readers with the
+      claim's number, opening Contact on WhatsApp with that claim's
+      message. On phones it's at the end of the claim card's first line.
     - A total row at its foot.
     - On phones, each item is a card that opens, with how many claims and
       what remains on one line under its name. Each claim is a card with
@@ -2444,3 +2455,8 @@ changed:
   area's first page, with one figure larger than `--text-3xl` to come as
   `--text-hero`; and a dialog for writing to someone on WhatsApp
   (`CLIENT_PORTAL_PLAN.md`).
+- **2026-11-17:** Ask about this claim, on each claim of a client's tax
+  position (§5.5), opening the WhatsApp dialog with that claim's message;
+  the page without anyone to write to; and a Waiting on someone badge
+  where a client's figures are 30 days old or more, for the company's
+  people (`CLIENT_PORTAL_PLAN.md` §4.3, §7).
