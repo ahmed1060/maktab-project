@@ -110,8 +110,8 @@ The portal spells the same item more than one way: أقرار and إقرار,
 ### 4.1 Uploading the portal's file (Decided)
 
 The owner's export button reads the claims table on the portal's
-Payments page and makes an Excel file. Nizmo reads that file as it is,
-with no change to the button, one company's file at a time.
+Payments page and makes an Excel file. Nizmo reads that file as the
+button writes it (§10), one company's file at a time.
 
 - **Who:** whoever has `tax.manage` (§9).
 - **Where:** only on a client's page, in its Tax position: Upload from
@@ -120,7 +120,8 @@ with no change to the button, one company's file at a time.
 - **Reading it:**
   - Its first sheet. The columns are found by their headings, not where
     they are, as the button writes the headings the portal's table has.
-  - Needed: الشركة, رقم المطالبة, and the amounts. Where any claim in the
+  - Needed: الشركة, رقم المطالبة, نوع بند السداد, آخر موعد للسداد قبل
+    الغرامة, and the amounts, as every row needs them. Where any claim in the
     file was partly paid, the button writes قيمة المطالبة الأصلية, المسدد
     and المتبقي; where none was, a single قيمة المطالبة, which is then both
     the original and what remains. Either is read.
@@ -198,6 +199,22 @@ with Edit and Delete in each claim's row menu; the owner dropped it.)
   whose file is due shows at a glance.
 - The client's own page shows the day, as always, with no badge.
 
+### 4.4 Telling the client's people by email (Decided, 2026-11-17)
+
+- A switch on the company's Client portal tab (§7.1): "Email the
+  client's people when their tax position is updated", off to start,
+  changed by whoever holds `client_messages.manage` (§9).
+- With it on, each upload saved sends one email to each of that client's
+  people who has set a password; those still invited have their
+  invitation already.
+- It says, in Arabic and then English, that the office (by name) updated
+  the tax position, with the day the figures are from and a link to sign
+  in. No amounts, so nothing owed travels by email.
+- At most one email a day for a client, however many uploads it has.
+- Sent from the address that sends sign-in codes. An email that fails
+  doesn't undo the upload: it's noted, and the upload's audit log entry
+  says how many were sent.
+
 ---
 
 ## 5. Client accounts
@@ -248,6 +265,13 @@ with Edit and Delete in each claim's row menu; the owner dropped it.)
   Signing in then says the office's portal isn't open to them now, and
   to contact the office.
 - Two-factor sign-in isn't asked of them for now (§13).
+
+### 5.5 The privacy policy (Decided, 2026-11-17)
+
+The privacy policy (`app/(legal)/privacy`) gets a line saying Nizmo also
+keeps the name and email of each of a client's people the office invites
+to the portal, and emails them their invitation and, where the office
+turns it on, a note when their tax position is updated (§4.4).
 
 ### 5.4 What a client account never sees (Decided)
 
@@ -356,7 +380,8 @@ Arabic and English.
   `client_messages.manage` on the roles they choose, as only the Super
   Admin builds roles (`ROLES_PLAN.md` round 5). The built-in Admin role
   holds it, as it holds every permission and can't be changed
-  (`ROLES_PLAN.md` §4.2, rule 7).
+  (`ROLES_PLAN.md` §4.2, rule 7), so a company's Admins can change its
+  messages (Decided, 2026-11-17: no switch to stop them, §14).
 - **Fields:** put in with buttons, never typed, and shown by their names
   in the page's language: the person's name, the client's name and the
   day the figures are from; for a claim, also its number, item, what
@@ -405,7 +430,7 @@ sent: it's drawn from the claims as they are.
 | `tax.view` | Seeing a client's tax position on its page | Company |
 | `tax.manage` | Uploading the portal's file; implies `tax.view` | Company |
 | `client_accounts.manage` | Adding and removing a client's people, and resending invitations; implies `clients.view` | Company |
-| `client_messages.manage` | Changing the company's copy of the WhatsApp messages (§7.1) | Company |
+| `client_messages.manage` | Changing the company's copy of the WhatsApp messages (§7.1), and the update email's switch (§4.4) | Company |
 
 - All four are in the `TAX_POSITION` module (§2).
 - `client_accounts.manage` is high-risk, as it lets people from outside
@@ -415,10 +440,13 @@ sent: it's drawn from the claims as they are.
   Admin ticks them, as only the Super Admin builds roles.
 - They go into `ROLES_PLAN.md`'s tables with the PR that adds them to the
   catalogue, as `lib/plan-docs.test.ts` holds those tables to it.
+- The built-in Admin role of each company already there gets them in a
+  small PR of its own after the one that adds them, as the terminals'
+  (#278) and missions' (#284) permissions did (§12).
 
 ---
 
-## 10. The export button (the owner's, outside Nizmo)
+## 10. The export button (Decided)
 
 - Changed on 2026-11-17 at the owner's ask, to fit the upload on a
   client's page (§4.1), and tried on a page laid out like the portal's:
@@ -468,7 +496,8 @@ sent: it's drawn from the claims as they are.
 Little, on Vercel Hobby and Supabase Free alike: a client opening the
 page is one or two function calls, an upload is one, and a client has a
 few dozen claims. Each invitation is one email, from the account that
-sends sign-in codes.
+sends sign-in codes, and so is each update email (§4.4), at most one a
+day for a client.
 
 ---
 
@@ -481,6 +510,8 @@ width:
 2. **The add-on and the claims:** the package switch, the bundle and
    module, `tax.view` and `tax.manage`, the claims' tables, and the Tax
    position section on a client's page showing them.
+   - **2b.** `tax.view` and `tax.manage` for the built-in Admin of the
+     companies already there.
 3. **Uploading the portal's file** on a client's page: reading it,
    checking it's that client's, the check screen, replacing, and the
    audit log.
@@ -489,7 +520,10 @@ width:
 5. **Figures getting old** (§4.3): the badge on the client's page and the
    Clients list.
 6. **Client accounts:** their table, People who can sign in,
-   `client_accounts.manage`, the invitation and setting a password.
+   `client_accounts.manage`, the invitation and setting a password, and
+   the privacy policy's line (§5.5).
+   - **6b.** `client_accounts.manage` for the built-in Admin of the
+     companies already there.
 7. **Signing in as a client account, and the client's area:** sign-in
    finding them, their session, the proxy keeping them in the area, and
    its top bar and account menu.
@@ -499,7 +533,10 @@ width:
    claim, and the messages.
 10. **The messages' templates** (§7.1): the Super Admin's, the company's
     copy, and `client_messages.manage`.
-11. **Download the statement.**
+    - **10b.** `client_messages.manage` for the built-in Admin of the
+      companies already there.
+11. **Telling the client's people by email** (§4.4).
+12. **Download the statement.**
 
 ---
 
@@ -546,6 +583,9 @@ width:
 - **Adding, editing or deleting claims by hand** (2026-11-17): the
   portal's file is the only way, so Nizmo always shows what the portal
   showed (§4.2).
+- **A switch for whether a company's Admins may change the messages**
+  (2026-11-17): the built-in Admin holds every permission, as everywhere
+  else in Nizmo (§7.1).
 
 ---
 
@@ -611,11 +651,14 @@ from the screen to the database:
    - Items spelled two ways on the portal are one group.
    - Figures getting old: no badge at 29 days, the badge at 30, and none
      again after the next upload.
+   - The update email (§4.4): none with the switch off; with it on, one
+     to each person who has set a password and none to those invited; a
+     second upload the same day sends none; an email that fails leaves
+     the upload saved.
 7. **On screen:** the check screen in both languages, and at phone width.
 
-The export button (the owner's, outside Nizmo), tried on a page laid out
-like the portal's on 2026-11-17, and to be tried once on the portal
-itself:
+The export button, tried on a page laid out like the portal's on
+2026-11-17, and to be tried once on the portal itself before PR 3:
 
 - one company's rows, on one page or across several, with the count
   matching the portal's total;
@@ -678,3 +721,12 @@ templates (§7.1), and the export button moves into Nizmo (§10).
   writes, with a company's own copy for those the Super Admin gives
   `client_messages.manage` (§7.1, §9). The build order is eleven PRs
   (§12).
+- **2026-11-17:** The owner's answers on the review of the whole plan
+  (#309): the built-in Admin of the companies already there gets each new
+  permission in a small PR after the one that adds it (§9, §12); the item
+  and the last day to pay are needed columns (§4.1); the export button's
+  sections are no longer called outside Nizmo (§10, §15); an email to the
+  client's people when their tax position is updated, behind a switch,
+  off to start (§4.4); a line in the privacy policy (§5.5); and no switch
+  to stop a company's Admins changing its messages (§7.1, §14). Twelve
+  PRs, with three small ones for the permissions (§12).
