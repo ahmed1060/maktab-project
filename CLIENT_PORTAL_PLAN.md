@@ -160,6 +160,22 @@ with no change to the button, one company's file at a time.
     another.
   - The audit log gets an entry: who uploaded, the file's name, and how
     many claims are new, changed and gone.
+- **Keeping a replace safe** (Proposed, 2026-11-17), as an upload
+  replaces all of a client's claims:
+  - **A row with a problem stops the save.** Saving the other rows would
+    delete that row's claim from Nizmo. The check screen lists each
+    problem, and the file is fixed or exported again.
+  - **Asked once more when many go:** where the file would remove more
+    than half of the client's claims, saving asks again. A file exported
+    with a filter on the portal looks like that.
+  - **Two uploads at once:** saving checks that the client's claims are
+    still as the check screen read them. If someone changed them in the
+    meantime, it says so, and the file is checked again.
+  - **The server checks again:** the browser reads the file for the check
+    screen, and the server checks every row again before saving, trusting
+    nothing it's sent.
+  - **Limits:** an `.xlsx` file of up to 2 MB and 2,000 rows. The day the
+    figures are from can't be after today.
 
 ### 4.2 By hand (Decided)
 
@@ -369,6 +385,14 @@ width:
 - **Two-factor sign-in** for client accounts.
 - **See it as the client does:** for the company's people, from the
   client's page.
+- **Undo the last upload** (proposed, 2026-11-17): Nizmo keeps the claims
+  the last upload replaced, and Undo puts them back, while no newer
+  upload or edit has followed.
+- **Figures getting old** (proposed, 2026-11-17): a note on the client's
+  page, and a column on the Clients list, where a client's tax position
+  hasn't been updated for 30 days.
+- **Asking about one claim** (proposed, 2026-11-17): a WhatsApp link on
+  each claim, with its number in the message.
 
 ---
 
@@ -390,6 +414,99 @@ width:
 
 ---
 
+## 15. How it's tested (Proposed)
+
+Each part's PR has its own tests, written first. The upload button's,
+from the screen to the database:
+
+1. **Who may use it**
+   - With `tax.manage`, the button is there; with `tax.view` alone, the
+     claims are there without it; with neither, the section isn't.
+   - A company whose package hasn't the add-on: no section, and its
+     routes refuse.
+   - An archived client: no button, and the route refuses.
+   - A client account: always refused, even calling the route itself.
+   - Another company's client: refused, whatever the address says.
+2. **The file**
+   - The owner's sample file: 20 claims, 38,798.37 remaining.
+   - Either amount layout: the original, paid and remaining columns, or
+     the one amount column.
+   - Columns in another order, or extra ones: read.
+   - Refused, each saying why:
+     - not an Excel file, damaged, empty or password-protected;
+     - over 2 MB or 2,000 rows;
+     - a needed column missing, named.
+   - Dates as dates or as dd/mm/yyyy text, and amounts with either kind
+     of digits: read.
+   - Empty rows at the end: left out.
+3. **The rows**
+   - Each of these is a problem that stops the save:
+     - paid and remaining not adding up to the original;
+     - a negative amount;
+     - an impossible date;
+     - no claim number, item or last day to pay;
+     - a claim number twice;
+     - a claim number stored as a number, which Excel shortens by
+       dropping its leading zeros.
+   - Nothing left to pay: left out and counted.
+4. **The company**
+   - The file names the client, or the name kept from its last upload:
+     nothing asked.
+   - Another name, or none (the button writes غير محدد): saving asks to
+     confirm. Once saved, that name is kept.
+   - Several companies: refused, naming them.
+5. **Replacing**
+   - The first upload: every claim new.
+   - The same file again: nothing changed but the day the figures are
+     from.
+   - A claim now partly paid: changed, with Partly paid.
+   - A claim not in the new file: listed as going, then gone.
+   - A claim added or edited by hand: replaced by the file's, and counted.
+   - More than half going: asked once more.
+   - Cancel: nothing changes.
+   - A failure while saving: nothing changes, with Try again.
+   - Two people saving at once: the second is told the claims changed.
+   - Save pressed twice: saved once.
+6. **After saving**
+   - One audit log entry, with the counts.
+   - The client's page and the client's own page show the new figures and
+     day, with what remains in all equal to the claims' sum.
+   - Late counted in the company's time zone: a claim due today isn't
+     late, one due yesterday is.
+   - Items spelled two ways on the portal are one group.
+7. **On screen:** the check screen in both languages, and at phone width.
+
+The export button (the owner's, outside Nizmo), tried on a page laid out
+like the portal's on 2026-11-17, and to be tried once on the portal
+itself:
+
+- one company's rows, on one page or across several, with the count
+  matching the portal's total;
+- another company opened in the same tab, or on a new visit: it starts
+  again by itself, and the file has that company alone;
+- pressed twice: no row twice;
+- a partly paid claim: its original, paid and remaining;
+- the file's name: the company and Cairo's date.
+
+The one way staff can still go wrong is exporting with a filter on the
+portal. Nizmo's check screen then lists the claims that would go, and
+asks once more where they're more than half.
+
+---
+
+## 16. Open questions
+
+1. **A row with a problem** (§4.1): stop the save, as proposed, or save
+   the other rows and leave that one out? Saving them would delete that
+   row's claim.
+2. **Many claims going** (§4.1): ask once more over half, as proposed?
+3. **The WhatsApp number** (§7): one for the company, as proposed, or
+   each accountant's own?
+4. **The proposed parts** (§3, §5, §8, §9, §12, §15): merging this plan
+   agrees to them.
+
+---
+
 ## Change log
 
 - **2026-11-17:** The plan written (#309), from the owner's mockup of a
@@ -405,3 +522,7 @@ width:
 - **2026-11-17:** The export button holds one company at a time (#309,
   the owner): opening another company starts it again by itself, with no
   Clear to press, and its file's name has Cairo's date (§4.1, §10).
+- **2026-11-17:** How it's tested (§15), at the owner's ask, the upload
+  button's from the screen to the database and the export button's;
+  keeping a replace safe (§4.1, proposed); three small items for later
+  (§13); and the questions still open (§16).
