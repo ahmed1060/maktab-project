@@ -789,7 +789,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      company's clients sign in and see their tax position: its plan and
      `DESIGN.md` blocks, merged in #309 on 2026-11-17, then its parts in
      small PRs (§12 there): the add-on on packages, #310, then the
-     claims on a client's page, #311.
+     claims on a client's page, merged in #311 on 2026-11-17; then the
+     built-in Admin role's See clients' tax position for the companies
+     already there, #312.
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
 Clients pages) are rebuilt in step 0, so they're fixed there.
@@ -6599,3 +6601,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   owed, how many claims are open and late, and what's paid, then lists
   the claims, five to start with. It only shows: uploading the portal's
   file comes next (step 3). `DESIGN.md` §5.5 has its block.
+- **2026-11-17:** The companies already there get See clients' tax
+  position (#312; `CLIENT_PORTAL_PLAN.md` §9, §12 step 2c). A migration
+  gives every company's built-in Admin role the permission, as a new
+  company's has had since #311, and its holders reload their grants.
+  Their Admins see the Tax position section on a client's page once
+  their company's package has the client portal. No screen changes.
