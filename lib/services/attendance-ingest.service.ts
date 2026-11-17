@@ -203,6 +203,11 @@ export class AttendanceIngestService {
 
             const stored = await store(tx, companyId, timeZone, "AGENT", candidates, c => refuse(c.index, "MONTH_LOCKED"))
             await tx.attendanceAgent.update({ where: { id: agent.id }, data: { lastSyncAt: now } })
+            // What the agent drops from its queue now: all but what it keeps to retry. Its heartbeat
+            // reports the queue before it sends, so without this the card says these wait until the next
+            // round (§17.13, PR 308). Never below none; an agent that hasn't reported a count keeps none.
+            const settled = batch.punches.length - refused.filter(r => r.retry).length
+            if (settled > 0) await tx.$executeRaw`UPDATE "AttendanceAgent" SET "queueDepth" = GREATEST("queueDepth" - ${settled}, 0) WHERE id = ${agent.id} AND "queueDepth" IS NOT NULL`
             return {
                 result: { accepted: stored.accepted, duplicates: stored.duplicates + sameBatchRepeats, refused: refused.sort((a, b) => a.index - b.index) },
                 people: stored.people, from: stored.from,

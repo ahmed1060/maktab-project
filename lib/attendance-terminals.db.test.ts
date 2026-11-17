@@ -379,6 +379,37 @@ describe.skipIf(!ADMIN_URL)("attendance agents, in Postgres", () => {
         expect((await Ingest.punches(theirs, { punches: [{ serialNumber: "R-1", userNumber: "7", at: "2026-09-16T09:00:00" }] })).refused[0].reason).toBe("UNKNOWN_DEVICE")
     })
 
+    it("lowers the agent's waiting count by what each batch settles, so its card is right as the scans arrive (PR 308)", async () => {
+        const agent = await agentOf("c1", "Waiting count")
+        // The heartbeat goes before the scans: it reports the queue as it was then.
+        await Devices.heartbeat(agent, beat([{ serialNumber: "Q-1", reachable: true }], { queueDepth: 6 }))
+        expect((await row(agent.id)).queueDepth).toBe(6)
+
+        // Stored, already there, and refused for good leave the agent's queue; one refused for now stays in it.
+        await Ingest.punches(agent, { punches: [
+            { serialNumber: "Q-1", userNumber: "7", at: "2026-09-21T09:00:00" },
+            { serialNumber: "Q-1", userNumber: "7", at: "2026-09-21T09:00:00" },  // the same record twice
+            { serialNumber: "Q-NEW", userNumber: "7", at: "2026-09-21T09:01:00" }, // a terminal not reported yet: kept to retry
+            { serialNumber: "Q-1", userNumber: "7", at: "2026-02-30T09:00:00" },  // damaged: refused for good
+        ] })
+        expect((await row(agent.id)).queueDepth).toBe(3)
+
+        // Never below none, whatever a batch settles.
+        await Ingest.punches(agent, { punches: [1, 2, 3, 4].map(m => ({ serialNumber: "Q-1", userNumber: "7", at: `2026-09-21T17:0${m}:00` })) })
+        expect((await row(agent.id)).queueDepth).toBe(0)
+
+        // The next heartbeat says again what the agent holds.
+        await Devices.heartbeat(agent, beat([{ serialNumber: "Q-1", reachable: true }], { queueDepth: 2 }))
+        expect((await row(agent.id)).queueDepth).toBe(2)
+
+        // An agent that hasn't reported a count keeps none.
+        const quiet = await agentOf("c1", "No count yet")
+        await Devices.heartbeat(quiet, beat([{ serialNumber: "Q-2", reachable: true }]))
+        await db.query(`UPDATE "AttendanceAgent" SET "queueDepth" = NULL WHERE id = $1`, [quiet.id])
+        await Ingest.punches(quiet, { punches: [{ serialNumber: "Q-2", userNumber: "7", at: "2026-09-21T09:00:00" }] })
+        expect((await row(quiet.id)).queueDepth).toBeNull()
+    })
+
     it("holds a punch from a terminal hours fast until the company's clock reaches it (review on #17)", async () => {
         const { offsetMsIn } = await import("@/lib/time")
         const agent = await agentOf("c1", "Fast clock")
