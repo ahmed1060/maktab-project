@@ -15,6 +15,17 @@ import type { TaxClaimRow } from "./tax-claims"
 export const TAX_FILE_MAX_BYTES = 2 * 1024 * 1024
 export const TAX_FILE_MAX_ROWS = 2000
 
+/**
+ * As long as a claim's number, and each of its other words, may be. The
+ * portal's are far shorter; one that's longer is a mistake like any other,
+ * so a file that passed the check is never one the database can't hold
+ * (PR 315).
+ */
+export const TAX_NUMBER_MAX = 50
+export const TAX_TEXT_MAX = 200
+/** As much of a file's name as the audit log keeps. */
+const FILE_NAME_MAX = 255
+
 /** The columns' headings, as the portal's table has them and the export button writes them. */
 export const TAX_FILE_HEADINGS = {
     company: "الشركة",
@@ -52,11 +63,12 @@ export type TaxSheetRow = { line: number; cells: unknown[] }
 export type ClaimDraft = Omit<TaxClaimRow, "id" | "daysLate">
 
 export type TaxMistakeCode =
-    | "number_missing" | "number_as_number" | "number_twice"
+    | "number_missing" | "number_as_number" | "number_too_long" | "number_twice"
     | "item_missing"
     | "due_missing" | "due_unreadable"
     | "period_unreadable" | "period_backwards"
     | "amount_missing" | "amount_unreadable" | "amount_negative" | "amounts_dont_add_up"
+    | "text_too_long"
 
 /** What's wrong with a row, with what the file had where that says it. */
 export type TaxMistake = { code: TaxMistakeCode; detail?: string }
@@ -112,6 +124,8 @@ export function spellingKey(text: string | null | undefined): string {
 }
 
 const OPEN_KEYS: ReadonlySet<string> = new Set(OPEN_STATUSES.map(spellingKey))
+/** A claim's words kept as the portal wrote them. Its status aside: one that isn't an open one leaves its row out. */
+const WORDS = ["item", "taxType", "registrationType", "currency"] as const
 const UNNAMED_KEY = spellingKey(UNNAMED_COMPANY)
 
 const EASTERN_DIGITS = "٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹"
@@ -119,11 +133,32 @@ const EASTERN_DIGITS = "٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹"
 const toLatin = (text: string) => text.replace(/[٠-٩۰-۹]/g, digit => String(EASTERN_DIGITS.indexOf(digit) % 10))
 
 const blank = (cell: unknown) => cell === null || cell === undefined || (typeof cell === "string" && cell.trim() === "")
+
+/**
+ * A word without what can't be seen and can't be kept (PR 315): control
+ * characters, and half of a character's pair, which the database refuses.
+ */
+function seen(text: string): string {
+    let out = ""
+    for (let at = 0; at < text.length; at++) {
+        const code = text.charCodeAt(at)
+        if (code >= 0xd800 && code <= 0xdbff) {
+            // A pair is one character; its first half alone is nothing.
+            const next = text.charCodeAt(at + 1)
+            if (next >= 0xdc00 && next <= 0xdfff) out += text[at] + text[++at]
+        } else if (code >= 0xdc00 && code <= 0xdfff) continue
+        // Tabs and line ends are spaces, tidied after.
+        else if ((code < 0x20 && (code < 0x09 || code > 0x0d)) || code === 0x7f) continue
+        else out += text[at]
+    }
+    return out
+}
+
 /** A cell as the words it shows, its spaces tidied. */
 const words = (cell: unknown): string => {
     if (cell === null || cell === undefined) return ""
     if (cell instanceof Date) return Number.isNaN(cell.getTime()) ? "" : cell.toISOString().slice(0, 10)
-    return String(cell).replace(/\s+/g, " ").trim()
+    return seen(String(cell)).replace(/\s+/g, " ").trim()
 }
 
 const piastres = (amount: number) => Math.round(amount * 100)
@@ -266,6 +301,7 @@ export function readTaxSheet(sheet: readonly TaxSheetRow[]): TaxFile | TaxFilePr
         if (!claimNumber) mistakes.push({ code: "number_missing" })
         // A number in a sheet has no zeros at its start: they may be lost.
         else if (typeof numberCell === "number") mistakes.push({ code: "number_as_number", detail: claimNumber })
+        else if (claimNumber.length > TAX_NUMBER_MAX) mistakes.push({ code: "number_too_long" })
 
         const item = words(cell(row, "item"))
         if (!item) mistakes.push({ code: "item_missing" })
@@ -287,6 +323,9 @@ export function readTaxSheet(sheet: readonly TaxSheetRow[]): TaxFile | TaxFilePr
         if (unreadAmount) mistakes.push({ code: "amount_unreadable", detail: unreadAmount.unread })
         if (values.some(amount => amount !== null && amount < 0)) mistakes.push({ code: "amount_negative" })
         else if (values.every(amount => amount !== null) && piastres(valueOf(amounts.paid)!) + piastres(valueOf(amounts.remaining)!) !== piastres(valueOf(amounts.original)!)) mistakes.push({ code: "amounts_dont_add_up" })
+
+        // Longer than any of the portal's: said with its column, as a missing column is.
+        for (const column of WORDS) if (words(cell(row, column)).length > TAX_TEXT_MAX) mistakes.push({ code: "text_too_long", detail: TAX_FILE_HEADINGS[column] })
 
         open.push({
             line: row.line,
@@ -348,6 +387,7 @@ const isAmount = (amount: unknown): amount is number => typeof amount === "numbe
 export function claimProblems(claim: ClaimDraft): TaxMistakeCode[] {
     const found: TaxMistakeCode[] = []
     if (!words(claim.claimNumber)) found.push("number_missing")
+    else if (claim.claimNumber.length > TAX_NUMBER_MAX) found.push("number_too_long")
     if (!words(claim.item)) found.push("item_missing")
     if (!claim.dueDate) found.push("due_missing")
     else if (!isDay(claim.dueDate)) found.push("due_unreadable")
@@ -357,6 +397,7 @@ export function claimProblems(claim: ClaimDraft): TaxMistakeCode[] {
     if (!amounts.every(isAmount)) found.push("amount_unreadable")
     else if (amounts.some(amount => amount < 0)) found.push("amount_negative")
     else if (piastres(claim.paidAmount) + piastres(claim.remainingAmount) !== piastres(claim.originalAmount)) found.push("amounts_dont_add_up")
+    if ([claim.item, claim.taxType, claim.registrationType, claim.currency, claim.status].some(text => (text ?? "").length > TAX_TEXT_MAX)) found.push("text_too_long")
     return found
 }
 
@@ -377,14 +418,25 @@ export function dayFromFileName(name: string, today: string): string | null {
 }
 
 /**
+ * The company a file names, as the file wrote it, or nothing: no name, the
+ * export button's word for a page without one, or more than a name's
+ * length. It's what's kept for the client's next file to be matched to.
+ */
+export function namedCompany(fileCompany: string | null | undefined): string | null {
+    const name = words(fileCompany)
+    const key = spellingKey(name)
+    return !key || key === UNNAMED_KEY || name.length > TAX_TEXT_MAX ? null : name
+}
+
+/**
  * Whether the file is plainly this client's (§4.1): its company is the
  * client's own name, or the one the client's last file named. A file that
  * names no company, as the export button's does for a page without one,
  * never is, so saving asks first.
  */
 export function fileNamesClient(fileCompany: string, clientName: string, lastFileCompany: string | null): boolean {
-    const key = spellingKey(fileCompany)
-    if (!key || key === UNNAMED_KEY) return false
+    const key = spellingKey(namedCompany(fileCompany))
+    if (!key) return false
     return key === spellingKey(clientName) || (!!lastFileCompany && key === spellingKey(lastFileCompany))
 }
 
@@ -416,3 +468,112 @@ export function compareClaims(current: readonly ClaimDraft[], next: readonly Cla
 export function remainingOf(claims: readonly Pick<ClaimDraft, "remainingAmount">[]): number {
     return claims.reduce((sum, claim) => sum + piastres(claim.remainingAmount), 0) / 100
 }
+
+/** Whether a claim is one that's kept (§3.2): something left to pay, and no status that says it's anything but open. */
+export function isOpenClaim(claim: Pick<ClaimDraft, "remainingAmount" | "status">): boolean {
+    const status = spellingKey(claim.status)
+    return claim.remainingAmount > 0 && (!status || OPEN_KEYS.has(status))
+}
+
+const isText = (value: unknown): value is string => typeof value === "string"
+const isTextOrNone = (value: unknown): value is string | null | undefined => value === null || value === undefined || typeof value === "string"
+
+/**
+ * A claim as it was sent to be saved (§4.1), nothing of it trusted: each
+ * field the kind of thing it should be, its number and its words tidied as
+ * the file's reader tidies them, so one claim stays one claim whoever sent
+ * it. Nothing where a field is another kind of thing: a number sent as a
+ * number may have lost the zeros at its start. What's wrong with what it
+ * says is claimProblems's to find.
+ */
+export function sentClaim(sent: unknown): ClaimDraft | null {
+    if (!sent || typeof sent !== "object" || Array.isArray(sent)) return null
+    const { claimNumber, item, taxType, registrationType, originalAmount, paidAmount, remainingAmount, currency, status, periodStart, periodEnd, dueDate } = sent as Record<string, unknown>
+    if (!isText(claimNumber) || !isText(item) || !isText(dueDate)) return null
+    if (!isTextOrNone(taxType) || !isTextOrNone(registrationType) || !isTextOrNone(currency) || !isTextOrNone(status) || !isTextOrNone(periodStart) || !isTextOrNone(periodEnd)) return null
+    if (typeof originalAmount !== "number" || typeof paidAmount !== "number" || typeof remainingAmount !== "number") return null
+    return {
+        claimNumber: toLatin(words(claimNumber)),
+        item: words(item),
+        taxType: words(taxType) || null,
+        registrationType: words(registrationType) || null,
+        originalAmount,
+        paidAmount,
+        remainingAmount,
+        currency: words(currency) || null,
+        status: words(status) || null,
+        periodStart: periodStart ?? null,
+        periodEnd: periodEnd ?? null,
+        dueDate,
+    }
+}
+
+/** What a save is sent (§4.1): the claims the browser read from the file, never the file. */
+export type TaxUpload = {
+    clientId: string
+    /** How many files had been uploaded for the client when its claims were read for the check screen. */
+    uploads: number
+    /** The day the figures are from. */
+    asOf: string
+    /** The file's name, for the audit log. */
+    fileName: string
+    /** The company the file names; "" where it names none. */
+    fileCompany: string
+    /** That it's this client's file, said where its company isn't plainly the client's. */
+    confirmed: boolean
+    claims: ClaimDraft[]
+}
+
+/**
+ * An upload as it was sent to be saved, read again by the rows' rules
+ * (§4.1): the server trusts nothing it's sent. One thing wrong refuses it
+ * whole, as a row with a problem stops the save: a claim that isn't right
+ * or isn't open, a number that's there twice, a day that isn't one.
+ */
+export function sentUpload(body: unknown): { upload: TaxUpload } | { problem: "unreadable" | "too_many" } {
+    const unreadable = { problem: "unreadable" as const }
+    if (!body || typeof body !== "object" || Array.isArray(body)) return unreadable
+    const { clientId, uploads, asOf, fileName, fileCompany, confirmed, claims } = body as Record<string, unknown>
+    if (!isText(clientId) || !clientId.trim()) return unreadable
+    if (typeof uploads !== "number" || !Number.isInteger(uploads) || uploads < 0) return unreadable
+    if (!isText(asOf) || !isDay(asOf)) return unreadable
+    if (!Array.isArray(claims)) return unreadable
+    // Counted before any claim is read.
+    if (claims.length > TAX_FILE_MAX_ROWS) return { problem: "too_many" }
+
+    const read: ClaimDraft[] = []
+    const numbers = new Set<string>()
+    for (const sent of claims) {
+        const claim = sentClaim(sent)
+        if (!claim || claimProblems(claim).length || !isOpenClaim(claim) || numbers.has(claim.claimNumber)) return unreadable
+        numbers.add(claim.claimNumber)
+        read.push({ ...claim, originalAmount: piastres(claim.originalAmount) / 100, paidAmount: piastres(claim.paidAmount) / 100, remainingAmount: piastres(claim.remainingAmount) / 100 })
+    }
+    return {
+        upload: {
+            clientId,
+            uploads,
+            asOf,
+            // Cut to what's kept of it, and never through a character's pair.
+            fileName: isText(fileName) ? seen(words(fileName).slice(0, FILE_NAME_MAX)) : "",
+            fileCompany: isText(fileCompany) ? words(fileCompany) : "",
+            confirmed: confirmed === true,
+            claims: read,
+        },
+    }
+}
+
+/** A client's claims as they are (§4.1), for a file to be checked against before it replaces them. */
+export type TaxClaimsNow = {
+    client: { id: string; name: string }
+    /** Today where the company is: the day the figures are from can't be after it. */
+    today: string
+    /** How many files have been uploaded for the client. A save sends it back, and is refused where another was saved since. */
+    uploads: number
+    /** The company the client's last file named, for the next file's to be matched to. */
+    fileCompany: string | null
+    claims: ClaimDraft[]
+}
+
+/** What a save did: how many claims are new, changed and gone, how many the client has now, and its count of files. */
+export type TaxUploadSaved = { added: number; changed: number; gone: number; claims: number; uploads: number }

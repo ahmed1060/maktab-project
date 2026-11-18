@@ -115,6 +115,9 @@ const CLIENT_PORTAL_ADDON = "20270101000000_client_portal_addon"
 // The built-in Admin role's tax.view, for the companies there before it
 // (CLIENT_PORTAL_PLAN.md §9, §12 step 2c, PR 312).
 const TAX_VIEW_GRANTED = "20270103000000_tax_view_granted"
+// Given to a new company's built-in roles now, and to the companies there
+// already by a later migration (CLIENT_PORTAL_PLAN.md §12 step 3d, PR 315).
+const GRANTED_LATER = ["tax.manage"]
 
 const BEFORE_ROLES = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now());
@@ -237,7 +240,8 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                     const grants = Object.fromEntries(rows
                         .filter(r => r.companyId === company && r.builtIn === builtIn)
                         .map(r => [r.permission, r.scope]))
-                    expect(grants, `${company} ${builtIn}`).toEqual(BUILT_IN_GRANTS[builtIn])
+                    const now = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).filter(([permission]) => !GRANTED_LATER.includes(permission)))
+                    expect(grants, `${company} ${builtIn}`).toEqual(now)
                 }
             }
         })

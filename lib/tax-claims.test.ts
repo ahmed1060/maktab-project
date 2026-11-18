@@ -83,8 +83,8 @@ describe("tax.view (§9)", () => {
         expect(PERMISSIONS["tax.view"]).toEqual({ code: 68, module: "TAX_POSITION", scopes: ["COMPANY"], implies: ["clients.view"] })
         expect(isReserved("tax.view")).toBe(false)
         expect(riskLabelKey("tax.view")).toBeNull()
-        // Uploading comes with its own route (step 3).
-        expect(isPermission("tax.manage")).toBe(false)
+        // Uploading has its own, with its route (step 3b, lib/tax-upload.test.ts).
+        expect(isPermission("tax.manage")).toBe(true)
         expect(Object.values(PERMISSIONS).filter(p => p.code === 68)).toHaveLength(1)
     })
 
@@ -97,7 +97,7 @@ describe("tax.view (§9)", () => {
 
     it("has its own group in the permission matrix, named in both languages", () => {
         const group = PERMISSION_GROUPS.find(g => g.key === "client_portal")
-        expect(group?.permissions).toEqual(["tax.view"])
+        expect(group?.permissions).toEqual(["tax.view", "tax.manage"])
         expect(PERMISSION_GROUPS.map(g => g.key).indexOf("client_portal")).toBe(PERMISSION_GROUPS.map(g => g.key).indexOf("costs") + 1)
         for (const words of [en, ar] as Record<string, string>[]) {
             expect(words[groupLabelKey("client_portal")]).toBeTruthy()

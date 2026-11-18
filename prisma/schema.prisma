@@ -3085,6 +3085,14 @@ model ClientTaxPosition {
   uploadedById   String?
   uploadedByName String?
   uploadedAt     DateTime @default(now())
+  /// The company the last file that named one was for, as the file wrote
+  /// it: the next file's is matched to it, so one client's file isn't
+  /// saved for another (§4.1).
+  fileCompany    String?
+  /// How many files have been uploaded for the client. A save says how many
+  /// there were when its check screen read the claims, and is refused where
+  /// another was saved since (§4.1).
+  uploads        Int      @default(1)
   updatedAt      DateTime @updatedAt
   client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
