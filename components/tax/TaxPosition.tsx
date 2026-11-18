@@ -10,6 +10,7 @@ import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped
 import { countOf } from '@/lib/plural'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { claimBadges, taxClaimsUrl, TAX_PAGE, TAX_PREVIEW, type TaxClaimRow, type TaxPosition as Position } from '@/lib/tax-claims'
+import TaxUpload from './TaxUpload'
 
 /**
  * A client's tax position, for the company's people (CLIENT_PORTAL_PLAN.md
@@ -19,10 +20,11 @@ import { claimBadges, taxClaimsUrl, TAX_PAGE, TAX_PREVIEW, type TaxClaimRow, typ
  * overdue first. Five to start with, so the client's other sections stay in
  * reach, then all of them, 20 to a page.
  *
- * It only shows. The claims come from the portal's file, uploaded here in
- * the next step (§4.1).
+ * The claims come only from the portal's file (§4.2). Whoever may update
+ * tax positions uploads it from the section's heading (§4.1), before the
+ * first file too; an archived client's figures stay as they were.
  */
-export default function TaxPosition({ clientId }: { clientId: string }) {
+export default function TaxPosition({ clientId, manages = false }: { clientId: string; manages?: boolean }) {
     const { t, locale } = useLanguage()
     const [all, setAll] = useState(false)
     const [page, setPage] = useState(1)
@@ -56,9 +58,11 @@ export default function TaxPosition({ clientId }: { clientId: string }) {
     }
 
     const { position, totals, claims, total } = body
+    // Saved, the section reads itself again.
+    const upload = manages && !body.client.archived ? <TaxUpload clientId={clientId} onSaved={() => { void mutate() }} /> : undefined
     if (!position) {
         return (
-            <Section title={t('tax_position')}>
+            <Section title={t('tax_position')} action={upload}>
                 <div className="ui-panel"><EmptyState icon={ReceiptIcon} title={t('tax_position_none')} detail={t('tax_position_none_detail')} /></div>
             </Section>
         )
@@ -96,7 +100,7 @@ export default function TaxPosition({ clientId }: { clientId: string }) {
     ]
 
     return (
-        <Section title={t('tax_position')}>
+        <Section title={t('tax_position')} action={upload}>
             <p className="ui-hint">{before}{position.uploadedBy && <bdi>{position.uploadedBy}</bdi>}{after}</p>
             <TotalTiles items={[
                 { label: t('tax_owed'), value: money(totals.remaining) },

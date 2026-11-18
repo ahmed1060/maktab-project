@@ -1555,6 +1555,59 @@ These are built once, in the building-blocks PR, and every page uses them
   - When it didn't load, the section's place says so, with Try again (A
     list that didn't load). So does a page of its claims that didn't
     load: the claims kept up from another page don't stand in for it.
+- **Uploading the tax portal's file:** how a client's tax position is
+  kept up to date, by whoever may update it (`CLIENT_PORTAL_PLAN.md`
+  §4.1). Its rows are read from a file and checked before any is saved
+  (Rows read from a file), with these differences, as each upload
+  replaces the client's claims and the file is the portal's own:
+  - Upload from the tax portal is a secondary button on the end of the
+    Tax position section's heading, there before the first file too. An
+    archived client hasn't it. It opens the file picker for one `.xlsx`
+    file.
+  - A file refused whole is said in a dialog, not a toast, as it may
+    name what's at fault: "This file can't be uploaded", why, and the
+    columns it hasn't or the companies it names. Choose another file is
+    its main button, with Close.
+  - The check screen is a dialog up to 760px wide, "Check the portal's
+    file before saving". From the top:
+    - the file's name and how many rows it has, with Another file;
+    - the company the file names, with a badge: This client (Good)
+      where it's the client's name or the one its last file named,
+      otherwise Not this client's name, or No company named (Waiting
+      on someone);
+    - Figures as of, a date field: the day in the file's name, or
+      today without one, which its hint says. It can be changed, to
+      today at the latest;
+    - five counts as tiles: in the file, new, changed, as they were,
+      and going;
+    - a line with what's owed now and what will be after saving;
+    - what changes, in groups, each with its count in its title: Going
+      first, with a note that they may have been paid, or hidden by
+      the portal's filter; then Changed, each saying what was and what
+      is; then New. A claim is its number, in Latin digits and left to
+      right, its item, and what remains. Each group opens and closes
+      from its title, and is open to start with where it has ten or
+      fewer. Claims that stay as they were are counted, not listed;
+    - how many rows were left out as having nothing left to pay, and
+      each status left out with how many rows it had.
+  - A row with a problem stops the save, and nothing is edited here, as
+    the file is the portal's. A Problem note at the top says how many
+    rows have one, and that saving the rest would delete their claims.
+    Under it, each such row with its number in the file, its claim
+    number and what's wrong. The main button is off, and Another file
+    is there.
+  - At the bottom, a line saying that saving replaces all of the
+    client's claims and is in the audit log; then Cancel, then the main
+    button saying how many it saves, such as "Save 20 claims".
+  - Where the file's company isn't this client's, the main button asks
+    first, in a confirmation over the dialog, with a danger button: the
+    company the file names, the client's name, that saving replaces the
+    client's claims, and that the name is kept so it isn't asked again.
+  - While it's sent, Cancel is off, the main button is busy and Escape
+    does nothing. What couldn't be saved is said above the buttons.
+    Where the client's claims changed meanwhile, it says so, and the
+    file is checked again against them. Once saved, a toast says how
+    many claims were, and the section reads itself again.
 - **Contact on WhatsApp:** a dialog for writing to someone on WhatsApp,
   such as a client's accountant. Who it reaches comes first, in a box
   with a `--rule` edge: their initials in a circle, their name, and what
@@ -2494,3 +2547,9 @@ changed:
   (§5.5) says it didn't load in the section's place, for a page of its
   claims too: the claims kept up from another page don't stand in for
   the page asked for (`CLIENT_PORTAL_PLAN.md` §3.5).
+- **2026-11-18:** Uploading the tax portal's file (§5.5): Upload from
+  the tax portal on the Tax position section's heading; a file refused
+  whole, in a dialog; the check screen, with what's new, changed and
+  going; a row with a problem stopping the save; and the confirmation
+  where the file's company isn't the client's (`CLIENT_PORTAL_PLAN.md`
+  §4.1).

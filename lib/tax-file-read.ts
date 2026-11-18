@@ -1,6 +1,6 @@
 import type { Workbook } from "exceljs"
 import { cellToPrimitive } from "./xlsx-cell"
-import { TAX_FILE_MAX_BYTES, TAX_FILE_MAX_ROWS, type TaxSheetRow } from "./tax-file"
+import { readTaxSheet, TAX_FILE_MAX_BYTES, TAX_FILE_MAX_ROWS, type TaxFile, type TaxFileProblem, type TaxSheetRow } from "./tax-file"
 
 /**
  * Opens the Tax Authority portal's file (CLIENT_PORTAL_PLAN.md §4.1): its
@@ -37,4 +37,13 @@ export async function readTaxWorkbook(bytes: ArrayBuffer | Uint8Array): Promise<
         return { problem: "unreadable" }
     }
     return { sheet }
+}
+
+/** Why a file is refused whole (§4.1): it couldn't be opened, or what's in it can't be one client's claims. */
+export type TaxFileRefusal = { problem: "too_big" | "unreadable" | "reader" } | TaxFileProblem
+
+/** A file's bytes as the claims it has, each row checked, or why the file is refused whole. */
+export async function readTaxFile(bytes: ArrayBuffer | Uint8Array): Promise<TaxFile | TaxFileRefusal> {
+    const opened = await readTaxWorkbook(bytes)
+    return "problem" in opened ? opened : readTaxSheet(opened.sheet)
 }

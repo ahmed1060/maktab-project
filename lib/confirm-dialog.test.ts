@@ -22,6 +22,8 @@ const ASKED: { file: string; count: number; danger: number }[] = [
     // Deleting a client, never archiving one; and deleting an archived one
     // for good (PR 313).
     { file: "app/(dashboard)/dashboard/clients/page.tsx", count: 2, danger: 2 },
+    // Saving a file that names another company replaces this client's claims with it (PR 316).
+    { file: "components/tax/TaxUpload.tsx", count: 1, danger: 1 },
     { file: "components/records/SectionsCard.tsx", count: 1, danger: 1 },
     { file: "components/records/RecordsList.tsx", count: 1, danger: 1 },
     { file: "components/locations/LocationsList.tsx", count: 1, danger: 0 },

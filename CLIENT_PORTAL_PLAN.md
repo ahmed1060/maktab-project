@@ -18,7 +18,8 @@ were merged in #311 that day too, and `tax.view` for the companies
 already there (step 2c) is #312. A client with a tax position archived
 instead of deleted (§3.6, step 2d) is #313, and the rules for reading
 the portal's file (§4.1, step 3a) are #314. Saving the file (step 3b)
-is #315. The rest is built in the small PRs of §12, each its own PR.
+is #315, and the upload on a client's page (step 3c) is #316. The rest
+is built in the small PRs of §12, each its own PR.
 
 ---
 
@@ -334,6 +335,35 @@ it:
   pair, are set aside as spaces are tidied, in what the file has and in
   what's sent, as the database refuses them. An address that isn't an
   id is nobody's client.
+
+As built (3c, #316): the upload on a client's page (`DESIGN.md` §5.5,
+Uploading the tax portal's file).
+
+- **Upload from the tax portal** is on the Tax position section's
+  heading, for whoever holds `tax.manage`, before the first file too.
+  An archived client hasn't it. One restored from its own page has it
+  again at once, as its tax position is read again then.
+- **The browser reads the file,** once what it's checked against has
+  loaded. The reader is fetched when a file is picked, not with the
+  page. Nothing of the file leaves the browser but its open claims,
+  when they're saved.
+- **A file refused whole** says why in a dialog: not an Excel file,
+  damaged or locked with a password; over 2 MB; nothing in it; more
+  than 2,000 rows; a needed column missing, named; several companies,
+  named.
+- **The check screen** has what this section lists. Claims that stay
+  as they were are counted, not listed. What changed of a claim is
+  said for its amounts and its last day to pay; anything else is said
+  as its details.
+- **A row with a problem** stops the save: each is listed with its
+  line in the file, its claim number and why.
+- **Saving** asks first where the file's company isn't the client's.
+  Where the claims changed while the screen was open, it says so and
+  checks the file again against them. Saved, the section reads itself
+  again.
+- **Closing** the upload while a file is being read calls that reading
+  off: what's read after isn't shown.
+- The links to the export button's page come with that page (step 4).
 
 ### 4.2 Only from the portal's file (Decided, 2026-11-17)
 
@@ -693,7 +723,7 @@ width:
      file, the server checking every row again, replacing in one go,
      and the audit log. No screen yet. #315.
    - **3c. The upload on a client's page:** Upload from the tax portal,
-     the check screen, and saving.
+     the check screen, and saving. #316.
    - **3d.** `tax.manage` for the built-in Admin of the companies
      already there.
 4. **The export button in Nizmo** (§10): its code and tests in the
@@ -964,3 +994,15 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   client's. A claim number over 50 characters, or a name over 200, is a
   problem on the check screen and the server alike. No screen yet: the
   upload on a client's page is step 3c (§12).
+- **2026-11-18:** The upload on a client's page (#316, §4.1 as built
+  3c): Upload from the tax portal on the Tax position section, the file
+  read in the browser, a file refused whole saying why, the check screen
+  with what's new, changed and going, a row with a problem stopping the
+  save, and the confirmation where the file's company isn't the
+  client's. Its `DESIGN.md` block is Uploading the tax portal's file.
+- **2026-11-18:** From Codex's review of #316: a client restored from
+  its own page has Upload from the tax portal again at once, where the
+  Tax position section kept it as archived until the page was opened
+  again; and closing the upload while another file is being read calls
+  that reading off, where the file read after opened the check screen
+  again (§4.1).
