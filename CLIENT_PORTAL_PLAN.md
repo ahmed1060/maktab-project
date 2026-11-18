@@ -19,8 +19,9 @@ already there (step 2c) is #312. A client with a tax position archived
 instead of deleted (§3.6, step 2d) is #313, and the rules for reading
 the portal's file (§4.1, step 3a) are #314. Saving the file (step 3b)
 is #315, and the upload on a client's page (step 3c) is #316.
-`tax.manage` for the companies already there (step 3d) is #317. The
-rest is built in the small PRs of §12, each its own PR.
+`tax.manage` for the companies already there (step 3d) is #317, and
+the export button's code in Nizmo, with its tests (§10, step 4a), is
+#318. The rest is built in the small PRs of §12, each its own PR.
 
 ---
 
@@ -682,6 +683,23 @@ sent: it's drawn from the claims as they are.
   link to it. Staff then always drag the newest copy from one place, and
   the separate install page goes. The button still runs on the portal's
   page, in the staff's own browser.
+- **Its code in Nizmo, as built** (step 4a, #318):
+  - the code is `lib/tax-export-button.ts`, kept as text. It runs on
+    another site's page, where nothing of Nizmo's is, so it stands
+    alone and isn't built with the app. Its panel's words are the
+    owner's, as they were;
+  - `taxExportBookmark()` makes the bookmark's address from it, for the
+    page (step 4b) to show;
+  - a claim's number is always text. One with no zero at its start was
+    written as a number, which the upload refuses (§15);
+  - what it gathers is kept in the browser under a new name, and what
+    the copy before it kept is removed, as that copy kept such numbers
+    as numbers. Until one of the staff drags the new button, their old
+    one still writes them so, and the upload's check screen says why
+    its file can't be saved;
+  - it's tested in two ways (§15): the part of it that needs no page on
+    every push, and the whole of it in a browser, by a run kept with
+    the code.
 
 ---
 
@@ -729,11 +747,16 @@ width:
    - **3d.** `tax.manage` for the built-in Admin of the companies
      already there, from a migration, once #315's release, whose role
      editor knows it, is live. #317.
-4. **The export button in Nizmo** (§10): its code and tests in the
-   repository, its page, and the links to it. It then writes every
-   claim number as text: today's writes one with no zero at its start
-   as a number, which the upload refuses as a number that may have lost
-   its zeros (§15). Its tests read its file with Nizmo's reader.
+4. **The export button in Nizmo** (§10), in three:
+   - **4a. Its code and tests** in the repository, with the bookmark's
+     address made from it. It then writes every claim number as text:
+     the owner's wrote one with no zero at its start as a number, which
+     the upload refuses as a number that may have lost its zeros (§15).
+     Its tests read its file with Nizmo's reader. No screen yet. #318.
+   - **4b. Its page,** The tax portal's export button, for whoever has
+     `tax.manage` where the package has the add-on.
+   - **4c. The links to it** from the upload's dialog and the Tax
+     position section.
 5. **Figures getting old** (§4.3): the badge on the client's page and the
    Clients list.
 6. **Client accounts:** their table, People who can sign in,
@@ -893,6 +916,32 @@ screen:
 - a partly paid claim: its original, paid and remaining;
 - the file's name: the company and Cairo's date.
 
+In Nizmo (step 4a, #318), also:
+
+- every claim's number as text, one with no zero at its start too;
+- what the copy before it kept: removed from the browser, and not read;
+- Clear, which asks first; a page that names no company; and a page
+  with no table, where Download saves nothing;
+- nothing asked of any other address while it runs.
+
+How it's tested there, as it runs on another site's page. No new package
+is added for it (the owner, 2026-11-18):
+
+- **On every push:** its code is read as text, for what it must and
+  mustn't have, and the part of it that needs no page is run as it is:
+  how a cell's words are read, the file's name, and the file it writes,
+  which Nizmo's reader reads back.
+- **In a browser, by a run kept with the code**
+  (`scripts/tax-export-browser-run.mjs`): Chromium presses the bookmark
+  on a page laid out like the portal's that holds made-up claims, its
+  clock at half past midnight in Cairo, and checks the lists above.
+  Only when every check passes does it keep the files the button
+  saved, with the code's fingerprint, in `lib/tax-export-fixtures`.
+- **The two tied together:** every push reads the kept files with
+  Nizmo's reader, and checks the fingerprint against the code. Code
+  changed since it was tried in a browser fails, until the run is done
+  again.
+
 A filter that hides open claims is the one way a file leaves claims out.
 Nizmo's check screen then lists them as going, before anything is saved.
 
@@ -1015,3 +1064,11 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   has had since #315 (§9, §12 step 3d). Their Admins then have Upload
   from the tax portal on a client's Tax position, where the company's
   package has the client portal.
+- **2026-11-18:** The export button's code in Nizmo, with its tests
+  (#318, §10, §12 step 4a, §15). Step 4 is in three: the code, its
+  page, and the links to it. The code is the owner's, kept as text,
+  with a claim's number always text, and what the copy before it kept
+  removed from the browser. No new package for its tests (the owner,
+  2026-11-18): the part that needs no page is run on every push, and a
+  run in a browser, kept with the code, tries the whole of it and keeps
+  the files it saved, which every push reads with Nizmo's reader.
