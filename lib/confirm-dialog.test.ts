@@ -19,8 +19,9 @@ const ASKED: { file: string; count: number; danger: number }[] = [
     // Resetting points can't be undone; deleting someone can't either.
     { file: "app/(dashboard)/dashboard/employees/page.tsx", count: 2, danger: 2 },
     { file: "app/(dashboard)/dashboard/costs/CostsClient.tsx", count: 1, danger: 0 },
-    // Deleting a client, never archiving one.
-    { file: "app/(dashboard)/dashboard/clients/page.tsx", count: 1, danger: 1 },
+    // Deleting a client, never archiving one; and deleting an archived one
+    // for good (PR 313).
+    { file: "app/(dashboard)/dashboard/clients/page.tsx", count: 2, danger: 2 },
     { file: "components/records/SectionsCard.tsx", count: 1, danger: 1 },
     { file: "components/records/RecordsList.tsx", count: 1, danger: 1 },
     { file: "components/locations/LocationsList.tsx", count: 1, danger: 0 },
@@ -124,8 +125,12 @@ describe("each confirmation", () => {
     }
 
     it("deletes a client in red, and archives one without", () => {
-        const [asked] = confirmations("app/(dashboard)/dashboard/clients/page.tsx")
-        expect(asked.get("danger")).toBe("{!toDelete?.inUse}")
+        const [asked, forGood] = confirmations("app/(dashboard)/dashboard/clients/page.tsx")
+        // Archived where its tasks, its records or its tax position hold it (PR 313).
+        expect(asked.get("danger")).toBe("{!(toDelete && archives(toDelete))}")
+        // Deleted for good from the archive, which can't be undone: always in red.
+        expect(forGood.get("open")).toBe("{!!forGood}")
+        expect(forGood.get("danger")).toBe("true")
     })
 
     // The photo's window of its own making is gone (PR 191): removing it is

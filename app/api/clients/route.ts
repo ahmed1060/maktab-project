@@ -4,6 +4,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { createClientSchema, updateClientSchema } from "@/lib/validations/client.schema"
 import { ClientService } from "@/lib/services/client.service"
 import { can } from "@/lib/permissions/can"
+import { sessionHasModule } from "@/lib/features/require"
 
 // Each client's HQ (CLIENTS_PLAN.md §2.2), for its details and its form.
 const HQ = { where: { isHq: true }, select: { id: true, name: true, latitude: true, longitude: true, radiusMeters: true } } as const
@@ -43,6 +44,13 @@ export const GET = withStandardHandler(async (req, session) => {
     // archived clients out; ?archived=1 lists those, and ?archived=all both,
     // as a filter keeps them.
     const archived = searchParams.get('archived')
+    // That a client has a tax position is for whoever may delete it, whose
+    // menu says Archive in place of Delete, and why (CLIENT_PORTAL_PLAN.md
+    // §3.6). How many of its claims are open is its tax position's to say:
+    // given only to those of them who may see tax positions, by their role
+    // and their company's package.
+    const manages = can(session.user, "clients.manage")
+    const seesTax = manages && can(session.user, "tax.view") && sessionHasModule(session, "TAX_POSITION")
     const clients = await prisma.client.findMany({
         where: {
             ...(companyId ? { companyId } : {}),
@@ -50,9 +58,11 @@ export const GET = withStandardHandler(async (req, session) => {
         },
         orderBy: { name: 'asc' },
         include: {
-            // Whether deleting it archives it instead: it has tasks or records.
-            _count: { select: { tasks: true } },
+            // Whether deleting it archives it instead: it has tasks or
+            // records, or a tax position (CLIENT_PORTAL_PLAN.md §3.6).
+            _count: { select: { tasks: true, taxClaims: true } },
             recordSections: { where: { records: { some: {} } }, select: { id: true }, take: 1 },
+            taxPosition: { select: { clientId: true } },
             // createdBy is null for a Super-Admin-created client (the FK
             // only targets User) — the frontend shows a generic "Super
             // Admin" label in that case rather than nothing.
@@ -65,7 +75,14 @@ export const GET = withStandardHandler(async (req, session) => {
         }
     })
 
-    return ApiResponse.success(clients.map(({ _count, recordSections, ...client }) => ({ ...client, inUse: _count.tasks > 0 || recordSections.length > 0 })))
+    return ApiResponse.success(clients.map(({ _count, recordSections, taxPosition, ...client }) => ({
+        ...client,
+        // Held by its tasks or records: it stays in the archive.
+        inUse: _count.tasks > 0 || recordSections.length > 0,
+        // A file uploaded for it, with claims open or none.
+        ...(manages ? { hasTax: _count.taxClaims > 0 || !!taxPosition } : {}),
+        ...(seesTax ? { taxClaims: _count.taxClaims } : {}),
+    })))
 })
 
 export const POST = withStandardHandler(async (req, session, json) => {
@@ -125,10 +142,12 @@ export const DELETE = withStandardHandler(async (req, session) => {
     if (!id) return ApiResponse.badRequest("ID required")
 
     try {
-        // One with tasks or records is archived instead (CLIENTS_PLAN.md §4.3), and says so.
-        // ?archive=1 archives it whatever it holds now: what the person confirmed.
-        const result = await ClientService.delete(id, session, { archive: searchParams.get('archive') === '1' })
-        return ApiResponse.success({ success: true, id, archived: result.archived })
+        // One with tasks, records or a tax position is archived instead (CLIENTS_PLAN.md §4.3;
+        // CLIENT_PORTAL_PLAN.md §3.6), and says so. ?archive=1 archives it whatever it holds now:
+        // what the person confirmed. ?force=1 deletes an archived one for good, where no task or
+        // record holds it.
+        const result = await ClientService.delete(id, session, { archive: searchParams.get('archive') === '1', forGood: searchParams.get('force') === '1' })
+        return ApiResponse.success({ success: true, id, archived: result.archived, forTax: result.forTax })
     } catch (error: any) {
         if (error.message === 'CLIENT_NOT_FOUND') return ApiResponse.notFound("Client not found")
         if (error.message === 'FORBIDDEN') return ApiResponse.forbidden()

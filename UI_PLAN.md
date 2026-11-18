@@ -791,7 +791,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      small PRs (§12 there): the add-on on packages, #310, then the
      claims on a client's page, merged in #311 on 2026-11-17; then the
      built-in Admin role's See clients' tax position for the companies
-     already there, #312.
+     already there, #312; then a client with a tax position archived
+     instead of deleted, with Delete permanently in the archive, #313.
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
 Clients pages) are rebuilt in step 0, so they're fixed there.
@@ -6607,3 +6608,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   company's has had since #311, and its holders reload their grants.
   Their Admins see the Tax position section on a client's page once
   their company's package has the client portal. No screen changes.
+- **2026-11-18:** A client with a tax position is archived, and deleted
+  for good from the archive (#313; `CLIENT_PORTAL_PLAN.md` §3.6, the
+  owner's answer). On the Clients list, a client with a tax position
+  offers Archive in place of Delete, saying why. An archived client with
+  no tasks and no records offers Delete permanently, last in its menu
+  and in the danger colour, which asks first and says its tax position
+  goes with it. One with tasks or records stays in the archive, as
+  before.

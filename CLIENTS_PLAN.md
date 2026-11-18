@@ -481,7 +481,10 @@ separate system. On screen they're renamed **Check-in places** (أماكن
    dropdowns, kept in filters and history, and can be restored. Records
    would otherwise go with the client, because sections are deleted with
    whatever they belong to, and deleting a client would get round the
-   separate permission for deleting records.
+   separate permission for deleting records. A client with a tax position
+   is archived the same way, and an archived client with no tasks and no
+   records can be deleted for good from the archive
+   (`CLIENT_PORTAL_PLAN.md` §3.6, 2026-11-18).
 4. **Fix the bug so cost descriptions are saved** (§1), in this step.
 5. **Costs get their own table** (Decided).
    - Today each cost is an entry inside the task's JSON comments, with no id
@@ -2691,3 +2694,7 @@ on 2026-10-15 in `UI_PLAN.md` §2–§3:
   change elsewhere: live updates' part 4b (`REALTIME_PLAN.md`, #264).
 - **2026-11-14:** The status at the top says all of this plan is built,
   where it said nothing was (#271).
+- **2026-11-18:** §4's archive rule takes in a client's tax position: one
+  with a tax position is archived instead of deleted, and an archived
+  client with no tasks and no records can be deleted for good from the
+  archive (`CLIENT_PORTAL_PLAN.md` §3.6, #313).

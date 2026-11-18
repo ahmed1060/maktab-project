@@ -15,8 +15,9 @@ Status: **being built.** The plan and its `DESIGN.md` blocks were merged
 in #309 on 2026-11-17, and the add-on on packages (§2, §12 step 2a) in
 #310 the same day. The claims on a client's page (§3.5, §12 step 2b)
 were merged in #311 that day too, and `tax.view` for the companies
-already there (step 2c) is #312. The rest is built in the small PRs of
-§12, each its own PR.
+already there (step 2c) is #312. A client with a tax position archived
+instead of deleted (§3.6, step 2d) is #313. The rest is built in the
+small PRs of §12, each its own PR.
 
 ---
 
@@ -93,7 +94,8 @@ last. Row-level security on the new tables, as on every table.
 As built (#311): `TaxClaim`, and `ClientTaxPosition` for the day and the
 uploader, whose name is kept as it was that day. The database holds a
 claim to its number once for its client, its amounts adding up, and
-something left to pay. They go with their client when it's deleted (§16).
+something left to pay. They go with their client when it's deleted for
+good (§3.6).
 
 ### 3.2 Only open claims (Decided, 2026-11-17)
 
@@ -149,6 +151,35 @@ A client's page gets a section, Tax position, after the client's details
   A page of claims that didn't load says so too: the claims kept up from
   another page don't stand in for it. A page gone back to is read again,
   as what was kept of it may be an earlier file's.
+
+### 3.6 A client with a tax position, deleted (Decided, 2026-11-18)
+
+The owner's answer to §16's question: archive it, with a way to delete
+it for good after.
+
+- **Archived instead of deleted.** A client with a tax position is
+  archived when it's deleted, as one with tasks or records is
+  (`CLIENTS_PLAN.md` §4.3): its tax position is as much its history as
+  its records are. A tax position is a file uploaded for it, with claims
+  open or none. Its menu says Archive in place of Delete, and why. That
+  it has one is told only to whoever may manage clients, whose menu it
+  changes.
+- **Delete permanently,** from the archive. An archived client with no
+  tasks and no records gets it in its menu, for whoever may manage
+  clients. It asks first, in the danger colour: that its tax position
+  goes with it, with how many claims are open for whoever may see tax
+  positions (by their role and their company's package), and that it
+  can't be undone. Its claims and the day they're from go with it, as
+  its people who sign in will (§5).
+- **One with tasks or records stays in the archive,** as today (the
+  owner, 2026-11-18): deleting it would take its records and their
+  files, and leave its tasks without it.
+- **Only from the archive.** A client in use is archived first, so
+  deleting for good is always a second, separate step.
+- **Refused, it says why,** in the reader's language: tasks or records
+  came to hold it, or it was restored, since the list was read. Nothing
+  is deleted, and the list is read again.
+- The audit log says who deleted it and how many claims went with it.
 - It only shows. Uploading the portal's file comes in step 3 (§12).
 
 ---
@@ -573,6 +604,9 @@ width:
    - **2c.** `tax.view` for the built-in Admin of the companies already
      there, from a migration, once #311's release, whose role editor
      knows it, is live. #312.
+   - **2d.** A client with a tax position is archived instead of
+     deleted, and deleted for good from the archive where it has no
+     tasks or records (§3.6). Before the upload lets claims in. #313.
 3. **Uploading the portal's file** on a client's page: `tax.manage`,
    reading the file, checking it's that client's, the check screen,
    replacing, and the audit log.
@@ -746,15 +780,11 @@ Nizmo's check screen then lists them as going, before anything is saved.
 
 ## 16. Open questions
 
-- **A client with claims, deleted (Open):** a client with tasks or
-  records is archived instead of deleted (`CLIENTS_PLAN.md` §4.3), and
-  any other is deleted. As built, its claims go with it, as would its
-  people who sign in later (§5). Proposed: a client with claims is
-  archived too, as its tax position is as much its history as its
-  records are. To answer before the upload (step 3) lets claims in.
+None open.
 
-The two before it were answered on 2026-11-17: the messages are
-templates (§7.1), and the export button moves into Nizmo (§10).
+Answered: a client with a tax position is archived, and deleted for good
+from the archive (§3.6), on 2026-11-18; the messages are templates
+(§7.1) and the export button moves into Nizmo (§10), on 2026-11-17.
 
 ---
 
@@ -822,3 +852,8 @@ templates (§7.1), and the export button moves into Nizmo (§10).
   `tax.view`, as a new company's has had since #311 (§9, §12 step 2c).
   And the owner's answer on the export button: the upload isn't held for
   a try of it on the portal itself (§15).
+- **2026-11-18:** The owner's answer on a client with a tax position
+  being deleted (§3.6, §16): it's archived, as one with tasks or records
+  is, and an archived client with no tasks and no records can be deleted
+  for good from the archive. Built as step 2d (#313), before the upload
+  lets claims in (§12).
