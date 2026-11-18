@@ -658,9 +658,11 @@ sent: it's drawn from the claims as they are.
   only when the count equals the portal's "إجمالي النتائج", and warns
   when there are more. Before this, rows gathered before the filter
   changed stayed in the file, with the panel saying all were gathered.
-- The rows it gathers stay in the browser until another company is opened
-  or Clear is pressed, so on a shared computer the next person can see the
-  last client's claims.
+- It keeps nothing in the browser from one visit to the next (step 4a,
+  #318): the rows it gathers are gone once the portal's page is closed or
+  loaded again. The owner's copy kept them there until another company
+  was opened or Clear was pressed, so on a shared computer the next
+  person could see the last client's claims.
 - Its staff install it by dragging it to the bookmarks bar from its page;
   no store or paid account is needed. A bookmark keeps the copy it was
   made with, so after a change each of them drags the new one once.
@@ -677,7 +679,8 @@ sent: it's drawn from the claims as they are.
     it as going (§4.1);
   - what it does: it reads the table on the screen and saves a file on
     the computer. It sends nothing to Nizmo or anywhere else;
-  - the note for a shared computer, and Clear.
+  - that it keeps nothing in the browser once the portal's page is
+    closed, and Clear, which starts it again from what's on the screen.
 
   The upload's dialog (How to get this file) and the Tax position section
   link to it. Staff then always drag the newest copy from one place, and
@@ -692,11 +695,45 @@ sent: it's drawn from the claims as they are.
     page (step 4b) to show;
   - a claim's number is always text. One with no zero at its start was
     written as a number, which the upload refuses (§15);
-  - what it gathers is kept in the browser under a new name, and what
-    the copy before it kept is removed, as that copy kept such numbers
-    as numbers. Until one of the staff drags the new button, their old
-    one still writes them so, and the upload's check screen says why
-    its file can't be saved;
+  - it keeps nothing in the browser, and removes what an older copy
+    kept there, a claim's number among it as a number. Until one of the
+    staff drags the new button, their old one still writes numbers so,
+    and the upload's check screen says why its file can't be saved;
+  - **a file is what the portal shows when it's saved** (from Codex's
+    review of #318). The owner's copy held on to what it first read of
+    a claim, and to the rows of a filter that showed as many claims as
+    the next one, from one visit to the next too:
+    - a claim seen again takes the values the portal shows now;
+    - every gathering of the pages starts from nothing;
+    - holding more rows than the portal counts, it takes the ones it
+      had as another filter's, and starts again from the screen. A
+      count that can't be the table's, with more rows on one screen
+      than it, is left alone, and its panel warns as before;
+    - Download saves at once only what was gathered whole, with the
+      portal's count, in the last five minutes, and with nothing drawn
+      on the portal's page since: one page read alone, or every page
+      in one go. Otherwise it gathers again first. Pressed while the
+      pages are being gathered, it waits for the last of them; where a
+      page doesn't come, it saves no file;
+    - where the rows it holds still aren't as many as the portal
+      counts, Download asks before it saves: the panel's own words for
+      it, then تنزيل الملف برضه؟ ("download the file anyway?"). Its
+      panel's warning used to be there to see before Download was
+      pressed. Now that Download may gather again by itself, it might
+      first show as the file is saved;
+    - the portal's filter isn't read from its page. The button reads
+      the table, the count and the pages' buttons, which is all it
+      knows of that page, so what it holds is checked against what the
+      portal shows instead;
+  - **it knows which copy it is** (from Codex's review of #318): its
+    version is its own code's fingerprint, so it changes with any
+    change to the code. Pressed where the same copy is up, that copy
+    gathers again, as before. Pressed where another is up, that one is
+    stopped and its panel goes, and this one takes its place. Before
+    this, an older copy answered the press itself, and went on writing
+    claim numbers as numbers. The owner's first copy knows no way to be
+    stopped: its panel goes and nothing more is asked of it, and it's
+    gone when the page is next loaded;
   - it's tested in two ways (§15): the part of it that needs no page on
     every push, and the whole of it in a browser, by a run kept with
     the code.
@@ -753,6 +790,9 @@ width:
      the owner's wrote one with no zero at its start as a number, which
      the upload refuses as a number that may have lost its zeros (§15).
      Its tests read its file with Nizmo's reader. No screen yet. #318.
+     After Codex's review of it, a file is what the portal shows when
+     it's saved, nothing is kept in the browser, and a copy knows which
+     one it is (§10).
    - **4b. Its page,** The tax portal's export button, for whoever has
      `tax.manage` where the package has the add-on.
    - **4c. The links to it** from the upload's dialog and the Tax
@@ -908,8 +948,7 @@ screen:
 - a filter chosen before pressing it: the file holds the filtered claims
   alone, from every page, with the count matching the filtered total;
 - the filter changed on the same company: it starts again by itself, and
-  the file holds the new filter's claims alone. A new visit with the same
-  filter keeps what was gathered, and with another starts again;
+  the file holds the new filter's claims alone;
 - another company opened in the same tab, or on a new visit: it starts
   again by itself, and the file has that company alone;
 - pressed twice: no row twice;
@@ -919,7 +958,32 @@ screen:
 In Nizmo (step 4a, #318), also:
 
 - every claim's number as text, one with no zero at its start too;
-- what the copy before it kept: removed from the browser, and not read;
+- nothing kept in the browser, and what an older copy kept there
+  removed and not read;
+- a new visit starts from nothing: a claim has what the portal shows
+  then, and one paid since isn't in the file, though as many wait as
+  before;
+- a claim seen again takes the values the portal shows now;
+- Download:
+  - at once, where every page was gathered a moment ago, and again
+    after it;
+  - gathering every page again first where the portal drew its table
+    again since, where the page was left open for more than five
+    minutes, and where rows of two filters were gathered by hand,
+    their count the portal's;
+  - reading the screen again where the portal drew another filter's
+    claim a moment before;
+  - waiting for the pages where it's pressed while they're gathered,
+    and saving one file where it's pressed twice;
+  - no file where a page never comes;
+- a filter that shows as many claims as the one before it, on one page
+  and on more;
+- a count on the page that can't be the table's: no row is let go for
+  it, and Download asks before it saves;
+- fewer rows than the portal counts, even gathered again: Download asks
+  first, and saves nothing where the answer is no;
+- pressed where an older copy is up: this one takes its place. One that
+  can be stopped is stopped, and asks the portal for no more pages;
 - Clear, which asks first; a page that names no company; and a page
   with no table, where Download saves nothing;
 - nothing asked of any other address while it runs.
@@ -929,8 +993,9 @@ is added for it (the owner, 2026-11-18):
 
 - **On every push:** its code is read as text, for what it must and
   mustn't have, and the part of it that needs no page is run as it is:
-  how a cell's words are read, the file's name, and the file it writes,
-  which Nizmo's reader reads back.
+  how a cell's words are read, the file's name, the file it writes,
+  which Nizmo's reader reads back, and what it holds of the portal's
+  table from one reading of it to the next.
 - **In a browser, by a run kept with the code**
   (`scripts/tax-export-browser-run.mjs`): Chromium presses the bookmark
   on a page laid out like the portal's that holds made-up claims, its
@@ -1072,3 +1137,25 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   2026-11-18): the part that needs no page is run on every push, and a
   run in a browser, kept with the code, tries the whole of it and keeps
   the files it saved, which every push reads with Nizmo's reader.
+- **2026-11-18:** From Codex's review of #318, three findings on the
+  export button's code, all fixed (§10, §15):
+  - a claim seen again kept what was first read of it, so one paid in
+    part since was saved with what was left before, on later visits
+    too. It now takes what the portal shows, and nothing is kept in the
+    browser from one visit to the next;
+  - a filter that showed as many claims as the one before it kept the
+    last filter's rows. More rows than the portal counts now start it
+    again from the screen, every gathering of the pages starts from
+    nothing, and Download gathers again first unless every page was
+    gathered a moment ago with nothing drawn on the page since;
+  - a new copy pressed where an older one was up left the older one
+    answering. A copy now knows which one it is, and takes another's
+    place.
+
+  The note for a shared computer goes from the button's page (step
+  4b): nothing of a client's stays in the browser. What the button
+  holds of the portal's table is in the part that needs no page, so
+  it's run on every push, and the browser run has 32 checks. Each rule
+  of the fix was taken out in turn, and the run failed without it.
+  One thing more than the review asked for: Download asks before it
+  saves a file whose rows aren't as many as the portal counts.

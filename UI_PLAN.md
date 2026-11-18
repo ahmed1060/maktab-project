@@ -6651,3 +6651,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   screen changes: its page and the links to it are the next two parts.
   Its panel shows on the tax portal's page, not in Nizmo, and keeps the
   owner's words and its own styles.
+- **2026-11-18:** From Codex's review of #318: the tax portal's export
+  button saves what the portal shows when Download is pressed, keeps
+  nothing in the browser, and takes an older copy's place
+  (`CLIENT_PORTAL_PLAN.md` §10, §15). No screen of Nizmo's changes: its
+  panel is on the tax portal's page, with the owner's words as they
+  were.
