@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title></title>
+</head>
+<body>
+<!--
+  A page laid out like the Tax Authority portal's Payments page, as the export button reads it
+  (CLIENT_PORTAL_PLAN.md §10, §15): the company in the title, the count of results, the claims
+  table with its days as times and a struck-through amount where a claim was paid in part, the
+  status filter, and the pages' buttons, two claims to a page. It answers after a short wait, as
+  the portal does. Every company and claim on it is made up.
+
+  scripts/tax-export-browser-run.mjs opens it: ?company=a (the default), b or none, and
+  ?table=none for a page with no table.
+-->
+<label>حالة المطالبة
+  <select id="f">
+    <option value="">الكل</option>
+    <option>في انتظار السداد</option>
+    <option>مسدد جزئياً</option>
+    <option>مسدد</option>
+  </select>
+</label>
+<h6 id="tot"></h6>
+<table aria-label="payments table">
+  <thead><tr>
+    <th>نوع الضريبة</th><th>نوع بند السداد</th><th>نوع التسجيل الضريبي</th><th>رقم المطالبة</th><th>قيمة المطالبة</th><th>عملة المطالبة</th>
+    <th>حالة المطالبة</th><th>بداية الفترة الضريبية</th><th>نهاية الفترة الضريبية</th><th>آخر موعد للسداد قبل الغرامة</th><th>الإجراء</th>
+  </tr></thead>
+  <tbody id="tb"></tbody>
+</table>
+<nav aria-label="pagination navigation" id="pg"></nav>
+<script>
+var LEGAL = 'أشخاص اعتبارية', POUND = 'جنيه مصري', WAITING = 'في انتظار السداد', HEALTH = 'مساهمة تكافلية- تأمين صحي', MARTYRS = 'مساهمه تكافليه لصندوق أسر الشهداء';
+// Each claim: tax, item, registration, number, amount as the cell shows it, currency, status, period's start, period's end, last day to pay.
+var COMPANIES = {
+  a: { name: 'شركة ألف للتجارة', claims: [
+    // Paid in part: the original struck through, with what's left after it.
+    ['دخل', 'أقرار تجاري', LEGAL, '000111000001', '<span><s>21,088.26</s></span><span>13,723.26</span>', POUND, 'مسدد جزئياً', '01/01/2025', '31/12/2025', '30/04/2026'],
+    ['دخل', HEALTH, LEGAL, '000111000002', '7,029.42', POUND, WAITING, '01/01/2025', '31/12/2025', '30/04/2026'],
+    ['دخل', HEALTH, LEGAL, '000111000003', '13,195.50', POUND, WAITING, '01/01/2024', '31/12/2024', '30/04/2025'],
+    // No period: a dash in each of its cells.
+    ['دخل', MARTYRS, LEGAL, '000111000004', '9.45', POUND, WAITING, '-', '-', '15/12/2025'],
+    ['دخل', 'أقرار تجاري', LEGAL, '000111000005', '500.00', POUND, 'مسدد', '01/01/2023', '31/12/2023', '30/04/2024'],
+    // A number with no zero at its start.
+    ['قيمة مضافة', 'إقرار شهري', LEGAL, '111000000006', '1,250.00', POUND, WAITING, '01/12/2025', '31/12/2025', '31/01/2026']
+  ] },
+  b: { name: 'شركة باء للتوريدات', claims: [
+    ['دخل', MARTYRS, LEGAL, '000222000009', '9.45', POUND, WAITING, '-', '-', '15/12/2025']
+  ] },
+  // A page that names no company.
+  none: { name: '', claims: [
+    ['دخل', 'أقرار تجاري', LEGAL, '000333000001', '300.00', POUND, WAITING, '01/01/2025', '31/12/2025', '30/04/2026']
+  ] }
+};
+var SIZE = 2, WAIT = 300;
+var params = new URLSearchParams(location.search);
+var company = COMPANIES[params.get('company')] || COMPANIES.a;
+var page = 1;
+
+// A day as the portal gives it: its first moment in Cairo, which is two hours ahead of UTC and three in its summer time.
+function firstMoment(day) {
+  var p = day.split('/').map(Number), utc = Date.UTC(p[2], p[1] - 1, p[0]);
+  var ahead = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Africa/Cairo', hour: '2-digit', hourCycle: 'h23' }).format(new Date(utc)));
+  return utc - ahead * 3600000;
+}
+function dayCell(day) { return day === '-' ? '-' : '<time datetime="' + firstMoment(day) + '">' + day + '</time>'; }
+function shown() { var f = document.getElementById('f').value; return company.claims.filter(function (c) { return !f || c[6] === f; }); }
+function draw() {
+  var claims = shown(), pages = Math.max(1, Math.ceil(claims.length / SIZE));
+  if (page > pages) page = 1;
+  document.title = company.name ? 'المدفوعات - ' + company.name + ' | مساحة عمل الممول' : '';
+  document.getElementById('tot').textContent = 'إجمالي النتائج: ' + claims.length;
+  document.getElementById('tb').innerHTML = claims.slice((page - 1) * SIZE, page * SIZE).map(function (c) {
+    return '<tr><td>' + c[0] + '</td><td>' + c[1] + '</td><td>' + c[2] + '</td><td>' + c[3] + '</td><td>' + c[4] + '</td><td>' + c[5] + '</td><td>' + c[6] + '</td><td>' +
+      dayCell(c[7]) + '</td><td>' + dayCell(c[8]) + '</td><td>' + dayCell(c[9]) + '</td><td><button>سداد</button></td></tr>';
+  }).join('');
+  var h = '<button aria-label="Go to previous page"' + (page === 1 ? ' disabled' : '') + '>‹</button>';
+  for (var p = 1; p <= pages; p++) h += '<button aria-label="' + (p === page ? 'page ' + p : 'Go to page ' + p) + '"' + (p === page ? ' aria-current="true"' : '') + ' data-p="' + p + '">' + p + '</button>';
+  h += '<button aria-label="Go to next page"' + (page === pages ? ' disabled' : '') + '>›</button>';
+  document.getElementById('pg').innerHTML = h;
+}
+document.getElementById('pg').addEventListener('click', function (e) {
+  var b = e.target.closest('button'); if (!b || b.disabled) return;
+  var l = b.getAttribute('aria-label');
+  setTimeout(function () { if (l === 'Go to next page') page++; else if (l === 'Go to previous page') page--; else page = Number(b.dataset.p); draw(); }, WAIT);
+});
+document.getElementById('f').addEventListener('change', function () { setTimeout(function () { page = 1; draw(); }, WAIT); });
+// Another company opened in the same tab: the portal changes the page without loading it again.
+window.openCompany = function (key) { setTimeout(function () { company = COMPANIES[key]; page = 1; document.getElementById('f').value = ''; draw(); }, WAIT); };
+
+if (params.get('table') === 'none') ['table', '#pg', '#tot'].forEach(function (s) { document.querySelector(s).remove(); });
+else draw();
+</script>
+</body>
+</html>
