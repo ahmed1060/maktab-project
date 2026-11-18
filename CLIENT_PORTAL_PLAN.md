@@ -21,8 +21,8 @@ the portal's file (§4.1, step 3a) are #314. Saving the file (step 3b)
 is #315, and the upload on a client's page (step 3c) is #316.
 `tax.manage` for the companies already there (step 3d) is #317, and
 the export button's code in Nizmo, with its tests (§10, step 4a), is
-#318. Its page (step 4b) is #319. The rest is built in the small PRs
-of §12, each its own PR.
+#318. Its page (step 4b) is #319, and the links to it (step 4c) are
+#320. The rest is built in the small PRs of §12, each its own PR.
 
 ---
 
@@ -366,7 +366,10 @@ Uploading the tax portal's file).
   again.
 - **Closing** the upload while a file is being read calls that reading
   off: what's read after isn't shown.
-- The links to the export button's page come with that page (step 4).
+- **How to get the portal's file** links to the export button's page
+  (§10, step 4c): at the end of the section's line, or of its empty
+  state's, for whoever has the upload; and in a new tab where a file is
+  refused whole, or a row has a problem.
 
 ### 4.2 Only from the portal's file (Decided, 2026-11-17)
 
@@ -686,8 +689,9 @@ sent: it's drawn from the claims as they are.
   - that it keeps nothing in the browser once the portal's page is
     closed.
 
-  The upload's dialog (How to get this file) and the Tax position section
-  link to it. Staff then always drag the newest copy from one place, and
+  The upload's dialogs and the Tax position section link to it, by How
+  to get the portal's file. Staff then always drag the newest copy from
+  one place, and
   the separate install page goes. The button still runs on the portal's
   page, in the staff's own browser.
 - **Its code in Nizmo, as built** (step 4a, #318):
@@ -752,7 +756,7 @@ sent: it's drawn from the claims as they are.
   portal's export button):
   - at `/dashboard/tax-export`, for whoever has `tax.manage` where the
     package has the add-on. It isn't in the side bar: the links to it
-    are step 4c, and until then it's opened by its address;
+    are step 4c, below;
   - the button is dragged from it to the bookmarks bar on a computer,
     and is named Export claims there, in the page's language. For
     whoever can't drag, Copy address gives the bookmark's address, to
@@ -763,6 +767,33 @@ sent: it's drawn from the claims as they are.
   - its steps and what to know are as listed above. It also says that
     each file is one company's, with one filter, and that a bookmark
     keeps the copy it was made from.
+- **The links to it, as built** (step 4c, #320): one link, How to get
+  the portal's file, in three places, for whoever has the upload. It's
+  named for the portal's file, not "this file", as it's read beside a
+  file that was refused:
+  - on a client's Tax position, at the end of the line under the
+    section's title, which names the portal's file, or of the empty
+    state's line before the first file. It isn't on the section's
+    heading, which the upload's button fills on a phone. An archived
+    client hasn't it, as it hasn't the upload;
+  - where the upload refuses a file whole for what the file is: not an
+    Excel file, over 2 MB, nothing in it, too many rows, a column
+    missing, or several companies. It isn't there where the file's
+    reader didn't load, or the client's claims couldn't be read, as
+    another file wouldn't help;
+  - where a row has a problem, at the end of the note that stops the
+    save. A file from a copy of the button older than step 4a is
+    refused this way, and the page has the new one to drag. The row's
+    own words now say so: a claim number kept as a number is what
+    Excel leaves on saving the file, or an older copy of the export
+    button.
+
+  In the upload's dialogs it opens in a new tab, so the file's check
+  stays as it is, and says so to screen readers. On the client's page
+  it opens in the same tab. As a file is refused, the focus stays on
+  Close, where it was before the dialog had a link. On a phone the link
+  is 44px under a finger, laid over its line so no line around it
+  moves.
 
 ---
 
@@ -821,8 +852,8 @@ width:
      one it is (§10).
    - **4b. Its page,** The tax portal's export button, for whoever has
      `tax.manage` where the package has the add-on. #319.
-   - **4c. The links to it** from the upload's dialog and the Tax
-     position section.
+   - **4c. The links to it,** How to get the portal's file, from the
+     upload's dialogs and the Tax position section. #320.
 5. **Figures getting old** (§4.3): the badge on the client's page and the
    Clients list.
 6. **Client accounts:** their table, People who can sign in,
@@ -1198,3 +1229,10 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   button to drag to the bookmarks bar, Copy address for whoever can't
   drag, its steps and what to know. Its `DESIGN.md` block is The tax
   portal's export button. The links to it are step 4c.
+- **2026-11-18:** The links to the export button's page (#320, §10,
+  §12 step 4c): How to get the portal's file, at the end of the Tax
+  position section's line or its empty state's for whoever has the
+  upload, and in a new tab where the upload refuses a file whole or a
+  row has a problem. It isn't on the section's heading, which the
+  upload's button fills on a phone. A claim number kept as a number is
+  said to be Excel's doing or an older copy of the export button's.
