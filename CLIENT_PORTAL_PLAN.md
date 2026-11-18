@@ -21,7 +21,8 @@ the portal's file (§4.1, step 3a) are #314. Saving the file (step 3b)
 is #315, and the upload on a client's page (step 3c) is #316.
 `tax.manage` for the companies already there (step 3d) is #317, and
 the export button's code in Nizmo, with its tests (§10, step 4a), is
-#318. The rest is built in the small PRs of §12, each its own PR.
+#318. Its page (step 4b) is #319. The rest is built in the small PRs
+of §12, each its own PR.
 
 ---
 
@@ -679,8 +680,11 @@ sent: it's drawn from the claims as they are.
     it as going (§4.1);
   - what it does: it reads the table on the screen and saves a file on
     the computer. It sends nothing to Nizmo or anywhere else;
+  - that the file holds what the portal shows when Download is
+    pressed, the button gathering again first where the page has
+    changed since;
   - that it keeps nothing in the browser once the portal's page is
-    closed, and Clear, which starts it again from what's on the screen.
+    closed.
 
   The upload's dialog (How to get this file) and the Tax position section
   link to it. Staff then always drag the newest copy from one place, and
@@ -744,6 +748,21 @@ sent: it's drawn from the claims as they are.
   - it's tested in two ways (§15): the part of it that needs no page on
     every push, and the whole of it in a browser, by a run kept with
     the code.
+- **Its page, as built** (step 4b, #319; `DESIGN.md` §5.5, The tax
+  portal's export button):
+  - at `/dashboard/tax-export`, for whoever has `tax.manage` where the
+    package has the add-on. It isn't in the side bar: the links to it
+    are step 4c, and until then it's opened by its address;
+  - the button is dragged from it to the bookmarks bar on a computer,
+    and is named Export claims there, in the page's language. For
+    whoever can't drag, Copy address gives the bookmark's address, to
+    add by hand. A phone has neither, and says the button is added on
+    a computer;
+  - pressed on Nizmo's own page, the button does nothing but say that
+    it's dragged;
+  - its steps and what to know are as listed above. It also says that
+    each file is one company's, with one filter, and that a bookmark
+    keeps the copy it was made from.
 
 ---
 
@@ -801,7 +820,7 @@ width:
      it's saved, nothing is kept in the browser, and a copy knows which
      one it is (§10).
    - **4b. Its page,** The tax portal's export button, for whoever has
-     `tax.manage` where the package has the add-on.
+     `tax.manage` where the package has the add-on. #319.
    - **4c. The links to it** from the upload's dialog and the Tax
      position section.
 5. **Figures getting old** (§4.3): the badge on the client's page and the
@@ -1174,3 +1193,8 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   The pages' buttons may mark the one shown either way a browser's
   pages do, so the first page isn't asked for where it's already shown
   (§10, §15).
+- **2026-11-18:** The export button's page (#319, §10, §12 step 4b):
+  The tax portal's export button, at `/dashboard/tax-export`, with the
+  button to drag to the bookmarks bar, Copy address for whoever can't
+  drag, its steps and what to know. Its `DESIGN.md` block is The tax
+  portal's export button. The links to it are step 4c.

@@ -799,7 +799,7 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      #316; then the built-in Admin role's Update clients' tax position
      for the companies already there, #317; then the tax portal's
      export button's code in Nizmo, with its tests and no screen yet,
-     #318.
+     #318; then its page, The tax portal's export button, #319.
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
 Clients pages) are rebuilt in step 0, so they're fixed there.
@@ -6657,3 +6657,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   (`CLIENT_PORTAL_PLAN.md` §10, §15). No screen of Nizmo's changes: its
   panel is on the tax portal's page, with the owner's words as they
   were.
+- **2026-11-18:** The tax portal's export button's page (#319;
+  `CLIENT_PORTAL_PLAN.md` §10, §12 step 4b; `DESIGN.md` §5.5, The tax
+  portal's export button). A page for whoever may update clients' tax
+  position: the button to drag to the browser's bookmarks bar on a
+  computer, Copy address for whoever can't drag, how to use it in
+  numbered steps, and what to know. It's opened by its address until
+  the links to it come, in the next part.
