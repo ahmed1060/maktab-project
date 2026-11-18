@@ -107,7 +107,10 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "records.edit": "COMPANY",
         "records.delete": "COMPANY",
         "clients.view": "COMPANY",
-        // A client's tax position, on its page (CLIENT_PORTAL_PLAN.md §9).
+        // A client's tax position, on its page (CLIENT_PORTAL_PLAN.md §9):
+        // a new company's since PR 311, and given to the companies there
+        // already by PR 312's migration, once PR 311's role editor, which
+        // knows it, was live.
         "tax.view": "COMPANY",
         "clients.manage": "COMPANY",
         "costs.view": "COMPANY",

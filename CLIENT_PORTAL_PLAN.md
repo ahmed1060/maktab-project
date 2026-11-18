@@ -13,8 +13,10 @@ Each part is marked:
 
 Status: **being built.** The plan and its `DESIGN.md` blocks were merged
 in #309 on 2026-11-17, and the add-on on packages (§2, §12 step 2a) in
-#310 the same day. The claims on a client's page (§3.5, §12 step 2b) are
-#311. The rest is built in the small PRs of §12, each its own PR.
+#310 the same day. The claims on a client's page (§3.5, §12 step 2b)
+were merged in #311 that day too, and `tax.view` for the companies
+already there (step 2c) is #312. The rest is built in the small PRs of
+§12, each its own PR.
 
 ---
 
@@ -492,7 +494,10 @@ sent: it's drawn from the claims as they are.
   catalogue, as `lib/plan-docs.test.ts` holds those tables to it.
 - The built-in Admin role of each company already there gets them in a
   small PR of its own after the one that adds them, as the terminals'
-  (#278) and missions' (#284) permissions did (§12).
+  (#278) and missions' (#284) permissions did (§12). `tax.view`'s is
+  #312: a migration gives it to the built-in Admin alone, company-wide.
+  An Admin role holding it already, a new company's, is left as it is;
+  the others' holders reload their grants once.
 
 ---
 
@@ -566,7 +571,8 @@ width:
      route that asks for them, as the gate offers no module that nothing
      routes to and the catalogue no permission that nothing checks. #311.
    - **2c.** `tax.view` for the built-in Admin of the companies already
-     there.
+     there, from a migration, once #311's release, whose role editor
+     knows it, is live. #312.
 3. **Uploading the portal's file** on a client's page: `tax.manage`,
    reading the file, checking it's that client's, the check screen,
    replacing, and the audit log.
@@ -715,7 +721,10 @@ from the screen to the database:
 7. **On screen:** the check screen in both languages, and at phone width.
 
 The export button, tried on a page laid out like the portal's on
-2026-11-17, and to be tried once on the portal itself before PR 3:
+2026-11-17, and to be tried on the portal itself when the owner can. The
+upload (PR 3) isn't held for it (the owner, 2026-11-17): what a try
+finds is fixed in the button, and nothing is saved before the check
+screen:
 
 - one company's rows, on one page or across several, with the count
   matching the portal's total;
@@ -808,3 +817,8 @@ templates (§7.1), and the export button moves into Nizmo (§10).
 - **2026-11-17:** From Codex's review of #311: a page of claims that
   didn't load says so, with Try again, where the claims kept up from
   another page stood in for it (§3.5).
+- **2026-11-17:** The companies already there get See clients' tax
+  position (#312): a migration gives every company's built-in Admin role
+  `tax.view`, as a new company's has had since #311 (§9, §12 step 2c).
+  And the owner's answer on the export button: the upload isn't held for
+  a try of it on the portal itself (§15).

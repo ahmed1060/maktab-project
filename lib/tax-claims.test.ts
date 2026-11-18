@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { readFileSync } from "node:fs"
+import { readdirSync, readFileSync } from "node:fs"
 import { claimBadges, daysBetween, daysLate, taxClaimsUrl, TAX_PAGE, TAX_PREVIEW } from "./tax-claims"
 import { moduleForApiPath, moduleForPagePath } from "./features/routes"
 import { PERMISSIONS, isPermission, isReserved } from "./permissions/catalogue"
@@ -110,6 +110,32 @@ describe("tax.view (§9)", () => {
         expect(BUILT_IN_GRANTS.ADMIN["tax.view"]).toBe("COMPANY")
         expect(BUILT_IN_GRANTS.TEAM_LEADER["tax.view"]).toBeUndefined()
         expect(BUILT_IN_GRANTS.EMPLOYEE["tax.view"]).toBeUndefined()
+    })
+})
+
+describe("See clients' tax position, for the companies already there (§12 step 2c, PR 312)", () => {
+    const sql = () => {
+        const name = readdirSync("prisma/migrations").find(m => m.endsWith("_tax_view_granted"))
+        expect(name).toBe("20270103000000_tax_view_granted")
+        return readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8").split("\n").filter(line => !line.startsWith("--")).join("\n")
+    }
+
+    it("a migration gives it to the built-in Admin role alone, company-wide", () => {
+        const rows = [...sql().matchAll(/\('(\w+)', '([\w.]+)', '(\w+)'\)/g)].map(([, role, permission, scope]) => [role, permission, scope])
+        expect(rows).toEqual([["ADMIN", "tax.view", "COMPANY"]])
+    })
+
+    it("leaves a role holding it already as it is, and has only the holders of a role given it reload", () => {
+        const text = sql().replace(/\s+/g, " ")
+        expect(text).toContain(`ON CONFLICT ("roleId", "permission") DO NOTHING RETURNING "roleId"`)
+        expect(text).toContain(`UPDATE "Role" SET "version" = "version" + 1, "updatedAt" = now() WHERE "id" IN (SELECT "roleId" FROM given)`)
+        expect(text).not.toMatch(/DELETE|DROP|ALTER/)
+    })
+
+    it("comes after the claims' tables, and opens nothing by itself: the package still has to have the client portal", () => {
+        const names = readdirSync("prisma/migrations").filter(m => m !== "migration_lock.toml").sort()
+        expect(names.indexOf("20270103000000_tax_view_granted")).toBeGreaterThan(names.indexOf("20270102000000_tax_claims"))
+        expect(sql()).not.toMatch(/"Package"|"Company"/)
     })
 })
 

@@ -36,6 +36,8 @@ const LATER = [
     "prisma/migrations/20261221000000_terminals_granted/migration.sql",
     // The built-in Admin role's attendance.approve_missions (ATTENDANCE_PLAN.md §6.10, PR 284).
     "prisma/migrations/20261225000000_missions_granted/migration.sql",
+    // The built-in Admin role's tax.view (CLIENT_PORTAL_PLAN.md §9, §12 step 2c, PR 312).
+    "prisma/migrations/20270103000000_tax_view_granted/migration.sql",
 ].map(path => readFileSync(path, "utf8"))
 
 // A later one that renames permissions: clients.* became records.*, for the
@@ -68,21 +70,11 @@ function seeded(): Record<string, Record<string, string>> {
     return out
 }
 
-/**
- * Built-in grants a new company's roles get now, which the companies there
- * already are get from a later PR's migration (CLIENT_PORTAL_PLAN.md §9 and
- * §12, step 2c, as #284 did for Decide missions): it runs once this release,
- * whose role editor knows them, is live, so no editor that doesn't know them
- * can drop them meanwhile.
- */
-export const GRANTED_LATER = ["tax.view"]
-
 describe("the roles migration seeds the built-in grants", () => {
     it("exactly as lib/permissions/built-in.ts has them", () => {
         const fromSql = seeded()
         for (const role of ["ADMIN", "TEAM_LEADER", "EMPLOYEE"] as const) {
-            const now = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[role]).filter(([permission]) => !GRANTED_LATER.includes(permission)))
-            expect(fromSql[role] ?? {}, role).toEqual(now)
+            expect(fromSql[role] ?? {}, role).toEqual(BUILT_IN_GRANTS[role])
         }
     })
 
