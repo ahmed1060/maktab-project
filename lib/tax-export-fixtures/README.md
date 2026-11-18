@@ -7,15 +7,17 @@ presses its bookmark in Chromium on `portal.html`, a page laid out like
 the portal's, and checks what §15 lists. When every check passes, it
 keeps here:
 
-- `run.json`: the fingerprint of the button's code as it was tried, the
-  checks that passed, and the name the button gave each file;
+- `run.json`: the fingerprints of the button's code, of `portal.html`
+  and of the run as they were tried, the checks that passed, and the
+  name the button gave each file;
 - the `.xlsx` files, as the button saved them.
 
 `lib/tax-export-button.test.ts` reads these files with Nizmo's reader on
-every push, and fails where the button's code is no longer the code that
-was tried.
+every push, and fails where the button's code, the page or the run is no
+longer what was tried.
 
-After any change to `lib/tax-export-button.ts`, run it again:
+After any change to `lib/tax-export-button.ts`, to `portal.html` or to
+the run, run it again:
 
     node scripts/tax-export-browser-run.mjs
 

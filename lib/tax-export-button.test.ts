@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { createHash } from "node:crypto"
 import { readFileSync } from "node:fs"
-import { TAX_EXPORT_CODE, TAX_EXPORT_CORE, taxExportBookmark } from "./tax-export-button"
+import { TAX_EXPORT_CODE, TAX_EXPORT_CORE, TAX_EXPORT_VERSION, taxExportBookmark } from "./tax-export-button"
 import { readTaxFile } from "./tax-file-read"
 import { claimOf, dayFromFileName, namedCompany, remainingOf, TAX_FILE_HEADINGS as H, UNNAMED_COMPANY, type ClaimDraft, type TaxFile } from "./tax-file"
 
@@ -12,7 +12,8 @@ import { claimOf, dayFromFileName, namedCompany, remainingOf, TAX_FILE_HEADINGS 
  * - its code as text: that it stands alone, sends nothing anywhere, and is
  *   what its bookmark holds;
  * - the part of it that needs no page, run as it is: how a cell's words are
- *   read, its file's name, and the file it writes, read with Nizmo's reader;
+ *   read, its file's name, the file it writes, read with Nizmo's reader, and
+ *   what it holds of the portal's table from one reading of it to the next;
  * - what a browser did with it. `scripts/tax-export-browser-run.mjs` presses
  *   the bookmark on a page laid out like the portal's, and keeps the files
  *   it saves in `lib/tax-export-fixtures` with the code's fingerprint. Those
@@ -23,21 +24,27 @@ import { claimOf, dayFromFileName, namedCompany, remainingOf, TAX_FILE_HEADINGS 
  */
 
 type Cell = { t: "s"; v: string } | { t: "n"; v: number; orig?: number } | { t: "d"; v: string }
-/** What the button keeps of a page once it has read its table. */
-type Gathered = { headers: string[]; rows: { key: string; company: string; cells: Record<string, Cell> }[] }
+/** What the button holds of the portal's table: its rows, the portal's count, and whether they're one whole gathering, and from when. */
+type Gathered = { headers: string[]; rows: { key: string; company: string; cells: Record<string, Cell> }[]; total?: number; whole?: boolean; at?: number }
+/** The portal's table as it's on the screen: one page of it. */
+type Shown = { company: string; headers: string[]; total: number | null; rows: { key: string; cells: Record<string, Cell> }[] }
 type Core = {
     NUMBER_HEADER: string
     companyOf(title: string): string
     textCell(header: string, text: string): Cell
     fileName(company: string, day: string): string
     buildXlsx(state: Gathered): Blob
+    takeIn(state: Gathered, shown: Shown): { state: Gathered; added: number; alone: boolean }
+    seal(state: Gathered, total: number | null, now: number): void
+    ready(state: Gathered, now: number): boolean
 }
 
 /** The part that needs no page, run as it's written. */
-const core = new Function(`${TAX_EXPORT_CORE}\nreturn { NUMBER_HEADER: NUMBER_HEADER, companyOf: companyOf, textCell: textCell, fileName: fileName, buildXlsx: buildXlsx }`)() as Core
+const core = new Function(`${TAX_EXPORT_CORE}\nreturn { NUMBER_HEADER: NUMBER_HEADER, companyOf: companyOf, textCell: textCell, fileName: fileName, buildXlsx: buildXlsx, takeIn: takeIn, seal: seal, ready: ready }`)() as Core
 
 const ALEF = "شركة ألف للتجارة"
 const BAA = "شركة باء للتوريدات"
+const JEEM = "شركة جيم للمقاولات"
 const WAITING = "في انتظار السداد"
 /** As the portal spells it, which isn't how Nizmo does. */
 const PARTLY = "مسدد جزئياً"
@@ -79,6 +86,10 @@ const A4: ClaimDraft = { claimNumber: "000111000004", item: "مساهمه تكا
 // Its number has no zero at its start.
 const A6: ClaimDraft = { claimNumber: "111000000006", item: "إقرار شهري", taxType: "قيمة مضافة", registrationType: LEGAL, originalAmount: 1250, paidAmount: 0, remainingAmount: 1250, currency: POUND, status: WAITING, periodStart: "2025-12-01", periodEnd: "2025-12-31", dueDate: "2026-01-31" }
 const B9: ClaimDraft = { claimNumber: "000222000009", item: "مساهمه تكافليه لصندوق أسر الشهداء", taxType: "دخل", registrationType: LEGAL, originalAmount: 9.45, paidAmount: 0, remainingAmount: 9.45, currency: POUND, status: WAITING, periodStart: null, periodEnd: null, dueDate: "2025-12-15" }
+// Company Jeem's claims that wait, among as many that were paid.
+const C1: ClaimDraft = { claimNumber: "000444000001", item: HEALTH, taxType: "دخل", registrationType: LEGAL, originalAmount: 1000, paidAmount: 0, remainingAmount: 1000, currency: POUND, status: WAITING, periodStart: "2025-01-01", periodEnd: "2025-12-31", dueDate: "2026-04-30" }
+const C3: ClaimDraft = { claimNumber: "000444000003", item: "مساهمه تكافليه لصندوق أسر الشهداء", taxType: "دخل", registrationType: LEGAL, originalAmount: 30, paidAmount: 0, remainingAmount: 30, currency: POUND, status: WAITING, periodStart: null, periodEnd: null, dueDate: "2025-12-15" }
+const C5: ClaimDraft = { claimNumber: "000444000005", item: "إقرار شهري", taxType: "قيمة مضافة", registrationType: LEGAL, originalAmount: 500, paidAmount: 0, remainingAmount: 500, currency: POUND, status: WAITING, periodStart: "2025-11-01", periodEnd: "2025-11-30", dueDate: "2025-12-31" }
 const N1: ClaimDraft = { claimNumber: "000333000001", item: "أقرار تجاري", taxType: "دخل", registrationType: LEGAL, originalAmount: 300, paidAmount: 0, remainingAmount: 300, currency: POUND, status: WAITING, periodStart: "2025-01-01", periodEnd: "2025-12-31", dueDate: "2026-04-30" }
 
 describe("The tax portal's export button: its code (CLIENT_PORTAL_PLAN.md §10, PR 318)", () => {
@@ -106,12 +117,34 @@ describe("The tax portal's export button: its code (CLIENT_PORTAL_PLAN.md §10, 
         expect(addresses.filter(address => !address.startsWith("http://schemas.openxmlformats.org/"))).toEqual([])
     })
 
-    it("keeps what it gathers under its own name in the browser, and removes what the copy before it kept (§12 step 4)", () => {
-        // That copy kept a claim's number as a number, so what it kept isn't read by this one.
-        expect(TAX_EXPORT_CODE.match(/etaClaimsExport_v\d+/g)).toEqual(["etaClaimsExport_v2", "etaClaimsExport_v1"])
-        expect(TAX_EXPORT_CODE).toContain("var STORE = 'etaClaimsExport_v2';")
+    it("keeps nothing in the browser, and removes what an older copy kept there (§10, §12 step 4)", () => {
+        // An older copy kept its rows from one visit to the next, a claim's number among them as a number.
+        expect(TAX_EXPORT_CODE.match(/etaClaimsExport_v\d+/g)).toEqual(["etaClaimsExport_v1"])
         expect(TAX_EXPORT_CODE).toContain("localStorage.removeItem('etaClaimsExport_v1')")
-        for (const elsewhere of ["sessionStorage", "indexedDB", "document.cookie"]) expect(TAX_EXPORT_CODE, elsewhere).not.toContain(elsewhere)
+        // Removing that is all it does with what the browser keeps: a visit starts from nothing.
+        expect(TAX_EXPORT_CODE.split("localStorage").length - 1).toBe(1)
+        for (const elsewhere of ["setItem", "getItem", "sessionStorage", "indexedDB", "document.cookie"]) expect(TAX_EXPORT_CODE, elsewhere).not.toContain(elsewhere)
+    })
+
+    it("knows which copy it is: its version is its own code's fingerprint, so a change of any kind makes another copy (§10)", () => {
+        expect(TAX_EXPORT_VERSION).toMatch(/^[0-9a-f]{8}$/)
+        expect(TAX_EXPORT_CODE.split(`var VERSION = '${TAX_EXPORT_VERSION}';`).length - 1).toBe(1)
+        // It's the fingerprint of the code with the version's place left open, so every other character of it counts.
+        const fingerprint = (text: string) => {
+            let hash = 0x811c9dc5
+            for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193)
+            return (hash >>> 0).toString(16).padStart(8, "0")
+        }
+        const open = TAX_EXPORT_CODE.replace(`'${TAX_EXPORT_VERSION}'`, "'{version}'")
+        expect(open).not.toContain(TAX_EXPORT_VERSION)
+        expect(fingerprint(open)).toBe(TAX_EXPORT_VERSION)
+        expect(fingerprint(`${open} `)).not.toBe(TAX_EXPORT_VERSION)
+    })
+
+    it("answers a press only where the copy that's up is the same one, and can be stopped by another (§10)", () => {
+        // An older copy kept claim numbers as numbers: pressed where one is up, this one takes its place.
+        expect(TAX_EXPORT_CODE).toContain("if (window.__etaX && window.__etaX.v === VERSION && document.getElementById('etax-panel')) {")
+        expect(TAX_EXPORT_CODE).toContain("window.__etaX = { v: VERSION, stop: stop, ")
     })
 
     it("has the owner's words on its panel (§10)", () => {
@@ -213,6 +246,126 @@ describe("The tax portal's export button: the part that needs no page", () => {
     })
 })
 
+describe("The tax portal's export button: what it holds of the portal's table (§10, PR 318)", () => {
+    const text = (v: string): Cell => ({ t: "s", v })
+    /** A page of the portal's table as the part on the page reads it: each claim's number, what's left of it, and its status. */
+    const screen = (company: string, total: number | null, claims: [number: string, left: number, status?: string][]): Shown => ({
+        company,
+        headers: [H.claimNumber, H.amount, H.status],
+        total,
+        rows: claims.map(([number, left, status = WAITING]) => ({ key: `${company}|${number}`, cells: { [H.claimNumber]: text(number), [H.amount]: { t: "n", v: left }, [H.status]: text(status) } })),
+    })
+    const nothing = (): Gathered => ({ headers: [], rows: [] })
+    const numbers = (state: Gathered) => state.rows.map(row => row.cells[H.claimNumber].v)
+    const amounts = (state: Gathered) => state.rows.map(row => row.cells[H.amount].v)
+    /** What it holds once it has read these pages, one after another. */
+    const read = (...pages: Shown[]) => pages.reduce((state, page) => core.takeIn(state, page).state, nothing())
+
+    it("takes in a page of the portal's table: its rows, their company and columns, and the portal's count", () => {
+        const took = core.takeIn(nothing(), screen(ALEF, 3, [["001", 100], ["002", 70]]))
+        expect(took.added).toBe(2)
+        expect(took.state).toEqual({
+            headers: [H.claimNumber, H.amount, H.status],
+            total: 3,
+            rows: [
+                { key: `${ALEF}|001`, company: ALEF, cells: { [H.claimNumber]: text("001"), [H.amount]: { t: "n", v: 100 }, [H.status]: text(WAITING) } },
+                { key: `${ALEF}|002`, company: ALEF, cells: { [H.claimNumber]: text("002"), [H.amount]: { t: "n", v: 70 }, [H.status]: text(WAITING) } },
+            ],
+        })
+        // And the next page's rows after them, in the portal's order.
+        const next = core.takeIn(took.state, screen(ALEF, 3, [["003", 5]]))
+        expect(next.added).toBe(1)
+        expect(numbers(next.state)).toEqual(["001", "002", "003"])
+    })
+
+    it("gives a claim seen again what the portal shows now, and doesn't hold it twice", () => {
+        // What's left of a claim paid in part went from 100 to 50, and it was paid in full after that.
+        const before = read(screen(ALEF, 2, [["001", 100, PARTLY], ["002", 70]]))
+        const took = core.takeIn(before, screen(ALEF, 2, [["001", 50, PARTLY], ["002", 70]]))
+        expect(took.added).toBe(0)
+        expect(numbers(took.state)).toEqual(["001", "002"])
+        expect(amounts(took.state)).toEqual([50, 70])
+
+        const paid = core.takeIn(took.state, screen(ALEF, 2, [["001", 0, "مسدد"], ["002", 70]])).state
+        expect(paid.rows.map(row => row.cells[H.status].v)).toEqual(["مسدد", WAITING])
+        expect(amounts(paid)).toEqual([0, 70])
+        // A row that's twice on one screen is held once, as it's last shown.
+        expect(amounts(read(screen(ALEF, 1, [["001", 100], ["001", 90]])))).toEqual([90])
+    })
+
+    it("starts again by itself where the rows it holds are another company's (§10)", () => {
+        const took = core.takeIn(read(screen(ALEF, 2, [["001", 100], ["002", 70]])), screen(BAA, 1, [["009", 9]]))
+        expect(numbers(took.state)).toEqual(["009"])
+        expect(took.state.rows[0].company).toBe(BAA)
+        expect(took.state.total).toBe(1)
+        expect(took.added).toBe(1)
+    })
+
+    it("starts again where the portal's count has changed: another filter (§10)", () => {
+        const took = core.takeIn(read(screen(ALEF, 4, [["002", 70], ["003", 13]]), screen(ALEF, 4, [["004", 9], ["006", 12]])), screen(ALEF, 1, [["001", 137, PARTLY]]))
+        expect(numbers(took.state)).toEqual(["001"])
+        expect(took.state.total).toBe(1)
+    })
+
+    it("starts again from the screen where it would hold more rows than the portal's count: another filter that shows as many", () => {
+        // One claim paid in part, then the filter is changed to the one claim that was paid: the count is 1 both times.
+        const one = core.takeIn(read(screen(ALEF, 1, [["001", 137, PARTLY]])), screen(ALEF, 1, [["005", 500, "مسدد"]]))
+        expect(numbers(one.state)).toEqual(["005"])
+        expect(one.added).toBe(1)
+        expect(one.alone).toBe(true)
+
+        // Three paid claims on two pages, then the filter is changed to three that wait: its first page is on the screen.
+        const paid = read(screen(JEEM, 3, [["002", 2000, "مسدد"], ["004", 400, "مسدد"]]), screen(JEEM, 3, [["006", 600, "مسدد"]]))
+        const pages = core.takeIn(paid, screen(JEEM, 3, [["001", 1000], ["003", 30]]))
+        expect(numbers(pages.state)).toEqual(["001", "003"])
+        expect(pages.added).toBe(2)
+        expect(pages.state.total).toBe(3)
+    })
+
+    it("lets no row go for a count that can't be the table's: one with fewer rows than a single screen has", () => {
+        const state = read(screen(ALEF, 1, [["001", 100], ["002", 70]]), screen(ALEF, 1, [["003", 13], ["004", 9]]))
+        expect(numbers(state)).toEqual(["001", "002", "003", "004"])
+        // And none where the page has no count on it at all.
+        expect(numbers(read(screen(ALEF, null, [["001", 100]]), screen(ALEF, null, [["005", 500]])))).toEqual(["001", "005"])
+    })
+
+    it("says whether the screen is all it holds", () => {
+        const first = core.takeIn(nothing(), screen(ALEF, 3, [["001", 100], ["002", 70]]))
+        expect(first.alone).toBe(true)
+        expect(core.takeIn(first.state, screen(ALEF, 3, [["001", 100], ["002", 70]])).alone).toBe(true)
+        // With the next page's row, there's a page of it that isn't on the screen.
+        expect(core.takeIn(first.state, screen(ALEF, 3, [["003", 5]])).alone).toBe(false)
+    })
+
+    it("takes a gathering as whole only with the portal's count, and as fit for a file for five minutes", () => {
+        const NOW = Date.UTC(2026, 10, 17, 22, 30)
+        const MINUTE = 60 * 1000
+        const state = read(screen(ALEF, 2, [["001", 100], ["002", 70]]))
+        // Never taken as whole until it's said to be.
+        expect(core.ready(state, NOW)).toBe(false)
+
+        core.seal(state, 2, NOW)
+        expect(state.whole).toBe(true)
+        expect(core.ready(state, NOW)).toBe(true)
+        expect(core.ready(state, NOW + 5 * MINUTE - 1)).toBe(true)
+        expect(core.ready(state, NOW + 5 * MINUTE)).toBe(false)
+
+        // Fewer rows than the portal counts, or more: not whole.
+        core.seal(state, 3, NOW)
+        expect(state.whole).toBe(false)
+        expect(core.ready(state, NOW)).toBe(false)
+        core.seal(state, 1, NOW)
+        expect(core.ready(state, NOW)).toBe(false)
+        // A page with no count on it: there's nothing to hold its rows against.
+        core.seal(state, null, NOW)
+        expect(core.ready(state, NOW)).toBe(true)
+
+        // Whatever marks it as no longer whole, it isn't fit for a file.
+        state.whole = false
+        expect(core.ready(state, NOW)).toBe(false)
+    })
+})
+
 describe("The tax portal's export button: tried in a browser (scripts/tax-export-browser-run.mjs)", () => {
     const FIXTURES = "lib/tax-export-fixtures"
     type Run = { code: string; page: string; script: string; clock: string; day: string; checks: string[]; files: { file: string; savedAs: string; sha256: string }[] }
@@ -238,14 +391,26 @@ describe("The tax portal's export button: tried in a browser (scripts/tax-export
             "numbers-as-text",
             "days-are-cairos",
             "pressed-twice",
+            "download-at-once",
+            "seen-again-takes-now",
+            "drawn-again-gathers-again",
+            "left-open-gathers-again",
+            "download-waits-for-pages",
+            "page-never-comes",
+            "new-visit-starts-again",
+            "nothing-kept",
             "filter-first",
             "filter-changed",
             "partly-paid",
-            "same-filter-again",
-            "other-filter-new-visit",
+            "changed-a-moment-ago",
+            "same-count-filter",
+            "same-count-filter-pages",
+            "by-hand-never-saved",
+            "count-not-the-tables",
+            "short-of-the-count",
             "other-company-same-tab",
-            "other-company-new-visit",
             "older-copy-removed",
+            "older-copy-replaced",
             "clear",
             "no-company",
             "no-table",
@@ -255,7 +420,7 @@ describe("The tax portal's export button: tried in a browser (scripts/tax-export
     })
 
     it("kept the files it saved as they were saved", () => {
-        expect(run.files.map(({ file }) => file)).toEqual(["one-page.xlsx", "every-page.xlsx", "filter-waiting.xlsx", "filter-partly-paid.xlsx", "no-company.xlsx"])
+        expect(run.files.map(({ file }) => file)).toEqual(["one-page.xlsx", "every-page.xlsx", "gathered-again.xlsx", "filter-waiting.xlsx", "filter-partly-paid.xlsx", "same-count-pages.xlsx", "no-company.xlsx"])
         for (const { file, sha256: print } of run.files) expect(sha256(saved(file)), file).toBe(print)
     })
 
@@ -266,8 +431,10 @@ describe("The tax portal's export button: tried in a browser (scripts/tax-export
         expect(Object.fromEntries(run.files.map(({ file, savedAs }) => [file, savedAs]))).toEqual({
             "one-page.xlsx": `مطالبات - ${BAA} - 2026-11-18.xlsx`,
             "every-page.xlsx": `مطالبات - ${ALEF} - 2026-11-18.xlsx`,
+            "gathered-again.xlsx": `مطالبات - ${ALEF} - 2026-11-18.xlsx`,
             "filter-waiting.xlsx": `مطالبات - ${ALEF} - 2026-11-18.xlsx`,
             "filter-partly-paid.xlsx": `مطالبات - ${ALEF} - 2026-11-18.xlsx`,
+            "same-count-pages.xlsx": `مطالبات - ${JEEM} - 2026-11-18.xlsx`,
             "no-company.xlsx": `مطالبات - ${UNNAMED_COMPANY} - 2026-11-18.xlsx`,
         })
         // The day Nizmo takes the figures to be from (§4.1).
@@ -289,6 +456,24 @@ describe("The tax portal's export button: tried in a browser (scripts/tax-export
         expect(file.leftOut).toBe(1)
         expect(file.otherStatuses).toEqual([{ status: "مسدد", rows: 1 }])
         expect(remainingOf(file.rows.map(row => ({ remainingAmount: row.remainingAmount ?? 0 })))).toBe(35207.63)
+    })
+
+    it("saved what the portal showed when Download was pressed, gathered again, where its table had been drawn again since", async () => {
+        // What was left of the first claim, on another page, went down to 5,000, and the last one's amount to 900.
+        const file = await taken(saved("gathered-again.xlsx"))
+        expect(file.company).toBe(ALEF)
+        expect(claimsOf(file)).toEqual([{ ...A1, paidAmount: 16088.26, remainingAmount: 5000 }, A2, A3, A4, { ...A6, originalAmount: 900, remainingAmount: 900 }])
+        expect(file.leftOut).toBe(1)
+        expect(remainingOf(file.rows.map(row => ({ remainingAmount: row.remainingAmount ?? 0 })))).toBe(26134.37)
+    })
+
+    it("saved the claims of the filter chosen, where the one before it showed as many", async () => {
+        // Three paid claims were gathered first, then the filter was changed to the three that wait.
+        const file = await taken(saved("same-count-pages.xlsx"))
+        expect(file.company).toBe(JEEM)
+        expect(claimsOf(file)).toEqual([C1, C3, C5])
+        expect(file.leftOut).toBe(0)
+        expect(file.otherStatuses).toEqual([])
     })
 
     it("saved what the portal's filter showed, and no more", async () => {

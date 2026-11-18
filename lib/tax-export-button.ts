@@ -10,12 +10,22 @@
  * where nothing of Nizmo's is, so it stands alone, is written as browsers
  * read it, and isn't built with the app. Its panel's words are the owner's.
  *
- * Changed on moving here (§12 step 4):
+ * Changed on moving here (§10, §12 step 4):
  * - a claim's number is always text. One with no zero at its start was
  *   written as a number, which the upload refuses as a number that may have
  *   lost its zeros (§15);
- * - what it gathers is kept in the browser under a new name, and what the
- *   copy before it kept is removed: that copy kept such numbers as numbers;
+ * - it keeps nothing in the browser from one visit to the next, and removes
+ *   what an older copy kept there, a claim's number among it as a number;
+ * - a file is what the portal shows when it's saved. A claim seen again
+ *   takes the values shown now, every gathering of the pages starts from
+ *   nothing, and Download gathers again first unless every page was
+ *   gathered in the last five minutes with nothing drawn on the page since.
+ *   Where its rows still aren't as many as the portal counts, it asks
+ *   before it saves;
+ * - a filter that shows as many claims as the one before it starts it
+ *   again, as one with another count does;
+ * - it knows which copy it is, by its own code's fingerprint. Pressed where
+ *   another copy is up, it stops that one and takes its place;
  * - the part that needs no page comes first, so it can be run by itself.
  *
  * Tried in a browser, which the tests here aren't:
@@ -27,25 +37,46 @@
  * run it again.
  */
 
-/** Its first lines. Pressed again on a page where it's already up, it shows its panel and gathers again. */
+/**
+ * Its first lines. Pressed again on a page where this same copy is already
+ * up, it shows its panel and gathers again. Where another copy is up, an
+ * older one that kept claim numbers as numbers or a later one, that copy is
+ * stopped if it knows how, its panel goes, and this one takes its place.
+ */
 const OPENING = String.raw`/* تصدير مطالبات بوابة الممول (مصلحة الضرائب المصرية) إلى Excel
    يقرأ جدول المطالبات من الصفحة المفتوحة ويجمّع صفوفه عبر كل الصفحات، لشركة واحدة في كل ملف
    وينزّل ملف xlsx حقيقي. لا يرسل أي بيانات لأي مكان. */
 (function () {
   'use strict';
-  if (window.__etaX && document.getElementById('etax-panel')) {
+  var VERSION = '{version}';
+  if (window.__etaX && window.__etaX.v === VERSION && document.getElementById('etax-panel')) {
     document.getElementById('etax-panel').style.display = 'block';
     window.__etaX.collect();
     if (window.__etaX.grabAll) window.__etaX.grabAll();
     return;
   }
+  // نسخة تانية شغالة في الصفحة: بتقف، والنسخة دي مكانها
+  if (window.__etaX && window.__etaX.stop) { try { window.__etaX.stop(); } catch (e) {} }
+  if (document.getElementById('etax-panel')) document.getElementById('etax-panel').remove();
 
 `
 
 /**
  * The part that needs no page: how a cell's words are read, the company in
- * a page's title, the file's name, and the Excel file itself, written by
- * hand with no library. The tests run it as it is.
+ * a page's title, the file's name, the Excel file itself, written by hand
+ * with no library, and what's held of the portal's table from one reading
+ * of it to the next. The tests run it as it is.
+ *
+ * What's held (`takeIn`): a page's rows are added to the ones held, and a
+ * claim seen again takes what the portal shows now. It starts again by
+ * itself for another company, for another count (another filter), and
+ * where it would hold more rows than the portal counts: another filter
+ * that shows as many. Then it starts again from the screen, unless the
+ * screen alone has more rows than the count, which can't then be the
+ * table's. Rows are whole (`seal`) when they're as many as the portal
+ * counts, and fit for a file (`ready`) for five minutes.
+ *
+ * Its notes are short, as the bookmark carries every character of them.
  */
 export const TAX_EXPORT_CORE = String.raw`  var NUMBER_HEADER = 'رقم المطالبة';
   var clean = function (s) { return (s || '').replace(/[\s\u00a0]+/g, ' ').trim(); };
@@ -174,19 +205,65 @@ export const TAX_EXPORT_CORE = String.raw`  var NUMBER_HEADER = 'رقم المط
     ]);
   }
 
+  /* ---------- اللي اتجمع ---------- */
+  // shown: { company, headers, total, rows: [{ key, cells }] }
+  function put(state, shown) {
+    if (shown.total !== null) state.total = shown.total;
+    shown.headers.forEach(function (h) { if (state.headers.indexOf(h) < 0) state.headers.push(h); });
+    var held = {};
+    state.rows.forEach(function (r) { held[r.key] = r; });
+    var added = 0;
+    shown.rows.forEach(function (row) {
+      // صف اتجمع قبل كده: بياخد قيمه الحالية
+      if (held[row.key]) { held[row.key].cells = row.cells; return; }
+      held[row.key] = { key: row.key, company: shown.company, cells: row.cells };
+      state.rows.push(held[row.key]);
+      added++;
+    });
+    return added;
+  }
+  function takeIn(state, shown) {
+    // ملف لكل شركة: لو الصفوف المتجمعة لشركة تانية، الأداة بتبدأ من جديد لوحدها من غير "مسح"
+    if (state.rows.some(function (r) { return r.company !== shown.company; })) state = { headers: [], rows: [] };
+    // ملف لكل فلتر: لو "إجمالي النتائج" اتغير لنفس الشركة (فلتر تاني)، الأداة بتبدأ من جديد لوحدها
+    if (shown.total !== null && state.rows.length && state.total != null && state.total !== shown.total) state = { headers: [], rows: [] };
+    var added = put(state, shown);
+    // فلتر تاني بنفس العدد: الصفوف أكتر من الإجمالي، فالأداة بتبدأ من الشاشة، إلا لو الشاشة لوحدها أكتر منه
+    if (shown.total !== null && state.rows.length > shown.total) {
+      var again = { headers: [], rows: [] }, anew = put(again, shown);
+      if (again.rows.length <= shown.total) { state = again; added = anew; }
+    }
+    var on = {};
+    shown.rows.forEach(function (row) { on[row.key] = true; });
+    // alone: كل اللي اتجمع على الشاشة
+    return { state: state, added: added, alone: state.rows.every(function (r) { return on[r.key]; }) };
+  }
+  // سحبة كاملة: عددها زي الإجمالي. والملف بينزل منها لخمس دقايق
+  var FRESH_FOR = 5 * 60 * 1000;
+  function seal(state, total, now) { state.whole = total === null || state.rows.length === total; state.at = now; }
+  function ready(state, now) { return state.whole === true && now - state.at < FRESH_FOR; }
+
 `
 
-/** The part on the page: the portal's table read, every page of it, what's kept in the browser, and its panel. */
-const ON_THE_PAGE = String.raw`  var STORE = 'etaClaimsExport_v2';
-  // النسخة القديمة كانت بتحفظ رقم المطالبة كرقم، فاللي حفظته بيتمسح
+/**
+ * The part on the page: the portal's table read, every page of it, the
+ * file saved, and its panel.
+ *
+ * A file is what the portal shows when it's saved. Nothing is kept in the
+ * browser from one visit to the next. Rows are whole when one page is read
+ * alone, or when every page is gathered in one go, which starts from
+ * nothing; anything drawn on the portal's page after that, and they no
+ * longer are. Download saves at once what's whole and no more than five
+ * minutes old, and gathers again first otherwise: it waits for a
+ * gathering under way, saves no file where a page doesn't come, and asks
+ * before saving rows that still aren't as many as the portal counts. The
+ * file's link is made inside the panel, so that saving draws nothing on
+ * the portal's page.
+ */
+const ON_THE_PAGE = String.raw`  // اللي النسخة الأقدم حفظته في المتصفح بيتمسح. النسخة دي مابتحفظش حاجة
   try { localStorage.removeItem('etaClaimsExport_v1'); } catch (e) {}
   var SKIP_HEADERS = /الإجراء/;
-  var state = load();
-  function load() {
-    try { var s = JSON.parse(localStorage.getItem(STORE)); if (s && s.rows) return s; } catch (e) {}
-    return { headers: [], rows: [] };
-  }
-  function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) {} }
+  var state = { headers: [], rows: [] };
 
   function companyFromTitle() { return companyOf(document.title); }
 
@@ -239,17 +316,8 @@ const ON_THE_PAGE = String.raw`  var STORE = 'etaClaimsExport_v2';
 
     if (typeof syncCompanyFromTitle === 'function' && coInput) syncCompanyFromTitle();
     var company = getCompany();
-    // ملف لكل شركة: لو الصفوف المتجمعة لشركة تانية، الأداة بتبدأ من جديد لوحدها من غير "مسح"
-    if (state.rows.some(function (r) { return r.company !== company; })) state = { headers: [], rows: [] };
-    // ملف لكل فلتر: لو "إجمالي النتائج" اتغير لنفس الشركة (فلتر تاني)، الأداة بتبدأ من جديد لوحدها
-    var siteNow = siteTotal();
-    if (siteNow !== null && state.rows.length && state.total != null && state.total !== siteNow) state = { headers: [], rows: [] };
-    if (siteNow !== null) state.total = siteNow;
-    headers.forEach(function (h) { if (state.headers.indexOf(h) < 0) state.headers.push(h); });
     var keyCol = headers.indexOf(NUMBER_HEADER);
-    var existing = {};
-    state.rows.forEach(function (r) { existing[r.key] = true; });
-    var added = 0;
+    var shown = { company: company, headers: headers, total: siteTotal(), rows: [] };
     var trs = table.querySelectorAll('tbody tr');
     for (var r = 0; r < trs.length; r++) {
       var tds = trs[r].children;
@@ -261,24 +329,38 @@ const ON_THE_PAGE = String.raw`  var STORE = 'etaClaimsExport_v2';
         cells[headers[k]] = v;
         raw.push(v.v);
       });
-      var key = company + '|' + (keyCol >= 0 && cells[NUMBER_HEADER].v ? cells[NUMBER_HEADER].v : raw.join('|'));
-      if (existing[key]) continue;
-      existing[key] = true;
-      state.rows.push({ key: key, company: company, cells: cells });
-      added++;
+      shown.rows.push({ key: company + '|' + (keyCol >= 0 && cells[NUMBER_HEADER].v ? cells[NUMBER_HEADER].v : raw.join('|')), cells: cells });
     }
-    save();
-    render(added ? ('اتضاف ' + added + ' صف') : '');
+    var took = takeIn(state, shown);
+    state = took.state;
+    // صفحة واحدة هي كل النتيجة: اللي على الشاشة سحبة كاملة
+    if (!walking && took.alone && !manyPages()) seal(state, shown.total, Date.now());
+    render(took.added ? ('اتضاف ' + took.added + ' صف') : '');
   }
 
-  function download() {
-    collect();
-    if (!state.rows.length) { alert('مفيش صفوف متجمعة'); return; }
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(buildXlsx(state));
-    a.download = fileName(getCompany(), cairoFmt.format(new Date())); // تاريخ القاهرة، مش UTC
-    document.body.appendChild(a); a.click();
-    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  var saving = false;
+  async function download() {
+    if (saving) return;
+    saving = true;
+    try {
+      // سحب شغال: التنزيل بيستناه
+      if (walking && !(await walking)) return;
+      // الملف من سحبة كاملة ولسه جديدة، وإلا الأداة بتسحب من الأول
+      if (!ready(state, Date.now())) {
+        if (manyPages()) { if (!(await grabAll())) return; }
+        else { state = { headers: [], rows: [] }; collect(); }
+      }
+      if (!state.rows.length) { alert('مفيش صفوف متجمعة'); return; }
+      // العدد مش زي الإجمالي: سؤال قبل التنزيل
+      var n = state.rows.length, t = siteTotal();
+      if (t !== null && n !== t && !confirm((n > t ? 'الصفوف (' + n + ') أكتر من إجمالي النتائج (' + t + ')' : 'ناقص ' + (t - n) + ' من ' + t + ' نتيجة') + '. تنزيل الملف برضه؟')) return;
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(buildXlsx(state));
+      a.download = fileName(getCompany(), cairoFmt.format(new Date())); // تاريخ القاهرة، مش UTC
+      // جوه اللوحة: مش رسم جديد في الصفحة
+      panel.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+    } finally { saving = false; }
   }
 
   /* ---------- اللوحة ---------- */
@@ -308,7 +390,7 @@ const ON_THE_PAGE = String.raw`  var STORE = 'etaClaimsExport_v2';
     state.rows.forEach(function (r) {
       if (r.company === oldName) { r.company = newName; r.key = newName + r.key.slice(oldName.length); }
     });
-    lastCompany = newName; save(); render('');
+    lastCompany = newName; render('');
   });
   function syncCompanyFromTitle() {
     // لو اتنقلت لشركة تانية من غير ما الصفحة تعمل reload
@@ -336,7 +418,7 @@ const ON_THE_PAGE = String.raw`  var STORE = 'etaClaimsExport_v2';
   panel.querySelector('#etax-dl').onclick = download;
   panel.querySelector('#etax-clr').onclick = function () {
     if (!confirm('مسح كل الصفوف المتجمعة؟')) return;
-    state = { headers: [], rows: [] }; save(); collect();
+    state = { headers: [], rows: [] }; collect();
   };
 
   /* ---------- الصفحات ---------- */
@@ -364,6 +446,7 @@ const ON_THE_PAGE = String.raw`  var STORE = 'etaClaimsExport_v2';
     return { pages: max };
   }
   function isDisabled(b) { return !b || b.disabled || b.classList.contains('Mui-disabled') || b.getAttribute('aria-disabled') === 'true'; }
+  function manyPages() { return pageInfo().pages > 1 || !isDisabled(pagerBtn('Go to next page')) || !isDisabled(pagerBtn('Go to previous page')); }
   function tableSig() {
     var t = findTable(); if (!t) return '';
     var trs = t.querySelectorAll('tbody tr');
@@ -375,10 +458,16 @@ const ON_THE_PAGE = String.raw`  var STORE = 'etaClaimsExport_v2';
     while (Date.now() < end) { await sleep(150); var s = tableSig(); if (s && s !== sig) { await sleep(400); return true; } }
     return false;
   }
-  var grabbing = false;
-  async function grabAll() {
-    if (grabbing) return;
-    grabbing = true;
+  // السحب الشغال دلوقتي، لو فيه
+  var walking = null;
+  function grabAll() {
+    if (!walking) {
+      var done = function (ok) { walking = null; return ok === true; };
+      walking = Promise.resolve().then(walk).then(done, done);
+    }
+    return walking;
+  }
+  async function walk() {
     var btn = panel.querySelector('#etax-all');
     btn.disabled = true; btn.style.opacity = .6;
     try {
@@ -386,41 +475,72 @@ const ON_THE_PAGE = String.raw`  var STORE = 'etaClaimsExport_v2';
       if (first && first.getAttribute('aria-current') !== 'true') {
         var s0 = tableSig(); first.click(); await waitChange(s0, 20000);
       }
+      // كل سحب بيبدأ من الأول
+      var mine = state = { headers: [], rows: [] };
       var page = 1, total = pageInfo().pages;
       for (var guard = 0; guard < 500; guard++) {
+        if (stopped) return false;
         btn.textContent = 'جاري سحب صفحة ' + page + (total > 1 ? ' من ' + total : '') + '...';
         collect();
         var next = pagerBtn('Go to next page');
         if (isDisabled(next)) break;
         var sig = tableSig();
         next.click();
-        if (!(await waitChange(sig, 20000))) { render('⚠ الصفحة ' + (page + 1) + ' ماحمّلتش. جرّب تاني.'); return; }
+        if (!(await waitChange(sig, 20000))) { render('⚠ الصفحة ' + (page + 1) + ' ماحمّلتش. جرّب تاني.'); return false; }
         page++; total = Math.max(total, pageInfo().pages);
       }
       collect();
-      var t = siteTotal();
+      // كاملة لو الأداة مابدأتش من جديد في نصها
+      if (state === mine) seal(state, siteTotal(), Date.now());
       render(page > 1 ? ('خلص: اتسحبت ' + page + ' صفحات') : 'الجدول صفحة واحدة واتسحب');
+      return true;
     } finally {
-      grabbing = false; btn.disabled = false; btn.style.opacity = 1; btn.textContent = '⟳ سحب كل الصفحات';
+      btn.disabled = false; btn.style.opacity = 1; btn.textContent = '⟳ سحب كل الصفحات';
     }
   }
   panel.querySelector('#etax-all').onclick = grabAll;
 
   var timer = null;
-  new MutationObserver(function (muts) {
+  var watcher = new MutationObserver(function (muts) {
     for (var i = 0; i < muts.length; i++) if (!panel.contains(muts[i].target)) {
+      // الصفحة اترسمت تاني: اللي اتجمع مش سحبة كاملة
+      if (!walking) state.whole = false;
       clearTimeout(timer); timer = setTimeout(collect, 600); return;
     }
-  }).observe(document.body, { childList: true, subtree: true, characterData: true });
+  });
+  watcher.observe(document.body, { childList: true, subtree: true, characterData: true });
 
-  window.__etaX = { collect: collect, grabAll: grabAll, buildXlsx: function () { return buildXlsx(state); }, state: function () { return state; } };
+  // نسخة تانية بتوقّف دي
+  var stopped = false;
+  function stop() { stopped = true; watcher.disconnect(); clearTimeout(timer); panel.remove(); }
+
+  window.__etaX = { v: VERSION, stop: stop, collect: collect, grabAll: grabAll, buildXlsx: function () { return buildXlsx(state); }, state: function () { return state; } };
   collect();
   // لو الجدول أكتر من صفحة، اسحب الكل تلقائي أول ما الأداة تفتح
-  if (pageInfo().pages > 1 || !isDisabled(pagerBtn('Go to next page')) || !isDisabled(pagerBtn('Go to previous page'))) grabAll();
+  if (manyPages()) grabAll();
 `
 
+/** A short fingerprint of a text: the same text always gives the same one. */
+function fingerprint(text: string): string {
+    let hash = 0x811c9dc5
+    for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193)
+    return (hash >>> 0).toString(16).padStart(8, "0")
+}
+
+/** The code with its version's place left open. */
+const UNSTAMPED = OPENING + TAX_EXPORT_CORE + ON_THE_PAGE + "})();\n"
+
+/**
+ * Which copy of the button this is: the fingerprint of its own code, so it
+ * changes with any change to it and nobody has to remember to change it. A
+ * bookmark keeps the copy it was made with, and one of the staff may press
+ * a new one on a page where an older one is still up: by this, the new one
+ * knows that copy isn't itself, and takes its place.
+ */
+export const TAX_EXPORT_VERSION = fingerprint(UNSTAMPED)
+
 /** The button's code, as its bookmark runs it. */
-export const TAX_EXPORT_CODE = OPENING + TAX_EXPORT_CORE + ON_THE_PAGE + "})();\n"
+export const TAX_EXPORT_CODE = UNSTAMPED.replace("{version}", TAX_EXPORT_VERSION)
 
 /**
  * The bookmark's address (§10): `javascript:` and the code, so pressing it

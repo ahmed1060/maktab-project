@@ -12,8 +12,9 @@
   status filter, and the pages' buttons, two claims to a page. It answers after a short wait, as
   the portal does. Every company and claim on it is made up.
 
-  scripts/tax-export-browser-run.mjs opens it: ?company=a (the default), b or none, and
-  ?table=none for a page with no table.
+  scripts/tax-export-browser-run.mjs opens it: ?company=a (the default), b, c or none; ?later=1
+  or 2 for company a as it is on a later day; ?total=N for a count that isn't the table's;
+  ?stuck=N for a page that never comes; and ?table=none for a page with no table.
 -->
 <label>حالة المطالبة
   <select id="f">
@@ -50,6 +51,15 @@ var COMPANIES = {
   b: { name: 'شركة باء للتوريدات', claims: [
     ['دخل', MARTYRS, LEGAL, '000222000009', '9.45', POUND, WAITING, '-', '-', '15/12/2025']
   ] },
+  // Three claims waiting and three paid: two filters with the same count, each on two pages.
+  c: { name: 'شركة جيم للمقاولات', claims: [
+    ['دخل', HEALTH, LEGAL, '000444000001', '1,000.00', POUND, WAITING, '01/01/2025', '31/12/2025', '30/04/2026'],
+    ['دخل', 'أقرار تجاري', LEGAL, '000444000002', '2,000.00', POUND, 'مسدد', '01/01/2023', '31/12/2023', '30/04/2024'],
+    ['دخل', MARTYRS, LEGAL, '000444000003', '30.00', POUND, WAITING, '-', '-', '15/12/2025'],
+    ['قيمة مضافة', 'إقرار شهري', LEGAL, '000444000004', '400.00', POUND, 'مسدد', '01/09/2025', '30/09/2025', '31/10/2025'],
+    ['قيمة مضافة', 'إقرار شهري', LEGAL, '000444000005', '500.00', POUND, WAITING, '01/11/2025', '30/11/2025', '31/12/2025'],
+    ['قيمة مضافة', 'إقرار شهري', LEGAL, '000444000006', '600.00', POUND, 'مسدد', '01/10/2025', '31/10/2025', '30/11/2025']
+  ] },
   // A page that names no company.
   none: { name: '', claims: [
     ['دخل', 'أقرار تجاري', LEGAL, '000333000001', '300.00', POUND, WAITING, '01/01/2025', '31/12/2025', '30/04/2026']
@@ -59,6 +69,16 @@ var SIZE = 2, WAIT = 300;
 var params = new URLSearchParams(location.search);
 var company = COMPANIES[params.get('company')] || COMPANIES.a;
 var page = 1;
+// Company a on a later day. 1: part of what was left of its first claim has been paid, so every count is as it was.
+// 2: its second claim has also been paid in full and a new one waits, so as many wait as before, and not the same ones.
+var later = Number(params.get('later'));
+if (later >= 1) COMPANIES.a.claims[0][4] = '<span><s>21,088.26</s></span><span>5,000.00</span>';
+if (later >= 2) {
+  COMPANIES.a.claims[1][6] = 'مسدد';
+  COMPANIES.a.claims.push(['قيمة مضافة', 'إقرار شهري', LEGAL, '000111000007', '2,400.00', POUND, WAITING, '01/01/2026', '31/01/2026', '28/02/2026']);
+}
+// How many times a page was asked for.
+window.turns = 0;
 
 // A day as the portal gives it: its first moment in Cairo, which is two hours ahead of UTC and three in its summer time.
 function firstMoment(day) {
@@ -72,7 +92,7 @@ function draw() {
   var claims = shown(), pages = Math.max(1, Math.ceil(claims.length / SIZE));
   if (page > pages) page = 1;
   document.title = company.name ? 'المدفوعات - ' + company.name + ' | مساحة عمل الممول' : '';
-  document.getElementById('tot').textContent = 'إجمالي النتائج: ' + claims.length;
+  document.getElementById('tot').textContent = 'إجمالي النتائج: ' + (params.get('total') || claims.length);
   document.getElementById('tb').innerHTML = claims.slice((page - 1) * SIZE, page * SIZE).map(function (c) {
     return '<tr><td>' + c[0] + '</td><td>' + c[1] + '</td><td>' + c[2] + '</td><td>' + c[3] + '</td><td>' + c[4] + '</td><td>' + c[5] + '</td><td>' + c[6] + '</td><td>' +
       dayCell(c[7]) + '</td><td>' + dayCell(c[8]) + '</td><td>' + dayCell(c[9]) + '</td><td><button>سداد</button></td></tr>';
@@ -85,9 +105,19 @@ function draw() {
 document.getElementById('pg').addEventListener('click', function (e) {
   var b = e.target.closest('button'); if (!b || b.disabled) return;
   var l = b.getAttribute('aria-label');
-  setTimeout(function () { if (l === 'Go to next page') page++; else if (l === 'Go to previous page') page--; else page = Number(b.dataset.p); draw(); }, WAIT);
+  var to = l === 'Go to next page' ? page + 1 : l === 'Go to previous page' ? page - 1 : Number(b.dataset.p);
+  window.turns++;
+  // A page that never comes.
+  if (String(to) === params.get('stuck')) return;
+  setTimeout(function () { page = to; draw(); }, WAIT);
 });
 document.getElementById('f').addEventListener('change', function () { setTimeout(function () { page = 1; draw(); }, WAIT); });
+// What's left of a claim changes while the page is open: drawn at once, as after a payment made on this page,
+// or not until a page is turned, as after one made elsewhere.
+window.leaves = function (number, cell, drawn) {
+  company.claims.forEach(function (c) { if (c[3] === number) c[4] = cell; });
+  if (drawn) setTimeout(draw, WAIT);
+};
 // Another company opened in the same tab: the portal changes the page without loading it again.
 window.openCompany = function (key) { setTimeout(function () { company = COMPANIES[key]; page = 1; document.getElementById('f').value = ''; draw(); }, WAIT); };
 

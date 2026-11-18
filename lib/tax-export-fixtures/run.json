@@ -1,7 +1,7 @@
 {
-    "code": "5dec424518a2f9f4fd06de618904aebcd696255a94741cf3c30b6a0add29e86d",
-    "page": "4501e00e19a93e9ee01e18a8401a5db059fefaf3eac984dbc8e3b055f364028d",
-    "script": "44876c43b5bf001347eb00db23171a4337437608b5ea21187fb2370cc03afb7d",
+    "code": "af235a17385eb2de9ec64e09a7a856e6f1c2337f117f80b52eeab7256e04804f",
+    "page": "cc124bea2f336860a6f5d2c15846e99b5eeffc3e96007542ee50d1bf3e152ad6",
+    "script": "7d2b2f921ece470ae33fd1a8b60a5ff1a25e1a6004d6dee37637cbbba299cf7f",
     "browser": "Chromium 141.0.7390.37",
     "clock": "2026-11-17T22:30:00.000Z",
     "day": "2026-11-18",
@@ -13,14 +13,26 @@
         "numbers-as-text",
         "days-are-cairos",
         "pressed-twice",
+        "download-at-once",
+        "seen-again-takes-now",
+        "drawn-again-gathers-again",
+        "left-open-gathers-again",
+        "download-waits-for-pages",
+        "page-never-comes",
+        "new-visit-starts-again",
+        "nothing-kept",
         "filter-first",
         "filter-changed",
         "partly-paid",
-        "same-filter-again",
-        "other-filter-new-visit",
+        "changed-a-moment-ago",
+        "same-count-filter",
+        "same-count-filter-pages",
+        "by-hand-never-saved",
+        "count-not-the-tables",
+        "short-of-the-count",
         "other-company-same-tab",
-        "other-company-new-visit",
         "older-copy-removed",
+        "older-copy-replaced",
         "clear",
         "no-company",
         "no-table",
@@ -39,6 +51,11 @@
             "sha256": "4161cfcaabcb63971b20dcdd8fb1d87214a859c8ef12baabc9b8ebbf0238d3d1"
         },
         {
+            "file": "gathered-again.xlsx",
+            "savedAs": "مطالبات - شركة ألف للتجارة - 2026-11-18.xlsx",
+            "sha256": "1a0f03ca281cfe6062b779842c9e197fb5b4bc1af59c8ad0edcdd86466d1bff8"
+        },
+        {
             "file": "filter-waiting.xlsx",
             "savedAs": "مطالبات - شركة ألف للتجارة - 2026-11-18.xlsx",
             "sha256": "c4aabf6eac0d252f1a2f5c6989a483856cc8789eb469f725d0f07ceb0a4e4837"
@@ -47,6 +64,11 @@
             "file": "filter-partly-paid.xlsx",
             "savedAs": "مطالبات - شركة ألف للتجارة - 2026-11-18.xlsx",
             "sha256": "623d457cfe5c73288c58797e2ccb2bf96306af60c89a07485980c5eed0fdf3e7"
+        },
+        {
+            "file": "same-count-pages.xlsx",
+            "savedAs": "مطالبات - شركة جيم للمقاولات - 2026-11-18.xlsx",
+            "sha256": "94d74aeb46a406bc7cec95633c7738e35f5ab5d2d78544004e7d4a67ad661663"
         },
         {
             "file": "no-company.xlsx",
