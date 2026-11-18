@@ -1608,6 +1608,42 @@ These are built once, in the building-blocks PR, and every page uses them
     Where the client's claims changed meanwhile, it says so, and the
     file is checked again against them. Once saved, a toast says how
     many claims were, and the section reads itself again.
+- **The tax portal's export button:** a page for whoever may update
+  clients' tax position, on getting the file the upload takes
+  (`CLIENT_PORTAL_PLAN.md` §10). It's reached from the upload, not from
+  the side bar. It's read more than it's used, so its cards are at most
+  640px wide, as a guide is.
+  - The page header names it, with a line on what the button does, and
+    Clients to go back to.
+  - **Add it to the browser** comes first. On a computer, its card has
+    the button itself: a link that looks like a secondary button, with
+    a bookmark icon and the hand that says it can be dragged, to drag
+    to the browser's bookmarks bar. A line above it says so, with the
+    keys that show the bar. Pressed, it does nothing but say that it's
+    dragged, in a toast: it works on the tax portal's page, not on
+    Nizmo's.
+    - Copy address is beside it, a secondary button, for whoever can't
+      drag: a line under them says a bookmark can be added by hand with
+      the address copied. Once copied, it says so, as a guide's Copy
+      does.
+    - A line at the card's foot says a bookmark keeps the copy it was
+      made from, so after the button changes it's dragged again.
+    - On a phone, the card has neither: it says the button is added on
+      a computer.
+  - **How to use it** is numbered, as a guide's steps are (Dialog). Each
+    says where it's done, on the tax portal, in the browser or in
+    Nizmo, then what to do, a line each.
+  - **What to know** is a list of lines: each file is one company's,
+    with one filter; a claim the portal's filter hides isn't in the
+    file, and the upload lists it as going; the button reads the table
+    on the screen and saves a file on the computer, sending nothing to
+    Nizmo or anywhere else and keeping nothing in the browser; and the
+    file holds what the portal shows when Download is pressed, the
+    button gathering every page again first where the page has changed
+    since.
+  - What the tax portal and the button's panel call something, such as
+    their buttons, is written as they have it, in Arabic and in bold,
+    in either language.
 - **Contact on WhatsApp:** a dialog for writing to someone on WhatsApp,
   such as a client's accountant. Who it reaches comes first, in a box
   with a `--rule` edge: their initials in a circle, their name, and what
@@ -2553,3 +2589,7 @@ changed:
   going; a row with a problem stopping the save; and the confirmation
   where the file's company isn't the client's (`CLIENT_PORTAL_PLAN.md`
   §4.1).
+- **2026-11-18:** The tax portal's export button (§5.5): its page, with
+  the button to drag to the bookmarks bar on a computer, Copy address
+  for whoever can't drag, its steps numbered as a guide's are, and what
+  to know (`CLIENT_PORTAL_PLAN.md` §10).
