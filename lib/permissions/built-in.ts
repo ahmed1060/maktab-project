@@ -113,9 +113,9 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // knows it, was live.
         "tax.view": "COMPANY",
         // Uploading the portal's file (CLIENT_PORTAL_PLAN.md §9): a new
-        // company's since PR 315. The companies there already get it from
-        // a later PR's migration, once PR 315's role editor, which knows
-        // it, is live.
+        // company's since PR 315, and given to the companies there already
+        // by PR 317's migration, once PR 315's role editor, which knows
+        // it, was live.
         "tax.manage": "COMPANY",
         "clients.manage": "COMPANY",
         "costs.view": "COMPANY",
