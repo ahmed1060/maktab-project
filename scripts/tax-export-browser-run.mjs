@@ -217,6 +217,7 @@ try {
     state = await kept()
     check("every-page", "every page is gathered by itself, in the portal's order", all && state.rows.every(row => row.company === ALEF) && (await numbers()) === "000111000001 000111000002 000111000003 000111000004 000111000005 111000000006", await numbers())
     check("count-matches", "and where the count is the total of three pages (6)", await gathered(6), await says())
+    check("every-page", "asking for each page after the first once: it's on the first already, and doesn't ask for it", (await turns()) === 2, `pages asked for: ${await turns()}`)
     check("numbers-as-text", "every claim's number is kept as text, the one with no zero at its start too", state.rows.length === 6 && state.rows.every(row => row.cells[NUMBER].t === "s" && typeof row.cells[NUMBER].v === "string"), JSON.stringify(state.rows.map(row => row.cells[NUMBER])))
     const days = state.rows.map(row => `${row.cells[DUE].t}:${row.cells[DUE].v}`).join(" ")
     const periods = state.rows.map(row => `${row.cells[STARTS].t}:${row.cells[STARTS].v}`).join(" ")
@@ -306,6 +307,30 @@ try {
     await page.clock.fastForward(21000)
     await none
     check("page-never-comes", "a page that never comes: its panel says so, and Download gathers again and saves no file with pages missing", stuck && !file && said.length === 0 && (await says()).includes("الصفحة 2 ماحمّلتش"), `${await says()} | ${said.join(" | ")} | file: ${file}`)
+
+    // ---- Pressed on the last page, and the first page never comes.
+    await open("?company=a&stuck=1")
+    await page.click('#pg button[data-p="3"]')
+    await comes(() => document.getElementById("tb").textContent.includes("111000000006"))
+    await press()
+    await page.waitForTimeout(600)
+    await page.clock.fastForward(21000)
+    const back = await comes(() => document.querySelector("#etax-info").innerText.includes("الصفحة 1 ماحمّلتش"))
+    const held = await numbers()
+    said.length = 0
+    file = false
+    none = page.waitForEvent("download", { timeout: 4000 }).then(() => { file = true }, () => {})
+    await page.click("#etax-dl")
+    await page.waitForTimeout(600)
+    await page.clock.fastForward(21000)
+    await none
+    check("page-never-comes", "pressed on the last page, and the first page never comes: its panel says so, it doesn't take the page on the screen for the whole table, and Download saves no file", back && held === "000111000005 111000000006" && !file && said.length === 0 && (await says()).includes("الصفحة 1 ماحمّلتش") && !(await says()).includes("الجدول صفحة واحدة واتسحب"), `${held} | ${await says()} | ${said.join(" | ")} | file: ${file}`)
+
+    // ---- Pages' buttons that mark the one shown as aria-current="page".
+    await open("?company=a&current=page")
+    await press()
+    const marked = await holds(6)
+    check("every-page", "and where the pages' buttons mark the one shown another way, it still knows it's on the first", marked && (await turns()) === 2 && (await gathered(6)), `pages asked for: ${await turns()} | ${await says()}`)
 
     // ---- A filter chosen before pressing.
     await open("?company=a")

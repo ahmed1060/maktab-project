@@ -14,7 +14,8 @@
 
   scripts/tax-export-browser-run.mjs opens it: ?company=a (the default), b, c or none; ?later=1
   or 2 for company a as it is on a later day; ?total=N for a count that isn't the table's;
-  ?stuck=N for a page that never comes; and ?table=none for a page with no table.
+  ?stuck=N for a page that never comes; ?current=page for pages' buttons that mark the one
+  shown that way; and ?table=none for a page with no table.
 -->
 <label>حالة المطالبة
   <select id="f">
@@ -98,7 +99,7 @@ function draw() {
       dayCell(c[7]) + '</td><td>' + dayCell(c[8]) + '</td><td>' + dayCell(c[9]) + '</td><td><button>سداد</button></td></tr>';
   }).join('');
   var h = '<button aria-label="Go to previous page"' + (page === 1 ? ' disabled' : '') + '>‹</button>';
-  for (var p = 1; p <= pages; p++) h += '<button aria-label="' + (p === page ? 'page ' + p : 'Go to page ' + p) + '"' + (p === page ? ' aria-current="true"' : '') + ' data-p="' + p + '">' + p + '</button>';
+  for (var p = 1; p <= pages; p++) h += '<button aria-label="' + (p === page ? 'page ' + p : 'Go to page ' + p) + '"' + (p === page ? ' aria-current="' + (params.get('current') || 'true') + '"' : '') + ' data-p="' + p + '">' + p + '</button>';
   h += '<button aria-label="Go to next page"' + (page === pages ? ' disabled' : '') + '>›</button>';
   document.getElementById('pg').innerHTML = h;
 }

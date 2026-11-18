@@ -255,8 +255,9 @@ export const TAX_EXPORT_CORE = String.raw`  var NUMBER_HEADER = 'رقم المط
  * nothing; anything drawn on the portal's page after that, and they no
  * longer are. Download saves at once what's whole and no more than five
  * minutes old, and gathers again first otherwise: it waits for a
- * gathering under way, saves no file where a page doesn't come, and asks
- * before saving rows that still aren't as many as the portal counts. The
+ * gathering under way, saves no file where a page doesn't come, the first
+ * one it goes back to among them, and asks before saving rows that still
+ * aren't as many as the portal counts. The
  * file's link is made inside the panel, so that saving draws nothing on
  * the portal's page.
  */
@@ -472,8 +473,11 @@ const ON_THE_PAGE = String.raw`  // اللي النسخة الأقدم حفظت�
     btn.disabled = true; btn.style.opacity = .6;
     try {
       var first = pagerBtn('page 1') || pagerBtn('Go to page 1');
-      if (first && first.getAttribute('aria-current') !== 'true') {
-        var s0 = tableSig(); first.click(); await waitChange(s0, 20000);
+      var on = first && first.getAttribute('aria-current');
+      if (first && on !== 'true' && on !== 'page') {
+        var s0 = tableSig(); first.click();
+        // الصفحة الأولى ماجتش: السحب بيقف، زي أي صفحة تانية
+        if (!(await waitChange(s0, 20000))) { render('⚠ الصفحة 1 ماحمّلتش. جرّب تاني.'); return false; }
       }
       // كل سحب بيبدأ من الأول
       var mine = state = { headers: [], rows: [] };
