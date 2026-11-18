@@ -1,3 +1,4 @@
+import type { TaxFileRefusal } from "./tax-file-read"
 import type { TranslationKey } from "./translations"
 
 /**
@@ -7,8 +8,27 @@ import type { TranslationKey } from "./translations"
  * components/tax/TaxExportButton.tsx.
  */
 
-/** The page's address. It isn't in the side bar: the upload links to it. */
+/**
+ * The page's address. It isn't in the side bar: How to get the portal's
+ * file links to it, on a client's Tax position and in the upload's dialogs
+ * (components/tax/TaxExportLink.tsx; step 4c, PR 320).
+ */
 export const TAX_EXPORT_PAGE = "/dashboard/tax-export"
+
+/** Why the upload refuses a file whole: the file itself, or that the client's claims couldn't be read to check it against. */
+export type TaxRefusalProblem = TaxFileRefusal["problem"] | "unchecked"
+
+/** What a file is refused for that isn't the file's doing: its reader didn't load, or the client's claims couldn't be read. */
+const NOT_THE_FILE: readonly TaxRefusalProblem[] = ["reader", "unchecked"]
+
+/**
+ * Whether it's the file that's at fault, where the upload refuses one whole
+ * (§10, step 4c). How to get the portal's file is there then, and not
+ * otherwise: another file wouldn't help.
+ */
+export function fileAtFault(problem: TaxRefusalProblem): boolean {
+    return !NOT_THE_FILE.includes(problem)
+}
 
 /**
  * What the tax portal and the button's panel call things, written as they

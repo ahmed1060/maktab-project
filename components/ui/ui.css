@@ -2464,6 +2464,26 @@ a.ui-file-open:focus-visible,
     display: block;
   }
 }
+/* How to get the portal's file (§5.5), the link to that page: at a line's end
+   on a client's Tax position, and on a line of its own in the upload's
+   dialogs. On a phone it's 44px under a finger (§9): what's tapped is laid
+   over its line, so no line around it moves, whatever their height. It
+   reaches 20px above the link's middle and 24px below: a little low, so that
+   on the section's first line it stops short of the upload's button over it.
+   It's a layer up, as the tiles under that line are placed too, and would
+   take its last pixels. */
+@media (max-width: 767px) {
+  .ui-tax-how {
+    position: relative;
+    z-index: 1;
+  }
+  .ui-tax-how::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    inset-block: calc(50% - 20px) calc(50% - 24px);
+  }
+}
 
 /* ── Check-in (§5.5) ── */
 /* The app's first screen: its cards at a form's width, and Check in and
@@ -3777,6 +3797,10 @@ a.ui-row:focus-visible {
   text-decoration: underline;
   text-underline-offset: 2px;
   white-space: nowrap;
+}
+/* Under the pointer its underline is heavier (§5.2, A link in a line of text). */
+.ui-text-link:hover {
+  text-decoration-thickness: 2px;
 }
 .ui-text-link:focus-visible {
   outline: 2px solid var(--brand-text);
