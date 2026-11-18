@@ -550,6 +550,11 @@ These are built once, in the building-blocks PR, and every page uses them
   phones), named for the guide it opens, such as "How to set up a
   fingerprint terminal", in its tooltip too. It opens the guide (§5.5,
   Dialog) and does nothing else.
+- **A link in a line of text,** such as the one to System settings in a
+  note, or How to get the portal's file (§5.5, A client's tax position,
+  for the company's people): in `--brand-text` and underlined, so it's
+  told from the words around it without its colour, and kept on one
+  line. Under the pointer its underline is 2px.
 - **Busy and disabled states** follow the existing rules from the buttons
   work (global CSS, and a confirmation showing its work under way, §5.5,
   Dialog).
@@ -1552,6 +1557,13 @@ These are built once, in the building-blocks PR, and every page uses them
   - With nothing uploaded yet, the section's place is an empty state
     saying so. With a file uploaded and no open claim in it, the line and
     the tiles stay, and the list's place says nothing was owed that day.
+  - For whoever may update it, on a client that isn't archived, the
+    line under the title ends with a link, How to get the portal's
+    file, to the tax portal's export button's page (The tax portal's
+    export button). With nothing uploaded yet, the empty state's line
+    ends with it instead. On a phone the link is 44px under a finger
+    (§9), here and in the upload's dialogs: what's tapped is laid over
+    its line, so no line around it moves.
   - When it didn't load, the section's place says so, with Try again (A
     list that didn't load). So does a page of its claims that didn't
     load: the claims kept up from another page don't stand in for it.
@@ -1567,7 +1579,10 @@ These are built once, in the building-blocks PR, and every page uses them
   - A file refused whole is said in a dialog, not a toast, as it may
     name what's at fault: "This file can't be uploaded", why, and the
     columns it hasn't or the companies it names. Choose another file is
-    its main button, with Close.
+    its main button, with Close. Where the file itself is at fault, a
+    link under them, How to get the portal's file, opens the tax
+    portal's export button's page in a new tab, so the dialog stays as
+    it is. It says so to screen readers.
   - The check screen is a dialog up to 760px wide, "Check the portal's
     file before saving". From the top:
     - the file's name and how many rows it has, with Another file;
@@ -1593,9 +1608,9 @@ These are built once, in the building-blocks PR, and every page uses them
   - A row with a problem stops the save, and nothing is edited here, as
     the file is the portal's. A Problem note at the top says how many
     rows have one, and that saving the rest would delete their claims.
-    Under it, each such row with its number in the file, its claim
-    number and what's wrong. The main button is off, and Another file
-    is there.
+    It ends with the same link, in a new tab. Under it, each such row
+    with its number in the file, its claim number and what's wrong. The
+    main button is off, and Another file is there.
   - At the bottom, a line saying that saving replaces all of the
     client's claims and is in the audit log; then Cancel, then the main
     button saying how many it saves, such as "Save 20 claims".
@@ -1610,9 +1625,10 @@ These are built once, in the building-blocks PR, and every page uses them
     many claims were, and the section reads itself again.
 - **The tax portal's export button:** a page for whoever may update
   clients' tax position, on getting the file the upload takes
-  (`CLIENT_PORTAL_PLAN.md` §10). It's reached from the upload, not from
-  the side bar. It's read more than it's used, so its cards are at most
-  640px wide, as a guide is.
+  (`CLIENT_PORTAL_PLAN.md` §10). It's reached by How to get the
+  portal's file, on a client's Tax position and in the upload's
+  dialogs, not from the side bar. It's read more than it's used, so its
+  cards are at most 640px wide, as a guide is.
   - The page header names it, with a line on what the button does, and
     Clients to go back to.
   - **Add it to the browser** comes first. On a computer, its card has
@@ -2593,3 +2609,10 @@ changed:
   the button to drag to the bookmarks bar on a computer, Copy address
   for whoever can't drag, its steps numbered as a guide's are, and what
   to know (`CLIENT_PORTAL_PLAN.md` §10).
+- **2026-11-18:** How to get the portal's file (§5.5): the link to the
+  tax portal's export button's page. It ends the Tax position section's
+  line, or its empty state's, for whoever may update it; and it opens
+  in a new tab where the upload refuses a file whole or a row has a
+  problem (`CLIENT_PORTAL_PLAN.md` §10). On a phone it's 44px under a
+  finger. A link in a line of text (§5.2) is written down, with its
+  underline 2px under the pointer.
