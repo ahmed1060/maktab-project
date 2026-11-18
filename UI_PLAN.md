@@ -800,7 +800,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      for the companies already there, #317; then the tax portal's
      export button's code in Nizmo, with its tests and no screen yet,
      #318; then its page, The tax portal's export button, #319; then
-     the links to it, How to get the portal's file, #320.
+     the links to it, How to get the portal's file, #320; then figures
+     getting old, the badge on a client's Tax position and the Clients
+     list, #321.
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
 Clients pages) are rebuilt in step 0, so they're fixed there.
@@ -6675,3 +6677,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   under a finger. A link in a line of text (`DESIGN.md` §5.2) has its
   underline 2px under the pointer, wherever one is: the web audit found
   it had nothing to show the pointer was on it.
+- **2026-11-18:** Figures getting old (#321; `CLIENT_PORTAL_PLAN.md`
+  §4.3, §12 step 5; `DESIGN.md` §5.5, A client's tax position, for the
+  company's people). From 30 days after the day a client's figures are
+  from, a Waiting on someone badge says Not updated for N days: after
+  the line's words on the client's Tax position, and after the client's
+  name in the Clients list, at the top of its card on a phone. An
+  archived client has none.
