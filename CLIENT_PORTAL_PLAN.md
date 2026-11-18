@@ -16,7 +16,8 @@ in #309 on 2026-11-17, and the add-on on packages (§2, §12 step 2a) in
 #310 the same day. The claims on a client's page (§3.5, §12 step 2b)
 were merged in #311 that day too, and `tax.view` for the companies
 already there (step 2c) is #312. A client with a tax position archived
-instead of deleted (§3.6, step 2d) is #313. The rest is built in the
+instead of deleted (§3.6, step 2d) is #313, and the rules for reading
+the portal's file (§4.1, step 3a) are #314. The rest is built in the
 small PRs of §12, each its own PR.
 
 ---
@@ -259,6 +260,32 @@ button writes it (§10), one company's file at a time.
     nothing it's sent.
   - **Limits:** an `.xlsx` file of up to 2 MB and 2,000 rows. The day the
     figures are from can't be after today.
+
+As built (3a, #314): the rules the check screen and the server share,
+in `lib/tax-file.ts`, with the file itself opened in
+`lib/tax-file-read.ts`. No screen or route uses them yet.
+
+- **Headings, companies and statuses** are matched as §3.3 matches
+  items. The file's first row with anything in it is its headings.
+- **Left out and counted:** a row with nothing left to pay, and, where
+  the file has the status column, a row whose status is neither في
+  انتظار السداد nor مسدد جزئيًا (§3.2). A fully paid claim can still show
+  its amount where the file has the one amount column, so its status
+  says it. Each status left out is named with how many rows it had, for
+  the check screen to say: one that's still owed is then seen before
+  saving.
+- **A claim number** keeps its digits as Latin ones, so the same claim is
+  one claim from one upload to the next.
+- **Never a guess:** a number in a date's column, a date written any
+  other way than dd/mm/yyyy, and an amount finer than a piastre are
+  problems that say what the file had.
+- **The company:** the button's غير محدد, for a page with no company
+  name, counts as no name, so saving asks to confirm. Rows with no
+  company among rows that name one aren't another company.
+- **The day in the file's name** is the last date in it, so a copy the
+  browser numbered still has it. One after today isn't taken.
+- **What's new, changed and gone** is told by claim number: a claim is
+  changed when anything kept of it differs, to the piastre.
 
 ### 4.2 Only from the portal's file (Decided, 2026-11-17)
 
@@ -607,13 +634,24 @@ width:
    - **2d.** A client with a tax position is archived instead of
      deleted, and deleted for good from the archive where it has no
      tasks or records (§3.6). Before the upload lets claims in. #313.
-3. **Uploading the portal's file** on a client's page: `tax.manage`,
-   reading the file, checking it's that client's, the check screen,
-   replacing, and the audit log.
-   - **3b.** `tax.manage` for the built-in Admin of the companies
+3. **Uploading the portal's file** on a client's page, in four:
+   - **3a. Reading the file:** the rules of §4.1 that the check screen
+     and the server share: finding the columns, reading and checking
+     each row, one company to a file, whether it's this client's, the
+     day in its name, and what's new, changed and gone. No screen yet.
+     #314.
+   - **3b. Saving it:** `tax.manage`, the route that takes a checked
+     file, the server checking every row again, replacing in one go,
+     and the audit log.
+   - **3c. The upload on a client's page:** Upload from the tax portal,
+     the check screen, and saving.
+   - **3d.** `tax.manage` for the built-in Admin of the companies
      already there.
 4. **The export button in Nizmo** (§10): its code and tests in the
-   repository, its page, and the links to it.
+   repository, its page, and the links to it. It then writes every
+   claim number as text: today's writes one with no zero at its start
+   as a number, which the upload refuses as a number that may have lost
+   its zeros (§15). Its tests read its file with Nizmo's reader.
 5. **Figures getting old** (§4.3): the badge on the client's page and the
    Clients list.
 6. **Client accounts:** their table, People who can sign in,
@@ -857,3 +895,10 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   is, and an archived client with no tasks and no records can be deleted
   for good from the archive. Built as step 2d (#313), before the upload
   lets claims in (§12).
+- **2026-11-18:** The upload is built in four (§12 step 3): reading the
+  file, saving it, the upload on a client's page, and `tax.manage` for
+  the companies already there. Reading the file as built (#314, §4.1):
+  a row whose status isn't an open one is left out as one with nothing
+  left to pay is; what isn't read is never guessed. The export button
+  is to write every claim number as text once it's in Nizmo (§12 step
+  4).
