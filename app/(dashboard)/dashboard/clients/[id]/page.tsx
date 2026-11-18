@@ -111,7 +111,13 @@ export default function ClientPage() {
             const res = await fetch('/api/clients', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, restore: true }) })
             const body = await res.json().catch(() => ({}))
             if (!res.ok) showToast(body.error || t('error_generic'), 'error')
-            else { showToast(t('clients_restored_done'), 'success'); void reloadClient() }
+            else {
+                showToast(t('clients_restored_done'), 'success')
+                void reloadClient()
+                // Its tax position is read again too: it said the client was archived, which kept
+                // Upload from the tax portal away until the page was opened again (PR 316).
+                void mutate(key => Array.isArray(key) && key[1] === id && typeof key[0] === 'string' && key[0].startsWith('/api/tax-claims?'))
+            }
         } catch {
             showToast(t('error_generic'), 'error')
         } finally {

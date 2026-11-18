@@ -4,7 +4,8 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { readFileSync } from "node:fs"
 import { en } from "./translations/en"
 import { ar } from "./translations/ar"
-import type { TaxPosition } from "./tax-claims"
+import { taxClaimsUrl, type TaxPosition } from "./tax-claims"
+import { scopedKey } from "./swr-scoped"
 
 /**
  * Upload from the tax portal, on a client's Tax position (CLIENT_PORTAL_PLAN.md
@@ -93,6 +94,16 @@ describe("Upload from the tax portal", () => {
         const page = readFileSync("app/(dashboard)/dashboard/clients/[id]/page.tsx", "utf8")
         expect(page).toContain(`<TaxPosition key={id} clientId={id} manages={can('tax.manage')} />`)
     })
+
+    it("is back at once on a client restored from its page: its tax position is read again, not kept as archived", () => {
+        const page = readFileSync("app/(dashboard)/dashboard/clients/[id]/page.tsx", "utf8")
+        const restoring = page.slice(page.indexOf("const restore = async"), page.indexOf("setRestoring(false)"))
+        expect(restoring).toContain("showToast(t('clients_restored_done'), 'success')")
+        // This client's claims alone, whichever of its pages is on screen (lib/swr-scoped.ts: the address, then the client).
+        expect(restoring).toContain("void mutate(key => Array.isArray(key) && key[1] === id && typeof key[0] === 'string' && key[0].startsWith('/api/tax-claims?'))")
+        expect(taxClaimsUrl("noor", false, 1).startsWith("/api/tax-claims?")).toBe(true)
+        expect(scopedKey(taxClaimsUrl("noor", true, 2), "noor")?.[1]).toBe("noor")
+    })
 })
 
 describe("the screen behind it", () => {
@@ -136,6 +147,19 @@ describe("the screen behind it", () => {
     it("says in the reader's own language that the client's claims couldn't be read, or that it's archived", () => {
         expect(screen).toContain("t(refused.code === 'CLIENT_ARCHIVED' ? 'tax_upload_archived' : 'tax_upload_unchecked')")
         expect(screen).not.toContain("refused.message")
+    })
+
+    it("calls a file's reading off when it's closed, and shows only the file picked last", () => {
+        // Closed while another file is read, that file's check screen never opens.
+        const closing = screen.slice(at("const close = () => {"), at("/** What a file comes to"))
+        expect(closing).toMatch(/if \(saving\) return\s+reads\.current \+= 1\s+setReading\(false\)/)
+        const picking = screen.slice(at("const pick = async"), at("const save = async"))
+        expect(picking).toContain("const mine = ++reads.current")
+        expect(picking.indexOf("await read(picked)")).toBeGreaterThan(picking.indexOf("const mine = ++reads.current"))
+        expect(picking.indexOf("if (reads.current !== mine) return")).toBeGreaterThan(picking.indexOf("await read(picked)"))
+        expect(picking.indexOf("setStage(next)")).toBeGreaterThan(picking.indexOf("if (reads.current !== mine) return"))
+        // A reading called off doesn't end the busy state of the one that took its place.
+        expect(picking).toContain("if (reads.current === mine) setReading(false)")
     })
 
     it("can't be closed while it's sent, and reads the section again once it's saved", () => {

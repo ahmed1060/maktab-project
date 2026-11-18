@@ -39,12 +39,16 @@ export default function TaxUpload({ clientId, onSaved }: { clientId: string; onS
     const [asking, setAsking] = useState(false)
     // What couldn't be saved, above the buttons.
     const [said, setSaid] = useState<string>()
+    // Which reading of a file is the one in hand: closing calls it off, so what's read after isn't shown.
+    const reads = useRef(0)
 
     const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
     const choose = () => input.current?.click()
     const close = () => {
-        // What was sent can't be called off.
+        // What was sent can't be called off. A file still being read can.
         if (saving) return
+        reads.current += 1
+        setReading(false)
         setStage({ at: 'idle' })
         setAsking(false)
         setSaid(undefined)
@@ -66,13 +70,17 @@ export default function TaxUpload({ clientId, onSaved }: { clientId: string; onS
     }
     const pick = async (picked: File | undefined) => {
         if (!picked || reading || saving) return
+        const mine = ++reads.current
         setReading(true)
         try {
-            setStage(await read(picked).catch((): Stage => ({ at: 'refused', refusal: { problem: 'unreadable' } })))
+            const next = await read(picked).catch((): Stage => ({ at: 'refused', refusal: { problem: 'unreadable' } }))
+            // Closed while it was read: its check screen doesn't open after all.
+            if (reads.current !== mine) return
+            setStage(next)
             setAsking(false)
             setSaid(undefined)
         } finally {
-            setReading(false)
+            if (reads.current === mine) setReading(false)
         }
     }
 
