@@ -715,6 +715,13 @@ sent: it's drawn from the claims as they are.
       in one go. Otherwise it gathers again first. Pressed while the
       pages are being gathered, it waits for the last of them; where a
       page doesn't come, it saves no file;
+    - a gathering started on a later page goes back to the first, and
+      stops where that page doesn't come, as it does for any other
+      (from Codex's second review). It used to go on from the page on
+      the screen, as if that were the whole table. The pages' buttons
+      may mark the one shown as `aria-current="page"` as well as
+      `"true"`, so the first page isn't asked for where it's already
+      shown;
     - where the rows it holds still aren't as many as the portal
       counts, Download asks before it saves: the panel's own words for
       it, then تنزيل الملف برضه؟ ("download the file anyway?"). Its
@@ -975,7 +982,8 @@ In Nizmo (step 4a, #318), also:
     claim a moment before;
   - waiting for the pages where it's pressed while they're gathered,
     and saving one file where it's pressed twice;
-  - no file where a page never comes;
+  - no file where a page never comes, the first one it goes back to
+    among them;
 - a filter that shows as many claims as the one before it, on one page
   and on more;
 - a count on the page that can't be the table's: no row is let go for
@@ -1159,3 +1167,10 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   of the fix was taken out in turn, and the run failed without it.
   One thing more than the review asked for: Download asks before it
   saves a file whose rows aren't as many as the portal counts.
+- **2026-11-18:** From Codex's second review of #318: a gathering
+  started on a later page stops where the first page doesn't come, as
+  it does for any other page. It used to go on from the page on the
+  screen, so Download could offer that page's rows as the whole table.
+  The pages' buttons may mark the one shown either way a browser's
+  pages do, so the first page isn't asked for where it's already shown
+  (§10, §15).
