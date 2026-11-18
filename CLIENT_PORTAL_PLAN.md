@@ -278,7 +278,10 @@ in `lib/tax-file.ts`, with the file itself opened in
   one claim from one upload to the next.
 - **Never a guess:** a number in a date's column, a date written any
   other way than dd/mm/yyyy, and an amount finer than a piastre are
-  problems that say what the file had.
+  problems that say what the file had. So is an amount whose comma or
+  point isn't where a thousands separator or the decimal point goes,
+  such as 12,50 or 1.000,00: it's another way of writing, not 1,250
+  or 1.
 - **The company:** the button's غير محدد, for a page with no company
   name, counts as no name, so saving asks to confirm. Rows with no
   company among rows that name one aren't another company.
@@ -902,3 +905,8 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   left to pay is; what isn't read is never guessed. The export button
   is to write every claim number as text once it's in Nizmo (§12 step
   4).
+- **2026-11-18:** From Codex's review of #314: an amount written with a
+  decimal comma, such as 12,50 or 1.000,00, is a problem that says what
+  the file had, where it was read as 1,250 and 1; and a third decimal is
+  one however large the amount, where 2,000,000,000.001 was read as
+  2,000,000,000 (§4.1).
