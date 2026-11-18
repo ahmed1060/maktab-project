@@ -792,7 +792,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      claims on a client's page, merged in #311 on 2026-11-17; then the
      built-in Admin role's See clients' tax position for the companies
      already there, #312; then a client with a tax position archived
-     instead of deleted, with Delete permanently in the archive, #313.
+     instead of deleted, with Delete permanently in the archive, #313;
+     then the rules for reading the portal's file, with no screen yet,
+     #314.
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
 Clients pages) are rebuilt in step 0, so they're fixed there.
@@ -6616,3 +6618,6 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   and in the danger colour, which asks first and says its tax position
   goes with it. One with tasks or records stays in the archive, as
   before.
+- **2026-11-18:** The rules for reading the tax portal's file (#314;
+  `CLIENT_PORTAL_PLAN.md` §4.1, §12 step 3a): what the upload's check
+  screen and the server will share. No screen changes.
