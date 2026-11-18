@@ -115,9 +115,9 @@ const CLIENT_PORTAL_ADDON = "20270101000000_client_portal_addon"
 // The built-in Admin role's tax.view, for the companies there before it
 // (CLIENT_PORTAL_PLAN.md §9, §12 step 2c, PR 312).
 const TAX_VIEW_GRANTED = "20270103000000_tax_view_granted"
-// Given to a new company's built-in roles now, and to the companies there
-// already by a later migration (CLIENT_PORTAL_PLAN.md §12 step 3d, PR 315).
-const GRANTED_LATER = ["tax.manage"]
+// The built-in Admin role's tax.manage, for the companies there before it
+// (CLIENT_PORTAL_PLAN.md §9, §12 step 3d, PR 317).
+const TAX_MANAGE_GRANTED = "20270105000000_tax_manage_granted"
 
 const BEFORE_ROLES = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now());
@@ -190,6 +190,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(TERMINAL_CONNECTION))
         await db.query(sql(CLIENT_PORTAL_ADDON))
         await db.query(sql(TAX_VIEW_GRANTED))
+        await db.query(sql(TAX_MANAGE_GRANTED))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
@@ -240,8 +241,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                     const grants = Object.fromEntries(rows
                         .filter(r => r.companyId === company && r.builtIn === builtIn)
                         .map(r => [r.permission, r.scope]))
-                    const now = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).filter(([permission]) => !GRANTED_LATER.includes(permission)))
-                    expect(grants, `${company} ${builtIn}`).toEqual(now)
+                    expect(grants, `${company} ${builtIn}`).toEqual(BUILT_IN_GRANTS[builtIn])
                 }
             }
         })
@@ -258,8 +258,9 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             // And one for the Admin role: attendance.manage_terminals (ATTENDANCE_PLAN.md §17.10, PR 278).
             // And one for the Admin role: attendance.approve_missions (ATTENDANCE_PLAN.md §6.10, PR 284).
             // And one for the Admin role: tax.view (CLIENT_PORTAL_PLAN.md §12 step 2c, PR 312).
+            // And one for the Admin role: tax.manage (CLIENT_PORTAL_PLAN.md §12 step 3d, PR 317).
             const { rows: roles } = await db.query(`SELECT "companyId", "builtIn", version FROM "Role" ORDER BY "companyId", "builtIn"`)
-            const version = { ADMIN: 14, TEAM_LEADER: 7, EMPLOYEE: 4 } as Record<string, number>
+            const version = { ADMIN: 15, TEAM_LEADER: 7, EMPLOYEE: 4 } as Record<string, number>
             for (const role of roles) expect(role.version, `${role.companyId} ${role.builtIn}`).toBe(version[role.builtIn])
             const { rows: companies } = await db.query(`SELECT "adminSettingsEnabled", "adminSettingsTabs" FROM "Company"`)
             expect(companies).toEqual([
@@ -317,6 +318,29 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                 { companyId: "c1", builtIn: "ADMIN", scope: "COMPANY" },
                 { companyId: "c2", builtIn: "ADMIN", scope: "COMPANY" },
             ])
+        })
+
+        it("gives every built-in Admin role Update clients' tax position once: run again, nobody reloads (PR 317)", async () => {
+            // A new company's Admin role holds it from PR 315, so the
+            // migration leaves it as it is, its holders keeping their grants.
+            const versions = `SELECT id, version FROM "Role" ORDER BY id`
+            const { rows: before } = await db.query(versions)
+            await db.query(sql(TAX_MANAGE_GRANTED))
+            const { rows: after } = await db.query(versions)
+            expect(after).toEqual(before)
+            const { rows } = await db.query(`
+                SELECT r."companyId", r."builtIn", g.scope FROM "Role" r JOIN "RoleGrant" g ON g."roleId" = r.id
+                WHERE g.permission = 'tax.manage' ORDER BY r."companyId"`)
+            expect(rows).toEqual([
+                { companyId: "c1", builtIn: "ADMIN", scope: "COMPANY" },
+                { companyId: "c2", builtIn: "ADMIN", scope: "COMPANY" },
+            ])
+            // What it brings with it, seeing the tax position, is each of those roles' already (PR 312).
+            const { rows: seeing } = await db.query(`
+                SELECT count(*)::int AS roles FROM "Role" r
+                WHERE EXISTS (SELECT 1 FROM "RoleGrant" g WHERE g."roleId" = r.id AND g.permission = 'tax.manage')
+                  AND NOT EXISTS (SELECT 1 FROM "RoleGrant" g WHERE g."roleId" = r.id AND g.permission = 'tax.view')`)
+            expect(seeing).toEqual([{ roles: 0 }])
         })
 
         it("puts everyone on the built-in role matching theirs, and the Super Admin and company-less on none", async () => {

@@ -132,6 +132,39 @@ describe("what the migration adds (§3.1)", () => {
     })
 })
 
+describe("Update clients' tax position, for the companies already there (§12 step 3d, PR 317)", () => {
+    const NAME = "20270105000000_tax_manage_granted"
+    const sql = () => {
+        expect(readdirSync("prisma/migrations").find(m => m.endsWith("_tax_manage_granted"))).toBe(NAME)
+        return readFileSync(`prisma/migrations/${NAME}/migration.sql`, "utf8").split("\n").filter(line => !line.startsWith("--")).join("\n")
+    }
+
+    it("a migration gives it to the built-in Admin role alone, company-wide", () => {
+        const rows = [...sql().matchAll(/\('(\w+)', '([\w.]+)', '(\w+)'\)/g)].map(([, role, permission, scope]) => [role, permission, scope])
+        expect(rows).toEqual([["ADMIN", "tax.manage", "COMPANY"]])
+        expect(BUILT_IN_GRANTS.ADMIN["tax.manage"]).toBe("COMPANY")
+    })
+
+    it("leaves a role holding it already as it is, and has only the holders of a role given it reload", () => {
+        const text = sql().replace(/\s+/g, " ")
+        expect(text).toContain(`ON CONFLICT ("roleId", "permission") DO NOTHING RETURNING "roleId"`)
+        expect(text).toContain(`UPDATE "Role" SET "version" = "version" + 1, "updatedAt" = now() WHERE "id" IN (SELECT "roleId" FROM given)`)
+        expect(text).not.toMatch(/DELETE|DROP|ALTER/)
+    })
+
+    it("comes after the release that knows it, and after seeing the tax position, which it brings, was given", () => {
+        const names = readdirSync("prisma/migrations").filter(m => m !== "migration_lock.toml").sort()
+        expect(names.indexOf(NAME)).toBeGreaterThan(names.indexOf("20270104000000_tax_upload"))
+        expect(names.indexOf(NAME)).toBeGreaterThan(names.indexOf("20270103000000_tax_view_granted"))
+        expect(PERMISSIONS["tax.manage"].implies).toEqual(["tax.view"])
+    })
+
+    it("opens nothing by itself: the package still has to have the client portal", () => {
+        expect(sql()).not.toMatch(/"Package"|"Company"/)
+        expect(moduleForApiPath("/api/tax-claims/upload")).toBe("TAX_POSITION")
+    })
+})
+
 describe("the audit log's entry (§4.1)", () => {
     it("has its action and each of its details named in both languages", () => {
         expect(AUDIT_ACTIONS as readonly string[]).toContain("UPDATE_TAX_POSITION")
