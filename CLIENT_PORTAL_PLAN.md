@@ -341,7 +341,8 @@ Uploading the tax portal's file).
 
 - **Upload from the tax portal** is on the Tax position section's
   heading, for whoever holds `tax.manage`, before the first file too.
-  An archived client hasn't it.
+  An archived client hasn't it. One restored from its own page has it
+  again at once, as its tax position is read again then.
 - **The browser reads the file,** once what it's checked against has
   loaded. The reader is fetched when a file is picked, not with the
   page. Nothing of the file leaves the browser but its open claims,
@@ -360,6 +361,8 @@ Uploading the tax portal's file).
   Where the claims changed while the screen was open, it says so and
   checks the file again against them. Saved, the section reads itself
   again.
+- **Closing** the upload while a file is being read calls that reading
+  off: what's read after isn't shown.
 - The links to the export button's page come with that page (step 4).
 
 ### 4.2 Only from the portal's file (Decided, 2026-11-17)
@@ -997,3 +1000,9 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   with what's new, changed and going, a row with a problem stopping the
   save, and the confirmation where the file's company isn't the
   client's. Its `DESIGN.md` block is Uploading the tax portal's file.
+- **2026-11-18:** From Codex's review of #316: a client restored from
+  its own page has Upload from the tax portal again at once, where the
+  Tax position section kept it as archived until the page was opened
+  again; and closing the upload while another file is being read calls
+  that reading off, where the file read after opened the check screen
+  again (§4.1).
