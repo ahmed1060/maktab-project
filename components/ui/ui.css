@@ -2415,6 +2415,56 @@ a.ui-file-open:focus-visible,
   }
 }
 
+/* ── The tax portal's export button (§5.5) ── */
+/* A page read more than it's used: its cards at a guide's width. */
+.ui-tax-export {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 640px;
+}
+/* The button to drag and Copy address, side by side, and one under the other
+   where they don't fit. */
+.ui-tax-export-take {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+/* A bookmark to drag to the browser's bookmarks bar: its cursor says it's
+   dragged. */
+.ui-btn-bookmark {
+  cursor: grab;
+}
+.ui-btn-bookmark:active {
+  cursor: grabbing;
+}
+/* What the tax portal and the button's panel call something, as they have
+   it. Arabic's letters stand taller than Latin ones: in a line of English,
+   they'd push the lines around them apart. */
+.ui-their-word {
+  font-weight: 600;
+  line-height: 1;
+}
+/* Its steps are a guide's, on a page: a step's place keeps none of a
+   paragraph's own margins, which a dialog takes away. */
+.ui-tax-export .ui-guide-who {
+  margin: 0;
+}
+/* A phone has no bookmarks bar to drag to: its card says where the button is
+   added. */
+.ui-tax-export-phone {
+  display: none;
+}
+@media (max-width: 767px) {
+  .ui-tax-export-computer {
+    display: none;
+  }
+  .ui-tax-export-phone {
+    display: block;
+  }
+}
+
 /* ── Check-in (§5.5) ── */
 /* The app's first screen: its cards at a form's width, and Check in and
    Check out side by side, each half the card. */

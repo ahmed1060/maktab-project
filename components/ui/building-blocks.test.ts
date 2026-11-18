@@ -374,6 +374,19 @@ describe("page layout, sections, rows and tiles", () => {
         expect(render(h(ui.ButtonLook, { variant: "primary", size: "sm", children: "Button" }))).toBe('<span class="ui-btn ui-btn-primary ui-btn-sm">Button</span>')
     })
 
+    // The tax portal's export button (DESIGN.md §5.5, PR 319): its address is a
+    // javascript: one, which React doesn't draw, so the link is drawn without it.
+    it("a bookmark to drag is a link that looks like a button, said by what says where it's dragged, with no address as it's drawn", () => {
+        expect(render(h(ui.ButtonBookmark, { address: "javascript:void 0", describedBy: "drag", onPress: () => {}, children: "Export claims" })))
+            .toBe('<a class="ui-btn ui-btn-secondary ui-btn-bookmark" aria-describedby="drag">Export claims</a>')
+        expect(render(h(ui.ButtonBookmark, { address: "javascript:void 0", icon: PlusIcon, onPress: () => {}, children: "Export claims" })))
+            .toMatch(/^<a class="ui-btn ui-btn-secondary ui-btn-bookmark"><svg[^]*<\/svg>Export claims<\/a>$/)
+        // Its address is put on it once it's on the page, and pressing it goes nowhere.
+        const block = readFileSync("components/ui/Button.tsx", "utf8")
+        expect(block).toContain("ref={link => { link?.setAttribute('href', address) }}")
+        expect(block).toContain("onClick={event => { event.preventDefault(); onPress() }}")
+    })
+
     it("a card that needs someone, or says something's wrong, says so with its tone, and a plain one has none", () => {
         expect(render(h(ui.Card, { title: "Waiting on a decision", tone: "waiting", children: "x" }))).toBe('<section class="ui-panel ui-card" data-tone="waiting"><div class="ui-card-head"><h2 class="ui-card-title">Waiting on a decision</h2></div>x</section>')
         expect(render(h(ui.Card, { title: "Cannot be calculated", tone: "problem", children: "x" }))).toContain('data-tone="problem"')

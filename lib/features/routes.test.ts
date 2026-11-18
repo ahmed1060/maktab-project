@@ -145,6 +145,8 @@ describe("page paths and their guards", () => {
             CLIENTS: 'clients',
             COSTS: 'costs',
             DAY_OFF: 'day-off-requests',
+            // The tax portal's export button's page (CLIENT_PORTAL_PLAN.md §10, PR 319).
+            TAX_POSITION: 'tax-export',
         }
         for (const [mod, dir] of Object.entries(dirs)) {
             expect(moduleForPagePath(`/dashboard/${dir}`), dir).toBe(mod)
