@@ -162,6 +162,9 @@ describe("days and amounts, as they may be written", () => {
         expect(amounts(" 21088.26 ", "7365.00", "13723.26")).toMatchObject(expected)
         // What a sum leaves behind in a sheet's number isn't a third decimal.
         expect(amounts(0.1 + 0.2 + 21087.96, 7365, 13723.26)).toMatchObject(expected)
+        expect(amounts(21088.26, 21088.26 - 13723.26, 13723.26)).toMatchObject(expected)
+        // Several thousands separators, and one digit after the point.
+        expect(amounts("12,345,678.9", "0", "12,345,678.90")).toMatchObject({ originalAmount: 12345678.9, paidAmount: 0, remainingAmount: 12345678.9, mistakes: [] })
         // As large as the database holds, to the piastre.
         expect(amounts(999999999999.99, 0, 999999999999.99)).toMatchObject({ originalAmount: 999999999999.99, remainingAmount: 999999999999.99, mistakes: [] })
     })
@@ -175,6 +178,40 @@ describe("days and amounts, as they may be written", () => {
         }
         expect(original("").mistakes).toEqual([{ code: "amount_missing" }])
         expect(original(null).mistakes).toEqual([{ code: "amount_missing" }])
+    })
+
+    // From Codex's review of PR 314. With the commas taken out before the
+    // amount was looked at, "12,50" was read as 1,250 and "1.000,00" as 1,
+    // with nothing wrong said of either: in the one amount column the
+    // misread amount was both the original and what remains.
+    it("takes a comma or a point only where a thousands separator or the decimal point goes, never as the other's", () => {
+        const one = (value: unknown) => read(sheet(SINGLE, single({ 4: value }))).rows[0]
+        for (const written of ["12,50", "1.000,00", "1,00", "1.000", "12,345,67", "1,2345", ",500", "1,,000", "1 234.50", "12.5.0", "9.", ".45"]) {
+            const row = one(written)
+            expect(row.remainingAmount, written).toBeNull()
+            expect(row.mistakes, written).toEqual([{ code: "amount_unreadable", detail: written }])
+        }
+        // What is a thousands separator, and a decimal point, is still read.
+        expect(one("1,250")).toMatchObject({ remainingAmount: 1250, mistakes: [] })
+        expect(one("1,000.00")).toMatchObject({ remainingAmount: 1000, mistakes: [] })
+        expect(one("١٬٠٠٠٫٥٠")).toMatchObject({ remainingAmount: 1000.5, mistakes: [] })
+        expect(one("12.5")).toMatchObject({ remainingAmount: 12.5, mistakes: [] })
+    })
+
+    // From Codex's review of PR 314 too. What was let pass as a sum's
+    // leavings grew with the amount: 2,000,000,000.001 was read as
+    // 2,000,000,000, its tenth of a piastre gone unsaid.
+    it("refuses a third decimal however large the amount, as text or as the sheet's number", () => {
+        const one = (value: unknown) => read(sheet(SINGLE, single({ 4: value }))).rows[0]
+        for (const [written, detail] of [["2000000000.001", "2000000000.001"], [2000000000.001, "2000000000.001"], ["2,000,000,000.001", "2,000,000,000.001"], [999999999.994, "999999999.994"], [0.001, "0.001"], [5e-7, "5e-7"], ["10.555", "10.555"]] as const) {
+            const row = one(written)
+            expect(row.remainingAmount, String(written)).toBeNull()
+            expect(row.mistakes, String(written)).toEqual([{ code: "amount_unreadable", detail }])
+        }
+        // To the piastre, they're read whole.
+        expect(one(2000000000.01)).toMatchObject({ remainingAmount: 2000000000.01, mistakes: [] })
+        expect(one("2,000,000,000.01")).toMatchObject({ remainingAmount: 2000000000.01, mistakes: [] })
+        expect(one(999999999999.99)).toMatchObject({ remainingAmount: 999999999999.99, mistakes: [] })
     })
 })
 
@@ -380,6 +417,9 @@ describe("what a claim must be, which the server checks again", () => {
         expect(claimProblems({ ...claim, periodStart: "2026-01-01" })).toEqual(["period_backwards"])
         expect(claimProblems({ ...claim, paidAmount: -1, originalAmount: 13722.26 })).toEqual(["amount_negative"])
         expect(claimProblems({ ...claim, originalAmount: 21088.265 })).toEqual(["amount_unreadable"])
+        // A third decimal however large the amount (from Codex's review of PR 314).
+        expect(claimProblems({ ...claim, originalAmount: 2000000000.001, paidAmount: 0, remainingAmount: 2000000000.001 })).toEqual(["amount_unreadable"])
+        expect(claimProblems({ ...claim, originalAmount: 2000000000.01, paidAmount: 0, remainingAmount: 2000000000.01 })).toEqual([])
         expect(claimProblems({ ...claim, originalAmount: Number.NaN })).toEqual(["amount_unreadable"])
         expect(claimProblems({ ...claim, paidAmount: 7365.01 })).toEqual(["amounts_dont_add_up"])
     })

@@ -127,8 +127,21 @@ const words = (cell: unknown): string => {
 }
 
 const piastres = (amount: number) => Math.round(amount * 100)
-/** No finer than a piastre: what a sum leaves behind in a number isn't a third decimal. */
-const wholePiastres = (amount: number) => Math.abs(amount - piastres(amount) / 100) <= Math.abs(amount) * 1e-12 + 1e-9
+/**
+ * No finer than a piastre. What a sum leaves behind in a sheet's number, the
+ * last few of its bits, isn't a third decimal; anything more is one, however
+ * large the amount (PR 314: what was let pass grew with the amount, and
+ * 2,000,000,000.001 was read as 2,000,000,000).
+ */
+const wholePiastres = (amount: number) => Math.abs(amount - piastres(amount) / 100) <= Math.abs(amount) * Number.EPSILON * 4
+
+/**
+ * An amount written as text (§4.1): digits, with a comma only where a
+ * thousands separator goes, and a point with one or two digits after it.
+ * Checked as it's written, before any separator is taken out: "12,50" and
+ * "1.000,00" are another way of writing, not 1,250 and 1 (PR 314).
+ */
+const WRITTEN_AMOUNT = /^-?(\d+|\d{1,3}([,٬]\d{3})+)([.٫]\d{1,2})?$/
 
 /** A real calendar day as YYYY-MM-DD, or nothing. */
 function dayOf(year: number, month: number, day: number): string | null {
@@ -167,9 +180,9 @@ function readAmount(cell: unknown): Read<number> {
     let amount: number
     if (typeof cell === "number") amount = cell
     else if (typeof cell === "string") {
-        const written = toLatin(cell).replace(/[٬,\s]/g, "").replace("٫", ".")
-        if (!/^-?\d+(\.\d+)?$/.test(written)) return { unread: words(cell) }
-        amount = Number(written)
+        const written = toLatin(cell.trim())
+        if (!WRITTEN_AMOUNT.test(written)) return { unread: words(cell) }
+        amount = Number(written.replace(/[,٬]/g, "").replace("٫", "."))
     } else return { unread: words(cell) }
     if (!Number.isFinite(amount) || Math.abs(amount) > MAX_AMOUNT || !wholePiastres(amount)) return { unread: words(cell) }
     return { value: piastres(amount) / 100 }
