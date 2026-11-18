@@ -796,7 +796,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      then the rules for reading the portal's file, with no screen yet,
      #314; then saving it, with its permission and still no screen,
      #315; then the upload on a client's page, with its check screen,
-     #316.
+     #316; then the built-in Admin role's Update clients' tax position
+     for the companies already there, #317.
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
 Clients pages) are rebuilt in step 0, so they're fixed there.
@@ -6636,3 +6637,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   and going, the rows with a problem, which stop the save, and the day
   the figures are from. Saving asks first where the file's company
   isn't the client's.
+- **2026-11-18:** The companies already there get Update clients' tax
+  position from the tax portal's file (#317; `CLIENT_PORTAL_PLAN.md`
+  §9, §12 step 3d). A migration gives every company's built-in Admin
+  role the permission, as a new company's has had since #315, and its
+  holders reload their grants. Their Admins have Upload from the tax
+  portal on a client's Tax position once their company's package has
+  the client portal. No screen changes.

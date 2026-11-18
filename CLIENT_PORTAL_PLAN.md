@@ -18,8 +18,9 @@ were merged in #311 that day too, and `tax.view` for the companies
 already there (step 2c) is #312. A client with a tax position archived
 instead of deleted (§3.6, step 2d) is #313, and the rules for reading
 the portal's file (§4.1, step 3a) are #314. Saving the file (step 3b)
-is #315, and the upload on a client's page (step 3c) is #316. The rest
-is built in the small PRs of §12, each its own PR.
+is #315, and the upload on a client's page (step 3c) is #316.
+`tax.manage` for the companies already there (step 3d) is #317. The
+rest is built in the small PRs of §12, each its own PR.
 
 ---
 
@@ -633,8 +634,9 @@ sent: it's drawn from the claims as they are.
   (#278) and missions' (#284) permissions did (§12). `tax.view`'s is
   #312: a migration gives it to the built-in Admin alone, company-wide.
   An Admin role holding it already, a new company's, is left as it is;
-  the others' holders reload their grants once. `tax.manage`'s is step
-  3d, after #315.
+  the others' holders reload their grants once. `tax.manage`'s is #317
+  (step 3d), the same way, once #315's release, whose role editor knows
+  it, is live.
 
 ---
 
@@ -725,7 +727,8 @@ width:
    - **3c. The upload on a client's page:** Upload from the tax portal,
      the check screen, and saving. #316.
    - **3d.** `tax.manage` for the built-in Admin of the companies
-     already there.
+     already there, from a migration, once #315's release, whose role
+     editor knows it, is live. #317.
 4. **The export button in Nizmo** (§10): its code and tests in the
    repository, its page, and the links to it. It then writes every
    claim number as text: today's writes one with no zero at its start
@@ -1006,3 +1009,9 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   again; and closing the upload while another file is being read calls
   that reading off, where the file read after opened the check screen
   again (§4.1).
+- **2026-11-18:** The companies already there get `tax.manage`, Update
+  clients' tax position from the tax portal's file (#317): a migration
+  gives it to every company's built-in Admin role, as a new company's
+  has had since #315 (§9, §12 step 3d). Their Admins then have Upload
+  from the tax portal on a client's Tax position, where the company's
+  package has the client portal.
