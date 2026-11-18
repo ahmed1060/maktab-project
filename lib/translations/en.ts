@@ -3636,6 +3636,8 @@ export const en = {
         tax_col_status: "Status",
         tax_period: "{from} to {to}",
         tax_days_late: "{days} late",
+        // Figures getting old (CLIENT_PORTAL_PLAN.md §4.3, PR 321).
+        tax_not_updated: "Not updated for {days}",
         tax_due_on: "To pay by {date}",
         tax_due_on_late: "To pay by {date}, {days} late",
         tax_badge_late: "Late",

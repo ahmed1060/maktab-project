@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest"
 import { readFileSync, readdirSync } from "node:fs"
 import { Client } from "pg"
 import { withGrants } from "@/lib/permissions/test-actors"
+import { figuresAge } from "@/lib/tax-claims"
 
 /**
  * A client's tax claims (CLIENT_PORTAL_PLAN.md §3, §3.5; PR 311), against a
@@ -187,6 +188,49 @@ describe.skipIf(!ADMIN_URL)("a client's tax claims, in Postgres", () => {
             expect((await tax.taxPositionOf(superAdmin, "noor", FIVE, NOW)).today).toBe("2026-11-17")
             const theirs = await tax.taxPositionOf(superAdmin, "theirs", FIVE, NOW)
             expect([theirs.today, theirs.totals.late]).toEqual(["2026-11-18", 1])
+        })
+    })
+
+    describe("figures getting old (§4.3, PR 321)", () => {
+        // The Clients list's rows, as its route reads them.
+        const rows = () => prisma.client.findMany({ select: { id: true, companyId: true, archivedAt: true, taxPosition: { select: { asOf: true } } } })
+
+        it("says how old the figures are for clients whose day is 30 days back or more, and for no others", async () => {
+            // Al Noor's are from 14 October, 34 days before the 17th in Cairo; Going's from 1 September.
+            expect(Object.fromEntries(await tax.taxFiguresOld(await rows(), NOW))).toEqual({ noor: 34, going: 77 })
+        })
+
+        it("leaves out an archived client, a client with no file, and figures under 30 days old", async () => {
+            const old = await tax.taxFiguresOld(await rows(), NOW)
+            // Old Mill is archived, with figures 77 days old; Fresh Start has no file; Delta Foods' are 16 days old,
+            // and Their client's 8, in Tokyo.
+            for (const id of ["old", "fresh", "delta", "theirs"]) expect(old.has(id), id).toBe(false)
+        })
+
+        it("counts each company's clients to that company's own today", async () => {
+            // The same day for both: 29 days back in Cairo, where it's still the 17th, and 30 in Tokyo, where it's the 18th.
+            await db.query(`INSERT INTO "ClientTaxPosition"("clientId", "companyId", "asOf", "uploadedAt", "updatedAt") VALUES ('fresh', 'c1', '2026-10-19', now(), now())`)
+            await db.query(`UPDATE "ClientTaxPosition" SET "asOf" = '2026-10-19' WHERE "clientId" = 'theirs'`)
+            try {
+                const old = await tax.taxFiguresOld(await rows(), NOW)
+                expect(old.has("fresh")).toBe(false)
+                expect(old.get("theirs")).toBe(30)
+                // A day later it's 30 in Cairo too.
+                expect((await tax.taxFiguresOld(await rows(), new Date("2026-11-18T20:00:00Z"))).get("fresh")).toBe(30)
+            } finally {
+                await db.query(`DELETE FROM "ClientTaxPosition" WHERE "clientId" = 'fresh'`)
+                await db.query(`UPDATE "ClientTaxPosition" SET "asOf" = '2026-11-10' WHERE "clientId" = 'theirs'`)
+            }
+        })
+
+        it("agrees with the client's own Tax position, which is given both days", async () => {
+            const got = await tax.taxPositionOf(admin, "noor", FIVE, NOW)
+            expect(figuresAge(got.position!.asOf, got.today)).toBe(34)
+        })
+
+        it("says nothing where no client has a file", async () => {
+            expect((await tax.taxFiguresOld([{ id: "x", companyId: "c1", archivedAt: null, taxPosition: null }], NOW)).size).toBe(0)
+            expect((await tax.taxFiguresOld([], NOW)).size).toBe(0)
         })
     })
 

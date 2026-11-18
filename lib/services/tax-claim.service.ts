@@ -2,9 +2,10 @@ import { prisma } from "@/lib/prisma"
 import { can, type Actor } from "@/lib/permissions/can"
 import { filterTimeZone } from "@/lib/services/filter-zone"
 import { calendarDateStr } from "@/lib/time"
+import { resolveTimeZone } from "@/lib/timezone"
 import { cents } from "@/lib/task-costs"
 import type { Paging } from "@/lib/pagination"
-import { daysLate, type TaxPosition } from "@/lib/tax-claims"
+import { daysLate, figuresAge, type TaxPosition } from "@/lib/tax-claims"
 import { compareClaims, fileNamesClient, namedCompany, sentUpload, type ClaimDraft, type TaxClaimsNow, type TaxUploadSaved } from "@/lib/tax-file"
 
 /** A date column's day, as it was written. */
@@ -89,6 +90,36 @@ export async function taxPositionOf(user: Actor, clientId: string | null | undef
         total,
         totalPages: Math.ceil(total / paging.limit),
     }
+}
+
+/** A client as the Clients list reads it, with the day its figures are from. */
+type ListedClient = { id: string; companyId: string; archivedAt: Date | null; taxPosition: { asOf: Date } | null }
+
+/**
+ * How old each client's figures are, where that's worth saying (§4.3, step 5,
+ * PR 321): the days since the day they're from, for the clients whose tax
+ * position is 30 days old or more. Each company's clients are counted to
+ * that company's own today, the today late is counted to (§3.4), so a Super
+ * Admin's list of every company agrees with each company's own.
+ *
+ * An archived client isn't among them: its figures stay as they were, and no
+ * file is due for it. Nothing is read where no client has a file.
+ */
+export async function taxFiguresOld(clients: ListedClient[], now: Date = new Date()): Promise<Map<string, number>> {
+    const old = new Map<string, number>()
+    const dated = clients.filter(client => client.taxPosition && !client.archivedAt)
+    if (dated.length === 0) return old
+    const [companies, settings] = await Promise.all([
+        prisma.company.findMany({ where: { id: { in: [...new Set(dated.map(client => client.companyId))] } }, select: { id: true, timezone: true } }),
+        prisma.systemSettings.findUnique({ where: { id: "default" }, select: { defaultTimezone: true } }),
+    ])
+    const today = new Map(companies.map(company => [company.id, calendarDateStr(now, resolveTimeZone(company.timezone, settings?.defaultTimezone))]))
+    for (const client of dated) {
+        const day = today.get(client.companyId)
+        const age = day && client.taxPosition ? figuresAge(dayOf(client.taxPosition.asOf), day) : null
+        if (age !== null) old.set(client.id, age)
+    }
+    return old
 }
 
 /** Who's asking, with the name an upload keeps. */

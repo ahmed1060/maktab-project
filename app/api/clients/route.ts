@@ -5,6 +5,7 @@ import { createClientSchema, updateClientSchema } from "@/lib/validations/client
 import { ClientService } from "@/lib/services/client.service"
 import { can } from "@/lib/permissions/can"
 import { sessionHasModule } from "@/lib/features/require"
+import { taxFiguresOld } from "@/lib/services/tax-claim.service"
 
 // Each client's HQ (CLIENTS_PLAN.md §2.2), for its details and its form.
 const HQ = { where: { isHq: true }, select: { id: true, name: true, latitude: true, longitude: true, radiusMeters: true } } as const
@@ -51,6 +52,10 @@ export const GET = withStandardHandler(async (req, session) => {
     // and their company's package.
     const manages = can(session.user, "clients.manage")
     const seesTax = manages && can(session.user, "tax.view") && sessionHasModule(session, "TAX_POSITION")
+    // How old a client's figures are, where they're 30 days old or more
+    // (§4.3, PR 321), is for whoever may see tax positions, by their role and
+    // their company's package: whose file is due shows on the list.
+    const seesTaxDays = can(session.user, "tax.view") && sessionHasModule(session, "TAX_POSITION")
     const clients = await prisma.client.findMany({
         where: {
             ...(companyId ? { companyId } : {}),
@@ -62,7 +67,7 @@ export const GET = withStandardHandler(async (req, session) => {
             // records, or a tax position (CLIENT_PORTAL_PLAN.md §3.6).
             _count: { select: { tasks: true, taxClaims: true } },
             recordSections: { where: { records: { some: {} } }, select: { id: true }, take: 1 },
-            taxPosition: { select: { clientId: true } },
+            taxPosition: { select: { clientId: true, asOf: true } },
             // createdBy is null for a Super-Admin-created client (the FK
             // only targets User) — the frontend shows a generic "Super
             // Admin" label in that case rather than nothing.
@@ -75,6 +80,9 @@ export const GET = withStandardHandler(async (req, session) => {
         }
     })
 
+    // Counted to today where each client's own company is, and only where it's asked for.
+    const old = seesTaxDays ? await taxFiguresOld(clients) : new Map<string, number>()
+
     return ApiResponse.success(clients.map(({ _count, recordSections, taxPosition, ...client }) => ({
         ...client,
         // Held by its tasks or records: it stays in the archive.
@@ -82,6 +90,7 @@ export const GET = withStandardHandler(async (req, session) => {
         // A file uploaded for it, with claims open or none.
         ...(manages ? { hasTax: _count.taxClaims > 0 || !!taxPosition } : {}),
         ...(seesTax ? { taxClaims: _count.taxClaims } : {}),
+        ...(old.has(client.id) ? { taxDaysOld: old.get(client.id) } : {}),
     })))
 })
 

@@ -10,7 +10,7 @@ import {
 import AccessDenied from '@/components/AccessDenied'
 import PlaceFields from '@/components/locations/PlaceFields'
 import {
-    Button, ConfirmDialog, DataList, Dialog, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange, RowMenu, SearchInput, Select, TextInput,
+    Button, ConfirmDialog, DataList, Dialog, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange, RowMenu, SearchInput, Select, StatusBadge, TextInput,
     type Column, type MenuItem,
 } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
@@ -42,6 +42,8 @@ interface Client {
     hasTax?: boolean
     /** How many of its claims are open, for whoever may see tax positions. */
     taxClaims?: number
+    /** How many days old its figures are, where that's 30 or more, for whoever may see tax positions (CLIENT_PORTAL_PLAN.md §4.3). */
+    taxDaysOld?: number
 }
 
 type ClientFormState = {
@@ -199,6 +201,15 @@ export default function ClientsPage() {
     const addedBy = (c: Client) => c.createdBy ? `${c.createdBy.firstName} ${c.createdBy.lastName}` : t('role_super_admin')
     // Its own page holds its records (CLIENTS_PLAN.md §0.2).
     const name = (c: Client) => <Link href={`/dashboard/clients/${c.id}`} prefetch={false} className="ui-item-link"><bdi>{c.name}</bdi></Link>
+    // Whose file is due (CLIENT_PORTAL_PLAN.md §4.3, PR 321): the server counts the days, to today where the client's
+    // company is. The badge is the one on the client's Tax position; here nothing around it says what wasn't
+    // updated, so it names the tax position to screen readers.
+    const old = (c: Client) => c.taxDaysOld !== undefined && (
+        <StatusBadge tone="waiting">
+            <span className="ui-visually-hidden">{t('tax_position')}: </span>
+            {t('tax_not_updated').replace('{days}', countOf(t, locale, c.taxDaysOld, 'days'))}
+        </StatusBadge>
+    )
     const phone = (c: Client) => <a href={`tel:${c.mobileNumber.replace(/[^0-9+]/g, '')}`} className="ui-item-link"><bdi>{c.mobileNumber}</bdi></a>
     const place = (c: Client) => c.locationLink
         ? <a href={c.locationLink} target="_blank" rel="noopener noreferrer" className="ui-item-link"><bdi>{c.locationName}</bdi><span className="ui-visually-hidden"> {t('ui_opens_new_tab')}</span></a>
@@ -225,7 +236,7 @@ export default function ClientsPage() {
     )
 
     const columns: Column<Client>[] = [
-        { key: 'client', header: t('clients_col_client'), cell: c => <ItemTitle title={name(c)} detail={<bdi>{c.ownerName}</bdi>} detailIcon={UserIcon} /> },
+        { key: 'client', header: t('clients_col_client'), cell: c => <ItemTitle title={<>{name(c)}{old(c)}</>} detail={<bdi>{c.ownerName}</bdi>} detailIcon={UserIcon} /> },
         ...(everyCompany ? [{ key: 'company', header: t('clients_col_company'), cell: (c: Client) => <bdi>{c.company?.name}</bdi> }] : []),
         { key: 'phone', header: t('clients_col_phone'), cell: phone },
         { key: 'location', header: t('clients_col_location'), cell: place },
@@ -278,6 +289,7 @@ export default function ClientsPage() {
                         card={c => (
                             <ListCard
                                 title={name(c)}
+                                status={old(c) || undefined}
                                 details={[
                                     { icon: UserIcon, text: <bdi>{c.ownerName}</bdi> },
                                     { icon: PhoneIcon, text: phone(c) },

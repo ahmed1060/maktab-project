@@ -124,11 +124,15 @@ describe("the Tax position section", () => {
     })
 
     it("says the day the figures are from, and who uploaded the file and when", () => {
-        shown(NOOR)
+        // Read 20 days on: from 30 days the line also says how long it's been (§4.3, PR 321; lib/tax-figures-old.test.ts).
+        shown({ ...NOOR, today: "2026-11-03" })
         expect(render()).toContain(`<p class="ui-hint">Figures as of 14 Oct 2026, from the portal&#x27;s file uploaded by <bdi>Amal One</bdi> on 15 Oct 2026.</p>`)
         // Without a name, as when a file was uploaded by someone whose name wasn't kept.
-        shown({ ...NOOR, position: { asOf: "2026-10-14", uploadedOn: "2026-10-15", uploadedBy: null } })
+        shown({ ...NOOR, today: "2026-11-03", position: { asOf: "2026-10-14", uploadedOn: "2026-10-15", uploadedBy: null } })
         expect(render()).toContain(`<p class="ui-hint">Figures as of 14 Oct 2026, from the portal&#x27;s file uploaded on 15 Oct 2026.</p>`)
+        // And 34 days on, as Al Noor's are: its words, then how long.
+        shown(NOOR)
+        expect(render()).toContain(`uploaded by <bdi>Amal One</bdi> on 15 Oct 2026. <span class="ui-badge ui-badge-waiting">Not updated for 34 days</span></p>`)
     })
 
     it("totals what's owed, the open claims, the late ones and what's paid", () => {

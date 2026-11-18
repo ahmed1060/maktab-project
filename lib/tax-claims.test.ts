@@ -191,7 +191,7 @@ describe("the section's words, in both languages", () => {
         "tax_position", "tax_position_loading", "tax_position_failed", "tax_position_none", "tax_position_none_detail",
         "tax_figures_from_by", "tax_figures_from", "tax_owed", "tax_open_claims", "tax_late_claims", "tax_paid", "tax_claims_caption",
         "tax_col_number", "tax_col_item", "tax_col_period", "tax_col_original", "tax_col_remaining", "tax_col_due", "tax_col_status",
-        "tax_period", "tax_days_late", "tax_due_on", "tax_due_on_late", "tax_badge_late", "tax_badge_partly_paid",
+        "tax_period", "tax_days_late", "tax_due_on", "tax_due_on_late", "tax_badge_late", "tax_badge_partly_paid", "tax_not_updated",
         "tax_show_all", "tax_show_fewer", "tax_no_open_claims", "tax_no_open_claims_detail",
     ]
 
@@ -203,6 +203,7 @@ describe("the section's words, in both languages", () => {
             expect(words.tax_figures_from).not.toContain("{name}")
             expect(words.tax_period).toMatch(/\{from\}.*\{to\}/)
             expect(words.tax_days_late).toContain("{days}")
+            expect(words.tax_not_updated).toContain("{days}")
             expect(words.tax_due_on_late).toMatch(/\{date\}.*\{days\}/)
             expect(words.tax_show_all).toContain("{count}")
             expect(words.tax_no_open_claims_detail).toContain("{date}")

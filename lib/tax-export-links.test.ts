@@ -46,7 +46,9 @@ const SAME_TAB = `<a class="ui-text-link ui-tax-how" href="/dashboard/tax-export
 const NEW_TAB = `<a class="ui-text-link ui-tax-how" target="_blank" rel="noopener noreferrer" href="/dashboard/tax-export">How to get the portal&#x27;s file<span class="ui-visually-hidden"> (opens in a new tab)</span></a>`
 
 const POSITION: TaxPosition = {
-    client: { id: "noor", name: "Al Noor", archived: false }, today: "2026-11-18",
+    // Read 27 days after the day the figures are from: under the 30 from which the line says how long it's been
+    // (§4.3, PR 321), which comes between its words and this link (lib/tax-figures-old.test.ts).
+    client: { id: "noor", name: "Al Noor", archived: false }, today: "2026-11-10",
     position: { asOf: "2026-10-14", uploadedOn: "2026-10-15", uploadedBy: "Amal One" },
     totals: { original: 100, paid: 0, remaining: 100, open: 1, late: 0 },
     claims: [{
