@@ -73,6 +73,28 @@ export function ButtonDownload({ variant = 'secondary', size = 'md', icon, class
 }
 
 /**
+ * A bookmark to drag to the browser's bookmarks bar (DESIGN.md §5.5, The tax
+ * portal's export button; PR 319): a link that looks like a button, with the
+ * hand that says it's dragged. Its address is a `javascript:` one, which
+ * React doesn't draw, so it's put on the link once that's on the page.
+ * Pressed, it goes nowhere: `onPress` says what it's for.
+ */
+export function ButtonBookmark({ address, icon, describedBy, onPress, children }:
+    Pick<Look, 'icon' | 'children'> & { address: string; describedBy?: string; onPress: () => void }) {
+    return (
+        <a
+            ref={link => { link?.setAttribute('href', address) }}
+            className={classes('secondary', 'md', 'ui-btn-bookmark')}
+            aria-describedby={describedBy}
+            onClick={event => { event.preventDefault(); onPress() }}
+        >
+            {icon && <Icon icon={icon} size={18} />}
+            {children}
+        </a>
+    )
+}
+
+/**
  * A button's look and nothing else, for a preview such as the Brand colour
  * card's: no one can press it or reach it with Tab.
  */

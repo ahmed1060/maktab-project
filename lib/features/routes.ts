@@ -131,6 +131,9 @@ export const PAGE_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
     ['/dashboard/documents', 'PAYROLL'],
     ['/dashboard/attendance', 'ATTENDANCE'],
     ['/dashboard/check-in', 'ATTENDANCE'],
+    // The tax portal's export button's page (CLIENT_PORTAL_PLAN.md §10, PR 319):
+    // it makes the file a client's Tax position takes, so it's the client portal's.
+    ['/dashboard/tax-export', 'TAX_POSITION'],
 ] as const
 
 const PAGES_BY_SPECIFICITY = [...PAGE_MODULE_ROUTES].sort((a, b) => b[0].length - a[0].length)
