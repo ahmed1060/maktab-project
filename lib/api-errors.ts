@@ -93,6 +93,10 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     TAX_VIEW_REQUIRED: { status: 403, message: "You may not see clients' tax position." },
     // Archived rather than given new work (CLIENTS_PLAN.md §4.3).
     CLIENT_ARCHIVED: { status: 400, message: "This client is archived. Restore it on the Clients page first." },
+    // Deleted for good from the archive only, and only where no task or
+    // record holds it (CLIENT_PORTAL_PLAN.md §3.6).
+    CLIENT_NOT_ARCHIVED: { status: 409, message: "Only an archived client can be deleted permanently. Archive it first." },
+    CLIENT_IN_USE: { status: 409, message: "This client has tasks or records, so it stays in the archive." },
     // The places tasks happen at (lib/services/location.service.ts); a
     // check-in place's are LOCATION_*, below.
     TASK_LOCATION_NOT_FOUND: { status: 404, message: "Location not found." },

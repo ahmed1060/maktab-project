@@ -22,6 +22,7 @@ import { useCan } from '@/lib/useCan'
 import { countOf } from '@/lib/plural'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { draftOf, pinOfLink, readPlace, emptyPlace, type PlaceDraft, type PlaceErrors } from '@/lib/place-draft'
+import type { TranslationKey } from '@/lib/translations'
 
 interface Client {
     id: string
@@ -35,8 +36,12 @@ interface Client {
     company?: { name: string }
     createdBy: { firstName: string, lastName: string } | null
     archivedAt?: string | null
-    /** It has tasks or records, so deleting it archives it instead (CLIENTS_PLAN.md §4.3). */
+    /** It has tasks or records, so deleting it archives it instead (CLIENTS_PLAN.md §4.3), and it stays in the archive. */
     inUse?: boolean
+    /** It has a tax position, so deleting it archives it too (CLIENT_PORTAL_PLAN.md §3.6). */
+    hasTax?: boolean
+    /** How many of its claims are open, for whoever may see tax positions. */
+    taxClaims?: number
 }
 
 type ClientFormState = {
@@ -62,6 +67,13 @@ function hqDraft(c: Client): PlaceDraft {
     return { name: c.locationName, point: pinOfLink(c.locationLink ?? '') ?? '', radius: '' }
 }
 const sameDraft = (a: PlaceDraft, b: PlaceDraft) => a.name === b.name && a.point === b.point && a.radius === b.radius
+
+// Why deleting for good was refused, in the reader's language: the server's
+// codes (lib/api-errors.ts), its own words being English only.
+const FOR_GOOD_REFUSALS: Record<string, TranslationKey> = {
+    CLIENT_IN_USE: 'clients_delete_for_good_in_use',
+    CLIENT_NOT_ARCHIVED: 'clients_delete_for_good_restored',
+}
 
 /**
  * The businesses the company works for (CLIENTS_PLAN.md §0.1), on the
@@ -91,6 +103,8 @@ export default function ClientsPage() {
     const [adding, setAdding] = useState(false)
     const [editing, setEditing] = useState<Client | null>(null)
     const [toDelete, setToDelete] = useState<Client | null>(null)
+    // An archived one being deleted for good (CLIENT_PORTAL_PLAN.md §3.6).
+    const [forGood, setForGood] = useState<Client | null>(null)
     // The archived ones, instead of those in use (CLIENTS_PLAN.md §4.3).
     const [archived, setArchived] = useState(false)
 
@@ -113,20 +127,23 @@ export default function ClientsPage() {
     useAdjustOnChange([pageCount], () => setPage(p => pageInRange(p, pageCount)))
     // Another company picked: what's open belongs to the last one, and Save
     // or Delete would still act on it.
-    useAdjustOnChange([selectedCompanyId], () => { setPage(1); setAdding(false); setEditing(null); setToDelete(null) })
+    useAdjustOnChange([selectedCompanyId], () => { setPage(1); setAdding(false); setEditing(null); setToDelete(null); setForGood(null) })
+
+    // Deleting it archives it instead: it has tasks or records, or a tax position (CLIENT_PORTAL_PLAN.md §3.6).
+    const archives = (c: Client) => !!(c.inUse || c.hasTax)
 
     const confirmDelete = async () => {
         if (!toDelete) return
         try {
             // Archived if that's what was confirmed, though its last task or record went meanwhile.
-            const res = await fetch(`/api/clients?id=${encodeURIComponent(toDelete.id)}${toDelete.inUse ? '&archive=1' : ''}`, { method: 'DELETE' })
+            const res = await fetch(`/api/clients?id=${encodeURIComponent(toDelete.id)}${archives(toDelete) ? '&archive=1' : ''}`, { method: 'DELETE' })
             const body = await res.json().catch(() => ({}))
             if (!res.ok) {
                 showToast(body.error || t('error_generic'), 'error')
                 return
             }
-            // Archived, as it has tasks or records, though it was asked to be deleted: said so.
-            showToast(t(!body?.data?.archived ? 'clients_deleted_done' : toDelete.inUse ? 'clients_archived_asked' : 'clients_archived_done'), 'success')
+            // Archived, as something came to hold it, though it was asked to be deleted: said so, with what holds it.
+            showToast(t(!body?.data?.archived ? 'clients_deleted_done' : archives(toDelete) ? 'clients_archived_asked' : body.data.forTax ? 'clients_archived_done_tax' : 'clients_archived_done'), 'success')
             void mutate()
         } catch {
             showToast(t('error_generic'), 'error')
@@ -134,6 +151,35 @@ export default function ClientsPage() {
             setToDelete(null)
         }
     }
+
+    // An archived client deleted for good, its tax position going with it.
+    const confirmForGood = async () => {
+        if (!forGood) return
+        try {
+            const res = await fetch(`/api/clients?id=${encodeURIComponent(forGood.id)}&force=1`, { method: 'DELETE' })
+            const body = await res.json().catch(() => ({}))
+            if (!res.ok) {
+                // Refused where a task or record came to hold it, or it was restored, meanwhile:
+                // said in the reader's language, and the list is read again.
+                const refused = typeof body.code === 'string' ? FOR_GOOD_REFUSALS[body.code] : undefined
+                showToast(refused ? t(refused) : body.error || t('error_generic'), 'error')
+                void mutate()
+                return
+            }
+            showToast(t('clients_deleted_for_good_done'), 'success')
+            void mutate()
+        } catch {
+            showToast(t('error_generic'), 'error')
+        } finally {
+            setForGood(null)
+        }
+    }
+    // What goes with it is said before it goes: its tax position, with how many claims are open for whoever may see those.
+    const forGoodQuestion = !forGood ? '' : (
+        !forGood.hasTax ? t('clients_delete_for_good_question')
+            : forGood.taxClaims === undefined ? t('clients_delete_for_good_question_tax')
+                : t('clients_delete_for_good_question_claims').replace('{count}', forGood.taxClaims.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB'))
+    ).replace('{name}', forGood.name)
 
     const restore = async (c: Client) => {
         try {
@@ -162,10 +208,12 @@ export default function ClientsPage() {
         { key: 'tasks', label: t('clients_view_tasks'), icon: CheckSquareIcon, href: `/dashboard/tasks?clientId=${encodeURIComponent(c.id)}` },
         ...(!canManage ? [] : c.archivedAt ? [
             { key: 'restore', label: t('clients_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void restore(c) } },
+            // Deleted for good from the archive, where no task or record holds it (CLIENT_PORTAL_PLAN.md §3.6).
+            ...(c.inUse ? [] : [{ key: 'delete-for-good', label: t('clients_delete_for_good'), icon: TrashIcon, danger: true, onSelect: () => setForGood(c) }]),
         ] : [
             { key: 'edit', label: t('edit'), icon: PencilSimpleIcon, onSelect: () => setEditing(c) },
-            // One with tasks or records is archived instead, kept with them (§4.3).
-            c.inUse
+            // One with tasks, records or a tax position is archived instead, kept with them (§4.3).
+            archives(c)
                 ? { key: 'archive', label: t('clients_archive'), icon: ArchiveIcon, onSelect: () => setToDelete(c) }
                 : { key: 'delete', label: t('delete'), icon: TrashIcon, danger: true, onSelect: () => setToDelete(c) },
         ]),
@@ -273,12 +321,22 @@ export default function ClientsPage() {
             {/* Deleting can't be undone, so it's in the danger colour; archiving can be, and isn't. */}
             <ConfirmDialog
                 open={!!toDelete}
-                title={toDelete?.inUse ? t('clients_archive') : say('clients_delete', 'حذف {name}', 'Delete {name}')}
-                body={(toDelete?.inUse ? t('clients_archive_question') : t('clients_delete_question')).replace('{name}', toDelete?.name ?? '')}
-                confirmLabel={toDelete?.inUse ? t('clients_archive') : t('delete')}
-                danger={!toDelete?.inUse}
+                title={toDelete && archives(toDelete) ? t('clients_archive') : say('clients_delete', 'حذف {name}', 'Delete {name}')}
+                body={(toDelete?.inUse ? t('clients_archive_question') : toDelete?.hasTax ? t('clients_archive_question_tax') : t('clients_delete_question')).replace('{name}', toDelete?.name ?? '')}
+                confirmLabel={toDelete && archives(toDelete) ? t('clients_archive') : t('delete')}
+                danger={!(toDelete && archives(toDelete))}
                 onConfirm={confirmDelete}
                 onCancel={() => setToDelete(null)}
+            />
+            {/* Deleted for good, from the archive: it says what goes with it, and that it can't be undone (CLIENT_PORTAL_PLAN.md §3.6). */}
+            <ConfirmDialog
+                open={!!forGood}
+                title={t('clients_delete_for_good')}
+                body={forGoodQuestion}
+                confirmLabel={t('clients_delete_for_good')}
+                danger
+                onConfirm={confirmForGood}
+                onCancel={() => setForGood(null)}
             />
         </Page>
     )

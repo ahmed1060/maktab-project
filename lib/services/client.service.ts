@@ -86,11 +86,16 @@ export class ClientService {
     }
 
     /**
-     * Deletes a client, or archives one with tasks or records (CLIENTS_PLAN.md
-     * §4.3). With `archive`, it's archived whatever it holds now: archiving is
-     * what was confirmed, and it can be undone where deleting can't.
+     * Deletes a client, or archives one with tasks, records or a tax position
+     * (CLIENTS_PLAN.md §4.3; CLIENT_PORTAL_PLAN.md §3.6). With `archive`, it's
+     * archived whatever it holds now: archiving is what was confirmed, and it
+     * can be undone where deleting can't.
+     *
+     * With `forGood`, an archived client that no task or record holds is
+     * deleted, its tax position going with it: the second step, and from the
+     * archive only.
      */
-    static async delete(id: string, session: any, options: { archive?: boolean } = {}) {
+    static async delete(id: string, session: any, options: { archive?: boolean; forGood?: boolean } = {}) {
         const userRole = session.user.role
         const userId = session.user.id
 
@@ -108,26 +113,50 @@ export class ClientService {
             // their files, and its tasks would lose it. Its row is held first,
             // so a record or task being added meanwhile is counted, or finds
             // the client gone.
-            const locked = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Client" WHERE id = ${id} FOR UPDATE`
+            const locked = await tx.$queryRaw<{ id: string; archivedAt: Date | null }[]>`SELECT id, "archivedAt" FROM "Client" WHERE id = ${id} FOR UPDATE`
             if (!locked.length) throw new Error("CLIENT_NOT_FOUND")
-            const [records, tasks] = await Promise.all([
-                tx.clientRecord.count({ where: { section: { clientId: id } } }),
-                tx.task.count({ where: { clientId: id } }),
-            ])
+            // One after another: a transaction has one connection.
+            const records = await tx.clientRecord.count({ where: { section: { clientId: id } } })
+            const tasks = await tx.task.count({ where: { clientId: id } })
+            const held = records > 0 || tasks > 0
+            // Its tax position is as much its history as its records are: a
+            // file uploaded for it, with claims open or none
+            // (CLIENT_PORTAL_PLAN.md §3.6).
+            const claims = await tx.taxClaim.count({ where: { clientId: id } })
+            const hasTax = claims > 0 || (await tx.clientTaxPosition.count({ where: { clientId: id } })) > 0
             // What anyone holds for it in cash advances joins their running
             // balance, archived or deleted (CLIENTS_PLAN.md §7.9).
             const { CashAdvanceService } = await import("./cash-advance.service")
             const mover = { id: userId, name: session.user.name, role: userRole }
-            if (records > 0 || tasks > 0 || options.archive) {
-                const archived = await tx.client.update({ where: { id }, data: { archivedAt: client.archivedAt ?? new Date() } })
+            if (options.forGood) {
+                // From the archive only, so deleting for good is always a
+                // second step; and never one that tasks or records hold, whose
+                // records would go with it and whose tasks would lose it.
+                if (!locked[0].archivedAt) throw new Error("CLIENT_NOT_ARCHIVED")
+                if (held) throw new Error("CLIENT_IN_USE")
+                await CashAdvanceService.movePart(tx, client.companyId, { taskId: null, clientId: id }, "CLIENT_DELETED", mover)
+                const result = await tx.client.delete({ where: { id } })
+                await AuditLogService.log('DELETE_VENDOR', 'VENDOR', id, {
+                    tx,
+                    userId: userRole !== 'SUPER_ADMIN' ? userId : null,
+                    superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
+                    // How many claims went with it.
+                    details: { name: client.name, claims }
+                })
+                return { ...result, archived: false as const, forTax: false }
+            }
+
+            if (held || hasTax || options.archive) {
+                const archived = await tx.client.update({ where: { id }, data: { archivedAt: locked[0].archivedAt ?? new Date() } })
                 await CashAdvanceService.movePart(tx, client.companyId, { taskId: null, clientId: id }, "CLIENT_ARCHIVED", mover)
                 await AuditLogService.log('ARCHIVE_VENDOR', 'VENDOR', id, {
                     tx,
                     userId: userRole !== 'SUPER_ADMIN' ? userId : null,
                     superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                    details: { name: client.name, records, tasks }
+                    details: { name: client.name, records, tasks, ...(hasTax ? { claims } : {}) }
                 })
-                return { ...archived, archived: true as const }
+                // Kept for its tax position alone, where no task or record holds it.
+                return { ...archived, archived: true as const, forTax: !held && hasTax }
             }
 
             await CashAdvanceService.movePart(tx, client.companyId, { taskId: null, clientId: id }, "CLIENT_DELETED", mover)
@@ -140,7 +169,7 @@ export class ClientService {
                 details: { name: client.name }
             })
 
-            return { ...result, archived: false as const }
+            return { ...result, archived: false as const, forTax: false }
         })
     }
 
