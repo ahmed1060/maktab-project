@@ -172,7 +172,7 @@ export default function ClientPage() {
 
             {/* What it owes on the tax portal, from the portal's file (CLIENT_PORTAL_PLAN.md §3.5).
                 Made again for another client, so one client's figures never stand in for the next's while those load. */}
-            {seesTax && <TaxPosition key={id} clientId={id} />}
+            {seesTax && <TaxPosition key={id} clientId={id} manages={can('tax.manage')} />}
 
             {seesLocations && (
                 <Section

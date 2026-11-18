@@ -1344,6 +1344,108 @@
 .ui-bulk-status:not(:empty) {
   margin-block-start: var(--space-2);
 }
+/* Uploading the tax portal's file (§5.5): its check screen, wide enough for
+   a claim's line on a computer. From the top: the file, the company it
+   names, the day its figures are from, the counts, then what changes. */
+.ui-dialog:has(.ui-tax-check) {
+  width: min(100%, 760px);
+}
+.ui-tax-check {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+/* The file: its name, which breaks where it must, with Another file on its
+   end side. */
+.ui-tax-file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-field);
+}
+.ui-tax-file > svg {
+  flex: none;
+  color: var(--brand-text);
+}
+.ui-tax-file > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.ui-tax-file-name {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.ui-tax-company {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  overflow-wrap: anywhere;
+}
+.ui-tax-asof {
+  max-width: 280px;
+}
+/* Five counts on a line on a computer, two on a phone: narrower than a
+   page's tiles, as each is a count. */
+.ui-tax-check .ui-tiles {
+  grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr));
+}
+/* A group of claims, opened and closed from its title, under a rule. */
+.ui-tax-group {
+  border-block-start: 1px solid var(--rule);
+}
+.ui-tax-group > summary {
+  cursor: pointer;
+  padding-block: var(--space-3);
+  font-weight: 600;
+}
+.ui-tax-group > .ui-hint {
+  margin-block-end: var(--space-2);
+}
+.ui-tax-claims,
+.ui-tax-problems {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ui-tax-claims {
+  padding-block-end: var(--space-3);
+}
+/* A file can have 2,000 claims: a line off the screen isn't drawn until
+   it's scrolled to. */
+.ui-tax-claims > li,
+.ui-tax-problems > li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  content-visibility: auto;
+  contain-intrinsic-size: auto var(--space-12);
+}
+/* A claim's number, item and what remains: on one line where they fit. */
+.ui-tax-claim {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  overflow-wrap: anywhere;
+}
+.ui-tax-claim > strong {
+  margin-inline-start: auto;
+}
+/* A file refused whole: why, then what's at fault. */
+.ui-tax-refused {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
 /* What a dialog needs the person to know before saving, such as a role's
    separation of duties (company settings part 4c): its meaning's bar on the
    start edge, as a card's. */

@@ -219,7 +219,7 @@ describe("on the client's page", () => {
 
     it("is there for whoever may see it, where the company's package has the client portal", () => {
         expect(page).toContain("const seesTax = features.has('TAX_POSITION') && can('tax.view')")
-        expect(page).toContain("{seesTax && <TaxPosition key={id} clientId={id} />}")
+        expect(page).toContain("{seesTax && <TaxPosition key={id} clientId={id} manages={can('tax.manage')} />}")
     })
 
     it("is made again for another client, so one client's figures never stand in for the next's", () => {
