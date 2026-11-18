@@ -1,0 +1,79 @@
+{
+    "code": "fe31196de58d453dc44f7e6e90c1f5610c7bd9193a48aa90d55716aecb1294ea",
+    "page": "96eb5114e9ef554e507c0b6b4fcbf23a491b082002f0ff481e9cb59a54756c05",
+    "script": "bf76e8b25a5aad72bcf07cdffad1187c7a10c865918e9eb6e42b18746f53302a",
+    "browser": "Chromium 141.0.7390.37",
+    "clock": "2026-11-17T22:30:00.000Z",
+    "day": "2026-11-18",
+    "checks": [
+        "bookmark-runs",
+        "one-page",
+        "every-page",
+        "count-matches",
+        "numbers-as-text",
+        "days-are-cairos",
+        "pressed-twice",
+        "download-at-once",
+        "seen-again-takes-now",
+        "drawn-again-gathers-again",
+        "left-open-gathers-again",
+        "download-waits-for-pages",
+        "page-never-comes",
+        "new-visit-starts-again",
+        "nothing-kept",
+        "filter-first",
+        "filter-changed",
+        "partly-paid",
+        "changed-a-moment-ago",
+        "same-count-filter",
+        "same-count-filter-pages",
+        "by-hand-never-saved",
+        "count-not-the-tables",
+        "short-of-the-count",
+        "other-company-same-tab",
+        "older-copy-removed",
+        "older-copy-replaced",
+        "clear",
+        "no-company",
+        "no-table",
+        "file-name-cairo-day",
+        "sends-nothing"
+    ],
+    "files": [
+        {
+            "file": "one-page.xlsx",
+            "savedAs": "مطالبات - شركة باء للتوريدات - 2026-11-18.xlsx",
+            "sha256": "d1f59fbc0c381a76459c02d10d65f6e20cdd4406187f343d1425d4b47ad08b4a"
+        },
+        {
+            "file": "every-page.xlsx",
+            "savedAs": "مطالبات - شركة ألف للتجارة - 2026-11-18.xlsx",
+            "sha256": "4161cfcaabcb63971b20dcdd8fb1d87214a859c8ef12baabc9b8ebbf0238d3d1"
+        },
+        {
+            "file": "gathered-again.xlsx",
+            "savedAs": "مطالبات - شركة ألف للتجارة - 2026-11-18.xlsx",
+            "sha256": "1a0f03ca281cfe6062b779842c9e197fb5b4bc1af59c8ad0edcdd86466d1bff8"
+        },
+        {
+            "file": "filter-waiting.xlsx",
+            "savedAs": "مطالبات - شركة ألف للتجارة - 2026-11-18.xlsx",
+            "sha256": "c4aabf6eac0d252f1a2f5c6989a483856cc8789eb469f725d0f07ceb0a4e4837"
+        },
+        {
+            "file": "filter-partly-paid.xlsx",
+            "savedAs": "مطالبات - شركة ألف للتجارة - 2026-11-18.xlsx",
+            "sha256": "623d457cfe5c73288c58797e2ccb2bf96306af60c89a07485980c5eed0fdf3e7"
+        },
+        {
+            "file": "same-count-pages.xlsx",
+            "savedAs": "مطالبات - شركة جيم للمقاولات - 2026-11-18.xlsx",
+            "sha256": "94d74aeb46a406bc7cec95633c7738e35f5ab5d2d78544004e7d4a67ad661663"
+        },
+        {
+            "file": "no-company.xlsx",
+            "savedAs": "مطالبات - غير محدد - 2026-11-18.xlsx",
+            "sha256": "5cf71a699fcd6d1fa7890bbdb003b3c6e1aabf017bcc4fca3735edd52b3e449c"
+        }
+    ]
+}

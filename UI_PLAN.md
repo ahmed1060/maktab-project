@@ -797,7 +797,9 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      #314; then saving it, with its permission and still no screen,
      #315; then the upload on a client's page, with its check screen,
      #316; then the built-in Admin role's Update clients' tax position
-     for the companies already there, #317.
+     for the companies already there, #317; then the tax portal's
+     export button's code in Nizmo, with its tests and no screen yet,
+     #318.
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
 Clients pages) are rebuilt in step 0, so they're fixed there.
@@ -6644,3 +6646,14 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   holders reload their grants. Their Admins have Upload from the tax
   portal on a client's Tax position once their company's package has
   the client portal. No screen changes.
+- **2026-11-18:** The tax portal's export button's code in Nizmo, with
+  its tests (#318; `CLIENT_PORTAL_PLAN.md` §10, §12 step 4a, §15). No
+  screen changes: its page and the links to it are the next two parts.
+  Its panel shows on the tax portal's page, not in Nizmo, and keeps the
+  owner's words and its own styles.
+- **2026-11-18:** From Codex's review of #318: the tax portal's export
+  button saves what the portal shows when Download is pressed, keeps
+  nothing in the browser, and takes an older copy's place
+  (`CLIENT_PORTAL_PLAN.md` §10, §15). No screen of Nizmo's changes: its
+  panel is on the tax portal's page, with the owner's words as they
+  were.
