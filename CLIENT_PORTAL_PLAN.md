@@ -17,8 +17,8 @@ in #309 on 2026-11-17, and the add-on on packages (§2, §12 step 2a) in
 were merged in #311 that day too, and `tax.view` for the companies
 already there (step 2c) is #312. A client with a tax position archived
 instead of deleted (§3.6, step 2d) is #313, and the rules for reading
-the portal's file (§4.1, step 3a) are #314. The rest is built in the
-small PRs of §12, each its own PR.
+the portal's file (§4.1, step 3a) are #314. Saving the file (step 3b)
+is #315. The rest is built in the small PRs of §12, each its own PR.
 
 ---
 
@@ -97,6 +97,10 @@ uploader, whose name is kept as it was that day. The database holds a
 claim to its number once for its client, its amounts adding up, and
 something left to pay. They go with their client when it's deleted for
 good (§3.6).
+
+As built (#315): `ClientTaxPosition` also keeps the company the client's
+last file named, and how many files have been uploaded for it, which a
+save is checked against (§4.1).
 
 ### 3.2 Only open claims (Decided, 2026-11-17)
 
@@ -289,6 +293,47 @@ in `lib/tax-file.ts`, with the file itself opened in
   browser numbered still has it. One after today isn't taken.
 - **What's new, changed and gone** is told by claim number: a claim is
   changed when anything kept of it differs, to the piastre.
+
+As built (3b, #315): saving, with no screen yet. `tax.manage` comes with
+it (§9), and two addresses under the claims' own, both for whoever holds
+it:
+
+- **What a file is checked against**
+  (`GET /api/tax-claims/upload?clientId=`): every claim the client has
+  now, the company its last file named, today where the company is, and
+  how many files have been uploaded for it.
+- **Saving** (`POST /api/tax-claims/upload`) takes the claims the
+  browser read from the file, never the file itself, with the day the
+  figures are from, the file's name and the company it names.
+- **The server checks again,** by the same rules (`lib/tax-file.ts`):
+  every claim, each number once, only open claims, 2,000 at most, and
+  the day not after today where the company is. Anything wrong refuses
+  the whole save.
+- **Still as the check screen read them:** a save says how many files
+  the client had when its claims were read, and is refused, saying so,
+  where another was saved since. Each save holds the client's row, so
+  two at once go one after the other, and the second is refused.
+- **The right client:** where the file's company is neither the
+  client's name nor the one its last file named, the save is refused
+  until it's sent as confirmed. A file that names no company leaves the
+  name kept from an earlier one.
+- **In one go:** the claims the file hasn't go, the new and the changed
+  are written, and the day, who uploaded and the count of files are
+  set: all of it, or none. A claim that didn't change keeps its row.
+- **An archived client's, or another company's,** is refused, as is one
+  archived while the check screen was open.
+- **The audit log:** Updated tax position, on the client: the file's
+  name, the day the figures are from, how many claims were added,
+  changed and removed, and how many it has now.
+- **Never too long:** a claim number over 50 characters, or an item, a
+  tax, a registration type or a currency over 200, is a problem like
+  any other, on the check screen and on the server. The portal's are
+  far shorter, and a file that passed the check is then never one the
+  database can't hold.
+- **Only what's seen:** control characters, and half of a character's
+  pair, are set aside as spaces are tidied, in what the file has and in
+  what's sent, as the database refuses them. An address that isn't an
+  id is nobody's client.
 
 ### 4.2 Only from the portal's file (Decided, 2026-11-17)
 
@@ -544,8 +589,8 @@ sent: it's drawn from the claims as they are.
 - All four are in the `TAX_POSITION` module (§2).
 - Each comes with the route that asks for it, as the catalogue offers no
   permission that nothing checks: `tax.view` with the claims (step 2b),
-  `tax.manage` with the upload (step 3), and the other two with theirs
-  (§12).
+  `tax.manage` with the upload's route (step 3b, #315), and the other
+  two with theirs (§12).
 - `client_accounts.manage` is high-risk, as it lets people from outside
   the company in: it asks for the step-up confirmation
   (`ROLES_PLAN.md` §6.15).
@@ -558,7 +603,8 @@ sent: it's drawn from the claims as they are.
   (#278) and missions' (#284) permissions did (§12). `tax.view`'s is
   #312: a migration gives it to the built-in Admin alone, company-wide.
   An Admin role holding it already, a new company's, is left as it is;
-  the others' holders reload their grants once.
+  the others' holders reload their grants once. `tax.manage`'s is step
+  3d, after #315.
 
 ---
 
@@ -645,7 +691,7 @@ width:
      #314.
    - **3b. Saving it:** `tax.manage`, the route that takes a checked
      file, the server checking every row again, replacing in one go,
-     and the audit log.
+     and the audit log. No screen yet. #315.
    - **3c. The upload on a client's page:** Upload from the tax portal,
      the check screen, and saving.
    - **3d.** `tax.manage` for the built-in Admin of the companies
@@ -910,3 +956,11 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   the file had, where it was read as 1,250 and 1; and a third decimal is
   one however large the amount, where 2,000,000,000.001 was read as
   2,000,000,000 (§4.1).
+- **2026-11-18:** Saving the portal's file (#315, §4.1): `tax.manage`,
+  what a file is checked against, and the save, which the server checks
+  again and writes in one go, with an audit log entry. A save is refused
+  where another file was saved for the client since its claims were
+  read, and, until it's confirmed, where the file's company isn't the
+  client's. A claim number over 50 characters, or a name over 200, is a
+  problem on the check screen and the server alike. No screen yet: the
+  upload on a client's page is step 3c (§12).

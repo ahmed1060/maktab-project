@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest"
 import {
-    TAX_FILE_HEADINGS as H, TAX_FILE_MAX_ROWS, TAX_FILE_MAX_BYTES, UNNAMED_COMPANY,
+    TAX_FILE_HEADINGS as H, TAX_FILE_MAX_ROWS, TAX_FILE_MAX_BYTES, TAX_NUMBER_MAX, TAX_TEXT_MAX, UNNAMED_COMPANY,
     readTaxSheet, claimOf, claimProblems, compareClaims, remainingOf, dayFromFileName, fileNamesClient, spellingKey,
+    isOpenClaim, namedCompany, sentClaim, sentUpload,
     type TaxSheetRow, type TaxFile, type ClaimDraft,
 } from "./tax-file"
 
@@ -465,5 +466,186 @@ describe("what an upload changes, against the claims there now", () => {
         expect(remainingOf([])).toBe(0)
         expect(remainingOf([a, b, c])).toBe(28617.68)
         expect(remainingOf([{ ...a, remainingAmount: 0.1 }, { ...a, remainingAmount: 0.2 }])).toBe(0.3)
+    })
+})
+
+// A claim as the check screen sends it to be saved: what claimOf gave.
+const SENT: ClaimDraft = {
+    claimNumber: "000111000001", item: "أقرار تجاري", taxType: "دخل", registrationType: null,
+    originalAmount: 21088.26, paidAmount: 7365, remainingAmount: 13723.26,
+    currency: "جنيه مصري", status: "مسدد جزئياً", periodStart: "2025-01-01", periodEnd: "2025-12-31", dueDate: "2026-04-30",
+}
+
+describe("never longer than the claims' table should hold (PR 315)", () => {
+    it("refuses a claim number over 50 characters, and takes one of 50", () => {
+        expect(TAX_NUMBER_MAX).toBe(50)
+        expect(codes(read(sheet(SPLIT, partly({ 4: "9".repeat(50) }))))).toEqual([])
+        expect(codes(read(sheet(SPLIT, partly({ 4: "9".repeat(51) }))))).toEqual(["number_too_long"])
+    })
+
+    it("refuses an item, a tax, a registration type or a currency over 200, naming its column", () => {
+        expect(TAX_TEXT_MAX).toBe(200)
+        expect(codes(read(sheet(SPLIT, partly({ 2: "ب".repeat(200) }))))).toEqual([])
+        const file = read(sheet(SPLIT, partly({ 1: "ت".repeat(201), 2: "ب".repeat(201), 3: "ث".repeat(201), 8: "ج".repeat(201) })))
+        expect(file.rows[0].mistakes).toEqual([
+            { code: "text_too_long", detail: H.item }, { code: "text_too_long", detail: H.taxType },
+            { code: "text_too_long", detail: H.registrationType }, { code: "text_too_long", detail: H.currency },
+        ])
+        expect(claimOf(file.rows[0])).toBeNull()
+    })
+
+    it("is checked again on a claim sent to be saved", () => {
+        expect(claimProblems({ ...SENT, claimNumber: "9".repeat(51) })).toEqual(["number_too_long"])
+        expect(claimProblems({ ...SENT, item: "ب".repeat(201) })).toEqual(["text_too_long"])
+        expect(claimProblems({ ...SENT, status: "ح".repeat(201) })).toEqual(["text_too_long"])
+        expect(claimProblems({ ...SENT, claimNumber: "9".repeat(50), currency: "ج".repeat(200) })).toEqual([])
+    })
+
+    it("sets aside what can't be seen and can't be kept: control characters, and half of a character's pair", () => {
+        const file = read(sheet(SPLIT, partly({ 2: "أقرار\u0000 تجاري\u0007", 8: "جنيه\uD83D مصري 😀" })))
+        expect(file.rows[0].mistakes).toEqual([])
+        expect(claimOf(file.rows[0])).toMatchObject({ item: "أقرار تجاري", currency: "جنيه مصري 😀" })
+    })
+})
+
+describe("a claim that's kept (§3.2)", () => {
+    it("has something left to pay, and no status that says otherwise", () => {
+        expect(isOpenClaim(SENT)).toBe(true)
+        expect(isOpenClaim({ ...SENT, status: null })).toBe(true)
+        expect(isOpenClaim({ ...SENT, status: "في  انتظار السداد" })).toBe(true)
+        expect(isOpenClaim({ ...SENT, remainingAmount: 0 })).toBe(false)
+        expect(isOpenClaim({ ...SENT, status: "مسدد" })).toBe(false)
+        expect(isOpenClaim({ ...SENT, status: "ملغي" })).toBe(false)
+    })
+})
+
+describe("the company a file names", () => {
+    it("is its name, tidied, or nothing: no name, the export button's word for none, or more than a name", () => {
+        expect(namedCompany(`  ${ALEF}  `)).toBe(ALEF)
+        expect(namedCompany("")).toBeNull()
+        expect(namedCompany(null)).toBeNull()
+        expect(namedCompany(UNNAMED_COMPANY)).toBeNull()
+        expect(namedCompany("غير  محدد")).toBeNull()
+        expect(namedCompany("ش".repeat(TAX_TEXT_MAX))).toHaveLength(TAX_TEXT_MAX)
+        expect(namedCompany("ش".repeat(TAX_TEXT_MAX + 1))).toBeNull()
+        // One too long to be a name is never the client's, so saving asks.
+        expect(fileNamesClient("ش".repeat(TAX_TEXT_MAX + 1), "ش".repeat(TAX_TEXT_MAX + 1), null)).toBe(false)
+    })
+})
+
+describe("a claim as it's sent to be saved (§4.1)", () => {
+    it("is the claim it says, as the file's reader would have given it", () => {
+        expect(sentClaim(SENT)).toEqual(SENT)
+        expect(sentClaim(JSON.parse(JSON.stringify(SENT)))).toEqual(SENT)
+        // What may be empty can be left out, or sent as nothing.
+        const needed = { claimNumber: SENT.claimNumber, item: SENT.item, originalAmount: SENT.originalAmount, paidAmount: SENT.paidAmount, remainingAmount: SENT.remainingAmount, dueDate: SENT.dueDate }
+        expect(sentClaim(needed)).toEqual({ ...needed, taxType: null, registrationType: null, currency: null, status: null, periodStart: null, periodEnd: null })
+    })
+
+    it("tidies its number and its words as the reader does, so one claim stays one claim", () => {
+        expect(sentClaim({ ...SENT, claimNumber: " ٠٠٠١١١٠٠٠٠٠١ ", item: "  أقرار\u0000   تجاري ", taxType: " ", currency: "جنيه\uD83D  مصري" }))
+            .toEqual({ ...SENT, taxType: null, currency: "جنيه مصري" })
+    })
+
+    it("is nothing where a field is another kind of thing: a number sent as a number may have lost its zeros", () => {
+        expect(sentClaim({ ...SENT, claimNumber: 111000001 })).toBeNull()
+        expect(sentClaim({ ...SENT, item: ["أقرار"] })).toBeNull()
+        expect(sentClaim({ ...SENT, dueDate: 46142 })).toBeNull()
+        expect(sentClaim({ ...SENT, dueDate: null })).toBeNull()
+        expect(sentClaim({ ...SENT, periodStart: 45658 })).toBeNull()
+        expect(sentClaim({ ...SENT, status: { is: "open" } })).toBeNull()
+        expect(sentClaim({ ...SENT, originalAmount: "21088.26" })).toBeNull()
+        expect(sentClaim({ ...SENT, paidAmount: null })).toBeNull()
+        for (const not of [null, undefined, "claim", 7, [SENT]]) expect(sentClaim(not)).toBeNull()
+    })
+
+    it("leaves what's wrong with what it says to the rows' rules", () => {
+        const sent = sentClaim({ ...SENT, originalAmount: 21088.265, dueDate: "30/04/2026", periodStart: "" })
+        expect(sent && claimProblems(sent)).toEqual(["due_unreadable", "period_unreadable", "amount_unreadable"])
+    })
+})
+
+describe("an upload as it's sent to be saved (§4.1)", () => {
+    const upload = {
+        clientId: "noor", uploads: 2, asOf: "2026-11-17", fileName: `مطالبات - ${ALEF} - 2026-11-17.xlsx`, fileCompany: ALEF, confirmed: false,
+        claims: [SENT, { ...SENT, claimNumber: "000111000002" }],
+    }
+    const taken = (body: unknown) => {
+        const sent = sentUpload(body)
+        if ("problem" in sent) throw new Error(`refused: ${sent.problem}`)
+        return sent.upload
+    }
+    const refused = (body: unknown) => {
+        const sent = sentUpload(body)
+        return "problem" in sent ? sent.problem : null
+    }
+
+    it("is read whole: whose it is, how many files there were, the day, the file and each claim", () => {
+        expect(taken(upload)).toEqual(upload)
+        expect(taken(JSON.parse(JSON.stringify(upload)))).toEqual(upload)
+    })
+
+    it("takes a file with no open claim, and a client's first file", () => {
+        expect(taken({ ...upload, claims: [] }).claims).toEqual([])
+        expect(taken({ ...upload, uploads: 0 }).uploads).toBe(0)
+    })
+
+    it("is confirmed only where it says so, and tidies the file's names", () => {
+        expect(taken({ ...upload, confirmed: true }).confirmed).toBe(true)
+        for (const confirmed of ["true", 1, null, undefined]) expect(taken({ ...upload, confirmed }).confirmed).toBe(false)
+        expect(taken({ ...upload, fileName: "  claims\u0000   2026.xlsx ", fileCompany: undefined })).toMatchObject({ fileName: "claims 2026.xlsx", fileCompany: "" })
+        expect(taken({ ...upload, fileName: 7, fileCompany: ["x"] })).toMatchObject({ fileName: "", fileCompany: "" })
+        // As much of a long name as the audit log keeps, and never half of a character's pair.
+        expect(taken({ ...upload, fileName: "ملف".repeat(200) }).fileName).toHaveLength(255)
+        expect(taken({ ...upload, fileName: "😀".repeat(200) }).fileName).toBe("😀".repeat(127))
+    })
+
+    it("gives each claim's amounts to the piastre, and its number as the reader would", () => {
+        const sent = taken({ ...upload, claims: [{ ...SENT, claimNumber: "٠٠٠١١١٠٠٠٠٠١", originalAmount: 0.1 + 0.2, paidAmount: 0, remainingAmount: 0.1 + 0.2 }] })
+        expect(sent.claims[0]).toMatchObject({ claimNumber: "000111000001", originalAmount: 0.3, paidAmount: 0, remainingAmount: 0.3 })
+    })
+
+    it("is refused where it can't be read: no client, no count of files, no day, or claims that aren't a list", () => {
+        for (const body of [
+            null, undefined, "upload", 7, [upload],
+            { ...upload, clientId: "" }, { ...upload, clientId: " " }, { ...upload, clientId: 7 }, { ...upload, clientId: undefined },
+            { ...upload, uploads: -1 }, { ...upload, uploads: 1.5 }, { ...upload, uploads: "2" }, { ...upload, uploads: undefined },
+            { ...upload, asOf: "17/11/2026" }, { ...upload, asOf: "2026-02-30" }, { ...upload, asOf: null },
+            { ...upload, claims: undefined }, { ...upload, claims: { 0: SENT } },
+        ]) expect(refused(body), String(JSON.stringify(body)).slice(0, 80)).toBe("unreadable")
+    })
+
+    it("is refused for one claim that isn't right, whichever it is", () => {
+        const other = { ...SENT, claimNumber: "000111000002" }
+        const withOne = (claim: unknown) => refused({ ...upload, claims: [SENT, claim] })
+        expect(withOne(other)).toBeNull()
+        for (const wrong of [
+            { claimNumber: 111000002 }, { claimNumber: " " }, { item: "" }, { dueDate: "2026-02-31" },
+            { paidAmount: 7365.01 }, { paidAmount: -1, originalAmount: 13722.26 }, { originalAmount: 21088.265 },
+            { periodStart: "2026-01-01" }, { claimNumber: "9".repeat(51) }, { item: "ب".repeat(201) },
+        ]) expect(withOne({ ...other, ...wrong }), JSON.stringify(wrong).slice(0, 60)).toBe("unreadable")
+        expect(withOne(null)).toBe("unreadable")
+        expect(withOne("000111000002")).toBe("unreadable")
+    })
+
+    it("is refused for a claim that isn't open: nothing left to pay, or a status that says it's paid", () => {
+        const other = { ...SENT, claimNumber: "000111000002" }
+        expect(refused({ ...upload, claims: [SENT, { ...other, paidAmount: 21088.26, remainingAmount: 0 }] })).toBe("unreadable")
+        expect(refused({ ...upload, claims: [SENT, { ...other, status: "مسدد" }] })).toBe("unreadable")
+        expect(refused({ ...upload, claims: [SENT, { ...other, status: null }] })).toBeNull()
+    })
+
+    it("is refused for a claim number that's there twice, however it's written", () => {
+        expect(refused({ ...upload, claims: [SENT, { ...SENT }] })).toBe("unreadable")
+        expect(refused({ ...upload, claims: [SENT, { ...SENT, claimNumber: "٠٠٠١١١٠٠٠٠٠١" }] })).toBe("unreadable")
+        expect(refused({ ...upload, claims: [SENT, { ...SENT, claimNumber: " 000111000001 " }] })).toBe("unreadable")
+    })
+
+    it(`is refused over ${TAX_FILE_MAX_ROWS.toLocaleString("en-GB")} claims, and takes that many`, () => {
+        const many = (count: number) => Array.from({ length: count }, (_, i) => ({ ...SENT, claimNumber: String(i).padStart(12, "0") }))
+        expect(refused({ ...upload, claims: many(TAX_FILE_MAX_ROWS) })).toBeNull()
+        expect(refused({ ...upload, claims: many(TAX_FILE_MAX_ROWS + 1) })).toBe("too_many")
+        // Counted before any claim is read.
+        expect(refused({ ...upload, claims: Array.from({ length: TAX_FILE_MAX_ROWS + 1 }, () => null) })).toBe("too_many")
     })
 })

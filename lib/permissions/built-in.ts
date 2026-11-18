@@ -112,6 +112,11 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // already by PR 312's migration, once PR 311's role editor, which
         // knows it, was live.
         "tax.view": "COMPANY",
+        // Uploading the portal's file (CLIENT_PORTAL_PLAN.md §9): a new
+        // company's since PR 315. The companies there already get it from
+        // a later PR's migration, once PR 315's role editor, which knows
+        // it, is live.
+        "tax.manage": "COMPANY",
         "clients.manage": "COMPANY",
         "costs.view": "COMPANY",
         // The places tasks happen at: whoever creates tasks sees and adds

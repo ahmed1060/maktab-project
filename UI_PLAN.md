@@ -794,7 +794,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      already there, #312; then a client with a tax position archived
      instead of deleted, with Delete permanently in the archive, #313;
      then the rules for reading the portal's file, with no screen yet,
-     #314.
+     #314; then saving it, with its permission and still no screen,
+     #315.
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
 Clients pages) are rebuilt in step 0, so they're fixed there.
@@ -6621,3 +6622,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
 - **2026-11-18:** The rules for reading the tax portal's file (#314;
   `CLIENT_PORTAL_PLAN.md` §4.1, §12 step 3a): what the upload's check
   screen and the server will share. No screen changes.
+- **2026-11-18:** Saving the tax portal's file (#315;
+  `CLIENT_PORTAL_PLAN.md` §4.1, §12 step 3b): the server's side of the
+  upload. The one thing on screen is its permission, Update clients'
+  tax position from the tax portal's file, in the role editor's Client
+  portal group, which the Super Admin ticks for a role.

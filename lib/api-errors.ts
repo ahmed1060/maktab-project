@@ -91,6 +91,16 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     CLIENT_NOT_FOUND: { status: 404, message: "Client not found." },
     TAX_CLIENT_REQUIRED: { status: 400, message: "Say which client's tax position to read." },
     TAX_VIEW_REQUIRED: { status: 403, message: "You may not see clients' tax position." },
+    // Saving the tax portal's file (CLIENT_PORTAL_PLAN.md §4.1; lib/services/tax-claim.service.ts).
+    TAX_MANAGE_REQUIRED: { status: 403, message: "You may not update clients' tax position." },
+    // Not what a check screen sends: a claim that isn't right or isn't open, a number twice, a day that isn't one.
+    TAX_UPLOAD_INVALID: { status: 400, message: "Something in this file's claims isn't right, so nothing was saved. Check the file again." },
+    TAX_TOO_MANY_CLAIMS: { status: 400, message: "A file can have up to 2,000 claims." },
+    TAX_DAY_AFTER_TODAY: { status: 400, message: "The day the figures are from can't be after today." },
+    // Another file was saved for the client since this one's check screen read its claims.
+    TAX_CLAIMS_CHANGED: { status: 409, message: "This client's claims changed since the file was checked. Check the file again." },
+    // The file's company is neither the client's name nor the one its last file named.
+    TAX_FILE_OTHER_COMPANY: { status: 409, message: "This file names another company. Confirm it's this client's file to save it." },
     // Archived rather than given new work (CLIENTS_PLAN.md §4.3).
     CLIENT_ARCHIVED: { status: 400, message: "This client is archived. Restore it on the Clients page first." },
     // Deleted for good from the archive only, and only where no task or

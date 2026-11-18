@@ -159,6 +159,9 @@ export const PERMISSIONS = {
     // from the portal's file. It's on the client's page, so it's useless
     // without seeing clients.
     "tax.view":                 { code: 68, module: "TAX_POSITION", scopes: COMPANY, implies: ["clients.view"] },
+    // Keeping it up to date: uploading the portal's file, which replaces the
+    // client's claims (§4.1). Useless without seeing what it replaces.
+    "tax.manage":               { code: 69, module: "TAX_POSITION", scopes: COMPANY, implies: ["tax.view"] },
 
     // --- Day off -----------------------------------------------------------
     "dayoff.view":              { code: 32, module: "DAY_OFF", scopes: TEAM_OR_COMPANY },
@@ -263,7 +266,8 @@ export type Permission = keyof typeof PERMISSIONS
  * §6.10, PR 283).
  *
  * Nor for tax.view (code 68, CLIENT_PORTAL_PLAN.md §9, PR 311): no role
- * already there holds it until its own migration gives it.
+ * already there holds it until its own migration gives it. Nor for
+ * tax.manage (code 69, PR 315), as for tax.view.
  */
 export const CATALOGUE_VERSION = 4
 
