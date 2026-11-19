@@ -55,8 +55,9 @@ const PASSWORD_REFUSALS = { token: "INVITATION_TOKEN_REQUIRED", short: "INVITATI
  * with.
  *
  * The account is held while it's set, so two at once set it once: the second
- * finds the link gone, and is told it doesn't work. The client is held too, as
- * archiving it holds it, so one archived meanwhile is refused.
+ * finds the link gone, and is told it doesn't work. Its client is held first,
+ * as archiving and deleting it hold it, so one archived meanwhile is refused,
+ * and one deleted meanwhile took the link with it.
  */
 export async function setInvitationPassword(body: unknown, now: Date = new Date()): Promise<{ email: string }> {
     const sent = sentPassword(body)
@@ -70,11 +71,16 @@ export async function setInvitationPassword(body: unknown, now: Date = new Date(
     const { AuditLogService } = await import("./audit-log.service")
     return prisma.$transaction(async tx => {
         // One query after another from here: a transaction has one connection.
+        // The client first, then its person, in the order deleting a client
+        // holds them (it holds the client, and its people go with it), so
+        // neither waits on the other (found by Codex on PR 324). Deleted
+        // meanwhile, its people went with it.
+        const client = await tx.$queryRaw<{ archivedAt: Date | null }[]>`SELECT "archivedAt" FROM "Client" WHERE id = ${account.client.id} FOR SHARE`
+        if (!client.length) throw new Error("INVITATION_UNKNOWN")
+        if (client[0].archivedAt) throw new Error("INVITATION_CLOSED")
         // Found by its link: one set meanwhile, or removed, has none now.
         const held = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "ClientAccount" WHERE "inviteTokenHash" = ${tokenHash} FOR UPDATE`
         if (!held.length) throw new Error("INVITATION_UNKNOWN")
-        const client = await tx.$queryRaw<{ archivedAt: Date | null }[]>`SELECT "archivedAt" FROM "Client" WHERE id = ${account.client.id} FOR SHARE`
-        if (!client.length || client[0].archivedAt) throw new Error("INVITATION_CLOSED")
 
         await tx.clientAccount.update({
             where: { id: held[0].id },

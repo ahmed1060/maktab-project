@@ -181,6 +181,15 @@ describe("the page", () => {
         expect(page()).toContain("window.removeEventListener('hashchange', another)")
     })
 
+    it("shows only the answer for the link it has now, and sets the password for the link the form was read with", () => {
+        // Found by Codex on PR 324: the first link's answer, arriving after the
+        // second's, showed the first person's email over the second's link.
+        expect(page()).toContain("const mine = ++generation.current")
+        expect(page().match(/if \(mine !== generation\.current\) return/g)?.length).toBeGreaterThanOrEqual(3)
+        expect(page()).toMatch(/at: 'form'; view: InvitationView; token: string/)
+        expect(page()).toMatch(/send\('\/api\/invitation\/password', \{ token: stage\.token,/)
+    })
+
     it("asks for the password twice, each a new password the browser may offer to make", () => {
         expect(page().match(/<PasswordInput/g)).toHaveLength(2)
         expect(page().match(/autoComplete="new-password"/g)).toHaveLength(2)

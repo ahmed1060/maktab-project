@@ -231,6 +231,34 @@ describe.skipIf(!ADMIN_URL)("setting a password from an invitation, in Postgres"
             expect((await row(id)).password).toBeNull()
         })
 
+        it("is refused, and keeps no one waiting, where the client is deleted while the password is being set", async () => {
+            // Found by Codex on PR 324: the account was held before its client,
+            // and deleting a client holds the client, then its people go with
+            // it, so each waited on the other and Postgres ended one.
+            await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES ('going', 'c1', 'Going', 'G', '0112', 'Giza', now())`)
+            const { id, token } = await invited("going")
+            const other = new Client({ connectionString: testUrl })
+            await other.connect()
+            try {
+                await other.query("BEGIN")
+                await other.query(`SELECT id FROM "Client" WHERE id = 'going' FOR UPDATE`)
+                const setting = why(set(token))
+                for (let i = 0; i < 100; i += 1) {
+                    const waiting = await db.query(`SELECT count(*)::int AS n FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'`)
+                    if (waiting.rows[0].n > 0) break
+                    await new Promise(resolve => setTimeout(resolve, 50))
+                }
+                // Its people go with it, as ClientService.delete deletes it.
+                const deleted = await other.query(`DELETE FROM "Client" WHERE id = 'going'`).then(() => "deleted", (e: Error) => e.message)
+                await other.query("COMMIT").catch(() => other.query("ROLLBACK"))
+                expect(deleted).toBe("deleted")
+                expect(await setting).toBe("INVITATION_UNKNOWN")
+            } finally {
+                await other.end()
+            }
+            expect((await db.query(`SELECT count(*)::int AS n FROM "ClientAccount" WHERE id = $1`, [id])).rows[0].n).toBe(0)
+        }, 15_000)
+
         it("set twice at the same moment, sets it once: the other is told the link doesn't work", async () => {
             const { id, token } = await invited("noor")
             const both = await Promise.all([why(set(token, "first-password-1")), why(set(token, "second-password-2"))])

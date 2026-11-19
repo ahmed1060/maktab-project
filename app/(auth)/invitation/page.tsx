@@ -45,7 +45,7 @@ const PASSWORD_WORDS: Record<string, [NewPasswordField, TranslationKey]> = {
 
 type Stage =
     | { at: 'opening' }
-    | { at: 'form'; view: InvitationView }
+    | { at: 'form'; view: InvitationView; token: string }
     | { at: 'done'; email: string }
     | { at: 'unusable'; why: Unusable }
     | { at: 'failed' }
@@ -68,6 +68,8 @@ export default function InvitationPage() {
     const { t } = useLanguage()
     const token = useRef('')
     const opened = useRef(false)
+    /** Which reading of a link is the page's now: another link opened in its place makes the one before old. */
+    const generation = useRef(0)
     const form = useRef<HTMLFormElement>(null)
     const [stage, setStage] = useState<Stage>({ at: 'opening' })
     const [password, setPassword] = useState('')
@@ -86,15 +88,21 @@ export default function InvitationPage() {
     }
 
     const open = async () => {
+        const mine = ++generation.current
         // Read once, then out of the address bar.
-        token.current = token.current || window.location.hash.slice(1)
+        const sent = token.current = token.current || window.location.hash.slice(1)
         if (window.location.hash) window.history.replaceState(null, '', window.location.pathname + window.location.search)
         try {
-            const answer = await send('/api/invitation', { token: token.current })
-            if (answer.ok) setStage({ at: 'form', view: answer.body.data as InvitationView })
+            const answer = await send('/api/invitation', { token: sent })
+            // Another link opened meanwhile: its answer is the one shown
+            // (found by Codex on PR 324).
+            if (mine !== generation.current) return
+            // The form goes with the link it was read for, and sets that one's password.
+            if (answer.ok) setStage({ at: 'form', view: answer.body.data as InvitationView, token: sent })
             else if (answer.code && UNUSABLE[answer.code]) setStage({ at: 'unusable', why: UNUSABLE[answer.code] })
             else { setStage({ at: 'failed' }); refused(answer) }
         } catch (e) {
+            if (mine !== generation.current) return
             void reportClientError(e, '/invitation')
             setError(t('error_generic'))
             setStage({ at: 'failed' })
@@ -127,13 +135,17 @@ export default function InvitationPage() {
 
     const submit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
+        if (stage.at !== 'form') return
+        const mine = generation.current
         setError('')
         const wrong = newPasswordErrors({ newPassword: password, confirmPassword })
         setErrors(wrong)
         if (Object.keys(wrong).length) return focusFirstWrong(form.current)
         setBusy(true)
         try {
-            const answer = await send('/api/invitation/password', { token: token.current, password, confirmPassword })
+            const answer = await send('/api/invitation/password', { token: stage.token, password, confirmPassword })
+            // Another link opened meanwhile: the page is that one's now.
+            if (mine !== generation.current) return
             if (answer.ok) return setStage({ at: 'done', email: (answer.body.data as { email: string }).email })
             const field = answer.code && PASSWORD_WORDS[answer.code]
             if (field) {
@@ -142,6 +154,7 @@ export default function InvitationPage() {
             }
             refused(answer)
         } catch (err) {
+            if (mine !== generation.current) return
             void reportClientError(err, '/invitation')
             setError(t('error_generic'))
         } finally {
