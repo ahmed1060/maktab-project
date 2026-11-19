@@ -98,11 +98,11 @@ describe("How to get the portal's file", () => {
         const css = readFileSync("components/ui/ui.css", "utf8")
         const phone = /@media \(max-width: 767px\) \{\s*\.ui-text-link\.ui-tax-how \{([^}]*)\}\s*\.ui-text-link\.ui-tax-how::after \{([^}]*)\}\s*\}/.exec(css)
         // Every link in a line of text is, since the small fixes after the client portal's step 6a
-        // (lib/phone-taps.test.ts): what's tapped is laid over its line, as wide as the link.
+        // (lib/phone-taps.test.ts): what's tapped is laid over its line, as wide as the link, and at least 44px (PR 327).
         const every = /@media \(max-width: 767px\) \{\s*\.ui-text-link \{([^}]*)\}\s*\.ui-text-link::after \{([^}]*)\}\s*\}/.exec(css)
         expect(every?.[1]).toContain("position: relative;")
         expect(every?.[2]).toContain("position: absolute;")
-        expect(every?.[2]).toContain("inset-inline: 0;")
+        expect(every?.[2]).toContain("inset-inline: min(0px, calc(50% - 22px));")
         // Over the tiles under the section's line, which are placed too and would take its last 2px.
         expect(phone?.[1]).toContain("z-index: 1;")
         // This one 20px above its middle and 24px below, which is 44px. A little low, so that on the section's first

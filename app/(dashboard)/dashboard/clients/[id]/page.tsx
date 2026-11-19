@@ -167,7 +167,8 @@ export default function ClientPage() {
                 >
                     <Details items={[
                         { label: t('client_owner_name'), value: client.ownerName },
-                        { label: t('client_mobile_number'), value: <a href={`tel:${client.mobileNumber.replace(/[^0-9+]/g, '')}`}><bdi>{client.mobileNumber}</bdi></a> },
+                        // A link in a line of text, so it's 44px under a finger on a phone (DESIGN.md §5.2, PR 327).
+                        { label: t('client_mobile_number'), value: <a className="ui-text-link" href={`tel:${client.mobileNumber.replace(/[^0-9+]/g, '')}`}><bdi>{client.mobileNumber}</bdi></a> },
                         { label: t('client_hq'), value: hqOf(client) },
                     ]} />
                 </Card>
