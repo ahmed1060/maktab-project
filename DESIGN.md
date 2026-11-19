@@ -1674,6 +1674,49 @@ These are built once, in the building-blocks PR, and every page uses them
   - What the tax portal and the button's panel call something, such as
     their buttons, is written as they have it, in Arabic and in bold,
     in either language.
+- **People who can sign in:** a section on a client's page, for whoever
+  may manage them, where the company's package has the client portal
+  (`CLIENT_PORTAL_PLAN.md` §5.2). It comes right after Tax position, as
+  they're who it's for.
+  - A line under its title says who they are: from the client, and they
+    see its tax position only.
+  - Add person is a secondary button on the end of its heading. An
+    archived client hasn't it: its people can't sign in (§5.3), and are
+    still listed, to be removed.
+  - Each person is a row: their initials, their name, and their email
+    under it, left to right. At the row's end, when they last signed in;
+    "Hasn't signed in yet" once their password is set; or, while they're
+    invited, an Invited badge in the waiting tone with the day they were
+    invited. Then a row menu: Resend invitation, for someone invited, and
+    Remove.
+  - With no one yet, the list's place is an empty state saying no one
+    from the client can sign in yet. When it didn't load, it says so,
+    with Try again (A list that didn't load).
+  - **Add person** is a dialog (Dialog), the client's name under its
+    title:
+    - Name, then Email, left to right, with a line under it: an email no
+      one else in Nizmo uses.
+    - Language, two choices, Arabic first and chosen, as the office
+      knows its client. A line under them: the invitation is
+      sent in it, and the page that sets the password opens in it.
+    - A line above the buttons: an invitation is emailed with a link to
+      set a password, which works for 72 hours, and the account shows
+      this client's tax position only.
+    - Send invitation is its main button, with Cancel. A mistake that's
+      one field's is under that field, an email someone has already
+      under Email; anything else is said above the buttons.
+    - Sent, the dialog closes, the person is in the list, and a toast
+      says the invitation was sent, naming the email.
+  - **Resend invitation** asks nothing first: it sends a new link and
+    the earlier one stops working, as a toast says. What refuses it, such
+    as one sent less than 2 minutes before, is said in a toast, in the
+    page's language.
+  - **Remove** asks first (ConfirmDialog, danger): they can't sign in any
+    more, and one signed in is signed out at once. Removed, a toast says
+    so.
+  - The code a high-risk action asks for, where the company asks for
+    it, comes before a send or a removal (§5.5, Dialog); the dialog
+    doesn't announce it, as a company may not ask for it.
 - **Contact on WhatsApp:** a dialog for writing to someone on WhatsApp,
   such as a client's accountant. Who it reaches comes first, in a box
   with a `--rule` edge: their initials in a circle, their name, and what
@@ -2710,3 +2753,8 @@ changed:
   whoever sent it, one Set password button, the link written out to
   copy, and the default brand colour written into it
   (`CLIENT_PORTAL_PLAN.md` §5.2).
+- **2026-11-19:** People who can sign in (§5.5): a section on a
+  client's page after Tax position, each person with when they last
+  signed in or an Invited badge, Add person in a dialog with the
+  language they're invited in, Resend invitation and Remove from the
+  row's menu (`CLIENT_PORTAL_PLAN.md` §5.2).

@@ -89,7 +89,7 @@ describe("the page around the document (app/(legal)/layout.tsx)", () => {
 
 describe("the documents (app/(legal)/privacy and terms)", () => {
     it("are titled as a page title is, in sentence case, with when they were last updated under it", () => {
-        expect(page(PrivacyPolicy)).toContain('<h1 class="ui-page-title">Privacy policy</h1><p class="ui-page-subtitle">Last updated 17 September 2026</p><p class="ui-legal-lede">')
+        expect(page(PrivacyPolicy)).toContain('<h1 class="ui-page-title">Privacy policy</h1><p class="ui-page-subtitle">Last updated 19 November 2026</p><p class="ui-legal-lede">')
         expect(page(TermsOfService)).toContain('<h1 class="ui-page-title">Terms of service</h1><p class="ui-page-subtitle">Last updated 17 September 2026</p><p class="ui-legal-lede">')
     })
 

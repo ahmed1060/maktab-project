@@ -20,7 +20,7 @@ export default function PrivacyPolicy() {
     return (
         <>
             <h1 className="ui-page-title">Privacy policy</h1>
-            <p className="ui-page-subtitle">Last updated 17 September 2026</p>
+            <p className="ui-page-subtitle">Last updated 19 November 2026</p>
 
             <p className="ui-legal-lede">
                 Nizmo is workplace software sold to employers. Most of the personal data in it is put
@@ -75,6 +75,15 @@ export default function PrivacyPolicy() {
                 <dd>
                     When you check in on a task, the system records your position at that moment. See
                     the section below.
+                </dd>
+
+                <dt>A client&rsquo;s people</dt>
+                <dd>
+                    Where a company invites people from one of its clients to sign in, each person&rsquo;s
+                    name and email address, the language their invitation is sent in, and when they last
+                    signed in. Their password is stored only as a hash. They are emailed an invitation
+                    with a link to set it, and once signed in they see that client&rsquo;s tax position
+                    only. The company removes them when they no longer need it.
                 </dd>
 
                 <dt>What was done, and by whom</dt>
@@ -192,7 +201,8 @@ export default function PrivacyPolicy() {
 
                 <dt>Gmail</dt>
                 <dd>
-                    Sending sign-in codes, password resets and notifications to your email address.
+                    Sending sign-in codes, password resets and notifications to your email address,
+                    and invitations to a client&rsquo;s people.
                 </dd>
             </dl>
             <p>

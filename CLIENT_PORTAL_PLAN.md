@@ -1034,9 +1034,13 @@ width:
        from, in the language the person is invited in (§5.2), which the
        account keeps; and Resend invitation, which makes a new link and
        stops the old one. #325.
-   - **6c. People who can sign in,** on a client's page, with Add
-     person's language, and the privacy policy's line (§5.5). Delete permanently (§3.6) then says
-     how many of a client's people go with it.
+   - **6c. People who can sign in,** on a client's page, in two:
+     - **6c-1 (#326).** The section, after Tax position, with Add person
+       and the language they're invited in, Resend invitation and Remove;
+       and the privacy policy's line (§5.5), which comes with the first
+       screen that sends an invitation.
+     - **6c-2.** Delete permanently (§3.6) says how many of a client's
+       people go with it.
    - **6d.** `client_accounts.manage` for the built-in Admin of the
      companies already there, from a migration, once #322's release,
      whose role editor knows it, is live.
@@ -1519,3 +1523,17 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   minutes after the link before it was made, and the two routes that
   send it stop within a minute. Two sent at once that both failed could
   otherwise put back a link neither sent.
+- **2026-11-19:** Step 6c split in two: 6c-1, People who can sign in on
+  a client's page with Add person, Resend invitation, Remove and the
+  privacy policy's line; 6c-2, Delete permanently saying how many of a
+  client's people go with it.
+- **2026-11-19:** 6c-1 built (#326). The section shows for whoever has
+  Manage who signs in for a client where the package has the client
+  portal, the Super Admin included. My choices, each easy to change:
+  what the server refuses is said in the page's language, as its own
+  words are English; an invitation that can't be sent says no one was
+  added, and a Resend that can't be sent says the link sent before still
+  works; a person sent 5 invitations in the hour is told how long until
+  the next can go; after any refusal the list is read again, as what
+  refused it may be what changed. The privacy policy, with its new line,
+  is dated 19 November 2026.
