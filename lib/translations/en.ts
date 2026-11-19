@@ -22,6 +22,7 @@ export const en = {
         error_too_many_attempts: "Too many wrong tries for this account. It unlocks on its own within 15 minutes, or your company's Admin can unlock it now.",
         error_subscription_expired: "This company's subscription has expired. Please contact your administrator.",
         error_account_closed: "This account is closed. Please contact your administrator.",
+        error_client_portal_closed: "The office's portal isn't open now. Please contact the office.",
         error_access_denied: "Access denied.",
         stay_signed_in: "Stay signed in",
         // The sign-in screen's own (DESIGN.md §5.5, Sign-in).
@@ -410,6 +411,8 @@ export const en = {
         audit_action_REMOVE_CLIENT_ACCOUNT: "Removed a person from a client's portal",
         audit_action_ACCEPT_CLIENT_INVITATION: "Set a password from an invitation",
         audit_action_RESEND_CLIENT_INVITATION: "Sent a person's invitation again",
+        audit_action_CLIENT_SIGN_IN: "Signed in to a client's portal",
+        audit_action_CLIENT_SIGN_IN_FAILURE: "Failed sign-in to a client's portal",
         audit_action_ADD_CLIENT_ACCOUNT_NOT_SENT: "Couldn't send a person's invitation, so they weren't added",
         audit_action_RESEND_CLIENT_INVITATION_NOT_SENT: "Couldn't send a person's invitation again, so the link sent before still works",
         audit_action_SET_LOCATION_HQ: "Made location the HQ",
@@ -3647,6 +3650,8 @@ export const en = {
         charges_loading: "Loading charges…",
         charges_section: "Charges",
         tax_position: "Tax position",
+        // The client's area's first page (CLIENT_PORTAL_PLAN.md §5.3, PR 332), until the tax position is there (step 8).
+        portal_tax_soon: "It will be shown here soon.",
         tax_position_loading: "Loading the tax position…",
         tax_position_failed: "The tax position didn't load.",
         tax_position_none: "No tax position yet",

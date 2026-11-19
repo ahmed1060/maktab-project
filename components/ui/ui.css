@@ -1738,6 +1738,14 @@
   font-size: var(--text-md);
   line-height: var(--leading-md);
 }
+/* What the page is about, above its title: the client's name on the client's
+   area's pages (§5.5, A client's tax position). */
+.ui-page-overline {
+  margin: 0 0 var(--space-1);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
 .ui-page-actions {
   display: flex;
   flex-wrap: wrap;
@@ -6066,6 +6074,28 @@ a.ui-notice:focus-visible {
   display: flex;
   flex-direction: column;
   min-block-size: 100vh;
+}
+
+/* The client's area (§5.5; CLIENT_PORTAL_PLAN.md §6, PR 332): none of the
+   app's frame, its pages up to 1180px wide and centred, on the page colour,
+   with the page-edge spacing (§4.1). Its top bar comes with step 7d. */
+.ui-portal {
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
+  background: var(--page);
+  color: var(--ink);
+}
+.ui-portal-page {
+  box-sizing: border-box;
+  inline-size: 100%;
+  max-inline-size: 1180px;
+  margin-inline: auto;
+  padding: var(--space-8);
+}
+@media (max-width: 1023px) {
+  .ui-portal-page {
+    padding: var(--space-4);
+  }
 }
 
 /* The page area (§5.1): the page-edge spacing (§4.1), and 8px under the top
