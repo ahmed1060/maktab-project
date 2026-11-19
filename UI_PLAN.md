@@ -6695,3 +6695,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   confirmation's prompt (`ROLES_PLAN.md` §6.15) says This is a high-risk
   action, in place of This action moves money or cannot be undone, which
   isn't so of every high-risk action.
+- **2026-11-19:** Two things too small for a phone (#323; `DESIGN.md`
+  §5.2, §5.6, §9), found while #320 was built. A section's heading puts
+  its link or button on its own line under the title where the two
+  don't fit side by side, so Upload from the tax portal stays inside a
+  360px phone in English. Every link in a line of text is 44px under a
+  finger on a phone, as How to get the portal's file was: Saved lists on
+  the cost names card and System settings on the high-risk card.

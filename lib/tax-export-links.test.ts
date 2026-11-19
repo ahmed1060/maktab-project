@@ -96,18 +96,21 @@ describe("How to get the portal's file", () => {
 
     it("is 44px under a finger on a phone, laid over its line so no line around it moves", () => {
         const css = readFileSync("components/ui/ui.css", "utf8")
-        const phone = /@media \(max-width: 767px\) \{\s*\.ui-tax-how \{([^}]*)\}\s*\.ui-tax-how::after \{([^}]*)\}\s*\}/.exec(css)
-        expect(phone?.[1]).toContain("position: relative;")
+        const phone = /@media \(max-width: 767px\) \{\s*\.ui-text-link\.ui-tax-how \{([^}]*)\}\s*\.ui-text-link\.ui-tax-how::after \{([^}]*)\}\s*\}/.exec(css)
+        // Every link in a line of text is, since the small fixes after the client portal's step 6a
+        // (lib/phone-taps.test.ts): what's tapped is laid over its line, as wide as the link.
+        const every = /@media \(max-width: 767px\) \{\s*\.ui-text-link \{([^}]*)\}\s*\.ui-text-link::after \{([^}]*)\}\s*\}/.exec(css)
+        expect(every?.[1]).toContain("position: relative;")
+        expect(every?.[2]).toContain("position: absolute;")
+        expect(every?.[2]).toContain("inset-inline: 0;")
         // Over the tiles under the section's line, which are placed too and would take its last 2px.
         expect(phone?.[1]).toContain("z-index: 1;")
-        // What's tapped: as wide as the link, 20px above its middle and 24px below, which is 44px. A little low, so
-        // that on the section's first line it stops short of the upload's button over it.
-        expect(phone?.[2]).toContain("position: absolute;")
-        expect(phone?.[2]).toContain("inset-inline: 0;")
+        // This one 20px above its middle and 24px below, which is 44px. A little low, so that on the section's first
+        // line it stops short of the upload's button over it.
         expect(phone?.[2]).toContain("inset-block: calc(50% - 20px) calc(50% - 24px);")
         // Nothing of it is in the line: no height, margin or display of its own. On a computer it's a link in a
         // line of text, and nothing more.
-        expect(`${phone?.[1]}${phone?.[2]}`).not.toMatch(/block-size|height|margin|display/)
+        expect(`${phone?.[1]}${phone?.[2]}${every?.[1]}${every?.[2]}`).not.toMatch(/block-size|height|margin|display/)
         expect(css.match(/\.ui-tax-how\b/g)).toHaveLength(2)
     })
 

@@ -2466,21 +2466,17 @@ a.ui-file-open:focus-visible,
 }
 /* How to get the portal's file (§5.5), the link to that page: at a line's end
    on a client's Tax position, and on a line of its own in the upload's
-   dialogs. On a phone it's 44px under a finger (§9): what's tapped is laid
-   over its line, so no line around it moves, whatever their height. It
-   reaches 20px above the link's middle and 24px below: a little low, so that
-   on the section's first line it stops short of the upload's button over it.
-   It's a layer up, as the tiles under that line are placed too, and would
-   take its last pixels. */
+   dialogs. On a phone it's 44px under a finger, as every link in a line of
+   text is (.ui-text-link), but a little low: 20px above its middle and 24px
+   below, so that on the section's first line it stops short of the upload's
+   button over it. It's a layer up, as the tiles under that line are placed
+   too, and would take its last pixels. Named with .ui-text-link, so it holds
+   over that rule, which comes later. */
 @media (max-width: 767px) {
-  .ui-tax-how {
-    position: relative;
+  .ui-text-link.ui-tax-how {
     z-index: 1;
   }
-  .ui-tax-how::after {
-    content: "";
-    position: absolute;
-    inset-inline: 0;
+  .ui-text-link.ui-tax-how::after {
     inset-block: calc(50% - 20px) calc(50% - 24px);
   }
 }
@@ -3465,8 +3461,14 @@ a.ui-file-open:focus-visible,
   gap: var(--space-3);
   min-width: 0;
 }
+/* Where the title's longest word and the action don't fit side by side, as
+   Upload from the tax portal on a 360px phone in English, the action goes on
+   its own line under the title, at the start (DESIGN.md §5.6, Section). The
+   title has no width of its own, so the line breaks only then: a long title
+   beside a short action still wraps beside it. */
 .ui-section-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
@@ -3481,6 +3483,7 @@ a.ui-file-open:focus-visible,
   gap: var(--space-2);
 }
 .ui-section-title {
+  flex: 1 1 0;
   margin: 0;
   font-size: var(--text-xl);
   line-height: var(--leading-xl);
@@ -3806,6 +3809,20 @@ a.ui-row:focus-visible {
   outline: 2px solid var(--brand-text);
   outline-offset: 2px;
   border-radius: 2px;
+}
+/* On a phone it's 44px under a finger (DESIGN.md §5.2, §9): what's tapped is
+   laid over its line, 22px above its middle and 22px below, so no line
+   around it moves, whatever their height. */
+@media (max-width: 767px) {
+  .ui-text-link {
+    position: relative;
+  }
+  .ui-text-link::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    inset-block: calc(50% - 22px);
+  }
 }
 .ui-item-link:hover {
   color: var(--brand-text);

@@ -554,7 +554,9 @@ These are built once, in the building-blocks PR, and every page uses them
   note, or How to get the portal's file (§5.5, A client's tax position,
   for the company's people): in `--brand-text` and underlined, so it's
   told from the words around it without its colour, and kept on one
-  line. Under the pointer its underline is 2px.
+  line. Under the pointer its underline is 2px. On a phone it's 44px
+  under a finger (§9): what's tapped is laid over its line, 22px above
+  its middle and 22px below, so no line around it moves.
 - **Busy and disabled states** follow the existing rules from the buttons
   work (global CSS, and a confirmation showing its work under way, §5.5,
   Dialog).
@@ -806,8 +808,12 @@ These are built once, in the building-blocks PR, and every page uses them
     rest closes up, and a section left with nothing in it goes too.
 - **Section:** a part of a page made of several panels, such as a row of
   tiles. Its heading is `--text-xl`, weight 500, above the panels, with an
-  optional quiet link on the end side, such as "View all". A part made of
-  one panel uses a card's title instead.
+  optional quiet link on the end side, such as "View all", or a button,
+  such as Upload from the tax portal. Where the heading's longest word
+  and its link or button don't fit side by side, as on a narrow phone,
+  the link or button goes on its own line under the heading, at the
+  start. A long heading beside a short link still wraps beside it, as
+  before. A part made of one panel uses a card's title instead.
 - **Rows:** a short list inside a panel, such as the five most overdue tasks
   on the dashboard.
   - Rows are split by hairlines. Each row is a link, with the title (and an
@@ -2629,3 +2635,10 @@ changed:
   words on the client's page and after the client's name in the Clients
   list, and that an archived client has none (`CLIENT_PORTAL_PLAN.md`
   §4.3).
+- **2026-11-19:** Two things too small for a phone (§9). A section's
+  link or button goes on its own line under the heading where the two
+  don't fit side by side: Upload from the tax portal reached past a
+  360px phone's edge in English. And every link in a line of text is
+  44px under a finger on a phone, as How to get the portal's file was:
+  Saved lists on the cost names card and System settings on the
+  high-risk card were as tall as their words.
