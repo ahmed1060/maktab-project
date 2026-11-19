@@ -7,6 +7,7 @@ import { forgotPasswordRequestSchema } from "@/lib/validations/forgot-password.s
 import { VerificationCodeService } from "@/lib/services/verification-code.service"
 import { AuditLogService } from "@/lib/services/audit-log.service"
 import { isNextInternalError } from "@/lib/next-internal-error"
+import { clientAccountToReset } from "@/lib/client-password-reset"
 
 // F-27, Phase 3.5: unauthenticated by necessity — this is how someone
 // gets back in when they don't have a password to prove. Unlike
@@ -33,18 +34,23 @@ export async function POST(req: NextRequest) {
         const superAdmin = await prisma.superAdmin.findUnique({ where: { email } })
         const user = superAdmin ? null : await prisma.user.findUnique({ where: { email } })
         const account = superAdmin || user
+        // One of a client's people (CLIENT_PORTAL_PLAN.md §5.3, PR 333): only
+        // where no person or Super Admin has the email, and only one whose
+        // password is set. Their code is the same, with no owner kept: it's
+        // found by its email, as every code is.
+        const clientAccount = account ? null : await clientAccountToReset(email)
 
         // F-27: the response is identical whether or not this email matched
         // anything — same anti-enumeration reasoning as F-17/F-18 already
         // applied to login itself. A different response here (or surfacing a
         // rate-limit specifically on the code-issuing step below) would let
         // this endpoint be used to find out which emails have real accounts.
-        if (account) {
+        if (account || clientAccount) {
             try {
                 await VerificationCodeService.issue(
-                    account.email,
+                    (account || clientAccount)!.email,
                     'PASSWORD_RESET',
-                    superAdmin ? { superAdminId: account.id } : { userId: account.id }
+                    superAdmin ? { superAdminId: superAdmin.id } : user ? { userId: user.id } : {}
                 )
             } catch (error: any) {
                 if (error.message !== 'RATE_LIMITED') throw error
