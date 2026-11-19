@@ -6742,3 +6742,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   office. They land in the client's area, at `/portal`: for now a page
   with the client's name above Tax position, a line saying it will be
   shown there soon, and Sign out. Its top bar is 7d.
+- **2026-11-19:** Forgot your password works for a client's people too
+  (#333; `CLIENT_PORTAL_PLAN.md` §5.3, §12 step 7c). No screen changes:
+  the sign-in page's two reset steps already say the same whoever the
+  email is.
