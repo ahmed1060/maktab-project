@@ -825,7 +825,8 @@ As built (step 8b, #337), the page's building blocks, from `DESIGN.md`
   and its amount, the note under the amount; the largest first, or in
   the parts' own order (how late keeps its order). The largest bar fills
   the space and the rest are to scale, at least 4px long; a part at
-  nothing has none. A name too long for its row is cut short at its own
+  nothing has none. Every row takes the list's columns, so every bar is
+  drawn against the same width, whatever its amount and note. A name too long for its row is cut short at its own
   end, so an item's Arabic name on the English page keeps its first
   words, and pointing at a row shows it whole with its amount.
 - **The share bar** (`ShareBar`): how much is paid in words, the two
@@ -1847,3 +1848,7 @@ with a tax position is archived, and deleted for good from the archive
   building blocks, bars by part, the share bar and the large figure in
   `--text-hero`, on the building blocks page (§6). An item's Arabic name
   too long for its row keeps its first words on the English page.
+- **2026-11-19:** 8b (#337), from Codex's review: bars by part's rows
+  take the list's columns, so every bar is drawn against the same width
+  and the bars are on one scale, whatever each row's amount and note
+  (§6).
