@@ -6,7 +6,7 @@
  * company keeps for their client (§5.1). It isn't one of the company's people
  * or a Super Admin, and nothing of the company's app takes its session: the
  * proxy sends it to the client's area, and every route refuses it but the
- * area's own. Nothing makes such a session yet; signing in as one is step 7b.
+ * area's own. Signing in as one makes it (step 7b, PR 332; lib/client-sign-in.ts).
  */
 
 /** What a client account's session says it is, where a person's says its role. No person has it. */

@@ -28,6 +28,8 @@ vi.mock("@/lib/prisma", () => ({
             update: async () => ({}),
         },
         systemSettings: { findUnique: async () => null },
+        // No client's people here: an email nobody has is looked for among them too (PR 332).
+        clientAccount: { findUnique: async () => null },
         // The account a username names, capitals aside (lib/sign-in-account.ts).
         $queryRaw: async (_sql: TemplateStringsArray, typed: string) => {
             const named = (a: any) => a.username?.toLowerCase() === String(typed).toLowerCase()

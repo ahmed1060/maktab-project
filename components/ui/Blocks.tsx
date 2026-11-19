@@ -16,13 +16,16 @@ import { cx } from './cx'
  * The page's title, an optional one-line subtitle, and its primary action on
  * the end side, with at most one secondary action beside it. A page that
  * belongs to another, such as a client's page under Clients, has a back link
- * to it above the title.
+ * to it above the title. A page about one thing of the viewer's, such as a
+ * client's tax position in the client's area, can name it above the title
+ * instead (DESIGN.md §5.5, A client's tax position).
  */
-export function PageHeader({ title, subtitle, action, back }: {
+export function PageHeader({ title, subtitle, action, back, overline }: {
     title: ReactNode
     subtitle?: ReactNode
     action?: ReactNode
     back?: { href: string; label: ReactNode }
+    overline?: ReactNode
 }) {
     return (
         <header className="ui-page-header">
@@ -33,6 +36,7 @@ export function PageHeader({ title, subtitle, action, back }: {
                         {back.label}
                     </Link>
                 )}
+                {overline && <p className="ui-page-overline">{overline}</p>}
                 <h1 className="ui-page-title">{title}</h1>
                 {subtitle && <p className="ui-page-subtitle">{subtitle}</p>}
             </div>

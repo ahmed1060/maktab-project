@@ -15,6 +15,8 @@ import { headers } from "next/headers"
 import { RateLimiter, getClientIp } from "./api-utils"
 import { countSignIn, forgetSignIn, giveBackSignIn, holdMessage, lockKeyFor, markWrongSignIn, type Counted } from "./sign-in-lock"
 import { signInWhere } from "./sign-in-account"
+import { isClientAccount } from "./client-session"
+import { CLIENT_PORTAL_CLOSED, CLIENT_SIGN_IN, clientAccountUser, clientPortalOpen, clientSessionStands, clientToken } from "./client-sign-in"
 import { isKept } from "./session-kept"
 import { MfaService } from "./services/mfa.service"
 import { VerificationCodeService } from "./services/verification-code.service"
@@ -177,6 +179,14 @@ export const authOptions: NextAuthOptions = {
                             },
                         }
                     })
+                    // One of a client's people, by their email (CLIENT_PORTAL_PLAN.md
+                    // §5.3, PR 332): looked for only where no person or Super
+                    // Admin has it, as one email is one account across the
+                    // three (§5.1).
+                    const clientAccount = superAdmin || user || !where.clientAccount ? null : await prisma.clientAccount.findUnique({
+                        where: where.clientAccount,
+                        select: CLIENT_SIGN_IN,
+                    })
 
                     // Five wrong passwords or codes in a row pause the account for
                     // 30 seconds and ten lock it for fifteen minutes, wherever
@@ -187,13 +197,15 @@ export const authOptions: NextAuthOptions = {
                     // password was right; a sign-in that succeeds ends the run.
                     // An email nobody has is counted alike, so a lock says
                     // nothing of who's registered (F-17).
-                    const key = lockKeyFor(superAdmin || user, credentials.email)
+                    const key = lockKeyFor(superAdmin || user || clientAccount, credentials.email)
                     const tried = await countSignIn(key)
                     if (tried.kind !== 'counted') throw new Error(holdMessage(tried))
                     // Counted: only now is there anything to give back.
                     counted = tried
 
-                    const passwordHash = superAdmin?.password || user?.password || DUMMY_PASSWORD_HASH
+                    // Someone invited who hasn't set a password has none, and is
+                    // refused as a wrong password is (§5.3).
+                    const passwordHash = superAdmin?.password || user?.password || clientAccount?.password || DUMMY_PASSWORD_HASH
                     const isValid = await bcrypt.compare(credentials.password, passwordHash)
 
                     if (!isValid) {
@@ -204,6 +216,13 @@ export const authOptions: NextAuthOptions = {
                                 superAdminId: superAdmin ? superAdmin.id : null,
                                 // The account's email, whichever was typed.
                                 details: { email: (superAdmin || user)!.email, reason: 'INVALID_PASSWORD', ip }
+                            })
+                        } else if (clientAccount) {
+                            // Under its client, as adding them is (PR 322): it's
+                            // no one of the company's people or a Super Admin.
+                            const { AuditLogService } = await import("./services/audit-log.service")
+                            await AuditLogService.log('CLIENT_SIGN_IN_FAILURE', 'VENDOR', clientAccount.clientId, {
+                                details: { person: clientAccount.name, email: clientAccount.email, reason: 'INVALID_PASSWORD', ip }
                             })
                         }
                         // F-18: no audit row for an unknown email — that was one
@@ -265,9 +284,31 @@ export const authOptions: NextAuthOptions = {
                         }
                     }
 
-                    // user is guaranteed set here: isValid was only true because either
-                    // superAdmin or user's real hash matched, and the superAdmin branch
-                    // above already returned.
+                    // One of a client's people (§5.3): refused where the office's
+                    // portal isn't open to their client, as the invitation's page
+                    // is; the try is given back, as below.
+                    if (clientAccount) {
+                        if (credentials.companyId && credentials.companyId !== clientAccount.companyId) {
+                            throw new Error('This user does not belong to the selected company.')
+                        }
+                        if (!clientPortalOpen(clientAccount)) throw new Error(CLIENT_PORTAL_CLOSED)
+
+                        // Shown on People who can sign in (§5.2).
+                        try {
+                            await prisma.clientAccount.update({ where: { id: clientAccount.id }, data: { lastSignInAt: new Date() } })
+                        } catch (e) { console.error('[AUTH_CLIENT_SIGN_IN_UPDATE_FAIL]', e) }
+
+                        await forget()
+                        const { AuditLogService } = await import("./services/audit-log.service")
+                        await AuditLogService.log('CLIENT_SIGN_IN', 'VENDOR', clientAccount.clientId, {
+                            details: { person: clientAccount.name, email: clientAccount.email }
+                        })
+                        return clientAccountUser(clientAccount, remember) as any
+                    }
+
+                    // user is guaranteed set here: isValid was only true because
+                    // superAdmin's, user's or clientAccount's real hash matched,
+                    // and the branches above already returned.
                     const validatedUser = user!
 
                     // Verify Company (If selected)
@@ -409,6 +450,9 @@ export const authOptions: NextAuthOptions = {
                 session.user.picture = avatar
                 session.user.companyId = token.companyId as string | null
                 session.user.companyName = token.companyName as string | null
+                // One of a client's people's (CLIENT_PORTAL_PLAN.md §5.3): their client.
+                session.user.clientId = token.clientId ?? null
+                session.user.clientName = token.clientName ?? null
                 session.user.username = token.username as string
                 session.user.language = token.language as string
                 session.user.theme = token.theme as string | undefined
@@ -452,8 +496,13 @@ export const authOptions: NextAuthOptions = {
             return session
         },
         async jwt({ token, user, trigger, session }) {
-            // Initial sign in
-            if (user) {
+            // One of a client's people signing in (CLIENT_PORTAL_PLAN.md §5.3,
+            // PR 332): their client and company, and nothing of a person's.
+            if (user && isClientAccount(user as any)) {
+                Object.assign(token, clientToken(user as any), { sid: uuidv4() })
+                if ('remember' in user) token.remember = (user as any).remember
+            } else if (user) {
+                // Initial sign in
                 token.role = user.role
                 token.firstName = user.firstName
                 token.lastName = user.lastName
@@ -554,7 +603,8 @@ export const authOptions: NextAuthOptions = {
             // And one read against an older catalogue (CATALOGUE_VERSION) may
             // lack permissions this release knows, though its role version
             // matches: reloaded once, on its first request here.
-            if (token.sub && !user && token.role !== 'SUPER_ADMIN' && (token.grants === undefined || token.catalogue !== CATALOGUE_VERSION)) {
+            // A client account holds none: it isn't one of the company's people.
+            if (token.sub && !user && token.role !== 'SUPER_ADMIN' && !isClientAccount(token) && (token.grants === undefined || token.catalogue !== CATALOGUE_VERSION)) {
                 try {
                     Object.assign(token, await RoleService.forToken(token.sub as string), { catalogue: CATALOGUE_VERSION })
                 } catch (e) {
@@ -563,7 +613,24 @@ export const authOptions: NextAuthOptions = {
                 }
             }
 
-            if (token.sub && !user) {
+            // A client account's session has its own check, on the same
+            // minute (CLIENT_PORTAL_PLAN.md §5.3, PR 332): it ends where the
+            // account is removed, the office's portal has closed to its
+            // client, or its sessions were ended, and where the check
+            // can't be made, as below.
+            if (token.sub && !user && isClientAccount(token) && Date.now() - (token.checkedAt || 0) > 60_000) {
+                try {
+                    if (!(await clientSessionStands(token))) {
+                        console.log(`[AUTH] REVOKING session for client account ${token.sub}`)
+                        return {} as any
+                    }
+                } catch (e) {
+                    console.error("[AUTH] Client account check failed — revoking session", e)
+                    return {} as any
+                }
+            }
+
+            if (token.sub && !user && !isClientAccount(token)) {
                 const lastChecked = token.checkedAt || 0
                 const checkIntervalMs = 60_000
 
@@ -827,7 +894,8 @@ export const authOptions: NextAuthOptions = {
         // reports are refused after, which left the person online for 32
         // minutes (Codex on #262). Never in the way of signing out.
         async signOut({ token }) {
-            if (!token?.sub || typeof token.sid !== 'string' || !token.sid || token.role === 'SUPER_ADMIN') return
+            // A client account has no tabs of a person's (PR 332).
+            if (!token?.sub || typeof token.sid !== 'string' || !token.sid || token.role === 'SUPER_ADMIN' || isClientAccount(token)) return
             try {
                 const { UserService } = await import("@/lib/services/user.service")
                 await UserService.closeSessionTabs(token.sub, token.sid)

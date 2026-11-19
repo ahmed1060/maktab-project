@@ -18,6 +18,8 @@ export function signInErrorKey(error: string): MessageKey {
     if (error.includes("subscription has expired")) return "error_subscription_expired"
     if (error.includes("account is closed")) return "error_account_closed"
     if (error.includes("This user does not belong")) return "error_access_denied"
+    // One of a client's people, where the office's portal isn't open to their client (CLIENT_PORTAL_PLAN.md §5.3, PR 332).
+    if (error === "CLIENT_PORTAL_CLOSED") return "error_client_portal_closed"
     return "error_invalid_credentials"
 }
 

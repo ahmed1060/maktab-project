@@ -93,8 +93,9 @@ export type PortalCompany = {
  * Whether the office's portal is open to its client's people (§5.3): the
  * client in use, and the company's package with the client portal, its
  * subscription not ended and the company not barred. A company with no
- * package hasn't the portal (§2). The same rules sign-in will hold them to
- * (step 7).
+ * package hasn't the portal (§2). Sign-in holds them to the same rule, and
+ * so does their session's check each minute (step 7b, PR 332;
+ * lib/client-sign-in.ts).
  */
 export function portalOpen(client: { archivedAt: Date | null }, company: PortalCompany, now: Date = new Date()): boolean {
     if (client.archivedAt || company.isBanned) return false

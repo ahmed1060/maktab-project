@@ -30,8 +30,8 @@ invitation (6b-2) are #325. People who can sign in on a client's page
 (6c) are #326 and #329, and `client_accounts.manage` for the companies
 already there (6d) is #330. Signing in as a client account (step 7) is
 built in four, and the first, keeping a client account out of the
-company's app (7a), is #331. The rest is built in the small PRs of §12,
-each its own PR.
+company's app (7a), is #331, and signing in finding a client account
+(7b) is #332. The rest is built in the small PRs of §12, each its own PR.
 
 ---
 
@@ -647,6 +647,44 @@ calls the routes yet: the section on a client's page is step 6c.
   in four (§12), the guard that keeps a client account out of the
   company's app first.
 
+As built (step 7b, #332), with the client's area a page saying the tax
+position comes there next:
+
+- **Found by its email,** on the sign-in page's Email or username,
+  capitals and spaces at its ends aside, as it's kept (§5.1). A username
+  is only ever one of the company's people's.
+- **The same lock** after too many wrong passwords, counted on the
+  account (`lib/sign-in-lock.ts`). Someone invited who hasn't set a
+  password yet is refused as a wrong password is, and counted alike: the
+  invitation's link is how a password is set.
+- **Refused once the password is right,** where the office's portal isn't
+  open to its client's people (`portalOpen`, as the invitation's page is
+  held to, #324): the company's package hasn't the client portal, or it
+  has no package; its subscription has ended; the company is barred; or
+  the client is archived. The sign-in page says the office's portal isn't
+  open now, and to contact the office. The try is given back, as for one
+  of the company's people turned away with the right password.
+- **Removed,** an account is no one's, and its email is refused as one
+  nobody has.
+- **Signed in:** when is kept as the account's last sign-in, shown on
+  People who can sign in. The session says it's a client account's, for
+  its client and company, with the person's name, email and language; it
+  holds no permissions, and two-factor isn't asked (§13).
+- **An open session ends** within a minute (the check a person's session
+  has) where the portal closes for any reason above, the account is
+  removed, or its sessions are ended, as a new password from Forgot
+  password will end them (7c). A check that fails ends it, as for a
+  person.
+- **The audit log** has each sign-in, and each wrong password, under the
+  client, naming the person and email, as adding one does (#322). They're
+  in the Super Admin's audit log: a company's lists what its own people
+  did.
+- **The client's area** opens in the account's language, with the
+  client's name above Tax position, a line saying the tax position will
+  be shown there soon, and Sign out, in both languages, on phones as on
+  computers. The top bar and account menu are 7d; the page itself is
+  step 8.
+
 ### 5.5 The privacy policy (Decided, 2026-11-17)
 
 The privacy policy (`app/(legal)/privacy`) gets a line saying Nizmo also
@@ -1100,7 +1138,7 @@ width:
      page, with the same lock after too many wrong passwords, and lands
      in the client's area, on a page saying the tax position comes there
      next. Signing in is refused, and an open session ends, where §5.3
-     says, with its words; the account's last sign-in is kept.
+     says, with its words; the account's last sign-in is kept. #332.
    - **7c. Forgot password** for a client account, on the same page, as
      for the company's people.
    - **7d. The area's top bar and account menu** (`DESIGN.md` §5.5),
@@ -1627,3 +1665,13 @@ with a tax position is archived, and deleted for good from the archive
   finds a client account; 7c, Forgot password; 7d, the area's top bar
   and account menu. My choice, easy to change: the client's area is at
   `/portal`, and its routes under `/api/portal`.
+- **2026-11-19:** 7b (#332): signing in finds a client account, by its
+  email, with the same lock after wrong passwords, and lands in the
+  client's area, on a page saying the tax position will be shown there
+  soon, with Sign out (§5.3). Someone invited who hasn't set a password
+  is refused as a wrong password is. Once the password is right, signing
+  in is refused where the office's portal isn't open, with its words, and
+  an open session ends within a minute the same way, or once the account
+  is removed, as the invitation's page holds a barred company's portal
+  closed (#324). My choice, easy to change: each sign-in and wrong
+  password is in the audit log under the client, for the Super Admin.
