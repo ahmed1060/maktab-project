@@ -35,6 +35,7 @@ describe("permission codes", () => {
         "attendance.approve_missions": 67,
         "tax.view": 68,
         "tax.manage": 69,
+        "client_accounts.manage": 70,
     }
 
     it("have not changed", () => {

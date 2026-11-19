@@ -3,6 +3,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { prisma } from "@/lib/prisma"
 import { requestEmailCodeSchema } from "@/lib/validations/email-verification.schema"
 import { VerificationCodeService } from "@/lib/services/verification-code.service"
+import { clientAccountHasEmail } from "@/lib/account-email"
 
 // F-27: the merged email-verify/change flow (see the remediation log for
 // why these share one screen). Sends a code to the submitted email —
@@ -37,11 +38,13 @@ export const POST = withStandardHandler(async (req, session, json) => {
     // confirm time is the real backstop, this just avoids sending a code
     // to an address that could never actually be applied.
     if (isChange) {
-        const [existingUser, existingSuperAdmin] = await Promise.all([
+        const [existingUser, existingSuperAdmin, clientAccounts] = await Promise.all([
             prisma.user.findUnique({ where: { email } }),
             prisma.superAdmin.findUnique({ where: { email } }),
+            // One of a client's people has it, capitals aside (CLIENT_PORTAL_PLAN.md §5.1).
+            clientAccountHasEmail(email),
         ])
-        if ((existingUser && existingUser.id !== actorId) || (existingSuperAdmin && existingSuperAdmin.id !== actorId)) {
+        if ((existingUser && existingUser.id !== actorId) || (existingSuperAdmin && existingSuperAdmin.id !== actorId) || clientAccounts) {
             return ApiResponse.badRequest("Email already in use")
         }
     }

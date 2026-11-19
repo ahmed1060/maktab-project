@@ -327,6 +327,8 @@ model Company {
   /// Its clients' claims on the tax portal (CLIENT_PORTAL_PLAN.md §3).
   taxClaims TaxClaim[]
   clientTaxPositions ClientTaxPosition[]
+  /// Its clients' people who sign in to the client portal (CLIENT_PORTAL_PLAN.md §5).
+  clientAccounts ClientAccount[]
   locations            Location[]
   listEntries          ListEntry[]
   roles                Role[]                    @relation("CompanyRoles")
@@ -541,6 +543,8 @@ model User {
   createdClients             Client[]                @relation("ClientCreatedBy")
   /// The tax portal files they uploaded last for a client (CLIENT_PORTAL_PLAN.md §3.1).
   taxUploads ClientTaxPosition[] @relation("TaxPositionUploadedBy")
+  /// The clients' people they added to the client portal (CLIENT_PORTAL_PLAN.md §5.1).
+  addedClientAccounts ClientAccount[] @relation("ClientAccountAddedBy")
   createdLocations           Location[]              @relation("LocationCreatedBy")
   createdListEntries         ListEntry[]             @relation("ListEntryCreatedBy")
   dayOffCreditSnapshots      DayOffCreditSnapshot[]
@@ -1251,6 +1255,8 @@ model Client {
   /// (CLIENT_PORTAL_PLAN.md §3).
   taxClaims      TaxClaim[]
   taxPosition    ClientTaxPosition?
+  /// Its people who sign in to the client portal (CLIENT_PORTAL_PLAN.md §5).
+  accounts       ClientAccount[]
 
   @@unique([name, companyId])
   @@index([companyId])
@@ -3098,5 +3104,44 @@ model ClientTaxPosition {
   company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   uploadedBy     User?    @relation("TaxPositionUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
 
+  @@index([companyId])
+}
+
+/// One of a client's people who sign in to the client portal
+/// (CLIENT_PORTAL_PLAN.md §5.1): never one of the company's people, so
+/// never in Employees, payroll, attendance or anything else that lists them.
+/// A client can have several, each with a sign-in of their own.
+///
+/// The database also holds what the schema can't say: an account has a
+/// name; its email is trimmed and in small letters; it's active exactly when
+/// it has a password; and its email is nobody else's in Nizmo, a person's
+/// or a Super Admin's, capitals aside
+/// (20270106000000_client_accounts).
+model ClientAccount {
+  id             String    @id @default(uuid())
+  companyId      String
+  clientId       String
+  name           String
+  /// Trimmed and in small letters (lib/account-email.ts).
+  email          String    @unique
+  /// None until the invitation's password is set.
+  password       String?
+  invitedAt      DateTime  @default(now())
+  /// When its password was first set: invited until then, active after.
+  activatedAt    DateTime?
+  lastSignInAt   DateTime?
+  /// Who added it, and their name as it was that day. A Super Admin isn't
+  /// one of the company's people: their name alone is kept.
+  addedById      String?
+  addedByName    String?
+  /// Raised to end its open sessions, as a person's is.
+  sessionVersion Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  client         Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  addedBy        User?     @relation("ClientAccountAddedBy", fields: [addedById], references: [id], onDelete: SetNull)
+
+  @@index([clientId])
   @@index([companyId])
 }

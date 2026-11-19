@@ -79,6 +79,7 @@ const COMPANY = ["COMPANY"] as const
 const OWN = ["OWN"] as const
 const MOVES_MONEY = "Moves money"
 const CANNOT_BE_UNDONE = "Cannot be undone"
+const LETS_OUTSIDERS_IN = "Lets outsiders in"
 
 export const PERMISSIONS = {
     // --- Employees --------------------------------------------------------
@@ -162,6 +163,12 @@ export const PERMISSIONS = {
     // Keeping it up to date: uploading the portal's file, which replaces the
     // client's claims (§4.1). Useless without seeing what it replaces.
     "tax.manage":               { code: 69, module: "TAX_POSITION", scopes: COMPANY, implies: ["tax.view"] },
+    // A client's people who sign in to the client portal (§5.2): listing
+    // them, adding one and removing one. They're on the client's page, so
+    // it's useless without seeing clients. Adding one lets someone from
+    // outside the company in, so adding and removing ask for the step-up
+    // confirmation.
+    "client_accounts.manage":   { code: 70, module: "TAX_POSITION", scopes: COMPANY, implies: ["clients.view"], highRisk: LETS_OUTSIDERS_IN },
 
     // --- Day off -----------------------------------------------------------
     "dayoff.view":              { code: 32, module: "DAY_OFF", scopes: TEAM_OR_COMPANY },
@@ -267,7 +274,8 @@ export type Permission = keyof typeof PERMISSIONS
  *
  * Nor for tax.view (code 68, CLIENT_PORTAL_PLAN.md §9, PR 311): no role
  * already there holds it until its own migration gives it. Nor for
- * tax.manage (code 69, PR 315), as for tax.view.
+ * tax.manage (code 69, PR 315), as for tax.view, nor
+ * client_accounts.manage (code 70, PR 322).
  */
 export const CATALOGUE_VERSION = 4
 
