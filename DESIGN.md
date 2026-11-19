@@ -1823,6 +1823,35 @@ These are built once, in the building-blocks PR, and every page uses them
     that ran out while the form was open, or too many tries from one
     place, counted down, is said above the primary button, as on the
     sign-in screen, and screen readers hear it.
+- **The invitation's email** (`CLIENT_PORTAL_PLAN.md` §5.2): what one of
+  a client's people receives when the office adds them, or sends their
+  invitation again. It's in the language they're invited in, never both
+  in one email, and reads right to left in Arabic.
+  - It's from the office, by its name, at the address Nizmo sends its
+    email from. A reply goes to the person in the office who sent it;
+    sent by a Super Admin, it has no reply address. Its subject is
+    "Invitation to the tax position of <client>".
+  - At its top, the office's initial on a square, and its name. Then the
+    greeting, by the person's name; who invited them, for whom; and one
+    button, "Set password", at least 48px tall. Under it, in the muted
+    note size, the link itself, to copy into a browser where the button
+    doesn't open, written left to right in both languages (§3.3).
+  - Then: the link works once, for 72 hours, and the email they'll sign
+    in with. Sent again, a line on the light ground says an earlier link
+    no longer works. Then: if they weren't expecting it, it can be
+    ignored, as the account can't be used until a password is set; and
+    who to ask, the person who sent it, at the office, or the office
+    alone where a Super Admin sent it.
+  - Under a rule, on the light ground, in the small note size: sent
+    through Nizmo on behalf of the office, and the privacy policy's link.
+  - The names are as the company, the client and the person are named in
+    Nizmo, each kept whole in either language (§3.2).
+  - An email can't load the app's styles or follow a theme, so its
+    colours are written into it: the default brand colour's shades (§2.1)
+    for the button, the initial's square and the links, and the light
+    theme's neutrals (§2.2) for the rest. It's at most 600px wide, and
+    fits a phone. A plain-text copy goes with it, with the same words,
+    for a mail app that doesn't show HTML.
 - **The privacy policy and the terms of service:** two documents anyone
   can open, signed in or not, as Google does before it lets Nizmo use
   Drive. As with sign-in, there's no side bar and no top bar, and they're
@@ -2675,4 +2704,9 @@ changed:
   one of a client's people lands from their invitation, on the sign-in
   screen's frame: who invited them, for whom, their email, the password
   asked twice, Set password, and a link that can't be used saying why
+  (`CLIENT_PORTAL_PLAN.md` §5.2).
+- **2026-11-19:** The invitation's email (§5.5): in the language the
+  person is invited in alone, from the office by name, with a reply to
+  whoever sent it, one Set password button, the link written out to
+  copy, and the default brand colour written into it
   (`CLIENT_PORTAL_PLAN.md` §5.2).
