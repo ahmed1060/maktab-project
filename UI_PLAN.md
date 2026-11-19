@@ -6730,3 +6730,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   How to get the portal's file, on Tax position, looked small to that
   check but wasn't: it has been 44px under a finger since #323, by a tap
   area over the words that the check didn't measure.
+- **2026-11-19:** The companies already there get Manage who signs in
+  for a client (#330; `CLIENT_PORTAL_PLAN.md` §9, §12 step 6d). A
+  migration gives every company's built-in Admin role the permission, as
+  a new company's has had since #322, and its holders reload their
+  grants. Their Admins have People who can sign in on a client's page
+  once their company's package has the client portal. No screen changes.

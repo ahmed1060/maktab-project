@@ -813,7 +813,7 @@ sent: it's drawn from the claims as they are.
   the company in: it asks for the step-up confirmation
   (`ROLES_PLAN.md` §6.15). It comes with its routes in #322 (step 6a),
   labelled Lets outsiders in on the role editor. Its grant for the
-  companies already there is step 6d.
+  companies already there is #330 (step 6d).
 - The built-in Admin holds all four. Other roles get them where the Super
   Admin ticks them, as only the Super Admin builds roles.
 - They go into `ROLES_PLAN.md`'s tables with the PR that adds them to the
@@ -825,7 +825,9 @@ sent: it's drawn from the claims as they are.
   An Admin role holding it already, a new company's, is left as it is;
   the others' holders reload their grants once. `tax.manage`'s is #317
   (step 3d), the same way, once #315's release, whose role editor knows
-  it, is live.
+  it, is live. `client_accounts.manage`'s is #330 (step 6d), the same
+  way, once #322's release, whose role editor knows it, is live; what it
+  brings with it, `clients.view`, every built-in Admin role holds.
 
 ---
 
@@ -1063,7 +1065,7 @@ width:
        tax position is (decided 2026-11-19).
    - **6d.** `client_accounts.manage` for the built-in Admin of the
      companies already there, from a migration, once #322's release,
-     whose role editor knows it, is live.
+     whose role editor knows it, is live. #330.
 7. **Signing in as a client account, and the client's area:** sign-in
    finding them, their session, the proxy keeping them in the area, and
    its top bar and account menu.
@@ -1574,3 +1576,12 @@ with a tax position is archived, and deleted for good from the archive
   the claims' count is, in brackets, "(people: 3)", so it needs no
   plural forms; whoever may manage clients but not who signs in for one
   is told that its people go, without how many.
+- **2026-11-19:** 6d (#330): the companies already there get Manage who
+  signs in for a client (§9). A migration gives every company's built-in
+  Admin role the permission, company-wide, as a new company's has had
+  since #322, and its holders reload their grants once. An Admin role
+  holding it already, a new company's, is left as it is. It opens
+  nothing by itself: People who can sign in shows where the company's
+  package has the client portal, and adding or removing one of a
+  client's people still asks for the step-up confirmation. No screen
+  changes.
