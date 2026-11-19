@@ -789,7 +789,8 @@ Phase 4, part 2, built in #277, with the built-in Admin's grant for the
 companies already there in #278). One lets people from outside the
 company in: `client_accounts.manage`, managing the people of a client
 who sign in to the client portal (`CLIENT_PORTAL_PLAN.md` §9, built in
-#322). The catalogue (`lib/permissions/catalogue.ts`, `highRisk`) is the
+#322, with the built-in Admin's grant for the companies already there in
+#330). The catalogue (`lib/permissions/catalogue.ts`, `highRisk`) is the
 list the code checks.
 
 Adding one of a client's people is what lets someone in, so
