@@ -636,6 +636,9 @@ input::-webkit-credentials-auto-fill-button {
   --leading-2xl: 28px;
   --text-3xl: 28px;
   --leading-3xl: 34px;
+  /* A page's one large figure alone (DESIGN.md §3.2): 36 / 44px on phones. */
+  --text-hero: 48px;
+  --leading-hero: 56px;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -660,6 +663,14 @@ input::-webkit-credentials-auto-fill-button {
      ease-out, and the side bar moves as a phone's own sheets do. */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* The large figure steps down on phones (DESIGN.md §3.2). */
+@media (max-width: 767px) {
+  :root {
+    --text-hero: 36px;
+    --leading-hero: 44px;
+  }
 }
 
 :root[data-theme="dark"] {
