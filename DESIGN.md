@@ -208,7 +208,11 @@ One scale. Every size in the app is one of these.
 | `--text-xl` | 18 / 26px | Section and panel titles |
 | `--text-2xl` | 22 / 28px | Page titles on phones; values in total tiles |
 | `--text-3xl` | 28 / 34px | Page titles on computers |
+| `--text-hero` | 48 / 56px, 36 / 44px on phones | A page's one large figure: what a client owes, on their tax position (§5.5) |
 
+- **`--text-hero` is for one figure alone,** the client's area's amount
+  owed (§5.5): weight 600, even-width digits, its unit after it in
+  `--text-lg` and `--muted`. Nothing else is larger than `--text-3xl`.
 - **Page titles** are weight 400, with -0.4px letter spacing in English.
   This light, slightly tight title is what gives style A its polish.
 - **Arabic is never letter-spaced.** Spacing breaks the joins between
@@ -1482,6 +1486,9 @@ These are built once, in the building-blocks PR, and every page uses them
   - The amounts and notes are in the text colours, never the bar's.
     Pointing at a row shows its full name and amount. No axis or grid
     lines.
+  - A name too long for its row is cut short at its own end, in its own
+    direction, so an item's Arabic name on the English page keeps its
+    first words.
 - **Share bar:** how much of a whole is done, such as how much of a
   client's claims is paid. A line says it in words, such as "16% paid",
   with the two amounts at its end (under it on phones), over a 10px bar of
@@ -2775,3 +2782,9 @@ changed:
   row, not due yet, for claims whose last day to pay hasn't passed, before
   under 6 months, so the late rows hold only what's late (decided
   2026-11-19).
+- **2026-11-19:** `--text-hero` joins the sizes (§3.2): 48 / 56px, 36 /
+  44px on phones, for the client's area's one large figure, what a
+  client owes, as the tax position asked for it (§5.5). And bars by part
+  (§5.5) cut a long name short at its own end, in its own direction, so
+  an item's Arabic name on the English page keeps its first words: found
+  in the browser as the blocks were built.

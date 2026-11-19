@@ -6137,6 +6137,162 @@ a.ui-notice:focus-visible {
   }
 }
 
+/* Bars by part (DESIGN.md §5.5): a row for each part, its name, a bar and
+   its amount, the note under the amount. One colour; the words in the text
+   colours, never the bar's. No axis or grid lines. */
+/* The list holds the columns and every row takes them (subgrid), so every
+   bar is drawn against the same width, whatever each row's amount and note
+   (from Codex's review, PR 337). */
+.ui-bars {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ui-bars-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  row-gap: 0;
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+}
+/* A name takes its own direction, so an Arabic item on the English page is
+   cut short at its own end, keeping its first words; it sits at the row's
+   start, as wide as it is. */
+.ui-bars-name {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+  min-width: 0;
+  max-inline-size: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  unicode-bidi: plaintext;
+  color: var(--ink);
+}
+.ui-bars-track {
+  grid-column: 2;
+  grid-row: 1;
+  display: block;
+  min-width: 0;
+}
+/* From the start side, its far end rounded; one too small to see is still
+   4px long. */
+.ui-bars-bar {
+  display: block;
+  block-size: 8px;
+  inline-size: max(4px, var(--part));
+  max-inline-size: 100%;
+  background: var(--brand);
+  border-start-end-radius: 4px;
+  border-end-end-radius: 4px;
+}
+.ui-bars-amount {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.ui-bars-note {
+  grid-column: 3;
+  grid-row: 2;
+  justify-self: end;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--muted);
+}
+/* On phones the bar goes under the name, the amount to the row's end, and
+   the note under the bar. */
+@media (max-width: 767px) {
+  .ui-bars {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .ui-bars-row {
+    row-gap: var(--space-1);
+  }
+  .ui-bars-amount {
+    grid-column: 2;
+  }
+  .ui-bars-track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .ui-bars-note {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    justify-self: start;
+  }
+}
+
+/* The share bar (DESIGN.md §5.5): a line saying how much is done, the two
+   amounts at its end (under it on phones), over a 10px bar. */
+.ui-share {
+  display: grid;
+  gap: var(--space-2);
+}
+.ui-share-line {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  column-gap: var(--space-3);
+  margin: 0;
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  color: var(--ink);
+}
+.ui-share-amounts {
+  color: var(--muted);
+}
+.ui-share-track {
+  display: block;
+  block-size: 10px;
+  overflow: hidden;
+  background: var(--brand-tint-strong);
+  border-radius: var(--radius-pill);
+}
+.ui-share-bar {
+  display: block;
+  block-size: 100%;
+  inline-size: var(--share);
+  background: var(--brand);
+  border-radius: var(--radius-pill);
+}
+@media (max-width: 767px) {
+  .ui-share-line {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* A page's one large figure (DESIGN.md §3.2, §5.5): the only text larger than
+   --text-3xl, its unit after it. */
+.ui-large-figure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-2);
+  margin: 0;
+  color: var(--ink);
+}
+.ui-large-figure-value {
+  font-size: var(--text-hero);
+  line-height: var(--leading-hero);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ui-large-figure-unit {
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+  color: var(--muted);
+}
+
 /* The page area (§5.1): the page-edge spacing (§4.1), and 8px under the top
    bar, as the approved mock-up has it. */
 .ui-page-area {

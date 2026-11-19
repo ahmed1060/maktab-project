@@ -9,8 +9,9 @@ import AccessDenied from '@/components/AccessDenied'
 import DatePickerSingle from '@/components/DatePickerSingle'
 import { useLanguage } from '@/context/LanguageContext'
 import {
-    Button, ButtonLink, Card, DataList, DueDate, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, PageNote, Pager, Person,
-    Row, RowMenu, Rows, SearchInput, Section, SectionLink, Select, StatusBadge, Tabs, TextInput, TotalTiles, taskStatusTone, type Column,
+    BarsByPart, Button, ButtonLink, Card, Columns, DataList, DueDate, EmptyState, Field, FilterBar, ItemTitle, LargeFigure, ListCard, Page, PageHeader,
+    PageNote, Pager, Person, Row, RowMenu, Rows, SearchInput, Section, SectionLink, Select, ShareBar, StatusBadge, Tabs, TextInput, TotalTiles,
+    taskStatusTone, type Column,
 } from '@/components/ui'
 
 /**
@@ -29,6 +30,19 @@ const TASKS: Sample[] = [
     { id: '5', title: ['Notarize the power of attorney', 'توثيق التوكيل'], place: ['Notary office – Dokki', 'الشهر العقاري – الدقي'], people: [['Youssef Nabil', 'يوسف نبيل']], due: '2026-10-13', pts: 2, status: 'REJECTED' },
 ]
 
+/**
+ * A client's tax position (DESIGN.md §5.5), for its building blocks: what's
+ * owed by item, the items in Arabic on both pages as the portal writes them,
+ * and by how late, in that order (PR 337).
+ */
+const OWED = { original: 1550.5, paid: 210.25, remaining: 1340.25 }
+const BY_ITEM = [
+    { key: 'income', name: 'إقرار ضريبة الدخل', value: 1000, claims: 1 },
+    { key: 'vat', name: 'إقرار القيمة المضافة', value: 300.25, claims: 1 },
+    { key: 'takaful', name: 'مساهمة تكافلية لصندوق أسر الشهداء', value: 40, claims: 1 },
+]
+const BY_LATE = [40, 300.25, 1000, 0, 0]
+
 const TEXT = {
     en: {
         title: 'Tasks', subtitle: 'Manage team tasks, deadlines, and project progress', create: 'Create new task',
@@ -43,6 +57,9 @@ const TEXT = {
         rows: 'Needs attention', viewAll: 'View all', more: 'More actions', moreFor: (name: string) => `More actions for ${name}`,
         edit: 'Edit', history: 'History', remove: 'Delete', note: 'This week',
         pageNote: "A note above the page, for what's true on every page for now, such as a free trial.",
+        owed: "What's owed", currency: 'EGP', paid: (share: string) => `${share} paid`, of: (part: string, whole: string) => `${part} of ${whole}`,
+        byItem: "What's owed by item", byLate: 'How late', claims: (n: number) => n === 1 ? '1 claim' : `${n} claims`,
+        lateGroups: ['Not due yet', 'Under 6 months', '6 months to a year', '1 to 2 years', 'More than 2 years'],
     },
     ar: {
         title: 'المهام', subtitle: 'إدارة مهام الفريق والمواعيد النهائية وتقدم المشروع', create: 'إنشاء مهمة جديدة',
@@ -57,6 +74,10 @@ const TEXT = {
         rows: 'تحتاج إلى متابعة', viewAll: 'عرض الكل', more: 'إجراءات أخرى', moreFor: (name: string) => `إجراءات أخرى لـ ${name}`,
         edit: 'تعديل', history: 'السجل', remove: 'حذف', note: 'هذا الأسبوع',
         pageNote: 'ملاحظة فوق الصفحة، لما يصح على كل صفحة حاليًا، مثل الفترة التجريبية.',
+        owed: 'المستحق', currency: 'جنيه', paid: (share: string) => `تم سداد ${share}`, of: (part: string, whole: string) => `${part} من ${whole}`,
+        byItem: 'المستحق حسب البند', byLate: 'مدة التأخير',
+        claims: (n: number) => n === 1 ? 'مطالبة واحدة' : n === 2 ? 'مطالبتان' : `${n.toLocaleString('ar-EG')} مطالبات`,
+        lateGroups: ['لم يحن موعده', 'أقل من ٦ أشهر', 'من ٦ أشهر إلى سنة', 'من سنة إلى سنتين', 'أكثر من سنتين'],
     },
 }
 
@@ -74,6 +95,9 @@ export default function UiKitPage() {
     if (viewer?.role !== 'SUPER_ADMIN') return <AccessDenied superAdmins />
 
     const pick = (pair: [string, string]) => pair[ar ? 1 : 0]
+    const money = (n: number) => n.toLocaleString(ar ? 'ar-EG' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    const share = (part: number, whole: number) => (whole > 0 ? part / whole : 0).toLocaleString(ar ? 'ar-EG' : 'en-GB', { style: 'percent' })
+    const listSep = ar ? '، ' : ', '
     const day = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString(ar ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'short' })
     const statusWord: Record<string, string> = {
         PENDING: s.pending, IN_PROGRESS: s.progress, PENDING_CONFIRMATION: s.waiting, APPROVED: s.approved, COMPLETED: s.done, REJECTED: s.rejected,
@@ -182,6 +206,25 @@ export default function UiKitPage() {
                     <DatePickerSingle label={s.deadline} value={deadline} onChange={setDeadline} />
                 </div>
             </Card>
+
+            <Card title={s.owed}>
+                <LargeFigure value={money(OWED.remaining)} unit={s.currency} />
+                <ShareBar share={OWED.paid / OWED.original} line={s.paid(share(OWED.paid, OWED.original))} amounts={s.of(money(OWED.paid), money(OWED.original))} />
+            </Card>
+
+            <Columns>
+                <Card title={s.byItem}>
+                    <BarsByPart label={s.byItem} parts={BY_ITEM.map(p => ({
+                        key: p.key, name: p.name, value: p.value, amount: money(p.value),
+                        note: `${share(p.value, OWED.remaining)}${listSep}${s.claims(p.claims)}`,
+                    }))} />
+                </Card>
+                <Card title={s.byLate}>
+                    <BarsByPart label={s.byLate} ordered parts={BY_LATE.map((value, i) => ({
+                        key: String(i), name: s.lateGroups[i], value, amount: money(value),
+                    }))} />
+                </Card>
+            </Columns>
 
             <div className="ui-panel">
                 <EmptyState icon={ClipboardTextIcon} title={s.empty} action={<Button variant="primary" icon={PlusIcon}>{s.emptyAction}</Button>} />
