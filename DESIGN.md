@@ -1541,6 +1541,14 @@ These are built once, in the building-blocks PR, and every page uses them
   others.
   - A line under its title says the day the figures are from, and who
     uploaded the portal's file and when.
+  - From 30 days after the day the figures are from, counted in the
+    company's own days as late is, a Waiting on someone badge after
+    that line's words says how long it's been, such as "Not updated for
+    34 days". The Clients list has the same badge after the client's
+    name, and at the top of its card on a phone. There it names the tax
+    position to screen readers, as nothing around it says what wasn't
+    updated. An archived client has neither, as its figures stay as
+    they were.
   - Four total tiles: what's owed, open claims, how many are late, and
     what's paid.
   - The claims, in a list (§5.4), the longest overdue first. Each has
@@ -2616,3 +2624,8 @@ changed:
   problem (`CLIENT_PORTAL_PLAN.md` §10). On a phone it's 44px under a
   finger. A link in a line of text (§5.2) is written down, with its
   underline 2px under the pointer.
+- **2026-11-18:** Figures getting old (§5.5, A client's tax position,
+  for the company's people): where the badge sits, after the line's
+  words on the client's page and after the client's name in the Clients
+  list, and that an archived client has none (`CLIENT_PORTAL_PLAN.md`
+  §4.3).

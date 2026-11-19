@@ -22,7 +22,8 @@ is #315, and the upload on a client's page (step 3c) is #316.
 `tax.manage` for the companies already there (step 3d) is #317, and
 the export button's code in Nizmo, with its tests (§10, step 4a), is
 #318. Its page (step 4b) is #319, and the links to it (step 4c) are
-#320. The rest is built in the small PRs of §12, each its own PR.
+#320. Figures getting old (§4.3, step 5) is #321. The rest is built in
+the small PRs of §12, each its own PR.
 
 ---
 
@@ -388,6 +389,29 @@ with Edit and Delete in each claim's row menu; the owner dropped it.)
   days". The Clients list has the same badge in the client's row, so
   whose file is due shows at a glance.
 - The client's own page shows the day, as always, with no badge.
+
+As built (step 5, #321; `DESIGN.md` §5.5, A client's tax position, for
+the company's people):
+
+- **How old** is counted from the day the figures are from to today
+  where the client's company is, the same today late is counted to
+  (§3.4). 29 days says nothing; 30 and more says how many.
+- **On the client's Tax position** the badge comes after the line's
+  words, before How to get the portal's file, for everyone who sees the
+  section. The section already has both days, so nothing more is read
+  for it.
+- **On the Clients list** it comes after the client's name, and at the
+  top of the client's card on a phone, for whoever may see tax positions
+  in a company whose package has the client portal. The server counts
+  it, each company's clients to that company's own today, and sends it
+  only where there's a badge to show. Nobody else is sent anything of a
+  client's tax position by the list. The badge is the one on the
+  client's page; on the list it names the tax position to screen
+  readers, as nothing around it says what wasn't updated.
+- **An archived client has no badge,** on its page or in the archive:
+  its figures stay as they were, and no file is due for it.
+- **After the next upload** the day is the new file's, so the badge
+  goes by itself.
 
 ### 4.4 Telling the client's people by email (Decided, 2026-11-17)
 
@@ -855,7 +879,7 @@ width:
    - **4c. The links to it,** How to get the portal's file, from the
      upload's dialogs and the Tax position section. #320.
 5. **Figures getting old** (§4.3): the badge on the client's page and the
-   Clients list.
+   Clients list. #321.
 6. **Client accounts:** their table, People who can sign in,
    `client_accounts.manage`, the invitation and setting a password, and
    the privacy policy's line (§5.5).
@@ -1236,3 +1260,8 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   row has a problem. It isn't on the section's heading, which the
   upload's button fills on a phone. A claim number kept as a number is
   said to be Excel's doing or an older copy of the export button's.
+- **2026-11-18:** Figures getting old (#321, §4.3, §12 step 5): Not
+  updated for N days, from 30 days after the day the figures are from,
+  on the client's Tax position and after the client's name in the
+  Clients list. It's counted to today where the client's company is.
+  An archived client has none.

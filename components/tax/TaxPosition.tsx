@@ -9,16 +9,16 @@ import { formatDay } from '@/components/records/types'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { countOf } from '@/lib/plural'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
-import { claimBadges, taxClaimsUrl, TAX_PAGE, TAX_PREVIEW, type TaxClaimRow, type TaxPosition as Position } from '@/lib/tax-claims'
+import { claimBadges, figuresAge, taxClaimsUrl, TAX_PAGE, TAX_PREVIEW, type TaxClaimRow, type TaxPosition as Position } from '@/lib/tax-claims'
 import TaxExportLink from './TaxExportLink'
 import TaxUpload from './TaxUpload'
 
 /**
  * A client's tax position, for the company's people (CLIENT_PORTAL_PLAN.md
  * §3.5; DESIGN.md §5.5, A client's tax position, for the company's people):
- * a section on the client's page with the day the figures are from, what's
- * owed, and its open claims on the Tax Authority's portal, the longest
- * overdue first. Five to start with, so the client's other sections stay in
+ * a section on the client's page with the day the figures are from, how long
+ * it's been once that's 30 days (§4.3), what's owed, and its open claims on
+ * the Tax Authority's portal, the longest overdue first. Five to start with, so the client's other sections stay in
  * reach, then all of them, 20 to a page.
  *
  * The claims come only from the portal's file (§4.2). Whoever may update
@@ -74,6 +74,10 @@ export default function TaxPosition({ clientId, manages = false }: { clientId: s
         )
     }
 
+    // Not updated for N days (§4.3, PR 321): from 30 days after the day the figures are from, to today where the
+    // company is. Not on an archived client, whose figures stay as they were.
+    const age = body.client.archived ? null : figuresAge(position.asOf, body.today)
+    const old = age !== null && <> <StatusBadge tone="waiting">{t('tax_not_updated').replace('{days}', countOf(t, locale, age, 'days'))}</StatusBadge></>
     // Who uploaded it is a name: kept apart from the words around it, whichever way they read.
     const [before, after = ''] = t(position.uploadedBy ? 'tax_figures_from_by' : 'tax_figures_from')
         .replace('{date}', day(position.asOf)).replace('{day}', day(position.uploadedOn)).split('{name}')
@@ -107,7 +111,7 @@ export default function TaxPosition({ clientId, manages = false }: { clientId: s
 
     return (
         <Section title={t('tax_position')} action={upload}>
-            <p className="ui-hint">{before}{position.uploadedBy && <bdi>{position.uploadedBy}</bdi>}{after}{how}</p>
+            <p className="ui-hint">{before}{position.uploadedBy && <bdi>{position.uploadedBy}</bdi>}{after}{old}{how}</p>
             <TotalTiles items={[
                 { label: t('tax_owed'), value: money(totals.remaining) },
                 { label: t('tax_open_claims'), value: count(totals.open) },

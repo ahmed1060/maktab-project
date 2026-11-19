@@ -3623,6 +3623,8 @@ export const ar = {
         tax_col_status: "الحالة",
         tax_period: "من {from} إلى {to}",
         tax_days_late: "تأخير {days}",
+        // Figures getting old (CLIENT_PORTAL_PLAN.md §4.3, PR 321).
+        tax_not_updated: "لم يُحدَّث منذ {days}",
         tax_due_on: "آخر موعد للسداد {date}",
         tax_due_on_late: "آخر موعد للسداد {date}، تأخير {days}",
         tax_badge_late: "متأخر",
