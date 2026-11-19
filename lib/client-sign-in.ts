@@ -2,6 +2,7 @@ import type { JWT } from "next-auth/jwt"
 import { prisma } from "@/lib/prisma"
 import { CLIENT_ACCOUNT_ROLE } from "@/lib/client-session"
 import { portalOpen, type PortalCompany } from "@/lib/client-invitation"
+import { isKept } from "@/lib/session-kept"
 
 /**
  * Signing in as one of a client's people (CLIENT_PORTAL_PLAN.md §5.3, §12
@@ -18,7 +19,8 @@ export const CLIENT_PORTAL_CLOSED = "CLIENT_PORTAL_CLOSED"
 
 /** A client account as its session is checked: who it is, its client and its company, as far as the portal needs. */
 export const CLIENT_SESSION = {
-    id: true, name: true, email: true, language: true, sessionVersion: true, companyId: true, clientId: true,
+    // keptSession: the session its password was last changed from (PR 335).
+    id: true, name: true, email: true, language: true, sessionVersion: true, keptSession: true, companyId: true, clientId: true,
     client: { select: { id: true, name: true, archivedAt: true } },
     company: {
         select: {
@@ -39,6 +41,7 @@ type ClientAccountRead = {
     email: string
     language: string
     sessionVersion: number
+    keptSession: string | null
     companyId: string
     clientId: string
     client: { id: string; name: string; archivedAt: Date | null }
@@ -91,7 +94,9 @@ export function clientToken(user: ClientUser): Partial<JWT> {
 /**
  * The minute's check of a client account's session: whether it stands. It
  * doesn't where the account is removed, the office's portal has closed to
- * its client, or its sessions were ended since. Where it stands, its
+ * its client, or its sessions were ended since, but for the one its password
+ * was changed from, which is kept at the version that ended the others
+ * (lib/session-kept.ts; PR 335), as a person's is. Where it stands, its
  * client's and company's names are caught up. A check that can't be made
  * throws, and the caller ends the session, as a person's is.
  */
@@ -99,7 +104,10 @@ export async function clientSessionStands(token: JWT, now: Date = new Date()): P
     const account = await prisma.clientAccount.findUnique({ where: { id: token.sub as string }, select: CLIENT_SESSION }) as ClientAccountRead | null
     if (!account) return false
     if (!clientPortalOpen(account, now)) return false
-    if (account.sessionVersion > Number(token.sessionVersion ?? 0)) return false
+    if (account.sessionVersion > Number(token.sessionVersion ?? 0)) {
+        if (!isKept(account, token)) return false
+        token.sessionVersion = account.sessionVersion
+    }
     token.clientName = account.client.name
     token.companyName = account.company.name
     token.checkedAt = now.getTime()

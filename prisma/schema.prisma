@@ -3143,6 +3143,9 @@ model ClientAccount {
   addedByName    String?
   /// Raised to end its open sessions, as a person's is.
   sessionVersion Int       @default(0)
+  /// The session its password was last changed from, kept while the change
+  /// ended the others (lib/session-kept.ts), as a person's is (§5.3).
+  keptSession    String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)

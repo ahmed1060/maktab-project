@@ -6751,3 +6751,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   company's mark and name, the language switch and the account menu, with
   Sign out, in the company's brand colour. Change password joins the menu
   in 7d-2.
+- **2026-11-19:** One of a client's people changes their password in the
+  client's area (#335; `CLIENT_PORTAL_PLAN.md` §5.3, §12 step 7d-2;
+  `DESIGN.md` §5.5): Change password in the account menu opens a page of
+  the area's own, asking for the current password and the new one twice,
+  on the building blocks as the company's people's Change password is.
