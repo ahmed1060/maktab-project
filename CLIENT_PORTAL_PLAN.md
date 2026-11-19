@@ -576,10 +576,18 @@ calls the routes yet: the section on a client's page is step 6c.
   than the save's time limit could go out with a link the save, undone,
   never kept. Now the link is saved first, so an email only ever carries
   a link Nizmo keeps. One that can't be sent is taken back: the person
-  isn't added, and nothing is written in the audit log, or, sent again,
-  their earlier link works again. Only what that save made is taken
-  back: a person who has set their password meanwhile stays. The office
-  is told to try again. An address of the kinds kept for examples
+  isn't added, or, sent again, their earlier link works again. Only what
+  that save made is taken back: a person who has set their password
+  meanwhile stays. The office is told to try again.
+- **The audit log keeps what an invitation that couldn't be sent wrote**
+  (decided 2026-11-19; #328). The entry the save made stays, and another
+  goes after it, written with the take-back: Couldn't send a person's
+  invitation, so they weren't added, or Couldn't send a person's
+  invitation again, so the link before still works. Each is on the
+  client, with the person's name and email, by whoever sent it. The audit
+  log is only ever added to, as the privacy policy says. Where nothing is
+  taken back, as for a person who has set their password meanwhile, no
+  second entry goes: the email reached them after all. An address of the kinds kept for examples
   (`.test`, `.example` and the like) is never emailed, as with every
   email Nizmo sends, and the person is added all the same.
 - **Resend invitation** makes a new link, which works once, for 72
@@ -597,7 +605,8 @@ calls the routes yet: the section on a client's page is step 6c.
   working. Adding a person and Resend invitation stop within a minute,
   so the email before is sent or given up by then.
 - **The audit log** has Sent a person's invitation again, on the
-  client, with the person's name and email.
+  client, with the person's name and email. One that couldn't be sent
+  keeps it, with a second entry after it (#328, above).
 
 ### 5.3 Signing in (Decided, 2026-11-17)
 
@@ -1292,8 +1301,10 @@ editor, labelled Lets outsiders in, in both languages.
 
 None open.
 
-Answered: a client with a tax position is archived, and deleted for good
-from the archive (§3.6), on 2026-11-18; the messages are templates
+Answered: an invitation that couldn't be sent keeps its audit log entry,
+with a second saying it couldn't be sent (§5.2), on 2026-11-19; a client
+with a tax position is archived, and deleted for good from the archive
+(§3.6), on 2026-11-18; the messages are templates
 (§7.1) and the export button moves into Nizmo (§10), on 2026-11-17.
 
 ---
@@ -1537,3 +1548,9 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   the next can go; after any refusal the list is read again, as what
   refused it may be what changed. The privacy policy, with its new line,
   is dated 19 November 2026.
+- **2026-11-19:** Decided: an invitation that couldn't be sent keeps
+  the audit log entry its save made, and a second entry goes after it,
+  saying it couldn't be sent and what that left (§5.2; #328). Until now
+  the take-back deleted the entry, where the privacy policy says the
+  audit log is only ever added to. The person still isn't added, or their
+  earlier link still works, as before.
