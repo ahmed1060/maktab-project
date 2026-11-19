@@ -1515,16 +1515,26 @@ These are built once, in the building-blocks PR, and every page uses them
     the currency after it in `--text-lg` and `--muted`. It's the only text
     larger than `--text-3xl`, and comes as `--text-hero` with the page
     (§3.2). Under it, a Problem badge while claims are late: "All open
-    claims are late", or how many are. Beside it (under it on phones):
-    how much is paid, as a share bar, then three facts: open claims, paid,
-    and the oldest delay in days. On computers the facts are in a row,
-    each a label above its value in `--text-xl`; on phones, one to a line,
-    the label at the start and the value at the end.
+    claims are late" where there's more than one and all are, or how many
+    are, such as "1 claim late". Beside it (under it on phones): how much
+    is paid, as a share bar, then three facts: open claims, paid, and the
+    oldest delay in days, or None where nothing is late. On computers the
+    facts are in a row, each a label above its value in `--text-xl`; on
+    phones, one to a line, the label at the start and the value at the
+    end.
+    - The share paid is of the open claims' original amounts, rounded
+      down to a whole percent, so it never says 100% while something is
+      left to pay.
+    - The currency is said once, after the large figure; the other
+      amounts on the page are in the same currency, as the note says.
   - Two cards side by side, stacked on phones, each bars by part: what's
     owed by item, and how late, by time since the due date (not due yet,
     under 6 months, 6 months to a year, 1 to 2 years, more than 2 years),
     in that order. A claim whose last day to pay hasn't passed is not due
     yet, so the four late rows hold only what's late.
+    - An item's note is its share of what's owed and how many claims it
+      has, such as "75%, 2 claims"; a row of how late has how many
+      claims, and none at nothing.
   - The claims, by item, in a card: a table on computers and cards on
     phones (§5.4).
     - Each item's row is a button that opens its claims under it: a
@@ -1552,7 +1562,11 @@ These are built once, in the building-blocks PR, and every page uses them
     that penalties for paying late aren't counted, and to contact the
     accountant about any claim.
   - With no claims kept yet, the page's place is an empty state saying
-    the office hasn't added the tax position yet.
+    the office hasn't added the tax position yet, under the header with
+    no subtitle.
+  - With a file kept but nothing open in it, the page's place is an empty
+    state saying nothing was owed on the portal on the day the figures
+    are from, under the header and its subtitle, with no cards or note.
 - **A client's tax position, for the company's people:** a section on
   the client's page, Tax position, for whoever may see it
   (`CLIENT_PORTAL_PLAN.md` §3.5). It has the figures of the client's own
@@ -2788,3 +2802,11 @@ changed:
   (§5.5) cut a long name short at its own end, in its own direction, so
   an item's Arabic name on the English page keeps its first words: found
   in the browser as the blocks were built.
+- **2026-11-19:** A client's tax position (§5.5), as its top was built:
+  a file with nothing open in it shows that nothing was owed that day,
+  without the cards; one late claim of one is "1 claim late", and "All
+  open claims are late" is for more than one; the oldest delay is None
+  where nothing is late; the share paid is rounded down, so it never
+  says 100% while something is left to pay; the currency is said once,
+  after the large figure; and the notes under the bars say each item's
+  share and claims, and each row of how late its claims.
