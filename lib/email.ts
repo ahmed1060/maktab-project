@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer'
 import { isUnroutableAddress } from './unroutable-address'
+import { escapeHtml } from "./html-text"
 
 // F-27, Phase 0: the app's first-ever outbound email capability. Sends
 // through a dedicated Gmail account (GMAIL_USER/GMAIL_APP_PASSWORD) rather
@@ -106,6 +107,10 @@ export async function sendVerificationCodeEmail(to: string, code: string, purpos
  * one's whole shape — a big monospaced code, an expiry line — exists for one
  * job, and bending it into a general sender would make both worse.
  *
+ * Each line goes into the HTML as text: the lines carry names people type, an
+ * employee's or a company's, and one with a < or & in it was read as HTML
+ * (PR 325). The plain-text part keeps them as written.
+ *
  * Throws on failure, deliberately. The caller decides what a failed send means;
  * for subscription notices it means "do not mark this as sent", so it is
  * retried tomorrow rather than silently lost.
@@ -125,7 +130,7 @@ export async function sendPlainEmail(to: string, subject: string, text: string):
             ${text.split('\n').map(line =>
                 line.trim() === ''
                     ? '<div style="height: 12px;"></div>'
-                    : `<p style="color: #1c2420; font-size: 15px; line-height: 1.6; margin: 0;">${line}</p>`
+                    : `<p style="color: #1c2420; font-size: 15px; line-height: 1.6; margin: 0;">${escapeHtml(line)}</p>`
             ).join('')}
         </div>
     `

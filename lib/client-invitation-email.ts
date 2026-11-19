@@ -1,6 +1,7 @@
 import { brandTokens } from "./brand-colour"
 import { INVITATION_HOURS } from "./client-invitation"
 import type { ClientLanguage } from "./client-accounts"
+import { escapeHtml } from "./html-text"
 
 /**
  * The invitation's email (CLIENT_PORTAL_PLAN.md §5.2, step 6b-2; DESIGN.md
@@ -87,9 +88,8 @@ const FSI = String.fromCharCode(0x2068)
 const PDI = String.fromCharCode(0x2069)
 const NAMES = new Set(["name", "office", "client", "sender"])
 
-const ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }
 /** Text as text in HTML: never part of the email's code. */
-const escape = (text: string) => text.replace(/[&<>"']/g, c => ESCAPES[c])
+const escape = escapeHtml
 /** A name on one line: a line break in it would end a header, or start another. */
 const oneLine = (text: string) => text.replace(/\s+/g, " ").trim()
 const ARABIC_DIGITS = "٠١٢٣٤٥٦٧٨٩"
