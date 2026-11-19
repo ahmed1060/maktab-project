@@ -55,6 +55,25 @@ INSERT INTO "ClientSection"(id, title, "clientId", "updatedAt") VALUES ('licence
 INSERT INTO "ClientNote"(id, content, "sectionId", "updatedAt") VALUES ('licence', 'Trade licence', 'licences', now());
 `
 
+// People who can sign in (§3.6, PR 329): Signed is in use with two, and
+// no tax position, task or record; Gone is in the archive with three; Both
+// is in use with a tax position and one.
+const ACCOUNTS = `
+INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt", "archivedAt") VALUES
+ ('signed', 'c1', 'Signed', 'Sara', '0109', 'Giza', now(), NULL),
+ ('gone', 'c1', 'Gone', 'Gamal', '0110', 'Giza', now(), '2026-10-01T10:00:00Z'),
+ ('both', 'c1', 'Both', 'Bassem', '0111', 'Giza', now(), NULL);
+INSERT INTO "ClientTaxPosition"("clientId", "companyId", "asOf", "uploadedById", "uploadedByName", "uploadedAt", "updatedAt")
+ VALUES ('both', 'c1', '2026-10-14', NULL, 'Amal One', '2026-10-15T09:00:00Z', now());
+INSERT INTO "ClientAccount"(id, "companyId", "clientId", name, email, "updatedAt") VALUES
+ ('b9', 'c1', 'both', 'Basma', 'b9@client.example', now()),
+ ('s1', 'c1', 'signed', 'Salma', 's1@client.example', now()),
+ ('s2', 'c1', 'signed', 'Samir', 's2@client.example', now()),
+ ('g1', 'c1', 'gone', 'Ghada', 'g1@client.example', now()),
+ ('g2', 'c1', 'gone', 'Galal', 'g2@client.example', now()),
+ ('g3', 'c1', 'gone', 'Gihan', 'g3@client.example', now());
+`
+
 const admin = { user: withGrants({ id: "a1", role: "ADMIN", companyId: "c1", name: "Amal One" }) } as any
 const employee = { user: withGrants({ id: "e1", role: "EMPLOYEE", companyId: "c1", name: "Ehab One" }) } as any
 const otherAdmin = { user: withGrants({ id: "a2", role: "ADMIN", companyId: "c2", name: "Adel Two" }) } as any
@@ -68,6 +87,7 @@ describe.skipIf(!ADMIN_URL)("deleting a client that has a tax position, in Postg
     const row = async (id: string) => (await db.query(`SELECT "archivedAt" FROM "Client" WHERE id = $1`, [id])).rows[0] as { archivedAt: Date | null } | undefined
     const claims = async (id: string) => Number((await db.query(`SELECT count(*) FROM "TaxClaim" WHERE "clientId" = $1`, [id])).rows[0].count)
     const positions = async (id: string) => Number((await db.query(`SELECT count(*) FROM "ClientTaxPosition" WHERE "clientId" = $1`, [id])).rows[0].count)
+    const accounts = async (id: string) => Number((await db.query(`SELECT count(*) FROM "ClientAccount" WHERE "clientId" = $1`, [id])).rows[0].count)
     const logged = async (id: string) => (await db.query(`SELECT action, details, "userId" FROM "AuditLog" WHERE "entityId" = $1 ORDER BY "createdAt"`, [id])).rows as { action: string; details: unknown; userId: string | null }[]
 
     beforeAll(async () => {
@@ -84,6 +104,7 @@ describe.skipIf(!ADMIN_URL)("deleting a client that has a tax position, in Postg
             if (m === "20260920000000_team_leader") await db.query(PEOPLE)
         }
         await db.query(CLIENTS)
+        await db.query(ACCOUNTS)
         process.env.POSTGRES_PRISMA_URL = url.toString()
         ClientService = (await import("@/lib/services/client.service")).ClientService
         prisma = (await import("@/lib/prisma")).prisma
@@ -129,7 +150,20 @@ describe.skipIf(!ADMIN_URL)("deleting a client that has a tax position, in Postg
         })
 
         it("says a client archived for its tasks or records wasn't archived for its tax position", async () => {
-            expect(await ClientService.delete("working", admin)).toMatchObject({ archived: true, forTax: false })
+            expect(await ClientService.delete("working", admin)).toMatchObject({ archived: true, forTax: false, forPeople: false })
+        })
+
+        it("archives a client with people who can sign in instead, though nothing else holds it, their accounts staying (PR 329)", async () => {
+            const result = await ClientService.delete("signed", admin)
+            expect(result).toMatchObject({ archived: true, forTax: false, forPeople: true })
+            expect((await row("signed"))?.archivedAt).toBeInstanceOf(Date)
+            expect(await accounts("signed")).toBe(2)
+            expect(await logged("signed")).toEqual([{ action: "ARCHIVE_VENDOR", userId: "a1", details: { name: "Signed", records: 0, tasks: 0, people: 2 } }])
+        })
+
+        it("says a client archived for its tax position wasn't archived for its people, though it has some", async () => {
+            expect(await ClientService.delete("both", admin)).toMatchObject({ archived: true, forTax: true, forPeople: false })
+            expect(await logged("both")).toEqual([{ action: "ARCHIVE_VENDOR", userId: "a1", details: { name: "Both", records: 0, tasks: 0, claims: 0, people: 1 } }])
         })
     })
 
@@ -174,6 +208,20 @@ describe.skipIf(!ADMIN_URL)("deleting a client that has a tax position, in Postg
             await ClientService.delete("bare", admin, { forGood: true })
             expect(await row("bare")).toBeUndefined()
             expect(await logged("bare")).toEqual([{ action: "DELETE_VENDOR", userId: "a1", details: { name: "Bare", claims: 0 } }])
+        })
+
+        it("deletes an archived client with people who can sign in, their accounts going with it, and says how many went (PR 329)", async () => {
+            await ClientService.delete("gone", admin, { forGood: true })
+            expect(await row("gone")).toBeUndefined()
+            expect(await accounts("gone")).toBe(0)
+            expect(await logged("gone")).toEqual([{ action: "DELETE_VENDOR", userId: "a1", details: { name: "Gone", claims: 0, people: 3 } }])
+        })
+
+        it("deletes one just archived for its people, in the second step", async () => {
+            // Signed was archived above, by Delete.
+            await ClientService.delete("signed", admin, { forGood: true })
+            expect(await row("signed")).toBeUndefined()
+            expect(await accounts("signed")).toBe(0)
         })
 
         it("deletes one just archived for its tax position, in the second step", async () => {

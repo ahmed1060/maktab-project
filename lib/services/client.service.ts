@@ -124,6 +124,11 @@ export class ClientService {
             // (CLIENT_PORTAL_PLAN.md §3.6).
             const claims = await tx.taxClaim.count({ where: { clientId: id } })
             const hasTax = claims > 0 || (await tx.clientTaxPosition.count({ where: { clientId: id } })) > 0
+            // Its people who can sign in, whose accounts would go with it in
+            // one step: archived instead, as for a tax position (§3.6, the
+            // owner 2026-11-19, PR 329). Counted with the client held, so one
+            // added meanwhile is counted, or finds the client gone.
+            const people = await tx.clientAccount.count({ where: { clientId: id } })
             // What anyone holds for it in cash advances joins their running
             // balance, archived or deleted (CLIENTS_PLAN.md §7.9).
             const { CashAdvanceService } = await import("./cash-advance.service")
@@ -140,23 +145,24 @@ export class ClientService {
                     tx,
                     userId: userRole !== 'SUPER_ADMIN' ? userId : null,
                     superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                    // How many claims went with it.
-                    details: { name: client.name, claims }
+                    // How many claims went with it, and how many of its people.
+                    details: { name: client.name, claims, ...(people ? { people } : {}) }
                 })
-                return { ...result, archived: false as const, forTax: false }
+                return { ...result, archived: false as const, forTax: false, forPeople: false }
             }
 
-            if (held || hasTax || options.archive) {
+            if (held || hasTax || people > 0 || options.archive) {
                 const archived = await tx.client.update({ where: { id }, data: { archivedAt: locked[0].archivedAt ?? new Date() } })
                 await CashAdvanceService.movePart(tx, client.companyId, { taskId: null, clientId: id }, "CLIENT_ARCHIVED", mover)
                 await AuditLogService.log('ARCHIVE_VENDOR', 'VENDOR', id, {
                     tx,
                     userId: userRole !== 'SUPER_ADMIN' ? userId : null,
                     superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                    details: { name: client.name, records, tasks, ...(hasTax ? { claims } : {}) }
+                    details: { name: client.name, records, tasks, ...(hasTax ? { claims } : {}), ...(people ? { people } : {}) }
                 })
-                // Kept for its tax position alone, where no task or record holds it.
-                return { ...archived, archived: true as const, forTax: !held && hasTax }
+                // Kept for its tax position alone, where no task or record
+                // holds it; or for its people alone, where nothing else does.
+                return { ...archived, archived: true as const, forTax: !held && hasTax, forPeople: !held && !hasTax && people > 0 }
             }
 
             await CashAdvanceService.movePart(tx, client.companyId, { taskId: null, clientId: id }, "CLIENT_DELETED", mover)
@@ -169,7 +175,7 @@ export class ClientService {
                 details: { name: client.name }
             })
 
-            return { ...result, archived: false as const, forTax: false }
+            return { ...result, archived: false as const, forTax: false, forPeople: false }
         })
     }
 
