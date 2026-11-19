@@ -6140,8 +6140,12 @@ a.ui-notice:focus-visible {
 /* Bars by part (DESIGN.md §5.5): a row for each part, its name, a bar and
    its amount, the note under the amount. One colour; the words in the text
    colours, never the bar's. No axis or grid lines. */
+/* The list holds the columns and every row takes them (subgrid), so every
+   bar is drawn against the same width, whatever each row's amount and note
+   (from Codex's review, PR 337). */
 .ui-bars {
   display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto;
   gap: var(--space-3);
   margin: 0;
   padding: 0;
@@ -6149,10 +6153,10 @@ a.ui-notice:focus-visible {
 }
 .ui-bars-row {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto;
-  grid-template-areas: "name bar amount" ". . note";
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
   align-items: center;
-  column-gap: var(--space-3);
+  row-gap: 0;
   font-size: var(--text-md);
   line-height: var(--leading-md);
 }
@@ -6160,7 +6164,8 @@ a.ui-notice:focus-visible {
    cut short at its own end, keeping its first words; it sits at the row's
    start, as wide as it is. */
 .ui-bars-name {
-  grid-area: name;
+  grid-column: 1;
+  grid-row: 1;
   justify-self: start;
   min-width: 0;
   max-inline-size: 100%;
@@ -6171,7 +6176,8 @@ a.ui-notice:focus-visible {
   color: var(--ink);
 }
 .ui-bars-track {
-  grid-area: bar;
+  grid-column: 2;
+  grid-row: 1;
   display: block;
   min-width: 0;
 }
@@ -6187,13 +6193,15 @@ a.ui-notice:focus-visible {
   border-end-end-radius: 4px;
 }
 .ui-bars-amount {
-  grid-area: amount;
+  grid-column: 3;
+  grid-row: 1;
   justify-self: end;
   white-space: nowrap;
   color: var(--ink);
 }
 .ui-bars-note {
-  grid-area: note;
+  grid-column: 3;
+  grid-row: 2;
   justify-self: end;
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
@@ -6202,12 +6210,22 @@ a.ui-notice:focus-visible {
 /* On phones the bar goes under the name, the amount to the row's end, and
    the note under the bar. */
 @media (max-width: 767px) {
-  .ui-bars-row {
+  .ui-bars {
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "name amount" "bar bar" "note note";
+  }
+  .ui-bars-row {
     row-gap: var(--space-1);
   }
+  .ui-bars-amount {
+    grid-column: 2;
+  }
+  .ui-bars-track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
   .ui-bars-note {
+    grid-column: 1 / -1;
+    grid-row: 3;
     justify-self: start;
   }
 }

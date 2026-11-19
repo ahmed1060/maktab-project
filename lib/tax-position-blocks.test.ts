@@ -152,15 +152,28 @@ describe("bars by part", () => {
         expect(name).toMatch(/max-inline-size: 100%;/)
     })
 
-    it("each row is its name, its bar and its amount, with the note under the amount", () => {
+    // From Codex's review (PR 337): a row sizing its own columns gave each bar a track of its own width.
+    it("every row shares the list's columns, so every bar is drawn against the same width", () => {
+        expect(rule(CSS, ".ui-bars")).toMatch(/grid-template-columns: minmax\(0, 2fr\) minmax\(0, 3fr\) auto;/)
         const row = rule(CSS, ".ui-bars-row")
-        expect(row).toMatch(/grid-template-areas: "name bar amount" "\. \. note";/)
+        expect(row).toMatch(/grid-column: 1 \/ -1;/)
+        expect(row).toMatch(/grid-template-columns: subgrid;/)
+        expect(row).not.toMatch(/grid-template-columns: (?!subgrid)/)
+    })
+
+    it("each row is its name, its bar and its amount, with the note under the amount", () => {
+        expect(rule(CSS, ".ui-bars-name")).toMatch(/grid-column: 1;\s*grid-row: 1;/)
+        expect(rule(CSS, ".ui-bars-track")).toMatch(/grid-column: 2;\s*grid-row: 1;/)
+        expect(rule(CSS, ".ui-bars-amount")).toMatch(/grid-column: 3;\s*grid-row: 1;/)
+        expect(rule(CSS, ".ui-bars-note")).toMatch(/grid-column: 3;\s*grid-row: 2;/)
     })
 
     it("on phones the bar goes under the name, the amount to the row's end, the note under the bar", () => {
         const small = phone(CSS)
-        expect(small).toMatch(/\.ui-bars-row \{[^}]*grid-template-areas: "name amount" "bar bar" "note note";/)
-        expect(small).toMatch(/\.ui-bars-note \{[^}]*justify-self: start;/)
+        expect(small).toMatch(/\.ui-bars \{[^}]*grid-template-columns: minmax\(0, 1fr\) auto;/)
+        expect(small).toMatch(/\.ui-bars-amount \{[^}]*grid-column: 2;/)
+        expect(small).toMatch(/\.ui-bars-track \{[^}]*grid-column: 1 \/ -1;\s*grid-row: 2;/)
+        expect(small).toMatch(/\.ui-bars-note \{[^}]*grid-column: 1 \/ -1;\s*grid-row: 3;\s*justify-self: start;/)
     })
 })
 
