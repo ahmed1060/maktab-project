@@ -66,6 +66,8 @@ describe("every high-risk action asks", () => {
         "lib/services/attendance-terminal-alerts.ts": "attendance.manage_terminals for who is told of a silent agent or terminal",
         // Same checks as the routes that call it, after the route asked; listing a client's people changes nothing.
         "lib/services/client-account.service.ts": "called by POST /api/client-accounts and DELETE /api/client-accounts/[id], which ask",
+        // Whether the Clients list says how many of a client's people go with it (CLIENT_PORTAL_PLAN.md §3.6, PR 329).
+        "app/api/clients/route.ts": "client_accounts.manage for how many of a client's people Delete permanently names; nothing is granted",
     }
     const uses = (source: string, p: string) => new RegExp(`["']${p.replace(".", "\\.")}["']`).test(source)
 

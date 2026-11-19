@@ -110,16 +110,18 @@ describe("a client's menu on the Clients list", () => {
     const client = (over: Record<string, unknown>) => ({ id: "x", name: "X", ownerName: "Omar", mobileNumber: "0100", locationName: "Cairo", locationLink: null, locations: [], createdBy: null, archivedAt: null, inUse: false, hasTax: false, ...over })
     const keys = (items: { key: string }[]) => items.map(i => i.key)
 
-    it("offers Delete for a client nothing holds, and Archive for one with tasks, records or a tax position", async () => {
+    it("offers Delete for a client nothing holds, and Archive for one with tasks, records, a tax position or people who can sign in", async () => {
         state.list = { data: { data: [
             client({ id: "a", name: "Alpha" }),
             client({ id: "b", name: "Beta", inUse: true }),
             client({ id: "c", name: "Gamma", hasTax: true }),
+            // People who can sign in, and nothing else (PR 329).
+            client({ id: "p", name: "Pi", hasPeople: true }),
         ] } }
         await page()
-        // Three rows, then their three cards.
-        expect(state.menus.slice(0, 3).map(keys)).toEqual([["tasks", "edit", "delete"], ["tasks", "edit", "archive"], ["tasks", "edit", "archive"]])
-        expect(state.menus.slice(3).map(keys)).toEqual(state.menus.slice(0, 3).map(keys))
+        // Four rows, then their four cards.
+        expect(state.menus.slice(0, 4).map(keys)).toEqual([["tasks", "edit", "delete"], ["tasks", "edit", "archive"], ["tasks", "edit", "archive"], ["tasks", "edit", "archive"]])
+        expect(state.menus.slice(4).map(keys)).toEqual(state.menus.slice(0, 4).map(keys))
         expect(state.menus[0][2]).toMatchObject({ label: "delete", danger: true })
         // Archiving can be undone, so it isn't in the danger colour.
         expect(state.menus[2][2]).toMatchObject({ label: "clients_archive" })

@@ -52,6 +52,11 @@ export const GET = withStandardHandler(async (req, session) => {
     // and their company's package.
     const manages = can(session.user, "clients.manage")
     const seesTax = manages && can(session.user, "tax.view") && sessionHasModule(session, "TAX_POSITION")
+    // That it has people who can sign in is for whoever may delete it too,
+    // whose menu says Archive in place of Delete, and why; how many is for
+    // those of them who may manage who signs in for a client, by their role
+    // and their company's package (§3.6, PR 329).
+    const seesPeople = manages && can(session.user, "client_accounts.manage") && sessionHasModule(session, "TAX_POSITION")
     // How old a client's figures are, where they're 30 days old or more
     // (§4.3, PR 321), is for whoever may see tax positions, by their role and
     // their company's package: whose file is due shows on the list.
@@ -64,8 +69,9 @@ export const GET = withStandardHandler(async (req, session) => {
         orderBy: { name: 'asc' },
         include: {
             // Whether deleting it archives it instead: it has tasks or
-            // records, or a tax position (CLIENT_PORTAL_PLAN.md §3.6).
-            _count: { select: { tasks: true, taxClaims: true } },
+            // records, a tax position, or people who can sign in
+            // (CLIENT_PORTAL_PLAN.md §3.6).
+            _count: { select: { tasks: true, taxClaims: true, accounts: true } },
             recordSections: { where: { records: { some: {} } }, select: { id: true }, take: 1 },
             taxPosition: { select: { clientId: true, asOf: true } },
             // createdBy is null for a Super-Admin-created client (the FK
@@ -90,6 +96,8 @@ export const GET = withStandardHandler(async (req, session) => {
         // A file uploaded for it, with claims open or none.
         ...(manages ? { hasTax: _count.taxClaims > 0 || !!taxPosition } : {}),
         ...(seesTax ? { taxClaims: _count.taxClaims } : {}),
+        ...(manages ? { hasPeople: _count.accounts > 0 } : {}),
+        ...(seesPeople ? { people: _count.accounts } : {}),
         ...(old.has(client.id) ? { taxDaysOld: old.get(client.id) } : {}),
     })))
 })
@@ -151,12 +159,12 @@ export const DELETE = withStandardHandler(async (req, session) => {
     if (!id) return ApiResponse.badRequest("ID required")
 
     try {
-        // One with tasks, records or a tax position is archived instead (CLIENTS_PLAN.md §4.3;
-        // CLIENT_PORTAL_PLAN.md §3.6), and says so. ?archive=1 archives it whatever it holds now:
+        // One with tasks, records, a tax position or people who can sign in is archived instead
+        // (CLIENTS_PLAN.md §4.3; CLIENT_PORTAL_PLAN.md §3.6), and says which. ?archive=1 archives it whatever it holds now:
         // what the person confirmed. ?force=1 deletes an archived one for good, where no task or
         // record holds it.
         const result = await ClientService.delete(id, session, { archive: searchParams.get('archive') === '1', forGood: searchParams.get('force') === '1' })
-        return ApiResponse.success({ success: true, id, archived: result.archived, forTax: result.forTax })
+        return ApiResponse.success({ success: true, id, archived: result.archived, forTax: result.forTax, forPeople: result.forPeople })
     } catch (error: any) {
         if (error.message === 'CLIENT_NOT_FOUND') return ApiResponse.notFound("Client not found")
         if (error.message === 'FORBIDDEN') return ApiResponse.forbidden()

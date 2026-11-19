@@ -128,8 +128,8 @@ describe("each confirmation", () => {
 
     it("deletes a client in red, and archives one without", () => {
         const [asked, forGood] = confirmations("app/(dashboard)/dashboard/clients/page.tsx")
-        // Archived where its tasks, its records or its tax position hold it (PR 313).
-        expect(asked.get("danger")).toBe("{!(toDelete && archives(toDelete))}")
+        // Archived where its tasks, its records, its tax position (PR 313) or its people who can sign in (PR 329) hold it.
+        expect(asked.get("danger")).toBe("{!(toDelete && archivesInstead(toDelete))}")
         // Deleted for good from the archive, which can't be undone: always in red.
         expect(forGood.get("open")).toBe("{!!forGood}")
         expect(forGood.get("danger")).toBe("true")
