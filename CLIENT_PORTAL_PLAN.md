@@ -31,8 +31,9 @@ invitation (6b-2) are #325. People who can sign in on a client's page
 already there (6d) is #330. Signing in as a client account (step 7) is
 built in four, and the first, keeping a client account out of the
 company's app (7a), is #331, signing in finding a client account (7b) is
-#332, and Forgot password for client accounts (7c) is #333. The rest is
-built in the small PRs of §12, each its own PR.
+#332, and Forgot password for client accounts (7c) is #333. The area's
+top bar (7d-1) is #334. The rest is built in the small PRs of §12, each
+its own PR.
 
 ---
 
@@ -704,6 +705,24 @@ no screen changes:
 - **Whether the office's portal is open isn't asked:** a new password opens
   nothing by itself, and signing in still says the portal isn't open now.
 
+As built (step 7d-1, #334), the client's area's top bar (`DESIGN.md` §5.5):
+
+- **At its start,** the company's mark and name, as at the top of the
+  company's side bar: its logo, or its name's first letter.
+- **At its end,** the language switch and the account menu. The menu has
+  the person's name, with their client's name under it, then Sign out,
+  which moves there from the page. Change password joins it in 7d-2.
+- **The language picked there is the account's,** as a person's choice is
+  theirs (§5.2): the area opens in it next time, and the emails to them
+  will be in it. It's saved by the area's own route, `/api/portal/language`.
+- **In the company's brand colour,** its own or the system's default, as
+  the company's people see it (`UI_PLAN.md` §4.6). It's read with the
+  company's name and logo, once each time a page is drawn.
+- **On phones,** the company's name gives way first, the language switch
+  shows EN and ع, and the account button the person's initials alone, as
+  on the company's top bar.
+- No theme switch, notifications or search, as `DESIGN.md` has it.
+
 ### 5.5 The privacy policy (Decided, 2026-11-17)
 
 The privacy policy (`app/(legal)/privacy`) gets a line saying Nizmo also
@@ -1161,7 +1180,14 @@ width:
    - **7c. Forgot password** for a client account, on the same page, as
      for the company's people. #333.
    - **7d. The area's top bar and account menu** (`DESIGN.md` §5.5),
-     with Change password and Sign out, in the company's brand colour.
+     with Change password and Sign out, in the company's brand colour,
+     in two:
+     - **7d-1.** The top bar: the company's mark and name, the language
+       switch, which keeps the language picked as the account's, and the
+       account menu with the person's name, their client's name and Sign
+       out. #334.
+     - **7d-2.** Change password in the account menu, on a page of the
+       area's own, as for the company's people.
 8. **The tax position page.**
 9. **Contacting the accountant on WhatsApp:** the number on people's
    profiles, the responsible accountant, the dialog, Ask about this
@@ -1701,3 +1727,10 @@ with a tax position is archived, and deleted for good from the archive
   invited who hasn't set a password gets no code, as the invitation's link
   is how theirs is set; whether the portal is open isn't asked, as signing
   in asks it; the code's email is in English, as a person's is for now.
+- **2026-11-19:** 7d split in two (§12): 7d-1, the area's top bar (#334),
+  then 7d-2, Change password, which needs a page and a route of its own.
+  7d-1 (#334): the company's mark and name, the language switch and the
+  account menu, with Sign out, in the company's brand colour (§5.3). A
+  language picked there is kept as the account's, as §5.2 has it. My
+  choices, easy to change: no theme switch, as `DESIGN.md` has none there;
+  Sign out moves from the page into the menu.

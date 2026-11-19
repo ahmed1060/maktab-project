@@ -6746,3 +6746,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   (#333; `CLIENT_PORTAL_PLAN.md` §5.3, §12 step 7c). No screen changes:
   the sign-in page's two reset steps already say the same whoever the
   email is.
+- **2026-11-19:** The client's area has its top bar (#334;
+  `CLIENT_PORTAL_PLAN.md` §5.3, §12 step 7d-1; `DESIGN.md` §5.5): the
+  company's mark and name, the language switch and the account menu, with
+  Sign out, in the company's brand colour. Change password joins the menu
+  in 7d-2.
