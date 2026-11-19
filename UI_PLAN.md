@@ -803,7 +803,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      the links to it, How to get the portal's file, #320; then figures
      getting old, the badge on a client's Tax position and the Clients
      list, #321; then client accounts as they're kept, with their
-     permission and no screen yet, #322.
+     permission and no screen yet, #322; then the page that sets a
+     password from an invitation, with no email yet, #324.
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
 Clients pages) are rebuilt in step 0, so they're fixed there.
@@ -6702,3 +6703,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   360px phone in English. Every link in a line of text is 44px under a
   finger on a phone, as How to get the portal's file was: Saved lists on
   the cost names card and System settings on the high-risk card.
+- **2026-11-19:** Setting a password from an invitation (#324;
+  `CLIENT_PORTAL_PLAN.md` §5.2, §12 step 6b-1; `DESIGN.md` §5.5): a page
+  on the sign-in screen's frame, at `/invitation`, open to anyone with
+  the link, in both languages. No email sends the link yet. Found while
+  it was built: a password's Show was 40px square on a phone, inside a
+  44px field. It's the field's whole height at its end now, 44px, on
+  every password field, and looks as it did (`DESIGN.md` §9).
