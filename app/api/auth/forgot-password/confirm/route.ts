@@ -9,6 +9,7 @@ import { forgotPasswordConfirmSchema } from "@/lib/validations/forgot-password.s
 import { VerificationCodeService } from "@/lib/services/verification-code.service"
 import { AuditLogService } from "@/lib/services/audit-log.service"
 import { isNextInternalError } from "@/lib/next-internal-error"
+import { clientAccountToReset, resetClientPassword } from "@/lib/client-password-reset"
 
 // F-27, Phase 3.5. Applies to any account, including the protected
 // SuperAdmin — resetting a forgotten password doesn't touch the
@@ -39,6 +40,13 @@ export async function POST(req: NextRequest) {
         const superAdmin = await prisma.superAdmin.findUnique({ where: { email } })
         const user = superAdmin ? null : await prisma.user.findUnique({ where: { email } })
         const account = superAdmin || user
+        // One of a client's people (CLIENT_PORTAL_PLAN.md §5.3, PR 333): their
+        // new password, as a person's is set below.
+        if (!account) {
+            const clientAccount = await clientAccountToReset(email)
+            if (!clientAccount || !(await resetClientPassword(clientAccount, newPassword))) return ApiResponse.notFound("Account not found")
+            return ApiResponse.success({ reset: true })
+        }
         // Not reachable in practice: verify() above can only return true for
         // an email that actually had a code issued, which request/route.ts
         // only ever does for an email that matched an account. Kept as a

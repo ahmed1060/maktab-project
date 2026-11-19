@@ -30,8 +30,9 @@ invitation (6b-2) are #325. People who can sign in on a client's page
 (6c) are #326 and #329, and `client_accounts.manage` for the companies
 already there (6d) is #330. Signing in as a client account (step 7) is
 built in four, and the first, keeping a client account out of the
-company's app (7a), is #331, and signing in finding a client account
-(7b) is #332. The rest is built in the small PRs of §12, each its own PR.
+company's app (7a), is #331, signing in finding a client account (7b) is
+#332, and Forgot password for client accounts (7c) is #333. The rest is
+built in the small PRs of §12, each its own PR.
 
 ---
 
@@ -685,6 +686,24 @@ position comes there next:
   computers. The top bar and account menu are 7d; the page itself is
   step 8.
 
+As built (step 7c, #333), on the sign-in page's Forgot your password, with
+no screen changes:
+
+- **Found by its email,** capitals and spaces at its ends aside, as signing
+  in finds it, where no person or Super Admin has the email. It's emailed
+  the code a person is, from the same address, in English as theirs is for
+  now. The page says the same whoever the email is, as it does today, so it
+  tells no one which emails the office invited.
+- **Only someone whose password is set** is sent a code. Someone invited
+  sets theirs from the invitation's link, which the office can send again
+  (§5.2), and gets no code (my choice, easy to change).
+- **The new password** ends their open sessions within a minute (7b's
+  check) and lifts a sign-in lock, as for a person. The audit log has it
+  under the client, naming the person, for the Super Admin, as their
+  sign-ins are.
+- **Whether the office's portal is open isn't asked:** a new password opens
+  nothing by itself, and signing in still says the portal isn't open now.
+
 ### 5.5 The privacy policy (Decided, 2026-11-17)
 
 The privacy policy (`app/(legal)/privacy`) gets a line saying Nizmo also
@@ -1140,7 +1159,7 @@ width:
      next. Signing in is refused, and an open session ends, where §5.3
      says, with its words; the account's last sign-in is kept. #332.
    - **7c. Forgot password** for a client account, on the same page, as
-     for the company's people.
+     for the company's people. #333.
    - **7d. The area's top bar and account menu** (`DESIGN.md` §5.5),
      with Change password and Sign out, in the company's brand colour.
 8. **The tax position page.**
@@ -1675,3 +1694,10 @@ with a tax position is archived, and deleted for good from the archive
   is removed, as the invitation's page holds a barred company's portal
   closed (#324). My choice, easy to change: each sign-in and wrong
   password is in the audit log under the client, for the Super Admin.
+- **2026-11-19:** 7c (#333): Forgot password works for one of a client's
+  people, by their email, as for a person: the same code, the new password
+  ending their open sessions and lifting a sign-in lock, and the same
+  answer whoever the email is. My choices, each easy to change: someone
+  invited who hasn't set a password gets no code, as the invitation's link
+  is how theirs is set; whether the portal is open isn't asked, as signing
+  in asks it; the code's email is in English, as a person's is for now.
