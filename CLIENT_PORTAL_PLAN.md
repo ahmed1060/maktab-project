@@ -488,6 +488,13 @@ As built (step 6a, #322), with no screen yet:
   in one, and the page that sets the password opens in it, as later the
   portal does. The account keeps it, as a staff account keeps its own
   language, and the person can change it in the portal.
+- **Who it's from (Decided, 2026-11-19):** sent under the office's name
+  alone, from the address Nizmo sends its email from. A reply goes to the
+  person in the office who sent it (added the person, or resent the
+  invitation), and its "for any questions" line names them and the
+  office. Sent by a Super Admin, who isn't one of the office's people, it
+  names the office alone and has no reply address. The words are on the
+  design canvas, one artboard in each language.
 - Remove: their account goes, and so do their open sessions, at once.
 - Each add, resend and remove is in the audit log.
 
@@ -1437,3 +1444,8 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   account keeps it. The email's words are drafted on the design canvas,
   one artboard in each language; the name it's sent under, where a reply
   goes and whether it names the accountant wait on the owner.
+- **2026-11-19:** Decided with the owner (§5.2): the invitation's email
+  is sent under the office's name alone, from Nizmo's address; a reply
+  goes to the person in the office who sent it, and the email names them
+  and the office. Chosen in writing it down: one sent by a Super Admin
+  names the office alone, with no reply address.
