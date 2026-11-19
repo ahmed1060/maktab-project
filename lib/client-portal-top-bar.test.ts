@@ -195,7 +195,7 @@ describe("the account menu", () => {
     const person = { name: "Maha Adel", client: "Nile Trading" }
     const menu = async (props: Record<string, unknown> = {}, locale: "en" | "ar" = "en") => {
         const { PortalAccountMenu } = await import("@/components/portal/PortalTopBar")
-        return render(h(PortalAccountMenu, { id: "m1", person, onSignOut: () => {}, signingOut: false, ...props }), locale)
+        return render(h(PortalAccountMenu, { id: "m1", person, onClose: () => {}, onSignOut: () => {}, signingOut: false, ...props }), locale)
     }
 
     it("has the person at its top, with their client under their name", async () => {
@@ -218,7 +218,8 @@ describe("the account menu", () => {
 
     it("has nothing of the company's people's: no profile, security, history or theme", async () => {
         const html = await menu()
-        expect(html).not.toContain("<a ")
+        // Its one link is the area's own Change password (PR 335).
+        expect(html.match(/<a [^>]*>/g)).toEqual(['<a class="ui-menu-item" href="/portal/password">'])
         for (const key of ["my_profile", "security_settings_nav", "history", "theme_label", "theme_light", "theme_dark"] as const) expect(html, key).not.toContain(`>${en[key]}<`)
         expect(html).not.toContain("ui-account-theme")
     })

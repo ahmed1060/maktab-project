@@ -3,7 +3,8 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { SignOutIcon } from '@phosphor-icons/react/ssr'
+import Link from 'next/link'
+import { LockKeyIcon, SignOutIcon } from '@phosphor-icons/react/ssr'
 import { Avatar, CompanyMark, Icon } from '@/components/ui'
 import { AccountButton, type AccountPerson } from '@/components/DashboardHeader'
 import LanguageToggleButton from '@/components/LanguageToggleButton'
@@ -14,13 +15,14 @@ export type PortalPerson = { name: string; client: string }
 
 /**
  * The account menu (DESIGN.md §5.5): the person at its top, with their
- * client under their name, then Sign out. Change password joins it in step
- * 7d-2. Not a dialog, as the company's people's isn't: its button is Tab's,
- * and the top bar closes it.
+ * client under their name, then Change password, on a page of the area's own
+ * (PR 335), and Sign out. Not a dialog, as the company's people's isn't: its
+ * button is Tab's, and the top bar closes it, as following its link does.
  */
-export function PortalAccountMenu({ id, person, onSignOut, signingOut }: {
+export function PortalAccountMenu({ id, person, onClose, onSignOut, signingOut }: {
     id: string
     person: PortalPerson
+    onClose: () => void
     onSignOut: () => void
     signingOut: boolean
 }) {
@@ -34,6 +36,8 @@ export function PortalAccountMenu({ id, person, onSignOut, signingOut }: {
                     <span className="ui-account-role"><bdi>{person.client}</bdi></span>
                 </span>
             </div>
+            <div className="ui-menu-rule" />
+            <Link className="ui-menu-item" href="/portal/password" onClick={onClose}><Icon icon={LockKeyIcon} />{t('portal_password_title')}</Link>
             <div className="ui-menu-rule" />
             <button type="button" className="ui-menu-item" onClick={onSignOut} disabled={signingOut} aria-busy={signingOut}><Icon icon={SignOutIcon} />{t('sign_out')}</button>
         </div>
@@ -92,7 +96,7 @@ export function PortalTopBar({ company, person }: {
                 onKeyDown={e => { if (e.key === 'Escape') { setOpen(false); button.current?.focus() } }}
                 onBlur={e => { if (e.relatedTarget && !box.current?.contains(e.relatedTarget as Node)) setOpen(false) }}>
                 <AccountButton person={who} open={open} menuId={menuId} onToggle={() => setOpen(was => !was)} buttonRef={button} />
-                {open && <PortalAccountMenu id={menuId} person={person} onSignOut={leave} signingOut={leaving} />}
+                {open && <PortalAccountMenu id={menuId} person={person} onClose={() => setOpen(false)} onSignOut={leave} signingOut={leaving} />}
             </div>
         </header>
     )

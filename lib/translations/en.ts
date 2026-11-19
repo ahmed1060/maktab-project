@@ -413,6 +413,7 @@ export const en = {
         audit_action_RESEND_CLIENT_INVITATION: "Sent a person's invitation again",
         audit_action_CLIENT_SIGN_IN: "Signed in to a client's portal",
         audit_action_CLIENT_SIGN_IN_FAILURE: "Failed sign-in to a client's portal",
+        audit_action_CLIENT_PASSWORD_CHANGE: "Changed their password on a client's portal",
         audit_action_ADD_CLIENT_ACCOUNT_NOT_SENT: "Couldn't send a person's invitation, so they weren't added",
         audit_action_RESEND_CLIENT_INVITATION_NOT_SENT: "Couldn't send a person's invitation again, so the link sent before still works",
         audit_action_SET_LOCATION_HQ: "Made location the HQ",
@@ -3652,6 +3653,12 @@ export const en = {
         tax_position: "Tax position",
         // The client's area's first page (CLIENT_PORTAL_PLAN.md §5.3, PR 332), until the tax position is there (step 8).
         portal_tax_soon: "It will be shown here soon.",
+        // Change password in the client's area (CLIENT_PORTAL_PLAN.md §5.3, PR 335).
+        portal_password_title: "Change password",
+        portal_password_subtitle: "You stay signed in here, and anywhere else you're signed out within a minute.",
+        portal_password_current: "Current password",
+        portal_password_current_needed: "Enter your current password.",
+        portal_password_tries: "Too many wrong tries for this account. You can try again within 15 minutes.",
         tax_position_loading: "Loading the tax position…",
         tax_position_failed: "The tax position didn't load.",
         tax_position_none: "No tax position yet",
