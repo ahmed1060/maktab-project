@@ -112,6 +112,16 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     CLIENT_PEOPLE_FULL: { status: 409, message: "A client can have up to 20 people who sign in." },
     // Removed by somebody else since the list was read, or never this company's.
     CLIENT_PERSON_NOT_FOUND: { status: 404, message: "This person isn't among the client's people any more." },
+    // Setting a password from an invitation (CLIENT_PORTAL_PLAN.md §5.2; lib/services/client-invitation.service.ts).
+    // The page says each in its own words, in the reader's language.
+    INVITATION_TOKEN_REQUIRED: { status: 400, message: "This isn't an invitation's link." },
+    // Never made, used, replaced, or the person removed: not told apart.
+    INVITATION_UNKNOWN: { status: 404, message: "This link doesn't work any more. Ask the office for a new invitation." },
+    INVITATION_EXPIRED: { status: 409, message: "This invitation has expired. Ask the office for a new one." },
+    INVITATION_CLOSED: { status: 403, message: "The office's portal isn't open to you now. Please contact the office." },
+    INVITATION_PASSWORD_SHORT: { status: 400, message: "The password needs at least 12 characters." },
+    INVITATION_PASSWORD_LONG: { status: 400, message: "A password can have up to 72 characters." },
+    INVITATION_PASSWORD_MISMATCH: { status: 400, message: "The two passwords aren't the same." },
     // Archived rather than given new work (CLIENTS_PLAN.md §4.3).
     CLIENT_ARCHIVED: { status: 400, message: "This client is archived. Restore it on the Clients page first." },
     // Deleted for good from the archive only, and only where no task or

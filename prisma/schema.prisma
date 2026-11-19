@@ -3129,6 +3129,10 @@ model ClientAccount {
   invitedAt      DateTime  @default(now())
   /// When its password was first set: invited until then, active after.
   activatedAt    DateTime?
+  /// Its invitation's link (§5.2): the secret only as its SHA-256, and when
+  /// it stops working. None once the password is set.
+  inviteTokenHash String?  @unique
+  inviteExpiresAt DateTime?
   lastSignInAt   DateTime?
   /// Who added it, and their name as it was that day. A Super Admin isn't
   /// one of the company's people: their name alone is kept.

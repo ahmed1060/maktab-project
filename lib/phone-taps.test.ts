@@ -77,3 +77,21 @@ describe("a link in a line of text, on a phone", () => {
         expect(link).toContain("44px under a finger")
     })
 })
+
+describe("a button inside a field, on a phone", () => {
+    // Found while PR 324's invitation page was built: a password's Show was
+    // 40px square inside a 44px field. With no ground of its own, it takes
+    // the field's whole height at its end, and looks as it did.
+    it("is 44px square, the field's height, at the field's end", () => {
+        expect(rule(".ui-input,\n  .ui-select", true)).toMatch(/height: 44px;/)
+        const button = rule(".ui-control-button", true)
+        expect(button).toMatch(/width: 44px;/)
+        expect(button).toMatch(/height: 44px;/)
+        expect(button).toMatch(/inset-inline-end: 0;/)
+        expect(rule(".ui-control-button")).toMatch(/background: none;/)
+    })
+
+    it("leaves the field's words clear of it", () => {
+        expect(rule(".ui-control.has-end-button > .ui-input", true)).toMatch(/padding-inline-end: 48px;/)
+    })
+})

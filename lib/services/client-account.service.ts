@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { can, type Actor } from "@/lib/permissions/can"
 import { clientAccountHasEmail, isEmailClash, personHasEmail } from "@/lib/account-email"
 import { MAX_CLIENT_PEOPLE, NIZMO_ID, sentPerson, type ClientPeople, type ClientPerson } from "@/lib/client-accounts"
+import { newInvitation } from "@/lib/client-invitation"
 
 /**
  * A client's people who sign in to the client portal (CLIENT_PORTAL_PLAN.md
@@ -9,8 +10,8 @@ import { MAX_CLIENT_PEOPLE, NIZMO_ID, sentPerson, type ClientPeople, type Client
  * whoever may manage them. They're never the company's own people, so
  * nothing here reads or writes a User.
  *
- * Added, a person is invited. The invitation itself, its email and the page
- * that sets a password, is step 6b.
+ * Added, a person is invited, with a link that works once, for 72 hours,
+ * which sets their password (step 6b-1, PR 324). Its email is step 6b-2.
  */
 
 /** Who's asking, with the name kept beside who they added. */
@@ -87,6 +88,9 @@ export async function addClientPerson(user: Adder, body: unknown, now: Date = ne
         // Said before the save where it can be. The database holds the rule
         // itself, for an email given to somebody else at this very moment.
         if (await clientAccountHasEmail(person.email, tx) || await personHasEmail(person.email, tx)) throw new Error("CLIENT_PERSON_EMAIL_IN_USE")
+        // Their invitation's link, kept only as its hash. Its secret goes out
+        // in the invitation's email, from step 6b-2; until then nobody has it.
+        const link = newInvitation(now)
         const added = await tx.clientAccount.create({
             data: {
                 companyId: client.companyId,
@@ -94,6 +98,8 @@ export async function addClientPerson(user: Adder, body: unknown, now: Date = ne
                 name: person.name,
                 email: person.email,
                 invitedAt: now,
+                inviteTokenHash: link.tokenHash,
+                inviteExpiresAt: link.expiresAt,
                 // A Super Admin isn't one of the company's people: their name is kept, as anyone's is.
                 addedById: superAdmin ? null : user.id ?? null,
                 addedByName: user.name ?? null,

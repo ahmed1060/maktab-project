@@ -274,7 +274,7 @@ describe.skipIf(!ADMIN_URL)("client accounts, in Postgres", () => {
         it("are each given by name, email, whether invited or active, and when, in the order they were added", async () => {
             await accounts.addClientPerson(admin, person("delta", "Dalia Delta", "dalia@delta.co"), new Date("2026-11-10T09:00:00Z"))
             const active = await accounts.addClientPerson(admin, person("delta", "Bassem Delta", "bassem@delta.co"), new Date("2026-11-12T09:00:00Z"))
-            await db.query(`UPDATE "ClientAccount" SET password = 'hash', "activatedAt" = '2026-11-13T10:00:00Z', "lastSignInAt" = '2026-11-18T16:30:00Z' WHERE id = $1`, [active.id])
+            await db.query(`UPDATE "ClientAccount" SET password = 'hash', "activatedAt" = '2026-11-13T10:00:00Z', "lastSignInAt" = '2026-11-18T16:30:00Z', "inviteTokenHash" = NULL, "inviteExpiresAt" = NULL WHERE id = $1`, [active.id])
             expect(await accounts.clientPeople(admin, "delta")).toEqual({
                 client: { id: "delta", name: "Delta Foods", archived: false },
                 max: 20,
