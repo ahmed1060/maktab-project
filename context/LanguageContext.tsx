@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import type { Locale, TranslationKey, TranslationDict } from '@/lib/translations';
 import { loadTranslations } from '@/lib/translations';
+import { isClientAccount } from '@/lib/client-session';
 import { HourglassIcon } from '@phosphor-icons/react/ssr';
 // The block itself, not the blocks' index: its dialog asks this provider for its words.
 import { EmptyState } from '@/components/ui/Blocks';
@@ -100,10 +101,14 @@ export function LanguageProvider({ children, initialLocale, initialDict }: { chi
             // A. Trigger server-side refresh (fetches fresh RSC payload with the new cookie)
             router.refresh();
 
-            // 3. Background sync if authenticated
+            // 3. Background sync if authenticated. One of a client's people
+            // keeps theirs through the client's area's own route, as every
+            // other route refuses their session (CLIENT_PORTAL_PLAN.md §5.2,
+            // §5.3; PR 334).
             if (status === 'authenticated') {
+                const saveTo = isClientAccount(session?.user) ? '/api/portal/language' : '/api/user/language';
                 Promise.all([
-                    fetch('/api/user/language', {
+                    fetch(saveTo, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ language: newLocale }),

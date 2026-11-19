@@ -381,7 +381,7 @@ describe("the sign-in code", () => {
 describe("the client's area's first page", () => {
     const esc = (text: string) => text.replace(/&/g, "&amp;").replace(/'/g, "&#x27;").replace(/"/g, "&quot;")
 
-    it("says the client's name above Tax position, that it will be shown there soon, and Sign out, in both languages", async () => {
+    it("says the client's name above Tax position, and that it will be shown there soon, in both languages", async () => {
         const { PortalHome } = await import("@/components/portal/PortalHome")
         for (const locale of ["en", "ar"] as const) {
             page.locale = locale
@@ -390,7 +390,8 @@ describe("the client's area's first page", () => {
             expect(html, locale).toContain(`<p class="ui-page-overline">Nile Trading</p>`)
             expect(html, locale).toContain(`<h1 class="ui-page-title">${esc(words.tax_position)}</h1>`)
             expect(html, locale).toContain(`<p class="ui-page-subtitle">${esc(words.portal_tax_soon)}</p>`)
-            expect(html, locale).toContain(`>${esc(words.sign_out)}</`)
+            // In the top bar's account menu since PR 334 (lib/client-portal-top-bar.test.ts).
+            expect(html, locale).not.toContain(`>${esc(words.sign_out)}</`)
         }
         expect(en.portal_tax_soon).toBe("It will be shown here soon.")
         expect(ar.portal_tax_soon).toBe("سيُعرض هنا قريبًا.")
