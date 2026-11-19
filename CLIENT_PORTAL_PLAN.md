@@ -482,6 +482,12 @@ As built (step 6a, #322), with no screen yet:
 - Add person: a name and an email. Nizmo emails an invitation, from the
   address it sends sign-in codes from, with a link to set a password. The
   link works once, for 72 hours; Resend invitation sends a new one.
+- **The language they're invited in (Decided, 2026-11-19):** Add person
+  asks for Arabic or English, Arabic to start, as the office knows its
+  client. The invitation's email is in that language alone, never both
+  in one, and the page that sets the password opens in it, as later the
+  portal does. The account keeps it, as a staff account keeps its own
+  language, and the person can change it in the portal.
 - Remove: their account goes, and so do their open sessions, at once.
 - Each add, resend and remove is in the audit log.
 
@@ -972,10 +978,11 @@ width:
      - **6b-1.** Its link, which works once for 72 hours, and the page
        that sets a password from it. No email yet. #324.
      - **6b-2.** Its email, from the address Nizmo sends sign-in codes
-       from, and Resend invitation, which makes a new link and stops the
-       old one.
-   - **6c. People who can sign in,** on a client's page, and the
-     privacy policy's line (§5.5). Delete permanently (§3.6) then says
+       from, in the language the person is invited in (§5.2), which the
+       account keeps; and Resend invitation, which makes a new link and
+       stops the old one.
+   - **6c. People who can sign in,** on a client's page, with Add
+     person's language, and the privacy policy's line (§5.5). Delete permanently (§3.6) then says
      how many of a client's people go with it.
    - **6d.** `client_accounts.manage` for the built-in Admin of the
      companies already there, from a migration, once #322's release,
@@ -1423,3 +1430,10 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   the form showed one person's email over another's link. The page
   leaves out an answer for a link it no longer has, and the form sets
   the password for the link it was read with.
+- **2026-11-19:** Decided with the owner (§5.2): the invitation's email
+  is in one language, the one the office picks for the person on Add
+  person, Arabic to start; never Arabic and English in one email. The
+  page that sets the password, and later the portal, open in it, and the
+  account keeps it. The email's words are drafted on the design canvas,
+  one artboard in each language; the name it's sent under, where a reply
+  goes and whether it names the accountant wait on the owner.
