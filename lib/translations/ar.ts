@@ -3671,7 +3671,7 @@ export const ar = {
         tax_upload_row: "الصف {line}",
         tax_upload_row_claim: "الصف {line}، المطالبة {number}",
         tax_mistake_number_missing: "بلا رقم مطالبة.",
-        tax_mistake_number_as_number: "رقم المطالبة محفوظ رقمًا، فقد تكون الأصفار في أوله ضاعت. يحدث ذلك حين يُفتح الملف في Excel ويُحفظ.",
+        tax_mistake_number_as_number: "رقم المطالبة محفوظ رقمًا، فقد تكون الأصفار في أوله ضاعت. يحدث ذلك حين يُفتح الملف في Excel ويُحفظ، أو حين يكون من نسخة أقدم من زر التصدير.",
         tax_mistake_number_too_long: "رقم المطالبة أطول من ٥٠ حرفًا.",
         tax_mistake_number_twice: "رقم المطالبة موجود أيضًا في الصف {line}.",
         tax_mistake_item_missing: "بلا بند سداد.",
@@ -3700,6 +3700,8 @@ export const ar = {
         tax_upload_confirm_replaces: "الحفظ يضع مطالبات الملف مكان مطالبات هذا العميل.",
         tax_upload_confirm_kept: "بعد الحفظ يُحفظ اسم الشركة التي في الملف لهذا العميل، فلا يُسأل عنه مرة أخرى.",
         tax_upload_confirm_yes: "نعم، هذا ملف هذا العميل",
+        // The link to the tax portal's export button's page (step 4c, PR 320).
+        tax_export_how: "طريقة الحصول على ملف البوابة",
         // The tax portal's export button's page (CLIENT_PORTAL_PLAN.md §10; DESIGN.md §5.5, PR 319).
         tax_export_title: "زر التصدير من بوابة الضرائب",
         tax_export_subtitle: "زر يوضع في شريط المفضلة بالمتصفح. على بوابة مصلحة الضرائب، يحفظ مطالبات العميل في ملف Excel، وهو الملف الذي يأخذه {upload}.",

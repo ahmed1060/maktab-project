@@ -10,6 +10,7 @@ import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped
 import { countOf } from '@/lib/plural'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { claimBadges, taxClaimsUrl, TAX_PAGE, TAX_PREVIEW, type TaxClaimRow, type TaxPosition as Position } from '@/lib/tax-claims'
+import TaxExportLink from './TaxExportLink'
 import TaxUpload from './TaxUpload'
 
 /**
@@ -22,7 +23,9 @@ import TaxUpload from './TaxUpload'
  *
  * The claims come only from the portal's file (§4.2). Whoever may update
  * tax positions uploads it from the section's heading (§4.1), before the
- * first file too; an archived client's figures stay as they were.
+ * first file too; an archived client's figures stay as they were. With the
+ * upload comes How to get the portal's file (§10, step 4c, PR 320), at the
+ * end of the line that names the file.
  */
 export default function TaxPosition({ clientId, manages = false }: { clientId: string; manages?: boolean }) {
     const { t, locale } = useLanguage()
@@ -60,10 +63,13 @@ export default function TaxPosition({ clientId, manages = false }: { clientId: s
     const { position, totals, claims, total } = body
     // Saved, the section reads itself again.
     const upload = manages && !body.client.archived ? <TaxUpload clientId={clientId} onSaved={() => { void mutate() }} /> : undefined
+    // How to get the portal's file, for whoever has the upload: after the line that names the file, not on the
+    // heading, which the upload's button fills on a phone.
+    const how = upload ? <> <TaxExportLink /></> : null
     if (!position) {
         return (
             <Section title={t('tax_position')} action={upload}>
-                <div className="ui-panel"><EmptyState icon={ReceiptIcon} title={t('tax_position_none')} detail={t('tax_position_none_detail')} /></div>
+                <div className="ui-panel"><EmptyState icon={ReceiptIcon} title={t('tax_position_none')} detail={<>{t('tax_position_none_detail')}{how}</>} /></div>
             </Section>
         )
     }
@@ -101,7 +107,7 @@ export default function TaxPosition({ clientId, manages = false }: { clientId: s
 
     return (
         <Section title={t('tax_position')} action={upload}>
-            <p className="ui-hint">{before}{position.uploadedBy && <bdi>{position.uploadedBy}</bdi>}{after}</p>
+            <p className="ui-hint">{before}{position.uploadedBy && <bdi>{position.uploadedBy}</bdi>}{after}{how}</p>
             <TotalTiles items={[
                 { label: t('tax_owed'), value: money(totals.remaining) },
                 { label: t('tax_open_claims'), value: count(totals.open) },

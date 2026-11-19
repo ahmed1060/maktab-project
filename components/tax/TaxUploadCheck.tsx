@@ -10,6 +10,7 @@ import { countOf } from '@/lib/plural'
 import type { TranslationKey } from '@/lib/translations'
 import type { ClaimDraft, TaxMistake } from '@/lib/tax-file'
 import type { TaxChange, TaxCheck, TaxRowProblem } from '@/lib/tax-check'
+import TaxExportLink from './TaxExportLink'
 
 /** A group with this many claims or fewer is open to start with. */
 const OPEN_UP_TO = 10
@@ -36,7 +37,9 @@ function Group({ title, hint, count, children }: { title: string; hint?: string;
  *
  * A row with a problem stops the save, as saving the rest would delete its
  * claim: then it says only which rows, and why. Nothing is edited here, as
- * the file is the portal's.
+ * the file is the portal's. The note ends with How to get the portal's file
+ * (§10, step 4c, PR 320): a file from an older copy of the export button is
+ * refused this way, and that page has the new one.
  */
 export default function TaxUploadCheck({ fileName, rows, check, asOf, today, busy = false, onAsOf, onAnother }: {
     fileName: string
@@ -89,6 +92,7 @@ export default function TaxUploadCheck({ fileName, rows, check, asOf, today, bus
                 {file}
                 <div className="ui-dialog-note" data-tone="problem" role="alert">
                     <p>{counted('tax_upload_problems', check.problems.length)}</p>
+                    <p><TaxExportLink newTab /></p>
                 </div>
                 <ul className="ui-tax-problems">
                     {check.problems.map(problem => (

@@ -799,7 +799,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      #316; then the built-in Admin role's Update clients' tax position
      for the companies already there, #317; then the tax portal's
      export button's code in Nizmo, with its tests and no screen yet,
-     #318; then its page, The tax portal's export button, #319.
+     #318; then its page, The tax portal's export button, #319; then
+     the links to it, How to get the portal's file, #320.
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
 Clients pages) are rebuilt in step 0, so they're fixed there.
@@ -6664,3 +6665,13 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   computer, Copy address for whoever can't drag, how to use it in
   numbered steps, and what to know. It's opened by its address until
   the links to it come, in the next part.
+- **2026-11-18:** The links to the tax portal's export button's page
+  (#320; `CLIENT_PORTAL_PLAN.md` §10, §12 step 4c; `DESIGN.md` §5.5, A
+  client's tax position, for the company's people, and Uploading the
+  tax portal's file). How to get the portal's file ends the Tax
+  position section's line, or its empty state's, for whoever may update
+  tax positions, and is in the upload's dialogs, in a new tab, where a
+  file is refused whole or a row has a problem. On a phone it's 44px
+  under a finger. A link in a line of text (`DESIGN.md` §5.2) has its
+  underline 2px under the pointer, wherever one is: the web audit found
+  it had nothing to show the pointer was on it.

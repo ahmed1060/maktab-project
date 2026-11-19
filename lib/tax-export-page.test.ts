@@ -205,7 +205,8 @@ describe("The tax portal's export button's page: how to use it, and what to know
             state.locale = locale
             expect(render()).not.toMatch(/\{[a-z]+\}/)
         }
-        const source = readFileSync(PAGE, "utf8") + readFileSync("components/tax/TaxExportButton.tsx", "utf8")
+        // The page, and the link to it (step 4c, PR 320).
+        const source = readFileSync(PAGE, "utf8") + readFileSync("components/tax/TaxExportButton.tsx", "utf8") + readFileSync("components/tax/TaxExportLink.tsx", "utf8")
         for (const key of keys) expect(source + JSON.stringify([TAX_EXPORT_STEPS, TAX_EXPORT_NOTES]) + readFileSync("lib/page-title.ts", "utf8"), key).toContain(key)
     })
 })

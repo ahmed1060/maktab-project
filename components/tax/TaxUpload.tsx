@@ -7,8 +7,10 @@ import { useToast } from '@/context/ToastContext'
 import { Button, ConfirmDialog, Dialog } from '@/components/ui'
 import { countOf } from '@/lib/plural'
 import { asOfFor, checkTaxFile, readClaimsNow, saveUpload, uploadOf } from '@/lib/tax-check'
+import { fileAtFault } from '@/lib/tax-export-page'
 import { TAX_FILE_MAX_BYTES, TAX_FILE_MAX_ROWS, type TaxClaimsNow, type TaxFile } from '@/lib/tax-file'
 import type { TaxFileRefusal } from '@/lib/tax-file-read'
+import TaxExportLink from './TaxExportLink'
 import TaxUploadCheck from './TaxUploadCheck'
 
 /** Why a file isn't checked: the file itself, or the client's claims couldn't be read to check it against. */
@@ -28,6 +30,9 @@ type Stage =
  *
  * Nothing of the file leaves the browser but its open claims, when they're
  * saved. The server checks every one of them again.
+ *
+ * Where it's the file that's at fault, How to get the portal's file opens
+ * the export button's page in a new tab (§10, step 4c, PR 320).
  */
 export default function TaxUpload({ clientId, onSaved }: { clientId: string; onSaved: () => void }) {
     const { t, locale } = useLanguage()
@@ -181,7 +186,8 @@ export default function TaxUpload({ clientId, onSaved }: { clientId: string; onS
             />
 
             <Dialog open={!!refused} onClose={close} title={t('tax_upload_refused_title')} actions={<>
-                <Button onClick={close}>{t('close')}</Button>
+                {/* The focus is here as it opens, as it was before the link above was there: not on a link that opens a tab. */}
+                <Button autoFocus onClick={close}>{t('close')}</Button>
                 <Button variant="primary" busy={reading} onClick={choose}>{t('tax_upload_choose_another')}</Button>
             </>}>
                 {refused && (
@@ -189,6 +195,7 @@ export default function TaxUpload({ clientId, onSaved }: { clientId: string; onS
                         <p>{refused.reason}</p>
                         {refused.names && <ul className="ui-dialog-list">{refused.names.map(name => <li key={name}><bdi>{name}</bdi></li>)}</ul>}
                         {refused.hint && <p className="ui-hint">{refused.hint}</p>}
+                        {refusal && fileAtFault(refusal.problem) && <p><TaxExportLink newTab /></p>}
                     </div>
                 )}
             </Dialog>

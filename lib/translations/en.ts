@@ -3684,7 +3684,7 @@ export const en = {
         tax_upload_row: "Row {line}",
         tax_upload_row_claim: "Row {line}, claim {number}",
         tax_mistake_number_missing: "It has no claim number.",
-        tax_mistake_number_as_number: "Its claim number is kept as a number, so zeros at its start may have been lost. That happens when the file is opened in Excel and saved.",
+        tax_mistake_number_as_number: "Its claim number is kept as a number, so zeros at its start may have been lost. That happens when the file is opened in Excel and saved, or comes from an older copy of the export button.",
         tax_mistake_number_too_long: "Its claim number is longer than 50 characters.",
         tax_mistake_number_twice: "Its claim number is also on row {line}.",
         tax_mistake_item_missing: "It has no item.",
@@ -3713,6 +3713,8 @@ export const en = {
         tax_upload_confirm_replaces: "Saving replaces this client's claims with the file's.",
         tax_upload_confirm_kept: "Once saved, the file's company is kept for this client, and isn't asked about again.",
         tax_upload_confirm_yes: "Yes, it's this client's file",
+        // The link to the tax portal's export button's page (step 4c, PR 320).
+        tax_export_how: "How to get the portal's file",
         // The tax portal's export button's page (CLIENT_PORTAL_PLAN.md §10; DESIGN.md §5.5, PR 319).
         tax_export_title: "The tax portal's export button",
         tax_export_subtitle: "A button for the browser's bookmarks bar. On the Tax Authority's portal, it saves a client's claims as an Excel file, the file {upload} takes.",
