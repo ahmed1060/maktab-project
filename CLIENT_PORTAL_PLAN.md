@@ -34,8 +34,8 @@ company's app (7a), is #331, signing in finding a client account (7b) is
 #332, and Forgot password for client accounts (7c) is #333. The area's
 top bar (7d-1) is #334, and Change password (7d-2) is #335. The tax
 position page (step 8) is built in four, and the first, what the area
-reads of it (8a), is #336. The rest is built in the small PRs of §12,
-each its own PR.
+reads of it (8a), is #336. Its building blocks (8b) are #337. The rest
+is built in the small PRs of §12, each its own PR.
 
 ---
 
@@ -818,6 +818,23 @@ As built (step 8a, #336), what the page is given, from the server
   February.
 - **The day the figures are from,** or none before the first upload.
 
+As built (step 8b, #337), the page's building blocks, from `DESIGN.md`
+§3.2 and §5.5, in `components/ui/Bars.tsx`, with no page using them yet:
+
+- **Bars by part** (`BarsByPart`): a row for each part, its name, a bar
+  and its amount, the note under the amount; the largest first, or in
+  the parts' own order (how late keeps its order). The largest bar fills
+  the space and the rest are to scale, at least 4px long; a part at
+  nothing has none. A name too long for its row is cut short at its own
+  end, so an item's Arabic name on the English page keeps its first
+  words, and pointing at a row shows it whole with its amount.
+- **The share bar** (`ShareBar`): how much is paid in words, the two
+  amounts at its end (under it on phones), over the bar.
+- **The large figure** (`LargeFigure`): the amount owed in `--text-hero`,
+  48px and 36px on phones, its currency after it.
+- They're on the Super Admin's building blocks page, in both languages,
+  with a client's figures made up for it.
+
 ---
 
 ## 7. Contacting the accountant (Decided, 2026-11-17: WhatsApp)
@@ -1250,7 +1267,7 @@ width:
      late counted in the company's days, as on a client's page. No
      screen; with its tests. #336.
    - **8b. Its building blocks:** bars by part, the share bar, and the
-     page's one large figure (`DESIGN.md` §3.2, §5.5).
+     page's one large figure (`DESIGN.md` §3.2, §5.5). #337.
    - **8c. The page's top:** its header, what's owed, the two cards of
      bars, the note, and the page before the first upload. It replaces
      the line saying the tax position comes soon.
@@ -1826,3 +1843,7 @@ with a tax position is archived, and deleted for good from the archive
   spellings are one item, shown by a usual item's correct spelling or
   else the one written most often, each claim keeping its own (§3.3,
   §6).
+- **2026-11-19:** 8a merged (#336). 8b (#337): the tax position page's
+  building blocks, bars by part, the share bar and the large figure in
+  `--text-hero`, on the building blocks page (§6). An item's Arabic name
+  too long for its row keeps its first words on the English page.

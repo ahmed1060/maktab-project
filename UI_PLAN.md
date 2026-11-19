@@ -6760,3 +6760,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   `CLIENT_PORTAL_PLAN.md` §6): how late starts with a row for what's not
   due yet, before under 6 months (decided 2026-11-19). The page is built
   in four (`CLIENT_PORTAL_PLAN.md` §12 step 8).
+- **2026-11-19:** The tax position page's building blocks
+  (`CLIENT_PORTAL_PLAN.md` §12 step 8b; `DESIGN.md` §3.2, §5.5): bars by
+  part, the share bar, and the page's one large figure in `--text-hero`,
+  48px and 36px on phones. A name too long for its row is cut short at its
+  own end, so an item's Arabic name on the English page keeps its first
+  words. They're on the building blocks page in both languages.
