@@ -11,7 +11,7 @@ import { isNextInternalError } from "./next-internal-error"
 import * as Sentry from "@sentry/nextjs"
 import { can } from "@/lib/permissions/can"
 import type { Permission } from "@/lib/permissions/catalogue"
-import { accountKind } from "@/lib/security"
+import { isClientAccount, loggedAs } from "@/lib/client-session"
 import { StepUpError } from "@/lib/step-up"
 import { redactSecrets } from "./redact"
 
@@ -37,6 +37,12 @@ type HandlerOptions = {
         /** The counter's name, for a route with no audit action: otherwise it shares the 'generic' one. */
         key?: string
     }
+    /**
+     * One of the client's area's own routes, under /api/portal
+     * (CLIENT_PORTAL_PLAN.md §5.3, §12 step 7a): it takes a client account's
+     * session, and only that. Every other route refuses one.
+     */
+    clientArea?: true
 }
 
 /**
@@ -171,8 +177,9 @@ export function withStandardHandler(
         // even if the failure happened after these were set.
         let userId: string | null = null
         let userRole: string | undefined
-        // For attributing a logged error to the right table (accountKind).
-        let kind: string | undefined
+        // Who a logged error or audit entry names, by the table each kind of
+        // account is kept in: a client account is in neither (loggedAs).
+        let named: ReturnType<typeof loggedAs> = { userId: null, superAdminId: null }
         try {
             const session = await getServerSession(authOptions)
             // Nobody in it is no session: one the server ended had no account
@@ -182,8 +189,16 @@ export function withStandardHandler(
             }
 
             userRole = (session.user as any).role
-            kind = accountKind(session.user as any)
+            named = loggedAs(session.user as any)
             userId = (session.user as any).id
+
+            // A client account's session reaches the client's area's own
+            // routes alone, and they take nothing else (CLIENT_PORTAL_PLAN.md
+            // §5.3, §12 step 7a): checked before anything else runs, the
+            // heartbeat included.
+            if (isClientAccount(session.user as any) !== !!options.clientArea) {
+                return ApiResponse.forbidden()
+            }
 
             // Rate Limiting
             if (options.rateLimit) {
@@ -369,8 +384,7 @@ export function withStandardHandler(
                         action: options.audit.action,
                         entityType: options.audit.entityType,
                         entityId: (entityId as unknown as string) || 'N/A',
-                        userId: kind !== 'SUPER_ADMIN' ? userId : null,
-                        superAdminId: kind === 'SUPER_ADMIN' ? userId : null,
+                        ...named,
                         details: sanitizedBody ?? undefined
                     }
                 })
@@ -407,8 +421,7 @@ export function withStandardHandler(
                 error,
                 route: new URL(req.url).pathname,
                 method: req.method,
-                userId: kind !== 'SUPER_ADMIN' ? userId : null,
-                superAdminId: kind === 'SUPER_ADMIN' ? userId : null,
+                ...named,
             })
             // Caught here, so Sentry would never see it on its own. Tagged
             // with the same reference the person was shown, so the code an

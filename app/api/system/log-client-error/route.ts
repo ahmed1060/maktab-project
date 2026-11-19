@@ -5,6 +5,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { RateLimiter, getClientIp } from "@/lib/api-utils"
 import { AuditLogService } from "@/lib/services/audit-log.service"
 import { isNextInternalError } from "@/lib/next-internal-error"
+import { loggedAs } from "@/lib/client-session"
 
 // Client-side failures a server catch block never sees at all — a React
 // render crash caught by an error boundary, or signIn() throwing on the
@@ -40,9 +41,9 @@ export async function POST(req: NextRequest) {
             if (isNextInternalError(e)) throw e
             return null
         })
-        const role = session && (session.user as any).role
-        const userId = role && role !== 'SUPER_ADMIN' ? (session!.user as any).id : null
-        const superAdminId = role === 'SUPER_ADMIN' ? (session!.user as any).id : null
+        // One of the company's people or a Super Admin, by the table each is
+        // kept in; a client account is neither (lib/client-session.ts).
+        const { userId, superAdminId } = loggedAs(session?.user as any)
 
         const ref = await AuditLogService.logSystemError({
             error: { message },

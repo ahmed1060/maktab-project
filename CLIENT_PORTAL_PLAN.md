@@ -26,7 +26,12 @@ the export button's code in Nizmo, with its tests (§10, step 4a), is
 step 6) are built in four, and the first, the accounts as they're kept
 (step 6a), is #322. The invitation (step 6b) is in two: its link and the
 page that sets a password (6b-1) are #324, and its email and Resend
-invitation (6b-2) are #325. The rest is built in the small PRs of §12, each its own PR.
+invitation (6b-2) are #325. People who can sign in on a client's page
+(6c) are #326 and #329, and `client_accounts.manage` for the companies
+already there (6d) is #330. Signing in as a client account (step 7) is
+built in four, and the first, keeping a client account out of the
+company's app (7a), is #331. The rest is built in the small PRs of §12,
+each its own PR.
 
 ---
 
@@ -637,6 +642,10 @@ calls the routes yet: the section on a client's page is step 6c.
   Signing in then says the office's portal isn't open to them now, and
   to contact the office.
 - Two-factor sign-in isn't asked of them for now (§13).
+- **The client's area is at `/portal`** (chosen in building, 2026-11-19,
+  and easy to change), its routes under `/api/portal`. Step 7 is built
+  in four (§12), the guard that keeps a client account out of the
+  company's app first.
 
 ### 5.5 The privacy policy (Decided, 2026-11-17)
 
@@ -1066,9 +1075,36 @@ width:
    - **6d.** `client_accounts.manage` for the built-in Admin of the
      companies already there, from a migration, once #322's release,
      whose role editor knows it, is live. #330.
-7. **Signing in as a client account, and the client's area:** sign-in
-   finding them, their session, the proxy keeping them in the area, and
-   its top bar and account menu.
+7. **Signing in as a client account, and the client's area,** in four,
+   each its own PR (split 2026-11-19), the guard first, so no one can
+   sign in as a client account before every page and route of the
+   company's app refuses one:
+   - **7a. Kept out of the company's app.** A client account's session
+     is told apart from a person's and a Super Admin's, and nothing
+     outside the client's area, at `/portal`, takes it:
+     - the proxy sends it from the company's pages, the sign-in page
+       and the root to `/portal`, and sends one of the company's people
+       from `/portal` to the dashboard;
+     - every route through `withStandardHandler` refuses it, unless the
+       route is one of the area's own, which says so, and only the
+       area's routes, under `/api/portal`, may;
+     - the routes that read a session another way take only a Super
+       Admin, a cron's secret or no one, and a test holds every route
+       to one of these;
+     - an error in a route a client account reached is logged with no
+       one of the company's people or Super Admins named.
+
+     No sign-in makes such a session yet: the tests make one by hand.
+     #331.
+   - **7b. Signing in finds a client account,** on the same sign-in
+     page, with the same lock after too many wrong passwords, and lands
+     in the client's area, on a page saying the tax position comes there
+     next. Signing in is refused, and an open session ends, where §5.3
+     says, with its words; the account's last sign-in is kept.
+   - **7c. Forgot password** for a client account, on the same page, as
+     for the company's people.
+   - **7d. The area's top bar and account menu** (`DESIGN.md` §5.5),
+     with Change password and Sign out, in the company's brand colour.
 8. **The tax position page.**
 9. **Contacting the accountant on WhatsApp:** the number on people's
    profiles, the responsible accountant, the dialog, Ask about this
@@ -1585,3 +1621,9 @@ with a tax position is archived, and deleted for good from the archive
   package has the client portal, and adding or removing one of a
   client's people still asks for the step-up confirmation. No screen
   changes.
+- **2026-11-19:** Step 7 split in four (§5.3, §12), the guard first, so
+  no one can sign in as a client account before the company's app
+  refuses one: 7a, kept out of the company's app (#331); 7b, signing in
+  finds a client account; 7c, Forgot password; 7d, the area's top bar
+  and account menu. My choice, easy to change: the client's area is at
+  `/portal`, and its routes under `/api/portal`.
