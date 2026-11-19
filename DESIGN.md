@@ -398,7 +398,9 @@ These are built once, in the building-blocks PR, and every page uses them
     first in Arabic too: the switch is about language, not in one. It's
     named "Language" for screen readers, and each option says whether
     it's in use. Picking the other switches the app to it, as today. On a
-    phone the options are "EN" and "ع", still named in full;
+    phone the options are "EN" and "ع", still named in full, each 44px
+    wide and 44px under a finger: what's tapped takes in the pill's edge
+    and padding above and below it, so the bar looks as it did;
   - **the bell** is named "Notifications", and "Notifications, 2 unread"
     while some are. How many is a `--brand` pill at its top end corner,
     18px tall, its `--text-xs` digits in `--on-brand` and in the page's
@@ -556,7 +558,10 @@ These are built once, in the building-blocks PR, and every page uses them
   told from the words around it without its colour, and kept on one
   line. Under the pointer its underline is 2px. On a phone it's 44px
   under a finger (§9): what's tapped is laid over its line, 22px above
-  its middle and 22px below, so no line around it moves.
+  its middle and 22px below, so no line around it moves. It's at least
+  44px wide too: a short one, such as a mobile number of a few digits, is
+  tapped 22px each way from its middle. A client's mobile number, on its
+  page, is one.
 - **Busy and disabled states** follow the existing rules from the buttons
   work (global CSS, and a confirmation showing its work under way, §5.5,
   Dialog).
@@ -2758,3 +2763,10 @@ changed:
   signed in or an Invited badge, Add person in a dialog with the
   language they're invited in, Resend invitation and Remove from the
   row's menu (`CLIENT_PORTAL_PLAN.md` §5.2).
+- **2026-11-19:** Three things on a client's page too small for a phone
+  (§5.1, §5.2, §9), found at 360px while People who can sign in was
+  built. A client's mobile number is a link in a line of text, 44px
+  under a finger, where it was 17px; a link in a line of text is at least
+  44px wide under a finger, where a short one was only as wide as its
+  words; and the top bar's language switch has options 44px wide and 44px
+  under a finger, where they were 40px by 36px.
