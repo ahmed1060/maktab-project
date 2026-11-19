@@ -93,6 +93,50 @@ describe("what's owed, by item", () => {
     it("nothing where there are no claims", async () => {
         expect(await items([])).toEqual([])
     })
+
+    // §3.3: the portal spells the same item more than one way.
+    it("spellings of one item are one item, letter forms, vowel marks, spaces and dashes aside; each claim keeps its own", async () => {
+        const groups = await items([
+            claim({ id: "1", item: "مساهمة تكافلية- تأمين صحي", originalAmount: 100, remainingAmount: 100 }),
+            claim({ id: "2", item: "مساهمه تكافليه - تامين صحى", originalAmount: 200, remainingAmount: 200 }),
+            claim({ id: "3", item: "مُساهمة تكافلية -  تأمين صحي", originalAmount: 50.1, remainingAmount: 50.1 }),
+        ])
+        expect(groups).toHaveLength(1)
+        expect(groups[0]).toMatchObject({ original: 350.1, remaining: 350.1 })
+        expect(groups[0].claims.map(c => c.item)).toEqual(["مساهمة تكافلية- تأمين صحي", "مساهمه تكافليه - تامين صحى", "مُساهمة تكافلية -  تأمين صحي"])
+    })
+
+    it("the usual items in their correct spelling, however the portal wrote them", async () => {
+        const groups = await items([
+            claim({ id: "1", item: "أقرار تجاري", remainingAmount: 300 }),
+            claim({ id: "2", item: "أقرار تجاري", remainingAmount: 200 }),
+            claim({ id: "3", item: "اقرار شهرى", remainingAmount: 100 }),
+            claim({ id: "4", item: "مساهمه تكافليه - تامين صحى", remainingAmount: 50 }),
+        ])
+        expect(groups.map(g => g.item)).toEqual(["إقرار تجاري", "إقرار شهري", "مساهمة تكافلية - تأمين صحي"])
+    })
+
+    it("any other item as the portal wrote it most often", async () => {
+        // The other spelling comes first, and first in text order too.
+        const groups = await items([
+            claim({ id: "1", item: "غرامة -تأخير" }),
+            claim({ id: "2", item: "غرامة تأخير" }),
+            claim({ id: "3", item: "غرامة تأخير" }),
+        ])
+        expect(groups.map(g => g.item)).toEqual(["غرامة تأخير"])
+    })
+
+    it("two spellings written as often go by text order, whatever order the claims come in", async () => {
+        const one = claim({ id: "1", item: "غرامه تأخير" })
+        const other = claim({ id: "2", item: "غرامة تأخير" })
+        expect((await items([one, other])).map(g => g.item)).toEqual(["غرامة تأخير"])
+        expect((await items([other, one])).map(g => g.item)).toEqual(["غرامة تأخير"])
+    })
+
+    it("another word is another item", async () => {
+        const groups = await items([claim({ id: "1", item: "أقرار تجاري", remainingAmount: 20 }), claim({ id: "2", item: "أقرار صناعي", remainingAmount: 10 })])
+        expect(groups.map(g => g.item)).toEqual(["إقرار تجاري", "أقرار صناعي"])
+    })
 })
 
 describe("what's owed, by how late", () => {

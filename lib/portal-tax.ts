@@ -1,5 +1,6 @@
 import { cents } from "@/lib/task-costs"
 import { claimBadges, type ClaimBadge, type TaxClaimRow } from "@/lib/tax-claims"
+import { spellingKey } from "@/lib/tax-file"
 
 /**
  * A client's tax position as the client's area shows it
@@ -43,8 +44,36 @@ export function lateGroup(dueDate: string, today: string): LateGroup {
     return "over_2_years"
 }
 
+/**
+ * The usual items in their correct spelling (§3.3): however the portal spells
+ * one of these, it's shown so.
+ */
+export const USUAL_ITEMS = [
+    "إقرار تجاري",
+    "إقرار شهري",
+    "إقرار ضريبة الدخل",
+    "إقرار القيمة المضافة",
+    "مساهمة تكافلية - تأمين صحي",
+    "مساهمة تكافلية لصندوق أسر الشهداء",
+] as const
+const USUAL_BY_KEY: ReadonlyMap<string, string> = new Map(USUAL_ITEMS.map(name => [spellingKey(name), name]))
+
+/**
+ * The name an item is shown by, from the ways the portal spelt it (§3.3):
+ * a usual item's correct spelling, else the spelling written most often;
+ * two written as often go by text order, whatever order the claims come in.
+ */
+function itemName(spellings: string[]): string {
+    const usual = USUAL_BY_KEY.get(spellingKey(spellings[0]))
+    if (usual) return usual
+    const times = new Map<string, number>()
+    for (const spelling of spellings) times.set(spelling, (times.get(spelling) ?? 0) + 1)
+    return [...times].sort(([a, m], [b, n]) => n - m || (a < b ? -1 : a > b ? 1 : 0))[0][0]
+}
+
 /** An item's claims and what they come to (DESIGN.md §5.5, The claims). */
 export type ItemGroup = {
+    /** The name it's shown by (§3.3); each claim keeps the portal's own spelling. */
     item: string
     /** In the order they were read: the oldest due first. */
     claims: TaxClaimRow[]
@@ -58,14 +87,20 @@ export type ItemGroup = {
 
 const sum = (claims: TaxClaimRow[], amount: (claim: TaxClaimRow) => number) => cents(claims.reduce((total, claim) => total + amount(claim), 0))
 
-/** What's owed by item: the largest remaining first, items owing the same by name. */
+/**
+ * What's owed by item, its spellings as one (§3.3): the largest remaining
+ * first, items owing the same by name.
+ */
 export function byItem(claims: TaxClaimRow[]): ItemGroup[] {
     const grouped = new Map<string, TaxClaimRow[]>()
-    for (const claim of claims) grouped.set(claim.item, [...(grouped.get(claim.item) ?? []), claim])
-    return [...grouped].map(([item, its]): ItemGroup => {
+    for (const claim of claims) {
+        const key = spellingKey(claim.item)
+        grouped.set(key, [...(grouped.get(key) ?? []), claim])
+    }
+    return [...grouped.values()].map((its): ItemGroup => {
         const badges = new Set(its.flatMap(claimBadges))
         return {
-            item,
+            item: itemName(its.map(claim => claim.item)),
             claims: its,
             original: sum(its, c => c.originalAmount),
             paid: sum(its, c => c.paidAmount),
