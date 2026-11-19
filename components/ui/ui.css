@@ -6085,6 +6085,45 @@ a.ui-notice:focus-visible {
   background: var(--page);
   color: var(--ink);
 }
+/* Its top bar (§5.5), alone: on the panel colour with a line under it, at
+   the top as the page scrolls. The company's top bar's buttons, switch and
+   account menu, with its phone rules (.ui-topbar), here as there. */
+.ui-topbar.ui-portal-topbar {
+  position: sticky;
+  inset-block-start: 0;
+  inset-inline: auto;
+  z-index: 40;
+  gap: var(--space-3);
+  background: var(--panel);
+  border: 0;
+  border-block-end: 1px solid var(--rule);
+}
+/* The company's mark and name, as at the top of the company's side bar. */
+.ui-portal-company {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-inline-size: 0;
+}
+/* On one line, the first to give way. */
+.ui-portal-company-name {
+  min-inline-size: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: var(--text-md);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 1023px) {
+  .ui-topbar.ui-portal-topbar {
+    gap: var(--space-1);
+    padding-inline: var(--space-4) var(--space-2);
+  }
+  .ui-portal-company {
+    gap: var(--space-2);
+  }
+}
 .ui-portal-page {
   box-sizing: border-box;
   inline-size: 100%;
