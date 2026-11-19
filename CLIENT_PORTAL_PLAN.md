@@ -24,8 +24,9 @@ the export button's code in Nizmo, with its tests (§10, step 4a), is
 #318. Its page (step 4b) is #319, and the links to it (step 4c) are
 #320. Figures getting old (§4.3, step 5) is #321. Client accounts (§5,
 step 6) are built in four, and the first, the accounts as they're kept
-(step 6a), is #322. The rest is built in the small PRs of §12, each its
-own PR.
+(step 6a), is #322. The invitation (step 6b) is in two: its link and the
+page that sets a password (6b-1) are #324, and its email follows. The
+rest is built in the small PRs of §12, each its own PR.
 
 ---
 
@@ -498,6 +499,41 @@ in Nizmo calls these routes.
 - **The audit log** has Added a person to a client's portal and Removed
   a person from a client's portal, on the client, with the person's name
   and email.
+
+As built (step 6b-1, #324): the invitation's link and the page that sets
+a password, with no email yet (`DESIGN.md` §5.5, Setting a password from
+an invitation). Until 6b-2 sends it, nobody receives a link.
+
+- **Each person added gets a link,** which works once, for 72 hours. Its
+  secret is 32 random bytes, kept only as its SHA-256, so the database
+  holds nothing that opens it.
+- **The secret is after a #** in the link (`/invitation#…`), so the
+  browser never sends it with the page, and no server, log or referrer
+  sees it. The page sends it in the body of its requests, and takes it
+  out of the address bar. Another link opened in the same tab, which a
+  browser doesn't load as a new page, is read in its place, and the one
+  before it, answered late, is left out: the form sets the password for
+  the link it was read with.
+- **The page** says who invited them, for whom, their email, and asks
+  for the password twice, 12 to 72 characters, as every password in
+  Nizmo. Set, the account is active, the link stops working, and the
+  page says so, with the email to sign in with and Sign in. Signing in
+  as a client account is step 7, which may fill the email in: until then
+  the sign-in page doesn't take them, and no package has the add-on.
+- **A link that can't be used says why:** it has expired; it doesn't
+  work any more (used, replaced or the person removed, which aren't told
+  apart, as that would say which emails the office invited); or the
+  office's portal isn't open to them now, where the client is archived,
+  the company's package hasn't the add-on, its subscription has ended or
+  it's barred (§5.3).
+- **Its two routes,** reading a link and setting the password, are open
+  to anyone, as a link in an email has to be. Each place has 10 tries in
+  15 minutes between them, as Forgot your password's are counted. The
+  password is set holding the client, then the account, in the order
+  deleting a client holds them, so two at once set it once, and a client
+  archived or deleted meanwhile is refused.
+- **The audit log** has Set a password from an invitation, on the
+  client, with the person's name and email, by no one of the company's.
 - **Asked from a page,** the app's own prompt answers: the authenticator
   code, or, for someone without two-factor sign-in, the way to set it up
   (`ROLES_PLAN.md` §6.15). The prompt said the action moves money or
@@ -932,8 +968,12 @@ width:
      across Nizmo, `client_accounts.manage`, and the routes that list a
      client's people, add one and remove one. No screen and no
      invitation yet. #322.
-   - **6b. The invitation:** its link, which works once for 72 hours,
-     its email, the page that sets a password, and Resend invitation.
+   - **6b. The invitation,** in two:
+     - **6b-1.** Its link, which works once for 72 hours, and the page
+       that sets a password from it. No email yet. #324.
+     - **6b-2.** Its email, from the address Nizmo sends sign-in codes
+       from, and Resend invitation, which makes a new link and stops the
+       old one.
    - **6c. People who can sign in,** on a client's page, and the
      privacy policy's line (§5.5). Delete permanently (§3.6) then says
      how many of a client's people go with it.
@@ -1161,6 +1201,21 @@ Postgres:
 - an account goes with its client, and the audit log has each add and
   remove.
 
+Setting a password from an invitation (step 6b-1, #324), against a real
+Postgres and in a browser:
+
+- a link works once, for 72 hours, and only its own account's;
+- the password asked twice, 12 to 72 characters;
+- an expired link, a used one, one for a removed person, and the
+  office's portal closed, each said as it is;
+- two set at once: one sets it, the other is told the link doesn't work;
+- the secret never reaches the server in the address, and leaves the
+  address bar; another link opened in the same tab is read, and the one
+  before it, answered late, is left out;
+- a client archived, or deleted, while the password is being set: refused,
+  with no one kept waiting;
+- both languages, at phone width and on a computer.
+
 And through the running app, as each kind of account: refused without
 the add-on, without the permission, and for another company's client;
 adding refused until the step-up confirmation is given, with the app's
@@ -1350,3 +1405,21 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   and remove a client's people. Chosen in building: an email is kept in
   small letters, a client has up to 20 people, and an archived client
   takes no new ones.
+- **2026-11-19:** The invitation is built in two (§12 step 6b): its link
+  and the page that sets a password (6b-1, #324), then its email and
+  Resend invitation (6b-2), whose words wait on the owner. Chosen in
+  building: the link's secret is after a #, so no server or log sees it;
+  a used link, a replaced one and a removed person's are told apart from
+  an expired one but not from each other; each place gets 10 tries in 15
+  minutes; setting the password sends them to sign in, which takes
+  client accounts from step 7; and another link opened in the same tab
+  is read in its place.
+- **2026-11-19:** Codex's two findings on #324, fixed before it's
+  merged: setting a password held the account, then its client, where
+  deleting a client holds the client, then its people, so the two could
+  each wait on the other and the database end one. It holds the client
+  first now. And another link opened in the same tab while the first
+  was still being read could have the first's answer arrive last, so
+  the form showed one person's email over another's link. The page
+  leaves out an answer for a link it no longer has, and the form sets
+  the password for the link it was read with.

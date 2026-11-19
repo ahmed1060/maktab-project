@@ -4791,10 +4791,11 @@ a.ui-donut-row:focus-visible {
   .ui-control.has-end-button > .ui-input {
     padding-inline-end: 48px;
   }
+  /* The field's whole height at its end: 44px under a finger (DESIGN.md §9). */
   .ui-control-button {
-    width: 40px;
-    height: 40px;
-    inset-inline-end: 2px;
+    width: 44px;
+    height: 44px;
+    inset-inline-end: 0;
   }
   .ui-page-header {
     flex-direction: column;

@@ -1794,6 +1794,35 @@ These are built once, in the building-blocks PR, and every page uses them
   - The "Powered by" signature, as the dashboard has it (§5.1): in the
     bottom corner on the end side on a computer, and on a phone at the
     end of the page, under the row of links and switches.
+- **Setting a password from an invitation** (`CLIENT_PORTAL_PLAN.md`
+  §5.2): where one of a client's people lands from the link in their
+  invitation. It's the sign-in screen's frame (above): the card on the
+  flat page, in the default brand colour, with the links, switches and
+  signature under it.
+  - The card's title is "Set your password". The line under it names who
+    invited them, for whom: "<office> invited you to the tax position of
+    <client>." The names are as the company and the client are named in
+    Nizmo, each kept whole in either language (§3.2).
+  - Their email, as a field that can't be changed, written left to right
+    in both languages (§3.3): the account is theirs alone, and it's what
+    they'll sign in with.
+  - The password, asked twice, as Change password asks it, with its eye
+    button and the hint saying how long it must be. What's wrong with
+    either is said under it before anything is sent.
+  - The one primary button, "Set password", takes the card's width. Under
+    it, in the muted note size: the link works once, for 72 hours.
+  - Set, the card says so, its title "Your password is set", with the
+    email to sign in with, and Sign in as its primary button.
+  - A link that can't be used says why, as the card's title and line,
+    with no form: it has expired, so a new invitation is asked of the
+    office; it doesn't work any more, as it was used, a newer one was
+    sent, or the person was removed, so the same; or the office's portal
+    isn't open to them now, so to contact the office. Each has Sign in
+    under it, as a quiet button.
+  - What the server says once Set password is pressed, such as a link
+    that ran out while the form was open, or too many tries from one
+    place, counted down, is said above the primary button, as on the
+    sign-in screen, and screen readers hear it.
 - **The privacy policy and the terms of service:** two documents anyone
   can open, signed in or not, as Google does before it lets Nizmo use
   Drive. As with sign-in, there's no side bar and no top bar, and they're
@@ -2642,3 +2671,8 @@ changed:
   44px under a finger on a phone, as How to get the portal's file was:
   Saved lists on the cost names card and System settings on the
   high-risk card were as tall as their words.
+- **2026-11-19:** Setting a password from an invitation (§5.5): where
+  one of a client's people lands from their invitation, on the sign-in
+  screen's frame: who invited them, for whom, their email, the password
+  asked twice, Set password, and a link that can't be used saying why
+  (`CLIENT_PORTAL_PLAN.md` §5.2).
