@@ -6736,3 +6736,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   a new company's has had since #322, and its holders reload their
   grants. Their Admins have People who can sign in on a client's page
   once their company's package has the client portal. No screen changes.
+- **2026-11-19:** A client's people sign in (#332;
+  `CLIENT_PORTAL_PLAN.md` §5.3, §12 step 7b) on the same sign-in page,
+  which says, where the office's portal isn't open now, to contact the
+  office. They land in the client's area, at `/portal`: for now a page
+  with the client's name above Tax position, a line saying it will be
+  shown there soon, and Sign out. Its top bar is 7d.
