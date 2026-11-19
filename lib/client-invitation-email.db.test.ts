@@ -49,6 +49,7 @@ INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locati
  ('theirs', 'c2', 'Their Client', 'Tarek', '0108', 'Giza', now(), NULL);
 `
 const NOW = new Date("2026-11-19T09:00:00Z")
+const AFTER_GAP = new Date(NOW.getTime() + 3 * 60_000)
 const HOUR = 3600_000
 const ORIGIN = "https://nizmo.vercel.app"
 const admin = withGrants({ id: "a1", role: "ADMIN", companyId: "c1", name: "Amal One" }) as any
@@ -75,7 +76,8 @@ describe.skipIf(!ADMIN_URL)("the invitation's email, in Postgres", () => {
     let n = 0
     const nextEmail = () => `person${++n}@client.co`
     const add = (user: any, more: Record<string, unknown> = {}, now = NOW) => accounts.addClientPerson(user, { clientId: "noor", name: "Mona Fouad", email: nextEmail(), ...more }, now, ORIGIN)
-    const resend = (user: any, id: string, now = NOW) => accounts.resendClientInvitation(user, id, now, ORIGIN)
+    // Sent again once the gap after the first has passed, unless a test says when.
+    const resend = (user: any, id: string, now = AFTER_GAP) => accounts.resendClientInvitation(user, id, now, ORIGIN)
     const row = async (id: string) => (await db.query(`SELECT language, "activatedAt", "inviteTokenHash", "inviteExpiresAt" FROM "ClientAccount" WHERE id = $1`, [id])).rows[0]
     const logged = async (action: string) => (await db.query(`SELECT action, "entityType", "entityId", details, "userId", "superAdminId" FROM "AuditLog" WHERE action = $1 ORDER BY "createdAt"`, [action])).rows
     const why = (p: Promise<unknown>) => p.then(() => "done", (error: Error) => error.message)
@@ -327,19 +329,51 @@ describe.skipIf(!ADMIN_URL)("the invitation's email, in Postgres", () => {
             expect((await logged("RESEND_CLIENT_INVITATION")).some(row => row.details.email === added.email)).toBe(true)
         })
 
-        it("that can't be sent leaves a link sent again meanwhile working", async () => {
+        it("is refused while the one before may still be on its way, so two at once can't leave the person with a link nobody was sent", async () => {
+            // Found by Codex on PR 325: two at once, both failing, could put
+            // back a link neither sent, and the one the person has stopped
+            // working.
+            const added = await add(admin)
+            const delivered = linkIn(outbox.sent[0])
+            let first = true
+            let meanwhile: string | undefined
+            outbox.sending = async () => {
+                if (!first) return
+                first = false
+                meanwhile = await why(resend(admin, added.id))
+                throw new Error("SMTP_DOWN")
+            }
+            expect(await why(resend(admin, added.id))).toBe("SMTP_DOWN")
+            expect(meanwhile).toBe("CLIENT_INVITATION_JUST_SENT")
+            expect(outbox.sent).toHaveLength(1)
+            expect(await keptHash(added.email)).toBe(invitationHash(delivered))
+            expect(await invitations.readInvitation({ token: delivered }, NOW)).toHaveProperty("email", added.email)
+        })
+
+        it("that can't be sent leaves alone a link sent again since, should its email outlast the gap", async () => {
             const added = await add(admin)
             let first = true
             outbox.sending = async () => {
                 if (!first) return
                 first = false
-                await resend(admin, added.id)
+                await resend(admin, added.id, new Date(AFTER_GAP.getTime() + 3 * 60_000))
                 throw new Error("SMTP_DOWN")
             }
             expect(await why(resend(admin, added.id))).toBe("SMTP_DOWN")
-            const later = linkIn(outbox.sent[outbox.sent.length - 1])
-            expect(await keptHash(added.email)).toBe(invitationHash(later))
-            expect(await invitations.readInvitation({ token: later }, NOW)).toHaveProperty("email", added.email)
+            const since = linkIn(outbox.sent[outbox.sent.length - 1])
+            expect(await keptHash(added.email)).toBe(invitationHash(since))
+        })
+
+        it("can be sent again 2 minutes after the link before it was made, and not sooner", async () => {
+            const added = await add(admin)
+            const delivered = linkIn(outbox.sent[0])
+            const before = (await logged("RESEND_CLIENT_INVITATION")).length
+            expect(await why(resend(admin, added.id, new Date(NOW.getTime() + 2 * 60_000 - 1000)))).toBe("CLIENT_INVITATION_JUST_SENT")
+            expect(outbox.sent).toHaveLength(1)
+            expect(await keptHash(added.email)).toBe(invitationHash(delivered))
+            expect(await logged("RESEND_CLIENT_INVITATION")).toHaveLength(before)
+            expect(await resend(admin, added.id, new Date(NOW.getTime() + 2 * 60_000))).toEqual({ resent: true })
+            expect(outbox.sent).toHaveLength(2)
         })
 
         it("saves the new link before it's sent, so the email never carries one the database doesn't keep", async () => {

@@ -14,6 +14,14 @@ import type { ClientLanguage } from "./client-accounts"
 export const INVITATION_HOURS = 72
 /** Where it opens. */
 export const INVITATION_PATH = "/invitation"
+/**
+ * How long after a link is made before it can be sent again (PR 325). Until
+ * then its email may still be on its way, and two sent at once that both
+ * fail could leave the person with a link nobody sent them, and the one they
+ * have stopped (found by Codex on PR 325). The routes that send one stop
+ * within a minute, so an email is sent or given up by then.
+ */
+export const RESEND_GAP_MINUTES = 2
 
 // A secret is 32 random bytes, written as 43 characters of base64url.
 const SECRET = /^[A-Za-z0-9_-]{43}$/
@@ -25,6 +33,12 @@ const hashOf = (token: string) => createHash("sha256").update(token).digest("hex
 export function newInvitation(now: Date = new Date()): { token: string; tokenHash: string; expiresAt: Date } {
     const token = randomBytes(32).toString("base64url")
     return { token, tokenHash: hashOf(token), expiresAt: new Date(now.getTime() + INVITATION_HOURS * 3600_000) }
+}
+
+/** Whether a link that stops working at `expiresAt` was made less than the gap before `now`. */
+export function justSent(expiresAt: Date, now: Date = new Date()): boolean {
+    const madeAt = expiresAt.getTime() - INVITATION_HOURS * 3600_000
+    return now.getTime() - madeAt < RESEND_GAP_MINUTES * 60_000
 }
 
 /** The hash a sent secret is looked up by, or null for anything Nizmo couldn't have made. */

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs"
 import { brandTokens } from "./brand-colour"
 import { appOrigin, PRODUCTION_ORIGIN } from "./app-origin"
 import { invitationEmail, type InvitationEmailFacts } from "./client-invitation-email"
+import { RESEND_GAP_MINUTES } from "./client-invitation"
 
 /**
  * The invitation's email (CLIENT_PORTAL_PLAN.md §5.2, §12 step 6b-2;
@@ -241,6 +242,17 @@ describe("the routes that send it", () => {
         expect(source).toContain("RateLimiter.getLimitData(`invitation-resend:${params.id}`, 5, 60 * 60 * 1000)")
         expect(source.indexOf("getLimitData")).toBeLessThan(service)
         expect(source).toContain("resetHeldBack(resetAt)")
+    })
+
+    it("stop within a minute, so an email is sent or given up before the gap a person's next one waits for", () => {
+        // Found by Codex on PR 325: one Resend waits for the email before it,
+        // and the gap only holds that if no email is still on its way once
+        // the gap has passed.
+        for (const source of [add(), resend()]) {
+            const limit = /^export const maxDuration = (\d+)$/m.exec(source)
+            expect(limit?.[1]).toBe("60")
+            expect(RESEND_GAP_MINUTES * 60).toBeGreaterThanOrEqual(2 * Number(limit?.[1]))
+        }
     })
 })
 

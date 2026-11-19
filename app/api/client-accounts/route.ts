@@ -4,6 +4,11 @@ import { assertStepUp } from "@/lib/step-up"
 import { appOrigin } from "@/lib/app-origin"
 import { addClientPerson, clientPeople } from "@/lib/services/client-account.service"
 
+// Stops within a minute, so the invitation's email is sent or given up well
+// before it can be sent again (RESEND_GAP_MINUTES in
+// lib/client-invitation.ts; PR 325).
+export const maxDuration = 60
+
 /**
  * A client's people who sign in to the client portal (CLIENT_PORTAL_PLAN.md
  * §5.2), for whoever may manage them, in a company whose package has the

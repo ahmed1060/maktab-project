@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { can, type Actor } from "@/lib/permissions/can"
 import { clientAccountHasEmail, isEmailClash, personHasEmail } from "@/lib/account-email"
 import { MAX_CLIENT_PEOPLE, NIZMO_ID, sentPerson, type ClientLanguage, type ClientPeople, type ClientPerson } from "@/lib/client-accounts"
-import { invitationLink, newInvitation } from "@/lib/client-invitation"
+import { invitationLink, justSent, newInvitation } from "@/lib/client-invitation"
 import { invitationEmail } from "@/lib/client-invitation-email"
 import { PRODUCTION_ORIGIN } from "@/lib/app-origin"
 import { sendOfficeEmail } from "@/lib/email"
@@ -265,6 +265,10 @@ export async function resendClientInvitation(user: Actor, id: string | null | un
         // Removed by somebody else a moment before.
         if (!held.length) throw new Error("CLIENT_PERSON_NOT_FOUND")
         if (held[0].activatedAt) throw new Error("CLIENT_PERSON_ACTIVE")
+        // One at a time: the email before may still be on its way, and two
+        // at once that both fail could put back a link neither sent (found
+        // by Codex on PR 325).
+        if (held[0].inviteExpiresAt && justSent(held[0].inviteExpiresAt, now)) throw new Error("CLIENT_INVITATION_JUST_SENT")
 
         await tx.clientAccount.update({ where: { id: account.id }, data: { inviteTokenHash: link.tokenHash, inviteExpiresAt: link.expiresAt } })
         const logged = await AuditLogService.log("RESEND_CLIENT_INVITATION", "VENDOR", account.clientId, {

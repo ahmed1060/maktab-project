@@ -184,6 +184,8 @@ describe("what adding and removing are refused with", () => {
             CLIENT_PERSON_LANGUAGE_INVALID: 400,
             // Sending an invitation again, to someone who has set their password since.
             CLIENT_PERSON_ACTIVE: 409,
+            // Sending it again while the one before may still be on its way.
+            CLIENT_INVITATION_JUST_SENT: 409,
         }
         for (const [code, status] of Object.entries(refusals)) {
             const refusal = knownRefusal(new Error(code))

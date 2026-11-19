@@ -5,6 +5,11 @@ import { resetHeldBack } from "@/lib/password-reset"
 import { assertStepUp } from "@/lib/step-up"
 import { resendClientInvitation } from "@/lib/services/client-account.service"
 
+// Stops within a minute, so the email is sent or given up well before the
+// person's invitation can be sent again (RESEND_GAP_MINUTES in
+// lib/client-invitation.ts; PR 325).
+export const maxDuration = 60
+
 /**
  * Resend invitation (CLIENT_PORTAL_PLAN.md §5.2, step 6b-2; PR 325): a new
  * link for one of a client's people still invited, and the earlier one stops
