@@ -801,6 +801,16 @@ As built (step 8a, #336), what the page is given, from the server
 - **By item:** each item's claims, the oldest due first, with what they
   come to, the earliest due date and the badges its claims have; the
   largest remaining first, and items owing the same by name.
+- **An item's spellings are one item** (§3.3), matched as the upload
+  matches headings and statuses. Each claim keeps the portal's own
+  spelling. The item is shown by:
+  - its correct spelling, for the usual items: إقرار تجاري, إقرار شهري,
+    إقرار ضريبة الدخل, إقرار القيمة المضافة, مساهمة تكافلية - تأمين صحي
+    and مساهمة تكافلية لصندوق أسر الشهداء (`USUAL_ITEMS` in
+    `lib/portal-tax.ts`);
+  - otherwise the spelling the portal wrote most often. Two written as
+    often go by text order, so the name doesn't change with the claims'
+    order.
 - **By how late:** every row, even at nothing, in order: not due yet, then
   under 6 months, 6 months to a year, 1 to 2 years and more than 2 years,
   counted in whole months from the due date. A month too short for the
@@ -1812,3 +1822,7 @@ with a tax position is archived, and deleted for good from the archive
   position: the session's client's claims alone, late in the company's
   days, what's owed in all, by item and by how late, and the oldest delay
   (§6). No screen yet; 8b and 8c draw it.
+- **2026-11-19:** 8a (#336), from Codex's review: by item, an item's
+  spellings are one item, shown by a usual item's correct spelling or
+  else the one written most often, each claim keeping its own (§3.3,
+  §6).
