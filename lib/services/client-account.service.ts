@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { can, type Actor } from "@/lib/permissions/can"
 import { clientAccountHasEmail, isEmailClash, personHasEmail } from "@/lib/account-email"
@@ -77,10 +78,13 @@ type Invitation = {
 }
 
 /**
- * Emails the invitation's link (§5.2; PR 325), as the save that made it ends:
- * one that can't be sent throws, so the save is undone, and the office is
- * told to try again. An address kept for examples is never emailed
- * (lib/email.ts), and the save goes ahead.
+ * Emails the invitation's link (§5.2; PR 325), once the save that made it is
+ * made: the link it carries is one the database keeps, however long sending
+ * takes. Sent inside the save, an email slower than the save's time limit
+ * went out with a link the save, rolled back, never kept (found by Codex on
+ * PR 325). One that can't be sent throws, and the save is taken back (see
+ * takeBack). An address kept for examples is never emailed (lib/email.ts),
+ * and the save stands.
  */
 async function sendInvitation(invitation: Invitation): Promise<void> {
     const origin = invitation.origin.replace(/\/+$/, "")
@@ -103,6 +107,21 @@ async function sendInvitation(invitation: Invitation): Promise<void> {
         text: email.text,
         html: email.html,
     })
+}
+
+/**
+ * Takes back a save whose email couldn't be sent, so the office is told the
+ * truth: try again. Only what the save itself made: `undo` matches on the
+ * link it made, so a link used meanwhile, or replaced, is left alone. The
+ * email's own failure is what's answered; one that can't be taken back as
+ * well is logged.
+ */
+async function takeBack(undo: (tx: Prisma.TransactionClient) => Promise<void>): Promise<void> {
+    try {
+        await prisma.$transaction(undo)
+    } catch (error) {
+        console.error("[client accounts] an invitation that couldn't be sent couldn't be taken back either", error)
+    }
 }
 
 /**
@@ -143,7 +162,10 @@ export async function addClientPerson(user: Adder, body: unknown, now: Date = ne
 
     const superAdmin = user.role === "SUPER_ADMIN"
     const { AuditLogService } = await import("./audit-log.service")
-    return prisma.$transaction(async tx => {
+    // Their invitation's link, kept only as its hash. Its secret goes out
+    // in the invitation's email, and nowhere else.
+    const link = newInvitation(now)
+    const saved = await prisma.$transaction(async tx => {
         // The client's row is held first, as archiving and deleting it hold
         // it: its people are counted and added one after the other, and a
         // client archived meanwhile is refused. One query after another from
@@ -156,9 +178,6 @@ export async function addClientPerson(user: Adder, body: unknown, now: Date = ne
         // Said before the save where it can be. The database holds the rule
         // itself, for an email given to somebody else at this very moment.
         if (await clientAccountHasEmail(person.email, tx) || await personHasEmail(person.email, tx)) throw new Error("CLIENT_PERSON_EMAIL_IN_USE")
-        // Their invitation's link, kept only as its hash. Its secret goes out
-        // in the invitation's email, and nowhere else.
-        const link = newInvitation(now)
         const added = await tx.clientAccount.create({
             data: {
                 companyId: client.companyId,
@@ -179,26 +198,37 @@ export async function addClientPerson(user: Adder, body: unknown, now: Date = ne
             throw error
         })
 
-        await AuditLogService.log("ADD_CLIENT_ACCOUNT", "VENDOR", client.id, {
+        const logged = await AuditLogService.log("ADD_CLIENT_ACCOUNT", "VENDOR", client.id, {
             tx,
             userId: superAdmin ? null : user.id,
             superAdminId: superAdmin ? user.id : null,
             details: { name: held[0].name, person: added.name, email: added.email },
         })
-        // Last, as the save ends: one that can't be sent saves nothing.
+        return { added, clientName: held[0].name, auditId: logged.id }
+    }, { maxWait: 10_000, timeout: 20_000 })
+
+    const { added } = saved
+    try {
         await sendInvitation({
             to: { name: added.name, email: added.email },
             language: person.language,
             office: client.company.name,
-            client: held[0].name,
+            client: saved.clientName,
             sender,
             token: link.token,
             origin,
             resent: false,
             brand,
         })
-        return personOf(added)
-    }, { maxWait: 10_000, timeout: 20_000 })
+    } catch (error) {
+        // Not sent: the person isn't added after all, nor written down as added.
+        await takeBack(async tx => {
+            const gone = await tx.clientAccount.deleteMany({ where: { id: added.id, inviteTokenHash: link.tokenHash } })
+            if (gone.count) await tx.auditLog.deleteMany({ where: { id: saved.auditId } })
+        })
+        throw error
+    }
+    return personOf(added)
 }
 
 /**
@@ -211,7 +241,8 @@ export async function addClientPerson(user: Adder, body: unknown, now: Date = ne
  *
  * Held as setting the password holds it: the client first, then the
  * account, in the order deleting a client holds them, so a client archived
- * meanwhile is refused, and the link is replaced once at a time.
+ * meanwhile is refused, and the link is replaced once at a time. Sent once
+ * the new link is saved; one that can't be sent puts the earlier link back.
  */
 export async function resendClientInvitation(user: Actor, id: string | null | undefined, now: Date = new Date(), origin: string = PRODUCTION_ORIGIN): Promise<{ resent: true }> {
     if (!can(user, "client_accounts.manage")) throw new Error("CLIENT_ACCOUNTS_MANAGE_REQUIRED")
@@ -224,37 +255,51 @@ export async function resendClientInvitation(user: Actor, id: string | null | un
 
     const superAdmin = user.role === "SUPER_ADMIN"
     const { AuditLogService } = await import("./audit-log.service")
-    await prisma.$transaction(async tx => {
+    const link = newInvitation(now)
+    const saved = await prisma.$transaction(async tx => {
         // One query after another: a transaction has one connection.
         const client = await tx.$queryRaw<{ name: string; archivedAt: Date | null }[]>`SELECT name, "archivedAt" FROM "Client" WHERE id = ${account.clientId} FOR SHARE`
         if (!client.length) throw new Error("CLIENT_PERSON_NOT_FOUND")
         if (client[0].archivedAt) throw new Error("CLIENT_ARCHIVED")
-        const held = await tx.$queryRaw<{ name: string; email: string; language: string; activatedAt: Date | null }[]>`SELECT name, email, language, "activatedAt" FROM "ClientAccount" WHERE id = ${account.id} FOR UPDATE`
+        const held = await tx.$queryRaw<{ name: string; email: string; language: string; activatedAt: Date | null; inviteTokenHash: string | null; inviteExpiresAt: Date | null }[]>`SELECT name, email, language, "activatedAt", "inviteTokenHash", "inviteExpiresAt" FROM "ClientAccount" WHERE id = ${account.id} FOR UPDATE`
         // Removed by somebody else a moment before.
         if (!held.length) throw new Error("CLIENT_PERSON_NOT_FOUND")
         if (held[0].activatedAt) throw new Error("CLIENT_PERSON_ACTIVE")
 
-        const link = newInvitation(now)
         await tx.clientAccount.update({ where: { id: account.id }, data: { inviteTokenHash: link.tokenHash, inviteExpiresAt: link.expiresAt } })
-        await AuditLogService.log("RESEND_CLIENT_INVITATION", "VENDOR", account.clientId, {
+        const logged = await AuditLogService.log("RESEND_CLIENT_INVITATION", "VENDOR", account.clientId, {
             tx,
             userId: superAdmin ? null : user.id,
             superAdminId: superAdmin ? user.id : null,
             details: { name: client[0].name, person: held[0].name, email: held[0].email },
         })
-        // Last, as the save ends: one that can't be sent leaves the earlier link working.
+        return { person: held[0], clientName: client[0].name, auditId: logged.id }
+    }, { maxWait: 10_000, timeout: 20_000 })
+
+    const { person } = saved
+    try {
         await sendInvitation({
-            to: { name: held[0].name, email: held[0].email },
-            language: languageOf(held[0].language),
+            to: { name: person.name, email: person.email },
+            language: languageOf(person.language),
             office: account.company.name,
-            client: client[0].name,
+            client: saved.clientName,
             sender,
             token: link.token,
             origin,
             resent: true,
             brand,
         })
-    }, { maxWait: 10_000, timeout: 20_000 })
+    } catch (error) {
+        // Not sent: the earlier link works again, and nothing is written down as sent.
+        await takeBack(async tx => {
+            const restored = await tx.clientAccount.updateMany({
+                where: { id: account.id, inviteTokenHash: link.tokenHash },
+                data: { inviteTokenHash: person.inviteTokenHash, inviteExpiresAt: person.inviteExpiresAt },
+            })
+            if (restored.count) await tx.auditLog.deleteMany({ where: { id: saved.auditId } })
+        })
+        throw error
+    }
     return { resent: true }
 }
 

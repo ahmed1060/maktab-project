@@ -16,10 +16,12 @@ import { invitationHash } from "@/lib/client-invitation"
  */
 
 type Sent = { to: { name: string; address: string }; fromName: string; replyTo: { name: string; address: string } | null; subject: string; text: string; html: string }
-const outbox = vi.hoisted(() => ({ sent: [] as Sent[], fail: false }))
+const outbox = vi.hoisted(() => ({ sent: [] as Sent[], fail: false, sending: null as null | ((message: Sent) => Promise<void>) }))
 vi.mock("@/lib/email", async importOriginal => ({
     ...(await importOriginal<typeof import("@/lib/email")>()),
     sendOfficeEmail: vi.fn(async (message: Sent) => {
+        // What the database holds, seen from outside, while the email is on its way.
+        if (outbox.sending) await outbox.sending(message)
         if (outbox.fail) throw new Error("SMTP_DOWN")
         outbox.sent.push(message)
         return "SENT"
@@ -111,7 +113,11 @@ describe.skipIf(!ADMIN_URL)("the invitation's email, in Postgres", () => {
     beforeEach(() => {
         outbox.sent.length = 0
         outbox.fail = false
+        outbox.sending = null
     })
+
+    /** The link an account holds, as anyone reading the database sees it. */
+    const keptHash = async (email: string) => (await db.query(`SELECT "inviteTokenHash" FROM "ClientAccount" WHERE email = $1`, [email])).rows[0]?.inviteTokenHash ?? null
 
     describe("adding one of a client's people", () => {
         it("emails them their link, in Arabic where no language is asked for, from the office, with a reply to whoever added them", async () => {
@@ -173,6 +179,41 @@ describe.skipIf(!ADMIN_URL)("the invitation's email, in Postgres", () => {
             expect(await why(accounts.addClientPerson(admin, { clientId: "noor", name: "Mona", email }, NOW, ORIGIN))).toBe("SMTP_DOWN")
             expect((await db.query(`SELECT count(*)::int AS n FROM "ClientAccount" WHERE email = $1`, [email])).rows[0].n).toBe(0)
             expect(await logged("ADD_CLIENT_ACCOUNT")).toHaveLength(before)
+        })
+
+        it("saves the link before it's sent, so the email never carries one the database doesn't keep, however long sending takes", async () => {
+            // Found by Codex on PR 325: sent inside the save, an email slower
+            // than the save's time limit went out with a link the save, rolled
+            // back, never kept.
+            const seen: (string | null)[] = []
+            outbox.sending = async message => { seen.push(await keptHash(message.to.address)) }
+            await add(admin, { email: "early.add@client.co" })
+            expect(seen).toEqual([invitationHash(linkIn(outbox.sent[0]))])
+        })
+
+        it("that can't be sent takes back only what it saved: a person who has set their password meanwhile is kept", async () => {
+            const email = "quick.add@client.co"
+            outbox.sending = async () => {
+                await db.query(`UPDATE "ClientAccount" SET password = 'h', "activatedAt" = now(), "inviteTokenHash" = NULL, "inviteExpiresAt" = NULL WHERE email = $1`, [email])
+            }
+            outbox.fail = true
+            expect(await why(accounts.addClientPerson(admin, { clientId: "noor", name: "Quick", email }, NOW, ORIGIN))).toBe("SMTP_DOWN")
+            expect((await db.query(`SELECT count(*)::int AS n FROM "ClientAccount" WHERE email = $1`, [email])).rows[0].n).toBe(1)
+            expect((await logged("ADD_CLIENT_ACCOUNT")).some(row => row.details.email === email)).toBe(true)
+        })
+
+        it("that can't be sent says so, even where taking it back fails too", async () => {
+            const email = "unlucky.add@client.co"
+            const logError = vi.spyOn(console, "error").mockImplementation(() => {})
+            // Once the save is made, the next transaction is the take-back's.
+            outbox.sending = async () => { vi.spyOn((globalThis as unknown as { prisma: typeof prisma }).prisma, "$transaction").mockRejectedValueOnce(new Error("DB_DOWN")) }
+            outbox.fail = true
+            try {
+                expect(await why(accounts.addClientPerson(admin, { clientId: "noor", name: "Unlucky", email }, NOW, ORIGIN))).toBe("SMTP_DOWN")
+                expect(logError).toHaveBeenCalledWith(expect.stringContaining("couldn't be taken back"), expect.objectContaining({ message: "DB_DOWN" }))
+            } finally {
+                vi.restoreAllMocks()
+            }
         })
 
         it("emails nobody where the person is refused", async () => {
@@ -273,6 +314,40 @@ describe.skipIf(!ADMIN_URL)("the invitation's email, in Postgres", () => {
             expect(await why(resend(admin, added.id))).toBe("SMTP_DOWN")
             expect(await invitations.readInvitation({ token: first }, NOW)).toHaveProperty("email", added.email)
             expect(await logged("RESEND_CLIENT_INVITATION")).toHaveLength(before)
+        })
+
+        it("that can't be sent takes back only its own link: a person who has set their password meanwhile stays signed up", async () => {
+            const added = await add(admin)
+            outbox.sending = async () => {
+                await db.query(`UPDATE "ClientAccount" SET password = 'h', "activatedAt" = now(), "inviteTokenHash" = NULL, "inviteExpiresAt" = NULL WHERE id = $1`, [added.id])
+            }
+            outbox.fail = true
+            expect(await why(resend(admin, added.id))).toBe("SMTP_DOWN")
+            expect(await keptHash(added.email)).toBeNull()
+            expect((await logged("RESEND_CLIENT_INVITATION")).some(row => row.details.email === added.email)).toBe(true)
+        })
+
+        it("that can't be sent leaves a link sent again meanwhile working", async () => {
+            const added = await add(admin)
+            let first = true
+            outbox.sending = async () => {
+                if (!first) return
+                first = false
+                await resend(admin, added.id)
+                throw new Error("SMTP_DOWN")
+            }
+            expect(await why(resend(admin, added.id))).toBe("SMTP_DOWN")
+            const later = linkIn(outbox.sent[outbox.sent.length - 1])
+            expect(await keptHash(added.email)).toBe(invitationHash(later))
+            expect(await invitations.readInvitation({ token: later }, NOW)).toHaveProperty("email", added.email)
+        })
+
+        it("saves the new link before it's sent, so the email never carries one the database doesn't keep", async () => {
+            const added = await add(admin)
+            const seen: (string | null)[] = []
+            outbox.sending = async message => { seen.push(await keptHash(message.to.address)) }
+            await resend(admin, added.id)
+            expect(seen).toEqual([invitationHash(linkIn(outbox.sent[1]))])
         })
 
         it("waits on a client held by another save, and is refused where it was archived meanwhile", async () => {
