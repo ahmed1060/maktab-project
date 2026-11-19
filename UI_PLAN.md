@@ -6710,3 +6710,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   it was built: a password's Show was 40px square on a phone, inside a
   44px field. It's the field's whole height at its end now, 44px, on
   every password field, and looks as it did (`DESIGN.md` §9).
+- **2026-11-19:** Codex's finding on #324's page (`CLIENT_PORTAL_PLAN.md`
+  §5.2): another invitation opened in the same tab while the first was
+  still being read could show the first person's email over the second
+  link. The page leaves out an answer for a link it no longer has, and
+  the form sets the password for the link it was read with.

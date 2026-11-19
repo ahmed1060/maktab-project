@@ -511,7 +511,9 @@ an invitation). Until 6b-2 sends it, nobody receives a link.
   browser never sends it with the page, and no server, log or referrer
   sees it. The page sends it in the body of its requests, and takes it
   out of the address bar. Another link opened in the same tab, which a
-  browser doesn't load as a new page, is read in its place.
+  browser doesn't load as a new page, is read in its place, and the one
+  before it, answered late, is left out: the form sets the password for
+  the link it was read with.
 - **The page** says who invited them, for whom, their email, and asks
   for the password twice, 12 to 72 characters, as every password in
   Nizmo. Set, the account is active, the link stops working, and the
@@ -527,7 +529,9 @@ an invitation). Until 6b-2 sends it, nobody receives a link.
 - **Its two routes,** reading a link and setting the password, are open
   to anyone, as a link in an email has to be. Each place has 10 tries in
   15 minutes between them, as Forgot your password's are counted. The
-  password is set holding the account, so two at once set it once.
+  password is set holding the client, then the account, in the order
+  deleting a client holds them, so two at once set it once, and a client
+  archived or deleted meanwhile is refused.
 - **The audit log** has Set a password from an invitation, on the
   client, with the person's name and email, by no one of the company's.
 - **Asked from a page,** the app's own prompt answers: the authenticator
@@ -1206,7 +1210,10 @@ Postgres and in a browser:
   office's portal closed, each said as it is;
 - two set at once: one sets it, the other is told the link doesn't work;
 - the secret never reaches the server in the address, and leaves the
-  address bar; another link opened in the same tab is read;
+  address bar; another link opened in the same tab is read, and the one
+  before it, answered late, is left out;
+- a client archived, or deleted, while the password is being set: refused,
+  with no one kept waiting;
 - both languages, at phone width and on a computer.
 
 And through the running app, as each kind of account: refused without
@@ -1407,3 +1414,12 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   minutes; setting the password sends them to sign in, which takes
   client accounts from step 7; and another link opened in the same tab
   is read in its place.
+- **2026-11-19:** Codex's two findings on #324, fixed before it's
+  merged: setting a password held the account, then its client, where
+  deleting a client holds the client, then its people, so the two could
+  each wait on the other and the database end one. It holds the client
+  first now. And another link opened in the same tab while the first
+  was still being read could have the first's answer arrive last, so
+  the form showed one person's email over another's link. The page
+  leaves out an answer for a link it no longer has, and the form sets
+  the password for the link it was read with.
