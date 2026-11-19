@@ -6,6 +6,7 @@ import { resolveTimeZone } from "@/lib/timezone"
 import { cents } from "@/lib/task-costs"
 import type { Paging } from "@/lib/pagination"
 import { daysLate, figuresAge, type TaxPosition } from "@/lib/tax-claims"
+import { summarise, type PortalTaxPosition } from "@/lib/portal-tax"
 import { compareClaims, fileNamesClient, namedCompany, sentUpload, type ClaimDraft, type TaxClaimsNow, type TaxUploadSaved } from "@/lib/tax-file"
 
 /** A date column's day, as it was written. */
@@ -90,6 +91,38 @@ export async function taxPositionOf(user: Actor, clientId: string | null | undef
         total,
         totalPages: Math.ceil(total / paging.limit),
     }
+}
+
+/**
+ * A client's tax position, for one of its people in the client's area
+ * (CLIENT_PORTAL_PLAN.md §6, §12 step 8a; PR 336): the day its figures are
+ * from, and every claim, by item and by how late (lib/portal-tax.ts). Late
+ * is counted in the company's own days, as on the client's page.
+ *
+ * The client is the session's, never the address's: read only where it's
+ * the company's, so anything else reads as not there. Whether the office's
+ * portal is open to it is the session's check (lib/client-sign-in.ts).
+ */
+export async function portalTaxPosition(account: { companyId: string; clientId: string }, now: Date = new Date()): Promise<PortalTaxPosition> {
+    const client = await prisma.client.findFirst({ where: { id: account.clientId, companyId: account.companyId }, select: { id: true, companyId: true } })
+    if (!client) throw new Error("CLIENT_NOT_FOUND")
+
+    const timeZone = await filterTimeZone(client.companyId)
+    const today = calendarDateStr(now, timeZone)
+    const [position, rows] = await Promise.all([
+        prisma.clientTaxPosition.findUnique({ where: { clientId: client.id }, select: { asOf: true } }),
+        // The oldest due first: each item lists its claims in this order.
+        prisma.taxClaim.findMany({
+            where: { clientId: client.id },
+            select: { id: true, ...KEPT },
+            orderBy: [{ dueDate: "asc" }, { claimNumber: "asc" }, { id: "asc" }],
+        }),
+    ])
+    const claims = rows.map(row => {
+        const claim = draftOf(row)
+        return { id: row.id, ...claim, daysLate: daysLate(claim.dueDate, today) }
+    })
+    return summarise(claims, today, position && dayOf(position.asOf))
 }
 
 /** A client as the Clients list reads it, with the day its figures are from. */

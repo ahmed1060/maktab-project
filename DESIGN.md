@@ -1514,9 +1514,10 @@ These are built once, in the building-blocks PR, and every page uses them
     each a label above its value in `--text-xl`; on phones, one to a line,
     the label at the start and the value at the end.
   - Two cards side by side, stacked on phones, each bars by part: what's
-    owed by item, and how late, by time since the due date (under 6
-    months, 6 months to a year, 1 to 2 years, more than 2 years), in that
-    order.
+    owed by item, and how late, by time since the due date (not due yet,
+    under 6 months, 6 months to a year, 1 to 2 years, more than 2 years),
+    in that order. A claim whose last day to pay hasn't passed is not due
+    yet, so the four late rows hold only what's late.
   - The claims, by item, in a card: a table on computers and cards on
     phones (§5.4).
     - Each item's row is a button that opens its claims under it: a
@@ -2770,3 +2771,7 @@ changed:
   44px wide under a finger, where a short one was only as wide as its
   words; and the top bar's language switch has options 44px wide and 44px
   under a finger, where they were 40px by 36px.
+- **2026-11-19:** A client's tax position (§5.5): how late has a first
+  row, not due yet, for claims whose last day to pay hasn't passed, before
+  under 6 months, so the late rows hold only what's late (decided
+  2026-11-19).

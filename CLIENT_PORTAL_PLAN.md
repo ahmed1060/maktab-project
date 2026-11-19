@@ -32,8 +32,10 @@ already there (6d) is #330. Signing in as a client account (step 7) is
 built in four, and the first, keeping a client account out of the
 company's app (7a), is #331, signing in finding a client account (7b) is
 #332, and Forgot password for client accounts (7c) is #333. The area's
-top bar (7d-1) is #334, and Change password (7d-2) is #335. The rest is
-built in the small PRs of §12, each its own PR.
+top bar (7d-1) is #334, and Change password (7d-2) is #335. The tax
+position page (step 8) is built in four, and the first, what the area
+reads of it (8a), is #336. The rest is built in the small PRs of §12,
+each its own PR.
 
 ---
 
@@ -773,7 +775,10 @@ The client's area and A client's tax position).
 - **What's owed:** what remains in all, how many claims are late, how
   much is paid of the open claims' original amounts, how many are open,
   and the oldest delay.
-- **By item, and how late:** bars by part.
+- **By item, and how late:** bars by part. How late starts with what's
+  not due yet, then under 6 months, 6 months to a year, 1 to 2 years and
+  more than 2 years since the due date (decided 2026-11-19), so the late
+  rows hold only what's late.
 - **The claims:** by item, opening to each claim, with a total row.
   Each claim has Ask about this claim (§7).
 - **A note:** in Egyptian pounds, as they were on the portal that day,
@@ -781,6 +786,37 @@ The client's area and A client's tax position).
 - **Before the first upload:** the page says the office hasn't added the
   tax position yet.
 - Both languages, and phones as well as computers.
+
+As built (step 8a, #336), what the page is given, from the server
+(`lib/portal-tax.ts`, `portalTaxPosition` in
+`lib/services/tax-claim.service.ts`), with no screen yet:
+
+- **The session's client's claims alone,** read only where the client is
+  the session's company's, whatever else is asked; anything else reads as
+  not there.
+- **Late counted in the company's own days,** as on the client's page
+  (§3.4), so the area and the office agree.
+- **What's owed in all:** the original, paid and remaining amounts, how
+  many claims are open and late, and the oldest delay in days.
+- **By item:** each item's claims, the oldest due first, with what they
+  come to, the earliest due date and the badges its claims have; the
+  largest remaining first, and items owing the same by name.
+- **An item's spellings are one item** (§3.3), matched as the upload
+  matches headings and statuses. Each claim keeps the portal's own
+  spelling. The item is shown by:
+  - its correct spelling, for the usual items: إقرار تجاري, إقرار شهري,
+    إقرار ضريبة الدخل, إقرار القيمة المضافة, مساهمة تكافلية - تأمين صحي
+    and مساهمة تكافلية لصندوق أسر الشهداء (`USUAL_ITEMS` in
+    `lib/portal-tax.ts`);
+  - otherwise the spelling the portal wrote most often. Two written as
+    often go by text order, so the name doesn't change with the claims'
+    order.
+- **By how late:** every row, even at nothing, in order: not due yet, then
+  under 6 months, 6 months to a year, 1 to 2 years and more than 2 years,
+  counted in whole months from the due date. A month too short for the
+  day counts from its last day, so 31 August and 6 months is the end of
+  February.
+- **The day the figures are from,** or none before the first upload.
 
 ---
 
@@ -1208,7 +1244,22 @@ width:
        out. #334.
      - **7d-2.** Change password in the account menu, on a page of the
        area's own, as for the company's people. #335.
-8. **The tax position page.**
+8. **The tax position page,** in four:
+   - **8a. What the area reads of it:** the session's client's claims,
+     what's owed in all and by item, how late, and the oldest delay,
+     late counted in the company's days, as on a client's page. No
+     screen; with its tests. #336.
+   - **8b. Its building blocks:** bars by part, the share bar, and the
+     page's one large figure (`DESIGN.md` §3.2, §5.5).
+   - **8c. The page's top:** its header, what's owed, the two cards of
+     bars, the note, and the page before the first upload. It replaces
+     the line saying the tax position comes soon.
+   - **8d. The claims by item:** a table on computers and cards on
+     phones, each item opening to its claims, with a total row.
+
+   The accountant's name, Contact the accountant and Ask about this
+   claim come with step 9, and Download the statement with step 12.
+   Until step 9, the note says to contact the office.
 9. **Contacting the accountant on WhatsApp:** the number on people's
    profiles, the responsible accountant, the dialog, Ask about this
    claim, and the messages.
@@ -1763,3 +1814,15 @@ with a tax position is archived, and deleted for good from the archive
   password is a field on the page rather than a window after Save; too
   many wrong tries says to wait 15 minutes, as no one at the office can
   lift that for a client's person.
+- **2026-11-19:** 7d-2 merged (#335). Step 8 split in four (§12): 8a, what
+  the area reads of the tax position; 8b, its building blocks; 8c, the
+  page's top; 8d, the claims by item. Decided: how late starts with what's
+  not due yet, before under 6 months (§6; `DESIGN.md` §5.5).
+- **2026-11-19:** 8a (#336): what the client's area reads of the tax
+  position: the session's client's claims alone, late in the company's
+  days, what's owed in all, by item and by how late, and the oldest delay
+  (§6). No screen yet; 8b and 8c draw it.
+- **2026-11-19:** 8a (#336), from Codex's review: by item, an item's
+  spellings are one item, shown by a usual item's correct spelling or
+  else the one written most often, each claim keeping its own (§3.3,
+  §6).
