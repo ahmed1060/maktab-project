@@ -81,6 +81,9 @@ describe.skipIf(!ADMIN_URL)("the invitation's email, in Postgres", () => {
     const row = async (id: string) => (await db.query(`SELECT language, "activatedAt", "inviteTokenHash", "inviteExpiresAt" FROM "ClientAccount" WHERE id = $1`, [id])).rows[0]
     const logged = async (action: string) => (await db.query(`SELECT action, "entityType", "entityId", details, "userId", "superAdminId" FROM "AuditLog" WHERE action = $1 ORDER BY "createdAt"`, [action])).rows
     const why = (p: Promise<unknown>) => p.then(() => "done", (error: Error) => error.message)
+    // What the audit log has on one person, in the order it was written.
+    const history = async (email: string) => (await db.query(`SELECT action, "entityType", "entityId", details, "userId", "superAdminId" FROM "AuditLog" WHERE details->>'email' = $1 ORDER BY "createdAt", action`, [email])).rows
+    const entries = async () => (await db.query(`SELECT count(*)::int AS n FROM "AuditLog"`)).rows[0].n as number
 
     beforeAll(async () => {
         const a = new Client({ connectionString: ADMIN_URL })
@@ -174,13 +177,31 @@ describe.skipIf(!ADMIN_URL)("the invitation's email, in Postgres", () => {
             }
         })
 
-        it("that can't be sent saves nothing: no person, and nothing in the audit log", async () => {
-            const before = (await logged("ADD_CLIENT_ACCOUNT")).length
+        it("that can't be sent adds no one, and the audit log keeps its entry, with one after it saying so", async () => {
+            // Decided on 2026-11-19 (PR 328): the audit log is only ever
+            // added to, as the privacy policy says, so the entry the save
+            // wrote stays.
             const email = nextEmail()
+            const before = await entries()
             outbox.fail = true
             expect(await why(accounts.addClientPerson(admin, { clientId: "noor", name: "Mona", email }, NOW, ORIGIN))).toBe("SMTP_DOWN")
             expect((await db.query(`SELECT count(*)::int AS n FROM "ClientAccount" WHERE email = $1`, [email])).rows[0].n).toBe(0)
-            expect(await logged("ADD_CLIENT_ACCOUNT")).toHaveLength(before)
+            const said = { entityType: "VENDOR", entityId: "noor", userId: "a1", superAdminId: null, details: { name: "Al Noor Trading", person: "Mona", email } }
+            expect(await history(email)).toEqual([
+                { action: "ADD_CLIENT_ACCOUNT", ...said },
+                { action: "ADD_CLIENT_ACCOUNT_NOT_SENT", ...said },
+            ])
+            expect(await entries()).toBe(before + 2)
+        })
+
+        it("that a Super Admin can't send says so in the Super Admin's name", async () => {
+            const email = nextEmail()
+            outbox.fail = true
+            expect(await why(accounts.addClientPerson(superAdmin, { clientId: "noor", name: "Mona", email }, NOW, ORIGIN))).toBe("SMTP_DOWN")
+            expect((await history(email)).map(entry => [entry.action, entry.userId, entry.superAdminId])).toEqual([
+                ["ADD_CLIENT_ACCOUNT", null, "sa"],
+                ["ADD_CLIENT_ACCOUNT_NOT_SENT", null, "sa"],
+            ])
         })
 
         it("saves the link before it's sent, so the email never carries one the database doesn't keep, however long sending takes", async () => {
@@ -201,7 +222,8 @@ describe.skipIf(!ADMIN_URL)("the invitation's email, in Postgres", () => {
             outbox.fail = true
             expect(await why(accounts.addClientPerson(admin, { clientId: "noor", name: "Quick", email }, NOW, ORIGIN))).toBe("SMTP_DOWN")
             expect((await db.query(`SELECT count(*)::int AS n FROM "ClientAccount" WHERE email = $1`, [email])).rows[0].n).toBe(1)
-            expect((await logged("ADD_CLIENT_ACCOUNT")).some(row => row.details.email === email)).toBe(true)
+            // Nothing taken back: the email reached them after all, so nothing says it didn't.
+            expect((await history(email)).map(entry => entry.action)).toEqual(["ADD_CLIENT_ACCOUNT"])
         })
 
         it("that can't be sent says so, even where taking it back fails too", async () => {
@@ -213,6 +235,8 @@ describe.skipIf(!ADMIN_URL)("the invitation's email, in Postgres", () => {
             try {
                 expect(await why(accounts.addClientPerson(admin, { clientId: "noor", name: "Unlucky", email }, NOW, ORIGIN))).toBe("SMTP_DOWN")
                 expect(logError).toHaveBeenCalledWith(expect.stringContaining("couldn't be taken back"), expect.objectContaining({ message: "DB_DOWN" }))
+                // Not taken back, so they're added, as the audit log says: nothing after it says otherwise.
+                expect((await history(email)).map(entry => entry.action)).toEqual(["ADD_CLIENT_ACCOUNT"])
             } finally {
                 vi.restoreAllMocks()
             }
@@ -308,14 +332,20 @@ describe.skipIf(!ADMIN_URL)("the invitation's email, in Postgres", () => {
             expect(outbox.sent).toHaveLength(0)
         })
 
-        it("that can't be sent leaves the earlier link working, and writes nothing in the audit log", async () => {
+        it("that can't be sent leaves the earlier link working, and the audit log keeps its entry, with one after it saying so", async () => {
             const added = await add(admin)
             const first = linkIn(outbox.sent[0])
-            const before = (await logged("RESEND_CLIENT_INVITATION")).length
+            const before = await entries()
             outbox.fail = true
             expect(await why(resend(admin, added.id))).toBe("SMTP_DOWN")
             expect(await invitations.readInvitation({ token: first }, NOW)).toHaveProperty("email", added.email)
-            expect(await logged("RESEND_CLIENT_INVITATION")).toHaveLength(before)
+            const said = { entityType: "VENDOR", entityId: "noor", userId: "a1", superAdminId: null, details: { name: "Al Noor Trading", person: "Mona Fouad", email: added.email } }
+            expect(await history(added.email)).toEqual([
+                { action: "ADD_CLIENT_ACCOUNT", ...said },
+                { action: "RESEND_CLIENT_INVITATION", ...said },
+                { action: "RESEND_CLIENT_INVITATION_NOT_SENT", ...said },
+            ])
+            expect(await entries()).toBe(before + 2)
         })
 
         it("that can't be sent takes back only its own link: a person who has set their password meanwhile stays signed up", async () => {
@@ -326,7 +356,8 @@ describe.skipIf(!ADMIN_URL)("the invitation's email, in Postgres", () => {
             outbox.fail = true
             expect(await why(resend(admin, added.id))).toBe("SMTP_DOWN")
             expect(await keptHash(added.email)).toBeNull()
-            expect((await logged("RESEND_CLIENT_INVITATION")).some(row => row.details.email === added.email)).toBe(true)
+            // Nothing taken back: the email reached them after all, so nothing says it didn't.
+            expect((await history(added.email)).map(entry => entry.action)).toEqual(["ADD_CLIENT_ACCOUNT", "RESEND_CLIENT_INVITATION"])
         })
 
         it("is refused while the one before may still be on its way, so two at once can't leave the person with a link nobody was sent", async () => {

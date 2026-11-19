@@ -196,12 +196,25 @@ describe("what adding and removing are refused with", () => {
         expect(knownRefusal(new Error("CLIENT_PEOPLE_FULL"))?.message).toContain("20")
     })
 
-    it("and the audit log names adding, removing and sending an invitation again, in both languages", () => {
-        for (const action of ["ADD_CLIENT_ACCOUNT", "REMOVE_CLIENT_ACCOUNT", "RESEND_CLIENT_INVITATION"]) {
+    it("and the audit log names adding, removing and sending an invitation again, and one that couldn't be sent, in both languages", () => {
+        for (const action of ["ADD_CLIENT_ACCOUNT", "REMOVE_CLIENT_ACCOUNT", "RESEND_CLIENT_INVITATION", "ADD_CLIENT_ACCOUNT_NOT_SENT", "RESEND_CLIENT_INVITATION_NOT_SENT"]) {
             expect(AUDIT_ACTIONS as readonly string[]).toContain(action)
             for (const words of [en, ar] as Record<string, string>[]) expect(words[`audit_action_${action}`], action).toBeTruthy()
         }
         for (const words of [en, ar] as Record<string, string>[]) expect(words.audit_field_person).toBeTruthy()
+    })
+
+    it("and an invitation that couldn't be sent says so, and what that left, never as an order", () => {
+        expect(en.audit_action_ADD_CLIENT_ACCOUNT_NOT_SENT).toBe("Couldn't send a person's invitation, so they weren't added")
+        expect(en.audit_action_RESEND_CLIENT_INVITATION_NOT_SENT).toBe("Couldn't send a person's invitation again, so the link sent before still works")
+        expect(ar.audit_action_ADD_CLIENT_ACCOUNT_NOT_SENT).toBe("تعذّر إرسال دعوة شخص، فلم تتم الإضافة")
+        expect(ar.audit_action_RESEND_CLIENT_INVITATION_NOT_SENT).toBe("تعذّرت إعادة إرسال دعوة شخص، ولا يزال الرابط السابق صالحًا")
+    })
+
+    it("and nothing here ever takes an entry out of the audit log, which is only added to (PR 328)", () => {
+        const source = readFileSync("lib/services/client-account.service.ts", "utf8")
+        expect(source).not.toMatch(/auditLog\.(delete|deleteMany|update|updateMany|upsert)\b/)
+        expect(source).not.toMatch(/DELETE FROM "AuditLog"|UPDATE "AuditLog"/)
     })
 })
 

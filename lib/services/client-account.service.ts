@@ -112,9 +112,11 @@ async function sendInvitation(invitation: Invitation): Promise<void> {
 /**
  * Takes back a save whose email couldn't be sent, so the office is told the
  * truth: try again. Only what the save itself made: `undo` matches on the
- * link it made, so a link used meanwhile, or replaced, is left alone. The
- * email's own failure is what's answered; one that can't be taken back as
- * well is logged.
+ * link it made, so a link used meanwhile, or replaced, is left alone. What's
+ * taken back is written in the audit log, after the entry the save made,
+ * which stays: the audit log is only ever added to, as the privacy policy
+ * says (decided 2026-11-19, PR 328). The email's own failure is what's
+ * answered; one that can't be taken back as well is logged.
  */
 async function takeBack(undo: (tx: Prisma.TransactionClient) => Promise<void>): Promise<void> {
     try {
@@ -198,13 +200,13 @@ export async function addClientPerson(user: Adder, body: unknown, now: Date = ne
             throw error
         })
 
-        const logged = await AuditLogService.log("ADD_CLIENT_ACCOUNT", "VENDOR", client.id, {
+        await AuditLogService.log("ADD_CLIENT_ACCOUNT", "VENDOR", client.id, {
             tx,
             userId: superAdmin ? null : user.id,
             superAdminId: superAdmin ? user.id : null,
             details: { name: held[0].name, person: added.name, email: added.email },
         })
-        return { added, clientName: held[0].name, auditId: logged.id }
+        return { added, clientName: held[0].name }
     }, { maxWait: 10_000, timeout: 20_000 })
 
     const { added } = saved
@@ -221,10 +223,17 @@ export async function addClientPerson(user: Adder, body: unknown, now: Date = ne
             brand,
         })
     } catch (error) {
-        // Not sent: the person isn't added after all, nor written down as added.
+        // Not sent: the person isn't added after all, and the audit log says so.
+        // Where nothing is taken back, the email reached them after all.
         await takeBack(async tx => {
             const gone = await tx.clientAccount.deleteMany({ where: { id: added.id, inviteTokenHash: link.tokenHash } })
-            if (gone.count) await tx.auditLog.deleteMany({ where: { id: saved.auditId } })
+            if (!gone.count) return
+            await AuditLogService.log("ADD_CLIENT_ACCOUNT_NOT_SENT", "VENDOR", client.id, {
+                tx,
+                userId: superAdmin ? null : user.id,
+                superAdminId: superAdmin ? user.id : null,
+                details: { name: saved.clientName, person: added.name, email: added.email },
+            })
         })
         throw error
     }
@@ -271,13 +280,13 @@ export async function resendClientInvitation(user: Actor, id: string | null | un
         if (held[0].inviteExpiresAt && justSent(held[0].inviteExpiresAt, now)) throw new Error("CLIENT_INVITATION_JUST_SENT")
 
         await tx.clientAccount.update({ where: { id: account.id }, data: { inviteTokenHash: link.tokenHash, inviteExpiresAt: link.expiresAt } })
-        const logged = await AuditLogService.log("RESEND_CLIENT_INVITATION", "VENDOR", account.clientId, {
+        await AuditLogService.log("RESEND_CLIENT_INVITATION", "VENDOR", account.clientId, {
             tx,
             userId: superAdmin ? null : user.id,
             superAdminId: superAdmin ? user.id : null,
             details: { name: client[0].name, person: held[0].name, email: held[0].email },
         })
-        return { person: held[0], clientName: client[0].name, auditId: logged.id }
+        return { person: held[0], clientName: client[0].name }
     }, { maxWait: 10_000, timeout: 20_000 })
 
     const { person } = saved
@@ -294,13 +303,20 @@ export async function resendClientInvitation(user: Actor, id: string | null | un
             brand,
         })
     } catch (error) {
-        // Not sent: the earlier link works again, and nothing is written down as sent.
+        // Not sent: the earlier link works again, and the audit log says so.
+        // Where nothing is taken back, the email reached them after all.
         await takeBack(async tx => {
             const restored = await tx.clientAccount.updateMany({
                 where: { id: account.id, inviteTokenHash: link.tokenHash },
                 data: { inviteTokenHash: person.inviteTokenHash, inviteExpiresAt: person.inviteExpiresAt },
             })
-            if (restored.count) await tx.auditLog.deleteMany({ where: { id: saved.auditId } })
+            if (!restored.count) return
+            await AuditLogService.log("RESEND_CLIENT_INVITATION_NOT_SENT", "VENDOR", account.clientId, {
+                tx,
+                userId: superAdmin ? null : user.id,
+                superAdminId: superAdmin ? user.id : null,
+                details: { name: saved.clientName, person: person.name, email: person.email },
+            })
         })
         throw error
     }
