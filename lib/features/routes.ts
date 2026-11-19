@@ -51,6 +51,8 @@ const API_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
     // A client's claims on the tax portal, shown on its page
     // (CLIENT_PORTAL_PLAN.md §3.5).
     ['/api/tax-claims', 'TAX_POSITION'],
+    // A client's people who sign in to the client portal (§5.2).
+    ['/api/client-accounts', 'TAX_POSITION'],
 ] as const
 
 /**

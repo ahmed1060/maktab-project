@@ -13,7 +13,7 @@ describe("step-up confirmation (ROLES_PLAN.md §6.15)", () => {
 
     it("covers every permission the catalogue marks high-risk, and nothing else", () => {
         expect(HIGH_RISK.sort()).toEqual([
-            "attendance.manage_terminals", "cash_advances.give", "charges.collect", "debts.waive", "employees.delete", "employees.end_contract", "payroll.approve",
+            "attendance.manage_terminals", "cash_advances.give", "charges.collect", "client_accounts.manage", "debts.waive", "employees.delete", "employees.end_contract", "payroll.approve",
             "payroll.mark_paid", "records.delete", "salary.edit", "salary_adjustments.manage", "tasks.delete", "tasks.pay", "tasks.penalize",
         ])
         expect(stepUpRefusal({ mfaEnabled: false }, "tasks.view", 60)).toBeNull()
@@ -64,6 +64,8 @@ describe("every high-risk action asks", () => {
         "app/api/cash-advances/[userId]/purposes/route.ts": "cash_advances.give for the tasks and clients Give advance offers",
         // Who is told of a silent agent or terminal (ATTENDANCE_PLAN.md §17.10).
         "lib/services/attendance-terminal-alerts.ts": "attendance.manage_terminals for who is told of a silent agent or terminal",
+        // Same checks as the routes that call it, after the route asked; listing a client's people changes nothing.
+        "lib/services/client-account.service.ts": "called by POST /api/client-accounts and DELETE /api/client-accounts/[id], which ask",
     }
     const uses = (source: string, p: string) => new RegExp(`["']${p.replace(".", "\\.")}["']`).test(source)
 

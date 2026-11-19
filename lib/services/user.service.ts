@@ -6,13 +6,7 @@ import { RoleAssignmentService } from "./role-assignment.service"
 import bcrypt from "bcryptjs"
 import { freeUsername, generateUsername, usernameReserved, usernameTaken } from "@/lib/username"
 import { isUsernameClash, usernameFromEmail } from "@/lib/username-rules"
-
-/**
- * Whether a save was refused for an email somebody else has: the unique index
- * caught it, and Prisma names the column, or the index, in the error's meta.
- * It escaped as a 500 (a person's profile, part 3, PR 193).
- */
-const isEmailClash = (error: unknown) => (error as { code?: string })?.code === "P2002" && /email/i.test(JSON.stringify((error as { meta?: unknown }).meta ?? {}))
+import { clientAccountHasEmail, isEmailClash } from "@/lib/account-email"
 import { generateTempPassword } from "@/lib/generate-password"
 
 import { CreateUserInput, UpdateUserInput } from "../validations/user.schema"
@@ -141,7 +135,9 @@ export class UserService {
 
         // 3. Security
         const existingUser = await prisma.user.findUnique({ where: { email } })
-        if (existingUser) throw new Error("USER_ALREADY_EXISTS")
+        // One of a client's people has it, capitals aside: one email, one
+        // account (CLIENT_PORTAL_PLAN.md §5.1). The database holds the rule.
+        if (existingUser || await clientAccountHasEmail(email)) throw new Error("USER_ALREADY_EXISTS")
 
         const hashedPassword = await bcrypt.hash(password, 10)
 

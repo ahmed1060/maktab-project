@@ -246,6 +246,7 @@ them, as today.
 | **Clients** | `clients.view` / `clients.manage` | See clients; create, edit and delete them (named `vendors.*` until 0b, and in the database until 0c, `CLIENTS_PLAN.md` §0.3) | `clients` |
 | **Client portal** | `tax.view` | See a client's tax position on its page, in a company whose package has the client portal — implies `clients.view` (`CLIENT_PORTAL_PLAN.md` §9) | `GET /tax-claims` |
 | | `tax.manage` | Update a client's tax position by uploading the Tax Authority portal's file, which replaces its claims — implies `tax.view` (`CLIENT_PORTAL_PLAN.md` §4.1, §9) | `GET`, `POST /tax-claims/upload` |
+| | `client_accounts.manage` | List, add and remove the people of a client who sign in to the client portal — **lets people from outside the company in**, high-risk (§6.15); implies `clients.view` (`CLIENT_PORTAL_PLAN.md` §5.2, §9) | `GET`, `POST /client-accounts`, `DELETE /client-accounts/[id]` |
 | **Costs** | `costs.view` | See costs, including a person's cost history | `users/[id]/costs-history` |
 | **Day off** | `dayoff.view` | See others' leave and balances | `admin/day-off-requests`, `users/[id]/day-off-history` |
 | | `dayoff.approve` | Approve / reject / re-evaluate leave | `admin/day-off-requests/[id]*` |
@@ -785,8 +786,15 @@ A few permissions move money, give it away, or cannot be undone: `tasks.pay`,
 advances (`CLIENTS_PLAN.md` §7.7), and `attendance.manage_terminals`,
 setting up fingerprint terminals (`ATTENDANCE_PLAN.md` §17.10, round 9;
 Phase 4, part 2, built in #277, with the built-in Admin's grant for the
-companies already there in #278). The catalogue (`lib/permissions/catalogue.ts`, `highRisk`) is the
+companies already there in #278). One lets people from outside the
+company in: `client_accounts.manage`, managing the people of a client
+who sign in to the client portal (`CLIENT_PORTAL_PLAN.md` §9, built in
+#322). The catalogue (`lib/permissions/catalogue.ts`, `highRisk`) is the
 list the code checks.
+
+Adding one of a client's people is what lets someone in, so
+`client_accounts.manage` is marked "lets outsiders in". Adding one and
+removing one ask for the code; listing a client's people doesn't.
 
 An agent's code or a terminal's address lets punches into attendance, and
 so into pay, so `attendance.manage_terminals` is marked "affects pay". The

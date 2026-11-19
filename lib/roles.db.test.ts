@@ -73,6 +73,9 @@ const RECORDS = "20261104000000_records_on_clients"
 const RECORDS_KEPT = "20261104000003_records_grants_kept"
 const RECORDS_COMPAT_DROPPED = "20261106000000_records_compat_dropped"
 const CLIENT_NAMES = "20261107000000_client_names_stored"
+// 0d: the Vendor table becomes Client, as the code names it. Client accounts
+// are kept against it (below).
+const CLIENT_NAMES_IN_DATABASE = "20261108000000_client_names_in_database"
 // The built-in Admin and Team Leader roles' locations.* (CLIENTS_PLAN.md §2.9).
 const LOCATIONS_GRANTED = "20261110000000_locations_granted"
 // Every role's lists.add, and the built-in Admin's lists.manage (CLIENTS_PLAN.md §5.10).
@@ -118,6 +121,12 @@ const TAX_VIEW_GRANTED = "20270103000000_tax_view_granted"
 // The built-in Admin role's tax.manage, for the companies there before it
 // (CLIENT_PORTAL_PLAN.md §9, §12 step 3d, PR 317).
 const TAX_MANAGE_GRANTED = "20270105000000_tax_manage_granted"
+// Client accounts, where adding one of the company's people looks for their
+// email (CLIENT_PORTAL_PLAN.md §5.1, PR 322).
+const CLIENT_ACCOUNTS = "20270106000000_client_accounts"
+// Given to a new company's built-in roles now, and to the companies there
+// already by a later migration (CLIENT_PORTAL_PLAN.md §12 step 6d, PR 322).
+const GRANTED_LATER = ["client_accounts.manage"]
 
 const BEFORE_ROLES = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now());
@@ -174,6 +183,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(RECORDS_KEPT))
         await db.query(sql(RECORDS_COMPAT_DROPPED))
         await db.query(sql(CLIENT_NAMES))
+        await db.query(sql(CLIENT_NAMES_IN_DATABASE))
         await db.query(sql(LOCATIONS_GRANTED))
         await db.query(sql(LISTS_GRANTED))
         await db.query(sql(CHARGES_GRANTED))
@@ -191,6 +201,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(CLIENT_PORTAL_ADDON))
         await db.query(sql(TAX_VIEW_GRANTED))
         await db.query(sql(TAX_MANAGE_GRANTED))
+        await db.query(sql(CLIENT_ACCOUNTS))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
@@ -241,7 +252,8 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                     const grants = Object.fromEntries(rows
                         .filter(r => r.companyId === company && r.builtIn === builtIn)
                         .map(r => [r.permission, r.scope]))
-                    expect(grants, `${company} ${builtIn}`).toEqual(BUILT_IN_GRANTS[builtIn])
+                    const now = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).filter(([permission]) => !GRANTED_LATER.includes(permission)))
+                    expect(grants, `${company} ${builtIn}`).toEqual(now)
                 }
             }
         })

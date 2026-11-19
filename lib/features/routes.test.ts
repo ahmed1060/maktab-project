@@ -166,7 +166,7 @@ describe("page paths and their guards", () => {
                 ['/dashboard/tasks', '/dashboard/obligations', '/dashboard/records', '/dashboard/clients', '/dashboard/costs', '/dashboard/day-off-requests', '/dashboard/attendance']
                     .some(p => moduleForPagePath(p) === mod) ||
                 ['/api/tasks', '/api/obligations', '/api/records', '/api/clients', '/api/day-off-requests',
-                 '/api/tasks/abc/penalty', '/api/users/abc/salary-history', '/api/tasks/payment/bulk', '/api/tax-claims']
+                 '/api/tasks/abc/penalty', '/api/users/abc/salary-history', '/api/tasks/payment/bulk', '/api/tax-claims', '/api/client-accounts']
                     .some(p => moduleForApiPath(p) === mod)
             expect(reachable, `${module} is gated but nothing routes to it`).toBe(true)
         }

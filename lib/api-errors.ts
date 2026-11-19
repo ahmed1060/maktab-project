@@ -101,6 +101,17 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     TAX_CLAIMS_CHANGED: { status: 409, message: "This client's claims changed since the file was checked. Check the file again." },
     // The file's company is neither the client's name nor the one its last file named.
     TAX_FILE_OTHER_COMPANY: { status: 409, message: "This file names another company. Confirm it's this client's file to save it." },
+    // A client's people who sign in to the client portal (CLIENT_PORTAL_PLAN.md §5.2; lib/services/client-account.service.ts).
+    CLIENT_ACCOUNTS_MANAGE_REQUIRED: { status: 403, message: "You may not manage who signs in for a client." },
+    CLIENT_PERSON_CLIENT_REQUIRED: { status: 400, message: "Say which client the person is for." },
+    CLIENT_PERSON_NAME_REQUIRED: { status: 400, message: "The person's name is needed." },
+    CLIENT_PERSON_NAME_TOO_LONG: { status: 400, message: "A name can have up to 100 characters." },
+    CLIENT_PERSON_EMAIL_INVALID: { status: 400, message: "That doesn't look like an email address." },
+    // One email, one account: a person's, a Super Admin's or anyone's client account's (§5.1).
+    CLIENT_PERSON_EMAIL_IN_USE: { status: 409, message: "Someone already has this email." },
+    CLIENT_PEOPLE_FULL: { status: 409, message: "A client can have up to 20 people who sign in." },
+    // Removed by somebody else since the list was read, or never this company's.
+    CLIENT_PERSON_NOT_FOUND: { status: 404, message: "This person isn't among the client's people any more." },
     // Archived rather than given new work (CLIENTS_PLAN.md §4.3).
     CLIENT_ARCHIVED: { status: 400, message: "This client is archived. Restore it on the Clients page first." },
     // Deleted for good from the archive only, and only where no task or
