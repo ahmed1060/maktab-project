@@ -6715,3 +6715,18 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   still being read could show the first person's email over the second
   link. The page leaves out an answer for a link it no longer has, and
   the form sets the password for the link it was read with.
+- **2026-11-19:** Three things on a client's page too small for a phone
+  (#327; `DESIGN.md` §5.1, §5.2, §9), found at 360px while #326 was
+  built:
+  - a client's mobile number was a plain link, 17px tall. It's a link in
+    a line of text now, 44px under a finger;
+  - a link in a line of text was tapped only as wide as its words, so a
+    short one, such as a number of a few digits, was narrower than 44px.
+    It's at least 44px wide under a finger now, centred on it;
+  - the top bar's language switch had options 40px wide and 36px tall on
+    a phone. They're 44px wide, and 44px under a finger, as what's tapped
+    takes in the pill's edge and padding. The bar looks as it did.
+
+  How to get the portal's file, on Tax position, looked small to that
+  check but wasn't: it has been 44px under a finger since #323, by a tap
+  area over the words that the check didn't measure.
