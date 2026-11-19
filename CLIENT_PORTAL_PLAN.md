@@ -32,8 +32,8 @@ already there (6d) is #330. Signing in as a client account (step 7) is
 built in four, and the first, keeping a client account out of the
 company's app (7a), is #331, signing in finding a client account (7b) is
 #332, and Forgot password for client accounts (7c) is #333. The area's
-top bar (7d-1) is #334. The rest is built in the small PRs of §12, each
-its own PR.
+top bar (7d-1) is #334, and Change password (7d-2) is #335. The rest is
+built in the small PRs of §12, each its own PR.
 
 ---
 
@@ -723,6 +723,26 @@ As built (step 7d-1, #334), the client's area's top bar (`DESIGN.md` §5.5):
   on the company's top bar.
 - No theme switch, notifications or search, as `DESIGN.md` has it.
 
+As built (step 7d-2, #335), Change password, from the account menu, on a
+page of the area's own:
+
+- **It asks for the current password,** then the new one twice, as the
+  company's people's Change password asks it, its hint saying how long it
+  must be: 12 to 72 characters. The server checks the current one, with
+  the five wrong tries in fifteen minutes a person's own password has,
+  then none until the fifteen minutes are up.
+- **The new password ends their other sessions** within a minute (7b's
+  check), and keeps the one it was changed from, as a person's does
+  (#228). The page goes back to Tax position, saying the password was
+  changed.
+- **The audit log has it** under the client, naming the person, for the
+  Super Admin, as their sign-ins are.
+- My choices, easy to change: the current password is a field on the
+  page, rather than asked in a window after Save as a person's profile
+  asks it, as the page has nothing else to save. Too many wrong tries says
+  to try again within 15 minutes, as no one at the office can lift that
+  for a client's person.
+
 ### 5.5 The privacy policy (Decided, 2026-11-17)
 
 The privacy policy (`app/(legal)/privacy`) gets a line saying Nizmo also
@@ -1187,7 +1207,7 @@ width:
        account menu with the person's name, their client's name and Sign
        out. #334.
      - **7d-2.** Change password in the account menu, on a page of the
-       area's own, as for the company's people.
+       area's own, as for the company's people. #335.
 8. **The tax position page.**
 9. **Contacting the accountant on WhatsApp:** the number on people's
    profiles, the responsible accountant, the dialog, Ask about this
@@ -1734,3 +1754,12 @@ with a tax position is archived, and deleted for good from the archive
   language picked there is kept as the account's, as §5.2 has it. My
   choices, easy to change: no theme switch, as `DESIGN.md` has none there;
   Sign out moves from the page into the menu.
+- **2026-11-19:** 7d-2 (#335): Change password in the account menu, on a
+  page of the area's own, as for the company's people (§5.3): the current
+  password, checked by the server with the same limit on wrong tries; the
+  new one twice, 12 to 72 characters; their other sessions end within a
+  minute, and the one it's changed from stays; the audit log has it under
+  the client, for the Super Admin. My choices, easy to change: the current
+  password is a field on the page rather than a window after Save; too
+  many wrong tries says to wait 15 minutes, as no one at the office can
+  lift that for a client's person.
