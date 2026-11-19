@@ -140,3 +140,43 @@ export async function sendPlainEmail(to: string, subject: string, text: string):
 
     return 'SENT'
 }
+
+/** An email from an office, sent from Nizmo's address (CLIENT_PORTAL_PLAN.md §5.2; PR 325). */
+export type OfficeEmail = {
+    to: { name: string; address: string }
+    /** The name it's sent under: the office's. */
+    fromName: string
+    /** Whoever in the office sent it, or none: a Super Admin isn't one of the office's people. */
+    replyTo: { name: string; address: string } | null
+    subject: string
+    text: string
+    html: string
+}
+
+/**
+ * Sends an office's email, as the invitation to the client portal is: under
+ * the office's name, from the address Nizmo sends every email from, so it's
+ * Gmail's to vouch for; a reply goes to whoever in the office sent it. The
+ * names go as names, which the mail library writes into the headers safely.
+ *
+ * Throws on failure, as the plain email does: the caller decides what a
+ * failed send means.
+ */
+export async function sendOfficeEmail(message: OfficeEmail): Promise<SendOutcome> {
+    if (refuseUnroutable(message.to.address, `"${message.subject}"`)) return 'SKIPPED_UNROUTABLE'
+
+    if (!transporter) {
+        throw new Error('EMAIL_NOT_CONFIGURED')
+    }
+
+    await transporter.sendMail({
+        from: { name: message.fromName, address: process.env.GMAIL_USER! },
+        to: message.to,
+        ...(message.replyTo ? { replyTo: message.replyTo } : {}),
+        subject: message.subject,
+        text: message.text,
+        html: message.html,
+    })
+
+    return 'SENT'
+}

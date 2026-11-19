@@ -112,19 +112,19 @@ describe("the routes (§5.2)", () => {
 
 describe("a person sent to be added", () => {
     it("is read as the client, a name and an email", () => {
-        expect(sentPerson({ clientId: "c-1", name: "Mona Fouad", email: "mona@example.com" })).toEqual({ person: { clientId: "c-1", name: "Mona Fouad", email: "mona@example.com" } })
+        expect(sentPerson({ clientId: "c-1", name: "Mona Fouad", email: "mona@example.com" })).toEqual({ person: { clientId: "c-1", name: "Mona Fouad", email: "mona@example.com", language: "ar" } })
     })
 
     it("has its name tidied: spaces at its ends and runs of them, and characters that can't be seen", () => {
-        expect(sentPerson({ clientId: "c-1", name: "  Mona \t  Fouad\u0000 ", email: "mona@example.com" })).toEqual({ person: { clientId: "c-1", name: "Mona Fouad", email: "mona@example.com" } })
-        expect(sentPerson({ clientId: "c-1", name: "منى\u200F فؤاد\u202E", email: "mona@example.com" })).toEqual({ person: { clientId: "c-1", name: "منى فؤاد", email: "mona@example.com" } })
+        expect(sentPerson({ clientId: "c-1", name: "  Mona \t  Fouad\u0000 ", email: "mona@example.com" })).toEqual({ person: { clientId: "c-1", name: "Mona Fouad", email: "mona@example.com", language: "ar" } })
+        expect(sentPerson({ clientId: "c-1", name: "منى\u200F فؤاد\u202E", email: "mona@example.com" })).toEqual({ person: { clientId: "c-1", name: "منى فؤاد", email: "mona@example.com", language: "ar" } })
         // Half of a character's pair, which the database refuses.
-        expect(sentPerson({ clientId: "c-1", name: "Mona \ud83d", email: "mona@example.com" })).toEqual({ person: { clientId: "c-1", name: "Mona", email: "mona@example.com" } })
+        expect(sentPerson({ clientId: "c-1", name: "Mona \ud83d", email: "mona@example.com" })).toEqual({ person: { clientId: "c-1", name: "Mona", email: "mona@example.com", language: "ar" } })
     })
 
     it("has its email kept trimmed and in small letters, so capitals make no second account", () => {
         expect(accountEmail("  Mona.Fouad@Example.COM ")).toBe("mona.fouad@example.com")
-        expect(sentPerson({ clientId: "c-1", name: "Mona", email: " Mona@Example.com " })).toEqual({ person: { clientId: "c-1", name: "Mona", email: "mona@example.com" } })
+        expect(sentPerson({ clientId: "c-1", name: "Mona", email: " Mona@Example.com " })).toEqual({ person: { clientId: "c-1", name: "Mona", email: "mona@example.com", language: "ar" } })
     })
 
     it("is refused without a client, or with something that isn't one's id", () => {
@@ -149,6 +149,18 @@ describe("a person sent to be added", () => {
         expect(sentPerson({ clientId: "c-1", name: "Mona", email: `${"a".repeat(64)}@${"b".repeat(186)}.com` })).toEqual({ problem: "email" })
     })
 
+    it("is invited in Arabic where no language is sent, as Add person starts on it, or in English where it's asked for", () => {
+        expect(sentPerson({ clientId: "c-1", name: "Mona", email: "mona@example.com" })).toHaveProperty("person.language", "ar")
+        expect(sentPerson({ clientId: "c-1", name: "Mona", email: "mona@example.com", language: "ar" })).toHaveProperty("person.language", "ar")
+        expect(sentPerson({ clientId: "c-1", name: "Mona", email: "mona@example.com", language: "en" })).toHaveProperty("person.language", "en")
+    })
+
+    it("is refused a language Nizmo doesn't speak", () => {
+        for (const language of ["fr", "AR", "En", "", null, 1, ["en"]]) {
+            expect(sentPerson({ clientId: "c-1", name: "Mona", email: "mona@example.com", language }), String(language)).toEqual({ problem: "language" })
+        }
+    })
+
     it("is refused where it's not a person at all", () => {
         for (const body of [undefined, null, "Mona", 7, []]) expect(sentPerson(body), String(body)).toEqual({ problem: "client" })
     })
@@ -169,6 +181,9 @@ describe("what adding and removing are refused with", () => {
             CLIENT_PERSON_EMAIL_IN_USE: 409,
             CLIENT_PEOPLE_FULL: 409,
             CLIENT_PERSON_NOT_FOUND: 404,
+            CLIENT_PERSON_LANGUAGE_INVALID: 400,
+            // Sending an invitation again, to someone who has set their password since.
+            CLIENT_PERSON_ACTIVE: 409,
         }
         for (const [code, status] of Object.entries(refusals)) {
             const refusal = knownRefusal(new Error(code))
@@ -179,8 +194,8 @@ describe("what adding and removing are refused with", () => {
         expect(knownRefusal(new Error("CLIENT_PEOPLE_FULL"))?.message).toContain("20")
     })
 
-    it("and the audit log names adding and removing, in both languages", () => {
-        for (const action of ["ADD_CLIENT_ACCOUNT", "REMOVE_CLIENT_ACCOUNT"]) {
+    it("and the audit log names adding, removing and sending an invitation again, in both languages", () => {
+        for (const action of ["ADD_CLIENT_ACCOUNT", "REMOVE_CLIENT_ACCOUNT", "RESEND_CLIENT_INVITATION"]) {
             expect(AUDIT_ACTIONS as readonly string[]).toContain(action)
             for (const words of [en, ar] as Record<string, string>[]) expect(words[`audit_action_${action}`], action).toBeTruthy()
         }

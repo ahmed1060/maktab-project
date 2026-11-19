@@ -1,7 +1,13 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest"
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
 import { readFileSync, readdirSync } from "node:fs"
 import { Client } from "pg"
 import { withGrants } from "@/lib/permissions/test-actors"
+
+// Adding a person emails them (PR 325): nothing here reaches a mail server.
+vi.mock("@/lib/email", async importOriginal => ({
+    ...(await importOriginal<typeof import("@/lib/email")>()),
+    sendOfficeEmail: vi.fn(async () => "SENT"),
+}))
 
 /**
  * Client accounts as they're kept (CLIENT_PORTAL_PLAN.md §5.1, §5.2, §15;
@@ -205,7 +211,7 @@ describe.skipIf(!ADMIN_URL)("client accounts, in Postgres", () => {
     describe("adding one of a client's people", () => {
         it("adds them as invited, with who added them, and gives them back as the list has them", async () => {
             const added = await accounts.addClientPerson(admin, person("noor", "  Mona   Fouad ", " Mona.Fouad@Example.com "), NOW)
-            expect(added).toEqual({ id: expect.any(String), name: "Mona Fouad", email: "mona.fouad@example.com", state: "invited", invitedAt: "2026-11-19T07:00:00.000Z", lastSignInAt: null })
+            expect(added).toEqual({ id: expect.any(String), name: "Mona Fouad", email: "mona.fouad@example.com", state: "invited", invitedAt: "2026-11-19T07:00:00.000Z", lastSignInAt: null, language: "ar" })
             expect(await rows("noor")).toEqual([{
                 id: added.id, name: "Mona Fouad", email: "mona.fouad@example.com", companyId: "c1", password: null, activatedAt: null, lastSignInAt: null,
                 addedById: "a1", addedByName: "Amal One", sessionVersion: 0, invitedAt: "2026-11-19T07:00",
@@ -279,15 +285,15 @@ describe.skipIf(!ADMIN_URL)("client accounts, in Postgres", () => {
                 client: { id: "delta", name: "Delta Foods", archived: false },
                 max: 20,
                 people: [
-                    { id: expect.any(String), name: "Dalia Delta", email: "dalia@delta.co", state: "invited", invitedAt: "2026-11-10T09:00:00.000Z", lastSignInAt: null },
-                    { id: active.id, name: "Bassem Delta", email: "bassem@delta.co", state: "active", invitedAt: "2026-11-12T09:00:00.000Z", lastSignInAt: "2026-11-18T16:30:00.000Z" },
+                    { id: expect.any(String), name: "Dalia Delta", email: "dalia@delta.co", state: "invited", invitedAt: "2026-11-10T09:00:00.000Z", lastSignInAt: null, language: "ar" },
+                    { id: active.id, name: "Bassem Delta", email: "bassem@delta.co", state: "active", invitedAt: "2026-11-12T09:00:00.000Z", lastSignInAt: "2026-11-18T16:30:00.000Z", language: "ar" },
                 ],
             })
         })
 
         it("never give a password, or anything else that's kept", async () => {
             const listed = await accounts.clientPeople(admin, "delta")
-            for (const one of listed.people) expect(Object.keys(one).sort()).toEqual(["email", "id", "invitedAt", "lastSignInAt", "name", "state"])
+            for (const one of listed.people) expect(Object.keys(one).sort()).toEqual(["email", "id", "invitedAt", "language", "lastSignInAt", "name", "state"])
         })
 
         it("are an archived client's too, said to be archived, and nobody for a client with none", async () => {

@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto"
 import { hasModule, resolveBundles, type PackageFacts } from "./features/bundles"
 import { summarizeSubscription } from "./billing/summary"
 import { PASSWORD_MAX, PASSWORD_MIN } from "./new-employee-form"
+import type { ClientLanguage } from "./client-accounts"
 
 /**
  * The invitation's link, which one of a client's people sets their password
@@ -40,8 +41,8 @@ export function invitationLink(origin: string, token: string): string {
     return `${origin.replace(/\/+$/, "")}${INVITATION_PATH}#${token}`
 }
 
-/** What a link says, read: who invited them, for whom, their email, and until when. */
-export type InvitationView = { office: string; client: string; email: string; expiresAt: string }
+/** What a link says, read: who invited them, for whom, their email, until when, and the language the page opens in. */
+export type InvitationView = { office: string; client: string; email: string; expiresAt: string; language: ClientLanguage }
 
 /** What the page sends to read a link: its secret. */
 export function sentInvitation(body: unknown): { token: string } | { problem: "token" } {

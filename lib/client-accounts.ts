@@ -15,6 +15,13 @@ export const CLIENT_PERSON_NAME_MAX = 100
 /** The longest an email address can be. */
 const EMAIL_MAX = 254
 
+/**
+ * The languages a person can be invited in (§5.2; PR 325). Their invitation's
+ * email is in it alone, and the page that sets their password opens in it.
+ */
+export const CLIENT_LANGUAGES = ["ar", "en"] as const
+export type ClientLanguage = (typeof CLIENT_LANGUAGES)[number]
+
 /** An id as Nizmo makes them. Anything else is nobody's, and isn't asked of the database. */
 export const NIZMO_ID = /^[\w-]{1,64}$/
 
@@ -27,6 +34,8 @@ export type ClientPerson = {
     state: "invited" | "active"
     invitedAt: string
     lastSignInAt: string | null
+    /** The language they're invited in. */
+    language: ClientLanguage
 }
 
 /** A client's people, with the client they're of and how many it can have. */
@@ -50,12 +59,13 @@ const tidyName = (typed: string) => seen(typed).replace(UNSEEN_MARKS, "").replac
 // What a person's email is checked with (lib/validations/user.schema.ts).
 const anEmail = z.string().email().max(EMAIL_MAX)
 
-export type SentPerson = { person: { clientId: string; name: string; email: string } } | { problem: "client" | "name" | "name_long" | "email" }
+export type SentPerson = { person: { clientId: string; name: string; email: string; language: ClientLanguage } } | { problem: "client" | "name" | "name_long" | "email" | "language" }
 
 /**
- * A person sent to be added: the client they're of, a name and an email.
- * Nothing sent is trusted to be what it should, so each is read, and the
- * first thing wrong is named.
+ * A person sent to be added: the client they're of, a name, an email, and
+ * the language they're invited in, Arabic where none is sent, as Add person
+ * starts on it. Nothing sent is trusted to be what it should, so each is
+ * read, and the first thing wrong is named.
  */
 export function sentPerson(body: unknown): SentPerson {
     const sent = (body && typeof body === "object" ? body : {}) as Record<string, unknown>
@@ -65,5 +75,7 @@ export function sentPerson(body: unknown): SentPerson {
     if (name.length > CLIENT_PERSON_NAME_MAX) return { problem: "name_long" }
     const email = typeof sent.email === "string" ? accountEmail(sent.email) : ""
     if (!anEmail.safeParse(email).success) return { problem: "email" }
-    return { person: { clientId: sent.clientId, name, email } }
+    const language = sent.language === undefined ? "ar" : sent.language
+    if (!(CLIENT_LANGUAGES as readonly unknown[]).includes(language)) return { problem: "language" }
+    return { person: { clientId: sent.clientId, name, email, language: language as ClientLanguage } }
 }

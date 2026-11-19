@@ -21,6 +21,8 @@ import type { TranslationKey } from '@/lib/translations'
  * page: it's read here, taken out of the address bar, so it isn't left in
  * the browser's history or shown over a shoulder, and sent only in the body
  * of the two requests, which no log keeps.
+ *
+ * It opens in the language the person was invited in (step 6b-2, PR 325).
  */
 
 /** A link that can't be used, each said as it is. */
@@ -65,12 +67,14 @@ async function send(path: '/api/invitation' | '/api/invitation/password', body: 
 }
 
 export default function InvitationPage() {
-    const { t } = useLanguage()
+    const { t, setLanguage, isChangingLocale } = useLanguage()
     const token = useRef('')
     const opened = useRef(false)
     /** Which reading of a link is the page's now: another link opened in its place makes the one before old. */
     const generation = useRef(0)
     const form = useRef<HTMLFormElement>(null)
+    /** The link whose language the page has been turned to. */
+    const languageFor = useRef<InvitationView | null>(null)
     const [stage, setStage] = useState<Stage>({ at: 'opening' })
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
@@ -132,6 +136,18 @@ export default function InvitationPage() {
         return () => window.removeEventListener('hashchange', another)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
+
+    // In the language they were invited in, once for each link read, so the
+    // language switch under the card can still change it. Switched from the
+    // page as it's drawn then, which knows the language it's in now, and once
+    // a switch under way is done: one asked for meanwhile does nothing.
+    const invited = stage.at === 'form' ? stage.view : null
+    useEffect(() => {
+        if (!invited || isChangingLocale || languageFor.current === invited) return
+        languageFor.current = invited
+        setLanguage(invited.language)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [invited, isChangingLocale])
 
     const submit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
