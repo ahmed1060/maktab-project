@@ -32,8 +32,10 @@ already there (6d) is #330. Signing in as a client account (step 7) is
 built in four, and the first, keeping a client account out of the
 company's app (7a), is #331, signing in finding a client account (7b) is
 #332, and Forgot password for client accounts (7c) is #333. The area's
-top bar (7d-1) is #334, and Change password (7d-2) is #335. The rest is
-built in the small PRs of §12, each its own PR.
+top bar (7d-1) is #334, and Change password (7d-2) is #335. The tax
+position page (step 8) is built in four, and the first, what the area
+reads of it (8a), is #336. The rest is built in the small PRs of §12,
+each its own PR.
 
 ---
 
@@ -785,6 +787,27 @@ The client's area and A client's tax position).
   tax position yet.
 - Both languages, and phones as well as computers.
 
+As built (step 8a, #336), what the page is given, from the server
+(`lib/portal-tax.ts`, `portalTaxPosition` in
+`lib/services/tax-claim.service.ts`), with no screen yet:
+
+- **The session's client's claims alone,** read only where the client is
+  the session's company's, whatever else is asked; anything else reads as
+  not there.
+- **Late counted in the company's own days,** as on the client's page
+  (§3.4), so the area and the office agree.
+- **What's owed in all:** the original, paid and remaining amounts, how
+  many claims are open and late, and the oldest delay in days.
+- **By item:** each item's claims, the oldest due first, with what they
+  come to, the earliest due date and the badges its claims have; the
+  largest remaining first, and items owing the same by name.
+- **By how late:** every row, even at nothing, in order: not due yet, then
+  under 6 months, 6 months to a year, 1 to 2 years and more than 2 years,
+  counted in whole months from the due date. A month too short for the
+  day counts from its last day, so 31 August and 6 months is the end of
+  February.
+- **The day the figures are from,** or none before the first upload.
+
 ---
 
 ## 7. Contacting the accountant (Decided, 2026-11-17: WhatsApp)
@@ -1215,7 +1238,7 @@ width:
    - **8a. What the area reads of it:** the session's client's claims,
      what's owed in all and by item, how late, and the oldest delay,
      late counted in the company's days, as on a client's page. No
-     screen; with its tests.
+     screen; with its tests. #336.
    - **8b. Its building blocks:** bars by part, the share bar, and the
      page's one large figure (`DESIGN.md` §3.2, §5.5).
    - **8c. The page's top:** its header, what's owed, the two cards of
@@ -1785,3 +1808,7 @@ with a tax position is archived, and deleted for good from the archive
   the area reads of the tax position; 8b, its building blocks; 8c, the
   page's top; 8d, the claims by item. Decided: how late starts with what's
   not due yet, before under 6 months (§6; `DESIGN.md` §5.5).
+- **2026-11-19:** 8a (#336): what the client's area reads of the tax
+  position: the session's client's claims alone, late in the company's
+  days, what's owed in all, by item and by how late, and the oldest delay
+  (§6). No screen yet; 8b and 8c draw it.
