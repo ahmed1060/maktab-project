@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync } from "node:fs"
 import { moduleForApiPath } from "./features/routes"
 import { PERMISSIONS, isPermission, isReserved } from "./permissions/catalogue"
 import { PERMISSION_GROUPS, permissionLabelKey, riskLabelKey } from "./permissions/matrix"
@@ -215,6 +215,42 @@ describe("what adding and removing are refused with", () => {
         const source = readFileSync("lib/services/client-account.service.ts", "utf8")
         expect(source).not.toMatch(/auditLog\.(delete|deleteMany|update|updateMany|upsert)\b/)
         expect(source).not.toMatch(/DELETE FROM "AuditLog"|UPDATE "AuditLog"/)
+    })
+})
+
+describe("Manage who signs in for a client, for the companies already there (§12 step 6d, PR 330)", () => {
+    const NAME = "20270109000000_client_accounts_granted"
+    const sql = () => {
+        expect(readdirSync("prisma/migrations").find(m => m.endsWith("_client_accounts_granted"))).toBe(NAME)
+        return readFileSync(`prisma/migrations/${NAME}/migration.sql`, "utf8").split("\n").filter(line => !line.startsWith("--")).join("\n")
+    }
+
+    it("a migration gives it to the built-in Admin role alone, company-wide", () => {
+        const rows = [...sql().matchAll(/\('(\w+)', '([\w.]+)', '(\w+)'\)/g)].map(([, role, permission, scope]) => [role, permission, scope])
+        expect(rows).toEqual([["ADMIN", PERMISSION, "COMPANY"]])
+        expect(BUILT_IN_GRANTS.ADMIN["client_accounts.manage"]).toBe("COMPANY")
+        expect(BUILT_IN_GRANTS.TEAM_LEADER).not.toHaveProperty(PERMISSION)
+        expect(BUILT_IN_GRANTS.EMPLOYEE).not.toHaveProperty(PERMISSION)
+    })
+
+    it("leaves a role holding it already as it is, and has only the holders of a role given it reload", () => {
+        const text = sql().replace(/\s+/g, " ")
+        expect(text).toContain(`ON CONFLICT ("roleId", "permission") DO NOTHING RETURNING "roleId"`)
+        expect(text).toContain(`UPDATE "Role" SET "version" = "version" + 1, "updatedAt" = now() WHERE "id" IN (SELECT "roleId" FROM given)`)
+        expect(text).not.toMatch(/DELETE|DROP|ALTER/)
+    })
+
+    it("comes after the release that knows it, and what it brings, seeing clients, every built-in Admin role holds", () => {
+        const names = readdirSync("prisma/migrations").filter(m => m !== "migration_lock.toml").sort()
+        expect(names.indexOf(NAME)).toBeGreaterThan(names.indexOf("20270106000000_client_accounts"))
+        expect(PERMISSIONS["client_accounts.manage"].implies).toEqual(["clients.view"])
+        expect(BUILT_IN_GRANTS.ADMIN["clients.view"]).toBe("COMPANY")
+    })
+
+    it("opens nothing by itself: the package still has to have the client portal, and adding someone still asks for the code", () => {
+        expect(sql()).not.toMatch(/"Package"|"Company"|"ClientAccount"/)
+        expect(moduleForApiPath("/api/client-accounts")).toBe("TAX_POSITION")
+        expect(isHighRisk(PERMISSION as never)).toBe(true)
     })
 })
 
