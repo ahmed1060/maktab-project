@@ -187,6 +187,15 @@ it for good after.
 - **One with tasks or records stays in the archive,** as today (the
   owner, 2026-11-18): deleting it would take its records and their
   files, and leave its tasks without it.
+- **A client with people who can sign in is archived too** (the owner,
+  2026-11-19; #329), as one with a tax position is, though it has no tax
+  position, tasks or records: Delete would take their accounts in one
+  step. Its menu says Archive in place of Delete, and why, and its
+  people can't sign in while it's archived (§5.3). Delete permanently,
+  from the archive, says that its people who can sign in go with it,
+  with how many for whoever may manage who signs in for a client (by
+  their role and their company's package). The audit log says how many
+  went, as it does for claims.
 - **Only from the archive.** A client in use is archived first, so
   deleting for good is always a second, separate step.
 - **Refused, it says why,** in the reader's language: tasks or records
@@ -1048,8 +1057,10 @@ width:
        and the language they're invited in, Resend invitation and Remove;
        and the privacy policy's line (§5.5), which comes with the first
        screen that sends an invitation.
-     - **6c-2.** Delete permanently (§3.6) says how many of a client's
-       people go with it.
+     - **6c-2 (#329).** Delete permanently (§3.6) says that a client's
+       people who can sign in go with it, and how many; and a client
+       with people who can sign in is archived on Delete, as one with a
+       tax position is (decided 2026-11-19).
    - **6d.** `client_accounts.manage` for the built-in Admin of the
      companies already there, from a migration, once #322's release,
      whose role editor knows it, is live.
@@ -1554,3 +1565,12 @@ with a tax position is archived, and deleted for good from the archive
   the take-back deleted the entry, where the privacy policy says the
   audit log is only ever added to. The person still isn't added, or their
   earlier link still works, as before.
+- **2026-11-19:** Decided: a client with people who can sign in, and no
+  tax position, tasks or records, is archived on Delete, as one with a
+  tax position is (§3.6; #329). Until now Delete took it and their
+  accounts in one step. Delete permanently, from the archive, says its
+  people go with it, with how many for whoever may manage who signs in
+  for a client. My choices, each easy to change: the count is given as
+  the claims' count is, in brackets, "(people: 3)", so it needs no
+  plural forms; whoever may manage clients but not who signs in for one
+  is told that its people go, without how many.
