@@ -3812,7 +3812,10 @@ a.ui-row:focus-visible {
 }
 /* On a phone it's 44px under a finger (DESIGN.md §5.2, §9): what's tapped is
    laid over its line, 22px above its middle and 22px below, so no line
-   around it moves, whatever their height. */
+   around it moves, whatever their height. It's at least 44px wide too: on
+   a link narrower than that, 50% - 22px is under 0, and what's tapped
+   reaches 22px each way from its middle, as a mobile number of a few
+   digits needs. A wider one is tapped as wide as its words. */
 @media (max-width: 767px) {
   .ui-text-link {
     position: relative;
@@ -3820,7 +3823,7 @@ a.ui-row:focus-visible {
   .ui-text-link::after {
     content: "";
     position: absolute;
-    inset-inline: 0;
+    inset-inline: min(0px, calc(50% - 22px));
     inset-block: calc(50% - 22px);
   }
 }
@@ -5692,10 +5695,20 @@ a.ui-donut-row:focus-visible {
     display: inline;
   }
   .ui-topbar .ui-segmented-option {
+    position: relative;
     justify-content: center;
-    min-inline-size: 40px;
+    min-inline-size: 44px;
     min-block-size: 36px;
     padding-inline: var(--space-2);
+  }
+  /* 44px under a finger (DESIGN.md §5.1, §9): what's tapped takes in the
+     pill's 3px padding and 1px edge above and below the 36px option, so
+     the bar looks as it did. */
+  .ui-topbar .ui-segmented-option::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    inset-block: -4px;
   }
 }
 /* end of the top bar */

@@ -12,6 +12,11 @@ import { readFileSync } from "node:fs"
  * - a link in a line of text was as tall as its words under a finger. Only
  *   How to get the portal's file was 44px, by a rule of its own.
  *
+ * And three on a client's page at 360px, found while PR 326 was built (PR 327):
+ * a client's mobile number was a plain link, 17px tall; a short link, such
+ * as a number of 4 digits, was tapped only as wide as its words; and the top
+ * bar's language switch had options 40px wide and 36px tall.
+ *
  * Read from the styles here; the browser flow checks where each lands.
  */
 
@@ -52,8 +57,12 @@ describe("a link in a line of text, on a phone", () => {
         const tap = rule(".ui-text-link::after", true)
         expect(tap).toMatch(/content: "";/)
         expect(tap).toMatch(/position: absolute;/)
-        expect(tap).toMatch(/inset-inline: 0;/)
         expect(tap).toMatch(/inset-block: calc\(50% - 22px\);/)
+    })
+
+    it("is at least 44px wide under a finger, centred on a short one, and as wide as its words otherwise", () => {
+        // 50% - 22px is under 0 for a link narrower than 44px: its tap area reaches past it, 22px each way from its middle.
+        expect(rule(".ui-text-link::after", true)).toMatch(/inset-inline: min\(0px, calc\(50% - 22px\)\);/)
     })
 
     it("keeps How to get the portal's file a little low, clear of the upload's button over it", () => {
@@ -75,6 +84,48 @@ describe("a link in a line of text, on a phone", () => {
     it("is written down in DESIGN.md", () => {
         const link = design.slice(design.indexOf("- **A link in a line of text,**"), design.indexOf("- **Busy and disabled states**")).replace(/\s+/g, " ")
         expect(link).toContain("44px under a finger")
+        expect(link).toContain("at least 44px wide")
+    })
+})
+
+describe("a client's mobile number, on its page", () => {
+    it("is a link in a line of text, so it's 44px under a finger on a phone", () => {
+        const page = readFileSync("app/(dashboard)/dashboard/clients/[id]/page.tsx", "utf8")
+        expect(page).toMatch(/<a className="ui-text-link" href=\{`tel:\$\{client\.mobileNumber\.replace/)
+    })
+})
+
+describe("the top bar's language switch, on a phone", () => {
+    /** The declarations of the one rule with this selector in the top bar's phone query (narrower than 1024px). */
+    function topbar(selector: string): string {
+        const blocks = [...css.matchAll(/@media \(max-width: 1023px\) \{([\s\S]*?)\n\}/g)].map(m => m[1]).join("\n")
+        const escaped = selector.replace(/[.*+?^${}()|[\]\\:]/g, "\\$&")
+        const found = [...blocks.matchAll(new RegExp(`(?:^|\\n)\\s*${escaped} \\{([^}]*)\\}`, "g"))].map(m => m[1])
+        expect(found, selector).toHaveLength(1)
+        return found[0]
+    }
+
+    it("has options 44px wide", () => {
+        expect(topbar(".ui-topbar .ui-segmented-option")).toMatch(/min-inline-size: 44px;/)
+        expect(topbar(".ui-topbar .ui-segmented-option")).toMatch(/position: relative;/)
+    })
+
+    it("is 44px tall under a finger, its tap area taking in the pill's edge and padding, so the bar looks as it did", () => {
+        // The pill's 3px padding and 1px edge, above and below a 36px option: 44px.
+        expect(rule(".ui-segmented")).toMatch(/padding: 3px;/)
+        expect(rule(".ui-segmented")).toMatch(/border: 1px solid/)
+        expect(topbar(".ui-topbar .ui-segmented-option")).toMatch(/min-block-size: 36px;/)
+        const tap = topbar(".ui-topbar .ui-segmented-option::after")
+        expect(tap).toMatch(/content: "";/)
+        expect(tap).toMatch(/position: absolute;/)
+        expect(tap).toMatch(/inset-inline: 0;/)
+        expect(tap).toMatch(/inset-block: -4px;/)
+        expect(tap).not.toMatch(/(^|[\s;])(left|right|top|bottom)\s*:/)
+    })
+
+    it("is written down in DESIGN.md", () => {
+        const sw = design.slice(design.indexOf("  - **the language switch:**"), design.indexOf("  - **the bell** is named")).replace(/\s+/g, " ")
+        expect(sw).toContain("44px under a finger")
     })
 })
 
