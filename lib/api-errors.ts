@@ -112,6 +112,11 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     CLIENT_PEOPLE_FULL: { status: 409, message: "A client can have up to 20 people who sign in." },
     // Removed by somebody else since the list was read, or never this company's.
     CLIENT_PERSON_NOT_FOUND: { status: 404, message: "This person isn't among the client's people any more." },
+    // The language a person is invited in (PR 325).
+    CLIENT_PERSON_LANGUAGE_INVALID: { status: 400, message: "A person can be invited in Arabic or English." },
+    // Sent again to someone who has set their password since: they sign in, or use Forgot password.
+    CLIENT_PERSON_ACTIVE: { status: 409, message: "This person has set their password, so there's no invitation to send again." },
+    CLIENT_INVITATION_JUST_SENT: { status: 409, message: "This person's invitation was sent less than 2 minutes ago and may still be on its way. Please try again in 2 minutes." },
     // Setting a password from an invitation (CLIENT_PORTAL_PLAN.md §5.2; lib/services/client-invitation.service.ts).
     // The page says each in its own words, in the reader's language.
     INVITATION_TOKEN_REQUIRED: { status: 400, message: "This isn't an invitation's link." },

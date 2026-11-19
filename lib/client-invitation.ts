@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto"
 import { hasModule, resolveBundles, type PackageFacts } from "./features/bundles"
 import { summarizeSubscription } from "./billing/summary"
 import { PASSWORD_MAX, PASSWORD_MIN } from "./new-employee-form"
+import type { ClientLanguage } from "./client-accounts"
 
 /**
  * The invitation's link, which one of a client's people sets their password
@@ -13,6 +14,14 @@ import { PASSWORD_MAX, PASSWORD_MIN } from "./new-employee-form"
 export const INVITATION_HOURS = 72
 /** Where it opens. */
 export const INVITATION_PATH = "/invitation"
+/**
+ * How long after a link is made before it can be sent again (PR 325). Until
+ * then its email may still be on its way, and two sent at once that both
+ * fail could leave the person with a link nobody sent them, and the one they
+ * have stopped (found by Codex on PR 325). The routes that send one stop
+ * within a minute, so an email is sent or given up by then.
+ */
+export const RESEND_GAP_MINUTES = 2
 
 // A secret is 32 random bytes, written as 43 characters of base64url.
 const SECRET = /^[A-Za-z0-9_-]{43}$/
@@ -24,6 +33,12 @@ const hashOf = (token: string) => createHash("sha256").update(token).digest("hex
 export function newInvitation(now: Date = new Date()): { token: string; tokenHash: string; expiresAt: Date } {
     const token = randomBytes(32).toString("base64url")
     return { token, tokenHash: hashOf(token), expiresAt: new Date(now.getTime() + INVITATION_HOURS * 3600_000) }
+}
+
+/** Whether a link that stops working at `expiresAt` was made less than the gap before `now`. */
+export function justSent(expiresAt: Date, now: Date = new Date()): boolean {
+    const madeAt = expiresAt.getTime() - INVITATION_HOURS * 3600_000
+    return now.getTime() - madeAt < RESEND_GAP_MINUTES * 60_000
 }
 
 /** The hash a sent secret is looked up by, or null for anything Nizmo couldn't have made. */
@@ -40,8 +55,8 @@ export function invitationLink(origin: string, token: string): string {
     return `${origin.replace(/\/+$/, "")}${INVITATION_PATH}#${token}`
 }
 
-/** What a link says, read: who invited them, for whom, their email, and until when. */
-export type InvitationView = { office: string; client: string; email: string; expiresAt: string }
+/** What a link says, read: who invited them, for whom, their email, until when, and the language the page opens in. */
+export type InvitationView = { office: string; client: string; email: string; expiresAt: string; language: ClientLanguage }
 
 /** What the page sends to read a link: its secret. */
 export function sentInvitation(body: unknown): { token: string } | { problem: "token" } {

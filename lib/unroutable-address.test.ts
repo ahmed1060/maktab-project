@@ -65,8 +65,12 @@ describe("a demo address", () => {
 describe("the mail layer refuses before it sends", () => {
     const email = stripComments(readFileSync("lib/email.ts", "utf8"))
 
-    it("checks both senders", () => {
-        expect(email.split("refuseUnroutable(").length - 1).toBe(3) // one definition, two calls
+    // Every sender, the office's email included (PR 325).
+    const senders = [...email.matchAll(/export async function (send\w+)/g)].map(m => m[1])
+
+    it("checks every sender", () => {
+        expect(senders).toEqual(["sendVerificationCodeEmail", "sendPlainEmail", "sendOfficeEmail"])
+        expect(email.split("refuseUnroutable(").length - 1).toBe(senders.length + 1) // one definition, a call in each
     })
 
     it("checks before the transporter, so the answer does not depend on configuration", () => {
@@ -74,11 +78,10 @@ describe("the mail layer refuses before it sends", () => {
         // would make it deliverable. Checking after would make a demo send
         // throw EMAIL_NOT_CONFIGURED locally and silently attempt delivery in
         // production, which is the wrong way round.
-        const plain = email.slice(email.indexOf("export async function sendPlainEmail"))
-        expect(plain.indexOf("refuseUnroutable")).toBeLessThan(plain.indexOf("EMAIL_NOT_CONFIGURED"))
-
-        const code = email.slice(email.indexOf("export async function sendVerificationCodeEmail"))
-        expect(code.indexOf("refuseUnroutable")).toBeLessThan(code.indexOf("EMAIL_NOT_CONFIGURED"))
+        for (const sender of senders) {
+            const body = email.slice(email.indexOf(`export async function ${sender}`))
+            expect(body.indexOf("refuseUnroutable"), sender).toBeLessThan(body.indexOf("EMAIL_NOT_CONFIGURED"))
+        }
     })
 
     it("reports a skip rather than pretending it sent", () => {

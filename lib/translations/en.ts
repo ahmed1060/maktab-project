@@ -404,6 +404,7 @@ export const en = {
         audit_action_ADD_CLIENT_ACCOUNT: "Added a person to a client's portal",
         audit_action_REMOVE_CLIENT_ACCOUNT: "Removed a person from a client's portal",
         audit_action_ACCEPT_CLIENT_INVITATION: "Set a password from an invitation",
+        audit_action_RESEND_CLIENT_INVITATION: "Sent a person's invitation again",
         audit_action_SET_LOCATION_HQ: "Made location the HQ",
         audit_entity_LOCATION: "Location",
         audit_action_ADD_LIST_NAME: "Added a name to a list",

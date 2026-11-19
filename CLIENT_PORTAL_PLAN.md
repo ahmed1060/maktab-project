@@ -25,8 +25,8 @@ the export button's code in Nizmo, with its tests (§10, step 4a), is
 #320. Figures getting old (§4.3, step 5) is #321. Client accounts (§5,
 step 6) are built in four, and the first, the accounts as they're kept
 (step 6a), is #322. The invitation (step 6b) is in two: its link and the
-page that sets a password (6b-1) are #324, and its email follows. The
-rest is built in the small PRs of §12, each its own PR.
+page that sets a password (6b-1) are #324, and its email and Resend
+invitation (6b-2) are #325. The rest is built in the small PRs of §12, each its own PR.
 
 ---
 
@@ -482,6 +482,19 @@ As built (step 6a, #322), with no screen yet:
 - Add person: a name and an email. Nizmo emails an invitation, from the
   address it sends sign-in codes from, with a link to set a password. The
   link works once, for 72 hours; Resend invitation sends a new one.
+- **The language they're invited in (Decided, 2026-11-19):** Add person
+  asks for Arabic or English, Arabic to start, as the office knows its
+  client. The invitation's email is in that language alone, never both
+  in one, and the page that sets the password opens in it, as later the
+  portal does. The account keeps it, as a staff account keeps its own
+  language, and the person can change it in the portal.
+- **Who it's from (Decided, 2026-11-19):** sent under the office's name
+  alone, from the address Nizmo sends its email from. A reply goes to the
+  person in the office who sent it (added the person, or resent the
+  invitation), and its "for any questions" line names them and the
+  office. Sent by a Super Admin, who isn't one of the office's people, it
+  names the office alone and has no reply address. The words are on the
+  design canvas, one artboard in each language.
 - Remove: their account goes, and so do their open sessions, at once.
 - Each add, resend and remove is in the audit log.
 
@@ -539,6 +552,52 @@ an invitation). Until 6b-2 sends it, nobody receives a link.
   (`ROLES_PLAN.md` §6.15). The prompt said the action moves money or
   can't be undone, which adding a client's person doesn't: it says This
   is a high-risk action, for every high-risk action.
+
+As built (step 6b-2, #325): the invitation's email, and Resend
+invitation (`DESIGN.md` §5.5, The invitation's email). Nothing in Nizmo
+calls the routes yet: the section on a client's page is step 6c.
+
+- **The account keeps its language,** Arabic or English. Adding a
+  person takes it, and Arabic where none is sent, as Add person starts
+  on Arabic. The email is in it alone, and the page that sets the
+  password opens in it.
+- **The email** is from the office by name, at the address Nizmo sends
+  its sign-in codes from. A reply goes to the person who sent it, at the
+  email their account has that moment; sent by a Super Admin, it has no
+  reply address, and names the office alone. Every name in it is
+  written as text, never as part of the email's code.
+- **Its link is to Nizmo's own address,** never one read from the
+  request: `https://nizmo.vercel.app` in production, a preview's own
+  address on a preview, and the computer's own only when Nizmo runs on
+  it. A link can't be pointed at another site by whoever sends the
+  request (chosen in building).
+- **It's sent once the save is made** (chosen in building; changed
+  after Codex's review of #325). Sent inside the save, an email slower
+  than the save's time limit could go out with a link the save, undone,
+  never kept. Now the link is saved first, so an email only ever carries
+  a link Nizmo keeps. One that can't be sent is taken back: the person
+  isn't added, and nothing is written in the audit log, or, sent again,
+  their earlier link works again. Only what that save made is taken
+  back: a person who has set their password meanwhile stays. The office
+  is told to try again. An address of the kinds kept for examples
+  (`.test`, `.example` and the like) is never emailed, as with every
+  email Nizmo sends, and the person is added all the same.
+- **Resend invitation** makes a new link, which works once, for 72
+  hours, and the earlier one stops working. It's for someone still
+  invited: once their password is set they sign in, or use Forgot
+  password. It asks for the step-up confirmation, as adding does, and
+  each person's invitation can be sent again up to 5 times an hour
+  (chosen in building). It holds the client, then the account, in the
+  order every other save does.
+- **One at a time** (chosen in building, after Codex's second review of
+  #325). A person's invitation can be sent again only 2 minutes after
+  the link before it was made; sooner, it's refused with "may still be
+  on its way". Two sent at once that both failed could otherwise put
+  back a link neither sent, and the one the person has would stop
+  working. Adding a person and Resend invitation stop within a minute,
+  so the email before is sent or given up by then.
+- **The audit log** has Sent a person's invitation again, on the
+  client, with the person's name and email.
 
 ### 5.3 Signing in (Decided, 2026-11-17)
 
@@ -972,10 +1031,11 @@ width:
      - **6b-1.** Its link, which works once for 72 hours, and the page
        that sets a password from it. No email yet. #324.
      - **6b-2.** Its email, from the address Nizmo sends sign-in codes
-       from, and Resend invitation, which makes a new link and stops the
-       old one.
-   - **6c. People who can sign in,** on a client's page, and the
-     privacy policy's line (§5.5). Delete permanently (§3.6) then says
+       from, in the language the person is invited in (§5.2), which the
+       account keeps; and Resend invitation, which makes a new link and
+       stops the old one. #325.
+   - **6c. People who can sign in,** on a client's page, with Add
+     person's language, and the privacy policy's line (§5.5). Delete permanently (§3.6) then says
      how many of a client's people go with it.
    - **6d.** `client_accounts.manage` for the built-in Admin of the
      companies already there, from a migration, once #322's release,
@@ -1423,3 +1483,39 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   the form showed one person's email over another's link. The page
   leaves out an answer for a link it no longer has, and the form sets
   the password for the link it was read with.
+- **2026-11-19:** Decided with the owner (§5.2): the invitation's email
+  is in one language, the one the office picks for the person on Add
+  person, Arabic to start; never Arabic and English in one email. The
+  page that sets the password, and later the portal, open in it, and the
+  account keeps it. The email's words are drafted on the design canvas,
+  one artboard in each language; the name it's sent under, where a reply
+  goes and whether it names the accountant wait on the owner.
+- **2026-11-19:** Decided with the owner (§5.2): the invitation's email
+  is sent under the office's name alone, from Nizmo's address; a reply
+  goes to the person in the office who sent it, and the email names them
+  and the office. Chosen in writing it down: one sent by a Super Admin
+  names the office alone, with no reply address.
+- **2026-11-19:** The invitation's email and Resend invitation (§5.2,
+  step 6b-2) are #325. Chosen in building: the link is to Nizmo's own
+  address, never one the request gives; the email is sent as the save
+  ends, so one that can't be sent saves nothing; Arabic where no
+  language is sent; Resend is for someone still invited, up to 5 times
+  an hour for each person.
+- **2026-11-19:** Found while building the invitation's email (#325):
+  Nizmo's plain email, which payslips, final settlements and subscription
+  notices go out in, wrote each line into its HTML as it was, so a name
+  with a < or & in it, a person's or a company's, was read as HTML. Each
+  line is written as text now, with the same helper the invitation's
+  email uses; the plain-text part is as it was.
+- **2026-11-19:** Changed after Codex's review of #325: the invitation's
+  email is sent once the save is made, not as part of it. Sent inside
+  the save, an email slower than the save's time limit could go out with
+  a link the save, undone, never kept. One that can't be sent is taken
+  back: the person isn't added, or their earlier link works again, and
+  the audit log has no entry for it. Only what that save made is taken
+  back.
+- **2026-11-19:** Changed after Codex's second review of #325: a
+  person's invitation is sent one at a time. It can be sent again only 2
+  minutes after the link before it was made, and the two routes that
+  send it stop within a minute. Two sent at once that both failed could
+  otherwise put back a link neither sent.

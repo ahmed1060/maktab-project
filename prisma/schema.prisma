@@ -3124,6 +3124,9 @@ model ClientAccount {
   name           String
   /// Trimmed and in small letters (lib/account-email.ts).
   email          String    @unique
+  /// The language they're invited in, "ar" or "en": their invitation's email
+  /// is in it, and the page that sets their password opens in it (§5.2).
+  language       String    @default("ar")
   /// None until the invitation's password is set.
   password       String?
   invitedAt      DateTime  @default(now())

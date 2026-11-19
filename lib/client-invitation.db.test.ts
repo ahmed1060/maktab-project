@@ -1,9 +1,15 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest"
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest"
 import { readFileSync, readdirSync } from "node:fs"
 import { Client } from "pg"
 import bcrypt from "bcryptjs"
 import { withGrants } from "@/lib/permissions/test-actors"
 import { newInvitation } from "@/lib/client-invitation"
+
+// Adding a person emails them (PR 325): nothing here reaches a mail server.
+vi.mock("@/lib/email", async importOriginal => ({
+    ...(await importOriginal<typeof import("@/lib/email")>()),
+    sendOfficeEmail: vi.fn(async () => "SENT"),
+}))
 
 /**
  * Setting a password from an invitation (CLIENT_PORTAL_PLAN.md §5.2, §15;
@@ -118,7 +124,7 @@ describe.skipIf(!ADMIN_URL)("setting a password from an invitation, in Postgres"
         it("says who invited them, for whom, their email and until when", async () => {
             const { token, email } = await invited("noor")
             expect(await invitations.readInvitation({ token }, NOW)).toEqual({
-                office: "Al Amal Accounting", client: "Al Noor Trading", email, expiresAt: "2026-11-22T09:00:00.000Z",
+                office: "Al Amal Accounting", client: "Al Noor Trading", email, expiresAt: "2026-11-22T09:00:00.000Z", language: "ar",
             })
         })
 

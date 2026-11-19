@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer'
 import { isUnroutableAddress } from './unroutable-address'
+import { escapeHtml } from "./html-text"
 
 // F-27, Phase 0: the app's first-ever outbound email capability. Sends
 // through a dedicated Gmail account (GMAIL_USER/GMAIL_APP_PASSWORD) rather
@@ -106,6 +107,10 @@ export async function sendVerificationCodeEmail(to: string, code: string, purpos
  * one's whole shape — a big monospaced code, an expiry line — exists for one
  * job, and bending it into a general sender would make both worse.
  *
+ * Each line goes into the HTML as text: the lines carry names people type, an
+ * employee's or a company's, and one with a < or & in it was read as HTML
+ * (PR 325). The plain-text part keeps them as written.
+ *
  * Throws on failure, deliberately. The caller decides what a failed send means;
  * for subscription notices it means "do not mark this as sent", so it is
  * retried tomorrow rather than silently lost.
@@ -125,7 +130,7 @@ export async function sendPlainEmail(to: string, subject: string, text: string):
             ${text.split('\n').map(line =>
                 line.trim() === ''
                     ? '<div style="height: 12px;"></div>'
-                    : `<p style="color: #1c2420; font-size: 15px; line-height: 1.6; margin: 0;">${line}</p>`
+                    : `<p style="color: #1c2420; font-size: 15px; line-height: 1.6; margin: 0;">${escapeHtml(line)}</p>`
             ).join('')}
         </div>
     `
@@ -136,6 +141,46 @@ export async function sendPlainEmail(to: string, subject: string, text: string):
         subject,
         text,
         html,
+    })
+
+    return 'SENT'
+}
+
+/** An email from an office, sent from Nizmo's address (CLIENT_PORTAL_PLAN.md §5.2; PR 325). */
+export type OfficeEmail = {
+    to: { name: string; address: string }
+    /** The name it's sent under: the office's. */
+    fromName: string
+    /** Whoever in the office sent it, or none: a Super Admin isn't one of the office's people. */
+    replyTo: { name: string; address: string } | null
+    subject: string
+    text: string
+    html: string
+}
+
+/**
+ * Sends an office's email, as the invitation to the client portal is: under
+ * the office's name, from the address Nizmo sends every email from, so it's
+ * Gmail's to vouch for; a reply goes to whoever in the office sent it. The
+ * names go as names, which the mail library writes into the headers safely.
+ *
+ * Throws on failure, as the plain email does: the caller decides what a
+ * failed send means.
+ */
+export async function sendOfficeEmail(message: OfficeEmail): Promise<SendOutcome> {
+    if (refuseUnroutable(message.to.address, `"${message.subject}"`)) return 'SKIPPED_UNROUTABLE'
+
+    if (!transporter) {
+        throw new Error('EMAIL_NOT_CONFIGURED')
+    }
+
+    await transporter.sendMail({
+        from: { name: message.fromName, address: process.env.GMAIL_USER! },
+        to: message.to,
+        ...(message.replyTo ? { replyTo: message.replyTo } : {}),
+        subject: message.subject,
+        text: message.text,
+        html: message.html,
     })
 
     return 'SENT'

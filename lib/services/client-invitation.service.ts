@@ -12,7 +12,7 @@ import { invitationHash, portalOpen, sentInvitation, sentPassword, type Invitati
 
 /** What a link is read with: the account, its client and the client's company, as far as the portal needs. */
 const LINKED = {
-    id: true, name: true, email: true, inviteExpiresAt: true,
+    id: true, name: true, email: true, inviteExpiresAt: true, language: true,
     client: { select: { id: true, name: true, archivedAt: true } },
     company: {
         select: {
@@ -38,12 +38,12 @@ async function linkedAccount(tokenHash: string, now: Date) {
     return account
 }
 
-/** A link, read: who invited them, for whom, their email, and until when. */
+/** A link, read: who invited them, for whom, their email, until when, and the language the page opens in (PR 325). */
 export async function readInvitation(body: unknown, now: Date = new Date()): Promise<InvitationView> {
     const sent = sentInvitation(body)
     if ("problem" in sent) throw new Error("INVITATION_TOKEN_REQUIRED")
     const account = await linkedAccount(invitationHash(sent.token)!, now)
-    return { office: account.company.name, client: account.client.name, email: account.email, expiresAt: account.inviteExpiresAt!.toISOString() }
+    return { office: account.company.name, client: account.client.name, email: account.email, expiresAt: account.inviteExpiresAt!.toISOString(), language: account.language === "en" ? "en" : "ar" }
 }
 
 const PASSWORD_REFUSALS = { token: "INVITATION_TOKEN_REQUIRED", short: "INVITATION_PASSWORD_SHORT", long: "INVITATION_PASSWORD_LONG", mismatch: "INVITATION_PASSWORD_MISMATCH" } as const
