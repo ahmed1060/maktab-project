@@ -571,12 +571,17 @@ calls the routes yet: the section on a client's page is step 6c.
   address on a preview, and the computer's own only when Nizmo runs on
   it. A link can't be pointed at another site by whoever sends the
   request (chosen in building).
-- **It's sent as the save ends** (chosen in building). One that can't be
-  sent saves nothing: the person isn't added, or, sent again, their
-  earlier link still works, and the office is told to try again. An
-  address of the kinds kept for examples (`.test`, `.example` and the
-  like) is never emailed, as with every email Nizmo sends, and the
-  person is added all the same.
+- **It's sent once the save is made** (chosen in building; changed
+  after Codex's review of #325). Sent inside the save, an email slower
+  than the save's time limit could go out with a link the save, undone,
+  never kept. Now the link is saved first, so an email only ever carries
+  a link Nizmo keeps. One that can't be sent is taken back: the person
+  isn't added, and nothing is written in the audit log, or, sent again,
+  their earlier link works again. Only what that save made is taken
+  back: a person who has set their password meanwhile stays. The office
+  is told to try again. An address of the kinds kept for examples
+  (`.test`, `.example` and the like) is never emailed, as with every
+  email Nizmo sends, and the person is added all the same.
 - **Resend invitation** makes a new link, which works once, for 72
   hours, and the earlier one stops working. It's for someone still
   invited: once their password is set they sign in, or use Forgot
@@ -1495,3 +1500,10 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   with a < or & in it, a person's or a company's, was read as HTML. Each
   line is written as text now, with the same helper the invitation's
   email uses; the plain-text part is as it was.
+- **2026-11-19:** Changed after Codex's review of #325: the invitation's
+  email is sent once the save is made, not as part of it. Sent inside
+  the save, an email slower than the save's time limit could go out with
+  a link the save, undone, never kept. One that can't be sent is taken
+  back: the person isn't added, or their earlier link works again, and
+  the audit log has no entry for it. Only what that save made is taken
+  back.
