@@ -1489,3 +1489,9 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   ends, so one that can't be sent saves nothing; Arabic where no
   language is sent; Resend is for someone still invited, up to 5 times
   an hour for each person.
+- **2026-11-19:** Found while building the invitation's email (#325):
+  Nizmo's plain email, which payslips, final settlements and subscription
+  notices go out in, wrote each line into its HTML as it was, so a name
+  with a < or & in it, a person's or a company's, was read as HTML. Each
+  line is written as text now, with the same helper the invitation's
+  email uses; the plain-text part is as it was.
