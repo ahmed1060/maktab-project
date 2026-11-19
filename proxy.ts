@@ -1,5 +1,6 @@
 import { withAuth } from "next-auth/middleware"
 import { NextResponse } from "next/server"
+import { inClientArea, proxyRedirect } from "@/lib/client-session"
 
 // Fail loudly rather than silently verifying session tokens against a
 // publicly known string. lib/auth.ts already has no fallback here — the two
@@ -22,6 +23,15 @@ export default withAuth(
         // emptied (lib/auth.ts) and counts as signed out; it counted as signed
         // in, and the sign-in page sent it back into the dashboard.
         const signedIn = !!token?.sub
+
+        // 0. A client account is kept in the client's area, and the company's
+        // people and Super Admins out of it (CLIENT_PORTAL_PLAN.md §5.3, §12
+        // step 7a): asked first, so nothing below sends a client account into
+        // the dashboard or holds it on a page there.
+        const elsewhere = proxyRedirect(token, pathname)
+        if (elsewhere) {
+            return NextResponse.redirect(new URL(elsewhere, req.url))
+        }
 
         // 1. If user is authenticated and tries to access /login or /, redirect to /dashboard
         if (signedIn && (pathname === '/login' || pathname === '/')) {
@@ -118,6 +128,8 @@ export default withAuth(
                 if (pathname.startsWith('/dashboard')) {
                     return !!token?.sub
                 }
+                // The client's area likewise: no one signed in is sent to sign in.
+                if (inClientArea(pathname)) return !!token?.sub
 
                 // Always allow other paths (middleware function above handles /login and /)
                 return true
