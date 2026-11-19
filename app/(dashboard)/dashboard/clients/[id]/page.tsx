@@ -11,6 +11,7 @@ import { Button, Card, Details, EmptyState, Page, PageHeader, Section, SectionLi
 import LocationsList from '@/components/locations/LocationsList'
 import ChargesList from '@/components/charges/ChargesList'
 import TaxPosition from '@/components/tax/TaxPosition'
+import ClientPeople from '@/components/client-accounts/ClientPeople'
 import RecordsList from '@/components/records/RecordsList'
 import SectionsCard from '@/components/records/SectionsCard'
 import type { SectionItem } from '@/components/records/types'
@@ -57,6 +58,8 @@ export default function ClientPage() {
     // Its tax position, where the company's package has the client portal (CLIENT_PORTAL_PLAN.md §3.5).
     const features = useFeatures()
     const seesTax = features.has('TAX_POSITION') && can('tax.view')
+    // Its people who sign in to the client portal, for whoever may manage them (PR 326).
+    const seesPeople = features.has('TAX_POSITION') && can('client_accounts.manage')
     const [adding, setAdding] = useState(false)
     const [addingLocation, setAddingLocation] = useState(false)
     const [restoring, setRestoring] = useState(false)
@@ -179,6 +182,8 @@ export default function ClientPage() {
             {/* What it owes on the tax portal, from the portal's file (CLIENT_PORTAL_PLAN.md §3.5).
                 Made again for another client, so one client's figures never stand in for the next's while those load. */}
             {seesTax && <TaxPosition key={id} clientId={id} manages={can('tax.manage')} />}
+            {/* Its own key beside Tax position's: two with one key are drawn over and over. Another client's page starts afresh. */}
+            {seesPeople && <ClientPeople key={`people-${id}`} clientId={id} archived={archived} />}
 
             {seesLocations && (
                 <Section
