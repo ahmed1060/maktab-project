@@ -25,8 +25,8 @@ the export button's code in Nizmo, with its tests (§10, step 4a), is
 #320. Figures getting old (§4.3, step 5) is #321. Client accounts (§5,
 step 6) are built in four, and the first, the accounts as they're kept
 (step 6a), is #322. The invitation (step 6b) is in two: its link and the
-page that sets a password (6b-1) are #324, and its email follows. The
-rest is built in the small PRs of §12, each its own PR.
+page that sets a password (6b-1) are #324, and its email and Resend
+invitation (6b-2) are #325. The rest is built in the small PRs of §12, each its own PR.
 
 ---
 
@@ -553,6 +553,40 @@ an invitation). Until 6b-2 sends it, nobody receives a link.
   can't be undone, which adding a client's person doesn't: it says This
   is a high-risk action, for every high-risk action.
 
+As built (step 6b-2, #325): the invitation's email, and Resend
+invitation (`DESIGN.md` §5.5, The invitation's email). Nothing in Nizmo
+calls the routes yet: the section on a client's page is step 6c.
+
+- **The account keeps its language,** Arabic or English. Adding a
+  person takes it, and Arabic where none is sent, as Add person starts
+  on Arabic. The email is in it alone, and the page that sets the
+  password opens in it.
+- **The email** is from the office by name, at the address Nizmo sends
+  its sign-in codes from. A reply goes to the person who sent it, at the
+  email their account has that moment; sent by a Super Admin, it has no
+  reply address, and names the office alone. Every name in it is
+  written as text, never as part of the email's code.
+- **Its link is to Nizmo's own address,** never one read from the
+  request: `https://nizmo.vercel.app` in production, a preview's own
+  address on a preview, and the computer's own only when Nizmo runs on
+  it. A link can't be pointed at another site by whoever sends the
+  request (chosen in building).
+- **It's sent as the save ends** (chosen in building). One that can't be
+  sent saves nothing: the person isn't added, or, sent again, their
+  earlier link still works, and the office is told to try again. An
+  address of the kinds kept for examples (`.test`, `.example` and the
+  like) is never emailed, as with every email Nizmo sends, and the
+  person is added all the same.
+- **Resend invitation** makes a new link, which works once, for 72
+  hours, and the earlier one stops working. It's for someone still
+  invited: once their password is set they sign in, or use Forgot
+  password. It asks for the step-up confirmation, as adding does, and
+  each person's invitation can be sent again up to 5 times an hour
+  (chosen in building). It holds the client, then the account, in the
+  order every other save does.
+- **The audit log** has Sent a person's invitation again, on the
+  client, with the person's name and email.
+
 ### 5.3 Signing in (Decided, 2026-11-17)
 
 - On the same sign-in page, with their email and password. The same lock
@@ -987,7 +1021,7 @@ width:
      - **6b-2.** Its email, from the address Nizmo sends sign-in codes
        from, in the language the person is invited in (§5.2), which the
        account keeps; and Resend invitation, which makes a new link and
-       stops the old one.
+       stops the old one. #325.
    - **6c. People who can sign in,** on a client's page, with Add
      person's language, and the privacy policy's line (§5.5). Delete permanently (§3.6) then says
      how many of a client's people go with it.
@@ -1449,3 +1483,9 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   goes to the person in the office who sent it, and the email names them
   and the office. Chosen in writing it down: one sent by a Super Admin
   names the office alone, with no reply address.
+- **2026-11-19:** The invitation's email and Resend invitation (§5.2,
+  step 6b-2) are #325. Chosen in building: the link is to Nizmo's own
+  address, never one the request gives; the email is sent as the save
+  ends, so one that can't be sent saves nothing; Arabic where no
+  language is sent; Resend is for someone still invited, up to 5 times
+  an hour for each person.
