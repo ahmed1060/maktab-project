@@ -22,8 +22,10 @@ is #315, and the upload on a client's page (step 3c) is #316.
 `tax.manage` for the companies already there (step 3d) is #317, and
 the export button's code in Nizmo, with its tests (§10, step 4a), is
 #318. Its page (step 4b) is #319, and the links to it (step 4c) are
-#320. Figures getting old (§4.3, step 5) is #321. The rest is built in
-the small PRs of §12, each its own PR.
+#320. Figures getting old (§4.3, step 5) is #321. Client accounts (§5,
+step 6) are built in four, and the first, the accounts as they're kept
+(step 6a), is #322. The rest is built in the small PRs of §12, each its
+own PR.
 
 ---
 
@@ -448,6 +450,29 @@ the company's people):
   Super Admins and client accounts alike, so signing in finds one
   account.
 
+As built (step 6a, #322), with no screen yet:
+
+- **The table,** `ClientAccount`: the company and the client, a name, an
+  email, the password (none until one is set), when it was invited, when
+  it became active (none while it's invited), when it last signed in,
+  who added it, by a name kept as it was that day, and the count that
+  ends its sessions. It goes with its client, and its company.
+- **An email is kept trimmed and in small letters,** so two that differ
+  only in capitals are one.
+- **One email, one account, held by the database.** A client account is
+  refused an email one of the company's people or a Super Admin has,
+  capitals aside, and a person or a Super Admin is refused one a client
+  account has. Whoever saves an email holds a lock on it until the save
+  is done, so two saves at once can't both pass, as usernames are held
+  (#185).
+- **Said where it's typed.** Adding a client's person, adding one of the
+  company's people or a Super Admin, and changing one's own email each
+  say the email is someone's already, before the database has to.
+- **Up to 20 people for a client** (chosen in building, and easy to
+  change): each one added is an invitation emailed.
+- **An archived client** takes no new people, as its people can't sign
+  in (§5.3). Its people are still listed, and can still be removed.
+
 ### 5.2 Adding and removing people (Decided, 2026-11-17)
 
 - On a client's page, **People who can sign in**, with
@@ -458,6 +483,26 @@ the company's people):
   link works once, for 72 hours; Resend invitation sends a new one.
 - Remove: their account goes, and so do their open sessions, at once.
 - Each add, resend and remove is in the audit log.
+
+As built (step 6a, #322): the routes that list a client's people, add
+one and remove one, each for whoever holds `client_accounts.manage`
+(§9), in a company whose package has the client portal. Another
+company's client reads as not there. Added, a person is invited; the
+invitation itself, its email and the page that sets a password, is step
+6b, and the section on a client's page is step 6c. Until then nothing
+in Nizmo calls these routes.
+
+- **Adding and removing ask for the step-up confirmation** (§9), as
+  every use of a high-risk permission that changes something does.
+  Listing doesn't.
+- **The audit log** has Added a person to a client's portal and Removed
+  a person from a client's portal, on the client, with the person's name
+  and email.
+- **Asked from a page,** the app's own prompt answers: the authenticator
+  code, or, for someone without two-factor sign-in, the way to set it up
+  (`ROLES_PLAN.md` §6.15). The prompt said the action moves money or
+  can't be undone, which adding a client's person doesn't: it says This
+  is a high-risk action, for every high-risk action.
 
 ### 5.3 Signing in (Decided, 2026-11-17)
 
@@ -653,7 +698,9 @@ sent: it's drawn from the claims as they are.
   two with theirs (§12).
 - `client_accounts.manage` is high-risk, as it lets people from outside
   the company in: it asks for the step-up confirmation
-  (`ROLES_PLAN.md` §6.15).
+  (`ROLES_PLAN.md` §6.15). It comes with its routes in #322 (step 6a),
+  labelled Lets outsiders in on the role editor. Its grant for the
+  companies already there is step 6d.
 - The built-in Admin holds all four. Other roles get them where the Super
   Admin ticks them, as only the Super Admin builds roles.
 - They go into `ROLES_PLAN.md`'s tables with the PR that adds them to the
@@ -880,11 +927,19 @@ width:
      upload's dialogs and the Tax position section. #320.
 5. **Figures getting old** (§4.3): the badge on the client's page and the
    Clients list. #321.
-6. **Client accounts:** their table, People who can sign in,
-   `client_accounts.manage`, the invitation and setting a password, and
-   the privacy policy's line (§5.5).
-   - **6b.** `client_accounts.manage` for the built-in Admin of the
-     companies already there.
+6. **Client accounts** (§5), in four:
+   - **6a. The accounts, kept:** their table, one email to one account
+     across Nizmo, `client_accounts.manage`, and the routes that list a
+     client's people, add one and remove one. No screen and no
+     invitation yet. #322.
+   - **6b. The invitation:** its link, which works once for 72 hours,
+     its email, the page that sets a password, and Resend invitation.
+   - **6c. People who can sign in,** on a client's page, and the
+     privacy policy's line (§5.5). Delete permanently (§3.6) then says
+     how many of a client's people go with it.
+   - **6d.** `client_accounts.manage` for the built-in Admin of the
+     companies already there, from a migration, once #322's release,
+     whose role editor knows it, is live.
 7. **Signing in as a client account, and the client's area:** sign-in
    finding them, their session, the proxy keeping them in the area, and
    its top bar and account menu.
@@ -1092,6 +1147,26 @@ is added for it (the owner, 2026-11-18):
 A filter that hides open claims is the one way a file leaves claims out.
 Nizmo's check screen then lists them as going, before anything is saved.
 
+Client accounts, as they're kept (step 6a, #322), against a real
+Postgres:
+
+- an email is one account's across the company's people, Super Admins
+  and client accounts, capitals aside, each way round, and for two
+  saves at once;
+- adding, listing and removing: for whoever holds the permission, of a
+  client in their own company, with the Super Admin for any company's;
+- refused, each saying why: no name or one too long, something that
+  isn't an email, an email someone has, an archived client, a client
+  with 20 people already, another company's client or person;
+- an account goes with its client, and the audit log has each add and
+  remove.
+
+And through the running app, as each kind of account: refused without
+the add-on, without the permission, and for another company's client;
+adding refused until the step-up confirmation is given, with the app's
+own prompt coming up on a page; and the permission's row in the role
+editor, labelled Lets outsiders in, in both languages.
+
 ---
 
 ## 16. Open questions
@@ -1265,3 +1340,13 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   on the client's Tax position and after the client's name in the
   Clients list. It's counted to today where the client's company is.
   An archived client has none.
+- **2026-11-19:** Client accounts are built in four (§12 step 6): the
+  accounts as they're kept, the invitation, People who can sign in on a
+  client's page with the privacy policy's line, and the permission for
+  the companies already there. The first is #322 (§5.1, §5.2, §9): the
+  `ClientAccount` table, one email to one account across the company's
+  people, Super Admins and client accounts, held by the database,
+  `client_accounts.manage`, high-risk, and the routes that list, add
+  and remove a client's people. Chosen in building: an email is kept in
+  small letters, a client has up to 20 people, and an archived client
+  takes no new ones.

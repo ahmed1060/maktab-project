@@ -802,7 +802,8 @@ The colour in style A (§7.2) isn't fixed: it's a setting.
      #318; then its page, The tax portal's export button, #319; then
      the links to it, How to get the portal's file, #320; then figures
      getting old, the badge on a client's Tax position and the Clients
-     list, #321.
+     list, #321; then client accounts as they're kept, with their
+     permission and no screen yet, #322.
 
 The other 4 pages with missing Tailwind classes (Vendors and the three
 Clients pages) are rebuilt in step 0, so they're fixed there.
@@ -6684,3 +6685,13 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   the line's words on the client's Tax position, and after the client's
   name in the Clients list, at the top of its card on a phone. An
   archived client has none.
+- **2026-11-19:** Client accounts, as they're kept (#322;
+  `CLIENT_PORTAL_PLAN.md` §5.1, §5.2, §12 step 6a). No screen yet: the
+  section on a client's page, People who can sign in, is step 6c. The
+  role editor has a new row under Client portal, Manage who signs in
+  for a client, with the label Lets outsiders in. Someone already has
+  this email is now said for an email a client account has, too, on Add
+  employee, the Super Admins page and Security settings. The step-up
+  confirmation's prompt (`ROLES_PLAN.md` §6.15) says This is a high-risk
+  action, in place of This action moves money or cannot be undone, which
+  isn't so of every high-risk action.
