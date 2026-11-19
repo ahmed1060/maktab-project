@@ -773,7 +773,10 @@ The client's area and A client's tax position).
 - **What's owed:** what remains in all, how many claims are late, how
   much is paid of the open claims' original amounts, how many are open,
   and the oldest delay.
-- **By item, and how late:** bars by part.
+- **By item, and how late:** bars by part. How late starts with what's
+  not due yet, then under 6 months, 6 months to a year, 1 to 2 years and
+  more than 2 years since the due date (decided 2026-11-19), so the late
+  rows hold only what's late.
 - **The claims:** by item, opening to each claim, with a total row.
   Each claim has Ask about this claim (§7).
 - **A note:** in Egyptian pounds, as they were on the portal that day,
@@ -1208,7 +1211,22 @@ width:
        out. #334.
      - **7d-2.** Change password in the account menu, on a page of the
        area's own, as for the company's people. #335.
-8. **The tax position page.**
+8. **The tax position page,** in four:
+   - **8a. What the area reads of it:** the session's client's claims,
+     what's owed in all and by item, how late, and the oldest delay,
+     late counted in the company's days, as on a client's page. No
+     screen; with its tests.
+   - **8b. Its building blocks:** bars by part, the share bar, and the
+     page's one large figure (`DESIGN.md` §3.2, §5.5).
+   - **8c. The page's top:** its header, what's owed, the two cards of
+     bars, the note, and the page before the first upload. It replaces
+     the line saying the tax position comes soon.
+   - **8d. The claims by item:** a table on computers and cards on
+     phones, each item opening to its claims, with a total row.
+
+   The accountant's name, Contact the accountant and Ask about this
+   claim come with step 9, and Download the statement with step 12.
+   Until step 9, the note says to contact the office.
 9. **Contacting the accountant on WhatsApp:** the number on people's
    profiles, the responsible accountant, the dialog, Ask about this
    claim, and the messages.
@@ -1763,3 +1781,7 @@ with a tax position is archived, and deleted for good from the archive
   password is a field on the page rather than a window after Save; too
   many wrong tries says to wait 15 minutes, as no one at the office can
   lift that for a client's person.
+- **2026-11-19:** 7d-2 merged (#335). Step 8 split in four (§12): 8a, what
+  the area reads of the tax position; 8b, its building blocks; 8c, the
+  page's top; 8d, the claims by item. Decided: how late starts with what's
+  not due yet, before under 6 months (§6; `DESIGN.md` §5.5).

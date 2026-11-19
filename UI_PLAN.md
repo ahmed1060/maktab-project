@@ -6756,3 +6756,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   `DESIGN.md` §5.5): Change password in the account menu opens a page of
   the area's own, asking for the current password and the new one twice,
   on the building blocks as the company's people's Change password is.
+- **2026-11-19:** A client's tax position (`DESIGN.md` §5.5;
+  `CLIENT_PORTAL_PLAN.md` §6): how late starts with a row for what's not
+  due yet, before under 6 months (decided 2026-11-19). The page is built
+  in four (`CLIENT_PORTAL_PLAN.md` §12 step 8).
