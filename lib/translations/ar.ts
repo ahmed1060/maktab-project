@@ -400,6 +400,8 @@ export const ar = {
         audit_action_REMOVE_CLIENT_ACCOUNT: "تمت إزالة شخص من بوابة عميل",
         audit_action_ACCEPT_CLIENT_INVITATION: "تم تعيين كلمة مرور من دعوة",
         audit_action_RESEND_CLIENT_INVITATION: "تمت إعادة إرسال دعوة شخص",
+        audit_action_ADD_CLIENT_ACCOUNT_NOT_SENT: "تعذّر إرسال دعوة شخص، فلم تتم الإضافة",
+        audit_action_RESEND_CLIENT_INVITATION_NOT_SENT: "تعذّرت إعادة إرسال دعوة شخص، ولا يزال الرابط السابق صالحًا",
         audit_action_SET_LOCATION_HQ: "تم تعيين موقع مقرًا رئيسيًا",
         audit_entity_LOCATION: "موقع",
         audit_action_ADD_LIST_NAME: "تمت إضافة اسم إلى قائمة",

@@ -405,6 +405,8 @@ export const en = {
         audit_action_REMOVE_CLIENT_ACCOUNT: "Removed a person from a client's portal",
         audit_action_ACCEPT_CLIENT_INVITATION: "Set a password from an invitation",
         audit_action_RESEND_CLIENT_INVITATION: "Sent a person's invitation again",
+        audit_action_ADD_CLIENT_ACCOUNT_NOT_SENT: "Couldn't send a person's invitation, so they weren't added",
+        audit_action_RESEND_CLIENT_INVITATION_NOT_SENT: "Couldn't send a person's invitation again, so the link sent before still works",
         audit_action_SET_LOCATION_HQ: "Made location the HQ",
         audit_entity_LOCATION: "Location",
         audit_action_ADD_LIST_NAME: "Added a name to a list",
