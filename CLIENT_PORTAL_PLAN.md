@@ -589,6 +589,13 @@ calls the routes yet: the section on a client's page is step 6c.
   each person's invitation can be sent again up to 5 times an hour
   (chosen in building). It holds the client, then the account, in the
   order every other save does.
+- **One at a time** (chosen in building, after Codex's second review of
+  #325). A person's invitation can be sent again only 2 minutes after
+  the link before it was made; sooner, it's refused with "may still be
+  on its way". Two sent at once that both failed could otherwise put
+  back a link neither sent, and the one the person has would stop
+  working. Adding a person and Resend invitation stop within a minute,
+  so the email before is sent or given up by then.
 - **The audit log** has Sent a person's invitation again, on the
   client, with the person's name and email.
 
@@ -1507,3 +1514,8 @@ from the archive (§3.6), on 2026-11-18; the messages are templates
   back: the person isn't added, or their earlier link works again, and
   the audit log has no entry for it. Only what that save made is taken
   back.
+- **2026-11-19:** Changed after Codex's second review of #325: a
+  person's invitation is sent one at a time. It can be sent again only 2
+  minutes after the link before it was made, and the two routes that
+  send it stop within a minute. Two sent at once that both failed could
+  otherwise put back a link neither sent.
