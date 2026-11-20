@@ -971,7 +971,9 @@ owner's mockup draws it:
     from where there are any (`lib/contact-message.ts`, until step 10's
     templates). The dialog is `components/portal/ContactWhatsApp.tsx`,
     drawn as the owner's mockup draws it (`DESIGN.md` §5.5, Contact on
-    WhatsApp); 9d opens it from each claim.
+    WhatsApp); 9d opens it from each claim. Its Open WhatsApp is a new
+    building block, `ButtonExternal`: a link that looks like a button, to
+    another site, opening in a new tab, which it says to screen readers.
 - **Ask about this claim** (Decided, 2026-11-17): on each claim, opening
   the same dialog with that claim's message.
 - **The messages** (Decided, 2026-11-17), in the page's language, from
