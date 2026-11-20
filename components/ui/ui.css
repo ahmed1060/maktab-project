@@ -845,6 +845,113 @@
   line-height: var(--leading-md);
 }
 
+/* A dialog with a Close button at its title's end, as Contact on WhatsApp
+   has (DESIGN.md §5.5; PR 344): 44px under a finger, its edge level with
+   the title's line. */
+.ui-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.ui-dialog-close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  margin-block: calc(-1 * var(--space-2));
+  margin-inline-end: calc(-1 * var(--space-2));
+}
+
+/* Contact on WhatsApp (DESIGN.md §5.5; CLIENT_PORTAL_PLAN.md §7; PR 344),
+   as the owner's mockup draws it: who it reaches in a box, the message,
+   Open WhatsApp then Cancel on the start side, and a line at its foot. */
+.ui-dialog.ui-contact-dialog {
+  width: min(100%, 480px);
+}
+.ui-contact-who {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-field);
+}
+.ui-contact-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--brand-tint-strong);
+  color: var(--brand);
+  font-weight: 600;
+}
+.ui-contact-who-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ui-contact-name {
+  font-size: var(--text-card);
+  line-height: var(--leading-card);
+  font-weight: 600;
+  color: var(--ink);
+}
+.ui-contact-role {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--muted);
+}
+/* Where the question goes: a copy of the field's text laid over it, the
+   same size and inside as the field, clear but for its last line, which goes
+   once the message is changed. The two share one cell, so the field grows
+   with whichever is taller: on a phone the message wraps, and the line stays
+   inside the field. The copy never takes a click. */
+.ui-contact-message {
+  display: grid;
+}
+/* Room between the message's lines, as the mockup has: Arabic on a phone
+   wasn't easy to read at the field's usual spacing. */
+.ui-contact-message > .ui-input {
+  line-height: var(--leading-lg);
+}
+.ui-input.ui-textarea.ui-contact-text {
+  grid-area: 1 / 1;
+  overflow: hidden;
+  resize: none;
+}
+.ui-input.ui-textarea.ui-contact-ghost {
+  grid-area: 1 / 1;
+  pointer-events: none;
+  color: transparent;
+  background: transparent;
+  border-color: transparent;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  resize: none;
+}
+.ui-contact-ghost-hint {
+  color: var(--muted);
+}
+.ui-contact-dialog .ui-hint {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+.ui-contact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.ui-contact-foot {
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--rule);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--muted);
+}
+
 /* ── Panels and cards (§5.5) ── */
 .ui-panel {
   background: var(--panel);
@@ -1844,6 +1951,11 @@
   color: var(--muted);
   font-size: var(--text-md);
   line-height: var(--leading-md);
+}
+/* A name kept on one line, such as a client's accountant (PR 344): one too
+   long for a phone's width breaks rather than push the page sideways. */
+.ui-page-subtitle > bdi {
+  overflow-wrap: anywhere;
 }
 /* What the page is about, above its title: the client's name on the client's
    area's pages (§5.5, A client's tax position). */

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { can, type Actor } from "@/lib/permissions/can"
-import { accountantReach, contractEnded, ENDED_STATUSES, type AccountantCandidate, type ClientAccountant } from "@/lib/client-accountant"
+import { accountantReach, contractEnded, ENDED_STATUSES, portalAccountantOf, type AccountantCandidate, type ClientAccountant, type PortalAccountant } from "@/lib/client-accountant"
 
 /**
  * A client's responsible accountant (CLIENT_PORTAL_PLAN.md §7, §12 step 9b;
@@ -34,6 +34,15 @@ export async function accountantOf(clientId: string): Promise<ClientAccountant> 
         ? { id: held.id, name: nameOf(held), role: held.role, whatsappNumber: held.whatsappNumber, ended: contractEnded(held.status) }
         : null
     return { person, reach: accountantReach(person) }
+}
+
+/**
+ * Who the client's own page says its people can write to (§7, step 9c; PR
+ * 344): only for the session's own client, once the page has read that it's
+ * the session's company's (portalTaxPosition).
+ */
+export async function portalAccountant(clientId: string): Promise<PortalAccountant> {
+    return portalAccountantOf(await accountantOf(clientId))
 }
 
 /** The client's company's people who may be picked: those whose contracts haven't ended, by name. */

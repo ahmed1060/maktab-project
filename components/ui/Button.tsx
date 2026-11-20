@@ -12,7 +12,7 @@ import { cx } from './cx'
  */
 export type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'danger'
 
-type Look = {
+export type Look = {
     variant?: ButtonVariant
     size?: 'md' | 'sm' | 'lg'
     /** Goes before the label. The label stays: an icon alone isn't a name. */
@@ -20,7 +20,8 @@ type Look = {
     children: ReactNode
 }
 
-function classes(variant: ButtonVariant, size: 'md' | 'sm' | 'lg', className?: string) {
+/** A button's classes, shared with the buttons in files of their own (`ButtonExternal`). */
+export function classes(variant: ButtonVariant, size: 'md' | 'sm' | 'lg', className?: string) {
     return cx('ui-btn', `ui-btn-${variant}`, size === 'sm' && 'ui-btn-sm', size === 'lg' && 'ui-btn-lg', className)
 }
 

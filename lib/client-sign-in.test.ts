@@ -389,7 +389,7 @@ describe("the client's area's first page", () => {
         for (const locale of ["en", "ar"] as const) {
             page.locale = locale
             const words = locale === "ar" ? ar : en
-            const html = renderToStaticMarkup(h(PortalHome, { client: "Nile Trading", position }))
+            const html = renderToStaticMarkup(h(PortalHome, { client: "Nile Trading", person: "Mona Fouad", position, accountant: null }))
             expect(html, locale).toContain(`<p class="ui-page-overline">Nile Trading</p>`)
             expect(html, locale).toContain(`<h1 class="ui-page-title">${esc(words.tax_position)}</h1>`)
             // In the top bar's account menu since PR 334 (lib/client-portal-top-bar.test.ts).

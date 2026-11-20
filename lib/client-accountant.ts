@@ -45,3 +45,16 @@ export function accountantReach(person: { whatsappNumber: string | null; ended: 
     if (person.ended) return "ended"
     return person.whatsappNumber ? "whatsapp" : "no_number"
 }
+
+/**
+ * Who the client's own page is told of (§7, step 9c; PR 344): the
+ * accountant's name, and their number where they can be written to, never
+ * their account or role. No one where none is picked or their contract has
+ * ended: the page then says to contact the office.
+ */
+export type PortalAccountant = { name: string; whatsappNumber: string | null } | null
+
+export function portalAccountantOf({ person, reach }: ClientAccountant): PortalAccountant {
+    if (!person || reach === "ended" || reach === "none") return null
+    return { name: person.name, whatsappNumber: reach === "whatsapp" ? person.whatsappNumber : null }
+}

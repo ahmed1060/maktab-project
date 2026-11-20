@@ -2,11 +2,13 @@
 
 import { createPortal } from 'react-dom'
 import { useState, type ReactNode } from 'react'
+import { XIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useDialog } from '@/lib/useDialog'
 import { useHydrated } from '@/lib/useHydrated'
 import { Button } from './Button'
+import { Icon } from './Icon'
 import { cx } from './cx'
 
 /**
@@ -22,8 +24,12 @@ import { cx } from './cx'
  * edit window, says so, to sit above it in turn. The code a
  * high-risk action asks for is above every other dialog, under the toasts
  * (components/StepUpInterceptor.tsx; PR 217).
+ *
+ * One drawn as a mockup draws it may have a Close button at its title's
+ * end, as Contact on WhatsApp has (DESIGN.md §5.5; PR 344), and a class of
+ * its own for its width.
  */
-export function Dialog({ open, onClose, title, children, actions, overModal = false, aboveAll = false }: {
+export function Dialog({ open, onClose, title, children, actions, overModal = false, aboveAll = false, closable = false, className }: {
     open: boolean
     onClose: () => void
     title: ReactNode
@@ -32,19 +38,38 @@ export function Dialog({ open, onClose, title, children, actions, overModal = fa
     overModal?: boolean
     /** The code a high-risk action asks for: over the confirmation that sent the action, which waits open. */
     aboveAll?: boolean
+    /** A Close button (✕) at the title's end. */
+    closable?: boolean
+    className?: string
 }) {
     const dialog = useDialog(open, onClose)
     const mounted = useHydrated()
     if (!open || !mounted) return null
+    const heading = <h2 id={dialog.titleId} className="ui-dialog-title">{title}</h2>
     return createPortal(
         <div className={cx('ui-dialog-backdrop', overModal && 'is-over-modal', aboveAll && 'is-above-all')}>
-            <div {...dialog.panelProps} className="ui-dialog">
-                <h2 id={dialog.titleId} className="ui-dialog-title">{title}</h2>
+            <div {...dialog.panelProps} className={cx('ui-dialog', className)}>
+                {closable ? (
+                    <div className="ui-dialog-head">
+                        {heading}
+                        <DialogClose onClose={onClose} />
+                    </div>
+                ) : heading}
                 <div className="ui-dialog-body">{children}</div>
                 {actions && <DialogActions>{actions}</DialogActions>}
             </div>
         </div>,
         document.body,
+    )
+}
+
+/** The Close button (✕) at a dialog's title's end, named for screen readers. */
+function DialogClose({ onClose }: { onClose: () => void }) {
+    const { t } = useLanguage()
+    return (
+        <button type="button" className="ui-btn ui-btn-quiet ui-dialog-close" aria-label={t('close')} onClick={onClose}>
+            <Icon icon={XIcon} size={20} />
+        </button>
     )
 }
 
