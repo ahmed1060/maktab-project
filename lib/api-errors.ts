@@ -341,6 +341,8 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     MESSAGE_TOO_LONG: { status: 400, message: "A message can be at most 1,000 characters." },
     MESSAGE_FIELD: { status: 400, message: "The message names a field it can't fill. Take it out and save again." },
     MESSAGE_CHANGED_SINCE: { status: 409, message: "Someone else changed this message since this page opened. It's shown as it is now; your changes are kept to save again." },
+    // A company's own copy of them, where its package has the client portal (§7.1, PR 348).
+    CLIENT_PORTAL_NOT_IN_PACKAGE: { status: 403, message: "This company's package doesn't include the client portal." },
 }
 
 export function knownRefusal(error: unknown) {

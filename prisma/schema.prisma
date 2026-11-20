@@ -3190,6 +3190,10 @@ model ClientMessageTemplate {
   kind          String
   language      String
   text          String
+  /// A company's message put back to Nizmo's (PR 348): its row stays, so the
+  /// time it was put back tells an older page's save apart; its text, the
+  /// copy it was, isn't read. Never Nizmo's own.
+  usesNizmo     Boolean  @default(false)
   /// Who changed it last, and their name as it was that day. A Super Admin
   /// isn't one of the company's people: their name alone is kept.
   updatedById   String?

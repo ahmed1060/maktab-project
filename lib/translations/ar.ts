@@ -413,6 +413,7 @@ export const ar = {
         // A client's responsible accountant (CLIENT_PORTAL_PLAN.md §7, PR 343).
         audit_action_SET_CLIENT_ACCOUNTANT: "تم تحديد المحاسب المسؤول لعميل",
         audit_action_UPDATE_CLIENT_MESSAGE: "تم تعديل رسالة للعملاء",
+        audit_action_USE_NIZMO_CLIENT_MESSAGE: "تمت العودة إلى رسالة Nizmo للعملاء",
         audit_entity_CLIENT_MESSAGE: "رسالة للعملاء",
         audit_value_CONTACT_ACCOUNTANT: "التواصل مع المحاسب",
         audit_value_ASK_ABOUT_CLAIM: "استفسار عن مطالبة",
@@ -3475,6 +3476,7 @@ export const ar = {
         perm_tax_view: "عرض الموقف الضريبي للعملاء",
         perm_tax_manage: "تحديث الموقف الضريبي للعملاء من ملف بوابة الضرائب",
         perm_client_accounts_manage: "إدارة من يسجّلون الدخول عن العميل",
+        perm_client_messages_manage: "تغيير رسائل العملاء على واتساب",
         perm_cash_advances_view: "عرض العُهد",
         perm_cash_advances_give: "صرف العُهد وتسويتها",
         // Client charges (CLIENTS_PLAN.md §6), on the Costs page.

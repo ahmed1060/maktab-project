@@ -36,7 +36,7 @@ describe("tax.manage (§9)", () => {
     })
 
     it("is under Client portal in the permission matrix, after seeing, named in both languages", () => {
-        expect(PERMISSION_GROUPS.find(g => g.key === "client_portal")?.permissions).toEqual(["tax.view", "tax.manage", "client_accounts.manage"])
+        expect(PERMISSION_GROUPS.find(g => g.key === "client_portal")?.permissions).toEqual(["tax.view", "tax.manage", "client_accounts.manage", "client_messages.manage"])
         for (const words of [en, ar] as Record<string, string>[]) expect(words[permissionLabelKey("tax.manage" as never)]).toBeTruthy()
         expect((en as Record<string, string>)[permissionLabelKey("tax.manage" as never)]).toBe("Update clients' tax position from the tax portal's file")
     })

@@ -57,6 +57,10 @@ const API_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
     // 343): longer than /api/clients, so it's this module's, not the
     // client's own.
     ['/api/clients/accountant', 'TAX_POSITION'],
+    // The company's own copy of the client messages on WhatsApp (§7.1, PR
+    // 348). Nizmo's own, under /api/client-messages, stay the Super Admin's
+    // whatever a package has.
+    ['/api/company-messages', 'TAX_POSITION'],
 ] as const
 
 /**

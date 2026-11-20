@@ -36,6 +36,7 @@ describe("permission codes", () => {
         "tax.view": 68,
         "tax.manage": 69,
         "client_accounts.manage": 70,
+        "client_messages.manage": 71,
     }
 
     it("have not changed", () => {

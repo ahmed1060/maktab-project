@@ -33,7 +33,7 @@ const GROUP_OF_AREA: Record<string, string> = {
     dayoff: "dayoff", salary: "salaries", salary_adjustments: "salaries",
     payroll: "payroll", settlements: "payroll", debts: "payroll",
     settings: "settings", audit: "settings", attendance: "attendance",
-    tax: "client_portal", client_accounts: "client_portal",
+    tax: "client_portal", client_accounts: "client_portal", client_messages: "client_portal",
 }
 
 // A reserved permission is not offered: nothing checks it yet (catalogue.ts).
