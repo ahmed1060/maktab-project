@@ -8,6 +8,7 @@
  */
 
 import type { Module } from "@/lib/features/bundles"
+import type { Permission } from "@/lib/permissions/catalogue"
 
 export type CompanySettingsTab = {
     key: string
@@ -24,6 +25,12 @@ export type CompanySettingsTab = {
     superAdminOnly?: readonly string[]
     /** A module the company must hold for the tab to exist for it at all. */
     module?: Module
+    /**
+     * A permission that shows the tab to whoever holds it in the company,
+     * whatever the Super Admin's switch and ticks say, where the tab exists
+     * for it. Only the client portal's (CLIENT_PORTAL_PLAN.md §7.1, PR 349).
+     */
+    permission?: Permission
 }
 
 export const COMPANY_SETTINGS_TABS = [
@@ -60,6 +67,14 @@ export const COMPANY_SETTINGS_TABS = [
         superAdminOnly: ["terminalsSetupByCompany", "terminalsDirectAllowed"],
     },
     { key: "roles", labelKey: "settings_tab_roles", adminEligible: false, fields: [] },
+    // The company's copy of the client messages on WhatsApp
+    // (CLIENT_PORTAL_PLAN.md §7.1, PR 349): for whoever holds
+    // client_messages.manage, where the package has the client portal. Its
+    // changes go through /api/company-messages, never this tab's fields.
+    {
+        key: "client_portal", labelKey: "settings_tab_client_portal", adminEligible: false, fields: [],
+        module: "TAX_POSITION", permission: "client_messages.manage",
+    },
     { key: "modules", labelKey: "settings_tab_modules", adminEligible: false, fields: [] },
     // Which of these the company's own people see: the Super Admin's switch.
     { key: "access", labelKey: "settings_tab_access", adminEligible: false, fields: [] },

@@ -4,7 +4,7 @@ import { state, prismaMock, withBody, url, as } from "./permissions/employee-acc
 import { encodeGrants } from "./permissions/grants"
 import { stepUpConfirmed } from "./permissions/test-actors"
 import { maySetField, maySettings, visibleSettingsTabs, ELIGIBLE_SETTINGS_TABS } from "./company-settings-access"
-import { COMPANY_SETTINGS_TABS } from "./company-settings-tabs"
+import { COMPANY_SETTINGS_TABS, settingsTab } from "./company-settings-tabs"
 import { updateCompanySchema } from "./validations/company.schema"
 import { BUILT_IN_GRANTS } from "./permissions/built-in"
 import { isReserved } from "./permissions/catalogue"
@@ -65,6 +65,9 @@ function onRole(grants: Record<string, string>) {
 
 describe("who sees which tabs", () => {
     it("the Super Admin: every tab of every company", () => {
+        // But the client portal's, which a company with no package hasn't (CLIENT_PORTAL_PLAN.md §2, PR 349).
+        expect(visibleSettingsTabs({ id: "sa", role: "SUPER_ADMIN" }, exposure())).toEqual(COMPANY_SETTINGS_TABS.map(t => t.key).filter(k => k !== "client_portal"))
+        company.package = { hasCompanyManagement: true, hasHR: true, hasAttendanceMobile: true, hasClientPortal: true } as typeof company.package
         expect(visibleSettingsTabs({ id: "sa", role: "SUPER_ADMIN" }, exposure())).toEqual(COMPANY_SETTINGS_TABS.map(t => t.key))
     })
 
@@ -125,6 +128,87 @@ describe("a tab that belongs to a module", () => {
         expect(visibleSettingsTabs(admin, exposure())).toEqual(["general"])
         expect(maySettings(admin, exposure(), "attendance", "view")).toBe(false)
         expect(maySettings(sa, exposure(), "attendance", "edit")).toBe(false)
+    })
+})
+
+describe("the Client portal tab (CLIENT_PORTAL_PLAN.md §7.1, PR 349)", () => {
+    const PORTAL = { hasCompanyManagement: true, hasHR: true, hasClientPortal: true } as typeof C1.package
+    const admin = { id: "admin", role: "ADMIN", companyId: "c1", grants: encodeGrants(BUILT_IN_GRANTS.ADMIN) }
+    const holder = { id: "acc", role: "EMPLOYEE", companyId: "c1", grants: encodeGrants({ "client_messages.manage": "COMPANY" } as any) }
+    const sa = { id: "sa", role: "SUPER_ADMIN" }
+
+    it("comes after Roles, in the client portal's module, for whoever holds client_messages.manage, never one the Super Admin ticks, with no fields", () => {
+        const keys = COMPANY_SETTINGS_TABS.map(t => t.key) as string[]
+        expect(keys.indexOf("client_portal")).toBe(keys.indexOf("roles") + 1)
+        expect(settingsTab("client_portal")).toEqual({
+            key: "client_portal", labelKey: "settings_tab_client_portal", adminEligible: false, fields: [], module: "TAX_POSITION", permission: "client_messages.manage",
+        })
+        expect(ELIGIBLE_SETTINGS_TABS).not.toContain("client_portal")
+        // The only tab a permission opens.
+        expect(COMPANY_SETTINGS_TABS.filter(t => "permission" in t).map(t => t.key)).toEqual(["client_portal"])
+    })
+
+    it("shows to whoever holds the permission where the package has the client portal, whatever the switch and the ticks say", () => {
+        company.package = PORTAL
+        expect(visibleSettingsTabs(holder, exposure())).toEqual(["client_portal"])
+        expect(visibleSettingsTabs(admin, exposure())).toEqual(["general", "payroll", "client_portal"])
+        company.adminSettingsEnabled = false
+        expect(visibleSettingsTabs(holder, exposure())).toEqual(["client_portal"])
+        expect(visibleSettingsTabs(admin, exposure())).toEqual(["client_portal"])
+        expect(maySettings(holder, exposure(), "client_portal", "view")).toBe(true)
+    })
+
+    it("not without the permission, nor in another company, nor where the package hasn't the client portal", () => {
+        company.package = PORTAL
+        const viewer = { id: "hr", role: "EMPLOYEE", companyId: "c1", grants: encodeGrants({ "settings.view": "COMPANY" }) }
+        expect(visibleSettingsTabs(viewer, exposure())).toEqual(["general", "payroll"])
+        expect(visibleSettingsTabs({ id: "emp", role: "EMPLOYEE", companyId: "c1", grants: encodeGrants(BUILT_IN_GRANTS.EMPLOYEE) }, exposure())).toEqual([])
+        expect(visibleSettingsTabs({ ...holder, companyId: "c2" }, exposure())).toEqual([])
+        expect(visibleSettingsTabs({ id: "admin2", role: "ADMIN", companyId: "c2", grants: encodeGrants(BUILT_IN_GRANTS.ADMIN) }, exposure())).toEqual([])
+        company.package = { hasCompanyManagement: true, hasHR: true } as typeof C1.package
+        expect(visibleSettingsTabs(holder, exposure())).toEqual([])
+        expect(visibleSettingsTabs(admin, exposure())).toEqual(["general", "payroll"])
+        // No package, no client portal (§2).
+        company.package = null
+        expect(visibleSettingsTabs(holder, exposure())).toEqual([])
+        expect(maySettings(holder, exposure(), "client_portal", "view")).toBe(false)
+    })
+
+    it("the Super Admin sees it on every company whose package has the client portal", () => {
+        company.package = PORTAL
+        expect(visibleSettingsTabs(sa, exposure())).toContain("client_portal")
+        company.package = { hasCompanyManagement: true, hasHR: true } as typeof C1.package
+        expect(visibleSettingsTabs(sa, exposure())).not.toContain("client_portal")
+    })
+
+    it("the settings API answers its holder with it alone, and nothing of the other tabs' values", async () => {
+        company.package = PORTAL
+        company.adminSettingsEnabled = false
+        onRole({ "client_messages.manage": "COMPANY" })
+        const res = await get()
+        expect(res.status).toBe(200)
+        const body = await res.json()
+        expect(body.data.tabs).toEqual(["client_portal"])
+        expect(body.data.company).toEqual({ id: "c1", name: "One" })
+        expect(body.data.canEdit).toBe(false)
+    })
+
+    it("saves nothing through the settings API, which has no field of it", async () => {
+        company.package = PORTAL
+        onRole({ "client_messages.manage": "COMPANY", "settings.edit": "COMPANY", "settings.view": "COMPANY" })
+        const res = await put({ tab: "client_portal", autoVerifyLocation: true })
+        expect(res.status).toBe(400)
+        expect(state.written).toEqual([])
+    })
+
+    it("opens the menu's Company settings for its holder", async () => {
+        company.package = PORTAL
+        company.adminSettingsEnabled = false
+        onRole({ "client_messages.manage": "COMPANY" })
+        const visible = async () => (await (await import("@/app/api/company-settings/visible/route")).GET(new Request(url("/api/company-settings/visible")))).json()
+        expect((await visible()).data.visible).toBe(true)
+        company.package = null
+        expect((await visible()).data.visible).toBe(false)
     })
 })
 

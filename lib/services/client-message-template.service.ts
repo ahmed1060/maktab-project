@@ -227,32 +227,62 @@ export async function saveCompanyMessage(
  * company uses Nizmo's already, nothing is written. In the audit log with
  * the company, what it was and what it is.
  */
+async function putBack(
+    tx: Prisma.TransactionClient,
+    by: Actor,
+    company: { id: string; name: string },
+    kind: MessageKind,
+    language: MessageLanguage,
+    since: string | null,
+): Promise<CompanyMessage> {
+    const row = await tx.clientMessageTemplate.findFirst({
+        where: { companyId: company.id, kind, language },
+        select: { id: true, text: true, usesNizmo: true, updatedByName: true, updatedAt: true },
+    })
+    if ((row?.updatedAt.toISOString() ?? null) !== since) throw new Error('MESSAGE_CHANGED_SINCE')
+    const nizmo = await nizmoText(tx, kind, language)
+    if (!row || row.usesNizmo) return nizmos(kind, language, nizmo, row)
+    // Only where it's still as it was read: a save that came first has moved its time on.
+    const { count } = await tx.clientMessageTemplate.updateMany({
+        where: { id: row.id, updatedAt: row.updatedAt },
+        data: { usesNizmo: true, updatedById: by.role === 'SUPER_ADMIN' ? null : by.id, updatedByName: by.name },
+    })
+    if (count === 0) throw new Error('MESSAGE_CHANGED_SINCE')
+    const marked = await tx.clientMessageTemplate.findUniqueOrThrow({ where: { id: row.id }, select: { text: true, updatedByName: true, updatedAt: true } })
+    await AuditLogService.log('USE_NIZMO_CLIENT_MESSAGE', 'CLIENT_MESSAGE', row.id, {
+        tx,
+        ...loggedBy(by),
+        details: { company: company.name, message: AUDIT_MESSAGE[kind], language: AUDIT_LANGUAGE[language], before: row.text, after: nizmo },
+    })
+    return nizmos(kind, language, nizmo, marked)
+}
+
+/** Use Nizmo's message for one language (step 10c-1, PR 348). */
 export async function nizmoMessageAgain(
     by: Actor,
     companyId: string,
     { kind, language, since }: { kind: MessageKind; language: MessageLanguage; since: string | null },
 ): Promise<CompanyMessage> {
     const company = await portalCompany(companyId)
+    return prisma.$transaction(tx => putBack(tx, by, company, kind, language, since))
+}
+
+/**
+ * Use Nizmo's message for every language the company changed, as the Client
+ * portal tab asks (§7.1, step 10c-2; PR 349): each language from the time of
+ * its message the tab read, all of them or, where one was changed, made or
+ * put back since, none (MESSAGE_CHANGED_SINCE). Arabic first, one after the
+ * other in one transaction.
+ */
+export async function nizmoMessagesAgain(
+    by: Actor,
+    companyId: string,
+    { kind, since }: { kind: MessageKind; since: Record<MessageLanguage, string | null> },
+): Promise<CompanyMessage[]> {
+    const company = await portalCompany(companyId)
     return prisma.$transaction(async tx => {
-        const row = await tx.clientMessageTemplate.findFirst({
-            where: { companyId: company.id, kind, language },
-            select: { id: true, text: true, usesNizmo: true, updatedByName: true, updatedAt: true },
-        })
-        if ((row?.updatedAt.toISOString() ?? null) !== since) throw new Error('MESSAGE_CHANGED_SINCE')
-        const nizmo = await nizmoText(tx, kind, language)
-        if (!row || row.usesNizmo) return nizmos(kind, language, nizmo, row)
-        // Only where it's still as it was read: a save that came first has moved its time on.
-        const { count } = await tx.clientMessageTemplate.updateMany({
-            where: { id: row.id, updatedAt: row.updatedAt },
-            data: { usesNizmo: true, updatedById: by.role === 'SUPER_ADMIN' ? null : by.id, updatedByName: by.name },
-        })
-        if (count === 0) throw new Error('MESSAGE_CHANGED_SINCE')
-        const putBack = await tx.clientMessageTemplate.findUniqueOrThrow({ where: { id: row.id }, select: { text: true, updatedByName: true, updatedAt: true } })
-        await AuditLogService.log('USE_NIZMO_CLIENT_MESSAGE', 'CLIENT_MESSAGE', row.id, {
-            tx,
-            ...loggedBy(by),
-            details: { company: company.name, message: AUDIT_MESSAGE[kind], language: AUDIT_LANGUAGE[language], before: row.text, after: nizmo },
-        })
-        return nizmos(kind, language, nizmo, putBack)
+        const back: CompanyMessage[] = []
+        for (const language of MESSAGE_LANGUAGES) back.push(await putBack(tx, by, company, kind, language, since[language]))
+        return back
     })
 }

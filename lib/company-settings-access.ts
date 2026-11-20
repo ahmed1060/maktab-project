@@ -14,6 +14,10 @@ import { hasModule, resolveBundles, type PackageFacts } from "@/lib/features/bun
  * A tab that belongs to a module (Attendance) exists only for a company that
  * holds the module, for everybody including the Super Admin.
  *
+ * A tab a permission opens, the Client portal's (CLIENT_PORTAL_PLAN.md §7.1,
+ * PR 349), shows to whoever holds that permission in the company, wherever
+ * it exists, whatever the switch, the ticks and settings.view say.
+ *
  * The switch decides whether the company sees settings at all; the permission
  * decides which of its people do. Every settings API asks this, so a hidden
  * tab's API does not answer either.
@@ -50,8 +54,11 @@ export function existingSettingsTabs(company: Pick<SettingsExposure, "package">)
 
 export function visibleSettingsTabs(actor: Actor, company: SettingsExposure): CompanySettingsTabKey[] {
     if (actor.role === "SUPER_ADMIN") return existingSettingsTabs(company)
-    if (!can(actor, "settings.view", { companyId: company.id })) return []
-    return exposedTabs(company)
+    const exposed: string[] = can(actor, "settings.view", { companyId: company.id }) ? exposedTabs(company) : []
+    // In the tabs' order: the ones the Super Admin shows, and the ones a permission held opens.
+    return (COMPANY_SETTINGS_TABS as readonly CompanySettingsTab[])
+        .filter(t => exposed.includes(t.key) || (!!t.permission && existsFor(company, t.key) && can(actor, t.permission, { companyId: company.id })))
+        .map(t => t.key as CompanySettingsTabKey)
 }
 
 /** Whether this person may see, or save, this tab of this company's settings. */

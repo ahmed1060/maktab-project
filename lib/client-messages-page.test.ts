@@ -222,19 +222,22 @@ describe("the page", () => {
 
     it("a save says the time its text started from, keeps what's typed while it goes, and after a refusal saves over the newer one", () => {
         // PR 347, Codex's two findings: the time isn't the one the page read last, as another message's save reads them all again.
-        const page = source("app/(dashboard)/dashboard/client-messages/page.tsx")
+        // The editor the company's copy shares since PR 349 (components/client-messages/MessageEditor.tsx).
+        const page = source("components/client-messages/MessageEditor.tsx")
         expect(page).toContain("body: JSON.stringify({ text: sent, since: sinceOf(edits, key, current.changedAt) })")
-        expect(page).toContain("setEdits(e => written(e, key, text, current.changedAt))")
+        expect(page).toContain("setEdits(e => written(e, key, text, current.changedAt, version))")
         expect(page).toContain("setEdits(e => saved(e, key, sent, typeof body?.data?.changedAt === 'string' ? body.data.changedAt : null))")
         expect(page).toContain("if (now) setEdits(e => conflicted(e, key, now.changedAt))")
         expect(page).toContain("setEdits(e => discarded(e, key))")
         expect(page).not.toContain("setDrafts")
         // Codex's third: the box, which reads its text once, starts again when the saved text changes and nothing is unsaved.
-        expect(page).toContain("key={`${key}:${starts[key] ?? 0}:${boxOf(edits, key, current.changedAt) ?? 'never'}`}")
+        expect(page).toContain("key={`${key}:${starts[key] ?? 0}:${boxOf(edits, key, version)}`}")
+        // The Super Admin's page saves Nizmo's, at their own address.
+        expect(source("app/(dashboard)/dashboard/client-messages/page.tsx")).toContain("saveUrl={(kind, language) => `/api/client-messages/${kind}/${language}`}")
     })
 
     it("the text and its preview side by side", () => {
-        expect(source("app/(dashboard)/dashboard/client-messages/page.tsx")).toMatch(/<Columns>\s*<Card className="ui-fieldtext-card"[\s\S]*<\/Card>\s*<Card title=\{t\('cmsg_preview'\)\}[\s\S]*<\/Card>\s*<\/Columns>/)
+        expect(source("components/client-messages/MessageEditor.tsx")).toMatch(/<Columns>\s*<Card className="ui-fieldtext-card"[\s\S]*<\/Card>\s*<Card title=\{t\('cmsg_preview'\)\}[\s\S]*<\/Card>\s*<\/Columns>/)
     })
 })
 
@@ -302,7 +305,7 @@ describe("its look", () => {
 
     it("the line under the preview in --text-xs and --muted", () => {
         expect(rule(".ui-chat-note")).toMatch(/font-size: var\(--text-xs\);[\s\S]*color: var\(--muted\);/)
-        expect(source("app/(dashboard)/dashboard/client-messages/page.tsx")).toContain(`<p className="ui-chat-note">{t('cmsg_preview_note')}</p>`)
+        expect(source("components/client-messages/MessageEditor.tsx")).toContain(`<p className="ui-chat-note">{t('cmsg_preview_note')}</p>`)
     })
 
     it("the text's card three fifths of the width where the side bar is beside the page", () => {

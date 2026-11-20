@@ -15,6 +15,7 @@ import CostNamesCard from '@/components/lists/CostNamesCard'
 import HighRiskCard from '@/components/HighRiskCard'
 import TerminalsSetupCard from '@/components/TerminalsSetupCard'
 import TerminalsDirectCard from '@/components/TerminalsDirectCard'
+import CompanyMessagesCard from '@/components/client-messages/CompanyMessagesCard'
 import { Button, Dialog, Tabs } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { COMPANY_SETTINGS_TABS, type CompanySettingsTabKey } from '@/lib/company-settings-tabs'
@@ -243,6 +244,12 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
 
                 {/* Who may do what here (ROLES_PLAN.md §6.2). */}
                 {tab === 'roles' && <CompanyRolesCard companyId={companyId} />}
+
+                {/* The company's copy of the client messages on WhatsApp
+                    (CLIENT_PORTAL_PLAN.md §7.1, PR 349): for whoever holds
+                    client_messages.manage, which lets them change it, so
+                    settings.edit's read-only says nothing here. */}
+                {tab === 'client_portal' && <CompanyMessagesCard companyId={companyId} superAdmin={superAdmin} />}
 
                 {/* Replaces the Clients-only rename this screen used to
                     carry: every module can be renamed now, and Clients is

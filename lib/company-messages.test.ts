@@ -9,7 +9,7 @@ import { isHighRisk } from "./step-up"
 import { KNOWN_REFUSALS } from "./api-errors"
 import { AUDIT_ACTIONS } from "./audit-codes"
 import { messagesCompanyId } from "./client-message-template"
-import { nizmoMessageAgainSchema } from "./validations/client-message.schema"
+import { nizmoMessageAgainSchema, nizmoMessagesAgainSchema } from "./validations/client-message.schema"
 import { en } from "./translations/en"
 import { ar } from "./translations/ar"
 
@@ -17,9 +17,9 @@ import { ar } from "./translations/ar"
  * A company's own copy of the client messages on WhatsApp, as it's kept and
  * checked (CLIENT_PORTAL_PLAN.md §7.1, §9, §12 step 10c-1; PR 348): the
  * permission it comes with, its routes, which company they're for, and what
- * they're refused with. Nothing shows them yet: the Client portal tab is
- * step 10c-2. Saving and going back to Nizmo's are in
- * lib/client-message-templates.db.test.ts.
+ * they're refused with. The Client portal tab and the editor's page, step
+ * 10c-2 (PR 349), are in lib/company-messages-tab.test.ts. Saving and going
+ * back to Nizmo's are in lib/client-message-templates.db.test.ts.
  */
 
 const PERMISSION = "client_messages.manage"
@@ -60,6 +60,8 @@ describe("client_messages.manage (§9)", () => {
         const row = plan.split("\n").find(line => line.startsWith("|") && line.includes(`\`${PERMISSION}\``))
         expect(row).toContain("GET /company-messages")
         expect(row).toContain("/company-messages/[kind]/[language]")
+        // Use Nizmo's message for every language at once (PR 349).
+        expect(row).toContain("`DELETE /company-messages/[kind]`")
         expect(row).not.toContain("high-risk")
         expect(plan.slice(plan.indexOf("### 6.15"), plan.indexOf("- **Marked in the catalogue"))).not.toContain(`\`${PERMISSION}\``)
     })
@@ -98,6 +100,35 @@ describe("the routes (§7.1)", () => {
     it("read the message and language from the address, never the body", () => {
         expect(one()).toContain("clientMessageSchema.safeParse({ ...json, kind: context.params.kind, language: context.params.language })")
         expect(one()).toContain("nizmoMessageAgainSchema.safeParse({ ...json, kind: context.params.kind, language: context.params.language })")
+    })
+})
+
+describe("Use Nizmo's message, every language at once (§7.1; PR 349)", () => {
+    const all = () => source("app/api/company-messages/[kind]/route.ts")
+
+    it("has a route of its own, for whoever holds the permission, the gate holding it", () => {
+        expect(moduleForApiPath("/api/company-messages/contact")).toBe("TAX_POSITION")
+        expect(all()).toMatch(/export const DELETE = withStandardHandler\([\s\S]*?\{ permission: "client_messages\.manage" \}\)/)
+        expect(all().match(/withStandardHandler\(/g)!.length).toBe(1)
+        expect(all()).not.toMatch(/export const (GET|PUT|POST|PATCH) =/)
+    })
+
+    it("finds the company first, reads the message from the address, and puts back every language", () => {
+        expect(all()).toMatch(/^[\s\S]*export const DELETE = withStandardHandler\(async \(req, session[^)]*\) => \{\s*const companyId = messagesCompanyId\(session\.user as any, new URL\(req\.url\)\.searchParams\.get\("companyId"\)\)\s*if \(!companyId\) return ApiResponse\.badRequest\("companyId is required"\)/)
+        expect(all()).toContain("nizmoMessagesAgainSchema.safeParse({ ...json, kind: context.params.kind })")
+        expect(all()).toContain("ApiResponse.success({ messages: await nizmoMessagesAgain(actorOf(session), companyId, validation.data) })")
+    })
+
+    it("says the time of each language's message the tab read, none where the company never changed it", () => {
+        const since = { ar: "2026-11-20T10:00:00.000Z", en: null }
+        expect(nizmoMessagesAgainSchema.safeParse({ kind: "contact", since }).success).toBe(true)
+        expect(nizmoMessagesAgainSchema.safeParse({ kind: "claim", since: { ar: null, en: null } }).success).toBe(true)
+        // Each language said, so one the tab didn't read can't be put back unseen.
+        expect(nizmoMessagesAgainSchema.safeParse({ kind: "contact", since: { ar: null } }).success).toBe(false)
+        expect(nizmoMessagesAgainSchema.safeParse({ kind: "contact", since: { en: null } }).success).toBe(false)
+        expect(nizmoMessagesAgainSchema.safeParse({ kind: "contact" }).success).toBe(false)
+        expect(nizmoMessagesAgainSchema.safeParse({ kind: "contact", since: { ar: "yesterday", en: null } }).success).toBe(false)
+        expect(nizmoMessagesAgainSchema.safeParse({ kind: "other", since: { ar: null, en: null } }).success).toBe(false)
     })
 })
 

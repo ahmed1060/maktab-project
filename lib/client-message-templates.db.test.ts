@@ -5,7 +5,7 @@ import { NIZMO_MESSAGES } from "./client-message-template"
 
 /**
  * The messages' templates as they're kept (CLIENT_PORTAL_PLAN.md §7.1, §12
- * steps 10a, 10b and 10c-1; PRs 346, 347 and 348), against a real Postgres:
+ * steps 10a, 10b, 10c-1 and 10c-2; PRs 346 to 349), against a real Postgres:
  * ClientMessageTemplate, what it refuses, each message once in each language
  * for Nizmo and for each company, what goes with a company or a person, the
  * texts a company's client's people are given, Nizmo's as the Super Admin
@@ -524,6 +524,91 @@ describe.skipIf(!ADMIN_URL)("the messages' templates, in Postgres", () => {
             expect(await refusal(save({ kind: "contact", language: "en", text: "Ours {person}", since: null }, SAM, "gone"))).toBe("COMPANY_NOT_FOUND")
             expect((await copies("c3")).map(r => r.text)).toEqual(["Before {person}"])
             expect(await copies("c4")).toEqual([])
+            expect(await logged()).toEqual([])
+        })
+    })
+
+    describe("Use Nizmo's message for every language at once (step 10c-2)", () => {
+        const AMAL = { id: "a1", name: "Amal One", role: "ADMIN" }
+        const SAM = { id: "sa", name: "Sam Admin", role: "SUPER_ADMIN" }
+        type Since = { ar: string | null; en: string | null }
+        const save = (kind: "contact" | "claim", language: "ar" | "en", text: string, since: string | null = null, by = AMAL, company = "c1") =>
+            templates.saveCompanyMessage(by, company, { kind, language, text, since })
+        const backAll = (kind: "contact" | "claim", since: Since, by = AMAL, company = "c1") => templates.nizmoMessagesAgain(by, company, { kind, since })
+        const refusal = (write: Promise<unknown>) => write.then(() => "saved", (error: Error) => error.message)
+        // In one go, two entries can share their moment: Arabic's first then.
+        const logged = async () => (await db.query(`SELECT action, "userId", "superAdminId", details FROM "AuditLog" ORDER BY "createdAt", details->>'language'`)).rows
+        const marks = async (company = "c1") => (await db.query(`SELECT kind || ':' || language || ':' || "usesNizmo" AS mark FROM "ClientMessageTemplate" WHERE "companyId" = $1 ORDER BY 1`, [company])).rows.map(r => r.mark)
+        const nizmos = (kind: "contact" | "claim", language: "ar" | "en", text: string) => ({ kind, language, text, own: false, changedBy: null, changedAt: null })
+        const putBack = (kind: "contact" | "claim", language: "ar" | "en", text: string, by: string) => ({ kind, language, text, own: false, changedBy: by, changedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) })
+
+        it("puts back both languages' copies, each in the audit log with what it was and what it is, Arabic first", async () => {
+            const ar = await save("contact", "ar", "نسختنا {person}")
+            const en = await save("contact", "en", "Ours {person}")
+            expect(await backAll("contact", { ar: ar.changedAt, en: en.changedAt })).toEqual([
+                putBack("contact", "ar", NIZMO_MESSAGES.contact.ar, "Amal One"),
+                putBack("contact", "en", NIZMO_MESSAGES.contact.en, "Amal One"),
+            ])
+            expect(await marks()).toEqual(["contact:ar:true", "contact:en:true"])
+            const after = (await logged()).slice(2)
+            expect(after.map(r => [r.action, r.userId, r.superAdminId, r.details.language, r.details.before, r.details.after])).toEqual([
+                ["USE_NIZMO_CLIENT_MESSAGE", "a1", null, "AR", "نسختنا {person}", NIZMO_MESSAGES.contact.ar],
+                ["USE_NIZMO_CLIENT_MESSAGE", "a1", null, "EN", "Ours {person}", NIZMO_MESSAGES.contact.en],
+            ])
+            expect(await templates.clientMessages("c1")).toEqual({ contact: NIZMO_MESSAGES.contact, claim: NIZMO_MESSAGES.claim })
+        })
+
+        it("puts back the one language that's the company's, and writes nothing for the one using Nizmo's", async () => {
+            const en = await save("claim", "en", "Ours {number}")
+            expect(await backAll("claim", { ar: null, en: en.changedAt })).toEqual([
+                nizmos("claim", "ar", NIZMO_MESSAGES.claim.ar),
+                putBack("claim", "en", NIZMO_MESSAGES.claim.en, "Amal One"),
+            ])
+            expect(await marks()).toEqual(["claim:en:true"])
+            expect((await logged()).map(r => r.action)).toEqual(["UPDATE_CLIENT_MESSAGE", "USE_NIZMO_CLIENT_MESSAGE"])
+        })
+
+        it("puts back none where either language was changed, made or put back since the tab read it", async () => {
+            const ar = await save("contact", "ar", "نسختنا {person}")
+            const en = await save("contact", "en", "Ours {person}")
+            // English changed since: Arabic stays the company's copy too.
+            await save("contact", "en", "Ours again {person}", en.changedAt, SAM)
+            expect(await refusal(backAll("contact", { ar: ar.changedAt, en: en.changedAt }))).toBe("MESSAGE_CHANGED_SINCE")
+            expect(await marks()).toEqual(["contact:ar:false", "contact:en:false"])
+            expect((await logged()).map(r => r.action)).toEqual(["UPDATE_CLIENT_MESSAGE", "UPDATE_CLIENT_MESSAGE", "UPDATE_CLIENT_MESSAGE"])
+            // A copy made since in the language the tab read as Nizmo's.
+            const claim = await save("claim", "ar", "نسختنا {number}")
+            await save("claim", "en", "Made since {number}")
+            expect(await refusal(backAll("claim", { ar: claim.changedAt, en: null }))).toBe("MESSAGE_CHANGED_SINCE")
+            expect(await marks()).toEqual(["claim:ar:false", "claim:en:false", "contact:ar:false", "contact:en:false"])
+        })
+
+        it("writes nothing where both use Nizmo's already", async () => {
+            expect(await backAll("contact", { ar: null, en: null })).toEqual([
+                nizmos("contact", "ar", NIZMO_MESSAGES.contact.ar),
+                nizmos("contact", "en", NIZMO_MESSAGES.contact.en),
+            ])
+            expect(await marks()).toEqual([])
+            expect(await logged()).toEqual([])
+        })
+
+        it("by the Super Admin, kept by their name, and never another company's copy", async () => {
+            const ar = await save("contact", "ar", "نسختنا {person}")
+            await save("contact", "ar", "نسختهم {person}", null, { id: "a2", name: "Adel Two", role: "ADMIN" }, "c2")
+            expect(await backAll("contact", { ar: ar.changedAt, en: null }, SAM)).toEqual([
+                putBack("contact", "ar", NIZMO_MESSAGES.contact.ar, "Sam Admin"),
+                nizmos("contact", "en", NIZMO_MESSAGES.contact.en),
+            ])
+            expect((await logged()).map(r => [r.action, r.superAdminId])).toEqual([["UPDATE_CLIENT_MESSAGE", null], ["UPDATE_CLIENT_MESSAGE", null], ["USE_NIZMO_CLIENT_MESSAGE", "sa"]])
+            expect(await marks("c2")).toEqual(["contact:ar:false"])
+        })
+
+        it("is refused, writing nothing, for a company whose package hasn't the client portal, one with no package, and one that isn't there", async () => {
+            await keep("c3", "contact", "en", "Before {person}", null, "Sam Admin")
+            expect(await refusal(backAll("contact", { ar: null, en: null }, SAM, "c3"))).toBe("CLIENT_PORTAL_NOT_IN_PACKAGE")
+            expect(await refusal(backAll("contact", { ar: null, en: null }, SAM, "c4"))).toBe("CLIENT_PORTAL_NOT_IN_PACKAGE")
+            expect(await refusal(backAll("contact", { ar: null, en: null }, SAM, "gone"))).toBe("COMPANY_NOT_FOUND")
+            expect(await marks("c3")).toEqual(["contact:en:false"])
             expect(await logged()).toEqual([])
         })
     })

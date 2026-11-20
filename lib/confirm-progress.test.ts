@@ -62,7 +62,8 @@ function confirmHandlers() {
 
 describe("every confirmation", () => {
     // Leaving a tab or a page with unsaved changes: it navigates, there is nothing to wait for.
-    const NOT_WORK = ["components/CompanySettingsTabs.tsx", "app/(dashboard)/dashboard/client-messages/page.tsx"]
+    // The messages' editor's (PR 347), shared by the company's copy's page since PR 349.
+    const NOT_WORK = ["components/CompanySettingsTabs.tsx", "components/client-messages/MessageEditor.tsx"]
     const handlers = confirmHandlers().filter(h => !NOT_WORK.some(f => h.where.startsWith(f)))
 
     it("finds them all", () => {
