@@ -250,7 +250,8 @@ describe("found in the interface audit (PR 149)", () => {
         const html = await page()
         expect(html).toContain('<div role="tabpanel" id="attendance-panel" class="ui-tab-panel" aria-labelledby="attendance-tab-days">')
         const css = readFileSync("components/ui/ui.css", "utf8")
-        expect(css).toMatch(/\.ui-tab-panel \{\s*display: flex;\s*flex-direction: column;\s*gap: var\(--space-6\);/)
+        // 16px, as the page's since the owner's answer of 2026-11-20 (PR 342).
+        expect(css).toMatch(/\.ui-tab-panel \{\s*display: flex;\s*flex-direction: column;\s*gap: var\(--space-4\);/)
     })
 
     it("writes a phone card's times as one line, and none for a day with no punch", async () => {

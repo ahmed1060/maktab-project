@@ -288,8 +288,9 @@ describe("found in the browser and the audit (the Super Admin's pages part 2a)",
         expect(html).toMatch(/<section class="ui-subsection" aria-labelledby="review-v1">/)
         expect(html).toContain('<ul class="ui-rows ui-rows-flush">')
         const css = readFileSync("components/ui/ui.css", "utf8")
-        expect(css).toMatch(/\.ui-card > \.ui-subsection > \.ui-rows-flush \{\s*margin-inline: calc\(-1 \* var\(--space-4\)\);/)
-        expect(css).toMatch(/\.ui-card > \.ui-rows-flush > li > \.ui-row,\s*\.ui-card > \.ui-subsection > \.ui-rows-flush > li > \.ui-row \{\s*padding-inline: var\(--space-4\);/)
+        // By the card's own inside since the owner's answer of 2026-11-20 (PR 342).
+        expect(css).toMatch(/\.ui-card > \.ui-subsection > \.ui-rows-flush \{\s*margin-inline: calc\(-1 \* var\(--card-pad-inline\)\);/)
+        expect(css).toMatch(/\.ui-card > \.ui-rows-flush > li > \.ui-row,\s*\.ui-card > \.ui-subsection > \.ui-rows-flush > li > \.ui-row \{\s*padding-inline: var\(--card-pad-inline\);/)
     })
 
     it("names the Super Admin's menu on a request for its role and company, so two companies' are told apart", async () => {

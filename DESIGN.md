@@ -204,8 +204,9 @@ One scale. Every size in the app is one of these.
 | `--text-xs` | 12 / 16px | Status badges, counts, fine print |
 | `--text-sm` | 13 / 18px | Side bar group names, table headers, helper text, secondary lines |
 | `--text-md` | 14 / 20px | Body text, rows, fields and buttons on computers |
+| `--text-card` | 15 / 22px | Card titles (§5.5) |
 | `--text-lg` | 16 / 24px | Body text, fields and buttons on phones; dialog text |
-| `--text-xl` | 18 / 26px | Section and panel titles |
+| `--text-xl` | 18 / 26px | Section and dialog titles |
 | `--text-2xl` | 22 / 28px | Page titles on phones; values in total tiles |
 | `--text-3xl` | 28 / 34px | Page titles on computers |
 | `--text-hero` | 48 / 56px, 36 / 44px on phones | A page's one large figure: what a client owes, on their tax position (§5.5) |
@@ -213,8 +214,12 @@ One scale. Every size in the app is one of these.
 - **`--text-hero` is for one figure alone,** the client's area's amount
   owed (§5.5): weight 600, even-width digits, its unit after it in
   `--text-lg` and `--muted`. Nothing else is larger than `--text-3xl`.
-- **Page titles** are weight 400, with -0.4px letter spacing in English.
-  This light, slightly tight title is what gives style A its polish.
+- **Page titles** are weight 600, with -0.4px letter spacing in English,
+  as the owner's mockup of a client's tax position draws them (decided
+  by the owner on 2026-11-20, for the whole app; they were 400).
+- **Card titles** are `--text-card` at weight 600, as that mockup draws
+  them (decided on 2026-11-20; they were `--text-xl` at 500). A section's
+  heading, over several panels, stays `--text-xl`.
 - **Arabic is never letter-spaced.** Spacing breaks the joins between
   letters. Arabic lines get a little more height: body text at 1.6 rather
   than 1.45.
@@ -274,13 +279,16 @@ One scale. Every size in the app is one of these.
 
 ### 4.1 Spacing
 
-A 4px base, and only these steps: **4, 8, 12, 16, 24, 32, 48**.
+A 4px base, and only these steps: **4, 8, 12, 16, 20, 24, 32, 48**.
+20 is for inside a card, above and below what's in it (decided on
+2026-11-20).
 
 | Where | Computer | Phone |
 |---|---|---|
 | Page edge | 32px | 16px |
-| Between sections of a page | 24px | 16px |
+| Between sections and cards of a page | 16px | 16px |
 | Inside a panel | 16px | 12px |
+| Inside a card | 20px above and below, 24px at the sides | 16px |
 | Table cell | 12px top and bottom, 16px at the sides | (cards instead) |
 | Between a field's label and the field | 8px | 8px |
 
@@ -397,14 +405,17 @@ These are built once, in the building-blocks PR, and every page uses them
     when they have `--brand-tint`, and `--ink-2` icons: 20px on a
     computer, 22px on a phone (§6);
   - **the language switch:** both languages, each written in itself,
-    "English" and "العربية", in a pill with a `--rule` edge on `--panel`,
-    the one in use in `--brand-text` on `--brand-tint`. English stays
-    first in Arabic too: the switch is about language, not in one. It's
-    named "Language" for screen readers, and each option says whether
-    it's in use. Picking the other switches the app to it, as today. On a
-    phone the options are "EN" and "ع", still named in full, each 44px
-    wide and 44px under a finger: what's tapped takes in the pill's edge
-    and padding above and below it, so the bar looks as it did;
+    "EN" and "ع", in a pill with a `--rule` edge on `--panel`, the one in
+    use in `--brand-text` on `--brand-tint`, on computers as on phones
+    (decided by the owner on 2026-11-20; on computers they were
+    "English" and "العربية"). English stays first in Arabic too: the
+    switch is about language, not in one. It's named "Language" for
+    screen readers, and each option is named in full, "English" and
+    "العربية", and says whether it's in use. Picking the other switches
+    the app to it, as today. Each option is 44px wide and 44px under a
+    finger: what's tapped takes in the pill's edge and padding above and
+    below it, so the bar looks as it did. The sign-in page's switch,
+    under its card, isn't the top bar's, and still says them in full;
   - **the bell** is named "Notifications", and "Notifications, 2 unread"
     while some are. How many is a `--brand` pill at its top end corner,
     18px tall, its `--text-xs` digits in `--on-brand` and in the page's
@@ -451,11 +462,11 @@ These are built once, in the building-blocks PR, and every page uses them
     the button goes;
   - **the account button:** the person's photo in a 32px circle, or their
     initials in an avatar's colours (§5.5), never a drawing that stands in
-    for them; their name in `--ink` and their role in `--ink-2`, under
-    it, in the words the app uses for roles; and a caret. On a phone, the
-    photo or initials alone. Either way it's named "Account menu, Karim
+    for them, alone, in a round 44px button, on computers as on phones
+    (decided by the owner on 2026-11-20; on computers their name, their
+    role and a caret were beside it). It's named "Account menu, Karim
     Nabil, Employee" («قائمة الحساب، كريم نبيل، موظف»), and says whether
-    its menu is open;
+    its menu is open. The menu names them at its top;
   - **the account menu,** below the button on the end side: 300px wide,
     on `--panel-raised` with a `--rule` edge, `--radius-menu` corners and
     `--elev-2`. At its top are the photo or initials, 40px across, the
@@ -1358,8 +1369,18 @@ These are built once, in the building-blocks PR, and every page uses them
     renew it.
   - A preview says which role, at which company, and that nothing can be
     changed while it lasts, with Exit preview.
-- **Card:** a level-1 panel with 12px corners and 16px inside (12px on
-  phones), for things that aren't lists, such as settings sections.
+- **Card:** a level-1 panel with 12px corners, for things that aren't
+  lists, such as settings sections. As the owner's mockup of a client's
+  tax position draws it, everywhere (decided by the owner on 2026-11-20):
+  - inside it, 20px above and below and 24px at the sides on computers,
+    16px all round on phones. Rows that run to its edges run to them
+    still;
+  - its title is `--text-card`, weight 600, in `--ink`;
+  - a titled part inside it, such as a task's costs paid person by
+    person, is headed in `--text-md` at weight 600, under the card's own
+    title. It was `--text-lg` at 500, larger than the card's title once
+    that was 15px (found in the interface audit, 2026-11-20);
+  - a page's cards are 16px apart, side by side and one under another.
   - Its title can have a line under it in `--text-xs` and `--muted`,
     saying how what's in it is ordered or counted, such as "Largest
     first".
@@ -1482,8 +1503,9 @@ These are built once, in the building-blocks PR, and every page uses them
   people use, so it has none of its frame:
   - a top bar alone, on `--panel` with a `--rule` line under it: at the
     start, the company's mark and name as at the top of the side bar
-    (§5.1); at the end, the language switch and the account menu, with
-    Change password and Sign out. No side bar, notifications or search
+    (§5.1); at the end, the language switch and the account button, as
+    the company's top bar has them (§5.1), and its menu, with Change
+    password and Sign out. No side bar, notifications or search
     while the area has one page;
   - its pages are up to 1180px wide and centred, on `--page`;
   - it's in the company's brand colour (§2.1), so the client sees the
@@ -2242,8 +2264,9 @@ changed:
   it reads calmer.
 - **No gradient mesh and no gradient logo.** Those belong to Stripe's
   marketing pages, not to a working app.
-- **Page titles are weight 400, not 300.** At 300, Inter is too thin for
-  long sessions, and Noto Sans Arabic has no 300 to match.
+- **Page titles are weight 600, not 300.** At 300, Inter is too thin for
+  long sessions, and Noto Sans Arabic has no 300 to match. They were 400
+  until the owner's mockup of a client's tax position (2026-11-20).
 - **The helper-text grey is darker** (`#5d6b82`), so it passes 4.5:1 on the
   page.
 - **Field edges are `#828e9f`** instead of a pale blue, so fields stand out
@@ -2902,3 +2925,16 @@ changed:
   one field kept with its country code and a box saying who writes to
   it, where the package has the client portal (`CLIENT_PORTAL_PLAN.md`
   §12, step 9a).
+- **2026-11-20 (decided by the owner):** The app's frame and cards as the
+  owner's mockup of a client's tax position draws them, everywhere
+  (§3.2, §4.1, §5.1, §5.5): the top bar on computers as on phones, its
+  account button the photo or initials alone and its language switch
+  "EN" and "ع"; page titles at weight 600; card titles in `--text-card`
+  (15px) at weight 600, with 20px above and below and 24px at the sides
+  inside a card on computers; and 16px between a page's sections and
+  cards on computers too. 20px joins the spacing scale for a card's
+  inside.
+- **2026-11-20:** A titled part inside a card is headed in `--text-md`
+  at weight 600 (§5.5), so it stays under the card's 15px title; it was
+  `--text-lg` at 500. Found in the interface audit of the frame and
+  cards' alignment.

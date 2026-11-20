@@ -723,9 +723,10 @@ As built (step 7d-1, #334), the client's area's top bar (`DESIGN.md` §5.5):
 - **In the company's brand colour,** its own or the system's default, as
   the company's people see it (`UI_PLAN.md` §4.6). It's read with the
   company's name and logo, once each time a page is drawn.
-- **On phones,** the company's name gives way first, the language switch
+- **On phones,** the company's name gives way first. The language switch
   shows EN and ع, and the account button the person's initials alone, as
-  on the company's top bar.
+  on the company's top bar, on computers too since the owner's answer of
+  2026-11-20.
 - No theme switch, notifications or search, as `DESIGN.md` has it.
 
 As built (step 7d-2, #335), Change password, from the account menu, on a
@@ -1993,3 +1994,8 @@ with a tax position is archived, and deleted for good from the archive
 - **2026-11-20 (decided by the owner):** A password is 8 to 72 characters
   in the client's area too, as everywhere in Nizmo (it was 12): setting
   one from the invitation and changing it (#341).
+- **2026-11-20 (decided by the owner):** The client's area's top bar is
+  on computers as on phones, as the company's is (`UI_PLAN.md`, the app's
+  frame and cards as this plan's mockup draws them): the account button
+  the person's initials alone, and the language switch EN and ع. Page
+  titles, card titles and the room between cards follow the mockup too.

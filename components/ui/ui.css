@@ -780,8 +780,9 @@
   box-shadow: var(--elev-1);
   color: var(--ink);
 }
+/* Its inside as the owner's mockup draws it (DESIGN.md §5.5, PR 342). */
 .ui-card {
-  padding: var(--space-4);
+  padding: var(--card-pad-block) var(--card-pad-inline);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -801,9 +802,9 @@
 }
 .ui-card-title {
   margin: 0;
-  font-size: var(--text-xl);
-  line-height: var(--leading-xl);
-  font-weight: 500;
+  font-size: var(--text-card);
+  line-height: var(--leading-card);
+  font-weight: 600;
 }
 /* A title with a guide's button right after it (DESIGN.md §5.2, PR 282).
    Beside the card's own button, the two wrap above it when they don't
@@ -1761,7 +1762,7 @@
   margin: 0;
   font-size: var(--text-3xl);
   line-height: var(--leading-3xl);
-  font-weight: 400;
+  font-weight: 600;
   letter-spacing: -0.4px;
   color: var(--ink);
 }
@@ -1978,7 +1979,7 @@ a.ui-file-open:focus-visible,
 
 /* Rows that are the whole of a card, edge to edge under its title. */
 .ui-card > .ui-rows-flush {
-  margin: 0 calc(-1 * var(--space-4)) calc(-1 * var(--space-4));
+  margin: 0 calc(-1 * var(--card-pad-inline)) calc(-1 * var(--card-pad-block));
   border-top: 1px solid var(--rule);
 }
 /* A dialog is narrower than a page: two facts to a row. */
@@ -3490,10 +3491,12 @@ a.ui-file-open:focus-visible,
 }
 
 /* ── Page layout and sections (§5.5) ── */
+/* Its sections and cards 16px apart, on computers too, as the owner's
+   mockup draws them (DESIGN.md §4.1, PR 342). */
 .ui-page {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-4);
   color: var(--ink);
 }
 .ui-section {
@@ -3537,7 +3540,7 @@ a.ui-file-open:focus-visible,
 .ui-tab-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-4);
 }
 /* A tab of settings cards, such as Company Settings': one column at a
    width that reads, the cards closer together than a page's sections. */
@@ -3639,7 +3642,7 @@ a.ui-file-open:focus-visible,
 .ui-columns {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
-  gap: var(--space-6);
+  gap: var(--space-4);
   align-items: start;
 }
 
@@ -3920,15 +3923,15 @@ a.ui-row:focus-visible {
    part 1). A titled part's rows stretch the same, so a marked row's tint
    doesn't touch its words (the Super Admin's pages part 2a). */
 .ui-card > .ui-subsection > .ui-rows-flush {
-  margin-inline: calc(-1 * var(--space-4));
+  margin-inline: calc(-1 * var(--card-pad-inline));
   border-top: 1px solid var(--rule);
 }
 .ui-card > .ui-subsection:last-child > .ui-rows-flush {
-  margin-block-end: calc(-1 * var(--space-4));
+  margin-block-end: calc(-1 * var(--card-pad-block));
 }
 .ui-card > .ui-rows-flush > li > .ui-row,
 .ui-card > .ui-subsection > .ui-rows-flush > li > .ui-row {
-  padding-inline: var(--space-4);
+  padding-inline: var(--card-pad-inline);
 }
 /* A titled part inside a card, such as a task's costs paid person by person. */
 .ui-subsection {
@@ -3938,6 +3941,14 @@ a.ui-row:focus-visible {
   margin: 0 0 var(--space-2);
   font-size: var(--text-lg);
   font-weight: 500;
+}
+/* Inside a card, under the card's own 15px title (DESIGN.md §5.5; found in
+   the interface audit, PR 342): it outsized it at 16px. A dialog's keep
+   theirs, under its 18px title. */
+.ui-card .ui-subsection-title {
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  font-weight: 600;
 }
 /* A cost's name, its amount and Add on a line, the name taking what's
    left; on a phone the name takes the line, its suggestions needing it.
@@ -4849,10 +4860,6 @@ a.ui-donut-row:focus-visible {
     flex-direction: column;
     align-items: stretch;
   }
-  .ui-page,
-  .ui-columns {
-    gap: var(--space-4);
-  }
   .ui-row {
     padding: var(--space-3);
   }
@@ -5478,7 +5485,7 @@ a.ui-donut-row:focus-visible {
   cursor: default;
   opacity: 0.6;
 }
-/* A shorter label, on a phone's top bar alone. */
+/* A shorter label, on the top bar alone. */
 .ui-segmented-short {
   display: none;
 }
@@ -5599,13 +5606,17 @@ a.ui-donut-row:focus-visible {
   position: relative;
   flex: none;
 }
+/* The person's photo or initials alone, in a round 44px button, on
+   computers as on phones (DESIGN.md §5.1; the owner's answer of
+   2026-11-20, PR 342). */
 .ui-topbar-account {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  min-block-size: 44px;
-  padding-block: 0;
-  padding-inline: var(--space-1) var(--space-2);
+  justify-content: center;
+  flex: none;
+  inline-size: 44px;
+  block-size: 44px;
+  padding: 0;
   border: 0;
   border-radius: var(--radius-pill);
   background: transparent;
@@ -5615,29 +5626,30 @@ a.ui-donut-row:focus-visible {
   -webkit-tap-highlight-color: transparent;
   transition: background-color 150ms ease-out;
 }
-.ui-topbar-who {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  min-inline-size: 0;
-  line-height: 18px;
-  text-align: start;
+/* The language switch: EN and ع, on computers as on phones (DESIGN.md
+   §5.1; the owner's answer of 2026-11-20, PR 342), each still named in
+   full. */
+.ui-topbar .ui-segmented-long {
+  display: none;
 }
-.ui-topbar-name {
-  max-inline-size: 200px;
-  overflow: hidden;
-  color: var(--ink);
-  font-size: var(--text-md);
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.ui-topbar .ui-segmented-short {
+  display: inline;
 }
-.ui-topbar-role {
-  color: var(--ink-2);
-  font-size: var(--text-sm);
+.ui-topbar .ui-segmented-option {
+  position: relative;
+  justify-content: center;
+  min-inline-size: 44px;
+  min-block-size: 36px;
+  padding-inline: var(--space-2);
 }
-.ui-topbar-caret {
-  color: var(--ink-2);
+/* 44px under a finger (DESIGN.md §5.1, §9): what's tapped takes in the
+   pill's 3px padding and 1px edge above and below the 36px option, so
+   the bar looks as it did. */
+.ui-topbar .ui-segmented-option::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  inset-block: -4px;
 }
 /* The account menu (§5.1): not a dialog, its links and buttons are Tab's. */
 .ui-account-menu {
@@ -5719,37 +5731,6 @@ a.ui-donut-row:focus-visible {
   .ui-topbar-icon {
     inline-size: 22px;
     block-size: 22px;
-  }
-  .ui-topbar-who,
-  .ui-topbar-caret {
-    display: none;
-  }
-  .ui-topbar-account {
-    justify-content: center;
-    inline-size: 44px;
-    padding: 0;
-  }
-  .ui-topbar .ui-segmented-long {
-    display: none;
-  }
-  .ui-topbar .ui-segmented-short {
-    display: inline;
-  }
-  .ui-topbar .ui-segmented-option {
-    position: relative;
-    justify-content: center;
-    min-inline-size: 44px;
-    min-block-size: 36px;
-    padding-inline: var(--space-2);
-  }
-  /* 44px under a finger (DESIGN.md §5.1, §9): what's tapped takes in the
-     pill's 3px padding and 1px edge above and below the 36px option, so
-     the bar looks as it did. */
-  .ui-topbar .ui-segmented-option::after {
-    content: "";
-    position: absolute;
-    inset-inline: 0;
-    inset-block: -4px;
   }
 }
 /* end of the top bar */

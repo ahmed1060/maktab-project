@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useId, Suspense, type RefObject } from 're
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signOut, useSession } from 'next-auth/react'
-import { CaretDownIcon, ClockCounterClockwiseIcon, ListIcon, ShieldCheckIcon, SignOutIcon, UserCircleIcon } from '@phosphor-icons/react/ssr'
+import { ClockCounterClockwiseIcon, ListIcon, ShieldCheckIcon, SignOutIcon, UserCircleIcon } from '@phosphor-icons/react/ssr'
 import type { TranslationKey } from '@/lib/translations'
 import NotificationBell from './NotificationBell'
 import { addressWithCompanyInView, companyLinkToFollow } from '@/lib/company-link'
@@ -53,9 +53,9 @@ export type AccountPerson = {
 
 /**
  * The account button at the top bar's end (DESIGN.md §5.1): the person's photo
- * or initials, never a drawing, their name and role, and a caret; on a phone,
- * the photo or initials alone (CSS). Named with all of them, so what it says
- * on screen is in its name.
+ * or initials alone, never a drawing, on computers as on phones (the owner's
+ * answer of 2026-11-20, PR 342; their name, role and a caret were beside it).
+ * Named with the person's name and role, which its menu shows at its top.
  */
 export function AccountButton({ person, open, menuId, onToggle, buttonRef }: {
     person: AccountPerson
@@ -69,8 +69,6 @@ export function AccountButton({ person, open, menuId, onToggle, buttonRef }: {
         <button type="button" ref={buttonRef} className="ui-topbar-account" aria-expanded={open} aria-controls={open ? menuId : undefined}
             aria-label={t('account_menu_for').replace(/\{(name|role)\}/g, (_, key) => key === 'name' ? person.name : person.role)} onClick={onToggle}>
             <Avatar name={person.name} src={person.photo} size={32} />
-            <span className="ui-topbar-who"><span className="ui-topbar-name"><bdi>{person.name}</bdi></span><span className="ui-topbar-role">{person.role}</span></span>
-            <Icon icon={CaretDownIcon} size={16} className="ui-topbar-caret" />
         </button>
     )
 }

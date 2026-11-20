@@ -4650,14 +4650,15 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - It has no title: every page names itself in its page header. The only
     pages without one are old addresses that send people to another page.
   - The language switch shows both languages, each written in itself,
-    English first in Arabic too, and "EN" and "ع" on a phone. The theme
+    English first in Arabic too, as "EN" and "ع" (on computers "English"
+    and "العربية" until the owner's answer of 2026-11-20). The theme
     switch in the account menu is drawn the same way. The old toggle they
     replace is gone, with its two tokens.
   - The bell has a `--brand` pill for how many are unread, and is named
     with it. The panel it opens is unchanged until its own part.
   - The account button has the person's photo or initials, never a drawing
-    that stands in for them, with their name and role; on a phone, the
-    photo or initials alone. Its menu has the person and their role at
+    that stands in for them, alone (on computers with their name and role
+    until the owner's answer of 2026-11-20). Its menu has the person and their role at
     their company, My profile, Security settings, History where it was
     before, the theme switch and Sign out. Escape, a click outside it,
     following one of its links or Tab past its end closes it; switching
@@ -6817,3 +6818,25 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   rule, on the screens and on the server, and every hint and mistake
   says 8, in both languages. Passwords already set stay as they are.
   Built in #341, with the two small fixes.
+- **2026-11-20:** The app's frame and cards as the owner's mockup of a
+  client's tax position draws them, everywhere (the owner's answer of
+  2026-11-20; `DESIGN.md` §3.2, §4.1, §5.1, §5.5), the company's app
+  and the client's area alike:
+  - **the top bar on computers as on phones:** the account button the
+    person's photo or initials alone, in a round 44px button, where it had
+    their name, their role or client, and a caret beside it; the language
+    switch "EN" and "ع", where it said "English" and "العربية". Both are
+    still named in full for screen readers, and the account menu names
+    the person at its top. The sign-in page's switch keeps the full names;
+  - **page titles** at weight 600 (they were 400);
+  - **card titles** in a new `--text-card`, 15px, at weight 600 (they were
+    18px at 500), with more room inside a card: 20px above and below and
+    24px at the sides on computers (16px all round on phones, as before).
+    Rows that run to a card's edges still do;
+  - **16px between a page's sections and cards,** on computers too (it
+    was 24px), between cards side by side and in a tab's panel too.
+- **2026-11-20:** Found in the interface audit of the frame and cards'
+  alignment: a titled part inside a card, such as a task's costs paid
+  person by person or an access review on the Super Admin's pages, was
+  headed larger than its card's new 15px title. Inside a card it's now
+  14px at weight 600 (`DESIGN.md` §5.5); in a dialog it stays as it was.

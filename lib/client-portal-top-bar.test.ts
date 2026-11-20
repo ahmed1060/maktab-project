@@ -175,11 +175,12 @@ describe("the top bar", () => {
         expect(await bar({}, "ar")).toContain('aria-label="قائمة الحساب، Maha Adel، Nile Trading"')
     })
 
-    it("is the person's initials, name and client, named with them, and the menu stays closed until asked", async () => {
+    // The owner's answer of 2026-11-20 (PR 342): the initials alone, as on
+    // the company's top bar, still named with the person and their client.
+    it("is the person's initials alone, named with them and their client, and the menu stays closed until asked", async () => {
         const html = await bar()
-        expect(html).toContain('<button type="button" class="ui-topbar-account" aria-expanded="false" aria-label="Account menu, Maha Adel, Nile Trading">')
-        expect(html).toContain('<span class="ui-avatar ui-avatar-32" aria-hidden="true">MA</span>')
-        expect(html).toContain('<span class="ui-topbar-who"><span class="ui-topbar-name"><bdi>Maha Adel</bdi></span><span class="ui-topbar-role">Nile Trading</span></span>')
+        expect(html).toContain('<button type="button" class="ui-topbar-account" aria-expanded="false" aria-label="Account menu, Maha Adel, Nile Trading"><span class="ui-avatar ui-avatar-32" aria-hidden="true">MA</span></button>')
+        expect(html).not.toContain("ui-topbar-who")
         expect(html).not.toContain("ui-account-menu")
     })
 
