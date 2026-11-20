@@ -154,6 +154,14 @@
   padding-inline: var(--space-3);
   font-size: var(--text-sm);
 }
+/* An icon button (§5.2, PR 345): quiet and 44px square, on phones and
+   computers alike, where a row's own action is only an icon. */
+.ui-btn.ui-btn-icon {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+}
 /* The check-in page's Check in and Check out only (§5.2, §5.5 Check-in):
    the app's most-pressed buttons, often pressed outdoors and in a hurry. */
 .ui-btn-lg {
@@ -6583,6 +6591,11 @@ a.ui-notice:focus-visible {
   line-height: 1.8;
   color: var(--muted);
 }
+/* Where each claim has Ask about this claim, the note's last sentence points
+   to it: in its row on computers, its card on phones (PR 345). */
+.ui-portal-note-card {
+  display: none;
+}
 /* On phones, one under the other, the facts one to a line between lines:
    the label at the start, the value at the end. */
 @media (max-width: 767px) {
@@ -6754,6 +6767,22 @@ a.ui-notice:focus-visible {
   flex-wrap: wrap;
   gap: var(--space-2);
 }
+/* A claim's badges, then Ask about this claim at the end side (§5.5,
+   step 9d, PR 345), as the owner's mockup draws them. */
+.ui-claim-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ui-claim-end > .ui-claim-ask {
+  margin-inline-start: auto;
+}
+/* 44px under a finger, laid into the row's own 12px above and below, so a
+   claim's row is as tall as its words make it, as the mockup's are. */
+.ui-claims-table .ui-claim-ask {
+  margin-block: calc(var(--space-2) * -1);
+}
 .ui-claims-table tfoot > tr > * {
   padding-block: var(--space-4);
   background: var(--page);
@@ -6911,6 +6940,12 @@ a.ui-notice:focus-visible {
   }
   .ui-claims-phone {
     display: block;
+  }
+  .ui-portal-note-row {
+    display: none;
+  }
+  .ui-portal-note-card {
+    display: inline;
   }
 }
 

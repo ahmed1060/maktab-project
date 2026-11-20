@@ -976,6 +976,15 @@ owner's mockup draws it:
     another site, opening in a new tab, which it says to screen readers.
 - **Ask about this claim** (Decided, 2026-11-17): on each claim, opening
   the same dialog with that claim's message.
+  - **As built (#345):** an icon button after each claim's badges, in
+    the table and on the phone's cards, named with the claim's number,
+    where Contact the accountant is there. It opens the same dialog,
+    titled "Ask about a claim", with Nizmo's own message for the claim
+    (`claimMessage` in `lib/contact-message.ts`, until step 10's
+    templates): its number in Latin digits, the item as the page names
+    it, what remains of the original in the page's digits, and its last
+    day to pay. The note under the claims says the message button in a
+    claim's row (its card on phones) opens WhatsApp with its number.
 - **The messages** (Decided, 2026-11-17), in the page's language, from
   the client account's name, written from templates that can be changed
   (§7.1). Nizmo's own start as these:
@@ -1417,7 +1426,7 @@ width:
      says to contact the office, as now. #344, as built in §7.
    - **9d. Ask about this claim** (§7): on each claim, in the table and on
      the phone's cards, opening the same dialog with that claim's
-     message.
+     message. #345, as built in §7.
 10. **The messages' templates** (§7.1): the Super Admin's, the company's
     copy, and `client_messages.manage`.
     - **10b.** `client_messages.manage` for the built-in Admin of the
@@ -2049,3 +2058,8 @@ with a tax position is archived, and deleted for good from the archive
   WhatsApp opens the conversation in a new tab; nothing passes through
   Nizmo. Without anyone to write to, the note says to contact the
   office, as before.
+- **2026-11-20:** 9d as built (#345, §7): each claim has Ask about this
+  claim, as the owner's mockup draws it, opening the dialog titled "Ask
+  about a claim" with the claim's own message, ready to change. The note
+  under the claims points to the button in the claim's row, or its card
+  on phones.

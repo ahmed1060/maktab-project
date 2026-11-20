@@ -3688,7 +3688,6 @@ export const ar = {
         portal_tax_late_over_2_years: "أكثر من سنتين",
         portal_tax_note: "المبالغ بالجنيه المصري كما هي على بوابة مصلحة الضرائب يوم {date}، وغرامات التأخير غير محسوبة. للاستفسار عن أي مطالبة، يُرجى التواصل مع المكتب.",
         // Contact the accountant on the client's page (CLIENT_PORTAL_PLAN.md §7, step 9c; PR 344)
-        portal_tax_note_accountant: "المبالغ بالجنيه المصري كما هي على بوابة مصلحة الضرائب يوم {date}، وغرامات التأخير غير محسوبة. للاستفسار عن أي مطالبة، يُستخدم زر «التواصل مع المحاسب» أعلى الصفحة.",
         portal_tax_accountant: "المحاسب المسؤول: {name}",
         portal_contact_accountant: "التواصل مع المحاسب",
         contact_accountant_for: "المحاسب المسؤول عن {client}",
@@ -3701,6 +3700,17 @@ export const ar = {
         contact_message_from: "أنا {person} من {client}.",
         contact_message_position: "استفسار عن الموقف الضريبي بتاريخ {date}:",
         contact_message_position_undated: "استفسار عن الموقف الضريبي:",
+        // Ask about this claim (CLIENT_PORTAL_PLAN.md §7, step 9d; PR 345)
+        portal_tax_note_figures: "المبالغ بالجنيه المصري كما هي على بوابة مصلحة الضرائب يوم {date}، وغرامات التأخير غير محسوبة.",
+        portal_tax_note_ask_row: "للاستفسار عن أي مطالبة، زر الرسالة في صفها يفتح واتساب برقمها.",
+        portal_tax_note_ask_card: "للاستفسار عن أي مطالبة، زر الرسالة في بطاقتها يفتح واتساب برقمها.",
+        portal_claim_ask: "استفسار عن المطالبة {number} على واتساب",
+        portal_claim_ask_tip: "استفسار عن هذه المطالبة على واتساب",
+        contact_about_claim: "استفسار عن مطالبة",
+        contact_message_claim: "استفسار عن المطالبة رقم {number}:",
+        contact_message_item: "البند: {item}",
+        contact_message_remaining: "المتبقي: {remaining} جنيه من {original}",
+        contact_message_due: "آخر موعد للسداد: {date}",
         // The claims by item (CLIENT_PORTAL_PLAN.md §12 step 8d, PR 339).
         portal_claims: "المطالبات",
         portal_claims_hint: "الضغط على أي بند يعرض مطالباته",

@@ -8,7 +8,7 @@ import { PortalClaims } from '@/components/portal/PortalClaims'
 import { formatDay } from '@/components/records/types'
 import { useLanguage } from '@/context/LanguageContext'
 import type { PortalAccountant } from '@/lib/client-accountant'
-import { contactMessage } from '@/lib/contact-message'
+import { claimMessage, contactMessage, type ClaimAsked, type Words } from '@/lib/contact-message'
 import { countOf } from '@/lib/plural'
 import { paidShare, shortItemName, type PortalTaxPosition } from '@/lib/portal-tax'
 import type { TranslationKey } from '@/lib/translations'
@@ -25,10 +25,21 @@ import type { TranslationKey } from '@/lib/translations'
  * Its client and figures are the session's, read on the server (page.tsx),
  * as is who its people can write to: the responsible accountant is named in
  * the subtitle, and where they have a WhatsApp number, Contact the accountant
- * opens Contact on WhatsApp with Nizmo's own message (step 9c; PR 344).
- * Where no one can be written to, the note says to contact the office. Ask
- * about this claim comes with 9d.
+ * opens Contact on WhatsApp with Nizmo's own message (step 9c; PR 344), as
+ * each claim's Ask about this claim opens it with the claim's (step 9d;
+ * PR 345). Where no one can be written to, there's neither, and the note says
+ * to contact the office.
  */
+/**
+ * What Contact on WhatsApp opens with: from the page's header, its title and
+ * the page's message; from a claim, Ask about a claim and that claim's.
+ */
+export function askingOf(t: Words, locale: string, page: { person: string; client: string; asOf: string | null }, about: ClaimAsked | null): { title: string; message: string } {
+    return about
+        ? { title: t('contact_about_claim'), message: claimMessage(t, locale, { person: page.person, client: page.client, ...about }) }
+        : { title: t('portal_contact_accountant'), message: contactMessage(t, locale, page) }
+}
+
 export function PortalHome({ client, person, position, accountant }: {
     client: string
     /** The client account's own name, which the message is from. */
@@ -39,6 +50,13 @@ export function PortalHome({ client, person, position, accountant }: {
 }) {
     const { t, locale } = useLanguage()
     const [contacting, setContacting] = useState(false)
+    // What it was opened from: the header (null) or a claim. Kept while it
+    // closes, so its words don't change as it goes.
+    const [about, setAbout] = useState<ClaimAsked | null>(null)
+    const open = (from: ClaimAsked | null) => {
+        setAbout(from)
+        setContacting(true)
+    }
     const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
     const money = (n: number) => n.toLocaleString(intl, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     const percent = (n: number) => n.toLocaleString(intl, { style: 'percent', maximumFractionDigits: 0 })
@@ -57,7 +75,7 @@ export function PortalHome({ client, person, position, accountant }: {
             title={t('tax_position')}
             subtitle={subtitle}
             action={reachable ? (
-                <Button variant="primary" icon={ChatIcon} aria-haspopup="dialog" onClick={() => setContacting(true)}>{t('portal_contact_accountant')}</Button>
+                <Button variant="primary" icon={ChatIcon} aria-haspopup="dialog" onClick={() => open(null)}>{t('portal_contact_accountant')}</Button>
             ) : undefined}
         />
     )
@@ -65,10 +83,9 @@ export function PortalHome({ client, person, position, accountant }: {
         <ContactWhatsApp
             open={contacting}
             onClose={() => setContacting(false)}
-            title={t('portal_contact_accountant')}
+            {...askingOf(t, locale, { person, client, asOf }, about)}
             accountant={reachable}
             client={client}
-            message={contactMessage(t, locale, { person, client, asOf })}
         />
     )
 
@@ -148,8 +165,17 @@ export function PortalHome({ client, person, position, accountant }: {
                     }))} />
                 </Card>
             </Columns>
-            <PortalClaims items={position.items} totals={totals} />
-            <p className="ui-portal-note">{t(reachable ? 'portal_tax_note_accountant' : 'portal_tax_note').replace('{date}', day(asOf))}</p>
+            <PortalClaims items={position.items} totals={totals} onAsk={reachable ? open : undefined} />
+            {/* Where there's a button on each claim, the note points to it: in its row on computers, its card on phones, as the mockup says. */}
+            <p className="ui-portal-note">
+                {reachable ? (
+                    <>
+                        {t('portal_tax_note_figures').replace('{date}', day(asOf))}{' '}
+                        <span className="ui-portal-note-row">{t('portal_tax_note_ask_row')}</span>
+                        <span className="ui-portal-note-card">{t('portal_tax_note_ask_card')}</span>
+                    </>
+                ) : t('portal_tax_note').replace('{date}', day(asOf))}
+            </p>
             {contact}
         </Page>
     )
