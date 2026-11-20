@@ -6784,3 +6784,7 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   its claims, the largest open at first, with a total row, as the
   owner's mockup draws them. A claim's badges are Partly paid, then Late,
   on the client's page for the company's people too.
+- **2026-11-20:** A person's WhatsApp number, for their clients
+  (`CLIENT_PORTAL_PLAN.md` §12 step 9a; `DESIGN.md` §5.5): a card of its
+  own on the profile's form, Contacting clients, where the package has
+  the client portal, as the owner's mockup draws it.
