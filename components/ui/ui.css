@@ -7113,3 +7113,135 @@ a.ui-notice:focus-visible {
   }
 }
 /* end of the motion */
+
+/* ── A text with fields put in by buttons, and a message's preview (§5.5, PR 347) ──
+   As the owner's mockup draws them (CLIENT_PORTAL_PLAN.md §7.1). Last in the
+   file, so the box's height follows its text on phones too, where every
+   field is 44px. */
+.ui-fieldtext {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.ui-fieldtext-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+/* As tall as its text, and at least six of its lines, 2em each; its new lines kept. */
+.ui-fieldtext-box {
+  display: block;
+  height: auto;
+  min-height: 12em;
+  padding-block: var(--space-3);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 2;
+  cursor: text;
+}
+/* A field, in its place: never typed in, and kept apart from the words around it in either direction. */
+.ui-fieldtext-chip {
+  display: inline-block;
+  padding-inline: var(--space-2);
+  margin-inline: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--brand-tint-strong);
+  color: var(--brand-text);
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+  unicode-bidi: isolate;
+  cursor: default;
+}
+.ui-fieldtext-adds {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ui-fieldtext-add-label {
+  flex-basis: 100%;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--muted);
+}
+.ui-fieldtext-add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 32px;
+  padding-inline: var(--space-3);
+  border: 1px dashed var(--brand);
+  border-radius: var(--radius-pill);
+  background: var(--panel);
+  color: var(--brand-text);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: background-color 150ms var(--ease-out);
+}
+.ui-fieldtext-add:hover {
+  background: var(--brand-tint);
+}
+.ui-fieldtext-add:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 1px;
+}
+.ui-fieldtext-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--muted);
+}
+.ui-fieldtext-count[data-over="true"] {
+  color: var(--problem-text);
+}
+.ui-fieldtext-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+/* The message as WhatsApp would show it: a bubble on the chat's ground. */
+.ui-chat {
+  display: flex;
+  padding: var(--space-3);
+  border-radius: var(--radius-field);
+  background: var(--chat-ground);
+}
+/* Narrower than its panel and in a chat's size, as the mockup draws it. */
+.ui-chat-bubble {
+  max-width: 85%;
+  margin: 0;
+  margin-inline-end: auto;
+  padding: var(--space-2) var(--space-3);
+  border-radius: 12px;
+  background: var(--chat-bubble);
+  color: var(--chat-ink);
+  font-size: var(--text-sm);
+  line-height: 1.85;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ui-chat-note {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--muted);
+}
+/* Client messages on WhatsApp: the text's card three fifths of the width
+   where the side bar is beside the page. */
+@media (min-width: 1024px) {
+  .ui-cmsg-panel > .ui-columns {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+}
+@media (max-width: 767px) {
+  .ui-fieldtext-add {
+    min-height: 44px;
+  }
+}
+/* end of a text with fields put in by buttons */

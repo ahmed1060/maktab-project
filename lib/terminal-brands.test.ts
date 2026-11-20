@@ -101,7 +101,7 @@ describe("the migration and the schema", () => {
 
 describe("in the side bar", () => {
     it("joins Templates, after Public holidays, with a fingerprint", () => {
-        expect(SUPER_ADMIN_GROUPS.find(g => g.key === "templates")!.items).toEqual(["roleTemplates", "policyTemplates", "publicHolidays", "terminalBrands"])
+        expect(SUPER_ADMIN_GROUPS.find(g => g.key === "templates")!.items).toEqual(["roleTemplates", "policyTemplates", "publicHolidays", "terminalBrands", "clientMessages"])
         expect(PAGES.terminalBrands).toEqual({ href: "/dashboard/terminal-brands", labelKey: "tbrand_title" })
         expect(ITEM_ICONS.terminalBrands).toBe(FingerprintIcon)
     })

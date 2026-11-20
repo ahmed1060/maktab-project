@@ -34,6 +34,14 @@ export const MESSAGE_MAX_LENGTH = 1000
 /** The two messages, each in both languages. */
 export type ClientMessages = Record<MessageKind, Record<MessageLanguage, string>>
 
+/**
+ * One of Nizmo's messages, as the Super Admin's page shows it (§12 step 10b,
+ * PR 347): its text, and who changed it last and when, by the time its row
+ * was last written; none for one never changed. That time is also what a
+ * save says it started from.
+ */
+export type NizmoMessage = { kind: MessageKind; language: MessageLanguage; text: string; changedBy: string | null; changedAt: string | null }
+
 /** Nizmo's own as §7 writes them, until the Super Admin changes them. */
 export const NIZMO_MESSAGES: ClientMessages = {
     contact: {

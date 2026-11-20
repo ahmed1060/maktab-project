@@ -118,7 +118,7 @@ permissions allow, as today.
 | Group | Items |
 |---|---|
 | **Customers** | Companies · Packages · All users |
-| **Templates** | Role templates · Policy templates · Public holidays · Terminal brands |
+| **Templates** | Role templates · Policy templates · Public holidays · Terminal brands · Client messages |
 | **Access** | Super Admins · Role changes · Access reviews · Who can |
 | **Operations** | Check-ins · Audit logs · System health · System settings |
 
@@ -127,6 +127,10 @@ permissions allow, as today.
 - **Terminal brands joins Templates** (#279): the list of fingerprint
   terminal brands companies pick from (`ATTENDANCE_PLAN.md` §17.9, round 9,
   #269).
+- **Client messages joins Templates** (#347): Nizmo's own WhatsApp
+  messages, Contact the accountant and Ask about this claim, that every
+  company without a copy of its own uses (`CLIENT_PORTAL_PLAN.md` §7.1,
+  step 10b).
 - **Their Arabic names (Decided on 2026-10-22):** المشتركون (Customers), القوالب
   (Templates), الصلاحيات (Access) and التشغيل (Operations). العملاء, the
   word for a company's clients, would name two groups in the same side bar.
@@ -6840,3 +6844,5 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   person by person or an access review on the Super Admin's pages, was
   headed larger than its card's new 15px title. Inside a card it's now
   14px at weight 600 (`DESIGN.md` §5.5); in a dialog it stays as it was.
+- **2026-11-20:** Client messages joins the Super Admin's Templates
+  (#347, §2.2), after Terminal brands, with a chat icon.

@@ -132,7 +132,7 @@ describe("the side bar", () => {
         const groups = shape(viewer("SUPER_ADMIN"))
         expect(groups.slice(-4)).toEqual([
             "customers: companies, packages, allUsers",
-            "templates: roleTemplates, policyTemplates, publicHolidays, terminalBrands",
+            "templates: roleTemplates, policyTemplates, publicHolidays, terminalBrands, clientMessages",
             "access: superAdmins, roleChanges, accessReviews, whoCan",
             "operations: checkIns, auditLogs, systemHealth, systemSettings",
         ])

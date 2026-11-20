@@ -619,6 +619,11 @@ input::-webkit-credentials-auto-fill-button {
   --brand-tint-strong: #e9e9fc;
   --on-brand: #ffffff;
 
+  /* A message's preview, as WhatsApp shows it (DESIGN.md §5.5, PR 347). */
+  --chat-ground: #efeae2;
+  --chat-bubble: #d9fdd3;
+  --chat-ink: #111b21;
+
   --font-ui: var(--font-inter), var(--font-noto-arabic), system-ui, sans-serif;
   /* What's typed as it is, such as a command in a guide (PR 282): equal-width letters. */
   --font-code: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -729,6 +734,10 @@ input::-webkit-credentials-auto-fill-button {
   --brand-tint: #1c264a;
   --brand-tint-strong: #222c59;
   --on-brand: #ffffff;
+
+  --chat-ground: #0b141a;
+  --chat-bubble: #005c4b;
+  --chat-ink: #e9edef;
 
   /* Shadows don't show on dark: depth comes from --panel-raised and the rule. */
   --elev-1: none;

@@ -336,6 +336,11 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     LOCATION_PEOPLE_NOT_IN_COMPANY: { status: 400, message: "Everyone you choose must work for this company." },
     ENROLMENT_CODE_INVALID: { status: 400, message: "That code isn't valid. It may have expired or already been used; ask for a new one." },
     SOME_TASKS_NOT_FOUND_OR_ACCESS_DENIED: { status: 403, message: "Some of these tasks don't exist, or aren't yours to pay." },
+    // The client messages on WhatsApp (CLIENT_PORTAL_PLAN.md §7.1, PR 347).
+    MESSAGE_EMPTY: { status: 400, message: "The message can't be empty." },
+    MESSAGE_TOO_LONG: { status: 400, message: "A message can be at most 1,000 characters." },
+    MESSAGE_FIELD: { status: 400, message: "The message names a field it can't fill. Take it out and save again." },
+    MESSAGE_CHANGED_SINCE: { status: 409, message: "Someone else changed this message since this page opened. It's shown as it is now; your changes are kept to save again." },
 }
 
 export function knownRefusal(error: unknown) {
