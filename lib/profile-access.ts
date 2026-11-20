@@ -61,6 +61,21 @@ export type ProfileAccess = {
     whatsapp: boolean
 }
 
+/**
+ * Whether the viewer may edit someone's profile: their own, or another's with
+ * employees.edit, an Admin's by the Super Admin alone (§4.2, rule 7). Also
+ * whether a client's page links to its accountant's profile, where their
+ * WhatsApp number is changed (PR 343).
+ */
+export function editsProfile({ can, viewer, person }: {
+    can: Can['can']
+    viewer: { id?: string | null; role?: string | null } | null | undefined
+    person: { id: string; role: string }
+}): boolean {
+    const own = !!viewer?.id && person.id === viewer.id
+    return own || (can('employees.edit') && (person.role !== 'ADMIN' || viewer?.role === 'SUPER_ADMIN'))
+}
+
 export function profileAccess({ can, has, viewer, person }: {
     can: Can['can']
     /** Whether the company's package includes a module (useFeatures). */
@@ -77,7 +92,7 @@ export function profileAccess({ can, has, viewer, person }: {
     const leave = has('DAY_OFF')
     return {
         own,
-        edit: own || (can('employees.edit') && actsOnThem),
+        edit: editsProfile({ can, viewer, person }),
         company: superAdmin || person.role === 'SUPER_ADMIN',
         salary: (can('salary.view') || own) && paid && payroll,
         dayOffCredit: (can('dayoff.view') || own) && paid && leave,

@@ -720,6 +720,79 @@
 .ui-whatsapp-note-none {
   color: var(--muted);
 }
+/* The clients this account answers for, named, as the mockup draws them
+   (PR 343). */
+.ui-whatsapp-note-clients {
+  color: var(--ink);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+/* The responsible accountant, at the foot of a client's Tax position
+   (DESIGN.md §5.5; CLIENT_PORTAL_PLAN.md §7; PR 343), as the owner's mockup
+   draws it: in a panel of its own, the pick, and beside it who the client's
+   people write to, or why they can't write to anyone. Stacked where there's
+   no room for both, as on a phone. */
+.ui-accountant {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--card-pad-block) var(--card-pad-inline);
+}
+.ui-accountant-pick,
+.ui-accountant-reach {
+  flex: 1 1 280px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.ui-accountant-pick .ui-field {
+  align-self: stretch;
+}
+.ui-accountant-pick .ui-control {
+  max-inline-size: 320px;
+}
+/* The link to their profile, under the number, smaller, as the mockup draws it. */
+.ui-accountant-reach > .ui-text-link {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+/* Why no one can be written to: on its own line, across the panel. */
+.ui-accountant-reach:not([data-reach="whatsapp"]) {
+  flex-basis: 100%;
+}
+/* A fact, its label over its value: who it is, and their number. */
+.ui-accountant-fact {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.ui-accountant-fact dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  overflow-wrap: anywhere;
+}
+.ui-accountant-note {
+  align-self: stretch;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-field);
+  background: var(--status-waiting-bg);
+  color: var(--status-waiting-fg);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  /* A name too long for a phone's width breaks rather than pushing past the panel. */
+  overflow-wrap: anywhere;
+}
+/* Its link in the note's own colour, standing out by its weight. */
+.ui-accountant-note .ui-text-link {
+  color: inherit;
+  font-weight: 600;
+}
 /* The UI kit page's samples side by side, such as every button and every
    badge: the Super Admin's page of the building blocks (PR 234). */
 .ui-kit-samples {

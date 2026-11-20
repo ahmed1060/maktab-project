@@ -12,6 +12,7 @@ import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { claimBadges, figuresAge, taxClaimsUrl, TAX_PAGE, TAX_PREVIEW, type TaxClaimRow, type TaxPosition as Position } from '@/lib/tax-claims'
 import TaxExportLink from './TaxExportLink'
 import TaxUpload from './TaxUpload'
+import ResponsibleAccountant from './ResponsibleAccountant'
 
 /**
  * A client's tax position, for the company's people (CLIENT_PORTAL_PLAN.md
@@ -26,8 +27,18 @@ import TaxUpload from './TaxUpload'
  * first file too; an archived client's figures stay as they were. With the
  * upload comes How to get the portal's file (§10, step 4c, PR 320), at the
  * end of the line that names the file.
+ *
+ * At its foot, before the first file too, the client's responsible
+ * accountant, picked by whoever may manage clients (`picks`), with whether
+ * the client's people can write to them (§7, step 9b, PR 343).
  */
-export default function TaxPosition({ clientId, manages = false }: { clientId: string; manages?: boolean }) {
+export default function TaxPosition({ clientId, manages = false, picks = false, editsProfile = () => false }: {
+    clientId: string
+    manages?: boolean
+    picks?: boolean
+    /** Whether the viewer may edit a person's profile, where the accountant's number is changed. */
+    editsProfile?: (person: { id: string; role: string }) => boolean
+}) {
     const { t, locale } = useLanguage()
     const [all, setAll] = useState(false)
     const [page, setPage] = useState(1)
@@ -70,6 +81,7 @@ export default function TaxPosition({ clientId, manages = false }: { clientId: s
         return (
             <Section title={t('tax_position')} action={upload}>
                 <div className="ui-panel"><EmptyState icon={ReceiptIcon} title={t('tax_position_none')} detail={<>{t('tax_position_none_detail')}{how}</>} /></div>
+                <ResponsibleAccountant clientId={clientId} accountant={body.accountant} archived={body.client.archived} picks={picks} editsProfile={editsProfile} onSaved={() => mutate()} />
             </Section>
         )
     }
@@ -155,6 +167,7 @@ export default function TaxPosition({ clientId, manages = false }: { clientId: s
                 ) : undefined}
                 empty={<EmptyState icon={ReceiptIcon} title={t('tax_no_open_claims')} detail={t('tax_no_open_claims_detail').replace('{date}', day(position.asOf))} />}
             />
+            <ResponsibleAccountant clientId={clientId} accountant={body.accountant} archived={body.client.archived} picks={picks} editsProfile={editsProfile} onSaved={() => mutate()} />
         </Section>
     )
 }

@@ -28,9 +28,9 @@ const rule = (selector: string) => CSS.match(new RegExp(`(?:^|\\n)${selector.rep
 const FORM = readFileSync("components/EmployeeProfileForm.tsx", "utf8")
 const USERS = readFileSync("app/api/users/route.ts", "utf8")
 
-async function card(saved: string | null = "+201001234567") {
+async function card(saved: string | null = "+201001234567", clients: string[] = ["Al Noor", "Delta Foods"]) {
     const { WhatsAppCard } = await import("@/components/profile/WhatsAppCard")
-    return renderToStaticMarkup(h(WhatsAppCard, { userId: "u1", saved }))
+    return renderToStaticMarkup(h(WhatsAppCard, { userId: "u1", saved, clients }))
 }
 
 describe("the card, Contacting clients", () => {
@@ -68,11 +68,18 @@ describe("the card, Contacting clients", () => {
         expect((await card(null)).match(/<input [^>]*>/)?.[0]).toContain('value=""')
     })
 
-    it("says, under the field, who writes to it, and what happens without one", async () => {
+    it("says, under the field, who writes to it, the clients they answer for, and what happens without one", async () => {
         const html = await card()
         const note = html.match(/<div class="ui-whatsapp-note">(.*?)<\/div>/)?.[1] ?? ""
-        expect(note).toBe(`<p>${esc(en.profile_whatsapp_note)}</p><p class="ui-whatsapp-note-none">${esc(en.profile_whatsapp_none)}</p>`)
+        expect(note).toBe(`<p>${esc(en.profile_whatsapp_note)}</p><p class="ui-whatsapp-note-clients"><bdi>Al Noor</bdi>, <bdi>Delta Foods</bdi></p><p class="ui-whatsapp-note-none">${esc(en.profile_whatsapp_none)}</p>`)
         expect(html.indexOf("ui-whatsapp-note")).toBeGreaterThan(html.indexOf("<input"))
+        state.locale = "ar"
+        expect(await card()).toContain('<p class="ui-whatsapp-note-clients"><bdi>Al Noor</bdi>، <bdi>Delta Foods</bdi></p>')
+    })
+
+    it("says so where it's no client's responsible accountant yet (PR 343)", async () => {
+        const note = (await card("+201001234567", [])).match(/<div class="ui-whatsapp-note">(.*?)<\/div>/)?.[1] ?? ""
+        expect(note).toBe(`<p>${esc(en.profile_whatsapp_no_clients)}</p><p class="ui-whatsapp-note-none">${esc(en.profile_whatsapp_none)}</p>`)
     })
 
     it("has its own Save, under the note", async () => {
@@ -98,6 +105,11 @@ describe("its look", () => {
         expect(note).toMatch(/gap:\s*var\(--space-2\);/)
         expect(rule(".ui-whatsapp-note p")).toMatch(/margin:\s*0;/)
         expect(rule(".ui-whatsapp-note-none")).toMatch(/color:\s*var\(--muted\);/)
+        // The clients, named in weight 600, as the mockup draws them (PR 343).
+        expect(rule(".ui-whatsapp-note-clients")).toMatch(/font-weight:\s*600;/)
+        expect(rule(".ui-whatsapp-note-clients")).toMatch(/color:\s*var\(--ink\);/)
+        // A client's name too long for a phone's width breaks rather than pushing past the card.
+        expect(rule(".ui-whatsapp-note-clients")).toMatch(/overflow-wrap:\s*anywhere;/)
     })
 })
 
@@ -131,9 +143,15 @@ describe("on the profile", () => {
     })
 
     it("comes under the profile's own card, with the number it was loaded with", () => {
-        expect(FORM).toMatch(/\{access\.whatsapp && <WhatsAppCard userId=\{userId\} saved=\{whatsappNumber\} \/>\}/)
+        expect(FORM).toMatch(/\{access\.whatsapp && <WhatsAppCard userId=\{userId\} saved=\{whatsappNumber\} clients=\{accountantFor\} \/>\}/)
         expect(FORM.indexOf("<WhatsAppCard")).toBeGreaterThan(FORM.indexOf("cancelHref={`/dashboard/employees/${userId}?mode=view`}"))
         expect(FORM).toContain("setWhatsappNumber(employee.whatsappNumber ?? null)")
+        expect(FORM).toContain("setAccountantFor(employee.accountantFor ?? [])")
+    })
+
+    it("names the clients they answer for to whoever sees the card, where the package has the client portal (PR 343)", () => {
+        expect(USERS).toContain(`const answers = (userId === session.user.id || can(session.user, "employees.edit")) && sessionHasModule(session, "TAX_POSITION")`)
+        expect(USERS).toContain("...(answers ? { accountantFor: await clientsAnsweredFor(user.id) } : {})")
     })
 
     it("is read with the person, and its refusals answered with their codes", () => {
@@ -144,7 +162,7 @@ describe("on the profile", () => {
 })
 
 describe("its words", () => {
-    const KEYS = ["profile_whatsapp_title", "profile_whatsapp_label", "profile_whatsapp_hint", "profile_whatsapp_note", "profile_whatsapp_none", "profile_whatsapp_invalid", "profile_whatsapp_saved", "audit_field_whatsappNumber"] as const
+    const KEYS = ["profile_whatsapp_title", "profile_whatsapp_label", "profile_whatsapp_hint", "profile_whatsapp_note", "profile_whatsapp_no_clients", "profile_whatsapp_none", "profile_whatsapp_invalid", "profile_whatsapp_saved", "audit_field_whatsappNumber"] as const
 
     it("in both languages", () => {
         for (const key of KEYS) {
@@ -156,7 +174,11 @@ describe("its words", () => {
         expect(en.profile_whatsapp_label).toBe("WhatsApp number")
         expect(ar.profile_whatsapp_label).toBe("رقم واتساب")
         expect(ar.profile_whatsapp_hint).toBe("رقم مصري يبدأ بـ01، أو برمز الدولة (+). يمكن تركه فارغًا.")
-        expect(ar.profile_whatsapp_note).toBe("على هذا الرقم يكتب أشخاص العملاء الذين يكون هذا الحساب محاسبهم المسؤول.")
+        // Followed by the clients, as the mockup has it (PR 343).
+        expect(en.profile_whatsapp_note).toBe("The people of the clients this account is the responsible accountant for write to this number:")
+        expect(ar.profile_whatsapp_note).toBe("على هذا الرقم يكتب أشخاص العملاء الذين يكون هذا الحساب محاسبهم المسؤول:")
+        expect(en.profile_whatsapp_no_clients).toBe("No client has this account as their responsible accountant yet. Once one does, its people write to this number.")
+        expect(ar.profile_whatsapp_no_clients).toBe("لم يُختر هذا الحساب محاسبًا مسؤولًا لأي عميل بعد. وعند اختياره، يكتب أشخاص العميل على هذا الرقم.")
         expect(ar.profile_whatsapp_none).toBe("بدون رقم، لا يظهر لهم زر التواصل.")
     })
 

@@ -53,6 +53,10 @@ const API_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
     ['/api/tax-claims', 'TAX_POSITION'],
     // A client's people who sign in to the client portal (§5.2).
     ['/api/client-accounts', 'TAX_POSITION'],
+    // A client's responsible accountant, whom its people write to (§7, PR
+    // 343): longer than /api/clients, so it's this module's, not the
+    // client's own.
+    ['/api/clients/accountant', 'TAX_POSITION'],
 ] as const
 
 /**

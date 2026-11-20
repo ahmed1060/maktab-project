@@ -140,6 +140,8 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     // lib/profile-access.ts: what a person's profile shows, for the view and the form (PR 192)
     // Only the Super Admin acts on an Admin (§4.2, rule 7)
     ["lib/profile-access.ts", "const actsOnThem = person.role !== 'ADMIN' || superAdmin", ADMIN_ROLE],
+    // The same rule for editing a profile, which a client's page also asks before linking to its accountant's (PR 343)
+    ["lib/profile-access.ts", "return own || (can('employees.edit') && (person.role !== 'ADMIN' || viewer?.role === 'SUPER_ADMIN'))", ADMIN_ROLE],
     // An Admin is paid outside payroll, and a role not loaded yet shows nothing
     ["lib/profile-access.ts", "const paid = !['ADMIN', 'SUPER_ADMIN'].includes(person.role) && person.role !== ''", THE_PERSON],
     // Only an employee has a team leader

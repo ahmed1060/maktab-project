@@ -19,6 +19,7 @@ import { googleMapsLink } from '@/lib/attendance/geo'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useModules } from '@/lib/useModules'
 import { useCan, useViewer } from '@/lib/useCan'
+import { editsProfile } from '@/lib/profile-access'
 import { useFeatures } from '@/lib/features/useFeatures'
 
 type Client = {
@@ -182,7 +183,8 @@ export default function ClientPage() {
 
             {/* What it owes on the tax portal, from the portal's file (CLIENT_PORTAL_PLAN.md §3.5).
                 Made again for another client, so one client's figures never stand in for the next's while those load. */}
-            {seesTax && <TaxPosition key={id} clientId={id} manages={can('tax.manage')} />}
+            {/* Its responsible accountant at the section's foot, picked by whoever may manage clients (PR 343). */}
+            {seesTax && <TaxPosition key={id} clientId={id} manages={can('tax.manage')} picks={can('clients.manage')} editsProfile={person => editsProfile({ can, viewer, person })} />}
             {/* Its own key beside Tax position's: two with one key are drawn over and over. Another client's page starts afresh. */}
             {seesPeople && <ClientPeople key={`people-${id}`} clientId={id} archived={archived} />}
 

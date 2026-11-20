@@ -42,6 +42,7 @@ const POSITION: TaxPosition = {
         currency: "جنيه مصري", status: "في انتظار السداد", periodStart: "2026-01-01", periodEnd: "2026-03-31", dueDate: "2026-12-31", daysLate: 0,
     }],
     total: 1, totalPages: 1,
+    accountant: { person: null, reach: "none" },
 }
 const NONE: TaxPosition = { ...POSITION, position: null, totals: { original: 0, paid: 0, remaining: 0, open: 0, late: 0 }, claims: [], total: 0, totalPages: 0 }
 const render = (manages?: boolean) => renderToStaticMarkup(h(Section, { clientId: "noor", manages }))
@@ -92,7 +93,7 @@ describe("Upload from the tax portal", () => {
 
     it("is given by the client's page to whoever holds tax.manage", () => {
         const page = readFileSync("app/(dashboard)/dashboard/clients/[id]/page.tsx", "utf8")
-        expect(page).toContain(`<TaxPosition key={id} clientId={id} manages={can('tax.manage')} />`)
+        expect(page).toContain(`<TaxPosition key={id} clientId={id} manages={can('tax.manage')} picks={can('clients.manage')} editsProfile={person => editsProfile({ can, viewer, person })} />`)
     })
 
     it("is back at once on a client restored from its page: its tax position is read again, not kept as archived", () => {

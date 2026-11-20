@@ -4,6 +4,8 @@
  * the portal's file had it.
  */
 
+import type { ClientAccountant } from "./client-accountant"
+
 /** How many claims a client's page starts with, and how many to a page once all are asked for (§3.5). */
 export const TAX_PREVIEW = 5
 export const TAX_PAGE = 20
@@ -40,6 +42,8 @@ export type TaxPosition = {
     claims: TaxClaimRow[]
     total: number
     totalPages: number
+    /** Its responsible accountant, and whether its people can write to them (CLIENT_PORTAL_PLAN.md §7, PR 343). */
+    accountant: ClientAccountant
 }
 
 const DAY_MS = 86_400_000

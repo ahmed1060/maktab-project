@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useState, type FormEvent } from 'react'
+import { Fragment, useRef, useState, type FormEvent } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { Button, Card, Field, TextInput } from '@/components/ui'
@@ -18,9 +18,12 @@ import { whatsappNumber } from '@/lib/whatsapp-number'
  * that isn't one is said under the field before anything is sent, and the
  * saved one is shown as it's kept, with its country code. Emptied and
  * saved, it's gone.
+ *
+ * The box under the field names the clients this account is the responsible
+ * accountant for, or says it's no client's yet (step 9b, PR 343).
  */
-export function WhatsAppCard({ userId, saved }: { userId: string; saved: string | null }) {
-    const { t } = useLanguage()
+export function WhatsAppCard({ userId, saved, clients }: { userId: string; saved: string | null; clients: string[] }) {
+    const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const [value, setValue] = useState(saved ?? '')
     const [error, setError] = useState<string | null>(null)
@@ -88,7 +91,13 @@ export function WhatsAppCard({ userId, saved }: { userId: string; saved: string 
                     )}
                 </Field>
                 <div className="ui-whatsapp-note">
-                    <p>{t('profile_whatsapp_note')}</p>
+                    {clients.length > 0 ? (
+                        <>
+                            <p>{t('profile_whatsapp_note')}</p>
+                            {/* Each name as typed, whichever way it reads, joined as the page's language joins a list. */}
+                            <p className="ui-whatsapp-note-clients">{clients.map((name, i) => <Fragment key={i}>{i > 0 && (locale === 'ar' ? '، ' : ', ')}<bdi>{name}</bdi></Fragment>)}</p>
+                        </>
+                    ) : <p>{t('profile_whatsapp_no_clients')}</p>}
                     <p className="ui-whatsapp-note-none">{t('profile_whatsapp_none')}</p>
                 </div>
                 <div className="ui-form-actions">

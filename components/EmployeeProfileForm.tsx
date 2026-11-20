@@ -100,6 +100,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
     // Their WhatsApp number, as kept, for its own card (PR 340).
     const [whatsappNumber, setWhatsappNumber] = useState<string | null>(null)
+    // The clients they're the responsible accountant for, which that card names (PR 343).
+    const [accountantFor, setAccountantFor] = useState<string[]>([])
     // The id is the request's on the Requests page; one just asked for has none yet.
     const [pendingRequest, setPendingRequest] = useState<{ id?: string, newFirstName: string, newLastName: string } | null>(null)
     const [originalFirstName, setOriginalFirstName] = useState('')
@@ -215,6 +217,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 setMyLeader(employee.teamLeader || null)
                 setAvatarUrl(employee.avatar || null)
                 setWhatsappNumber(employee.whatsappNumber ?? null)
+                setAccountantFor(employee.accountantFor ?? [])
 
                 // Their own name change waiting, asked for by whose it is: the
                 // list gives whoever may decide name changes the company's
@@ -751,7 +754,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
             </Card>
             {/* Their WhatsApp number, for their clients, saved on its own
                 (CLIENT_PORTAL_PLAN.md §7, PR 340). */}
-            {access.whatsapp && <WhatsAppCard userId={userId} saved={whatsappNumber} />}
+            {access.whatsapp && <WhatsAppCard userId={userId} saved={whatsappNumber} clients={accountantFor} />}
 
             {/* Where their team goes, asked before a change that takes a
                 leader from it; open until the save with the answer settles. */}
