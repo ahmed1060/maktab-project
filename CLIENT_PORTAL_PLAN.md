@@ -460,6 +460,19 @@ the company's people):
   from, a reply going to whoever uploaded the file, and none where the
   Super Admin did. An email that fails doesn't undo the upload: it's
   noted, and the upload's audit log entry says how many were sent.
+- **As built (#350, 11a), the switch:** kept on the company,
+  `Company.taxUpdateEmails`, off for every company there was and for each
+  new one, by a migration that only adds the column. Read and changed at
+  `GET` and `PUT /api/company-messages/emails`, under the client portal's
+  module, by whoever holds `client_messages.manage`, for their own company
+  or the one the Super Admin names; refused, writing nothing, where the
+  company's package hasn't the client portal. A change is written only
+  where it isn't so already, so two at once change it, and log it, once;
+  it's in the audit log as the company's other switches are (Updated
+  company, Email when the tax position is updated, before and after). On
+  the Client portal tab, under Client messages on WhatsApp, its card as the
+  mockup's middle card: one row saying what's sent, On or Off, and Turn on
+  or Turn off, asking nothing first. Nothing is sent yet: that's 11b.
 
 ---
 
@@ -2310,3 +2323,8 @@ with a tax position is archived, and deleted for good from the archive
   is a row with On or Off and Turn on or Turn off, as the company's other
   switches are. Step 11 split in two (§12): the switch (11a), then the
   email (11b).
+- **2026-11-20:** 11a as built (#350, §4.4): the update email's switch,
+  kept on the company and off to start, read and changed by whoever holds
+  `client_messages.manage` where the package has the client portal, each
+  change in the audit log; and its card on the Client portal tab under the
+  messages' card. Nothing is sent yet.
