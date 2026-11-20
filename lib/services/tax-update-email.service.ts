@@ -68,28 +68,46 @@ export async function taxEmailPlan(
 const AT_ONCE = 5
 
 /**
+ * How long after the upload began its emails are given up (found by Codex
+ * on PR 351). The upload's route stops at a minute, and a mail server that
+ * stalls can hold a send far longer: what's left of the minute logs those
+ * not sent, and answers, so the upload never reads as not saved when it was.
+ */
+export const TAX_EMAILS_WITHIN_MS = 45_000
+
+/** Ends at `sendBy`, or when it's called off. */
+function deadline(sendBy: number): { passed: Promise<void>; clear: () => void } {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const passed = new Promise<void>(resolve => { timer = setTimeout(resolve, Math.max(0, sendBy - Date.now())) })
+    return { passed, clear: () => clearTimeout(timer) }
+}
+
+/**
  * Sends the update email to each of the people the save found, once it's
  * made: a few at a time, each in their own language, from the office, a
- * reply going to whoever uploaded the file and none where a Super Admin did.
- * One that can't be sent leaves the upload saved, and the day marked: a
- * second audit log entry, after the upload's, says how many couldn't be,
- * as the audit log is only ever added to. Never throws: the upload is saved.
+ * reply going to whoever uploaded the file and none where a Super Admin did,
+ * until `sendBy`. One that can't be sent, or isn't by then, leaves the
+ * upload saved, and the day marked: a second audit log entry, after the
+ * upload's, says how many weren't, as the audit log is only ever added to.
+ * Never throws: the upload is saved.
  */
 export async function sendTaxUpdateEmails(
     plan: Extract<TaxEmailPlan, { state: "send" }>,
     by: Actor,
     clientId: string,
     origin: string,
+    sendBy: number,
 ): Promise<TaxUpdateEmailed> {
     let sent = 0
-    let failed = 0
-    try {
+    // Closed at the deadline: no more are begun.
+    let open = true
+    const sending = async () => {
         // Read once the save is made: who sent it, and the colour it's drawn in.
         const sender = await senderOf(by)
         const brand = await defaultBrandColour()
         const base = origin.replace(/\/+$/, "")
-        for (let from = 0; from < plan.people.length; from += AT_ONCE) {
-            const sending = plan.people.slice(from, from + AT_ONCE).map(person => {
+        for (let from = 0; from < plan.people.length && open; from += AT_ONCE) {
+            await Promise.all(plan.people.slice(from, from + AT_ONCE).map(person => {
                 const email = taxUpdateEmail({
                     language: person.language,
                     person,
@@ -108,18 +126,23 @@ export async function sendTaxUpdateEmails(
                     subject: email.subject,
                     text: email.text,
                     html: email.html,
-                })
-            })
-            for (const outcome of await Promise.allSettled(sending)) {
-                if (outcome.status === "fulfilled") sent += 1
-                else failed += 1
-            }
+                }).then(() => { sent += 1 }, () => undefined)
+            }))
         }
+    }
+    const until = deadline(sendBy)
+    try {
+        await Promise.race([sending(), until.passed])
     } catch (error) {
         // Nothing sent past here: the rest are counted as not sent.
         console.error("[tax update email] couldn't be sent", error)
-        failed = plan.people.length - sent
+    } finally {
+        open = false
+        until.clear()
     }
+    // As they stood at the deadline: one sent after it isn't counted.
+    const done = sent
+    const failed = plan.people.length - done
     if (failed) {
         console.error(`[tax update email] ${failed} of ${plan.people.length} couldn't be sent`)
         try {
@@ -134,5 +157,5 @@ export async function sendTaxUpdateEmails(
             console.error("[tax update email] that some couldn't be sent couldn't be logged either", error)
         }
     }
-    return { state: "sent", sent, failed }
+    return { state: "sent", sent: done, failed }
 }

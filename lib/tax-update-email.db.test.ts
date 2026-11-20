@@ -18,12 +18,14 @@ import type { ClaimDraft } from "@/lib/tax-file"
  */
 
 type Sent = { to: { name: string; address: string }; fromName: string; replyTo: { name: string; address: string } | null; subject: string; text: string; html: string }
-const outbox = vi.hoisted(() => ({ sent: [] as Sent[], failFor: new Set<string>(), sending: null as null | ((message: Sent) => Promise<void>) }))
+const outbox = vi.hoisted(() => ({ sent: [] as Sent[], failFor: new Set<string>(), sending: null as null | ((message: Sent) => Promise<void>), stalled: new Set<string>(), release: [] as (() => void)[] }))
 vi.mock("@/lib/email", async importOriginal => ({
     ...(await importOriginal<typeof import("@/lib/email")>()),
     sendOfficeEmail: vi.fn(async (message: Sent) => {
         // What the database holds, seen from outside, while the email is on its way.
         if (outbox.sending) await outbox.sending(message)
+        // A mail server that doesn't answer, until the test lets it.
+        if (outbox.stalled.has(message.to.address)) await new Promise<void>(resolve => outbox.release.push(resolve))
         if (outbox.failFor.has(message.to.address)) throw new Error("SMTP_DOWN")
         outbox.sent.push(message)
         return "SENT"
@@ -57,6 +59,7 @@ INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locati
  ('byadmin', 'c1', 'Super Client', 'Sara', '0103', 'Giza', now()),
  ('big', 'c1', 'Big Client', 'Bassem', '0104', 'Giza', now()),
  ('after', 'c1', 'After Save', 'Adham', '0105', 'Giza', now()),
+ ('stalled', 'c1', 'Stalled Mail', 'Sherif', '0108', 'Giza', now()),
  ('theirs', 'c2', 'Their Client', 'Tarek', '0106', 'Giza', now()),
  ('plain', 'c3', 'Plain Client', 'Pakinam', '0107', 'Giza', now());
 INSERT INTO "ClientAccount"(id, "companyId", "clientId", name, email, language, password, "activatedAt", "updatedAt") VALUES
@@ -68,6 +71,12 @@ INSERT INTO "ClientAccount"(id, "companyId", "clientId", name, email, language, 
  ('samia', 'c1', 'shaky', 'Samia Down', 'samia@down.co', 'en', 'h', now(), now()),
  ('sara', 'c1', 'byadmin', 'Sara Super', 'sara@client.co', 'en', 'h', now(), now()),
  ('adham', 'c1', 'after', 'Adham After', 'adham@client.co', 'en', 'h', now(), now()),
+ ('stalled1', 'c1', 'stalled', 'Stella One', 'stalled1@client.co', 'en', 'h', now(), now()),
+ ('stalled2', 'c1', 'stalled', 'Stella Two', 'stalled2@client.co', 'en', 'h', now(), now()),
+ ('stalled3', 'c1', 'stalled', 'Stan Stalled', 'stan@stalled.co', 'en', 'h', now(), now()),
+ ('stalled4', 'c1', 'stalled', 'Stella Four', 'stalled4@client.co', 'en', 'h', now(), now()),
+ ('stalled5', 'c1', 'stalled', 'Stella Five', 'stalled5@client.co', 'en', 'h', now(), now()),
+ ('stalled6', 'c1', 'stalled', 'Stella Six', 'stalled6@client.co', 'en', 'h', now(), now()),
  ('tarek', 'c2', 'theirs', 'Tarek Quiet', 'tarek@client.co', 'en', 'h', now(), now()),
  ('pakinam', 'c3', 'plain', 'Pakinam Plain', 'pakinam@client.co', 'en', 'h', now(), now());
 INSERT INTO "ClientAccount"(id, "companyId", "clientId", name, email, language, password, "activatedAt", "updatedAt")
@@ -136,6 +145,7 @@ describe.skipIf(!ADMIN_URL)("the update email, in Postgres", () => {
         outbox.sent.length = 0
         outbox.failFor.clear()
         outbox.sending = null
+        outbox.stalled.clear()
     })
 
     it("with the company's switch off, sends nothing, and says so", async () => {
@@ -219,10 +229,11 @@ describe.skipIf(!ADMIN_URL)("the update email, in Postgres", () => {
         expect(seen).toEqual([[1, "2026-11-17"]])
     })
 
-    it("sends to as many people as the client has, a few at a time, each once", async () => {
+    it("sends to as many people as the client has, a few at a time, each once, one that fails stopping none after it", async () => {
+        outbox.failFor.add("big1@client.co")
         const saved = await tax.saveTaxFile(admin, upload("big", 0), NOW, ORIGIN)
-        expect(saved.email).toEqual({ state: "sent", sent: 12, failed: 0 })
-        expect(to()).toEqual(Array.from({ length: 12 }, (_, i) => `big${i + 1}@client.co`).sort())
+        expect(saved.email).toEqual({ state: "sent", sent: 11, failed: 1 })
+        expect(to()).toEqual(Array.from({ length: 11 }, (_, i) => `big${i + 2}@client.co`).sort())
     })
 
     it("that can't be sent to someone leaves the upload saved and the day marked, and a second audit log entry says how many", async () => {
@@ -236,6 +247,30 @@ describe.skipIf(!ADMIN_URL)("the update email, in Postgres", () => {
         expect(entries.map(entry => entry.action)).toEqual(["UPDATE_TAX_POSITION", "UPDATE_TAX_POSITION_NOT_EMAILED"])
         expect(entries[0].details).toMatchObject({ emailed: 2 })
         expect(entries[1]).toEqual({ action: "UPDATE_TAX_POSITION_NOT_EMAILED", entityType: "VENDOR", details: { name: "Shaky Mail", people: 1 }, userId: "a1", superAdminId: null })
+    })
+
+    it("answers by its deadline though a mail server stalls, counting what wasn't sent by then (found by Codex on PR 351)", async () => {
+        // The route stops at a minute: a send still waiting then would cut off the answer, and the upload
+        // would read as not saved though it was.
+        outbox.stalled.add("stan@stalled.co")
+        const began = Date.now()
+        try {
+            const saved = await tax.saveTaxFile(admin, upload("stalled", 0), NOW, ORIGIN, Date.now() + 1500)
+            expect(Date.now() - began).toBeLessThan(5000)
+            // The first five go at once, one of them stalled; the sixth would go after them.
+            expect(saved.email).toEqual({ state: "sent", sent: 4, failed: 2 })
+            expect(to()).toEqual(["stalled1@client.co", "stalled2@client.co", "stalled4@client.co", "stalled5@client.co"])
+            expect(await uploads("stalled")).toBe(1)
+            const entries = await logged("stalled")
+            expect(entries.map(entry => entry.action)).toEqual(["UPDATE_TAX_POSITION", "UPDATE_TAX_POSITION_NOT_EMAILED"])
+            expect(entries[1].details).toEqual({ name: "Stalled Mail", people: 2 })
+        } finally {
+            for (const release of outbox.release.splice(0)) release()
+        }
+        // Once the stalled one answers, nothing more is begun, nor logged.
+        await new Promise(resolve => setTimeout(resolve, 300))
+        expect(to()).not.toContain("stalled6@client.co")
+        expect((await logged("stalled")).length).toBe(2)
     })
 
     it("sends nothing for an upload that's refused", async () => {

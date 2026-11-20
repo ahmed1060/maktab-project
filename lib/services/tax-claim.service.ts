@@ -9,7 +9,7 @@ import { daysLate, figuresAge, type TaxPosition } from "@/lib/tax-claims"
 import { summarise, type PortalTaxPosition } from "@/lib/portal-tax"
 import { compareClaims, fileNamesClient, namedCompany, sentUpload, type ClaimDraft, type TaxClaimsNow, type TaxUploadSaved } from "@/lib/tax-file"
 import { accountantOf } from "@/lib/services/client-accountant.service"
-import { sendTaxUpdateEmails, taxEmailPlan } from "@/lib/services/tax-update-email.service"
+import { sendTaxUpdateEmails, taxEmailPlan, TAX_EMAILS_WITHIN_MS } from "@/lib/services/tax-update-email.service"
 import { PRODUCTION_ORIGIN } from "@/lib/app-origin"
 
 /** A date column's day, as it was written. */
@@ -214,9 +214,10 @@ const WRITTEN_AT_ONCE = 500
  *
  * Once it's saved, the client's people are emailed where the company has
  * turned that on (§4.4, PR 351): who, worked out in the save; the emails
- * sent after it, which say what they did.
+ * sent after it, until `sendBy`, so the route answers within its minute,
+ * which say what they did.
  */
-export async function saveTaxFile(user: Uploader, body: unknown, now: Date = new Date(), origin: string = PRODUCTION_ORIGIN): Promise<TaxUploadSaved> {
+export async function saveTaxFile(user: Uploader, body: unknown, now: Date = new Date(), origin: string = PRODUCTION_ORIGIN, sendBy: number = Date.now() + TAX_EMAILS_WITHIN_MS): Promise<TaxUploadSaved> {
     if (!can(user, "tax.manage")) throw new Error("TAX_MANAGE_REQUIRED")
     const sent = sentUpload(body)
     if ("problem" in sent) throw new Error(sent.problem === "too_many" ? "TAX_TOO_MANY_CLAIMS" : "TAX_UPLOAD_INVALID")
@@ -309,5 +310,5 @@ export async function saveTaxFile(user: Uploader, body: unknown, now: Date = new
 
     // Sent once the save is made, so no one is told of an upload that isn't kept.
     const { counts, email } = done
-    return { ...counts, email: email.state === "send" ? await sendTaxUpdateEmails(email, user, client.id, origin) : { state: email.state } }
+    return { ...counts, email: email.state === "send" ? await sendTaxUpdateEmails(email, user, client.id, origin, sendBy) : { state: email.state } }
 }

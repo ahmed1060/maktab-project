@@ -204,6 +204,18 @@ describe("the route that saves an upload", () => {
     it("stops within a minute, its emails sent or given up", () => {
         expect(/^export const maxDuration = (\d+)$/m.exec(route())?.[1]).toBe("60")
     })
+
+    it("gives up on the emails with time to answer before the route stops (found by Codex on PR 351)", () => {
+        const service = readFileSync("lib/services/tax-update-email.service.ts", "utf8")
+        const within = Number(/^export const TAX_EMAILS_WITHIN_MS = ([\d_]+)$/m.exec(service)?.[1].replace(/_/g, ""))
+        const limit = Number(/^export const maxDuration = (\d+)$/m.exec(route())?.[1]) * 1000
+        // Counted from the upload's start, and at least 10 seconds left to log what wasn't sent and answer.
+        expect(within).toBeGreaterThan(0)
+        expect(within).toBeLessThanOrEqual(limit - 10_000)
+        const save = readFileSync("lib/services/tax-claim.service.ts", "utf8")
+        expect(save).toMatch(/export async function saveTaxFile\([^\n]*, sendBy: number = Date\.now\(\) \+ TAX_EMAILS_WITHIN_MS\): Promise/)
+        expect(save).toContain("sendTaxUpdateEmails(email, user, client.id, origin, sendBy)")
+    })
 })
 
 describe("the migration", () => {
