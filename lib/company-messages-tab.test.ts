@@ -368,7 +368,7 @@ describe("the update email's card (§4.4, step 11a; PR 350)", () => {
             const words = locale === "ar" ? ar : en
             const html = await emailsCard({ [taxEmailsApi(null)]: ok({ on: false }) }, { locale })
             expect(html).toContain(`<h2 class="ui-card-title">${words.cmsg_emails_title}</h2>`)
-            const list = between(html, `<ul class="ui-rows ui-rows-flush" aria-label="${words.cmsg_emails_title}"`, "</ul>")
+            const list = between(html, `<ul class="ui-rows ui-rows-flush ui-cmsg-emails" aria-label="${words.cmsg_emails_title}"`, "</ul>")
             expect(list.split("<li")).toHaveLength(2)
             expect(list).toContain(esc(words.cmsg_emails_label))
             expect(list).toContain(esc(words.cmsg_emails_hint))
@@ -410,6 +410,13 @@ describe("the update email's card (§4.4, step 11a; PR 350)", () => {
         expect(card).toMatch(/await mutate\(\{ data: \{ on: body\.data\.on \} \}, \{ revalidate: false \}\)/)
         expect(card).toContain("showToast(t('settings_saved_success'), 'success')")
         expect(card).not.toContain("ConfirmDialog")
+    })
+
+    it("on phones puts the badge and the button under the line, as the messages' buttons go", () => {
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        const phone = css.slice(css.indexOf("/* A company's client messages, on the Client portal tab"), css.indexOf("/* end of a text with fields put in by buttons */"))
+        expect(phone).toMatch(/@media \(max-width: 767px\) \{[^@]*\.ui-cmsg-emails \.ui-row \{[^}]*flex-direction: column;/)
+        expect(phone).toMatch(/\.ui-cmsg-emails \.ui-row-end \{[^}]*max-width: none;/)
     })
 
     it("is on the Client portal tab, under the messages' card", () => {

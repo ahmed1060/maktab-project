@@ -16,7 +16,8 @@ import { taxEmailsApi } from '@/lib/client-message-pages'
  * position is updated. One row saying what's sent, with On or Off and Turn
  * on or Turn off, as the company's other switches are (decided on
  * 2026-11-20, in place of the mockup's toggle). Neither asks first: nothing
- * is lost, and it's turned back here.
+ * is lost, and it's turned back here. On phones the badge and the button
+ * go under the line, as the messages' buttons do.
  */
 export default function TaxEmailsCard({ companyId, superAdmin }: { companyId: string; superAdmin: boolean }) {
     const { t } = useLanguage()
@@ -60,7 +61,7 @@ export default function TaxEmailsCard({ companyId, superAdmin }: { companyId: st
                     <div role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
                 )
             ) : (
-                <ul className="ui-rows ui-rows-flush" aria-label={t('cmsg_emails_title')}>
+                <ul className="ui-rows ui-rows-flush ui-cmsg-emails" aria-label={t('cmsg_emails_title')}>
                     <Row
                         title={t('cmsg_emails_label')}
                         detail={t('cmsg_emails_hint')}
