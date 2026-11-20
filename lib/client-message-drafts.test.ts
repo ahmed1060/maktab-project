@@ -99,3 +99,15 @@ describe("the box's version, which starts it again when it changes", () => {
         expect(boxOf(discarded(written(NO_EDITS, "contact:en", "a", T1), "contact:en"), "contact:en", T3)).toBe(T3)
     })
 })
+
+describe("a box's version other than the saved text's time (PR 349)", () => {
+    it("Nizmo's text read anew while a company uses it starts the box again; from the first change on, it's the one opened", () => {
+        // A company using Nizmo's has no time of its own that changes when the Super Admin changes Nizmo's.
+        expect(boxOf(NO_EDITS, "contact:en", "never|Hello")).toBe("never|Hello")
+        expect(boxOf(NO_EDITS, "contact:en", "never|Hello again")).toBe("never|Hello again")
+        const edits = written(NO_EDITS, "contact:en", "Hi", null, "never|Hello")
+        expect(boxOf(edits, "contact:en", "never|Hello again")).toBe("never|Hello")
+        // The time a save says is still the saved text's.
+        expect(sinceOf(edits, "contact:en", T1)).toBeNull()
+    })
+})

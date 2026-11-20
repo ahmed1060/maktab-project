@@ -105,8 +105,9 @@ describe("A page someone can't open", () => {
                 said.push(file)
             }
         }
-        // 18 with Terminal brands (PR 279), 19 with Client messages (PR 347).
-        expect(said.length).toBe(19)
+        // 18 with Terminal brands (PR 279), 19 with Client messages (PR 347),
+        // 20 with a company's message's editor, from its settings (PR 349).
+        expect(said.length).toBe(20)
         // And no page says it of a page others open.
         for (const file of [...files("app"), ...files("components")]) {
             const src = readFileSync(file, "utf8")

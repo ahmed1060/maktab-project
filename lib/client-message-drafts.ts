@@ -21,7 +21,7 @@ export type Edits = {
     drafts: Record<string, string>
     /** The time of the saved text each started from; null for one never changed. */
     since: Record<string, string | null>
-    /** The time of the saved text each one's box was opened from, while it has unsaved text. */
+    /** The version of the saved text each one's box was opened from, while it has unsaved text. */
     opened: Record<string, string | null>
 }
 
@@ -33,12 +33,18 @@ function without<T>(kept: Record<string, T>, key: string): Record<string, T> {
     return rest
 }
 
-/** A change to a message's text; its time is the saved text's when it's the first. */
-export function written(edits: Edits, key: string, text: string, changedAt: string | null): Edits {
+/**
+ * A change to a message's text; its time is the saved text's when it's the
+ * first. The box's version is that time too, unless the page has its own:
+ * a company using Nizmo's message has no time of its own that moves when the
+ * Super Admin changes Nizmo's, so its page tells the text apart as well
+ * (PR 349).
+ */
+export function written(edits: Edits, key: string, text: string, changedAt: string | null, version: string | null = changedAt): Edits {
     return {
         drafts: { ...edits.drafts, [key]: text },
         since: key in edits.since ? edits.since : { ...edits.since, [key]: changedAt },
-        opened: key in edits.opened ? edits.opened : { ...edits.opened, [key]: changedAt },
+        opened: key in edits.opened ? edits.opened : { ...edits.opened, [key]: version },
     }
 }
 

@@ -26,3 +26,18 @@ export const nizmoMessageAgainSchema = z.object({
     language: z.enum(MESSAGE_LANGUAGES),
     since: z.string().datetime().nullable(),
 })
+
+/**
+ * Use Nizmo's message for every language a company changed at once (§7.1,
+ * step 10c-2; PR 349): which message, from the address, and for each
+ * language the time of the company's message the tab read, none where it
+ * never changed it. Each is said, so a language the tab didn't read can't
+ * be put back unseen.
+ */
+export const nizmoMessagesAgainSchema = z.object({
+    kind: z.enum(MESSAGE_KINDS),
+    since: z.object({
+        ar: z.string().datetime().nullable(),
+        en: z.string().datetime().nullable(),
+    }),
+})
