@@ -1042,6 +1042,14 @@ Arabic and English.
   holds it, as it holds every permission and can't be changed
   (`ROLES_PLAN.md` §4.2, rule 7), so a company's Admins can change its
   messages (Decided, 2026-11-17: no switch to stop them, §14).
+- **Where it's found** (Decided, 2026-11-20): the Client portal tab shows
+  to whoever holds `client_messages.manage` wherever the package has the
+  add-on, whatever the Super Admin ticked for the company in Admin
+  access, as nothing stops a company's Admins changing its messages. The
+  Super Admin sees it on every company with the add-on. Change it for
+  this company, or Edit, opens the editor on a page of its own, as the
+  Super Admin's: the text and its preview side by side, both languages,
+  Save and Discard changes, and the way back to the tab.
 - **Fields:** put in with buttons, never typed, and shown by their names
   in the page's language: the person's name, the client's name and the
   day the figures are from; for a claim, also its number, item, what
@@ -1473,7 +1481,7 @@ width:
      the phone's cards, opening the same dialog with that claim's
      message. #345, as built in §7.
 10. **The messages' templates** (§7.1): the Super Admin's, the company's
-    copy, and `client_messages.manage`. In four PRs, the two pages as the
+    copy, and `client_messages.manage`. In five PRs, the two pages as the
     owner's mockup draws them (Message templates and Company messages):
     - **10a. The templates kept and used:** `ClientMessageTemplate`, with
       row-level security; the fields and the checks (not empty, up to
@@ -1499,6 +1507,17 @@ width:
       the role editor's row, which only the Super Admin opens: nothing
       more is built on the tab for it. Step 11's switch joins the tab
       later, as the mockup's middle card.
+      In two PRs (Decided, 2026-11-20, §7.1):
+      - **10c-1. Kept and checked:** `client_messages.manage` in the
+        `TAX_POSITION` module and `ROLES_PLAN.md`'s tables, with its
+        routes: the company's messages as it uses them, each its own or
+        Nizmo's; saving its copy of one, from the text it started from,
+        as the Super Admin's are; and Use Nizmo's message. Each in the
+        audit log, with before and after. Nothing shows them yet.
+      - **10c-2. The tab and the page:** the Client portal tab, to whoever
+        holds `client_messages.manage` wherever the package has the
+        add-on, and the editor on a page of its own, as the owner's
+        mockup draws them (Company messages).
     - **10d.** `client_messages.manage` for the built-in Admin of the
       companies already there, once 10c's release is live.
 11. **Telling the client's people by email** (§4.4).
@@ -2152,3 +2171,9 @@ with a tax position is archived, and deleted for good from the archive
   buttons and a preview with made-up figures. Each save is in the audit
   log, with before and after; a save over someone else's newer change is
   refused.
+- **2026-11-20 (decided by the owner):** The company's copy of the
+  messages (§7.1): the Client portal tab shows to whoever holds
+  `client_messages.manage` wherever the package has the add-on, whatever
+  the Super Admin ticked in Admin access, and the editor opens on a page
+  of its own. Step 10c split in two (§12): the permission with its
+  routes (10c-1), then the tab and the page (10c-2).
