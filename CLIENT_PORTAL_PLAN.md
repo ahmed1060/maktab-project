@@ -1098,7 +1098,8 @@ Arabic and English.
   changes to save over it. Each message's changes keep the time of the
   text they started from, so saving another message first, which reads
   them all again, doesn't let a save through unwarned; what's typed while
-  a save goes stays, unsaved. The checks run on the page, then again on the
+  a save goes stays, unsaved. With nothing unsaved, a newer saved text
+  read again, as when the page is opened again, shows in the box at once. The checks run on the page, then again on the
   server; saving the same text writes nothing. Each save is in the audit
   log as Changed a client message, with the message, its language, and
   the text before and after.
