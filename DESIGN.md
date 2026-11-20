@@ -1958,7 +1958,8 @@ These are built once, in the building-blocks PR, and every page uses them
   language, as a chat bubble.
   - The bubble is `--chat-bubble` on a `--chat-ground` panel, in
     `--chat-ink`, with 12px corners, 12px inside the panel and on the
-    start side of its language. Light: `--chat-ground` `#efeae2`,
+    start side of its language, at most 85% of the panel's width, its
+    text in `--text-sm` as a chat's is. Light: `--chat-ground` `#efeae2`,
     `--chat-bubble` `#d9fdd3`, `--chat-ink` `#111b21`. Dark: `#0b141a`,
     `#005c4b` and `#e9edef`. Its text reads at 4.5:1 or better on it in
     both.
@@ -1969,7 +1970,9 @@ These are built once, in the building-blocks PR, and every page uses them
   messages, under Templates. Its header names it and says that a company
   that changed a message uses its own, and every other company these.
   Under it, a tab for each message, then the text with fields put in by
-  buttons and its preview, side by side (§5.5, Page layout).
+  buttons and its preview, side by side, the text's card three fifths of
+  the width where the side bar is beside the page (1024px and wider), as
+  the mockup draws them (§5.5, Page layout).
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
