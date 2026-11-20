@@ -6810,3 +6810,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   screen reader starts at its top; and `/api/user/language` with no body,
   or an empty one, is a 400 saying the language isn't one, as a body
   without a language is.
+- **2026-11-20 (decided by the owner):** A password is 8 to 72
+  characters wherever one is set (it was 12 to 72): Add employee, a
+  profile's new password, Change password, Forgot password, a new Super
+  Admin, and the client's area's invitation and Change password. One
+  rule, on the screens and on the server, and every hint and mistake
+  says 8, in both languages. Passwords already set stay as they are.
+  Built in #341, with the two small fixes.
