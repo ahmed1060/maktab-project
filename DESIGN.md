@@ -1376,6 +1376,10 @@ These are built once, in the building-blocks PR, and every page uses them
     16px all round on phones. Rows that run to its edges run to them
     still;
   - its title is `--text-card`, weight 600, in `--ink`;
+  - a titled part inside it, such as a task's costs paid person by
+    person, is headed in `--text-md` at weight 600, under the card's own
+    title. It was `--text-lg` at 500, larger than the card's title once
+    that was 15px (found in the interface audit, 2026-11-20);
   - a page's cards are 16px apart, side by side and one under another.
   - Its title can have a line under it in `--text-xs` and `--muted`,
     saying how what's in it is ordered or counted, such as "Largest
@@ -2930,3 +2934,7 @@ changed:
   inside a card on computers; and 16px between a page's sections and
   cards on computers too. 20px joins the spacing scale for a card's
   inside.
+- **2026-11-20:** A titled part inside a card is headed in `--text-md`
+  at weight 600 (§5.5), so it stays under the card's 15px title; it was
+  `--text-lg` at 500. Found in the interface audit of the frame and
+  cards' alignment.
