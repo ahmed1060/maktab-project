@@ -2201,8 +2201,8 @@ These are built once, in the building-blocks PR, and every page uses them
     `GearSix`;
   - the Super Admin's: Companies `Buildings`, Packages `Package`, All users
     `UsersThree`, Role templates `Stack`, Policy templates `Clock`, Public
-    holidays `CalendarBlank`, Terminal brands `Fingerprint`, Super Admins
-    `ShieldCheck`, Role changes
+    holidays `CalendarBlank`, Terminal brands `Fingerprint`, Client
+    messages `ChatsCircle`, Super Admins `ShieldCheck`, Role changes
     `ArrowsLeftRight`, Access reviews `ListChecks`, Who can
     `MagnifyingGlass`, Check-ins `MapPin`, Audit logs `ClipboardText`,
     System health `Heartbeat`, System settings `GearSix`.
