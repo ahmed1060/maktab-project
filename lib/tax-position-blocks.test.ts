@@ -93,6 +93,14 @@ describe("bars by part", () => {
         expect(html).toContain('title="إقرار ضريبة الدخل: 1,075.00"')
     })
 
+    it("a part can go by a short name, its full name when pointed at and for screen readers (DESIGN.md §5.5, PR 338)", () => {
+        const html = render(h(ui.BarsByPart, { label: "By item", parts: [{ key: "health", name: "مساهمة تكافلية - تأمين صحي", short: "تأمين صحي", value: 40, amount: "40.00" }] }))
+        expect(html).toContain('<li class="ui-bars-row" title="مساهمة تكافلية - تأمين صحي: 40.00"><span class="ui-bars-name"><span aria-hidden="true">تأمين صحي</span><span class="ui-visually-hidden">مساهمة تكافلية - تأمين صحي</span></span> ')
+        // A part with no short name, or one the same as its name, is its name alone.
+        expect(render(h(ui.BarsByPart, { label: "By item", parts: [{ key: "a", name: "رسم تنمية الموارد", value: 4, amount: "4.00" }] }))).toContain('<span class="ui-bars-name">رسم تنمية الموارد</span> ')
+        expect(render(h(ui.BarsByPart, { label: "By item", parts: [{ key: "a", name: "رسم تنمية الموارد", short: "رسم تنمية الموارد", value: 4, amount: "4.00" }] }))).toContain('<span class="ui-bars-name">رسم تنمية الموارد</span> ')
+    })
+
     it("the largest first, parts owing the same in the order they came", () => {
         const html = render(h(ui.BarsByPart, { label: "By item", parts: [
             { key: "a", name: "A", value: 50, amount: "50" },
@@ -140,8 +148,18 @@ describe("bars by part", () => {
         for (const selector of [".ui-bars-name", ".ui-bars-amount", ".ui-bars-note"]) {
             expect([selector, rule(CSS, selector)]).not.toEqual([selector, expect.stringMatching(/--brand/)])
         }
-        expect(rule(CSS, ".ui-bars-note")).toMatch(/font-size: var\(--text-sm\);[\s\S]*color: var\(--muted\);/)
         expect(rule(CSS, ".ui-bars-name")).toMatch(/text-overflow: ellipsis;/)
+    })
+
+    it("in the owner's mockup's sizes: the name in --text-sm and --ink-2, the amount weight 600, the note in --text-xs (PR 338)", () => {
+        const name = rule(CSS, ".ui-bars-name")
+        expect(name).toMatch(/font-size: var\(--text-sm\);/)
+        expect(name).toMatch(/color: var\(--ink-2\);/)
+        const amount = rule(CSS, ".ui-bars-amount")
+        expect(amount).toMatch(/font-size: var\(--text-sm\);/)
+        expect(amount).toMatch(/font-weight: 600;/)
+        expect(amount).toMatch(/color: var\(--ink\);/)
+        expect(rule(CSS, ".ui-bars-note")).toMatch(/font-size: var\(--text-xs\);[\s\S]*color: var\(--muted\);/)
     })
 
     it("a name in the other language is cut short at its own end, not its start, and still sits at the row's start", () => {
@@ -154,7 +172,8 @@ describe("bars by part", () => {
 
     // From Codex's review (PR 337): a row sizing its own columns gave each bar a track of its own width.
     it("every row shares the list's columns, so every bar is drawn against the same width", () => {
-        expect(rule(CSS, ".ui-bars")).toMatch(/grid-template-columns: minmax\(0, 2fr\) minmax\(0, 3fr\) auto;/)
+        // The names in a column 140px wide, the amounts and notes up to 150px, as the owner's mockup draws them (PR 338).
+        expect(rule(CSS, ".ui-bars")).toMatch(/grid-template-columns: 140px minmax\(0, 1fr\) fit-content\(150px\);/)
         const row = rule(CSS, ".ui-bars-row")
         expect(row).toMatch(/grid-column: 1 \/ -1;/)
         expect(row).toMatch(/grid-template-columns: subgrid;/)
@@ -181,7 +200,7 @@ describe("the share bar", () => {
     it("says it in words, the two amounts at its end, over a bar screen readers don't read", () => {
         const html = render(h(ui.ShareBar, { share: 0.157, line: "16% paid", amounts: "210.25 of 1,340.25" }))
         expect(html).toBe(
-            '<div class="ui-share"><p class="ui-share-line"><span>16% paid</span> <span class="ui-share-amounts ui-num">210.25 of 1,340.25</span></p>'
+            '<div class="ui-share"><p class="ui-share-line"><span class="ui-share-words">16% paid</span> <span class="ui-share-amounts ui-num">210.25 of 1,340.25</span></p>'
             + '<span class="ui-share-track" aria-hidden="true"><span class="ui-share-bar" style="--share:15.7%"></span></span></div>',
         )
     })
@@ -205,9 +224,20 @@ describe("the share bar", () => {
         expect(bar).toMatch(/border-radius: var\(--radius-pill\);/)
     })
 
-    it("has its amounts at the line's end, and under it on phones", () => {
-        expect(rule(CSS, ".ui-share-line")).toMatch(/justify-content: space-between;/)
-        expect(phone(CSS)).toMatch(/\.ui-share-line \{[^}]*flex-direction: column;/)
+    it("its line in --text-sm, the words weight 500, the amounts muted at its end (PR 338)", () => {
+        const line = rule(CSS, ".ui-share-line")
+        expect(line).toMatch(/justify-content: space-between;/)
+        expect(line).toMatch(/font-size: var\(--text-sm\);/)
+        expect(rule(CSS, ".ui-share-words")).toMatch(/font-weight: 500;/)
+        expect(rule(CSS, ".ui-share-amounts")).toMatch(/color: var\(--muted\);/)
+    })
+
+    it("on phones its amounts go under the bar, in --text-xs, as the owner's mockup draws it (PR 338)", () => {
+        const small = phone(CSS)
+        expect(small).toMatch(/\.ui-share-line \{\s*display: contents;\s*\}/)
+        expect(small).toMatch(/\.ui-share-words \{\s*order: 1;\s*\}/)
+        expect(small).toMatch(/\.ui-share-track \{\s*order: 2;\s*\}/)
+        expect(small).toMatch(/\.ui-share-amounts \{\s*order: 3;\s*font-size: var\(--text-xs\);/)
     })
 })
 
