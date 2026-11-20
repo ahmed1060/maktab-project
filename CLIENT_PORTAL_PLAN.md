@@ -960,6 +960,20 @@ owner's mockup draws it:
   on WhatsApp): the accountant, and a message ready to send, which can be
   changed. Open WhatsApp opens `https://wa.me/<number>?text=<message>` in
   a new tab: the app on a phone, WhatsApp Web on a computer.
+  - **As built (#344):** the client's page reads, with its tax position,
+    who its people can write to (`portalAccountant`, from the session's
+    client): the accountant's name and number, and nothing of their role
+    or account. Their name is in the page's subtitle where they're
+    picked and their contract hasn't ended; Contact the accountant is
+    there where they have a number, before the first file too. The
+    message is Nizmo's own (§7's), in the page's language, from the
+    client account's name and the client's, with the day the figures are
+    from where there are any (`lib/contact-message.ts`, until step 10's
+    templates). The dialog is `components/portal/ContactWhatsApp.tsx`,
+    drawn as the owner's mockup draws it (`DESIGN.md` §5.5, Contact on
+    WhatsApp); 9d opens it from each claim. Its Open WhatsApp is a new
+    building block, `ButtonExternal`: a link that looks like a button, to
+    another site, opening in a new tab, which it says to screen readers.
 - **Ask about this claim** (Decided, 2026-11-17): on each claim, opening
   the same dialog with that claim's message.
 - **The messages** (Decided, 2026-11-17), in the page's language, from
@@ -1400,7 +1414,7 @@ width:
    - **9c. Contact the accountant** (§6, §7): the accountant's name under
      the client's page title, the button, and the dialog, with Nizmo's
      own message until the templates (step 10). Without a number, the note
-     says to contact the office, as now.
+     says to contact the office, as now. #344, as built in §7.
    - **9d. Ask about this claim** (§7): on each claim, in the table and on
      the phone's cards, opening the same dialog with that claim's
      message.
@@ -2028,3 +2042,10 @@ with a tax position is archived, and deleted for good from the archive
   to anyone: no one picked, no number on their profile, or their
   contract has ended, with the way to fix each. A person's Contacting
   clients card names the clients they answer for.
+- **2026-11-20:** 9c as built (#344, §7): the client's page names the
+  responsible accountant in its subtitle and has Contact the accountant
+  where they have a WhatsApp number, opening the dialog as the owner's
+  mockup draws it, with Nizmo's own message, ready to change. Open
+  WhatsApp opens the conversation in a new tab; nothing passes through
+  Nizmo. Without anyone to write to, the note says to contact the
+  office, as before.

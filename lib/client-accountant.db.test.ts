@@ -231,6 +231,24 @@ describe.skipIf(!ADMIN_URL)("the responsible accountant, in Postgres", () => {
         })
     })
 
+    describe("on the client's own page (PR 344)", () => {
+        it("its people are told the accountant's name and number, and nothing where no one can be written to", async () => {
+            await set(admin, "delta", "t1")
+            expect(await accountants.portalAccountant("delta")).toEqual({ name: "Tamer One", whatsappNumber: "+201001234567" })
+            await set(admin, "delta", "e1")
+            expect(await accountants.portalAccountant("delta")).toEqual({ name: "Eman One", whatsappNumber: null })
+            await set(admin, "delta", null)
+            expect(await accountants.portalAccountant("delta")).toBeNull()
+            await set(admin, "delta", "t1")
+            await db.query(`UPDATE "User" SET status = 'ARCHIVED' WHERE id = 't1'`)
+            try {
+                expect(await accountants.portalAccountant("delta")).toBeNull()
+            } finally {
+                await db.query(`UPDATE "User" SET status = 'OFFLINE' WHERE id = 't1'`)
+            }
+        })
+    })
+
     describe("the clients a person answers for", () => {
         it("are named, by name, an archived client left out", async () => {
             await db.query(`UPDATE "Client" SET "responsibleAccountantId" = 't1' WHERE id IN ('noor', 'old')`)

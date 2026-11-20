@@ -20,6 +20,8 @@ const state = {
     session: null as null | { user: Record<string, unknown> },
     read: [] as { companyId: string; clientId: string }[],
     position: null as null | PortalTaxPosition | Error,
+    accountant: null as null | { name: string; whatsappNumber: string | null },
+    accountantRead: [] as string[],
 }
 
 vi.mock("@/context/LanguageContext", () => ({
@@ -33,6 +35,12 @@ vi.mock("@/lib/services/tax-claim.service", () => ({
         state.read.push(account)
         if (state.position instanceof Error) throw state.position
         return state.position
+    },
+}))
+vi.mock("@/lib/services/client-accountant.service", () => ({
+    portalAccountant: async (clientId: string) => {
+        state.accountantRead.push(clientId)
+        return state.accountant
     },
 }))
 
@@ -58,7 +66,7 @@ const POSITION = summarise(CLAIMS, TODAY, AS_OF)
 const esc = (text: string) => text.replace(/&/g, "&amp;").replace(/'/g, "&#x27;").replace(/"/g, "&quot;")
 const render = (position: PortalTaxPosition, locale: "en" | "ar" = "en") => {
     state.locale = locale
-    return renderToStaticMarkup(h(PortalHome, { client: "Nile Trading", position }))
+    return renderToStaticMarkup(h(PortalHome, { client: "Nile Trading", person: "Mona Fouad", position, accountant: null }))
 }
 const text = (html: string) => html.replace(/<[^>]+>/g, "").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&")
 const percentAr = (n: number) => n.toLocaleString("ar-EG", { style: "percent", maximumFractionDigits: 0 })
@@ -98,17 +106,22 @@ beforeEach(() => {
     state.session = null
     state.read = []
     state.position = null
+    state.accountant = null
+    state.accountantRead = []
 })
 
 describe("what the page is given", () => {
     it("the session's client's position, read with the session's company and client, never the address's", async () => {
-        state.session = { user: { id: "acct-1", role: "CLIENT_ACCOUNT", companyId: "co-1", clientId: "client-1", clientName: "Nile Trading" } }
+        state.session = { user: { id: "acct-1", role: "CLIENT_ACCOUNT", companyId: "co-1", clientId: "client-1", clientName: "Nile Trading", name: "Mona Fouad" } }
         state.position = POSITION
+        state.accountant = { name: "Tamer Saleh", whatsappNumber: "+201001234567" }
         const { default: PortalPage } = await import("@/app/(portal)/portal/page")
         const page = await PortalPage() as ReactElement<{ client: string; position: PortalTaxPosition }>
         expect(state.read).toEqual([{ companyId: "co-1", clientId: "client-1" }])
+        // Who its people can write to, read once its client is known to be the session's company's (PR 344).
+        expect(state.accountantRead).toEqual(["client-1"])
         expect(page.type).toBe(PortalHome)
-        expect(page.props).toEqual({ client: "Nile Trading", position: POSITION })
+        expect(page.props).toEqual({ client: "Nile Trading", person: "Mona Fouad", position: POSITION, accountant: { name: "Tamer Saleh", whatsappNumber: "+201001234567" } })
         expect(readFileSync("app/(portal)/portal/page.tsx", "utf8")).not.toMatch(/params|searchParams/)
     })
 
@@ -119,6 +132,7 @@ describe("what the page is given", () => {
         await expect(PortalPage()).rejects.toThrow(`REDIRECT ${SESSION_ENDED_PATH}`)
         state.position = new Error("connection lost")
         await expect(PortalPage()).rejects.toThrow("connection lost")
+        expect(state.accountantRead).toEqual([])
     })
 
     it("nothing is read for a session that isn't a client account's", async () => {
@@ -130,6 +144,7 @@ describe("what the page is given", () => {
         state.session = { user: { id: "acct-1", role: "CLIENT_ACCOUNT", companyId: "co-1", clientId: null } }
         await expect(PortalPage()).rejects.toThrow(`REDIRECT ${SESSION_ENDED_PATH}`)
         expect(state.read).toEqual([])
+        expect(state.accountantRead).toEqual([])
     })
 })
 

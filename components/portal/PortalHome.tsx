@@ -1,10 +1,14 @@
 'use client'
 
-import { ReceiptIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
-import { BarsByPart, Card, Columns, EmptyState, Icon, LargeFigure, Page, PageHeader, ShareBar, StatusBadge } from '@/components/ui'
+import { useState } from 'react'
+import { ChatIcon, ReceiptIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { BarsByPart, Button, Card, Columns, EmptyState, Icon, LargeFigure, Page, PageHeader, ShareBar, StatusBadge } from '@/components/ui'
+import { ContactWhatsApp } from '@/components/portal/ContactWhatsApp'
 import { PortalClaims } from '@/components/portal/PortalClaims'
 import { formatDay } from '@/components/records/types'
 import { useLanguage } from '@/context/LanguageContext'
+import type { PortalAccountant } from '@/lib/client-accountant'
+import { contactMessage } from '@/lib/contact-message'
 import { countOf } from '@/lib/plural'
 import { paidShare, shortItemName, type PortalTaxPosition } from '@/lib/portal-tax'
 import type { TranslationKey } from '@/lib/translations'
@@ -18,34 +22,72 @@ import type { TranslationKey } from '@/lib/translations'
  * the owner's mockup draws them (the Client tax position canvas). Before the
  * first upload, and with nothing open in the file, an empty state says so.
  *
- * Its client and figures are the session's, read on the server (page.tsx).
- * The accountant, Contact the accountant and Ask about this claim come with
- * step 9, so until then the note says to contact the office.
+ * Its client and figures are the session's, read on the server (page.tsx),
+ * as is who its people can write to: the responsible accountant is named in
+ * the subtitle, and where they have a WhatsApp number, Contact the accountant
+ * opens Contact on WhatsApp with Nizmo's own message (step 9c; PR 344).
+ * Where no one can be written to, the note says to contact the office. Ask
+ * about this claim comes with 9d.
  */
-export function PortalHome({ client, position }: { client: string; position: PortalTaxPosition }) {
+export function PortalHome({ client, person, position, accountant }: {
+    client: string
+    /** The client account's own name, which the message is from. */
+    person: string
+    position: PortalTaxPosition
+    /** Who the client's people can write to (lib/client-accountant.ts). */
+    accountant: PortalAccountant
+}) {
     const { t, locale } = useLanguage()
+    const [contacting, setContacting] = useState(false)
     const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
     const money = (n: number) => n.toLocaleString(intl, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     const percent = (n: number) => n.toLocaleString(intl, { style: 'percent', maximumFractionDigits: 0 })
-    // A day kept on one line.
+    // A day, and a name, kept on one line.
     const day = (d: string) => formatDay(d, locale).replace(/ /g, '\u00a0')
     const { asOf, totals } = position
+
+    const reachable = accountant?.whatsappNumber ? { name: accountant.name, whatsappNumber: accountant.whatsappNumber } : null
+    const from = asOf ? t('portal_tax_from').replace('{date}', day(asOf)) : null
+    const [before, after = ''] = t('portal_tax_accountant').split('{name}')
+    const who = accountant && <>{before}<bdi>{accountant.name.replace(/ /g, '\u00a0')}</bdi>{after}</>
+    const subtitle = from && who ? <>{from} {who}</> : from ?? who ?? undefined
+    const header = (
+        <PageHeader
+            overline={client}
+            title={t('tax_position')}
+            subtitle={subtitle}
+            action={reachable ? (
+                <Button variant="primary" icon={ChatIcon} aria-haspopup="dialog" onClick={() => setContacting(true)}>{t('portal_contact_accountant')}</Button>
+            ) : undefined}
+        />
+    )
+    const contact = reachable && (
+        <ContactWhatsApp
+            open={contacting}
+            onClose={() => setContacting(false)}
+            title={t('portal_contact_accountant')}
+            accountant={reachable}
+            client={client}
+            message={contactMessage(t, locale, { person, client, asOf })}
+        />
+    )
 
     if (!asOf) {
         return (
             <Page>
-                <PageHeader overline={client} title={t('tax_position')} />
+                {header}
                 <div className="ui-panel"><EmptyState icon={ReceiptIcon} title={t('portal_tax_none')} detail={t('portal_tax_none_detail')} /></div>
+                {contact}
             </Page>
         )
     }
 
-    const header = <PageHeader overline={client} title={t('tax_position')} subtitle={t('portal_tax_from').replace('{date}', day(asOf))} />
     if (totals.open === 0) {
         return (
             <Page>
                 {header}
                 <div className="ui-panel"><EmptyState icon={ReceiptIcon} title={t('tax_no_open_claims')} detail={t('tax_no_open_claims_detail').replace('{date}', day(asOf))} /></div>
+                {contact}
             </Page>
         )
     }
@@ -107,7 +149,8 @@ export function PortalHome({ client, position }: { client: string; position: Por
                 </Card>
             </Columns>
             <PortalClaims items={position.items} totals={totals} />
-            <p className="ui-portal-note">{t('portal_tax_note').replace('{date}', day(asOf))}</p>
+            <p className="ui-portal-note">{t(reachable ? 'portal_tax_note_accountant' : 'portal_tax_note').replace('{date}', day(asOf))}</p>
+            {contact}
         </Page>
     )
 }
