@@ -229,6 +229,8 @@ describe("the page", () => {
         expect(page).toContain("if (now) setEdits(e => conflicted(e, key, now.changedAt))")
         expect(page).toContain("setEdits(e => discarded(e, key))")
         expect(page).not.toContain("setDrafts")
+        // Codex's third: the box, which reads its text once, starts again when the saved text changes and nothing is unsaved.
+        expect(page).toContain("key={`${key}:${starts[key] ?? 0}:${boxOf(edits, key, current.changedAt) ?? 'never'}`}")
     })
 
     it("the text and its preview side by side", () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { NO_EDITS, conflicted, discarded, saved, sinceOf, written } from "./client-message-drafts"
+import { NO_EDITS, boxOf, conflicted, discarded, saved, sinceOf, written } from "./client-message-drafts"
 
 /**
  * Client messages on WhatsApp (CLIENT_PORTAL_PLAN.md §7.1, §12 step 10b;
@@ -68,5 +68,34 @@ describe("discarded", () => {
         edits = discarded(edits, "contact:en")
         expect(edits.drafts).toEqual({ "claim:en": "b" })
         expect(sinceOf(edits, "contact:en", T3)).toBe(T3)
+    })
+})
+
+describe("the box's version, which starts it again when it changes", () => {
+    // PR 347, Codex's third finding: the box reads its text once, so a saved text read again must start it again.
+    it("with nothing unsaved, the saved text's: a newer one read starts the box again", () => {
+        expect(boxOf(NO_EDITS, "contact:en", T1)).toBe(T1)
+        expect(boxOf(NO_EDITS, "contact:en", T2)).toBe(T2)
+        expect(boxOf(NO_EDITS, "contact:en", null)).toBeNull()
+    })
+
+    it("from the first change on, the one it was opened from, so typing never starts it again", () => {
+        const edits = written(NO_EDITS, "contact:en", "a", T1)
+        expect(boxOf(edits, "contact:en", T1)).toBe(T1)
+        expect(boxOf(edits, "contact:en", T2)).toBe(T1)
+        // Typing on after a newer saved text was read.
+        expect(boxOf(written(edits, "contact:en", "ab", T2), "contact:en", T2)).toBe(T1)
+    })
+
+    it("refused as changed since, or saved while typing went on, the same: the unsaved text stays in it", () => {
+        const opened = written(NO_EDITS, "contact:en", "a", T1)
+        expect(boxOf(conflicted(opened, "contact:en", T2), "contact:en", T2)).toBe(T1)
+        const typed = written(opened, "contact:en", "ab", T1)
+        expect(boxOf(saved(typed, "contact:en", "a", T2), "contact:en", T2)).toBe(T1)
+    })
+
+    it("saved as sent, or discarded, the saved text's again", () => {
+        expect(boxOf(saved(written(NO_EDITS, "contact:en", "a", T1), "contact:en", "a", T2), "contact:en", T2)).toBe(T2)
+        expect(boxOf(discarded(written(NO_EDITS, "contact:en", "a", T1), "contact:en"), "contact:en", T3)).toBe(T3)
     })
 })

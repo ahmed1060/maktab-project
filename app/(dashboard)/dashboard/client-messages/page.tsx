@@ -13,7 +13,7 @@ import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useGuardLinks } from '@/lib/useUnsavedChanges'
 import { MESSAGE_FIELDS, MESSAGE_MAX_LENGTH, messageLength, messageProblem, type MessageKind, type MessageLanguage, type NizmoMessage } from '@/lib/client-message-template'
 import { sampleMessage } from '@/lib/contact-message'
-import { NO_EDITS, conflicted, discarded, saved, sinceOf, written, type Edits } from '@/lib/client-message-drafts'
+import { NO_EDITS, boxOf, conflicted, discarded, saved, sinceOf, written, type Edits } from '@/lib/client-message-drafts'
 import type { TranslationKey } from '@/lib/translations'
 
 /**
@@ -177,7 +177,8 @@ export default function ClientMessagesPage() {
                 <Columns>
                     <Card className="ui-fieldtext-card">
                         <FieldText
-                            key={`${key}:${starts[key] ?? 0}`}
+                            // Started again on Discard changes, and when a newer saved text is read while nothing is unsaved.
+                            key={`${key}:${starts[key] ?? 0}:${boxOf(edits, key, current.changedAt) ?? 'never'}`}
                             label={t('cmsg_text')}
                             labelAside={<Segmented label={t('cmsg_language')} value={language} onChange={setLanguage} options={LANGUAGES} fixedOrder />}
                             value={draft}
