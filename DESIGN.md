@@ -1557,6 +1557,13 @@ These are built once, in the building-blocks PR, and every page uses them
     (`CLIENT_PORTAL_PLAN.md` §7), Contact the accountant isn't there, nor
     is any claim's Ask about this claim, and the note under the claims
     says to contact the office.
+    - The accountant is named where the client has one whose contract
+      hasn't ended, the name kept on one line. One without a WhatsApp
+      number is named, with no Contact the accountant.
+    - Contact the accountant has a speech bubble before its words, and
+      opens Contact on WhatsApp with the page's message. It's there before
+      the first file too, its message then naming no day.
+    - On phones the buttons go under the subtitle, full width (§5.1).
   - On a client's page for the company's people, from 30 days after the
     day the figures are from, a Waiting on someone badge beside that day
     says how long it's been, such as "Not updated for 34 days", and the
@@ -1651,9 +1658,12 @@ These are built once, in the building-blocks PR, and every page uses them
     counted, and to contact the accountant about any claim, such as
     "Amounts are in Egyptian pounds, as they were on the Tax Authority's
     portal on 16 Nov 2026, and penalties for paying late aren't counted."
+    Its last sentence says how to ask about a claim: with Contact the
+    accountant at the top of the page where it's there, or else from the
+    office.
   - With no claims kept yet, the page's place is an empty state saying
-    the office hasn't added the tax position yet, under the header with
-    no subtitle.
+    the office hasn't added the tax position yet, under the header, whose
+    subtitle is only who the accountant is, where there's one.
   - With a file kept but nothing open in it, the page's place is an empty
     state saying nothing was owed on the portal on the day the figures
     are from, under the header and its subtitle, with no cards or note.
@@ -1876,6 +1886,27 @@ These are built once, in the building-blocks PR, and every page uses them
   opening a new tab, which it says to screen readers; Cancel beside it. A
   line at its foot says it opens WhatsApp on a phone, or WhatsApp Web on
   a computer, and that the conversation stays there.
+  - As the owner's mockup draws it (`CLIENT_PORTAL_PLAN.md` §7, step
+    9c), it's up to 480px wide, and differs from other dialogs in three
+    ways: a Close button (✕, 44px, quiet) at its title's end; Open
+    WhatsApp first and Cancel after it, under the message, on the start
+    side; and the line at its foot under a `--rule` edge, after the
+    buttons.
+  - The box: 12px inside, `--radius-field` corners. The initials are in a
+    44px circle on `--brand-tint-strong`, in `--brand` and weight 600;
+    the name in `--text-card` (15px) and weight 600; what they are under
+    it in `--text-sm` and `--muted`, such as "Responsible accountant for Al
+    Namozag Trading".
+  - The message is as many lines tall as it is, and one more. Until it's
+    changed, that last line says "(Write your question here)" in
+    `--muted`: where the question goes, which isn't sent. The hint under
+    it is in `--text-xs` and `--muted`.
+  - Open WhatsApp has a speech bubble before its words, and goes to
+    `wa.me` with the number and the message, the conversation's own
+    address. It closes the dialog as the tab opens.
+  - The line at its foot is in `--text-xs` and `--muted`, 12px under its
+    edge.
+  - Nothing of it is sent through Nizmo or kept.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
@@ -2980,3 +3011,11 @@ changed:
   why the client's people can't write to anyone, with the way to fix it.
   A person's WhatsApp card names the clients they answer for
   (`CLIENT_PORTAL_PLAN.md` §12, step 9b).
+- **2026-11-20:** A client's tax position (§5.5), and Contact on
+  WhatsApp as the owner's mockup draws it: the accountant named in the
+  page's subtitle where the client has one whose contract hasn't ended,
+  Contact the accountant where they have a WhatsApp number, before the
+  first file too. The dialog has a Close button, Open WhatsApp before
+  Cancel, and its foot line under a rule, unlike other dialogs; its
+  message ends, until it's changed, with where the question goes
+  (`CLIENT_PORTAL_PLAN.md` §12, step 9c).
