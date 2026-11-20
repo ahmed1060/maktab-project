@@ -381,20 +381,20 @@ describe("the sign-in code", () => {
 describe("the client's area's first page", () => {
     const esc = (text: string) => text.replace(/&/g, "&amp;").replace(/'/g, "&#x27;").replace(/"/g, "&quot;")
 
-    it("says the client's name above Tax position, and that it will be shown there soon, in both languages", async () => {
+    it("says the client's name above Tax position, in both languages", async () => {
         const { PortalHome } = await import("@/components/portal/PortalHome")
+        const { summarise } = await import("./portal-tax")
+        // The tax position itself since PR 338 (lib/portal-tax-page.test.ts): here, before the first upload.
+        const position = summarise([], "2026-11-19", null)
         for (const locale of ["en", "ar"] as const) {
             page.locale = locale
             const words = locale === "ar" ? ar : en
-            const html = renderToStaticMarkup(h(PortalHome, { client: "Nile Trading" }))
+            const html = renderToStaticMarkup(h(PortalHome, { client: "Nile Trading", position }))
             expect(html, locale).toContain(`<p class="ui-page-overline">Nile Trading</p>`)
             expect(html, locale).toContain(`<h1 class="ui-page-title">${esc(words.tax_position)}</h1>`)
-            expect(html, locale).toContain(`<p class="ui-page-subtitle">${esc(words.portal_tax_soon)}</p>`)
             // In the top bar's account menu since PR 334 (lib/client-portal-top-bar.test.ts).
             expect(html, locale).not.toContain(`>${esc(words.sign_out)}</`)
         }
-        expect(en.portal_tax_soon).toBe("It will be shown here soon.")
-        expect(ar.portal_tax_soon).toBe("سيُعرض هنا قريبًا.")
     })
 
     it("reads the client from the session, never the address, and sends anyone else on", () => {

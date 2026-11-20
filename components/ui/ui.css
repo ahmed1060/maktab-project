@@ -6293,6 +6293,78 @@ a.ui-notice:focus-visible {
   color: var(--muted);
 }
 
+/* The client's tax position (DESIGN.md §5.5; PR 338). What's owed: the
+   large figure with its badge under it, and beside it how much is paid and
+   three facts; one under the other on phones. */
+.ui-portal-owed {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+/* The badge under the figure, as wide as its words. */
+.ui-portal-owed-figure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.ui-portal-owed-late {
+  margin: 0;
+}
+.ui-portal-owed-paid {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+/* The facts in a row, each a label above its value. */
+.ui-portal-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+}
+.ui-portal-fact {
+  min-width: 0;
+}
+.ui-portal-fact dt {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.ui-portal-fact dd {
+  margin: var(--space-1) 0 0;
+  color: var(--ink);
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+/* On phones, one to a line: the label at the start, the value at the end. */
+@media (max-width: 767px) {
+  .ui-portal-owed {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+  .ui-portal-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+  .ui-portal-fact {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-3);
+  }
+  .ui-portal-fact dd {
+    margin: 0;
+    font-size: var(--text-md);
+    line-height: var(--leading-md);
+    text-align: end;
+  }
+}
+
 /* The page area (§5.1): the page-edge spacing (§4.1), and 8px under the top
    bar, as the approved mock-up has it. */
 .ui-page-area {

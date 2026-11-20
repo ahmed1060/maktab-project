@@ -126,6 +126,17 @@ export function oldestDelay(claims: TaxClaimRow[]): number {
     return claims.reduce((most, claim) => Math.max(most, claim.daysLate), 0)
 }
 
+/**
+ * How much of the open claims' original amounts is paid, from 0 to 1,
+ * rounded down to a whole percent (DESIGN.md §5.5; PR 338): it never says
+ * 100% while something is left to pay. Rounded to a millionth first, so
+ * 29 of 100 is 29%, where its float is a hair under.
+ */
+export function paidShare(paid: number, original: number): number {
+    if (!(original > 0) || !(paid > 0)) return 0
+    return Math.min(100, Math.floor(Math.round((paid / original) * 1e6) / 1e4)) / 100
+}
+
 /** What the client's area is given of a client's tax position. */
 export type PortalTaxPosition = {
     /** Today where the company is, which late is counted to. */
