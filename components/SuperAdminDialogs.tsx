@@ -10,6 +10,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useViewer } from '@/lib/useCan'
 import type { TranslationKey } from '@/lib/translations'
+import { PASSWORD_MIN } from '@/lib/new-employee-form'
 
 /**
  * Adding a Super Admin, and changing one's name and gender (the Super Admin's
@@ -35,11 +36,11 @@ function nameErrors(firstName: string, lastName: string): Pick<Wrong, 'firstName
     return wrong
 }
 
-/** What's wrong with a new Super Admin on Add, field by field; empty when it'll do. The server wants 12 to 72 characters. */
+/** What's wrong with a new Super Admin on Add, field by field; empty when it'll do. The server wants 8 to 72 characters (PASSWORD_MIN). */
 export function addErrors(a: NewAdmin): Wrong {
     const wrong: Wrong = nameErrors(a.firstName, a.lastName)
     if (!EMAIL.test(a.email.trim())) wrong.email = 'super_admins_email_invalid'
-    if (a.password.length < 12) wrong.password = 'super_admins_password_short'
+    if (a.password.length < PASSWORD_MIN) wrong.password = 'super_admins_password_short'
     return wrong
 }
 

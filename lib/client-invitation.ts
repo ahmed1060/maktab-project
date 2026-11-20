@@ -67,7 +67,7 @@ export function sentInvitation(body: unknown): { token: string } | { problem: "t
 /**
  * What the page sends to set the password: the secret, and the password
  * twice, as Change password asks it. As long as every password in Nizmo is,
- * 12 to 72 characters, and kept as typed: spaces are part of it.
+ * 8 to 72 characters, and kept as typed: spaces are part of it.
  */
 export function sentPassword(body: unknown): { token: string; password: string } | { problem: "token" | "short" | "long" | "mismatch" } {
     const sent = (body && typeof body === "object" ? body : {}) as { token?: unknown; password?: unknown; confirmPassword?: unknown }

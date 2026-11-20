@@ -76,7 +76,7 @@ describe("what's checked before anything is sent", () => {
         expect(profileErrors({ ...ok, email: undefined, username: undefined, salary: undefined, dayOffCredit: undefined })).toEqual({})
         expect(profileErrors({ ...ok, email: "mona@" })).toEqual({ email: "emp_new_email_invalid" })
         expect(profileErrors({ ...ok, username: "-x" })).toEqual({ username: "username_invalid" })
-        expect(profileErrors({ ...ok, password: "short-one" })).toEqual({ password: "emp_new_password_short" })
+        expect(profileErrors({ ...ok, password: "short-7" })).toEqual({ password: "emp_new_password_short" })
         expect(profileErrors({ ...ok, password: "a-long-enough-one" })).toEqual({})
     })
 

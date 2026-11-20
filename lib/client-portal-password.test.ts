@@ -91,10 +91,10 @@ describe("what the page sends", () => {
         expect(await sent(null)).toEqual({ problem: "current" })
     })
 
-    it("a new one of 12 to 72 characters, the same twice, as every password in Nizmo is", async () => {
+    it("a new one of 8 to 72 characters, the same twice, as every password in Nizmo is", async () => {
         const base = { currentPassword: "old" }
-        expect(await sent({ ...base, newPassword: "x".repeat(11), confirmPassword: "x".repeat(11) })).toEqual({ problem: "short" })
-        expect(await sent({ ...base, newPassword: "x".repeat(12), confirmPassword: "x".repeat(12) })).toEqual({ current: "old", password: "x".repeat(12) })
+        expect(await sent({ ...base, newPassword: "x".repeat(7), confirmPassword: "x".repeat(7) })).toEqual({ problem: "short" })
+        expect(await sent({ ...base, newPassword: "x".repeat(8), confirmPassword: "x".repeat(8) })).toEqual({ current: "old", password: "x".repeat(8) })
         expect(await sent({ ...base, newPassword: "x".repeat(72), confirmPassword: "x".repeat(72) })).toEqual({ current: "old", password: "x".repeat(72) })
         expect(await sent({ ...base, newPassword: "x".repeat(73), confirmPassword: "x".repeat(73) })).toEqual({ problem: "long" })
         expect(await sent({ ...base, newPassword: NEW, confirmPassword: `${NEW}x` })).toEqual({ problem: "mismatch" })
@@ -145,7 +145,7 @@ describe("the area's route", () => {
         state.session = { user: CLIENT }
         const answers: Record<string, [number, string]> = {
             CURRENT_PASSWORD_MISSING: [400, "Your current password is needed to set a new one."],
-            NEW_PASSWORD_SHORT: [400, "The password needs at least 12 characters."],
+            NEW_PASSWORD_SHORT: [400, "The password needs at least 8 characters."],
             NEW_PASSWORD_LONG: [400, "A password can have up to 72 characters."],
             NEW_PASSWORD_MISMATCH: [400, "The two passwords aren't the same."],
             CLIENT_ACCOUNT_GONE: [404, "This account isn't there any more."],

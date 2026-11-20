@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { PASSWORD_MAX, PASSWORD_MIN } from "@/lib/new-employee-form"
 
 export const forgotPasswordRequestSchema = z.object({
     email: z.string().email("Invalid email address").max(254),
@@ -8,7 +9,8 @@ export type ForgotPasswordRequestInput = z.infer<typeof forgotPasswordRequestSch
 export const forgotPasswordConfirmSchema = z.object({
     email: z.string().email("Invalid email address").max(254),
     code: z.string().min(6, "Invalid code").max(6, "Invalid code"),
-    // F-16: same 12-72 floor/ceiling as every other password-setting path.
-    newPassword: z.string().min(12, "Password must be at least 12 characters").max(72, "Password must be at most 72 characters"),
+    // F-16: the same floor and ceiling as every other password-setting path
+    // (8 to 72 since PR 341).
+    newPassword: z.string().min(PASSWORD_MIN, `Password must be at least ${PASSWORD_MIN} characters`).max(PASSWORD_MAX, `Password must be at most ${PASSWORD_MAX} characters`),
 })
 export type ForgotPasswordConfirmInput = z.infer<typeof forgotPasswordConfirmSchema>
