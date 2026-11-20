@@ -6804,3 +6804,16 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     opens the keyboard on a phone and hides half the page.
   - **`/api/user/language` with no body:** refused as a request without
     a language (400), not an error of the server's.
+- **2026-11-20:** The owner's two small fixes, built (#341): neither
+  Change password page takes the focus as it opens, the company's or the
+  client area's, so a phone's keyboard doesn't come up over it and a
+  screen reader starts at its top; and `/api/user/language` with no body,
+  or an empty one, is a 400 saying the language isn't one, as a body
+  without a language is.
+- **2026-11-20 (decided by the owner):** A password is 8 to 72
+  characters wherever one is set (it was 12 to 72): Add employee, a
+  profile's new password, Change password, Forgot password, a new Super
+  Admin, and the client's area's invitation and Change password. One
+  rule, on the screens and on the server, and every hint and mistake
+  says 8, in both languages. Passwords already set stay as they are.
+  Built in #341, with the two small fixes.

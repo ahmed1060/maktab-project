@@ -19,7 +19,7 @@ export const CLIENT_PASSWORD_TRIES = "Too many wrong tries for this account. You
 
 /**
  * What the page sends: the current password, and the new one twice, as
- * Change password asks it. As long as every password in Nizmo is, 12 to 72
+ * Change password asks it. As long as every password in Nizmo is, 8 to 72
  * characters, and kept as typed: spaces are part of it.
  */
 export function sentPasswordChange(body: unknown): { current: string; password: string } | { problem: "current" | "short" | "long" | "mismatch" } {

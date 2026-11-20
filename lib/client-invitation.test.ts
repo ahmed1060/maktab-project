@@ -62,12 +62,12 @@ describe("what's sent", () => {
         for (const body of [{}, { token: "" }, { token: 7 }, null, "x", { token: "nope" }]) expect(sentInvitation(body), JSON.stringify(body)).toEqual({ problem: "token" })
     })
 
-    it("to set the password: the secret and the password twice, 12 to 72 characters, the same both times", () => {
+    it("to set the password: the secret and the password twice, 8 to 72 characters, the same both times", () => {
         const password = "a-long-password-1"
         expect(sentPassword({ token, password, confirmPassword: password })).toEqual({ token, password })
         expect(sentPassword({ token: "nope", password, confirmPassword: password })).toEqual({ problem: "token" })
-        expect(sentPassword({ token, password: "short-11-ch", confirmPassword: "short-11-ch" })).toEqual({ problem: "short" })
-        expect(sentPassword({ token, password: "x".repeat(12), confirmPassword: "x".repeat(12) })).toEqual({ token, password: "x".repeat(12) })
+        expect(sentPassword({ token, password: "short-7", confirmPassword: "short-7" })).toEqual({ problem: "short" })
+        expect(sentPassword({ token, password: "x".repeat(8), confirmPassword: "x".repeat(8) })).toEqual({ token, password: "x".repeat(8) })
         expect(sentPassword({ token, password: "x".repeat(72), confirmPassword: "x".repeat(72) })).toEqual({ token, password: "x".repeat(72) })
         expect(sentPassword({ token, password: "x".repeat(73), confirmPassword: "x".repeat(73) })).toEqual({ problem: "long" })
         expect(sentPassword({ token, password, confirmPassword: `${password}!` })).toEqual({ problem: "mismatch" })

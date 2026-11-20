@@ -124,14 +124,14 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     INVITATION_UNKNOWN: { status: 404, message: "This link doesn't work any more. Ask the office for a new invitation." },
     INVITATION_EXPIRED: { status: 409, message: "This invitation has expired. Ask the office for a new one." },
     INVITATION_CLOSED: { status: 403, message: "The office's portal isn't open to you now. Please contact the office." },
-    INVITATION_PASSWORD_SHORT: { status: 400, message: "The password needs at least 12 characters." },
+    INVITATION_PASSWORD_SHORT: { status: 400, message: "The password needs at least 8 characters." },
     INVITATION_PASSWORD_LONG: { status: 400, message: "A password can have up to 72 characters." },
     INVITATION_PASSWORD_MISMATCH: { status: 400, message: "The two passwords aren't the same." },
     // Change password in the client's area (CLIENT_PORTAL_PLAN.md §5.3; lib/client-password-change.ts).
     // The page says each in its own words; app/api/portal/password answers a
     // wrong current password and too many tries itself.
     CURRENT_PASSWORD_MISSING: { status: 400, message: "Your current password is needed to set a new one." },
-    NEW_PASSWORD_SHORT: { status: 400, message: "The password needs at least 12 characters." },
+    NEW_PASSWORD_SHORT: { status: 400, message: "The password needs at least 8 characters." },
     NEW_PASSWORD_LONG: { status: 400, message: "A password can have up to 72 characters." },
     NEW_PASSWORD_MISMATCH: { status: 400, message: "The two passwords aren't the same." },
     // Removed since its session was checked, or invited and never set: its session ends at its next check.

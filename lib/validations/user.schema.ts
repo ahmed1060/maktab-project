@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { partialWithoutDefaults } from "./partial-update"
 import { usernameSchema } from "./username.schema"
+import { PASSWORD_MAX, PASSWORD_MIN } from "@/lib/new-employee-form"
 
 export const createUserSchema = z.object({
     firstName: z.string().min(1).max(15, "First name too long"),
@@ -12,8 +13,10 @@ export const createUserSchema = z.object({
     email: z.string().email("Invalid email address").max(254),
     // F-16: was capped at 20 — bcrypt truncates at 72 bytes, so there's no
     // technical reason for a ceiling that low; it only blocked password
-    // managers and passphrases. Floor of 12 replaces the old floor of 8.
-    password: z.string().min(12, "Password must be at least 12 characters").max(72, "Password must be at most 72 characters"),
+    // managers and passphrases. The floor is 8, the owner's answer of
+    // 2026-11-20 (PR 341), where it had been raised to 12: one rule with
+    // every screen's (lib/new-employee-form.ts).
+    password: z.string().min(PASSWORD_MIN, `Password must be at least ${PASSWORD_MIN} characters`).max(PASSWORD_MAX, `Password must be at most ${PASSWORD_MAX} characters`),
     role: z.enum(['SUPER_ADMIN', 'ADMIN', 'TEAM_LEADER', 'EMPLOYEE']).optional().default('EMPLOYEE'),
     // A role of the company's, by id (ROLES_PLAN.md §6.4). When given it wins
     // over `role`, which then only says what kind — the base role comes from

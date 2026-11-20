@@ -549,7 +549,7 @@ an invitation). Until 6b-2 sends it, nobody receives a link.
   before it, answered late, is left out: the form sets the password for
   the link it was read with.
 - **The page** says who invited them, for whom, their email, and asks
-  for the password twice, 12 to 72 characters, as every password in
+  for the password twice, 8 to 72 characters, as every password in
   Nizmo. Set, the account is active, the link stops working, and the
   page says so, with the email to sign in with and Sign in. Signing in
   as a client account is step 7, which may fill the email in: until then
@@ -733,7 +733,7 @@ page of the area's own:
 
 - **It asks for the current password,** then the new one twice, as the
   company's people's Change password asks it, its hint saying how long it
-  must be: 12 to 72 characters. The server checks the current one, with
+  must be: 8 to 72 characters. The server checks the current one, with
   the five wrong tries in fifteen minutes a person's own password has,
   then none until the fifteen minutes are up.
 - **The new password ends their other sessions** within a minute (7b's
@@ -1599,7 +1599,7 @@ Setting a password from an invitation (step 6b-1, #324), against a real
 Postgres and in a browser:
 
 - a link works once, for 72 hours, and only its own account's;
-- the password asked twice, 12 to 72 characters;
+- the password asked twice, 8 to 72 characters;
 - an expired link, a used one, one for a removed person, and the
   office's portal closed, each said as it is;
 - two set at once: one sets it, the other is told the link doesn't work;
@@ -1990,3 +1990,6 @@ with a tax position is archived, and deleted for good from the archive
 - **2026-11-20:** 9a as built (#340, §7): the WhatsApp number is kept on
   the person, saved with their profile, and read the same way on the
   profile and on the server. Which clients write to it comes with 9b.
+- **2026-11-20 (decided by the owner):** A password is 8 to 72 characters
+  in the client's area too, as everywhere in Nizmo (it was 12): setting
+  one from the invitation and changing it (#341).

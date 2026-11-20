@@ -100,8 +100,9 @@ export default function ChangePasswordPage() {
             <Card>
                 <form onSubmit={handleSubmit} noValidate className="ui-form">
                     <Field label={t('change_password_new')} hint={t('change_password_new_hint')} error={fieldErrors.newPassword}>{p => (
-                        // Focused: it's the one thing this page asks for.
-                        <PasswordInput {...p} name="newPassword" autoComplete="new-password" maxLength={PASSWORD_MAX} autoFocus value={newPassword} disabled={saving}
+                        // Not focused as the page opens, so a phone's keyboard
+                        // doesn't come up over it (the owner's answer, PR 341).
+                        <PasswordInput {...p} name="newPassword" autoComplete="new-password" maxLength={PASSWORD_MAX} value={newPassword} disabled={saving}
                             onChange={e => { setNewPassword(e.target.value); clear('newPassword') }} />
                     )}</Field>
                     <Field label={t('change_password_confirm')} error={fieldErrors.confirmPassword}>{p => (

@@ -186,7 +186,7 @@ describe.skipIf(!ADMIN_URL)("setting a password from an invitation, in Postgres"
 
         it("is refused, setting nothing, for a password too short, too long or not the same twice", async () => {
             const { id, token } = await invited("noor")
-            expect(await why(set(token, "short-11-ch"))).toBe("INVITATION_PASSWORD_SHORT")
+            expect(await why(set(token, "short-7"))).toBe("INVITATION_PASSWORD_SHORT")
             expect(await why(set(token, "x".repeat(73)))).toBe("INVITATION_PASSWORD_LONG")
             expect(await why(set(token, PASSWORD, `${PASSWORD}!`))).toBe("INVITATION_PASSWORD_MISMATCH")
             expect((await row(id)).password).toBeNull()

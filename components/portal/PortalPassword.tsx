@@ -88,8 +88,9 @@ export function PortalPassword() {
             <Card>
                 <form onSubmit={handleSubmit} noValidate className="ui-form">
                     <Field label={t('portal_password_current')} error={fieldErrors.currentPassword}>{p => (
-                        // Focused: it's what the page asks for first.
-                        <PasswordInput {...p} name="currentPassword" autoComplete="current-password" autoFocus value={typed.currentPassword} disabled={saving}
+                        // Not focused as the page opens, so a phone's keyboard
+                        // doesn't come up over it (the owner's answer, PR 341).
+                        <PasswordInput {...p} name="currentPassword" autoComplete="current-password" value={typed.currentPassword} disabled={saving}
                             onChange={type('currentPassword')} />
                     )}</Field>
                     <Field label={t('change_password_new')} hint={t('change_password_new_hint')} error={fieldErrors.newPassword}>{p => (

@@ -9,7 +9,9 @@ import type { TranslationKey } from '@/lib/translations'
 
 /** As the server takes them (lib/validations/user.schema.ts). */
 export const NAME_MAX = 15
-export const PASSWORD_MIN = 12
+// 8 to 72 characters wherever a password is set (the owner's answer of
+// 2026-11-20, PR 341; it was 12). bcrypt reads no more than 72 bytes.
+export const PASSWORD_MIN = 8
 export const PASSWORD_MAX = 72
 /** A quick check before the round trip; the server checks properly. */
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
