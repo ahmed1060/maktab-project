@@ -1050,6 +1050,14 @@ Arabic and English.
   this company, or Edit, opens the editor on a page of its own, as the
   Super Admin's: the text and its preview side by side, both languages,
   Save and Discard changes, and the way back to the tab.
+- **Each language on the tab** (Decided, 2026-11-20): each message's row
+  keeps the mockup's title and buttons, with a line for each language
+  under the title: the company's copy, by who changed it and when, or
+  that it uses Nizmo's message. Change it for this company shows while
+  both languages use Nizmo's, and Edit while either is the company's.
+  Use Nizmo's message, shown while either is the company's, asks first,
+  then puts back every language the company changed, all of them or,
+  where one was changed since the tab read it, none.
 - **Fields:** put in with buttons, never typed, and shown by their names
   in the page's language: the person's name, the client's name and the
   day the figures are from; for a claim, also its number, item, what
@@ -1141,6 +1149,32 @@ Arabic and English.
   language, and the text before and after. Another company's copy is
   never read or touched. Nothing shows them yet: the tab and the page are
   10c-2.
+- **As built (#349, 10c-2):** Company settings has a Client portal tab,
+  after Roles, as the owner's mockup draws it (Company messages), for
+  whoever holds `client_messages.manage` in the company wherever its
+  package has the client portal, with no other tab or permission needed:
+  the Super Admin's switch and ticks, and `settings.view`, open the other
+  tabs only. Holding it alone opens Company settings in the side bar on
+  that one tab. The Super Admin sees it on every company with the add-on,
+  from the company's own settings. Its card, Client messages on WhatsApp,
+  has a row for each message, with a line for each language, Arabic
+  first: the company's copy, by who changed it last and the day, or that
+  it uses Nizmo's message. Change it for this company, while both
+  languages use Nizmo's, and Edit, while either is the company's, open the
+  message's editor on a page of its own: the Super Admin's editor for that
+  one message, with no tabs, saving the company's copy, under a header
+  that goes back to the tab and names the message; the line under its
+  buttons says whose text it is, and who changed it and when. Use Nizmo's
+  message asks first, naming the languages, then puts back every language
+  the company changed in one go, at `DELETE /api/company-messages/[kind]`:
+  each from the time the tab read, all of them or, where one was changed,
+  made or put back since, none, the tab then reading them again and
+  saying so. Each language put back is in the audit log, as one put back
+  alone is. Where the company uses Nizmo's text and the Super Admin
+  changes it while the editor is open with nothing unsaved, the box shows
+  the new text at once, as the Super Admin's own page does. The editor's
+  page is the client portal's, which the package's gate holds by its
+  address; an address naming no message isn't found.
 
 ---
 
@@ -1186,6 +1220,8 @@ sent: it's drawn from the claims as they are.
   labelled Lets outsiders in on the role editor. Its grant for the
   companies already there is #330 (step 6d).
 - `client_messages.manage` comes with its routes in #348 (step 10c-1),
+  and Use Nizmo's message for every language at once, the Client portal
+  tab's, with #349 (step 10c-2),
   labelled Change client messages on WhatsApp on the role editor, last
   under Client portal. It brings nothing with it, as the Client portal
   tab shows to whoever holds it (§7.1), and isn't high-risk: the
@@ -1555,7 +1591,12 @@ width:
       - **10c-2. The tab and the page:** the Client portal tab, to whoever
         holds `client_messages.manage` wherever the package has the
         add-on, and the editor on a page of its own, as the owner's
-        mockup draws them (Company messages).
+        mockup draws them (Company messages). Each message's row has a
+        line for each language (Decided, 2026-11-20, §7.1), and Use
+        Nizmo's message puts back every language the company changed in
+        one go, with a route of its own, `DELETE
+        /api/company-messages/[kind]`. The editor is the Super Admin's,
+        shared by both pages. #349, as built in §7.1.
     - **10d.** `client_messages.manage` for the built-in Admin of the
       companies already there, once 10c's release is live.
 11. **Telling the client's people by email** (§4.4).
@@ -2227,3 +2268,15 @@ with a tax position is archived, and deleted for good from the archive
   away, so a save from a page that read Nizmo's before a copy was made
   and put back is refused, as one from any older page is. An additive
   migration adds the mark, false for every row there is.
+- **2026-11-20 (decided by the owner):** Each language on the Client
+  portal tab (§7.1): each message's row has a line for each language,
+  the company's copy by who changed it and when, or that it uses Nizmo's
+  message; Use Nizmo's message asks first, then puts back every language
+  the company changed, all of them or none.
+- **2026-11-20:** 10c-2 as built (#349, §7.1): the Client portal tab in
+  Company settings, for whoever holds `client_messages.manage` where the
+  package has the client portal, as the owner's mockup draws it: a row for
+  each message, a line for each language; Change it for this company or
+  Edit opens the Super Admin's editor for that message on a page of its
+  own; Use Nizmo's message asks first, then puts back every language the
+  company changed, all or none.
