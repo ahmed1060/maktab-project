@@ -59,6 +59,11 @@ export const updateUserSchema = partialWithoutDefaults(createUserSchema).extend(
     currentPassword: z.string().max(256).optional(),
     // With somebody else's new password or email, the saver's own (PR 231).
     confirmPassword: z.string().max(256).optional(),
+    // Their WhatsApp number, for their clients (CLIENT_PORTAL_PLAN.md §7,
+    // PR 340), as it was typed: the service reads it (lib/whatsapp-number.ts)
+    // and keeps it with its country code. Null or empty takes it away; absent
+    // leaves it as it is, as the profile's own form doesn't send it.
+    whatsappNumber: z.string().max(40).nullable().optional(),
 })
 
 export type CreateUserInput = z.infer<typeof createUserSchema>

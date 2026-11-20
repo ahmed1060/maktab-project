@@ -17,6 +17,7 @@ import { notifyTeamMoves } from "./team-notify.service"
 import { TeamHandOff, type Rehome } from "./team-handoff.service"
 import { assertStepUp, assertRecentStepUp } from "@/lib/step-up"
 import { sessionHasModule } from "@/lib/features/require"
+import { whatsappNumber as whatsappNumberOf } from "@/lib/whatsapp-number"
 import { keepAfterChange } from "@/lib/session-kept"
 import { confirmOwnPassword, ownPasswordMatches } from "@/lib/own-password"
 import { ONLINE_WINDOW_MS } from "@/lib/presence"
@@ -263,7 +264,7 @@ export class UserService {
      */
     static async update(input: UpdateUserInput, session: any, from?: { sid?: unknown; sessionVersion?: unknown } | null) {
         const userRole = session.user.role
-        const { id, firstName, lastName, email, password, currentPassword, confirmPassword, role, roleId, actingUntil, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username, status, teamLeaderId, reassignReportsTo } = input
+        const { id, firstName, lastName, email, password, currentPassword, confirmPassword, role, roleId, actingUntil, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username, status, teamLeaderId, reassignReportsTo, whatsappNumber: typedWhatsApp } = input
 
         const regularUser = await prisma.user.findUnique({ where: { id } })
         const superAdminUser = !regularUser ? await prisma.superAdmin.findUnique({ where: { id } }) : null
@@ -299,6 +300,21 @@ export class UserService {
         // owner decided (2026-10-23). The edit form shows it and can't change
         // it; a request naming another one is refused, whoever sends it.
         if (regularUser && companyId !== undefined && (companyId || null) !== regularUser.companyId) throw new Error("COMPANY_CHANGE_FORBIDDEN")
+
+        // Their WhatsApp number, for their clients (CLIENT_PORTAL_PLAN.md §7,
+        // step 9a, PR 340): the client portal's, so never where the company's
+        // package hasn't it, and never a Super Admin's, who answers for no
+        // client. Theirs, or whoever's may edit their profile, as the rest of
+        // it is; a company's Admin's only by them or the Super Admin (§4.2,
+        // rule 7). Kept with its country code (lib/whatsapp-number.ts).
+        if (typedWhatsApp !== undefined) {
+            if (!regularUser) throw new Error("FORBIDDEN")
+            if (!isSelf) RoleAssignmentService.onlySuperAdminActsOnAdmins(session.user, regularUser)
+            if (!sessionHasModule(session, "TAX_POSITION")) throw new Error("NOT_IN_PACKAGE")
+            const kept = whatsappNumberOf(typedWhatsApp ?? "")
+            if (!kept.ok) throw new Error("WHATSAPP_NUMBER_INVALID")
+            updateData.whatsappNumber = kept.number
+        }
 
         // 1. Name Change Restrictions
         if (isSelf && regularUser && ['EMPLOYEE', 'TEAM_LEADER'].includes(regularUser.role)) {

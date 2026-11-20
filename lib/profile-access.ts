@@ -52,6 +52,13 @@ export type ProfileAccess = {
      * rule 7).
      */
     changeRole: 'assign' | 'ask' | null
+    /**
+     * Their WhatsApp number, for their clients, in a card of its own
+     * (CLIENT_PORTAL_PLAN.md §7, PR 340): theirs, or whoever's may edit their
+     * profile, where the package has the client portal. Never a Super
+     * Admin's, who answers for no client.
+     */
+    whatsapp: boolean
 }
 
 export function profileAccess({ can, has, viewer, person }: {
@@ -95,5 +102,6 @@ export function profileAccess({ can, has, viewer, person }: {
             : can('employees.assign_role') ? 'assign'
             : can('employees.request_role') ? 'ask'
             : null,
+        whatsapp: (own || (can('employees.edit') && actsOnThem)) && person.role !== 'SUPER_ADMIN' && person.role !== '' && has('TAX_POSITION'),
     }
 }

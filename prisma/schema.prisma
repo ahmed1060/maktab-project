@@ -508,6 +508,10 @@ model User {
   // As SuperAdmin.keptSession: the session that set the account's own
   // password last, kept at the version that ended the others.
   keptSession                String?
+  /// Their WhatsApp number, for the clients they're the responsible accountant
+  /// for (CLIENT_PORTAL_PLAN.md §7, step 9a): kept with its country code,
+  /// "+201001234567" (lib/whatsapp-number.ts), as a CHECK in its migration holds.
+  whatsappNumber             String?
   mustChangePassword         Boolean                 @default(false)
   // F-27 MFA — see the matching fields on SuperAdmin for the reasoning on
   // why mfaSecret is encrypted, not hashed.
