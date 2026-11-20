@@ -154,15 +154,19 @@ export function Panel({ children, className }: { children: ReactNode; className?
  * something is wrong, takes that tone: a bar on its start edge in the
  * meaning's colour (DESIGN.md §5.5). Its title says what it is.
  */
-export function Card({ title, titleAside, actions, children, className, tone, role }: {
+export function Card({ title, subtitle, titleAside, actions, children, className, tone, role }: {
     title?: ReactNode
+    /** A line under the title, such as how what's in it is ordered (DESIGN.md §5.5, PR 338). */
+    subtitle?: ReactNode
     /** Right after the title, outside it: a guide's button (DESIGN.md §5.2, PR 282). */
     titleAside?: ReactNode
     actions?: ReactNode; children: ReactNode; className?: string; tone?: 'waiting' | 'problem'
     /** status: read out when it appears, such as what became of a check-in. */
     role?: 'status'
 }) {
-    const heading = title && <h2 className="ui-card-title">{title}</h2>
+    const heading = title && (subtitle
+        ? <div className="ui-card-heading"><h2 className="ui-card-title">{title}</h2><p className="ui-card-subtitle">{subtitle}</p></div>
+        : <h2 className="ui-card-title">{title}</h2>)
     return (
         <section className={cx('ui-panel ui-card', className)} data-tone={tone} role={role}>
             {(title || actions) && (

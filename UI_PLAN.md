@@ -6766,3 +6766,15 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   48px and 36px on phones. A name too long for its row is cut short at its
   own end, so an item's Arabic name on the English page keeps its first
   words. They're on the building blocks page in both languages.
+- **2026-11-19:** The client's tax position page's top
+  (`CLIENT_PORTAL_PLAN.md` §12 step 8c; `DESIGN.md` §5.5): the header,
+  what's owed with the large figure, the share paid and three facts, the
+  two cards of bars and the note, on the client's area's first page in
+  place of the line saying it comes soon; and the page before the first
+  upload and with nothing open.
+- **2026-11-20:** The client's tax position page's top, redrawn as the
+  owner's mockup draws it (`CLIENT_PORTAL_PLAN.md` §12 step 8c;
+  `DESIGN.md` §5.5): what's owed headed by its label, the share paid
+  twice the figure's width beside it, the cards' titles with a line under
+  them, and the bars and share bar in the mockup's sizes. A card can now
+  have a line under its title, and a part in bars by part a short name.

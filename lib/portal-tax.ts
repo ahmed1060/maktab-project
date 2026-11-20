@@ -59,6 +59,21 @@ export const USUAL_ITEMS = [
 const USUAL_BY_KEY: ReadonlyMap<string, string> = new Map(USUAL_ITEMS.map(name => [spellingKey(name), name]))
 
 /**
+ * The two usual items with long names go by short ones in the tax position's
+ * bars, as the owner's mockup draws them (DESIGN.md §5.5; PR 338), their full
+ * names when pointed at; the claims name every item in full.
+ */
+const SHORT_BY_KEY: ReadonlyMap<string, string> = new Map([
+    ["مساهمة تكافلية - تأمين صحي", "تأمين صحي"],
+    ["مساهمة تكافلية لصندوق أسر الشهداء", "صندوق أسر الشهداء"],
+].map(([name, short]) => [spellingKey(name), short]))
+
+/** An item's short name, matched as the upload matches spellings, or its own name. */
+export function shortItemName(item: string): string {
+    return SHORT_BY_KEY.get(spellingKey(item)) ?? item
+}
+
+/**
  * The name an item is shown by, from the ways the portal spelt it (§3.3):
  * a usual item's correct spelling, else the spelling written most often;
  * two written as often go by text order, whatever order the claims come in.
@@ -124,6 +139,22 @@ export function byLate(claims: TaxClaimRow[], today: string): LateRow[] {
 /** The most days any claim is late; none where nothing is. */
 export function oldestDelay(claims: TaxClaimRow[]): number {
     return claims.reduce((most, claim) => Math.max(most, claim.daysLate), 0)
+}
+
+/**
+ * How much of the open claims' original amounts is paid, from 0 to 1, to the
+ * nearest whole percent, a half up, as the owner's mockup says it, and 99% at
+ * most while something is left to pay, so it never says 100% then
+ * (DESIGN.md §5.5; PR 338). Worked out on whole piasters, so a sum a hair off
+ * its piasters counts as them and a share just under a half isn't rounded up.
+ */
+export function paidShare(paid: number, original: number): number {
+    const p = Math.round(paid * 100), o = Math.round(original * 100)
+    if (!(o > 0) || !(p > 0)) return 0
+    // The nearest whole percent of p / o, a half up: floor((200p + o) / 2o), in whole numbers.
+    const n = 200 * p + o, d = 2 * o
+    const percent = (n - (n % d)) / d
+    return Math.min(p < o ? 99 : 100, percent) / 100
 }
 
 /** What the client's area is given of a client's tax position. */

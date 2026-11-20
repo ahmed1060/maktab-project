@@ -795,6 +795,20 @@
   gap: var(--space-1);
   min-width: 0;
 }
+/* A title with a line under it, such as how what's in it is ordered
+   (§5.5, PR 338). */
+.ui-card-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.ui-card-subtitle {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--muted);
+}
 .ui-card-head:has(> .ui-card-title-group) {
   flex-wrap: wrap;
 }
@@ -6143,10 +6157,12 @@ a.ui-notice:focus-visible {
 /* The list holds the columns and every row takes them (subgrid), so every
    bar is drawn against the same width, whatever each row's amount and note
    (from Codex's review, PR 337). */
+/* The names in a column 140px wide and the amounts at the end, up to 150px
+   with their notes, as the owner's mockup draws them (PR 338). */
 .ui-bars {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) auto;
-  gap: var(--space-3);
+  grid-template-columns: 140px minmax(0, 1fr) fit-content(150px);
+  gap: var(--space-4) var(--space-3);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -6157,8 +6173,8 @@ a.ui-notice:focus-visible {
   grid-template-columns: subgrid;
   align-items: center;
   row-gap: 0;
-  font-size: var(--text-md);
-  line-height: var(--leading-md);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
 }
 /* A name takes its own direction, so an Arabic item on the English page is
    cut short at its own end, keeping its first words; it sits at the row's
@@ -6173,7 +6189,8 @@ a.ui-notice:focus-visible {
   white-space: nowrap;
   text-overflow: ellipsis;
   unicode-bidi: plaintext;
-  color: var(--ink);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
 }
 .ui-bars-track {
   grid-column: 2;
@@ -6197,14 +6214,17 @@ a.ui-notice:focus-visible {
   grid-row: 1;
   justify-self: end;
   white-space: nowrap;
+  font-size: var(--text-sm);
+  font-weight: 600;
   color: var(--ink);
 }
 .ui-bars-note {
   grid-column: 3;
   grid-row: 2;
   justify-self: end;
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
+  text-align: end;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
   color: var(--muted);
 }
 /* On phones the bar goes under the name, the amount to the row's end, and
@@ -6243,9 +6263,12 @@ a.ui-notice:focus-visible {
   align-items: baseline;
   column-gap: var(--space-3);
   margin: 0;
-  font-size: var(--text-md);
-  line-height: var(--leading-md);
-  color: var(--ink);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--ink-2);
+}
+.ui-share-words {
+  font-weight: 500;
 }
 .ui-share-amounts {
   color: var(--muted);
@@ -6264,10 +6287,22 @@ a.ui-notice:focus-visible {
   background: var(--brand);
   border-radius: var(--radius-pill);
 }
+/* On phones the amounts go under the bar, as the owner's mockup draws it
+   (PR 338): the line's two parts take their places beside the bar's. */
 @media (max-width: 767px) {
   .ui-share-line {
-    flex-direction: column;
-    align-items: flex-start;
+    display: contents;
+  }
+  .ui-share-words {
+    order: 1;
+  }
+  .ui-share-track {
+    order: 2;
+  }
+  .ui-share-amounts {
+    order: 3;
+    font-size: var(--text-xs);
+    line-height: var(--leading-xs);
   }
 }
 
@@ -6291,6 +6326,113 @@ a.ui-notice:focus-visible {
   font-size: var(--text-lg);
   line-height: var(--leading-lg);
   color: var(--muted);
+}
+
+/* The client's tax position (DESIGN.md §5.5; PR 338), as the owner's mockup
+   draws it. What's owed: its label, the large figure and its badge, and
+   twice as wide beside it how much is paid and three facts under a line;
+   one under the other on phones. */
+.ui-portal-owed {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: var(--space-6) var(--space-12);
+  align-items: start;
+  padding: var(--space-6);
+}
+/* The badge under the figure, as wide as its words. */
+.ui-portal-owed-figure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.ui-portal-owed-label {
+  margin: 0;
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  font-weight: 500;
+  color: var(--muted);
+}
+.ui-portal-owed-late {
+  margin: 0;
+}
+.ui-portal-owed-paid {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+/* The facts in a row under a line across, each a label above its value. */
+.ui-portal-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  border-block-start: 1px solid var(--rule);
+  padding-block-start: var(--space-4);
+}
+.ui-portal-fact {
+  min-width: 0;
+}
+.ui-portal-fact dt {
+  color: var(--muted);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+.ui-portal-fact dd {
+  margin: var(--space-1) 0 0;
+  color: var(--ink);
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.ui-portal-fact-unit {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--muted);
+}
+.ui-portal-note {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1.8;
+  color: var(--muted);
+}
+/* On phones, one under the other, the facts one to a line between lines:
+   the label at the start, the value at the end. */
+@media (max-width: 767px) {
+  .ui-portal-owed {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+    padding: var(--space-4);
+  }
+  .ui-portal-facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    padding-block-start: 0;
+  }
+  .ui-portal-fact {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-3);
+    padding-block: var(--space-3);
+    border-block-end: 1px solid var(--rule);
+  }
+  .ui-portal-fact:last-child {
+    border-block-end: 0;
+    padding-block-end: 0;
+  }
+  .ui-portal-fact dt {
+    font-size: var(--text-sm);
+    line-height: var(--leading-sm);
+  }
+  .ui-portal-fact dd {
+    margin: 0;
+    font-size: var(--text-lg);
+    line-height: var(--leading-lg);
+    text-align: end;
+  }
 }
 
 /* The page area (§5.1): the page-edge spacing (§4.1), and 8px under the top

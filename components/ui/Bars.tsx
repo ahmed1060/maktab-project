@@ -12,6 +12,8 @@ export type BarPart = {
     key: string
     /** Its name in full: a long one is cut short in the row and shown whole when pointed at. */
     name: string
+    /** A short name the row shows instead, its full name when pointed at and for screen readers (DESIGN.md §5.5, PR 338). */
+    short?: string
     /** What its bar is drawn to. */
     value: number
     /** The amount, as the page writes it. */
@@ -53,7 +55,10 @@ export function BarsByPart({ label, parts, ordered = false }: {
             {shown.map((p, i) => (
                 <li key={p.key} className="ui-bars-row" title={`${p.name}: ${p.amount}`}>
                     {/* The spaces keep a screen reader from running the name, the amount and the note together. */}
-                    <span className="ui-bars-name">{p.name}</span>{' '}
+                    {/* A short name is what's seen; a screen reader reads the full one, as the calendar's days do. */}
+                    <span className="ui-bars-name">{p.short && p.short !== p.name
+                        ? <><span aria-hidden="true">{p.short}</span><span className="ui-visually-hidden">{p.name}</span></>
+                        : p.name}</span>{' '}
                     <span className="ui-bars-track" aria-hidden="true">
                         {lengths[i] !== null && <span className="ui-bars-bar" style={{ ['--part' as string]: `${lengths[i]}%` } as CSSProperties} />}
                     </span>
@@ -68,8 +73,8 @@ export function BarsByPart({ label, parts, ordered = false }: {
 /**
  * How much of a whole is done, such as how much of a client's claims is
  * paid (DESIGN.md §5.5, Share bar): a line saying it in words, the two
- * amounts at its end, over a bar. Screen readers read the line; the bar is
- * hidden from them.
+ * amounts at its end, over a bar; on phones the amounts go under the bar
+ * (PR 338). Screen readers read the line; the bar is hidden from them.
  */
 export function ShareBar({ share, line, amounts }: {
     /** How much is done, from 0 to 1. */
@@ -83,7 +88,7 @@ export function ShareBar({ share, line, amounts }: {
     return (
         <div className="ui-share">
             <p className="ui-share-line">
-                <span>{line}</span>
+                <span className="ui-share-words">{line}</span>
                 {amounts && <>{' '}<span className="ui-share-amounts ui-num">{amounts}</span></>}
             </p>
             <span className="ui-share-track" aria-hidden="true">

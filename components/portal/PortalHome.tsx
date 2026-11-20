@@ -1,20 +1,112 @@
 'use client'
 
-import { Page, PageHeader } from '@/components/ui'
+import { ReceiptIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { BarsByPart, Card, Columns, EmptyState, Icon, LargeFigure, Page, PageHeader, ShareBar, StatusBadge } from '@/components/ui'
+import { formatDay } from '@/components/records/types'
 import { useLanguage } from '@/context/LanguageContext'
+import { countOf } from '@/lib/plural'
+import { paidShare, shortItemName, type PortalTaxPosition } from '@/lib/portal-tax'
+import type { TranslationKey } from '@/lib/translations'
 
 /**
- * The client's area's first page (CLIENT_PORTAL_PLAN.md §5.3, §12 step 7b;
- * PR 332): the client's name above Tax position, and a line saying it will
- * be shown there soon, until the tax position itself (step 8). Sign out is in
- * the top bar's account menu (PR 334). The client's name comes from the
- * session, never the address.
+ * The client's area's first page: the client's tax position
+ * (CLIENT_PORTAL_PLAN.md §6, §12 step 8c; DESIGN.md §5.5, A client's tax
+ * position; PR 338). The client's name above Tax position, where the figures
+ * come from and their day, what's owed, and two cards of bars, by item and by
+ * how late, with a note at the end, as the owner's mockup draws them (the
+ * Client tax position canvas). Before the first upload, and with nothing
+ * open in the file, an empty state says so.
+ *
+ * Its client and figures are the session's, read on the server (page.tsx).
+ * The claims by item come with step 8d; the accountant, Contact the
+ * accountant and Ask about this claim with step 9, so until then the note
+ * says to contact the office.
  */
-export function PortalHome({ client }: { client: string }) {
-    const { t } = useLanguage()
+export function PortalHome({ client, position }: { client: string; position: PortalTaxPosition }) {
+    const { t, locale } = useLanguage()
+    const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
+    const money = (n: number) => n.toLocaleString(intl, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    const percent = (n: number) => n.toLocaleString(intl, { style: 'percent', maximumFractionDigits: 0 })
+    // A day kept on one line.
+    const day = (d: string) => formatDay(d, locale).replace(/ /g, '\u00a0')
+    const { asOf, totals } = position
+
+    if (!asOf) {
+        return (
+            <Page>
+                <PageHeader overline={client} title={t('tax_position')} />
+                <div className="ui-panel"><EmptyState icon={ReceiptIcon} title={t('portal_tax_none')} detail={t('portal_tax_none_detail')} /></div>
+            </Page>
+        )
+    }
+
+    const header = <PageHeader overline={client} title={t('tax_position')} subtitle={t('portal_tax_from').replace('{date}', day(asOf))} />
+    if (totals.open === 0) {
+        return (
+            <Page>
+                {header}
+                <div className="ui-panel"><EmptyState icon={ReceiptIcon} title={t('tax_no_open_claims')} detail={t('tax_no_open_claims_detail').replace('{date}', day(asOf))} /></div>
+            </Page>
+        )
+    }
+
+    const claims = (n: number) => countOf(t, locale, n, 'claims')
+    // "All open claims are late" is for more than one; one late claim of one is how many.
+    const late = totals.late === 0 ? null
+        : totals.late === totals.open && totals.open > 1 ? t('portal_tax_all_late')
+            : t('portal_tax_some_late').replace('{count}', claims(totals.late))
+    const share = paidShare(totals.paid, totals.original)
+
     return (
         <Page>
-            <PageHeader overline={client} title={t('tax_position')} subtitle={t('portal_tax_soon')} />
+            {header}
+            {/* Headed by its label, not a card's title, as the owner's mockup draws it. */}
+            <section className="ui-panel ui-portal-owed" aria-labelledby="portal-tax-owed">
+                <div className="ui-portal-owed-figure">
+                    <h2 id="portal-tax-owed" className="ui-portal-owed-label">{t('portal_tax_owed')}</h2>
+                    <LargeFigure value={money(totals.remaining)} unit={t('egp')} />
+                    {late && <p className="ui-portal-owed-late"><StatusBadge tone="problem"><Icon icon={WarningCircleIcon} size={15} />{late}</StatusBadge></p>}
+                </div>
+                <div className="ui-portal-owed-paid">
+                    <ShareBar
+                        share={share}
+                        line={t('portal_tax_share_paid').replace('{share}', percent(share))}
+                        amounts={t('portal_tax_paid_of').replace('{paid}', money(totals.paid)).replace('{original}', money(totals.original)).replace('{currency}', t('egp'))}
+                    />
+                    <dl className="ui-portal-facts">
+                        <div className="ui-portal-fact"><dt>{t('portal_tax_open_claims')}</dt><dd className="ui-num">{totals.open.toLocaleString(intl)}</dd></div>
+                        <div className="ui-portal-fact"><dt>{t('tax_paid')}</dt><dd className="ui-num">{money(totals.paid)} <span className="ui-portal-fact-unit">{t('egp')}</span></dd></div>
+                        <div className="ui-portal-fact">
+                            <dt>{t('portal_tax_oldest_delay')}</dt>
+                            {/* The days kept with their number. */}
+                            <dd className="ui-num">{totals.oldestDelay > 0 ? countOf(t, locale, totals.oldestDelay, 'days').replace(/ /g, '\u00a0') : t('portal_tax_no_delay')}</dd>
+                        </div>
+                    </dl>
+                </div>
+            </section>
+            <Columns>
+                <Card title={t('portal_tax_by_item')} subtitle={t('portal_tax_by_item_hint')}>
+                    {/* The largest first: byItem's order, ties by name, which the bars keep. */}
+                    <BarsByPart label={t('portal_tax_by_item')} parts={position.items.map(item => ({
+                        key: item.item,
+                        name: item.item,
+                        short: shortItemName(item.item),
+                        value: item.remaining,
+                        amount: money(item.remaining),
+                        note: t('portal_tax_item_note').replace('{share}', percent(item.remaining / totals.remaining)).replace('{claims}', claims(item.claims.length)),
+                    }))} />
+                </Card>
+                <Card title={t('portal_tax_how_late')} subtitle={t('portal_tax_how_late_hint')}>
+                    <BarsByPart label={t('portal_tax_how_late')} ordered parts={position.late.map(row => ({
+                        key: row.group,
+                        name: t(`portal_tax_late_${row.group}` as TranslationKey),
+                        value: row.remaining,
+                        amount: money(row.remaining),
+                        note: row.count > 0 ? claims(row.count) : t('portal_tax_no_claims'),
+                    }))} />
+                </Card>
+            </Columns>
+            <p className="ui-portal-note">{t('portal_tax_note').replace('{date}', day(asOf))}</p>
         </Page>
     )
 }
