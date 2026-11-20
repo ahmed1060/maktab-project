@@ -3773,6 +3773,13 @@ export const en = {
         cmsg_in_en: "English",
         cmsg_in_both: "Arabic and English",
         cmsg_used_nizmo: "The company uses Nizmo's message for {message} again.",
+        // The update email's switch on the Client portal tab (CLIENT_PORTAL_PLAN.md §4.4, PR 350).
+        cmsg_emails_title: "Email when the tax position is updated",
+        cmsg_emails_label: "Email the client's people",
+        cmsg_emails_hint: "After each upload of the portal's file, each of the client's people who has a password gets one email: that the office updated the tax position, the date of the figures, and the link to sign in. No amounts, and at most one email a day for a client.",
+        cmsg_emails_on: "On",
+        cmsg_emails_off: "Off",
+        cmsg_emails_load_failed: "The email setting didn't load",
         fieldtext_add: "Add a field where the cursor is:",
         fieldtext_count: "{count} of {max} characters",
         // The claims by item (CLIENT_PORTAL_PLAN.md §12 step 8d, PR 339).
@@ -4574,6 +4581,7 @@ export const en = {
         audit_field_cashAdvancesOn: "Cash advances on",
         audit_field_costNamesFromListOnly: "Cost names only from the saved list",
         audit_field_confirmHighRisk: "High-risk confirmation",
+        audit_field_taxUpdateEmails: "Email when the tax position is updated",
         audit_field_entryId: "Entry",
         audit_field_balance: "Balance",
         audit_field_avatar: "Picture",

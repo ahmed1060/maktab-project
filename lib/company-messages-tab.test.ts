@@ -8,14 +8,15 @@ import { stripComments } from "./strip-comments"
 import { moduleForPagePath } from "./features/routes"
 import { NIZMO_MESSAGES } from "./client-message-template"
 import { sampleMessage } from "./contact-message"
-import { MESSAGE_NAME, clientPortalTabHref, companyMessageApi, companyMessageHref, companyMessagesApi, isMessageKind, nizmoAgainApi, ownLanguages, putBackSince } from "./client-message-pages"
+import { MESSAGE_NAME, clientPortalTabHref, companyMessageApi, companyMessageHref, companyMessagesApi, isMessageKind, nizmoAgainApi, ownLanguages, putBackSince, taxEmailsApi } from "./client-message-pages"
 
 /**
  * A company's client messages on WhatsApp (CLIENT_PORTAL_PLAN.md §7.1, §12
  * step 10c-2; DESIGN.md §5.5, A company's client messages; PR 349): the
  * Client portal tab in Company settings, as the owner's mockup draws it
  * (Company messages), and the message's editor on a page of its own, the
- * Super Admin's editor for that one message. Who sees the tab is in
+ * Super Admin's editor for that one message. The tab's second card, the
+ * update email's switch (§4.4, step 11a; PR 350), is at the end. Who sees the tab is in
  * lib/company-settings-access.test.ts; the routes are in
  * lib/company-messages.test.ts.
  */
@@ -245,7 +246,7 @@ describe("the Client portal tab's card", () => {
 
     it("is the Client portal tab's, whoever opens it, whatever settings.edit says", () => {
         const tabs = source("components/CompanySettingsTabs.tsx")
-        expect(tabs).toContain("{tab === 'client_portal' && <CompanyMessagesCard companyId={companyId} superAdmin={superAdmin} />}")
+        expect(tabs).toMatch(/\{tab === 'client_portal' && <>\s*<CompanyMessagesCard companyId=\{companyId\} superAdmin=\{superAdmin\} \/>/)
         expect(en.settings_tab_client_portal).toBe("Client portal")
         expect(ar.settings_tab_client_portal).toBe("بوابة العملاء")
     })
@@ -341,6 +342,87 @@ describe("the message's editor, on a page of its own", () => {
             expect((ar as Record<string, string>)[key], key).toBeTruthy()
             // Nobody addressed as a man or a woman.
             expect((ar as Record<string, string>)[key], key).not.toMatch(/(أنت|أنتِ|قم |اضغط|ادخل|غيّرها |غيره )/)
+        }
+    })
+})
+
+/** The update email's card on the Client portal tab (§4.4, step 11a; DESIGN.md §5.5; PR 350). */
+async function emailsCard(swr: Record<string, Loaded>, options: { locale?: "en" | "ar"; superAdmin?: boolean } = {}) {
+    const { default: TaxEmailsCard } = await import("@/components/client-messages/TaxEmailsCard")
+    return rendered(TaxEmailsCard, { companyId: "c1", superAdmin: !!options.superAdmin }, swr, { locale: options.locale, role: options.superAdmin ? "SUPER_ADMIN" : "ADMIN" })
+}
+const EMAILS_CARD = "components/client-messages/TaxEmailsCard.tsx"
+
+describe("the update email's card (§4.4, step 11a; PR 350)", () => {
+    it("asks for its own company's switch, or the Super Admin's company's", async () => {
+        expect(taxEmailsApi(null)).toBe("/api/company-messages/emails")
+        expect(taxEmailsApi("c 1")).toBe("/api/company-messages/emails?companyId=c%201")
+        await emailsCard({})
+        expect(state.keys).toContain("/api/company-messages/emails")
+        await emailsCard({}, { superAdmin: true })
+        expect(state.keys).toContain("/api/company-messages/emails?companyId=c1")
+    })
+
+    it("is titled as the mockup titles it, one row saying what's sent, in both languages", async () => {
+        for (const locale of ["en", "ar"] as const) {
+            const words = locale === "ar" ? ar : en
+            const html = await emailsCard({ [taxEmailsApi(null)]: ok({ on: false }) }, { locale })
+            expect(html).toContain(`<h2 class="ui-card-title">${words.cmsg_emails_title}</h2>`)
+            const list = between(html, `<ul class="ui-rows ui-rows-flush" aria-label="${words.cmsg_emails_title}"`, "</ul>")
+            expect(list.split("<li")).toHaveLength(2)
+            expect(list).toContain(esc(words.cmsg_emails_label))
+            expect(list).toContain(esc(words.cmsg_emails_hint))
+        }
+        expect(ar.cmsg_emails_title).toBe("بريد عند تحديث الموقف الضريبي")
+        expect(ar.cmsg_emails_hint).toBe("بعد كل رفع لملف البوابة، يصل لكل شخص من العميل له كلمة مرور بريد واحد: أن المكتب حدّث الموقف الضريبي، وتاريخ الأرقام، ورابط الدخول. بدون مبالغ، وبحد أقصى بريد واحد في اليوم لكل عميل.")
+        expect(en.cmsg_emails_title).toBe("Email when the tax position is updated")
+    })
+
+    it("off: says Off, with Turn on; on: says On, with Turn off, as the company's other switches", async () => {
+        const off = await emailsCard({ [taxEmailsApi(null)]: ok({ on: false }) })
+        expect(off).toContain(`>${en.cmsg_emails_off}</span>`)
+        expect(off).toMatch(new RegExp(`<button[^>]*class="[^"]*ui-btn-primary[^"]*"[^>]*>${en.settings_turn_on}</button>`))
+        expect(off).not.toContain(`>${en.settings_turn_off}</button>`)
+        const on = await emailsCard({ [taxEmailsApi(null)]: ok({ on: true }) })
+        expect(on).toContain(`>${en.cmsg_emails_on}</span>`)
+        expect(on).toContain(`>${en.settings_turn_off}</button>`)
+        expect(on).not.toContain(`>${en.settings_turn_on}</button>`)
+        const ours = await emailsCard({ [taxEmailsApi(null)]: ok({ on: true }) }, { locale: "ar" })
+        expect(ours).toContain(`>${ar.cmsg_emails_on}</span>`)
+        expect(ours).toContain(`>${ar.settings_turn_off}</button>`)
+    })
+
+    it("says while it loads, and when it didn't, with the server's words and Try again", async () => {
+        const loading = await emailsCard({})
+        expect(loading).toContain('<div role="status">')
+        expect(loading).toContain(en.loading)
+        expect(loading).not.toContain(`>${en.settings_turn_on}</button>`)
+        const html = await emailsCard({ [taxEmailsApi(null)]: failed })
+        expect(html).toContain(esc(en.cmsg_emails_load_failed))
+        expect(html).toContain(esc("This company's package doesn't include the client portal."))
+        expect(html).toContain(`>${en.try_again}</button>`)
+        expect(html).not.toContain(`>${en.settings_turn_on}</button>`)
+    })
+
+    it("saves at its own address, asking nothing first, and shows what the server kept", () => {
+        const card = source(EMAILS_CARD)
+        expect(card).toMatch(/fetch\(taxEmailsApi\(scope\), \{\s*method: 'PUT',\s*headers: \{ 'Content-Type': 'application\/json' \},\s*body: JSON\.stringify\(\{ on: next \}\),\s*\}\)/)
+        expect(card).toMatch(/await mutate\(\{ data: \{ on: body\.data\.on \} \}, \{ revalidate: false \}\)/)
+        expect(card).toContain("showToast(t('settings_saved_success'), 'success')")
+        expect(card).not.toContain("ConfirmDialog")
+    })
+
+    it("is on the Client portal tab, under the messages' card", () => {
+        const tabs = source("components/CompanySettingsTabs.tsx")
+        expect(tabs).toMatch(/\{tab === 'client_portal' && <>\s*<CompanyMessagesCard companyId=\{companyId\} superAdmin=\{superAdmin\} \/>\s*<TaxEmailsCard companyId=\{companyId\} superAdmin=\{superAdmin\} \/>\s*<\/>\}/)
+    })
+
+    it("in words for both languages, Arabic neutral", () => {
+        const keys = Object.keys(en).filter(k => k.startsWith("cmsg_emails_"))
+        expect(keys.sort()).toEqual(["cmsg_emails_hint", "cmsg_emails_label", "cmsg_emails_load_failed", "cmsg_emails_off", "cmsg_emails_on", "cmsg_emails_title"])
+        for (const key of keys) {
+            expect((ar as Record<string, string>)[key], key).toBeTruthy()
+            expect((ar as Record<string, string>)[key], key).not.toMatch(/(أنت|أنتِ|قم |اضغط|ادخل)/)
         }
     })
 })

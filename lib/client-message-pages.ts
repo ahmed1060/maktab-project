@@ -22,6 +22,8 @@ export const companyMessagesApi = (companyId: string | null) => `/api/company-me
 export const companyMessageApi = (companyId: string | null, kind: MessageKind, language: MessageLanguage) => `/api/company-messages/${kind}/${language}${named(companyId)}`
 /** Use Nizmo's message for every language at once. */
 export const nizmoAgainApi = (companyId: string | null, kind: MessageKind) => `/api/company-messages/${kind}${named(companyId)}`
+/** The update email's switch (§4.4, step 11a; PR 350). */
+export const taxEmailsApi = (companyId: string | null) => `/api/company-messages/emails${named(companyId)}`
 
 /** A message's editor: on the company's own settings, or the Super Admin's for the company. */
 export const companyMessageHref = (companyId: string, superAdmin: boolean, kind: MessageKind) =>

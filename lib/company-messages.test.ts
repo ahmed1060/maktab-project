@@ -9,7 +9,7 @@ import { isHighRisk } from "./step-up"
 import { KNOWN_REFUSALS } from "./api-errors"
 import { AUDIT_ACTIONS } from "./audit-codes"
 import { messagesCompanyId } from "./client-message-template"
-import { nizmoMessageAgainSchema, nizmoMessagesAgainSchema } from "./validations/client-message.schema"
+import { nizmoMessageAgainSchema, nizmoMessagesAgainSchema, taxUpdateEmailsSchema } from "./validations/client-message.schema"
 import { en } from "./translations/en"
 import { ar } from "./translations/ar"
 
@@ -19,7 +19,9 @@ import { ar } from "./translations/ar"
  * permission it comes with, its routes, which company they're for, and what
  * they're refused with. The Client portal tab and the editor's page, step
  * 10c-2 (PR 349), are in lib/company-messages-tab.test.ts. Saving and going
- * back to Nizmo's are in lib/client-message-templates.db.test.ts.
+ * back to Nizmo's are in lib/client-message-templates.db.test.ts. The update
+ * email's switch (§4.4, step 11a; PR 350) is at the end, its service in
+ * Postgres with the others.
  */
 
 const PERMISSION = "client_messages.manage"
@@ -62,6 +64,8 @@ describe("client_messages.manage (§9)", () => {
         expect(row).toContain("/company-messages/[kind]/[language]")
         // Use Nizmo's message for every language at once (PR 349).
         expect(row).toContain("`DELETE /company-messages/[kind]`")
+        // The update email's switch (PR 350).
+        expect(row).toContain("`GET`, `PUT /company-messages/emails`")
         expect(row).not.toContain("high-risk")
         expect(plan.slice(plan.indexOf("### 6.15"), plan.indexOf("- **Marked in the catalogue"))).not.toContain(`\`${PERMISSION}\``)
     })
@@ -191,5 +195,54 @@ describe("a message put back to Nizmo's is kept, marked as Nizmo's (PR 348, Code
     it("which the schema's model has", () => {
         const model = source("prisma/schema.prisma").split("model ClientMessageTemplate {")[1].split("\n}")[0]
         expect(model).toMatch(/\n  usesNizmo\s+Boolean\s+@default\(false\)\n/)
+    })
+})
+
+describe("the update email's switch (§4.4, step 11a; PR 350)", () => {
+    const route = () => source("app/api/company-messages/emails/route.ts")
+    const NAME = "20270115000000_company_tax_update_emails"
+    const migration = () => source(`prisma/migrations/${NAME}/migration.sql`).split("\n").filter(line => !line.startsWith("--")).join("\n")
+
+    it("has an address of its own that the client portal's gate holds", () => {
+        expect(moduleForApiPath("/api/company-messages/emails")).toBe("TAX_POSITION")
+    })
+
+    it("is read and changed by whoever holds client_messages.manage, nothing else", () => {
+        const handlers = route().split(/export const (?=GET|PUT)/).slice(1)
+        expect(handlers.map(h => h.slice(0, 3))).toEqual(["GET", "PUT"])
+        // Each handler, on its own, ends with the permission.
+        for (const handler of handlers) expect(handler.trim()).toMatch(/\}, \{ permission: "client_messages\.manage" \}\)$/)
+        expect(route().match(/withStandardHandler\(/g)!.length).toBe(2)
+        expect(route()).not.toMatch(/export const (POST|PATCH|DELETE) =/)
+    })
+
+    it("finds the company first, as the messages' routes do, and says whether it's on", () => {
+        for (const handler of route().split(/export const (?:GET|PUT) = /).slice(1)) {
+            expect(handler).toMatch(/^withStandardHandler\(async \(req, session[^)]*\) => \{\s*const companyId = messagesCompanyId\(session\.user as any, new URL\(req\.url\)\.searchParams\.get\("companyId"\)\)\s*if \(!companyId\) return ApiResponse\.badRequest\("companyId is required"\)/)
+        }
+        expect(route()).toContain("ApiResponse.success({ on: await taxUpdateEmails(companyId) })")
+        expect(route()).toContain("taxUpdateEmailsSchema.safeParse(json)")
+        expect(route()).toContain("ApiResponse.success({ on: await setTaxUpdateEmails(actorOf(session), companyId, validation.data.on) })")
+    })
+
+    it("takes on or off, and nothing else", () => {
+        expect(taxUpdateEmailsSchema.safeParse({ on: true }).success).toBe(true)
+        expect(taxUpdateEmailsSchema.safeParse({ on: false }).success).toBe(true)
+        expect(taxUpdateEmailsSchema.safeParse({}).success).toBe(false)
+        expect(taxUpdateEmailsSchema.safeParse({ on: "true" }).success).toBe(false)
+        expect(taxUpdateEmailsSchema.safeParse({ on: 1 }).success).toBe(false)
+        expect(taxUpdateEmailsSchema.safeParse(null).success).toBe(false)
+    })
+
+    it("is kept on the company by a migration that only adds a column, off for every company there is", () => {
+        const statements = migration().split("\n").filter(line => /^[A-Z]/.test(line))
+        expect(statements).toEqual(['ALTER TABLE "Company" ADD COLUMN "taxUpdateEmails" BOOLEAN NOT NULL DEFAULT false;'])
+        const model = source("prisma/schema.prisma").split("model Company {")[1].split("\n}")[0]
+        expect(model).toMatch(/\n  taxUpdateEmails\s+Boolean\s+@default\(false\)\n/)
+    })
+
+    it("is named in the audit log, as the company's other switches are, in both languages", () => {
+        expect((en as Record<string, string>).audit_field_taxUpdateEmails).toBe("Email when the tax position is updated")
+        expect((ar as Record<string, string>).audit_field_taxUpdateEmails).toBe("بريد عند تحديث الموقف الضريبي")
     })
 })

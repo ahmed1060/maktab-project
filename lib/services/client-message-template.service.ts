@@ -286,3 +286,34 @@ export async function nizmoMessagesAgain(
         return back
     })
 }
+
+/**
+ * Whether the company emails its client's people when their tax position is
+ * updated (CLIENT_PORTAL_PLAN.md §4.4, step 11a; PR 350): off to start.
+ * Refused where its package hasn't the client portal, as its messages are.
+ */
+export async function taxUpdateEmails(companyId: string): Promise<boolean> {
+    const company = await portalCompany(companyId)
+    const { taxUpdateEmails } = await prisma.company.findUniqueOrThrow({ where: { id: company.id }, select: { taxUpdateEmails: true } })
+    return taxUpdateEmails
+}
+
+/**
+ * Turns the update email on or off for the company. Written only where it
+ * isn't so already, so two saves at once change it, and log it, once; the
+ * change is in the audit log as the company's other switches are, with what
+ * it was and what it is.
+ */
+export async function setTaxUpdateEmails(by: Actor, companyId: string, on: boolean): Promise<boolean> {
+    const company = await portalCompany(companyId)
+    await prisma.$transaction(async tx => {
+        const { count } = await tx.company.updateMany({ where: { id: company.id, taxUpdateEmails: !on }, data: { taxUpdateEmails: on } })
+        if (count === 0) return
+        await AuditLogService.log('UPDATE_COMPANY', 'COMPANY', company.id, {
+            tx,
+            ...loggedBy(by),
+            details: { taxUpdateEmails: { old: !on, new: on } },
+        })
+    })
+    return on
+}

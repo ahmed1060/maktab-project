@@ -9,7 +9,8 @@ import { NIZMO_MESSAGES } from "./client-message-template"
  * ClientMessageTemplate, what it refuses, each message once in each language
  * for Nizmo and for each company, what goes with a company or a person, the
  * texts a company's client's people are given, Nizmo's as the Super Admin
- * keeps them, and a company's own copy.
+ * keeps them, and a company's own copy. And the update email's switch on the
+ * same tab (§4.4, step 11a; PR 350).
  *
  * Needs a Postgres it may create databases on: set ROLES_TEST_DATABASE_URL to
  * its maintenance database. Skipped without it (CI has no database).
@@ -609,6 +610,54 @@ describe.skipIf(!ADMIN_URL)("the messages' templates, in Postgres", () => {
             expect(await refusal(backAll("contact", { ar: null, en: null }, SAM, "c4"))).toBe("CLIENT_PORTAL_NOT_IN_PACKAGE")
             expect(await refusal(backAll("contact", { ar: null, en: null }, SAM, "gone"))).toBe("COMPANY_NOT_FOUND")
             expect(await marks("c3")).toEqual(["contact:en:false"])
+            expect(await logged()).toEqual([])
+        })
+    })
+
+    describe("the update email's switch (§4.4, step 11a)", () => {
+        const AMAL = { id: "a1", name: "Amal One", role: "ADMIN" }
+        const SAM = { id: "sa", name: "Sam Admin", role: "SUPER_ADMIN" }
+        const refusal = (write: Promise<unknown>) => write.then(() => "saved", (error: Error) => error.message)
+        const logged = async () => (await db.query(`SELECT action, "entityType", "entityId", "userId", "superAdminId", details FROM "AuditLog" ORDER BY "createdAt"`)).rows
+        const switches = async () => (await db.query(`SELECT id, "taxUpdateEmails" AS on FROM "Company" ORDER BY id`)).rows.map(r => `${r.id}:${r.on}`)
+
+        beforeEach(async () => {
+            await db.query(`UPDATE "Company" SET "taxUpdateEmails" = false`)
+        })
+
+        it("is off for every company to start", async () => {
+            expect(await switches()).toEqual(["c1:false", "c2:false", "c3:false", "c4:false"])
+            expect(await templates.taxUpdateEmails("c1")).toBe(false)
+        })
+
+        it("is turned on and off for the one company, each change in the audit log as the company's other switches are", async () => {
+            expect(await templates.setTaxUpdateEmails(AMAL, "c1", true)).toBe(true)
+            expect(await templates.taxUpdateEmails("c1")).toBe(true)
+            expect(await switches()).toEqual(["c1:true", "c2:false", "c3:false", "c4:false"])
+            expect(await templates.setTaxUpdateEmails(SAM, "c1", false)).toBe(false)
+            expect(await switches()).toEqual(["c1:false", "c2:false", "c3:false", "c4:false"])
+            expect(await logged()).toEqual([
+                { action: "UPDATE_COMPANY", entityType: "COMPANY", entityId: "c1", userId: "a1", superAdminId: null, details: { taxUpdateEmails: { old: false, new: true } } },
+                { action: "UPDATE_COMPANY", entityType: "COMPANY", entityId: "c1", userId: null, superAdminId: "sa", details: { taxUpdateEmails: { old: true, new: false } } },
+            ])
+        })
+
+        it("writes nothing where it's as asked already, twice at once included", async () => {
+            expect(await templates.setTaxUpdateEmails(AMAL, "c1", false)).toBe(false)
+            expect(await logged()).toEqual([])
+            await Promise.all([templates.setTaxUpdateEmails(AMAL, "c1", true), templates.setTaxUpdateEmails(SAM, "c1", true)])
+            expect(await switches()).toEqual(["c1:true", "c2:false", "c3:false", "c4:false"])
+            expect((await logged()).map(r => r.details)).toEqual([{ taxUpdateEmails: { old: false, new: true } }])
+        })
+
+        it("is refused, read or changed, writing nothing, for a company whose package hasn't the client portal, one with no package, and one that isn't there", async () => {
+            for (const company of ["c3", "c4"]) {
+                expect(await refusal(templates.taxUpdateEmails(company))).toBe("CLIENT_PORTAL_NOT_IN_PACKAGE")
+                expect(await refusal(templates.setTaxUpdateEmails(SAM, company, true))).toBe("CLIENT_PORTAL_NOT_IN_PACKAGE")
+            }
+            expect(await refusal(templates.taxUpdateEmails("gone"))).toBe("COMPANY_NOT_FOUND")
+            expect(await refusal(templates.setTaxUpdateEmails(SAM, "gone", true))).toBe("COMPANY_NOT_FOUND")
+            expect(await switches()).toEqual(["c1:false", "c2:false", "c3:false", "c4:false"])
             expect(await logged()).toEqual([])
         })
     })
