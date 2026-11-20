@@ -220,6 +220,17 @@ describe("the page", () => {
         expect(html).toContain(`<p class="ui-chat-note">${esc(ar.cmsg_preview_note)}</p>`)
     })
 
+    it("a save says the time its text started from, keeps what's typed while it goes, and after a refusal saves over the newer one", () => {
+        // PR 347, Codex's two findings: the time isn't the one the page read last, as another message's save reads them all again.
+        const page = source("app/(dashboard)/dashboard/client-messages/page.tsx")
+        expect(page).toContain("body: JSON.stringify({ text: sent, since: sinceOf(edits, key, current.changedAt) })")
+        expect(page).toContain("setEdits(e => written(e, key, text, current.changedAt))")
+        expect(page).toContain("setEdits(e => saved(e, key, sent, typeof body?.data?.changedAt === 'string' ? body.data.changedAt : null))")
+        expect(page).toContain("if (now) setEdits(e => conflicted(e, key, now.changedAt))")
+        expect(page).toContain("setEdits(e => discarded(e, key))")
+        expect(page).not.toContain("setDrafts")
+    })
+
     it("the text and its preview side by side", () => {
         expect(source("app/(dashboard)/dashboard/client-messages/page.tsx")).toMatch(/<Columns>\s*<Card className="ui-fieldtext-card"[\s\S]*<\/Card>\s*<Card title=\{t\('cmsg_preview'\)\}[\s\S]*<\/Card>\s*<\/Columns>/)
     })

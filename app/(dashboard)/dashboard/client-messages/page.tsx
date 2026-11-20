@@ -13,6 +13,7 @@ import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useGuardLinks } from '@/lib/useUnsavedChanges'
 import { MESSAGE_FIELDS, MESSAGE_MAX_LENGTH, messageLength, messageProblem, type MessageKind, type MessageLanguage, type NizmoMessage } from '@/lib/client-message-template'
 import { sampleMessage } from '@/lib/contact-message'
+import { NO_EDITS, conflicted, discarded, saved, sinceOf, written, type Edits } from '@/lib/client-message-drafts'
 import type { TranslationKey } from '@/lib/translations'
 
 /**
@@ -24,9 +25,10 @@ import type { TranslationKey } from '@/lib/translations'
  * A tab for each message, then the text with fields put in by buttons and
  * its preview with made-up figures. Each message in each language keeps its
  * own changes until they're saved or discarded; leaving the page with any
- * unsaved asks first. A save says the text it started from, and one someone
- * else changed since is refused: the page then shows it as it is, keeping
- * these changes to save over it.
+ * unsaved asks first. A save says the time of the saved text its changes
+ * started from (lib/client-message-drafts.ts), and one someone else changed
+ * since is refused: the page then shows it as it is, keeping these changes
+ * to save over it. What's typed while a save goes stays, unsaved.
  */
 
 const LANGUAGES: { value: MessageLanguage; label: string; lang: string }[] = [
@@ -63,8 +65,8 @@ export default function ClientMessagesPage() {
 
     const [kind, setKind] = useState<MessageKind>('contact')
     const [language, setLanguage] = useState<MessageLanguage>(locale === 'ar' ? 'ar' : 'en')
-    // Each message's text as it's being changed, by message and language; none where it's as saved.
-    const [drafts, setDrafts] = useState<Record<string, string>>({})
+    // Each message's text as it's being changed, by message and language, with the time of the saved text it started from.
+    const [edits, setEdits] = useState<Edits>(NO_EDITS)
     const [mistakes, setMistakes] = useState<Record<string, TranslationKey>>({})
     // Raised to start a message's box again from its saved text, as Discard changes does.
     const [starts, setStarts] = useState<Record<string, number>>({})
@@ -73,7 +75,7 @@ export default function ClientMessagesPage() {
     const box = useRef<HTMLDivElement | null>(null)
 
     const savedText = (k: string) => messages?.find(m => keyOf(m.kind, m.language) === k)?.text
-    const dirty = Object.entries(drafts).some(([k, text]) => text !== savedText(k))
+    const dirty = Object.entries(edits.drafts).some(([k, text]) => text !== savedText(k))
     useGuardLinks(dirty, href => setLeaving(href))
     useEffect(() => {
         if (!dirty) return
@@ -105,7 +107,7 @@ export default function ClientMessagesPage() {
     const key = keyOf(kind, language)
     const current = messages.find(m => m.kind === kind && m.language === language)
     if (!current) return null
-    const draft = drafts[key] ?? current.text
+    const draft = edits.drafts[key] ?? current.text
     const changed = draft !== current.text
     const mistake = mistakes[key]
     const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
@@ -113,11 +115,11 @@ export default function ClientMessagesPage() {
     const fields = MESSAGE_FIELDS[kind].map(f => ({ key: f, label: t(`cmsg_field_${f}` as TranslationKey) }))
 
     const write = (text: string) => {
-        setDrafts(d => ({ ...d, [key]: text }))
+        setEdits(e => written(e, key, text, current.changedAt))
         if (mistake) setMistakes(m => without(m, key))
     }
     const startAgain = () => {
-        setDrafts(d => without(d, key))
+        setEdits(e => discarded(e, key))
         setMistakes(m => without(m, key))
         setStarts(s => ({ ...s, [key]: (s[key] ?? 0) + 1 }))
     }
@@ -129,22 +131,29 @@ export default function ClientMessagesPage() {
         if (saving || !changed) return
         const problem = messageProblem(kind, draft)
         if (problem) return wrong(PROBLEMS[problem.problem])
+        // What's typed while it goes isn't in this save, and stays unsaved.
+        const sent = draft
         setSaving(true)
         try {
             const res = await fetch(`/api/client-messages/${kind}/${language}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: draft, since: current.changedAt }),
+                body: JSON.stringify({ text: sent, since: sinceOf(edits, key, current.changedAt) }),
             })
             const body = await res.json().catch(() => null)
             if (!res.ok) {
                 const said = typeof body?.code === 'string' ? REFUSALS[body.code] : undefined
-                if (body?.code === 'MESSAGE_CHANGED_SINCE') await mutate()
+                if (body?.code === 'MESSAGE_CHANGED_SINCE') {
+                    // Shown as it is now, who changed it and when: a save after this replaces that one.
+                    const fresh = await mutate()
+                    const now = (fresh?.data?.messages as NizmoMessage[] | undefined)?.find(m => m.kind === kind && m.language === language)
+                    if (now) setEdits(e => conflicted(e, key, now.changedAt))
+                }
                 if (said) return wrong(said)
                 return showToast(typeof body?.error === 'string' ? body.error : t('error_generic'), 'error')
             }
             await mutate()
-            setDrafts(d => without(d, key))
+            setEdits(e => saved(e, key, sent, typeof body?.data?.changedAt === 'string' ? body.data.changedAt : null))
             showToast(t('cmsg_saved'), 'success')
         } catch {
             showToast(t('error_generic'), 'error')
@@ -208,7 +217,7 @@ export default function ClientMessagesPage() {
                 onConfirm={() => {
                     const href = leaving
                     setLeaving(null)
-                    setDrafts({})
+                    setEdits(NO_EDITS)
                     if (href) router.push(href)
                 }}
             />
