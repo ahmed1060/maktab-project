@@ -251,10 +251,13 @@ describe("the page", () => {
         }
     })
 
-    it("asks for the current password first, focused, then the new one twice with its hint", async () => {
+    it("asks for the current password first, then the new one twice with its hint, nothing focused as it opens", async () => {
         const html = await page()
         expect(html).toMatch(input({ name: "currentPassword", type: "password", autocomplete: "current-password" }))
-        expect(html).toMatch(/<input(?=[^>]*name="currentPassword")[^>]*autofocus=""/i)
+        // Nothing takes the focus as the page opens: a phone's keyboard
+        // doesn't come up over it, and a screen reader starts at its top
+        // (the owner's answer of 2026-11-20, PR 341).
+        expect(html).not.toMatch(/autofocus/i)
         expect(html).toMatch(input({ name: "newPassword", type: "password", autocomplete: "new-password", maxlength: "72" }))
         expect(html).toMatch(input({ name: "confirmPassword", type: "password", autocomplete: "new-password", maxlength: "72" }))
         const at = (text: string) => html.indexOf(`>${esc(text)}</label>`)

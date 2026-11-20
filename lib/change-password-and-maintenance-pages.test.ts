@@ -72,6 +72,10 @@ describe("Change password on the building blocks", () => {
         expect(html).toMatch(input({ name: "newPassword", type: "password", autoComplete: "new-password", maxLength: "72" }))
         expect(html).toMatch(input({ name: "confirmPassword", type: "password", autoComplete: "new-password", maxLength: "72" }))
         expect(html.match(/aria-label="Show password"/g)).toHaveLength(2)
+        // Nothing takes the focus as the page opens: a phone's keyboard
+        // doesn't come up over it, and a screen reader starts at its top
+        // (the owner's answer of 2026-11-20, PR 341).
+        expect(html).not.toMatch(/autofocus/i)
         // How long it must be, as the new one's hint (DESIGN.md §5.3).
         expect(html).toMatch(new RegExp(`<span id="[^"]+-hint" class="ui-hint">${literal(en.change_password_new_hint)}</span>`))
         expect(html).toMatch(new RegExp(`<button type="submit" class="ui-btn ui-btn-primary">${literal(en.change_password_save)}</button>`))

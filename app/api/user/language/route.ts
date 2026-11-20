@@ -4,7 +4,9 @@ import { UserService } from '@/lib/services/user.service'
 import { prisma } from '@/lib/prisma'
 
 export const POST = withStandardHandler(async (req, session, json) => {
-    const { language } = json
+    // No body, or an empty one, is null here (withStandardHandler): it's a
+    // request without a language, refused as one is (PR 341).
+    const language = json?.language
     if (!language || !['en', 'ar'].includes(language)) {
         return ApiResponse.badRequest("Invalid language")
     }
