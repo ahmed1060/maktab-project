@@ -161,19 +161,6 @@ describe("the page's header", () => {
     })
 })
 
-describe("the note under the claims", () => {
-    it("says to use Contact the accountant where it's there", () => {
-        expect(page(POSITION, WRITES)).toContain(`<p class="ui-portal-note">Amounts are in Egyptian pounds, as they were on the Tax Authority&#x27;s portal on 17\u00a0Nov\u00a02026, and penalties for paying late aren&#x27;t counted. To ask about any claim, use Contact the accountant at the top of the page.</p>`)
-        expect(page(POSITION, WRITES, "ar")).toContain(`<p class="ui-portal-note">المبالغ بالجنيه المصري كما هي على بوابة مصلحة الضرائب يوم ١٧\u00a0نوفمبر\u00a0٢٠٢٦، وغرامات التأخير غير محسوبة. للاستفسار عن أي مطالبة، يُستخدم زر «التواصل مع المحاسب» أعلى الصفحة.</p>`)
-    })
-
-    it("says to contact the office where it isn't", () => {
-        for (const accountant of [NO_NUMBER, null]) {
-            expect(page(POSITION, accountant)).toContain("To ask about any claim, contact the office.</p>")
-        }
-    })
-})
-
 describe("the dialog", () => {
     it("titled, with a Close button at its title's end", () => {
         const html = dialog()
@@ -340,7 +327,6 @@ describe("its words", () => {
     it("in English", () => {
         expect(en.portal_contact_accountant).toBe("Contact the accountant")
         expect(en.portal_tax_accountant).toBe("Responsible accountant: {name}")
-        expect(en.portal_tax_note_accountant).toBe("Amounts are in Egyptian pounds, as they were on the Tax Authority's portal on {date}, and penalties for paying late aren't counted. To ask about any claim, use Contact the accountant at the top of the page.")
         expect(en.contact_accountant_for).toBe("Responsible accountant for {client}")
         expect(en.contact_message_label).toBe("Message")
         expect(en.contact_message_hint).toBe("The message can be changed here or in WhatsApp before it's sent.")
@@ -352,7 +338,6 @@ describe("its words", () => {
     it("in Arabic, as the mockup says them, neutral as the app's are", () => {
         expect(ar.portal_contact_accountant).toBe("التواصل مع المحاسب")
         expect(ar.portal_tax_accountant).toBe("المحاسب المسؤول: {name}")
-        expect(ar.portal_tax_note_accountant).toBe("المبالغ بالجنيه المصري كما هي على بوابة مصلحة الضرائب يوم {date}، وغرامات التأخير غير محسوبة. للاستفسار عن أي مطالبة، يُستخدم زر «التواصل مع المحاسب» أعلى الصفحة.")
         expect(ar.contact_accountant_for).toBe("المحاسب المسؤول عن {client}")
         expect(ar.contact_message_label).toBe("الرسالة")
         expect(ar.contact_message_hint).toBe("يمكن تعديل الرسالة هنا أو في واتساب قبل الإرسال.")

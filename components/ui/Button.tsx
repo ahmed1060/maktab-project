@@ -49,6 +49,22 @@ export function GuideButton({ label, onClick }: { label: string; onClick: () => 
     )
 }
 
+/**
+ * A button that's only an icon (DESIGN.md §5.2, An icon button; PR 345), such
+ * as a claim's Ask about this claim: quiet and 44px square, named for screen
+ * readers with what it acts on, and saying what it does when pointed at (its
+ * name, where it's given nothing else). What else it's given, such as what it
+ * opens and its press, is handed on.
+ */
+export function IconButton({ icon, label, tip, className, ...rest }:
+    { icon: PhosphorIcon; label: string; tip?: string; className?: string } & Omit<ComponentPropsWithoutRef<'button'>, 'children' | 'className' | 'aria-label' | 'title' | 'type'>) {
+    return (
+        <button type="button" className={classes('quiet', 'md', cx('ui-btn-icon', className))} aria-label={label} title={tip ?? label} {...rest}>
+            <Icon icon={icon} size={20} />
+        </button>
+    )
+}
+
 /** A link that looks like a button, for actions that go to another page. */
 export function ButtonLink({ variant = 'secondary', size = 'md', icon, className, children, href, ...rest }:
     Look & { href: string } & Omit<ComponentPropsWithoutRef<typeof Link>, 'href' | 'children'>) {

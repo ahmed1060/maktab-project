@@ -1,10 +1,11 @@
 'use client'
 
 import { Fragment, useId, useState } from 'react'
-import { CaretDownIcon, CaretRightIcon } from '@phosphor-icons/react/ssr'
-import { Icon, StatusBadge } from '@/components/ui'
+import { CaretDownIcon, CaretRightIcon, ChatTextIcon } from '@phosphor-icons/react/ssr'
+import { Icon, IconButton, StatusBadge } from '@/components/ui'
 import { formatDay } from '@/components/records/types'
 import { useLanguage } from '@/context/LanguageContext'
+import type { ClaimAsked } from '@/lib/contact-message'
 import { countOf } from '@/lib/plural'
 import { claimPeriod, latestDueFirst, toggledItem, type ItemGroup, type PortalTaxPosition } from '@/lib/portal-tax'
 import { claimBadges, type ClaimBadge, type TaxClaimRow } from '@/lib/tax-claims'
@@ -14,13 +15,19 @@ import type { TranslationKey } from '@/lib/translations'
  * The client's claims by item (CLIENT_PORTAL_PLAN.md §6, §12 step 8d;
  * DESIGN.md §5.5, A client's tax position; PR 339), as the owner's mockup
  * draws them: a table on computers and cards on phones, each item opening to
- * its claims, the largest open at first, with a total at the foot. Ask about
- * this claim comes with step 9.
+ * its claims, the largest open at first, with a total at the foot. Where
+ * the client's people can write to their accountant, each claim ends with
+ * Ask about this claim (step 9d; PR 345).
  *
  * Both are drawn and the page's width shows one, as a DataList does; which
  * items are open is one choice for both.
  */
-export function PortalClaims({ items, totals }: { items: ItemGroup[]; totals: PortalTaxPosition['totals'] }) {
+export function PortalClaims({ items, totals, onAsk }: {
+    items: ItemGroup[]
+    totals: PortalTaxPosition['totals']
+    /** Where Contact the accountant is there: what a claim's Ask about this claim opens. */
+    onAsk?: (asked: ClaimAsked) => void
+}) {
     const { t, locale } = useLanguage()
     const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
     const base = useId()
@@ -49,6 +56,20 @@ export function PortalClaims({ items, totals }: { items: ItemGroup[]; totals: Po
             ))}
         </span>
     )
+    // A claim's badges, then Ask about this claim where there's one to write to, at the end side.
+    const end = (c: TaxClaimRow, item: ItemGroup) => onAsk ? (
+        <span className="ui-claim-end">
+            {badges(claimBadges(c))}
+            <IconButton
+                icon={ChatTextIcon}
+                className="ui-claim-ask"
+                label={t('portal_claim_ask').replace('{number}', c.claimNumber)}
+                tip={t('portal_claim_ask_tip')}
+                aria-haspopup="dialog"
+                onClick={() => onAsk({ claim: c, item: item.item })}
+            />
+        </span>
+    ) : badges(claimBadges(c))
     // Down while open; to the end side while closed, turned in Arabic.
     const caret = (isOpen: boolean) => isOpen
         ? <Icon icon={CaretDownIcon} size={16} className="ui-claims-caret" />
@@ -113,7 +134,7 @@ export function PortalClaims({ items, totals }: { items: ItemGroup[]; totals: Po
                                                 <td className="ui-num">{money(c.paidAmount)}</td>
                                                 <td className="ui-num ui-claims-remaining">{money(c.remainingAmount)}</td>
                                                 <td>{day(c.dueDate)}</td>
-                                                <td>{badges(claimBadges(c))}</td>
+                                                <td>{end(c, item)}</td>
                                             </tr>
                                         )
                                     })}
@@ -156,7 +177,7 @@ export function PortalClaims({ items, totals }: { items: ItemGroup[]; totals: Po
                                         const when = period(c)
                                         return (
                                             <li key={c.id} className="ui-claim-card">
-                                                <div className="ui-claim-card-top"><span className="ui-claim-number" dir="ltr">{c.claimNumber}</span>{badges(claimBadges(c))}</div>
+                                                <div className="ui-claim-card-top"><span className="ui-claim-number" dir="ltr">{c.claimNumber}</span>{end(c, item)}</div>
                                                 <p className="ui-claim-card-when">
                                                     {when ? t('portal_claim_period_due').replace('{period}', when).replace('{date}', day(c.dueDate)) : t('portal_claim_due').replace('{date}', day(c.dueDate))}
                                                 </p>
