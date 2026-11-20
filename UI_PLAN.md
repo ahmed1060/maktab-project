@@ -6788,3 +6788,19 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   (`CLIENT_PORTAL_PLAN.md` §12 step 9a; `DESIGN.md` §5.5): a card of its
   own on the profile's form, Contacting clients, where the package has
   the client portal, as the owner's mockup draws it.
+- **2026-11-20 (decided by the owner):** Three answers, each built in
+  its own PR after 9a:
+  - **The app's frame and cards as the client tax position mockup draws
+    them, everywhere:** the top bar on computers as on phones, the
+    avatar alone where it now has the person's name, the client's or
+    company's name and a chevron beside it, and the language switch as
+    "ع" and "EN" where it now says "العربية" and "English"; the page
+    title's weight (600); card titles in 15px at weight 600 with more
+    room around them; and 16px between cards. `DESIGN.md` first, in its
+    own commit.
+  - **No focus on arrival on either Change password page:** the company's
+    (a forced change, which starts at the new password) and the client
+    area's (which starts at the current one). Focusing a password field
+    opens the keyboard on a phone and hides half the page.
+  - **`/api/user/language` with no body:** refused as a request without
+    a language (400), not an error of the server's.
