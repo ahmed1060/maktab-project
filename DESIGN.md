@@ -1923,6 +1923,53 @@ These are built once, in the building-blocks PR, and every page uses them
     of what was owed and its last day to pay (`CLIENT_PORTAL_PLAN.md`
     §7).
   - Nothing of it is sent through Nizmo or kept.
+- **A text with fields put in by buttons:** a message written once and
+  filled in for each person it's sent for, such as the client messages on
+  WhatsApp (`CLIENT_PORTAL_PLAN.md` §7.1), as the owner's mockup draws it
+  (Message templates).
+  - **The box** is a field (§5.3) as tall as its text, and at least six
+    lines, its lines with room between them, as a message's are in
+    Contact on WhatsApp. Each field is a chip in its place, named in the
+    page's language: `--brand-tint-strong`, in `--brand-text` at weight
+    600, pill-shaped. A field is never typed: it's put in by its button,
+    and goes as one piece with Backspace or Delete beside it. The text
+    runs in its own language's direction, whatever the page's.
+  - **The buttons,** under the box: "Add a field where the cursor is:" in
+    `--text-xs` and `--muted`, then one for each field the text may
+    have, "+" and its name, in `--text-sm` and `--brand-text`,
+    pill-shaped with a dashed `--brand` edge, 32px tall (44px on phones),
+    wrapping. A field goes where the cursor last was in the box, or at
+    its end, and the cursor after it.
+  - **Under them,** on one line that wraps, in `--text-xs` and `--muted`:
+    how many characters of 1,000 it is, in `--problem-text` past that;
+    and who changed it last and when, saying every change is in the
+    audit log, or that it hasn't been changed.
+  - **Save** (primary) **and Discard changes** (secondary) at its foot,
+    on the start side, both disabled while the text is as it was saved.
+    A mistake, such as an empty text or one too long, is said under the
+    box, as a field's is, and the focus goes to the box.
+  - **In two languages,** a switch between them (§5.1) beside its label,
+    at the card's top on the end side: العربية, then English, in that
+    order whatever the page's language. Each language keeps its own
+    changes until they're saved or discarded.
+- **A message's preview:** a card beside the text on computers, under it
+  on phones, titled "Preview with sample figures": the message filled as
+  Contact on WhatsApp fills it, from made-up figures, in its own
+  language, as a chat bubble.
+  - The bubble is `--chat-bubble` on a `--chat-ground` panel, in
+    `--chat-ink`, with 12px corners, 12px inside the panel and on the
+    start side of its language. Light: `--chat-ground` `#efeae2`,
+    `--chat-bubble` `#d9fdd3`, `--chat-ink` `#111b21`. Dark: `#0b141a`,
+    `#005c4b` and `#e9edef`. Its text reads at 4.5:1 or better on it in
+    both.
+  - Under it, in `--text-xs` and `--muted`: the fields are filled from
+    the client's page when the message is opened, and the client's
+    person can change it before it's sent.
+- **Client messages on WhatsApp:** the Super Admin's page of Nizmo's own
+  messages, under Templates. Its header names it and says that a company
+  that changed a message uses its own, and every other company these.
+  Under it, a tab for each message, then the text with fields put in by
+  buttons and its preview, side by side (§5.5, Page layout).
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
@@ -3042,3 +3089,10 @@ changed:
   message. The note under the claims then points to it, in its row on
   computers and its card on phones (`CLIENT_PORTAL_PLAN.md` §12, step
   9d).
+- **2026-11-20:** A text with fields put in by buttons, a message's
+  preview, and Client messages on WhatsApp (§5.5), as the owner's mockup
+  draws them: fields as chips put in by buttons where the cursor was,
+  how many characters of 1,000, who changed it last, Save and Discard
+  changes, Arabic and English each with its own changes, and the message
+  filled with made-up figures as a chat bubble, on three new tokens
+  (`CLIENT_PORTAL_PLAN.md` §12, step 10b).
