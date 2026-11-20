@@ -681,6 +681,13 @@ input::-webkit-credentials-auto-fill-button {
   :root {
     --text-hero: 36px;
     --leading-hero: 44px;
+  }
+}
+
+/* A card's inside on phones, 16px all round (DESIGN.md §4.1, §5.5;
+   PR 342). */
+@media (max-width: 767px) {
+  :root {
     --card-pad-block: var(--space-4);
     --card-pad-inline: var(--space-4);
   }

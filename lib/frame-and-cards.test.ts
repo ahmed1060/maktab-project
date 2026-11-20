@@ -35,8 +35,9 @@ describe("the scale has what the mockup draws", () => {
     it("keeps a card's inside in two tokens, 20px and 24px, and 16px on phones", () => {
         expect(globals).toMatch(/--card-pad-block: var\(--space-5\);/)
         expect(globals).toMatch(/--card-pad-inline: var\(--space-6\);/)
-        const phone = globals.slice(globals.indexOf("@media (max-width: 767px)"))
-        const block = phone.slice(0, phone.indexOf("\n}\n"))
+        // Every phone block of globals.css: the card's is its own, after the
+        // large figure's.
+        const block = globals.split("@media (max-width: 767px) {").slice(1).map(b => b.slice(0, b.indexOf("\n}\n"))).join("\n")
         expect(block).toMatch(/--card-pad-block: var\(--space-4\);/)
         expect(block).toMatch(/--card-pad-inline: var\(--space-4\);/)
     })
