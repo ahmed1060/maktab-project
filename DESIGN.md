@@ -1995,6 +1995,17 @@ These are built once, in the building-blocks PR, and every page uses them
     editor as the Super Admin's, with the fields and the preview.
   - Loading and failing say so in the card's place, failing with Try
     again.
+  - **Email when the tax position is updated:** a second card under it,
+    titled so, the mockup's middle card. One row, as a card's Rows are:
+    its title, Email the client's people; its line, what is sent: after
+    each upload of the portal's file, one email to each of the client's
+    people who has set a password, saying the office updated the tax
+    position, the day the figures are from, and the link to sign in, with
+    no amounts and at most one a day for a client. On the end side the
+    On or Off badge and Turn on or Turn off, as the company's other
+    switches are (decided on 2026-11-20, in place of the mockup's
+    toggle). Neither asks first: nothing is lost, and it's turned back
+    here. Loading and failing as the card above.
   - **The message's editor:** a page of its own, the Client messages on
     WhatsApp page's editor for that one message, with no tabs: the text
     with fields put in by buttons, Arabic or English, beside its preview.
