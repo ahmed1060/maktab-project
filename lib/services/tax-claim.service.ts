@@ -9,6 +9,8 @@ import { daysLate, figuresAge, type TaxPosition } from "@/lib/tax-claims"
 import { summarise, type PortalTaxPosition } from "@/lib/portal-tax"
 import { compareClaims, fileNamesClient, namedCompany, sentUpload, type ClaimDraft, type TaxClaimsNow, type TaxUploadSaved } from "@/lib/tax-file"
 import { accountantOf } from "@/lib/services/client-accountant.service"
+import { sendTaxUpdateEmails, taxEmailPlan } from "@/lib/services/tax-update-email.service"
+import { PRODUCTION_ORIGIN } from "@/lib/app-origin"
 
 /** A date column's day, as it was written. */
 const dayOf = (date: Date) => date.toISOString().slice(0, 10)
@@ -209,18 +211,23 @@ const WRITTEN_AT_ONCE = 500
  * save, as saving the rest would delete that claim. The save is refused too
  * where another file was saved since its check screen read the claims, and,
  * until it's sent as confirmed, where the file's company isn't the client's.
+ *
+ * Once it's saved, the client's people are emailed where the company has
+ * turned that on (§4.4, PR 351): who, worked out in the save; the emails
+ * sent after it, which say what they did.
  */
-export async function saveTaxFile(user: Uploader, body: unknown, now: Date = new Date()): Promise<TaxUploadSaved> {
+export async function saveTaxFile(user: Uploader, body: unknown, now: Date = new Date(), origin: string = PRODUCTION_ORIGIN): Promise<TaxUploadSaved> {
     if (!can(user, "tax.manage")) throw new Error("TAX_MANAGE_REQUIRED")
     const sent = sentUpload(body)
     if ("problem" in sent) throw new Error(sent.problem === "too_many" ? "TAX_TOO_MANY_CLAIMS" : "TAX_UPLOAD_INVALID")
     const { upload } = sent
     const client = await clientToUpload(user, upload.clientId)
-    if (upload.asOf > calendarDateStr(now, await filterTimeZone(client.companyId))) throw new Error("TAX_DAY_AFTER_TODAY")
+    const today = calendarDateStr(now, await filterTimeZone(client.companyId))
+    if (upload.asOf > today) throw new Error("TAX_DAY_AFTER_TODAY")
 
     const superAdmin = user.role === "SUPER_ADMIN"
     const { AuditLogService } = await import("./audit-log.service")
-    return prisma.$transaction(async tx => {
+    const done = await prisma.$transaction(async tx => {
         // The client's row is held first, as archiving and deleting it hold
         // it: two saves go one after the other, and a client archived
         // meanwhile is refused. One query after another from here: a
@@ -229,7 +236,7 @@ export async function saveTaxFile(user: Uploader, body: unknown, now: Date = new
         if (!held.length) throw new Error("CLIENT_NOT_FOUND")
         if (held[0].archivedAt) throw new Error("CLIENT_ARCHIVED")
 
-        const position = await tx.clientTaxPosition.findUnique({ where: { clientId: client.id }, select: { uploads: true, fileCompany: true } })
+        const position = await tx.clientTaxPosition.findUnique({ where: { clientId: client.id }, select: { uploads: true, fileCompany: true, emailedOn: true } })
         // Still as the check screen read them: no file saved since.
         if ((position?.uploads ?? 0) !== upload.uploads) throw new Error("TAX_CLAIMS_CHANGED")
         // One client's file isn't saved for another without being asked.
@@ -265,6 +272,10 @@ export async function saveTaxFile(user: Uploader, body: unknown, now: Date = new
             })
         }
 
+        // Whether the client's people are emailed (§4.4, PR 351), read while
+        // the client is held, so two uploads at once email it once a day.
+        const email = await taxEmailPlan(tx, { id: client.id, companyId: client.companyId, name: held[0].name }, position?.emailedOn ?? null, today, upload.asOf)
+
         const kept = {
             asOf: dateOf(upload.asOf),
             // A Super Admin isn't one of the company's people: their name is kept, as anyone's is.
@@ -273,6 +284,8 @@ export async function saveTaxFile(user: Uploader, body: unknown, now: Date = new
             uploadedAt: now,
             // The name the last file that named a company gave: one that names none leaves it.
             fileCompany: namedCompany(upload.fileCompany) ?? position?.fileCompany ?? null,
+            // The company's day the client is emailed, so a second upload that day emails none.
+            ...(email.state === "send" ? { emailedOn: dateOf(today) } : {}),
         }
         const saved = await tx.clientTaxPosition.upsert({
             where: { clientId: client.id },
@@ -285,8 +298,16 @@ export async function saveTaxFile(user: Uploader, body: unknown, now: Date = new
             tx,
             userId: superAdmin ? null : user.id,
             superAdminId: superAdmin ? user.id : null,
-            details: { name: held[0].name, fileName: upload.fileName, asOf: upload.asOf, added: added.length, changed: changed.length, removed: gone.length, claims: upload.claims.length },
+            details: {
+                name: held[0].name, fileName: upload.fileName, asOf: upload.asOf, added: added.length, changed: changed.length, removed: gone.length, claims: upload.claims.length,
+                // How many of the client's people it's emailed to, where it emails any.
+                ...(email.state === "send" ? { emailed: email.people.length } : {}),
+            },
         })
-        return { added: added.length, changed: changed.length, gone: gone.length, claims: upload.claims.length, uploads: saved.uploads }
+        return { counts: { added: added.length, changed: changed.length, gone: gone.length, claims: upload.claims.length, uploads: saved.uploads }, email }
     }, { maxWait: 10_000, timeout: 30_000 })
+
+    // Sent once the save is made, so no one is told of an upload that isn't kept.
+    const { counts, email } = done
+    return { ...counts, email: email.state === "send" ? await sendTaxUpdateEmails(email, user, client.id, origin) : { state: email.state } }
 }

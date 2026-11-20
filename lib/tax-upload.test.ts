@@ -70,7 +70,7 @@ describe("the upload's route (§4.1)", () => {
     })
 
     it("takes the claims the browser read, never the file", () => {
-        expect(route()).toContain("saveTaxFile(session.user as any, body)")
+        expect(route()).toContain("saveTaxFile(session.user as any, body, new Date(), appOrigin(req.url))")
         expect(route()).not.toMatch(/formData|readForm|exceljs|tax-file-read/)
     })
 

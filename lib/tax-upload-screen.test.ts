@@ -163,6 +163,12 @@ describe("the screen behind it", () => {
         expect(picking).toContain("if (reads.current === mine) setReading(false)")
     })
 
+    it("says in the toast, once saved, whether the client's people were emailed (§4.4, PR 351)", () => {
+        const saved = screen.slice(at("if ('saved' in result)"), at("onSaved()"))
+        expect(saved).toContain("emailSaid(t, locale, email)")
+        expect(saved).toMatch(/showToast\(\[saved, emailSaid\(t, locale, email\)\]\.filter\(Boolean\)\.join\(' '\), 'success'\)/)
+    })
+
     it("can't be closed while it's sent, and reads the section again once it's saved", () => {
         expect(screen).toMatch(/if \(saving\) return/)
         expect(at("onSaved()")).toBeGreaterThan(at("saveUpload("))

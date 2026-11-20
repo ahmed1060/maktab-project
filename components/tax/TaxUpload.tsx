@@ -6,7 +6,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { Button, ConfirmDialog, Dialog } from '@/components/ui'
 import { countOf } from '@/lib/plural'
-import { asOfFor, checkTaxFile, readClaimsNow, saveUpload, uploadOf } from '@/lib/tax-check'
+import { asOfFor, checkTaxFile, emailSaid, readClaimsNow, saveUpload, uploadOf } from '@/lib/tax-check'
 import { fileAtFault } from '@/lib/tax-export-page'
 import { TAX_FILE_MAX_BYTES, TAX_FILE_MAX_ROWS, type TaxClaimsNow, type TaxFile } from '@/lib/tax-file'
 import type { TaxFileRefusal } from '@/lib/tax-file-read'
@@ -105,8 +105,10 @@ export default function TaxUpload({ clientId, onSaved }: { clientId: string; onS
         try {
             const result = await saveUpload(uploadOf(stage.now, stage.file, check, { asOf: stage.asOf, fileName: stage.fileName, confirmed }))
             if ('saved' in result) {
-                const { claims } = result.saved
-                showToast(claims > 0 ? t('tax_upload_saved').replace('{claims}', countOf(t, locale, claims, 'claims')) : t('tax_upload_saved_none'), 'success')
+                const { claims, email } = result.saved
+                const saved = claims > 0 ? t('tax_upload_saved').replace('{claims}', countOf(t, locale, claims, 'claims')) : t('tax_upload_saved_none')
+                // Then whether the client's people were emailed, and why not where none was (§4.4, PR 351).
+                showToast([saved, emailSaid(t, locale, email)].filter(Boolean).join(' '), 'success')
                 setStage({ at: 'idle' })
                 onSaved()
                 return

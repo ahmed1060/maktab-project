@@ -48,6 +48,8 @@ export const AUDIT_ACTIONS = [
     "ARCHIVE_VENDOR", "RESTORE_VENDOR", "UPDATE_TAX_POSITION", "ADD_CLIENT_ACCOUNT", "REMOVE_CLIENT_ACCOUNT", "ACCEPT_CLIENT_INVITATION", "RESEND_CLIENT_INVITATION",
     // An invitation that couldn't be sent, written after the entry its save made (CLIENT_PORTAL_PLAN.md §5.2, PR 328).
     "ADD_CLIENT_ACCOUNT_NOT_SENT", "RESEND_CLIENT_INVITATION_NOT_SENT",
+    // The update email that couldn't be sent to some of a client's people, written after the upload's entry (CLIENT_PORTAL_PLAN.md §4.4, PR 351).
+    "UPDATE_TAX_POSITION_NOT_EMAILED",
     // A client's responsible accountant, picked or taken away (CLIENT_PORTAL_PLAN.md §7, PR 343).
     "SET_CLIENT_ACCOUNTANT",
     // One of Nizmo's client messages on WhatsApp, changed by the Super Admin (CLIENT_PORTAL_PLAN.md §7.1, PR 347),
