@@ -968,8 +968,8 @@ owner's mockup draws it:
     there where they have a number, before the first file too. The
     message is Nizmo's own (§7's), in the page's language, from the
     client account's name and the client's, with the day the figures are
-    from where there are any (`lib/contact-message.ts`, until step 10's
-    templates). The dialog is `components/portal/ContactWhatsApp.tsx`,
+    from where there are any (`lib/contact-message.ts`; from the
+    templates since 10a, §7.1). The dialog is `components/portal/ContactWhatsApp.tsx`,
     drawn as the owner's mockup draws it (`DESIGN.md` §5.5, Contact on
     WhatsApp); 9d opens it from each claim. Its Open WhatsApp is a new
     building block, `ButtonExternal`: a link that looks like a button, to
@@ -980,8 +980,8 @@ owner's mockup draws it:
     the table and on the phone's cards, named with the claim's number,
     where Contact the accountant is there. It opens the same dialog,
     titled "Ask about a claim", with Nizmo's own message for the claim
-    (`claimMessage` in `lib/contact-message.ts`, until step 10's
-    templates): its number in Latin digits, the item as the page names
+    (`claimMessage` in `lib/contact-message.ts`; from the templates
+    since 10a, §7.1): its number in Latin digits, the item as the page names
     it, what remains of the original in the page's digits, and its last
     day to pay. The note under the claims says the message button in a
     claim's row (its card on phones) opens WhatsApp with its number.
@@ -1063,6 +1063,23 @@ Arabic and English.
   sending.
 - Its `DESIGN.md` block, a text with fields put in by buttons, comes with
   its PR (§12).
+- **As built (#346, 10a):** `ClientMessageTemplate` keeps a message
+  someone has changed: none yet, until 10b and 10c. Its message is
+  `contact` or `claim`, its language `ar` or `en`, its text up to 1,000
+  characters (counted as the database counts them, an emoji as one) and
+  not empty, each once in each language for Nizmo and for each company,
+  and who changed it last by their name too. A company's go with it.
+  `lib/client-message-template.ts` holds the rest: the fields, kept as
+  their names in braces (`{person}`, `{client}`, `{asOf}`, and for a
+  claim `{number}`, `{item}`, `{remaining}`, `{original}`, `{due}`);
+  Nizmo's own, as §7 writes them; the checks; and filling a text, which
+  leaves out a line whose field has nothing to fill and puts a value in
+  as it is. A text that names another message's field leaves it as
+  written. The client's page is given the session's company's texts,
+  read on the server, each the company's, else Nizmo's, else Nizmo's own
+  as written, and a kept text that no longer passes the checks gives way
+  to the next. The message's lines left the words files for Nizmo's own
+  texts, so the messages read as they did.
 
 ---
 
@@ -1440,7 +1457,7 @@ width:
       1,000 characters, only the message's own fields); and the client's
       page filling the dialog's message from the company's copy, else
       Nizmo's, else §7's as written. Nothing edits them yet, so the
-      messages read as they do now.
+      messages read as they do now. #346, as built in §7.1.
     - **10b. The Super Admin's Client messages** under Templates: a tab
       for each message, Arabic and English, the text with its fields as
       chips, a button for each field that puts it where the cursor is,
@@ -2100,3 +2117,8 @@ with a tax position is archived, and deleted for good from the archive
   (§7.1): Nizmo's own message keeps its undated line before the first
   file; in a message someone has changed, a line whose field has nothing
   to fill is left out.
+- **2026-11-20:** 10a as built (#346, §7.1): the messages' templates are
+  kept in `ClientMessageTemplate`, with row-level security, and the
+  client's page fills its messages from the company's, else Nizmo's,
+  else Nizmo's own as written. Nothing changes them yet, so the messages
+  read as before.
