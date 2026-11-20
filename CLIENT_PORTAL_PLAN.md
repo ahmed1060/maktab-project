@@ -1121,15 +1121,21 @@ Arabic and English.
   whatever it bought. Reading gives each message in each language as the
   company uses it: its own copy, by who changed it last and when, or
   Nizmo's, as the Super Admin changed it or as written, with no who and
-  when, as the company never changed it. Saving its copy is checked as
-  Nizmo's are, says the time of the copy it started from, none where it
-  started from Nizmo's, and is refused where the copy was changed, made
-  or put back since; the same text as the company uses writes nothing,
-  so Nizmo's text unchanged makes no copy. A copy keeps who changed it,
-  the Super Admin by their name alone. Use Nizmo's message takes the
-  company's copy away, from the copy the page read, and the company then
-  follows Nizmo's again, with the Super Admin's later changes; where it
-  uses Nizmo's already, nothing is written. Each save is in the audit log
+  when where the company never changed it, and who put it back and when
+  where it did. Saving its copy is checked as Nizmo's are, says the time
+  of the message it started from, none where the company never changed
+  it, and is refused where the copy was changed, made or put back since;
+  the same text as the company uses writes nothing, so Nizmo's text
+  unchanged makes no copy. A copy keeps who changed it, the Super Admin
+  by their name alone. Use Nizmo's message, from the copy the page read,
+  keeps the company's row, marked as using Nizmo's, by who put it back
+  and when, and the company then follows Nizmo's again, with the Super
+  Admin's later changes; where it uses Nizmo's already, nothing is
+  written. Were the row to go, a page that read Nizmo's before a copy was
+  made and put back couldn't be told from one that read it since, and its
+  save would undo that (Codex on #348). The row keeps the text the copy
+  had, which nothing reads, and only a company's row can be marked. Each
+  save is in the audit log
   as Changed a client message, and each Use Nizmo's message as Went back
   to Nizmo's client message, both with the company, the message, its
   language, and the text before and after. Another company's copy is
@@ -2216,3 +2222,8 @@ with a tax position is archived, and deleted for good from the archive
   Each change is in the audit log, with the company, before and after.
   Refused where the company's package hasn't the client portal. Nothing
   shows them yet.
+- **2026-11-20:** #348 after Codex's review (§7.1): Use Nizmo's message
+  keeps the company's row, marked as using Nizmo's, instead of taking it
+  away, so a save from a page that read Nizmo's before a copy was made
+  and put back is refused, as one from any older page is. An additive
+  migration adds the mark, false for every row there is.
