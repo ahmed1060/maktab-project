@@ -1080,6 +1080,25 @@ Arabic and English.
   as written, and a kept text that no longer passes the checks gives way
   to the next. The message's lines left the words files for Nizmo's own
   texts, so the messages read as they did.
+- **As built (#347, 10b):** the Super Admin's Client messages on
+  WhatsApp, under Templates, as the owner's mockup draws it (Message
+  templates): a tab for each message; the text, with a switch between
+  Arabic and English beside its label; under it a button for each of the
+  message's fields, which puts it where the cursor was; how many
+  characters of 1,000, and who changed it last and when or that it hasn't
+  been changed; Save and Discard changes, both greyed while the text is as
+  saved; and beside it the preview, a WhatsApp bubble with made-up
+  figures, as the dialog fills it. In the box each field is a chip by its
+  name in the page's language that can't be typed in, and a new line or
+  pasted text goes in as plain words (`DESIGN.md` §5.5, A text with
+  fields put in by buttons). Each message in each language keeps its
+  changes while another is open; leaving the page with any unsaved asks
+  first. A save says which text it started from: one someone changed
+  since is refused, and the page then shows who and when, keeping the
+  changes to save over it. The checks run on the page, then again on the
+  server; saving the same text writes nothing. Each save is in the audit
+  log as Changed a client message, with the message, its language, and
+  the text before and after.
 
 ---
 
@@ -1464,7 +1483,8 @@ width:
       how many characters of 1,000, who changed it last and when, Save
       and Discard changes, and a preview with made-up figures. Each save
       is in the audit log, with before and after. Its `DESIGN.md` block,
-      a text with fields put in by buttons, comes with it.
+      a text with fields put in by buttons, comes with it. #347, as built
+      in §7.1.
     - **10c. The company's copy** on a Client portal tab in Company
       settings, shown where the package has the add-on: each message
       says whether it's Nizmo's or the company's, and who changed it and
@@ -2122,3 +2142,9 @@ with a tax position is archived, and deleted for good from the archive
   client's page fills its messages from the company's, else Nizmo's,
   else Nizmo's own as written. Nothing changes them yet, so the messages
   read as before.
+- **2026-11-20:** 10b as built (#347, §7.1): the Super Admin changes
+  Nizmo's own messages on Client messages on WhatsApp, under Templates,
+  as the owner's mockup draws it, with the fields as chips put in by
+  buttons and a preview with made-up figures. Each save is in the audit
+  log, with before and after; a save over someone else's newer change is
+  refused.
