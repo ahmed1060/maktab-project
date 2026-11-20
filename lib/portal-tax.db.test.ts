@@ -104,7 +104,7 @@ describe.skipIf(!ADMIN_URL)("what the client's area reads of a tax position, in 
         const { items } = await read("noor")
         expect(items.map(i => [i.item, i.remaining, i.claims.map(c => c.id), i.earliestDue, i.badges])).toEqual([
             ["إقرار ضريبة الدخل", 1075, ["n5", "n1"], "2024-01-31", ["late"]],
-            ["إقرار القيمة المضافة", 600.25, ["n2", "n3"], "2026-09-30", ["late", "partly_paid"]],
+            ["إقرار القيمة المضافة", 600.25, ["n2", "n3"], "2026-09-30", ["partly_paid", "late"]],
             ["مساهمة تكافلية", 40, ["n4"], "2026-12-31", ["partly_paid"]],
         ])
     })

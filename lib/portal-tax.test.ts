@@ -61,7 +61,7 @@ describe("what's owed, by item", () => {
         ])
         expect(groups).toEqual([
             { item: "Income", claims: [expect.objectContaining({ id: "b1" })], original: 1000, paid: 0, remaining: 1000, earliestDue: "2026-04-30", badges: ["late"] },
-            { item: "VAT", claims: [expect.objectContaining({ id: "a1" }), expect.objectContaining({ id: "a2" })], original: 800.5, paid: 200.25, remaining: 600.25, earliestDue: "2026-09-30", badges: ["late", "partly_paid"] },
+            { item: "VAT", claims: [expect.objectContaining({ id: "a1" }), expect.objectContaining({ id: "a2" })], original: 800.5, paid: 200.25, remaining: 600.25, earliestDue: "2026-09-30", badges: ["partly_paid", "late"] },
         ])
     })
 

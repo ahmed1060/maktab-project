@@ -121,9 +121,49 @@ export function byItem(claims: TaxClaimRow[]): ItemGroup[] {
             paid: sum(its, c => c.paidAmount),
             remaining: sum(its, c => c.remainingAmount),
             earliestDue: its.map(c => c.dueDate).reduce((a, b) => (b < a ? b : a)),
-            badges: (["late", "partly_paid"] as const).filter(badge => badges.has(badge)),
+            badges: (["partly_paid", "late"] as const).filter(badge => badges.has(badge)),
         }
     }).sort((a, b) => b.remaining - a.remaining || (a.item < b.item ? -1 : a.item > b.item ? 1 : 0))
+}
+
+/**
+ * An item's claims as the claims card lists them, as the owner's mockup draws
+ * them: the latest last day to pay first, claims due the same day in the
+ * order they were read (DESIGN.md §5.5; PR 339).
+ */
+export function latestDueFirst(claims: TaxClaimRow[]): TaxClaimRow[] {
+    // Days as YYYY-MM-DD compare as text; the sort keeps ties in their order.
+    return [...claims].sort((a, b) => (a.dueDate < b.dueDate ? 1 : a.dueDate > b.dueDate ? -1 : 0))
+}
+
+/** Which items are open on the claims card, with one opened or closed and the others as they were. */
+export function toggledItem(open: ReadonlySet<string>, item: string): ReadonlySet<string> {
+    const next = new Set(open)
+    if (next.has(item)) next.delete(item)
+    else next.add(item)
+    return next
+}
+
+/** A claim's period as the portal means it (DESIGN.md §5.5; PR 339). */
+export type ClaimPeriod =
+    | { kind: "year"; year: number }
+    | { kind: "month"; year: number; month: number }
+    | { kind: "range"; from: string; to: string }
+    | { kind: "day"; day: string }
+
+/**
+ * A whole year ("Year 2025"), a whole month ("November 2025"), one day, or
+ * from its first day to its last; none where the portal gave no period.
+ */
+export function claimPeriod(start: string | null, end: string | null): ClaimPeriod | null {
+    if (!start || !end) return start || end ? { kind: "day", day: (start || end) as string } : null
+    if (start === end) return { kind: "day", day: start }
+    const [y1, m1, d1] = start.split("-").map(Number)
+    const [y2, m2, d2] = end.split("-").map(Number)
+    if (y1 === y2 && m1 === 1 && d1 === 1 && m2 === 12 && d2 === 31) return { kind: "year", year: y1 }
+    // A month's last day: the day before the next month's first.
+    if (y1 === y2 && m1 === m2 && d1 === 1 && d2 === new Date(Date.UTC(y1, m1, 0)).getUTCDate()) return { kind: "month", year: y1, month: m1 }
+    return { kind: "range", from: start, to: end }
 }
 
 export type LateRow = { group: LateGroup; remaining: number; count: number }

@@ -70,11 +70,15 @@ export function figuresAge(asOf: string, today: string): number | null {
 
 export type ClaimBadge = "late" | "partly_paid"
 
-/** A claim's badges (§3.4): Late once its last day to pay has passed, Partly paid where something is paid. It can have both. */
+/**
+ * A claim's badges (§3.4): Partly paid where something is paid, Late once its
+ * last day to pay has passed. It can have both, Partly paid first, as the
+ * owner's mockup draws them (PR 339).
+ */
 export function claimBadges(claim: Pick<TaxClaimRow, "daysLate" | "paidAmount">): ClaimBadge[] {
     const badges: ClaimBadge[] = []
-    if (claim.daysLate > 0) badges.push("late")
     if (claim.paidAmount > 0) badges.push("partly_paid")
+    if (claim.daysLate > 0) badges.push("late")
     return badges
 }
 
