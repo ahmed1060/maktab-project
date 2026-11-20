@@ -81,6 +81,7 @@ const POSITION: TaxPosition = {
         currency: "جنيه مصري", status: "في انتظار السداد", periodStart: "2026-01-01", periodEnd: "2026-03-31", dueDate: "2026-12-31", daysLate: 0,
     }],
     total: 1, totalPages: 1,
+    accountant: { person: null, reach: "none" },
 }
 const section = (manages?: boolean) => renderToStaticMarkup(h(Section, { clientId: "noor", manages }))
 /** The line under the section's title. */

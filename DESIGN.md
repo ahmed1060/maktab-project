@@ -1219,9 +1219,11 @@ These are built once, in the building-blocks PR, and every page uses them
     country code (+), and that it can be left empty. It's kept with its
     country code, "+201001234567", and shown as it's kept.
   - Under the field, a box on `--page`: the clients' people this account
-    is the responsible accountant for write to this number, and without
-    one they don't see the contact button. Which clients those are comes
-    with the responsible accountant (`CLIENT_PORTAL_PLAN.md` §12, 9b).
+    is the responsible accountant for write to this number, then those
+    clients by name, in weight 600 and joined by commas; and without a
+    number they don't see the contact button. Where it's no client's
+    responsible accountant yet, the box says so in place of the names.
+    An archived client isn't named.
   - A number that isn't one is said under the field, before anything is
     sent; saved, a toast says so. Emptied and saved, the number is gone.
 - **Face photos,** such as a flagged check-in's last frame beside the
@@ -1696,6 +1698,39 @@ These are built once, in the building-blocks PR, and every page uses them
   - When it didn't load, the section's place says so, with Try again (A
     list that didn't load). So does a page of its claims that didn't
     load: the claims kept up from another page don't stand in for it.
+  - **The responsible accountant** (`CLIENT_PORTAL_PLAN.md` §7), at the
+    section's foot in a panel of its own, under the claims, as the
+    owner's mockup draws it. It's there before the first file too.
+    - For whoever may manage clients, on a client that isn't archived: a
+      select, Responsible accountant, up to 320px wide. Its hint says the
+      client sees this name on their page, and the contact button opens
+      WhatsApp on this accountant's own number. Its options are No one,
+      then the company's people whose contracts haven't ended, by name.
+    - Picking one saves it at once. The select is off while it's sent,
+      and a toast says it's saved, or removed for No one. One that
+      couldn't be saved says so in a toast, and the select shows what's
+      kept.
+    - For anyone else, and on an archived client, the label and the name,
+      or No one, as text.
+    - Beside it, under it on phones, where the client's people can write
+      to them: "{name}'s WhatsApp number", the number left to right as
+      it's kept, and a link to their profile in `--text-sm`, Change it on
+      their profile, for whoever may edit it.
+    - Otherwise, in the number's place and across the section's width, a
+      note on `--status-waiting-bg` in `--status-waiting-fg` says why the
+      client's people can't write to anyone, with the way to fix it:
+      - no one picked: "This client has no responsible accountant, so its
+        people can't contact anyone on WhatsApp. Pick a responsible
+        accountant.";
+      - no number on their profile: "There's no WhatsApp number on
+        {name}'s profile, so the client's people can't contact them.",
+        then Add the number, a link to their profile, for whoever may
+        edit it;
+      - their contract has ended: "{name}'s contract has ended, so the
+        client's people can't contact them. Pick another responsible
+        accountant."
+    - What's beside the select, the number or the note, is read out when
+      a pick changes it.
 - **Uploading the tax portal's file:** how a client's tax position is
   kept up to date, by whoever may update it (`CLIENT_PORTAL_PLAN.md`
   §4.1). Its rows are read from a file and checked before any is saved
@@ -2938,3 +2973,10 @@ changed:
   at weight 600 (§5.5), so it stays under the card's 15px title; it was
   `--text-lg` at 500. Found in the interface audit of the frame and
   cards' alignment.
+- **2026-11-20:** A client's tax position, for the company's people
+  (§5.5): the responsible accountant at the section's foot, as the
+  owner's mockup draws it. A select that saves when picked, for whoever
+  may manage clients; their WhatsApp number beside it, or a note saying
+  why the client's people can't write to anyone, with the way to fix it.
+  A person's WhatsApp card names the clients they answer for
+  (`CLIENT_PORTAL_PLAN.md` §12, step 9b).

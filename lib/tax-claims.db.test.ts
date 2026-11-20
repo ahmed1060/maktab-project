@@ -140,6 +140,8 @@ describe.skipIf(!ADMIN_URL)("a client's tax claims, in Postgres", () => {
             expect(await tax.taxPositionOf(admin, "fresh", FIVE, NOW)).toEqual({
                 client: { id: "fresh", name: "Fresh Start", archived: false }, today: "2026-11-17", position: null,
                 totals: { original: 0, paid: 0, remaining: 0, open: 0, late: 0 }, claims: [], total: 0, totalPages: 0,
+                // No one picked to write to yet (PR 343).
+                accountant: { person: null, reach: "none" },
             })
         })
 

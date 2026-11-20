@@ -8,6 +8,7 @@ import type { Paging } from "@/lib/pagination"
 import { daysLate, figuresAge, type TaxPosition } from "@/lib/tax-claims"
 import { summarise, type PortalTaxPosition } from "@/lib/portal-tax"
 import { compareClaims, fileNamesClient, namedCompany, sentUpload, type ClaimDraft, type TaxClaimsNow, type TaxUploadSaved } from "@/lib/tax-file"
+import { accountantOf } from "@/lib/services/client-accountant.service"
 
 /** A date column's day, as it was written. */
 const dayOf = (date: Date) => date.toISOString().slice(0, 10)
@@ -64,7 +65,7 @@ export async function taxPositionOf(user: Actor, clientId: string | null | undef
     // Its last day to pay has passed. Every claim kept has something left to pay (§3.2).
     const late = { ...its, dueDate: { lt: new Date(`${today}T00:00:00Z`) } }
 
-    const [position, rows, sums, lateCount] = await Promise.all([
+    const [position, rows, sums, lateCount, accountant] = await Promise.all([
         prisma.clientTaxPosition.findUnique({ where: { clientId: client.id }, select: { asOf: true, uploadedAt: true, uploadedByName: true } }),
         prisma.taxClaim.findMany({
             where: its,
@@ -75,6 +76,8 @@ export async function taxPositionOf(user: Actor, clientId: string | null | undef
         }),
         prisma.taxClaim.aggregate({ where: its, _sum: { originalAmount: true, paidAmount: true, remainingAmount: true }, _count: true }),
         prisma.taxClaim.count({ where: late }),
+        // Its responsible accountant, at the section's foot (§7, PR 343).
+        accountantOf(client.id),
     ])
     const total = sums._count
     const sum = (amount: unknown) => cents(Number(amount ?? 0))
@@ -90,6 +93,7 @@ export async function taxPositionOf(user: Actor, clientId: string | null | undef
         }),
         total,
         totalPages: Math.ceil(total / paging.limit),
+        accountant,
     }
 }
 

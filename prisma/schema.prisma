@@ -545,6 +545,8 @@ model User {
   createdSections            RecordSection[]         @relation("SectionCreatedBy")
   editedSections             RecordSection[]         @relation("SectionEditedBy")
   createdClients             Client[]                @relation("ClientCreatedBy")
+  /// The clients they're the responsible accountant for (CLIENT_PORTAL_PLAN.md §7).
+  accountantFor              Client[]                @relation("ClientAccountant")
   /// The tax portal files they uploaded last for a client (CLIENT_PORTAL_PLAN.md §3.1).
   taxUploads ClientTaxPosition[] @relation("TaxPositionUploadedBy")
   /// The clients' people they added to the client portal (CLIENT_PORTAL_PLAN.md §5.1).
@@ -1261,9 +1263,15 @@ model Client {
   taxPosition    ClientTaxPosition?
   /// Its people who sign in to the client portal (CLIENT_PORTAL_PLAN.md §5).
   accounts       ClientAccount[]
+  /// Its responsible accountant (CLIENT_PORTAL_PLAN.md §7, step 9b): one of
+  /// its company's people, whom its people write to on WhatsApp. Kept when
+  /// their contract ends, and no one's when they're deleted outright.
+  responsibleAccountantId String?
+  responsibleAccountant   User?    @relation("ClientAccountant", fields: [responsibleAccountantId], references: [id], onDelete: SetNull)
 
   @@unique([name, companyId])
   @@index([companyId])
+  @@index([responsibleAccountantId])
 }
 
 /// A place tasks happen at (CLIENTS_PLAN.md §2): a client's HQ, one of its

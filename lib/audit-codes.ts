@@ -48,6 +48,8 @@ export const AUDIT_ACTIONS = [
     "ARCHIVE_VENDOR", "RESTORE_VENDOR", "UPDATE_TAX_POSITION", "ADD_CLIENT_ACCOUNT", "REMOVE_CLIENT_ACCOUNT", "ACCEPT_CLIENT_INVITATION", "RESEND_CLIENT_INVITATION",
     // An invitation that couldn't be sent, written after the entry its save made (CLIENT_PORTAL_PLAN.md §5.2, PR 328).
     "ADD_CLIENT_ACCOUNT_NOT_SENT", "RESEND_CLIENT_INVITATION_NOT_SENT",
+    // A client's responsible accountant, picked or taken away (CLIENT_PORTAL_PLAN.md §7, PR 343).
+    "SET_CLIENT_ACCOUNTANT",
     // One of a client's people signing in, and a wrong password (CLIENT_PORTAL_PLAN.md §5.3, PR 332).
     "CLIENT_SIGN_IN", "CLIENT_SIGN_IN_FAILURE",
     // One of a client's people changing their password in the client's area (CLIENT_PORTAL_PLAN.md §5.3, PR 335).

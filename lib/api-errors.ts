@@ -103,6 +103,12 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     TAX_FILE_OTHER_COMPANY: { status: 409, message: "This file names another company. Confirm it's this client's file to save it." },
     // A client's people who sign in to the client portal (CLIENT_PORTAL_PLAN.md §5.2; lib/services/client-account.service.ts).
     CLIENT_ACCOUNTS_MANAGE_REQUIRED: { status: 403, message: "You may not manage who signs in for a client." },
+    // A client's responsible accountant (CLIENT_PORTAL_PLAN.md §7, PR 343).
+    CLIENTS_MANAGE_REQUIRED: { status: 403, message: "You may not manage clients." },
+    ACCOUNTANT_CLIENT_REQUIRED: { status: 400, message: "Say which client's responsible accountant this is." },
+    ACCOUNTANT_PERSON_INVALID: { status: 400, message: "Pick one of the company's people, or no one." },
+    ACCOUNTANT_NOT_IN_COMPANY: { status: 400, message: "Only one of the client's company's people can be its responsible accountant." },
+    ACCOUNTANT_CONTRACT_ENDED: { status: 409, message: "This person's contract has ended, so they can't be the responsible accountant." },
     CLIENT_PERSON_CLIENT_REQUIRED: { status: 400, message: "Say which client the person is for." },
     CLIENT_PERSON_NAME_REQUIRED: { status: 400, message: "The person's name is needed." },
     CLIENT_PERSON_NAME_TOO_LONG: { status: 400, message: "A name can have up to 100 characters." },

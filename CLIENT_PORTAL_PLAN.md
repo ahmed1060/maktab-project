@@ -915,6 +915,28 @@ owner's mockup draws it:
 - Each client gets a **responsible accountant**: one of the company's
   people, picked on the client's page with `clients.manage`. The client
   sees their name.
+  - **As built (#343):** `Client.responsibleAccountantId`, a person of
+    the client's own company, or none. Picked at the foot of the client's
+    Tax position section, as the owner's mockup draws it, by whoever may
+    manage clients, and saved as it's picked (`PUT
+    /api/clients/accountant`); the same route's GET lists who may be
+    picked. In the audit log as `SET_CLIENT_ACCOUNTANT`, with who it was
+    and who it is.
+  - Who may be picked: one of the client's company's people whose
+    contract hasn't ended (not `ARCHIVED` or `DELETED`). The server
+    refuses anyone else, an archived client, and a company whose package
+    hasn't the client portal (`NOT_IN_PACKAGE`), as the WhatsApp number
+    is refused.
+  - Whose contract ends stays picked, and the client's people can't
+    write to them until another is: the section says so, with the way to
+    fix it. A person deleted outright is no one's (`ON DELETE SET
+    NULL`).
+  - Who the client's people can write to is read by
+    `lib/client-accountant.ts`, for the section now and for the client's
+    own page with 9c: the accountant, with a WhatsApp number, whose
+    contract hasn't ended.
+  - A person's Contacting clients card names the clients they answer
+    for, an archived client left out.
 - **The accountant's own number** (Decided, 2026-11-17): the person who
   answers for the client is the one written to. Each of the company's
   people can have a WhatsApp number on their profile, set by them or by
@@ -1374,7 +1396,7 @@ width:
    - **9b. The responsible accountant** (§7): picked on the client's page
      with `clients.manage`; the profile's card names the clients they
      answer for; the Tax position section says why the client can't write
-     to them, with the way to fix it.
+     to them, with the way to fix it. #343, as built in §7.
    - **9c. Contact the accountant** (§6, §7): the accountant's name under
      the client's page title, the button, and the dialog, with Nizmo's
      own message until the templates (step 10). Without a number, the note
@@ -1999,3 +2021,10 @@ with a tax position is archived, and deleted for good from the archive
   frame and cards as this plan's mockup draws them): the account button
   the person's initials alone, and the language switch EN and ع. Page
   titles, card titles and the room between cards follow the mockup too.
+- **2026-11-20:** 9b as built (#343, §7): the responsible accountant is
+  kept on the client and picked at the foot of its Tax position section,
+  as the owner's mockup draws it, saved as it's picked. Beside it, the
+  accountant's WhatsApp number, or why the client's people can't write
+  to anyone: no one picked, no number on their profile, or their
+  contract has ended, with the way to fix each. A person's Contacting
+  clients card names the clients they answer for.

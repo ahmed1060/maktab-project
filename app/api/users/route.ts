@@ -18,6 +18,8 @@ import { shapeUser } from "@/lib/permissions/shape"
 import { adminRefusal, assignmentRefusal } from "@/lib/role-errors"
 import { assertStepUp } from "@/lib/step-up"
 import { CURRENT_PASSWORD_WRONG, OWN_PASSWORD_TRIES, OWN_PASSWORD_WRONG } from "@/lib/own-password"
+import { sessionHasModule } from "@/lib/features/require"
+import { clientsAnsweredFor } from "@/lib/services/client-accountant.service"
 
 // F-13: role/status are now Postgres enums, not free text — a query-param
 // value that isn't a real enum member makes Postgres reject the whole
@@ -89,7 +91,13 @@ export const GET = withStandardHandler(async (req, session) => {
 
         // Salary is the viewer's own or salary.view's — shapeUser decides, as
         // it does for every response that can carry one.
-        if (user) return ApiResponse.success(shapeUser(session.user, user))
+        if (user) {
+            // The clients they're the responsible accountant for, which their
+            // Contacting clients card names (CLIENT_PORTAL_PLAN.md §7, PR 343):
+            // for whoever sees that card, as lib/profile-access.ts has it.
+            const answers = (userId === session.user.id || can(session.user, "employees.edit")) && sessionHasModule(session, "TAX_POSITION")
+            return ApiResponse.success({ ...shapeUser(session.user, user), ...(answers ? { accountantFor: await clientsAnsweredFor(user.id) } : {}) })
+        }
 
         const superAdmin = await prisma.superAdmin.findUnique({
             where: { id: userId },

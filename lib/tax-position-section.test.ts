@@ -60,6 +60,7 @@ const NOOR: TaxPosition = {
     ],
     total: 7,
     totalPages: 2,
+    accountant: { person: null, reach: "none" },
 }
 const shown = (data: TaxPosition) => { state.answer = () => ({ data: { data } }) }
 
@@ -205,6 +206,19 @@ describe("the Tax position section", () => {
         expect(html).not.toContain(en.tax_position_none)
     })
 
+    // The responsible accountant (CLIENT_PORTAL_PLAN.md §7, PR 343): what the panel shows is lib/client-accountant.test.ts's.
+    it("has the responsible accountant at its foot, after the claims, and before the first file too", () => {
+        shown(NOOR)
+        const html = render()
+        expect(html).toContain('<div class="ui-panel ui-accountant">')
+        expect(html.indexOf("ui-accountant")).toBeGreaterThan(html.indexOf("000104"))
+        expect(html).toMatch(/<\/div><\/div><\/section>$/)
+        shown({ ...NOOR, position: null, totals: { original: 0, paid: 0, remaining: 0, open: 0, late: 0 }, claims: [], total: 0, totalPages: 0 })
+        const none = render()
+        expect(none).toContain('<div class="ui-panel ui-accountant">')
+        expect(none.indexOf("ui-accountant")).toBeGreaterThan(none.indexOf(esc(en.tax_position_none)))
+    })
+
     it("is in Arabic with the page's digits, a claim's number staying as it's typed into the portal", () => {
         state.locale = "ar"
         shown(NOOR)
@@ -224,7 +238,7 @@ describe("on the client's page", () => {
 
     it("is there for whoever may see it, where the company's package has the client portal", () => {
         expect(page).toContain("const seesTax = features.has('TAX_POSITION') && can('tax.view')")
-        expect(page).toContain("{seesTax && <TaxPosition key={id} clientId={id} manages={can('tax.manage')} />}")
+        expect(page).toContain("{seesTax && <TaxPosition key={id} clientId={id} manages={can('tax.manage')} picks={can('clients.manage')} editsProfile={person => editsProfile({ can, viewer, person })} />}")
     })
 
     it("is made again for another client, so one client's figures never stand in for the next's", () => {
