@@ -8,7 +8,7 @@
  * in WhatsApp.
  */
 
-import { fillMessage } from '@/lib/client-message-template'
+import { fillMessage, type MessageKind, type MessageLanguage } from '@/lib/client-message-template'
 import type { TaxClaimRow } from '@/lib/tax-claims'
 import type { TranslationKey } from '@/lib/translations'
 
@@ -56,6 +56,26 @@ export function claimMessage(locale: string, text: string, { item, claim, ...pag
         original: amount(claim.originalAmount, locale),
         due: longDay(claim.dueDate, locale),
     })
+}
+
+/**
+ * The made-up figures a message's preview is filled with (§12 step 10b,
+ * PR 347): the plan's own (§7), in the message's language, filled as the
+ * dialog fills them.
+ */
+const SAMPLE = {
+    person: { ar: 'منى فؤاد', en: 'Mona Fouad' },
+    client: { ar: 'شركة النموذج للتجارة والتوريدات', en: 'Al Namozag Trading' },
+    asOf: '2026-11-16',
+    claim: { claimNumber: '000372722603', remainingAmount: 13723.26, originalAmount: 21088.26, dueDate: '2026-04-30' },
+    item: 'إقرار تجاري',
+}
+
+export function sampleMessage(kind: MessageKind, language: MessageLanguage, text: string): string {
+    const page = { person: SAMPLE.person[language], client: SAMPLE.client[language], asOf: SAMPLE.asOf }
+    return kind === 'claim'
+        ? claimMessage(language, text, { ...page, claim: SAMPLE.claim, item: SAMPLE.item })
+        : contactMessage(language, text, page)
 }
 
 /**

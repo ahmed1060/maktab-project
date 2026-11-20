@@ -50,6 +50,8 @@ export const AUDIT_ACTIONS = [
     "ADD_CLIENT_ACCOUNT_NOT_SENT", "RESEND_CLIENT_INVITATION_NOT_SENT",
     // A client's responsible accountant, picked or taken away (CLIENT_PORTAL_PLAN.md §7, PR 343).
     "SET_CLIENT_ACCOUNTANT",
+    // One of Nizmo's client messages on WhatsApp, changed by the Super Admin (CLIENT_PORTAL_PLAN.md §7.1, PR 347).
+    "UPDATE_CLIENT_MESSAGE",
     // One of a client's people signing in, and a wrong password (CLIENT_PORTAL_PLAN.md §5.3, PR 332).
     "CLIENT_SIGN_IN", "CLIENT_SIGN_IN_FAILURE",
     // One of a client's people changing their password in the client's area (CLIENT_PORTAL_PLAN.md §5.3, PR 335).
@@ -79,4 +81,6 @@ export const AUDIT_ENTITY_TYPES = [
     "NOTE", "OBLIGATION", "OVERTIME_APPROVAL", "PACKAGE", "PAYROLL", "PERMISSION_REQUEST",
     "POLICY_TEMPLATE", "PUBLIC_HOLIDAY", "REQUEST", "ROLE", "ROLE_CHANGE_REQUEST", "ROLE_REQUEST",
     "ROLE_TEMPLATE", "SALARY", "SECTION", "SUPER_ADMIN", "SYSTEM", "TASK", "TERMINAL_BRAND", "USER", "VENDOR", "WORK_LOCATION",
+    // A client message on WhatsApp (CLIENT_PORTAL_PLAN.md §7.1, PR 347).
+    "CLIENT_MESSAGE",
 ] as const

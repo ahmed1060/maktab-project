@@ -5,10 +5,11 @@ import { NIZMO_MESSAGES } from "./client-message-template"
 
 /**
  * The messages' templates as they're kept (CLIENT_PORTAL_PLAN.md §7.1, §12
- * step 10a; PR 346), against a real Postgres: ClientMessageTemplate, what it
- * refuses, each message once in each language for Nizmo and for each
- * company, what goes with a company or a person, and the texts a company's
- * client's people are given.
+ * steps 10a and 10b; PRs 346 and 347), against a real Postgres:
+ * ClientMessageTemplate, what it refuses, each message once in each language
+ * for Nizmo and for each company, what goes with a company or a person, the
+ * texts a company's client's people are given, and Nizmo's as the Super
+ * Admin keeps them.
  *
  * Needs a Postgres it may create databases on: set ROLES_TEST_DATABASE_URL to
  * its maintenance database. Skipped without it (CI has no database).
@@ -28,6 +29,7 @@ INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayO
 describe.skipIf(!ADMIN_URL)("the messages' templates, in Postgres", () => {
     const dbName = `client_messages_test_${Date.now()}`
     let db: Client
+    let dbUrl: string
     let templates: typeof import("@/lib/services/client-message-template.service")
     let prisma: typeof import("@/lib/prisma").prisma
 
@@ -47,12 +49,14 @@ describe.skipIf(!ADMIN_URL)("the messages' templates, in Postgres", () => {
         await a.end()
         const url = new URL(ADMIN_URL!)
         url.pathname = `/${dbName}`
-        db = new Client({ connectionString: url.toString() })
+        dbUrl = url.toString()
+        db = new Client({ connectionString: dbUrl })
         await db.connect()
         for (const m of MIGRATIONS) {
             await db.query(sql(m))
             if (m === "20260920000000_team_leader") await db.query(PEOPLE)
         }
+        await db.query(`INSERT INTO "SuperAdmin"(id, email, password, "firstName", "lastName", username, "updatedAt") VALUES ('sa', 'sam@nizmo.co', 'p', 'Sam', 'Admin', 'sa', now())`)
         process.env.POSTGRES_PRISMA_URL = url.toString()
         templates = await import("@/lib/services/client-message-template.service")
         prisma = (await import("@/lib/prisma")).prisma
@@ -69,6 +73,7 @@ describe.skipIf(!ADMIN_URL)("the messages' templates, in Postgres", () => {
 
     beforeEach(async () => {
         await db.query(`DELETE FROM "ClientMessageTemplate"`)
+        await db.query(`DELETE FROM "AuditLog"`)
     })
 
     describe("the table", () => {
@@ -171,6 +176,121 @@ describe.skipIf(!ADMIN_URL)("the messages' templates, in Postgres", () => {
                 claim: { ar: "استفسار عن {number}", en: NIZMO_MESSAGES.claim.en },
             })
             expect(await templates.clientMessages("c2")).toEqual({ ...NIZMO_MESSAGES, contact: { ...NIZMO_MESSAGES.contact, en: "Hi from Nizmo, {person}" } })
+        })
+    })
+
+    describe("Nizmo's messages, as the Super Admin keeps them", () => {
+        const SAM = { id: "sa", name: "Sam Admin" }
+        const save = (input: { kind: "contact" | "claim"; language: "ar" | "en"; text: string; since: string | null }) => templates.saveNizmoMessage(SAM, input)
+        const refusal = (write: Promise<unknown>) => write.then(() => "saved", (error: Error) => error.message)
+        const logged = async () => (await db.query(`SELECT action, "entityType", "entityId", "userId", "superAdminId", details FROM "AuditLog" ORDER BY "createdAt"`)).rows
+        const nizmos = async () => (await db.query(`SELECT kind, language, text, "updatedById", "updatedByName" FROM "ClientMessageTemplate" WHERE "companyId" IS NULL ORDER BY kind, language`)).rows
+
+        it("each message in each language, Nizmo's own as written, never changed, where nothing is kept", async () => {
+            expect(await templates.nizmoMessages()).toEqual([
+                { kind: "contact", language: "ar", text: NIZMO_MESSAGES.contact.ar, changedBy: null, changedAt: null },
+                { kind: "contact", language: "en", text: NIZMO_MESSAGES.contact.en, changedBy: null, changedAt: null },
+                { kind: "claim", language: "ar", text: NIZMO_MESSAGES.claim.ar, changedBy: null, changedAt: null },
+                { kind: "claim", language: "en", text: NIZMO_MESSAGES.claim.en, changedBy: null, changedAt: null },
+            ])
+        })
+
+        it("never a company's copy for Nizmo's", async () => {
+            await keep("c1", "contact", "ar", "نسختنا {person}", "a1", "Amal One")
+            expect((await templates.nizmoMessages())[0]).toEqual({ kind: "contact", language: "ar", text: NIZMO_MESSAGES.contact.ar, changedBy: null, changedAt: null })
+        })
+
+        it("a first change kept by the Super Admin's name, with what it was and what it is in the audit log", async () => {
+            const saved = await save({ kind: "contact", language: "en", text: "Hi {person}", since: null })
+            expect(saved).toEqual({ kind: "contact", language: "en", text: "Hi {person}", changedBy: "Sam Admin", changedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) })
+            expect(await nizmos()).toEqual([{ kind: "contact", language: "en", text: "Hi {person}", updatedById: null, updatedByName: "Sam Admin" }])
+            const [row] = (await db.query(`SELECT id FROM "ClientMessageTemplate"`)).rows
+            expect(await logged()).toEqual([{
+                action: "UPDATE_CLIENT_MESSAGE", entityType: "CLIENT_MESSAGE", entityId: row.id, userId: null, superAdminId: "sa",
+                details: { message: "CONTACT_ACCOUNTANT", language: "EN", before: NIZMO_MESSAGES.contact.en, after: "Hi {person}" },
+            }])
+            expect((await templates.nizmoMessages())[1]).toEqual(saved)
+        })
+
+        it("given to every company that has no copy of its own", async () => {
+            await save({ kind: "claim", language: "ar", text: "استفسار عن {number}", since: null })
+            expect((await templates.clientMessages("c2")).claim.ar).toBe("استفسار عن {number}")
+        })
+
+        it("a change from the text the page opened with is kept; from an older one, refused, and nothing written", async () => {
+            const first = await save({ kind: "contact", language: "en", text: "One {person}", since: null })
+            const second = await save({ kind: "contact", language: "en", text: "Two {person}", since: first.changedAt })
+            expect(second.text).toBe("Two {person}")
+            expect(await refusal(save({ kind: "contact", language: "en", text: "Three", since: first.changedAt }))).toBe("MESSAGE_CHANGED_SINCE")
+            expect(await refusal(save({ kind: "contact", language: "en", text: "Three", since: null }))).toBe("MESSAGE_CHANGED_SINCE")
+            expect(await refusal(save({ kind: "claim", language: "en", text: "Three {number}", since: second.changedAt }))).toBe("MESSAGE_CHANGED_SINCE")
+            expect((await nizmos()).map(r => r.text)).toEqual(["Two {person}"])
+            expect((await logged()).map(r => r.details.after)).toEqual(["One {person}", "Two {person}"])
+            expect((await logged())[1].details.before).toBe("One {person}")
+        })
+
+        it("of two saves at once from the same text, one is kept and the other refused", async () => {
+            const both = await Promise.all([
+                refusal(save({ kind: "contact", language: "ar", text: "أولًا {person}", since: null })),
+                refusal(save({ kind: "contact", language: "ar", text: "ثانيًا {person}", since: null })),
+            ])
+            expect(both.sort()).toEqual(["MESSAGE_CHANGED_SINCE", "saved"])
+            expect(await nizmos()).toHaveLength(1)
+            expect(await logged()).toHaveLength(1)
+            const kept = await templates.nizmoMessages()
+            const again = await Promise.all([
+                refusal(save({ kind: "contact", language: "ar", text: "ثالثًا {person}", since: kept[0].changedAt })),
+                refusal(save({ kind: "contact", language: "ar", text: "رابعًا {person}", since: kept[0].changedAt })),
+            ])
+            expect(again.sort()).toEqual(["MESSAGE_CHANGED_SINCE", "saved"])
+            expect(await logged()).toHaveLength(2)
+        })
+
+        it("a first save refused where another first save is kept while it's being written, and nothing more written", async () => {
+            // The other save's row, written and not yet kept: this one doesn't see it, and waits for it.
+            const other = new Client({ connectionString: dbUrl })
+            await other.connect()
+            try {
+                await other.query("BEGIN")
+                await other.query(`INSERT INTO "ClientMessageTemplate"(id, "companyId", kind, language, text, "updatedByName", "updatedAt") VALUES ('first', NULL, 'contact', 'en', 'First {person}', 'Other Admin', now())`)
+                const pending = refusal(save({ kind: "contact", language: "en", text: "Second {person}", since: null }))
+                await new Promise(resolve => setTimeout(resolve, 500))
+                await other.query("COMMIT")
+                expect(await pending).toBe("MESSAGE_CHANGED_SINCE")
+            } finally {
+                await other.end()
+            }
+            expect((await nizmos()).map(r => r.text)).toEqual(["First {person}"])
+            expect(await logged()).toEqual([])
+        })
+
+        it("the same text again writes nothing", async () => {
+            const first = await save({ kind: "contact", language: "en", text: "Hi {person}", since: null })
+            expect(await save({ kind: "contact", language: "en", text: "Hi {person}", since: first.changedAt })).toEqual(first)
+            expect(await save({ kind: "claim", language: "en", text: NIZMO_MESSAGES.claim.en, since: null }))
+                .toEqual({ kind: "claim", language: "en", text: NIZMO_MESSAGES.claim.en, changedBy: null, changedAt: null })
+            expect(await logged()).toHaveLength(1)
+            expect(await nizmos()).toHaveLength(1)
+        })
+
+        it("refuses an empty text, one past 1,000 characters, and one naming a field its message can't fill, keeping nothing", async () => {
+            expect(await refusal(save({ kind: "contact", language: "en", text: " \n ", since: null }))).toBe("MESSAGE_EMPTY")
+            expect(await refusal(save({ kind: "contact", language: "en", text: "a".repeat(1001), since: null }))).toBe("MESSAGE_TOO_LONG")
+            expect(await refusal(save({ kind: "contact", language: "en", text: "About {number}", since: null }))).toBe("MESSAGE_FIELD")
+            expect(await nizmos()).toEqual([])
+            expect(await logged()).toEqual([])
+        })
+
+        it("keeps a line ended by a carriage return as a new line", async () => {
+            expect((await save({ kind: "contact", language: "en", text: "a\r\nb\rc {person}", since: null })).text).toBe("a\nb\nc {person}")
+        })
+
+        it("leaves a company's own copy as it was, and the company still uses it", async () => {
+            await keep("c1", "contact", "en", "Ours {person}", "a1", "Amal One")
+            await save({ kind: "contact", language: "en", text: "Nizmo's {person}", since: null })
+            expect((await db.query(`SELECT text, "updatedByName" FROM "ClientMessageTemplate" WHERE "companyId" = 'c1'`)).rows).toEqual([{ text: "Ours {person}", updatedByName: "Amal One" }])
+            expect((await templates.clientMessages("c1")).contact.en).toBe("Ours {person}")
+            expect((await templates.clientMessages("c2")).contact.en).toBe("Nizmo's {person}")
         })
     })
 })
