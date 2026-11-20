@@ -1562,6 +1562,17 @@ These are built once, in the building-blocks PR, and every page uses them
     - The bars' amounts are in the currency the large figure names.
   - The claims, by item, in a card: a table on computers and cards on
     phones (§5.4).
+    - Its title, Claims, has "Select an item to see its claims" at its
+      end on computers and under it on phones, in `--text-xs` and
+      `--muted`.
+    - The table's head, on `--page` in `--text-xs`, weight 500 and
+      `--muted`: Item, Claims, Original, Paid, Remaining, Earliest due
+      date and Status. It's 940px at the least, and scrolls sideways in
+      its card where the page is narrower. As tall as the mockup draws
+      them: the head and a claim's row are 12px above and below their
+      words, an item's row and the total 16px.
+    - The largest item is open at first, as the owner's mockup draws it;
+      the others are closed.
     - Each item's row is a button that opens its claims under it: a
       chevron pointing to the end side while closed (flipped in Arabic)
       and down while open, the item, how many claims, the original, paid
@@ -1571,18 +1582,31 @@ These are built once, in the building-blocks PR, and every page uses them
     - A claim's row, on `--page`, inset under its item's name: its number
       above its period, then its amounts, its due date and its badges.
       The number is in Latin digits, left to right, as it's typed into
-      the portal. At the row's end, Ask about this claim: a 44px icon
+      the portal. Its period is said as the portal means it: a whole
+      year as "Year 2025", a whole month as "November 2025", and
+      anything else from its first day to its last. An item's claims go
+      the latest last day to pay first, as the mockup lists them.
+      At the row's end (from step 9), Ask about this claim: a 44px icon
       button with a speech bubble, named for screen readers with the
       claim's number, opening Contact on WhatsApp with that claim's
       message. On phones it's at the end of the claim card's first line.
-    - A total row at its foot.
+    - A total row at its foot, on `--page`, weight 700: how many claims
+      and the original, paid and remaining amounts in all.
+    - An item's row, and its card on phones, is on `--brand-tint` under
+      the pointer, over 150ms, where there's one: a tap leaves no colour
+      behind.
     - On phones, each item is a card that opens, with how many claims and
-      what remains on one line under its name. Each claim is a card with
-      its number and badges on its first line, its period and due date
-      under them, then the original, paid and remaining amounts in three
-      columns.
-    - Its badges: Late, with the Problem colours, and Partly paid, with
-      the Waiting on someone colours. A claim can have both.
+      what remains, with its currency, on one line under its name, then
+      its badges. Each claim is a card with its number and badges on its
+      first line, its period and last day to pay under them ("Year 2025,
+      last day to pay 30 Apr 2026"), then the original, paid and
+      remaining amounts in three columns, each under its label. The
+      total says how many claims, "Total, 20 claims", above the three
+      amounts in all.
+    - Its badges: Partly paid, with the Waiting on someone colours, then
+      Late, with the Problem colours, in that order where a claim has
+      both, as the mockup draws them; the same on the client's page for
+      the company's people.
   - A note under the card, in `--text-xs` and `--muted`: the currency,
     the day the figures are from, that penalties for paying late aren't
     counted, and to contact the accountant about any claim, such as
@@ -2850,3 +2874,11 @@ changed:
   Bars by part take the mockup's sizes and a 140px name column, the share
   bar's amounts go under it on phones, and a card's title can have a line
   under it (§5.5).
+- **2026-11-20:** A client's tax position (§5.5), the claims by item as
+  the owner's mockup draws them: the card's hint, the table's head and
+  its columns, the largest item open at first, an item's claims the
+  latest last day to pay first, a claim's period said as the portal
+  means it ("Year 2025", "November 2025"), the total row, its rows'
+  heights, Partly paid before Late here and for the company's people, and
+  on phones the claim's period with its last day to pay and the total's
+  count of claims. Ask about this claim comes with step 9.
