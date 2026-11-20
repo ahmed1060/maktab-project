@@ -144,3 +144,21 @@ describe("what they're refused with", () => {
         expect((ar as Record<string, string>).audit_action_USE_NIZMO_CLIENT_MESSAGE).toBe("تمت العودة إلى رسالة Nizmo للعملاء")
     })
 })
+
+describe("a message put back to Nizmo's is kept, marked as Nizmo's (PR 348, Codex)", () => {
+    const NAME = "20270114000000_client_message_uses_nizmo"
+    const migration = () => source(`prisma/migrations/${NAME}/migration.sql`).split("\n").filter(line => !line.startsWith("--")).join("\n")
+
+    it("by a migration that only adds a column, false for every row there is, and a check", () => {
+        const statements = migration().split("\n").filter(line => /^[A-Z]/.test(line))
+        expect(statements).toEqual([
+            'ALTER TABLE "ClientMessageTemplate" ADD COLUMN "usesNizmo" BOOLEAN NOT NULL DEFAULT false;',
+            'ALTER TABLE "ClientMessageTemplate" ADD CONSTRAINT "ClientMessageTemplate_usesNizmo" CHECK ("companyId" IS NOT NULL OR NOT "usesNizmo");',
+        ])
+    })
+
+    it("which the schema's model has", () => {
+        const model = source("prisma/schema.prisma").split("model ClientMessageTemplate {")[1].split("\n}")[0]
+        expect(model).toMatch(/\n  usesNizmo\s+Boolean\s+@default\(false\)\n/)
+    })
+})

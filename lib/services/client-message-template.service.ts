@@ -19,7 +19,8 @@ export type { CompanyMessage, NizmoMessage }
  */
 export async function clientMessages(companyId: string): Promise<ClientMessages> {
     const kept = await prisma.clientMessageTemplate.findMany({
-        where: { OR: [{ companyId }, { companyId: null }] },
+        // A message the company put back to Nizmo's is Nizmo's (PR 348).
+        where: { OR: [{ companyId, usesNizmo: false }, { companyId: null }] },
         select: { companyId: true, kind: true, language: true, text: true },
     })
     return messagesFrom(kept)
@@ -129,9 +130,14 @@ async function nizmoText(db: Db, kind: MessageKind, language: MessageLanguage): 
 
 const own = (kind: MessageKind, language: MessageLanguage, row: Kept): CompanyMessage =>
     ({ kind, language, text: row.text, own: true, changedBy: row.updatedByName, changedAt: row.updatedAt.toISOString() })
-// The company never changed it: no who and when of its own, and nothing for a save to say it started from.
-const nizmos = (kind: MessageKind, language: MessageLanguage, text: string): CompanyMessage =>
-    ({ kind, language, text, own: false, changedBy: null, changedAt: null })
+/**
+ * Nizmo's text, as the company uses it. Where the company never changed the
+ * message there's no who and when, and nothing for a save to say it started
+ * from; where it put Nizmo's back, its row says who did and when, which a
+ * save then says it started from.
+ */
+const nizmos = (kind: MessageKind, language: MessageLanguage, text: string, putBack: Kept | null = null): CompanyMessage =>
+    ({ kind, language, text, own: false, changedBy: putBack?.updatedByName ?? null, changedAt: putBack?.updatedAt.toISOString() ?? null })
 
 /**
  * Each of a company's messages in each language, as it uses them (§7.1,
@@ -143,12 +149,12 @@ export async function companyMessages(companyId: string): Promise<CompanyMessage
     await portalCompany(companyId)
     const rows = await prisma.clientMessageTemplate.findMany({
         where: { OR: [{ companyId }, { companyId: null }] },
-        select: { companyId: true, kind: true, language: true, text: true, updatedByName: true, updatedAt: true },
+        select: { companyId: true, kind: true, language: true, text: true, usesNizmo: true, updatedByName: true, updatedAt: true },
     })
     return MESSAGE_KINDS.flatMap(kind => MESSAGE_LANGUAGES.map(language => {
         const mine = rows.find(r => r.companyId === companyId && r.kind === kind && r.language === language)
-        if (mine) return own(kind, language, mine)
-        return nizmos(kind, language, rows.find(r => r.companyId === null && r.kind === kind && r.language === language)?.text ?? NIZMO_MESSAGES[kind][language])
+        if (mine && !mine.usesNizmo) return own(kind, language, mine)
+        return nizmos(kind, language, rows.find(r => r.companyId === null && r.kind === kind && r.language === language)?.text ?? NIZMO_MESSAGES[kind][language], mine ?? null)
     }))
 }
 
@@ -160,7 +166,8 @@ const loggedBy = (by: Actor) => by.role === 'SUPER_ADMIN' ? { userId: null, supe
  * Super Admin (§7.1): refused as Nizmo's are where the text doesn't pass the
  * checks, and where the company's copy was changed, made or put back to
  * Nizmo's since the page read it (MESSAGE_CHANGED_SINCE): `since` is the
- * time of the copy it read, none where it read Nizmo's. A text the same as
+ * time of the message's row it read, a copy or Nizmo's put back, none where
+ * the company never changed it. A text the same as
  * the one the company uses writes nothing, so Nizmo's unchanged makes no
  * copy. Each change is in the audit log, with the company, what it was and
  * what it is.
@@ -176,17 +183,18 @@ export async function saveCompanyMessage(
         return await prisma.$transaction(async tx => {
             const row = await tx.clientMessageTemplate.findFirst({
                 where: { companyId: company.id, kind, language },
-                select: { id: true, text: true, updatedByName: true, updatedAt: true },
+                select: { id: true, text: true, usesNizmo: true, updatedByName: true, updatedAt: true },
             })
             if ((row?.updatedAt.toISOString() ?? null) !== since) throw new Error('MESSAGE_CHANGED_SINCE')
-            const before = row?.text ?? await nizmoText(tx, kind, language)
-            if (kept === before) return row ? own(kind, language, row) : nizmos(kind, language, before)
+            const copy = row && !row.usesNizmo ? row : null
+            const before = copy?.text ?? await nizmoText(tx, kind, language)
+            if (kept === before) return copy ? own(kind, language, copy) : nizmos(kind, language, before, row)
             // A Super Admin isn't one of the company's people: their name alone is kept.
             const who = { updatedById: by.role === 'SUPER_ADMIN' ? null : by.id, updatedByName: by.name }
             let saved: Kept & { id: string }
             if (row) {
                 // Only where it's still as it was read: a save that came first has moved its time on.
-                const { count } = await tx.clientMessageTemplate.updateMany({ where: { id: row.id, updatedAt: row.updatedAt }, data: { text: kept, ...who } })
+                const { count } = await tx.clientMessageTemplate.updateMany({ where: { id: row.id, updatedAt: row.updatedAt }, data: { text: kept, usesNizmo: false, ...who } })
                 if (count === 0) throw new Error('MESSAGE_CHANGED_SINCE')
                 saved = await tx.clientMessageTemplate.findUniqueOrThrow({ where: { id: row.id }, select: { id: true, text: true, updatedByName: true, updatedAt: true } })
             } else {
@@ -210,11 +218,14 @@ export async function saveCompanyMessage(
 }
 
 /**
- * Use Nizmo's message (§7.1): the company's copy goes, and it uses Nizmo's
- * again, with the Super Admin's later changes. Refused where the copy was
- * changed, or put back, since the page read it (MESSAGE_CHANGED_SINCE).
- * Where the company uses Nizmo's already, nothing is written. In the audit
- * log with the company, what it was and what it is.
+ * Use Nizmo's message (§7.1): the company uses Nizmo's again, with the
+ * Super Admin's later changes. Its row stays, marked as using Nizmo's, by
+ * who put it back and when: were it to go, a page that read Nizmo's before
+ * a copy was made and put back couldn't be told from one that read it
+ * since (PR 348, Codex). Refused where the message was changed, made or
+ * put back since the page read it (MESSAGE_CHANGED_SINCE). Where the
+ * company uses Nizmo's already, nothing is written. In the audit log with
+ * the company, what it was and what it is.
  */
 export async function nizmoMessageAgain(
     by: Actor,
@@ -223,18 +234,25 @@ export async function nizmoMessageAgain(
 ): Promise<CompanyMessage> {
     const company = await portalCompany(companyId)
     return prisma.$transaction(async tx => {
-        const row = await tx.clientMessageTemplate.findFirst({ where: { companyId: company.id, kind, language }, select: { id: true, text: true, updatedAt: true } })
+        const row = await tx.clientMessageTemplate.findFirst({
+            where: { companyId: company.id, kind, language },
+            select: { id: true, text: true, usesNizmo: true, updatedByName: true, updatedAt: true },
+        })
         if ((row?.updatedAt.toISOString() ?? null) !== since) throw new Error('MESSAGE_CHANGED_SINCE')
         const nizmo = await nizmoText(tx, kind, language)
-        if (!row) return nizmos(kind, language, nizmo)
+        if (!row || row.usesNizmo) return nizmos(kind, language, nizmo, row)
         // Only where it's still as it was read: a save that came first has moved its time on.
-        const { count } = await tx.clientMessageTemplate.deleteMany({ where: { id: row.id, updatedAt: row.updatedAt } })
+        const { count } = await tx.clientMessageTemplate.updateMany({
+            where: { id: row.id, updatedAt: row.updatedAt },
+            data: { usesNizmo: true, updatedById: by.role === 'SUPER_ADMIN' ? null : by.id, updatedByName: by.name },
+        })
         if (count === 0) throw new Error('MESSAGE_CHANGED_SINCE')
+        const putBack = await tx.clientMessageTemplate.findUniqueOrThrow({ where: { id: row.id }, select: { text: true, updatedByName: true, updatedAt: true } })
         await AuditLogService.log('USE_NIZMO_CLIENT_MESSAGE', 'CLIENT_MESSAGE', row.id, {
             tx,
             ...loggedBy(by),
             details: { company: company.name, message: AUDIT_MESSAGE[kind], language: AUDIT_LANGUAGE[language], before: row.text, after: nizmo },
         })
-        return nizmos(kind, language, nizmo)
+        return nizmos(kind, language, nizmo, putBack)
     })
 }

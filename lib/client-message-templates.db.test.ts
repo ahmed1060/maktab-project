@@ -105,6 +105,14 @@ describe.skipIf(!ADMIN_URL)("the messages' templates, in Postgres", () => {
             expect(await kept()).toEqual([])
         })
 
+        it("marks a company's row as using Nizmo's, never Nizmo's own (PR 348)", async () => {
+            expect(await tried(db.query(`INSERT INTO "ClientMessageTemplate"(id, "companyId", kind, language, text, "usesNizmo", "updatedAt") VALUES ('back', 'c1', 'contact', 'en', 'Was ours', true, now())`))).toBe("kept")
+            expect(await tried(db.query(`INSERT INTO "ClientMessageTemplate"(id, "companyId", kind, language, text, "usesNizmo", "updatedAt") VALUES ('self', NULL, 'contact', 'en', 'Hi', true, now())`))).toBe("23514")
+            expect((await db.query(`SELECT "usesNizmo" FROM "ClientMessageTemplate" WHERE id = 'back'`)).rows).toEqual([{ usesNizmo: true }])
+            await keep("c1", "claim", "en", "Ours")
+            expect((await db.query(`SELECT "usesNizmo" FROM "ClientMessageTemplate" WHERE kind = 'claim'`)).rows).toEqual([{ usesNizmo: false }])
+        })
+
         it("keeps up to 1,000 characters, an emoji as one, and refuses more", async () => {
             expect(await tried(keep(null, "contact", "en", "a".repeat(1000)))).toBe("kept")
             expect(await tried(keep(null, "contact", "ar", "😀".repeat(1000)))).toBe("kept")
@@ -308,6 +316,9 @@ describe.skipIf(!ADMIN_URL)("the messages' templates, in Postgres", () => {
         const logged = async () => (await db.query(`SELECT action, "entityType", "entityId", "userId", "superAdminId", details FROM "AuditLog" ORDER BY "createdAt"`)).rows
         const copies = async (company = "c1") => (await db.query(`SELECT kind, language, text, "updatedById", "updatedByName" FROM "ClientMessageTemplate" WHERE "companyId" = $1 ORDER BY kind, language`, [company])).rows
         const nizmos = (kind: "contact" | "claim", language: "ar" | "en", text: string) => ({ kind, language, text, own: false, changedBy: null, changedAt: null })
+        // Nizmo's, put back by someone: who did and when, the time a save says it started from.
+        const putBack = (kind: "contact" | "claim", language: "ar" | "en", text: string, by: string) => ({ kind, language, text, own: false, changedBy: by, changedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) })
+        const marks = async (company = "c1") => (await db.query(`SELECT kind || ':' || language || ':' || "usesNizmo" AS mark FROM "ClientMessageTemplate" WHERE "companyId" = $1 ORDER BY 1`, [company])).rows.map(r => r.mark)
 
         it("each message in each language as the company uses it: Nizmo's, as the Super Admin changed it or as written, until it has its own", async () => {
             await keep(null, "contact", "en", "Nizmo's now {person}", null, "Sam Admin")
@@ -405,30 +416,66 @@ describe.skipIf(!ADMIN_URL)("the messages' templates, in Postgres", () => {
             expect((await save({ kind: "contact", language: "en", text: "a\r\nb\rc {person}", since: null })).text).toBe("a\nb\nc {person}")
         })
 
-        it("Use Nizmo's message: the copy goes, in the audit log with what it was and what it is, and the company follows Nizmo's again", async () => {
+        it("Use Nizmo's message: the copy is marked as Nizmo's, in the audit log with what it was and what it is, and the company follows Nizmo's again", async () => {
             const copy = await save({ kind: "claim", language: "ar", text: "نسختنا {number}", since: null })
             const [row] = (await db.query(`SELECT id FROM "ClientMessageTemplate" WHERE "companyId" = 'c1'`)).rows
-            expect(await back({ kind: "claim", language: "ar", since: copy.changedAt })).toEqual(nizmos("claim", "ar", NIZMO_MESSAGES.claim.ar))
-            expect(await copies()).toEqual([])
+            const again = await back({ kind: "claim", language: "ar", since: copy.changedAt })
+            expect(again).toEqual(putBack("claim", "ar", NIZMO_MESSAGES.claim.ar, "Amal One"))
+            expect(again.changedAt).not.toBe(copy.changedAt)
+            expect(await marks()).toEqual(["claim:ar:true"])
+            expect((await templates.companyMessages("c1"))[2]).toEqual(again)
             expect((await logged())[1]).toEqual({
                 action: "USE_NIZMO_CLIENT_MESSAGE", entityType: "CLIENT_MESSAGE", entityId: row.id, userId: "a1", superAdminId: null,
                 details: { company: "One", message: "ASK_ABOUT_CLAIM", language: "AR", before: "نسختنا {number}", after: NIZMO_MESSAGES.claim.ar },
             })
+            // Its client's people are never given the copy it was.
+            expect((await templates.clientMessages("c1")).claim.ar).toBe(NIZMO_MESSAGES.claim.ar)
             await templates.saveNizmoMessage(SAM, { kind: "claim", language: "ar", text: "لاحقًا {number}", since: null })
-            expect((await templates.companyMessages("c1"))[2]).toEqual(nizmos("claim", "ar", "لاحقًا {number}"))
+            expect((await templates.companyMessages("c1"))[2]).toEqual({ ...again, text: "لاحقًا {number}" })
             expect((await templates.clientMessages("c1")).claim.ar).toBe("لاحقًا {number}")
+        })
+
+        it("a save from Nizmo's text is refused where a copy was made and put back to Nizmo's since, and nothing more written", async () => {
+            const read = (await templates.companyMessages("c1"))[1]
+            expect(read.changedAt).toBeNull()
+            const other = await save({ kind: "contact", language: "en", text: "Theirs {person}", since: null }, SAM)
+            await back({ kind: "contact", language: "en", since: other.changedAt }, SAM)
+            expect(await refusal(save({ kind: "contact", language: "en", text: "Mine {person}", since: read.changedAt }))).toBe("MESSAGE_CHANGED_SINCE")
+            expect(await refusal(back({ kind: "contact", language: "en", since: read.changedAt }))).toBe("MESSAGE_CHANGED_SINCE")
+            expect(await marks()).toEqual(["contact:en:true"])
+            expect(await logged()).toHaveLength(2)
+        })
+
+        it("a save from Nizmo's, put back, makes the company's copy again", async () => {
+            const copy = await save({ kind: "contact", language: "en", text: "Ours {person}", since: null })
+            const again = await back({ kind: "contact", language: "en", since: copy.changedAt })
+            const anew = await save({ kind: "contact", language: "en", text: "Ours anew {person}", since: again.changedAt }, SAM)
+            expect(anew).toEqual({ kind: "contact", language: "en", text: "Ours anew {person}", own: true, changedBy: "Sam Admin", changedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) })
+            expect(await marks()).toEqual(["contact:en:false"])
+            expect((await logged())[2].details).toEqual({ company: "One", message: "CONTACT_ACCOUNTANT", language: "EN", before: NIZMO_MESSAGES.contact.en, after: "Ours anew {person}" })
+            expect((await templates.clientMessages("c1")).contact.en).toBe("Ours anew {person}")
+        })
+
+        it("Nizmo's text saved where Nizmo's was put back writes nothing, and Use Nizmo's message again writes nothing", async () => {
+            const copy = await save({ kind: "contact", language: "en", text: "Ours {person}", since: null })
+            const again = await back({ kind: "contact", language: "en", since: copy.changedAt })
+            expect(await save({ kind: "contact", language: "en", text: NIZMO_MESSAGES.contact.en, since: again.changedAt })).toEqual(again)
+            expect(await back({ kind: "contact", language: "en", since: again.changedAt })).toEqual(again)
+            expect(await logged()).toHaveLength(2)
+            expect(await marks()).toEqual(["contact:en:true"])
         })
 
         it("Use Nizmo's message gives Nizmo's as the Super Admin changed it, and the audit log says so", async () => {
             await templates.saveNizmoMessage(SAM, { kind: "contact", language: "en", text: "Nizmo's now {person}", since: null })
             const copy = await save({ kind: "contact", language: "en", text: "Ours {person}", since: null })
-            expect(await back({ kind: "contact", language: "en", since: copy.changedAt })).toEqual(nizmos("contact", "en", "Nizmo's now {person}"))
+            expect(await back({ kind: "contact", language: "en", since: copy.changedAt })).toEqual(putBack("contact", "en", "Nizmo's now {person}", "Amal One"))
             expect((await logged())[2].details).toEqual({ company: "One", message: "CONTACT_ACCOUNTANT", language: "EN", before: "Ours {person}", after: "Nizmo's now {person}" })
         })
 
-        it("Use Nizmo's message by the Super Admin is in the audit log by their name", async () => {
+        it("Use Nizmo's message by the Super Admin is in the audit log, and kept, by their name", async () => {
             const copy = await save({ kind: "contact", language: "en", text: "Ours {person}", since: null })
-            await back({ kind: "contact", language: "en", since: copy.changedAt }, SAM)
+            expect(await back({ kind: "contact", language: "en", since: copy.changedAt }, SAM)).toEqual(putBack("contact", "en", NIZMO_MESSAGES.contact.en, "Sam Admin"))
+            expect((await copies()).map(r => [r.updatedById, r.updatedByName])).toEqual([[null, "Sam Admin"]])
             expect((await logged()).map(r => [r.action, r.userId, r.superAdminId])).toEqual([["UPDATE_CLIENT_MESSAGE", "a1", null], ["USE_NIZMO_CLIENT_MESSAGE", null, "sa"]])
         })
 
