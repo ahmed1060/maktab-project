@@ -42,6 +42,23 @@ export type ClientMessages = Record<MessageKind, Record<MessageLanguage, string>
  */
 export type NizmoMessage = { kind: MessageKind; language: MessageLanguage; text: string; changedBy: string | null; changedAt: string | null }
 
+/**
+ * One of a company's messages, as it uses it (§7.1, step 10c-1; PR 348):
+ * its own copy, by who changed it last and when, or Nizmo's, which has
+ * neither, as the company never changed it.
+ */
+export type CompanyMessage = NizmoMessage & { own: boolean }
+
+/**
+ * Which company's messages a request is about: one's own company's,
+ * whatever is asked for, or the one asked for by the Super Admin, who has
+ * none of their own. None where there's nothing to go by.
+ */
+export function messagesCompanyId(user: { role?: string; companyId?: string | null }, asked: string | null): string | null {
+    if (user.role === 'SUPER_ADMIN') return asked || null
+    return user.companyId ?? null
+}
+
 /** Nizmo's own as §7 writes them, until the Super Admin changes them. */
 export const NIZMO_MESSAGES: ClientMessages = {
     contact: {

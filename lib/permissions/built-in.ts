@@ -122,6 +122,11 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // given to the companies there already by PR 330's migration, once
         // PR 322's role editor, which knows it, was live.
         "client_accounts.manage": "COMPANY",
+        // The company's own copy of the client messages on WhatsApp
+        // (CLIENT_PORTAL_PLAN.md §7.1, §9): a new company's since PR 348, and
+        // given to the companies there already by a later PR's migration
+        // (step 10d), once PR 348's role editor, which knows it, is live.
+        "client_messages.manage": "COMPANY",
         "clients.manage": "COMPANY",
         "costs.view": "COMPANY",
         // The places tasks happen at: whoever creates tasks sees and adds

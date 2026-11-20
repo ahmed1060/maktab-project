@@ -418,6 +418,7 @@ export const en = {
         // A client's responsible accountant (CLIENT_PORTAL_PLAN.md §7, PR 343).
         audit_action_SET_CLIENT_ACCOUNTANT: "Set a client's responsible accountant",
         audit_action_UPDATE_CLIENT_MESSAGE: "Changed a client message",
+        audit_action_USE_NIZMO_CLIENT_MESSAGE: "Went back to Nizmo's client message",
         audit_entity_CLIENT_MESSAGE: "Client message",
         audit_value_CONTACT_ACCOUNTANT: "Contact the accountant",
         audit_value_ASK_ABOUT_CLAIM: "Ask about a claim",
@@ -3488,6 +3489,7 @@ export const en = {
         perm_tax_view: "See clients' tax position",
         perm_tax_manage: "Update clients' tax position from the tax portal's file",
         perm_client_accounts_manage: "Manage who signs in for a client",
+        perm_client_messages_manage: "Change client messages on WhatsApp",
         perm_cash_advances_view: "See cash advances",
         perm_cash_advances_give: "Give and settle cash advances",
         // Client charges (CLIENTS_PLAN.md §6), on the Costs page.

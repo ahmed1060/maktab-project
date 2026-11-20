@@ -169,6 +169,12 @@ export const PERMISSIONS = {
     // outside the company in, so adding and removing ask for the step-up
     // confirmation.
     "client_accounts.manage":   { code: 70, module: "TAX_POSITION", scopes: COMPANY, implies: ["clients.view"], highRisk: LETS_OUTSIDERS_IN },
+    // The company's own copy of the client messages on WhatsApp (§7.1):
+    // reading them, changing one, and going back to Nizmo's. It brings
+    // nothing with it: the Client portal tab shows to whoever holds it,
+    // whatever the company's Admin access says. Not high-risk: the client's
+    // person can still change a message before sending it.
+    "client_messages.manage":   { code: 71, module: "TAX_POSITION", scopes: COMPANY },
 
     // --- Day off -----------------------------------------------------------
     "dayoff.view":              { code: 32, module: "DAY_OFF", scopes: TEAM_OR_COMPANY },
@@ -275,7 +281,8 @@ export type Permission = keyof typeof PERMISSIONS
  * Nor for tax.view (code 68, CLIENT_PORTAL_PLAN.md §9, PR 311): no role
  * already there holds it until its own migration gives it. Nor for
  * tax.manage (code 69, PR 315), as for tax.view, nor
- * client_accounts.manage (code 70, PR 322).
+ * client_accounts.manage (code 70, PR 322), nor client_messages.manage
+ * (code 71, PR 348).
  */
 export const CATALOGUE_VERSION = 4
 
