@@ -1095,7 +1095,10 @@ Arabic and English.
   changes while another is open; leaving the page with any unsaved asks
   first. A save says which text it started from: one someone changed
   since is refused, and the page then shows who and when, keeping the
-  changes to save over it. The checks run on the page, then again on the
+  changes to save over it. Each message's changes keep the time of the
+  text they started from, so saving another message first, which reads
+  them all again, doesn't let a save through unwarned; what's typed while
+  a save goes stays, unsaved. The checks run on the page, then again on the
   server; saving the same text writes nothing. Each save is in the audit
   log as Changed a client message, with the message, its language, and
   the text before and after.
