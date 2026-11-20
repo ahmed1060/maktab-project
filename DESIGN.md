@@ -1345,6 +1345,9 @@ These are built once, in the building-blocks PR, and every page uses them
     changed while it lasts, with Exit preview.
 - **Card:** a level-1 panel with 12px corners and 16px inside (12px on
   phones), for things that aren't lists, such as settings sections.
+  - Its title can have a line under it in `--text-xs` and `--muted`,
+    saying how what's in it is ordered or counted, such as "Largest
+    first".
   - A card that needs someone before going on has the Waiting on someone
     colour (§2.3) as a 3px bar on its start edge. An example is Payroll's
     people paid for days nobody has ruled on.
@@ -1472,10 +1475,13 @@ These are built once, in the building-blocks PR, and every page uses them
     office they deal with.
 - **Bars by part:** how an amount splits into a few named parts, to
   compare them, such as what a client owes by item.
-  - Each part is a row: its name, a bar, and its amount, with a note in
-    `--text-sm` and `--muted` under the amount, such as its share and how
-    many there are. On phones, the bar goes under the name and the amount
-    to the row's end, with the note under the bar.
+  - Each part is a row: its name in `--text-sm` and `--ink-2`, a bar, and
+    its amount in `--text-sm` and weight 600, with a note in `--text-xs`
+    and `--muted` under the amount, such as its share and how many there
+    are. On computers the names take a column 140px wide and the amounts
+    one at the end, and the bars the room between. On phones, the bar
+    goes under the name and the amount to the row's end, with the note
+    under the bar.
   - The bars are 8px high in `--brand`, starting at the start side, with
     their far end rounded 4px. The largest part fills the space and the
     rest are drawn to scale; a part too small to see is drawn 4px long, so
@@ -1486,20 +1492,27 @@ These are built once, in the building-blocks PR, and every page uses them
   - The amounts and notes are in the text colours, never the bar's.
     Pointing at a row shows its full name and amount. No axis or grid
     lines.
+  - A part can go by a short name, with its full name when pointed at
+    and for screen readers, such as تأمين صحي for مساهمة تكافلية - تأمين
+    صحي.
   - A name too long for its row is cut short at its own end, in its own
     direction, so an item's Arabic name on the English page keeps its
     first words.
 - **Share bar:** how much of a whole is done, such as how much of a
-  client's claims is paid. A line says it in words, such as "16% paid",
-  with the two amounts at its end (under it on phones), over a 10px bar of
-  `--brand` on `--brand-tint-strong`, fully rounded. Screen readers read
-  the line, and the bar is hidden from them.
+  client's claims is paid. A line in `--text-sm` says it in words, weight
+  500, such as "16% of the total claims paid", with the two amounts in
+  `--muted` at its end, over a 10px bar of `--brand` on
+  `--brand-tint-strong`, fully rounded. On phones the amounts go under the
+  bar, in `--text-xs`. Screen readers read the line and the amounts, and
+  the bar is hidden from them.
 - **A client's tax position:** the client's area's page of what their
   company owes on the Tax Authority's portal, from what the company
   keeps for it (`CLIENT_PORTAL_PLAN.md` §6).
   - Its page header: the client's name in `--text-sm` and `--muted` above
     the title; a subtitle saying where the figures come from, the day they
-    were last updated and the responsible accountant; Contact the
+    were last updated and the responsible accountant, such as "From the
+    Tax Authority's portal, last updated 16 Nov 2026. Responsible
+    accountant: …"; Contact the
     accountant as the primary button and Download the statement beside
     it. Where the client has no one to write to on WhatsApp
     (`CLIENT_PORTAL_PLAN.md` §7), Contact the accountant isn't there, nor
@@ -1510,31 +1523,43 @@ These are built once, in the building-blocks PR, and every page uses them
     says how long it's been, such as "Not updated for 34 days", and the
     Clients list has the same badge in the client's row. The client's own
     page has the day alone.
-  - What's owed, in a card. Its label, then the amount as the page's one
-    large figure: 48px (36px on phones), weight 600, even-width digits,
-    the currency after it in `--text-lg` and `--muted`. It's the only text
-    larger than `--text-3xl`, and comes as `--text-hero` with the page
-    (§3.2). Under it, a Problem badge while claims are late: "All open
-    claims are late" where there's more than one and all are, or how many
-    are, such as "1 claim late". Beside it (under it on phones): how much
-    is paid, as a share bar, then three facts: open claims, paid, and the
-    oldest delay in days, or None where nothing is late. On computers the
-    facts are in a row, each a label above its value in `--text-xl`; on
-    phones, one to a line, the label at the start and the value at the
-    end.
-    - The share paid is of the open claims' original amounts, rounded
-      down to a whole percent, so it never says 100% while something is
-      left to pay.
-    - The currency is said once, after the large figure; the other
-      amounts on the page are in the same currency, as the note says.
+  - What's owed, in a panel 24px inside (as the owner's mockup draws it).
+    - Its label, What the company owes, in `--text-md`, weight 500 and
+      `--muted`, then the amount as the page's one large figure: 48px (36px
+      on phones), weight 600, even-width digits, the currency after it in
+      `--text-lg` and `--muted`. It's the only text larger than
+      `--text-3xl`, and comes as `--text-hero` with the page (§3.2).
+    - Under it, a Problem badge with a warning icon while claims are late:
+      "All open claims are late" where there's more than one and all are,
+      or how many are, such as "1 claim late".
+    - Beside it, twice its width (under it on phones): how much is paid,
+      as a share bar, "16% of the total claims paid", its amounts with the
+      currency, such as "7,365.00 of 46,163.37 EGP". Then, under a line
+      across, three facts: open claims, paid (the currency after it, in
+      `--muted`), and the oldest delay in days, or None where nothing is
+      late.
+    - On computers the facts are in a row, each a label in `--text-xs` and
+      `--muted` above its value in `--text-xl`, weight 600. On phones
+      they're one to a line, between lines, the label at the start in
+      `--text-sm` and the value at the end in `--text-lg`.
+    - The share paid is of the open claims' original amounts, to the
+      nearest whole percent, and 99% at most while something is left to
+      pay, so it never says 100% then.
   - Two cards side by side, stacked on phones, each bars by part: what's
     owed by item, and how late, by time since the due date (not due yet,
     under 6 months, 6 months to a year, 1 to 2 years, more than 2 years),
     in that order. A claim whose last day to pay hasn't passed is not due
     yet, so the four late rows hold only what's late.
+    - Each card's title has a line under it: "Largest first", and "From
+      the last day to pay until today".
     - An item's note is its share of what's owed and how many claims it
-      has, such as "75%, 2 claims"; a row of how late has how many
-      claims, and none at nothing.
+      has, such as "64% of what's owed, 3 claims"; a row of how late has
+      how many claims, or "No claims" at nothing.
+    - The two usual items with long names go by short ones in the bars:
+      تأمين صحي and صندوق أسر الشهداء. Pointing at the row shows the full
+      name, a screen reader reads it, and the claims name every item in
+      full.
+    - The bars' amounts are in the currency the large figure names.
   - The claims, by item, in a card: a table on computers and cards on
     phones (§5.4).
     - Each item's row is a button that opens its claims under it: a
@@ -1558,9 +1583,11 @@ These are built once, in the building-blocks PR, and every page uses them
       columns.
     - Its badges: Late, with the Problem colours, and Partly paid, with
       the Waiting on someone colours. A claim can have both.
-  - A note under the card: the currency, the day the figures are from,
-    that penalties for paying late aren't counted, and to contact the
-    accountant about any claim.
+  - A note under the card, in `--text-xs` and `--muted`: the currency,
+    the day the figures are from, that penalties for paying late aren't
+    counted, and to contact the accountant about any claim, such as
+    "Amounts are in Egyptian pounds, as they were on the Tax Authority's
+    portal on 16 Nov 2026, and penalties for paying late aren't counted."
   - With no claims kept yet, the page's place is an empty state saying
     the office hasn't added the tax position yet, under the header with
     no subtitle.
@@ -2810,3 +2837,16 @@ changed:
   says 100% while something is left to pay; the currency is said once,
   after the large figure; and the notes under the bars say each item's
   share and claims, and each row of how late its claims.
+- **2026-11-20:** A client's tax position (§5.5), as the owner's mockup
+  draws it: What the company owes as a muted label rather than a card's
+  title, the badge with a warning icon, the share paid twice the figure's
+  width with its amounts and their currency, a line over the facts, the
+  paid fact with its currency, and the phone's facts between lines; each
+  card of bars with a line under its title; "of what's owed" in an item's
+  note and "No claims" at nothing; short names for the two usual items
+  with long names, their full names for screen readers; the mockup's words for the subtitle and the note; and
+  the share paid to the nearest whole percent, as the mockup has it, 99%
+  at most while something is left to pay.
+  Bars by part take the mockup's sizes and a 140px name column, the share
+  bar's amounts go under it on phones, and a card's title can have a line
+  under it (§5.5).
