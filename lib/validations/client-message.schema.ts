@@ -41,3 +41,9 @@ export const nizmoMessagesAgainSchema = z.object({
         en: z.string().datetime().nullable(),
     }),
 })
+
+/**
+ * The update email's switch (§4.4, step 11a; PR 350): on or off, and
+ * nothing else.
+ */
+export const taxUpdateEmailsSchema = z.object({ on: z.boolean() })

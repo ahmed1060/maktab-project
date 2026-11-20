@@ -7246,7 +7246,8 @@ a.ui-notice:focus-visible {
 }
 /* A company's client messages, on the Client portal tab (DESIGN.md §5.5;
    PR 349): rows inside the card, a rule above the first, and the line
-   under them. On phones each row's buttons go under its lines. */
+   under them. On phones each row's buttons go under its lines, and the
+   update email's badge and button under its line (PR 350). */
 .ui-card > .ui-cmsg-rows {
   border-top: 1px solid var(--rule);
 }
@@ -7257,11 +7258,13 @@ a.ui-notice:focus-visible {
   color: var(--muted);
 }
 @media (max-width: 767px) {
-  .ui-cmsg-rows .ui-row {
+  .ui-cmsg-rows .ui-row,
+  .ui-cmsg-emails .ui-row {
     flex-direction: column;
     align-items: stretch;
   }
-  .ui-cmsg-rows .ui-row-end {
+  .ui-cmsg-rows .ui-row-end,
+  .ui-cmsg-emails .ui-row-end {
     max-width: none;
     justify-content: flex-start;
   }

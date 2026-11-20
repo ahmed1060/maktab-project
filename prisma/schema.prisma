@@ -274,6 +274,10 @@ model Company {
   /// as the system's switch is on too. Its Admin, or the Super Admin, turns
   /// it off, which asks for a code once.
   confirmHighRisk      Boolean                   @default(true)
+  /// Whether the client's people are emailed when their tax position is
+  /// updated (CLIENT_PORTAL_PLAN.md §4.4): off to start, changed on the
+  /// Client portal tab by whoever holds client_messages.manage.
+  taxUpdateEmails      Boolean                   @default(false)
   /// The letters before the number in a username Nizmo makes up for this
   /// company's people (ds0, ds1…), in lower case; no other company has them
   /// (lib/username.ts). Null for a company added before codes whose people's

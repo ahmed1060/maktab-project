@@ -75,11 +75,10 @@ function seeded(): Record<string, Record<string, string>> {
 }
 
 /**
- * Built-in grants a new company's roles get now, which the companies there
- * already get from a later PR's migration (CLIENT_PORTAL_PLAN.md §12 step
- * 10d, as PR 330 did for client_accounts.manage): it runs once this release,
- * whose role editor knows them, is live, so no editor that doesn't know them
- * can drop them meanwhile.
+ * Built-in grants a new company's roles get, which no migration gives the
+ * companies there before them: step 10d, which would have, as PR 330 did for
+ * client_accounts.manage, was skipped on 2026-11-20, as none was there
+ * (CLIENT_PORTAL_PLAN.md §9, §12).
  */
 const GRANTED_LATER = ["client_messages.manage"]
 
