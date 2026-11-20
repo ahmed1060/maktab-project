@@ -495,8 +495,11 @@ the company's people):
   (`lib/office-email.ts`), its link to Nizmo's sign-in page on Nizmo's
   own address. One that can't be sent leaves the upload saved and the
   day marked, and a second audit log entry, after the upload's, says how
-  many couldn't be. The upload's answer says what was done, and its
-  toast says it.
+  many couldn't be. They're given up 45 seconds after the upload began,
+  those not sent by then counted as not sent, so the upload answers
+  before its route's minute is up, a mail server that stalls or not
+  (found by Codex on #351). The upload's answer says what was done, and
+  its toast says it.
 
 ---
 
@@ -2364,3 +2367,7 @@ with a tax position is archived, and deleted for good from the archive
   audit log entry says how many it's emailed to, and one that can't be
   sent gets a second entry, the upload staying saved. The toast says
   what was done.
+- **2026-11-20:** 11b (#351, found by Codex): the update emails are given
+  up 45 seconds after the upload began, those not sent by then counted
+  as not sent, so a mail server that stalls can't hold the upload's
+  answer past its route's minute (§4.4).
