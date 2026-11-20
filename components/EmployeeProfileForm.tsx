@@ -22,6 +22,7 @@ import { ConfirmPasswordDialog, TemporaryPasswordDialog } from '@/components/pro
 import { ProfileForm, type ProfileValues } from '@/components/profile/ProfileForm'
 import { RoleFields, type WaitingRole } from '@/components/profile/RoleFields'
 import { RoleRequestDialog, type AskRefusal } from '@/components/profile/RoleRequestDialog'
+import { WhatsAppCard } from '@/components/profile/WhatsAppCard'
 import { EndContractDialog } from './profile/EndContractDialog'
 import { TeamHandOffDialog } from './profile/TeamHandOffDialog'
 import { handoffRefusal } from '@/lib/end-contract'
@@ -97,6 +98,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     const [saving, setSaving] = useState(false)
     // Their photo, as saved: changed and removed at once (components/profile/ProfilePhoto.tsx).
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+    // Their WhatsApp number, as kept, for its own card (PR 340).
+    const [whatsappNumber, setWhatsappNumber] = useState<string | null>(null)
     // The id is the request's on the Requests page; one just asked for has none yet.
     const [pendingRequest, setPendingRequest] = useState<{ id?: string, newFirstName: string, newLastName: string } | null>(null)
     const [originalFirstName, setOriginalFirstName] = useState('')
@@ -211,6 +214,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 setTeamLeaderId(employee.teamLeaderId || '')
                 setMyLeader(employee.teamLeader || null)
                 setAvatarUrl(employee.avatar || null)
+                setWhatsappNumber(employee.whatsappNumber ?? null)
 
                 // Their own name change waiting, asked for by whose it is: the
                 // list gives whoever may decide name changes the company's
@@ -745,6 +749,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     cancelHref={`/dashboard/employees/${userId}?mode=view`}
                 />
             </Card>
+            {/* Their WhatsApp number, for their clients, saved on its own
+                (CLIENT_PORTAL_PLAN.md §7, PR 340). */}
+            {access.whatsapp && <WhatsAppCard userId={userId} saved={whatsappNumber} />}
 
             {/* Where their team goes, asked before a change that takes a
                 leader from it; open until the save with the answer settles. */}

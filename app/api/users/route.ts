@@ -28,6 +28,10 @@ const VALID_ROLES: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'TEAM_LEADER', 'EMPLOYE
 const VALID_STATUSES: UserStatus[] = ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'DELETED', 'OFFLINE', 'ARCHIVED']
 // Matched by the profile form, which says it in the reader's language.
 const USERNAME_RESERVED = "Username follows another company's username code"
+// A WhatsApp number's refusals, said by the profile's card in the reader's
+// language (CLIENT_PORTAL_PLAN.md §7, PR 340).
+const WHATSAPP_NUMBER_INVALID = "Type an Egyptian mobile starting 01, or the number with its country code (+)"
+const WHATSAPP_NOT_IN_PACKAGE = "The company's package doesn't have the client portal"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -76,7 +80,10 @@ export const GET = withStandardHandler(async (req, session) => {
                 // fields rather than the relation, for the same reason the
                 // list does it: a leader is a User, and `teamLeader: true`
                 // would attach their whole row, salary included.
-                teamLeader: { select: { id: true, firstName: true, lastName: true } }
+                teamLeader: { select: { id: true, firstName: true, lastName: true } },
+                // Their WhatsApp number, for their clients, which the profile's
+                // Contacting clients card shows (CLIENT_PORTAL_PLAN.md §7, PR 340).
+                whatsappNumber: true,
             }
         })
 
@@ -289,6 +296,9 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         if (teamRefusal) return teamRefusal
         if (error.message === 'EMAIL_CHANGE_REQUIRES_VERIFICATION') return ApiResponse.badRequest("Email changes require verification — use Email settings")
         if (error.message === 'TARGET_PROTECTED') return ApiResponse.forbidden("This account's email is protected and cannot be changed")
+        // A WhatsApp number's, with their codes (CLIENT_PORTAL_PLAN.md §7, PR 340).
+        if (error.message === 'WHATSAPP_NUMBER_INVALID') return ApiResponse.refused(400, WHATSAPP_NUMBER_INVALID, 'WHATSAPP_NUMBER_INVALID')
+        if (error.message === 'NOT_IN_PACKAGE') return ApiResponse.refused(403, WHATSAPP_NOT_IN_PACKAGE, 'NOT_IN_PACKAGE')
 
         throw error
     }

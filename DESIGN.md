@@ -1198,6 +1198,21 @@ These are built once, in the building-blocks PR, and every page uses them
   - The photo is saved without the form's own button. While it's sent,
     the picker is off, and a line under it says so, which a screen reader
     hears.
+- **A person's WhatsApp number, for their clients**
+  (`CLIENT_PORTAL_PLAN.md` §7), as the owner's mockup draws it: a card of
+  its own on their profile's form, Contacting clients, with its own Save,
+  where the company's package has the client portal. It's there on one's
+  own profile and for whoever may edit theirs, never on a Super Admin's.
+  - One field, WhatsApp number, left to right in either language, with a
+    hint under it: an Egyptian mobile starting 01, or the number with its
+    country code (+), and that it can be left empty. It's kept with its
+    country code, "+201001234567", and shown as it's kept.
+  - Under the field, a box on `--page`: the clients' people this account
+    is the responsible accountant for write to this number, and without
+    one they don't see the contact button. Which clients those are comes
+    with the responsible accountant (`CLIENT_PORTAL_PLAN.md` §12, 9b).
+  - A number that isn't one is said under the field, before anything is
+    sent; saved, a toast says so. Emptied and saved, the number is gone.
 - **Face photos,** such as a flagged check-in's last frame beside the
   person's approved photo, to see whether it's the same person: in a
   dialog, side by side, on a phone too, each 3 by 4 with its name under
@@ -2882,3 +2897,8 @@ changed:
   heights, Partly paid before Late here and for the company's people, and
   on phones the claim's period with its last day to pay and the total's
   count of claims. Ask about this claim comes with step 9.
+- **2026-11-20:** A person's WhatsApp number, for their clients (§5.5):
+  a card of its own on their profile's form, Contacting clients, with
+  one field kept with its country code and a box saying who writes to
+  it, where the package has the client portal (`CLIENT_PORTAL_PLAN.md`
+  §12, step 9a).

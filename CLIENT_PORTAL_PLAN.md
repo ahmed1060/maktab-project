@@ -35,8 +35,10 @@ company's app (7a), is #331, signing in finding a client account (7b) is
 top bar (7d-1) is #334, and Change password (7d-2) is #335. The tax
 position page (step 8) is built in four, and the first, what the area
 reads of it (8a), is #336. Its building blocks (8b) are #337, and the
-page's top (8c) is #338, and the claims by item (8d) are #339. The rest
-is built in the small PRs of §12, each its own PR.
+page's top (8c) is #338, and the claims by item (8d) are #339.
+Contacting the accountant (step 9) is built in four, and the first, the
+WhatsApp number on people's profiles (9a), is #340. The rest is built in
+the small PRs of §12, each its own PR.
 
 ---
 
@@ -919,6 +921,18 @@ owner's mockup draws it:
   responsible for can write to it.
   - It's typed as an Egyptian mobile (01…) or with its country code
     (+…), and kept with its country code.
+  - **As built (#340):** `User.whatsappNumber`, kept as "+201001234567",
+    a CHECK holding its shape. Read by `lib/whatsapp-number.ts`, on the
+    profile and on the server alike: an Egyptian mobile from 010, 011,
+    012 or 015, or any number with its country code (+, or 00), 8 to 15
+    digits; spaces, dashes, dots, brackets and Arabic digits are taken as
+    typed. Saved with the profile's own save (`PUT /api/users`), so the
+    same people may change it and it's in the audit log as a profile
+    change; empty takes it away. The server refuses it where the
+    company's package hasn't the client portal (`NOT_IN_PACKAGE`), and on
+    a Super Admin's, who answers for no client. On the profile's form, a
+    card of its own, Contacting clients, with its own Save
+    (`components/profile/WhatsAppCard.tsx`).
 - **Contact the accountant** opens a dialog (`DESIGN.md` §5.5, Contact
   on WhatsApp): the accountant, and a message ready to send, which can be
   changed. Open WhatsApp opens `https://wa.me/<number>?text=<message>` in
@@ -1349,7 +1363,24 @@ width:
    Until step 9, the note says to contact the office.
 9. **Contacting the accountant on WhatsApp:** the number on people's
    profiles, the responsible accountant, the dialog, Ask about this
-   claim, and the messages.
+   claim, and the messages. In four PRs (split 2026-11-20), each with its
+   own `DESIGN.md` block as the owner's mockup draws it:
+   - **9a. The WhatsApp number on people's profiles** (§7): a card of its
+     own on the profile's form, Contacting clients, where the package has
+     the add-on, for the person and whoever may edit their profile. Kept
+     with its country code, in the audit log as a profile change. #340,
+     as built in §7.
+   - **9b. The responsible accountant** (§7): picked on the client's page
+     with `clients.manage`; the profile's card names the clients they
+     answer for; the Tax position section says why the client can't write
+     to them, with the way to fix it.
+   - **9c. Contact the accountant** (§6, §7): the accountant's name under
+     the client's page title, the button, and the dialog, with Nizmo's
+     own message until the templates (step 10). Without a number, the note
+     says to contact the office, as now.
+   - **9d. Ask about this claim** (§7): on each claim, in the table and on
+     the phone's cards, opening the same dialog with that claim's
+     message.
 10. **The messages' templates** (§7.1): the Super Admin's, the company's
     copy, and `client_messages.manage`.
     - **10b.** `client_messages.manage` for the built-in Admin of the
@@ -1952,3 +1983,10 @@ with a tax position is archived, and deleted for good from the archive
   2025" or "November 2025" where it's a whole year or month. Partly paid
   now comes before Late where a claim has both, here and in the section
   for the company's people, as the mockup draws them.
+- **2026-11-20:** 8d merged (#339). Step 9 split in four (§12): the
+  WhatsApp number on people's profiles (9a, #340), the responsible
+  accountant (9b), Contact the accountant (9c) and Ask about this claim
+  (9d). The messages are Nizmo's own until the templates (step 10).
+- **2026-11-20:** 9a as built (#340, §7): the WhatsApp number is kept on
+  the person, saved with their profile, and read the same way on the
+  profile and on the server. Which clients write to it comes with 9b.

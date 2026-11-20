@@ -701,6 +701,25 @@
   flex-wrap: wrap;
   gap: var(--space-2);
 }
+/* Under a person's WhatsApp number, who writes to it (DESIGN.md §5.5,
+   CLIENT_PORTAL_PLAN.md §7, PR 340): a box on the page's ground, its last
+   line, what happens without one, quieter. */
+.ui-whatsapp-note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--page);
+  border-radius: var(--radius-field);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+.ui-whatsapp-note p {
+  margin: 0;
+}
+.ui-whatsapp-note-none {
+  color: var(--muted);
+}
 /* The UI kit page's samples side by side, such as every button and every
    badge: the Super Admin's page of the building blocks (PR 234). */
 .ui-kit-samples {

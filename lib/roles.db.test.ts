@@ -127,6 +127,9 @@ const CLIENT_ACCOUNTS = "20270106000000_client_accounts"
 // The built-in Admin role's client_accounts.manage, for the companies there
 // before it (CLIENT_PORTAL_PLAN.md §9, §12 step 6d, PR 330).
 const CLIENT_ACCOUNTS_GRANTED = "20270109000000_client_accounts_granted"
+// User.whatsappNumber, which every read of a person's whole row now carries
+// (CLIENT_PORTAL_PLAN.md §7, step 9a, PR 340).
+const WHATSAPP_NUMBER = "20270111000000_user_whatsapp_number"
 
 const BEFORE_ROLES = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now());
@@ -203,6 +206,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(TAX_MANAGE_GRANTED))
         await db.query(sql(CLIENT_ACCOUNTS))
         await db.query(sql(CLIENT_ACCOUNTS_GRANTED))
+        await db.query(sql(WHATSAPP_NUMBER))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
