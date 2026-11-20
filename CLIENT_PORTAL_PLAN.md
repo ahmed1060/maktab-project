@@ -34,8 +34,9 @@ company's app (7a), is #331, signing in finding a client account (7b) is
 #332, and Forgot password for client accounts (7c) is #333. The area's
 top bar (7d-1) is #334, and Change password (7d-2) is #335. The tax
 position page (step 8) is built in four, and the first, what the area
-reads of it (8a), is #336. Its building blocks (8b) are #337. The rest
-is built in the small PRs of §12, each its own PR.
+reads of it (8a), is #336. Its building blocks (8b) are #337, and the
+page's top (8c) is #338. The rest is built in the small PRs of §12, each
+its own PR.
 
 ---
 
@@ -836,6 +837,37 @@ As built (step 8b, #337), the page's building blocks, from `DESIGN.md`
 - They're on the Super Admin's building blocks page, in both languages,
   with a client's figures made up for it.
 
+As built (step 8c, #338), the page's top, on the client's area's first
+page (`components/portal/PortalHome.tsx`, `app/(portal)/portal/page.tsx`),
+where the line saying it comes soon was:
+
+- **What it's given:** the session's client's position, read on the
+  server with the session's company and client (8a). A client deleted
+  since the session's last check ends the session, as an ended session
+  does; anything else that goes wrong is an error.
+- **The header:** the client's name above Tax position, and "From the Tax
+  Authority's portal on" the day the figures are from. The accountant
+  joins it with step 9.
+- **What's owed,** in a card: what remains as the large figure, EGP after
+  it, and under it a Problem badge while claims are late, such as "3
+  claims late", or "All open claims are late" where there's more than one
+  and all are. Beside it (under it on phones), how much of the open
+  claims' original amounts is paid, rounded down to a whole percent so it
+  never says 100% while something is left, then three facts: open claims,
+  paid, and the oldest delay in days, or None.
+- **Two cards of bars:** what's owed by item, each with its share and its
+  claims, and how late, every row in its order with its claims. The
+  amounts on the page are in the currency the large figure names, as the
+  note says.
+- **The note,** at the page's end for now (the claims' card comes above it
+  with 8d): in Egyptian pounds, as on the portal that day, penalties for
+  paying late not counted, and to contact the office about any claim
+  until step 9 brings the accountant.
+- **Before the first upload,** an empty state says the office hasn't added
+  the tax position yet, with no subtitle. **A file with nothing open in
+  it** says nothing was owed on the portal that day, under the subtitle,
+  with no cards or note.
+
 ---
 
 ## 7. Contacting the accountant (Decided, 2026-11-17: WhatsApp)
@@ -1271,7 +1303,7 @@ width:
      page's one large figure (`DESIGN.md` §3.2, §5.5). #337.
    - **8c. The page's top:** its header, what's owed, the two cards of
      bars, the note, and the page before the first upload. It replaces
-     the line saying the tax position comes soon.
+     the line saying the tax position comes soon. #338.
    - **8d. The claims by item:** a table on computers and cards on
      phones, each item opening to its claims, with a total row.
 
@@ -1852,3 +1884,12 @@ with a tax position is archived, and deleted for good from the archive
   take the list's columns, so every bar is drawn against the same width
   and the bars are on one scale, whatever each row's amount and note
   (§6).
+- **2026-11-19:** 8b merged (#337). 8c (#338): the tax position page's
+  top, where the line saying it comes soon was: the header with the day
+  the figures are from, what's owed, the two cards of bars and the note,
+  and the page before the first upload and with nothing open (§6). My
+  choices, easy to change: one late claim of one says "1 claim late", and
+  "All open claims are late" is for more than one; the share paid is
+  rounded down, so it never says 100% while something is left; the
+  oldest delay is None where nothing is late; the currency is said once,
+  after the large figure.
