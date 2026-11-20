@@ -441,17 +441,25 @@ the company's people):
 
 - A switch on the company's Client portal tab (§7.1): "Email the
   client's people when their tax position is updated", off to start,
-  changed by whoever holds `client_messages.manage` (§9).
+  changed by whoever holds `client_messages.manage` (§9). It's a row
+  with On or Off and Turn on or Turn off, as the company's other
+  switches are, in place of the mockup's toggle (Decided, 2026-11-20).
 - With it on, each upload saved sends one email to each of that client's
   people who has set a password; those still invited have their
   invitation already.
-- It says, in Arabic and then English, that the office (by name) updated
-  the tax position, with the day the figures are from and a link to sign
-  in. No amounts, so nothing owed travels by email.
+- It says that the office (by name) updated the tax position, with the
+  day the figures are from and a link to sign in. No amounts, so nothing
+  owed travels by email.
+- **In the person's own language (Decided, 2026-11-20):** Arabic or
+  English, the one their account keeps, never both in one, as the
+  invitation is (§5.2). Decided first as Arabic and then English in one
+  email.
 - At most one email a day for a client, however many uploads it has.
-- Sent from the address that sends sign-in codes. An email that fails
-  doesn't undo the upload: it's noted, and the upload's audit log entry
-  says how many were sent.
+- **Who it's from (Decided, 2026-11-20):** as the invitation (§5.2):
+  under the office's name alone, from the address Nizmo sends its email
+  from, a reply going to whoever uploaded the file, and none where the
+  Super Admin did. An email that fails doesn't undo the upload: it's
+  noted, and the upload's audit log entry says how many were sent.
 
 ---
 
@@ -1240,8 +1248,10 @@ sent: it's drawn from the claims as they are.
   it, is live. `client_accounts.manage`'s is #330 (step 6d), the same
   way, once #322's release, whose role editor knows it, is live; what it
   brings with it, `clients.view`, every built-in Admin role holds.
-  `client_messages.manage`'s is step 10d, the same way, once #348's
-  release is live.
+  `client_messages.manage`'s was to be step 10d, the same way, once
+  #348's release was live. Skipped (Decided, 2026-11-20): the companies
+  there were test companies, deleted from production that day, so none
+  was there before it, and a new company's built-in Admin is given it.
 
 ---
 
@@ -1598,8 +1608,20 @@ width:
         /api/company-messages/[kind]`. The editor is the Super Admin's,
         shared by both pages. #349, as built in §7.1.
     - **10d.** `client_messages.manage` for the built-in Admin of the
-      companies already there, once 10c's release is live.
-11. **Telling the client's people by email** (§4.4).
+      companies already there, once 10c's release is live. Skipped
+      (Decided, 2026-11-20, §9): none was there before it.
+11. **Telling the client's people by email** (§4.4). In two PRs
+    (2026-11-20):
+    - **11a. The switch:** the company's switch, kept on the company,
+      off to start, at `GET` and `PUT /api/company-messages/emails` with
+      `client_messages.manage`, refused where the package hasn't the
+      client portal; each change in the audit log as the company's other
+      switches are; and its card on the Client portal tab, the mockup's
+      middle card. Nothing is sent yet.
+    - **11b. The email:** with the switch on, each upload saved sends one
+      to each of the client's people who has set a password, in their own
+      language, at most one a day for a client, as the invitation is sent;
+      the upload's audit log entry says how many went.
 12. **Download the statement.**
 
 ---
@@ -2280,3 +2302,11 @@ with a tax position is archived, and deleted for good from the archive
   Edit opens the Super Admin's editor for that message on a page of its
   own; Use Nizmo's message asks first, then puts back every language the
   company changed, all or none.
+- **2026-11-20 (decided by the owner):** Production's companies were test
+  companies, deleted that day, so step 10d is skipped (§9, §12): none was
+  there before `client_messages.manage`. The update email (§4.4) is in
+  the person's own language, as the invitation is, and sent as the
+  invitation is, a reply going to whoever uploaded the file. Its switch
+  is a row with On or Off and Turn on or Turn off, as the company's other
+  switches are. Step 11 split in two (§12): the switch (11a), then the
+  email (11b).
