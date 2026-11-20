@@ -567,6 +567,10 @@ These are built once, in the building-blocks PR, and every page uses them
   phones), named for the guide it opens, such as "How to set up a
   fingerprint terminal", in its tooltip too. It opens the guide (§5.5,
   Dialog) and does nothing else.
+- **An icon button:** where a row's own action is only an icon, such as
+  a claim's Ask about this claim (§5.5): quiet, 44px square with a 20px
+  icon, on phones and computers alike. Its name tells screen readers what
+  it acts on, such as the claim's number, and its tooltip what it does.
 - **A link in a line of text,** such as the one to System settings in a
   note, or How to get the portal's file (§5.5, A client's tax position,
   for the company's people): in `--brand-text` and underlined, so it's
@@ -1636,6 +1640,13 @@ These are built once, in the building-blocks PR, and every page uses them
       button with a speech bubble, named for screen readers with the
       claim's number, opening Contact on WhatsApp with that claim's
       message. On phones it's at the end of the claim card's first line.
+      - As the owner's mockup draws it: quiet, in `--brand-text` as quiet
+        buttons are, a speech bubble with two lines in it, after the claim's badges and at the
+        end side of its last cell; on phones after the badges on the
+        card's first line. It's named "Ask about claim 000372722602 on
+        WhatsApp", and pointing at it says "Ask about this claim on
+        WhatsApp".
+      - It's there only where Contact the accountant is.
     - A total row at its foot, on `--page`, weight 700: how many claims
       and the original, paid and remaining amounts in all.
     - An item's row, and its card on phones, is on `--brand-tint` under
@@ -1658,9 +1669,10 @@ These are built once, in the building-blocks PR, and every page uses them
     counted, and to contact the accountant about any claim, such as
     "Amounts are in Egyptian pounds, as they were on the Tax Authority's
     portal on 16 Nov 2026, and penalties for paying late aren't counted."
-    Its last sentence says how to ask about a claim: with Contact the
-    accountant at the top of the page where it's there, or else from the
-    office.
+    Its last sentence says how to ask about a claim: with the message
+    button in its row, which opens WhatsApp with its number, where Ask
+    about this claim is there ("in its card" on phones, as the mockup
+    says), or else from the office.
   - With no claims kept yet, the page's place is an empty state saying
     the office hasn't added the tax position yet, under the header, whose
     subtitle is only who the accountant is, where there's one.
@@ -1880,7 +1892,7 @@ These are built once, in the building-blocks PR, and every page uses them
 - **Contact on WhatsApp:** a dialog for writing to someone on WhatsApp,
   such as a client's accountant. Who it reaches comes first, in a box
   with a `--rule` edge: their initials in a circle, their name, and what
-  they are to the client. Under it, the message, written for the page it
+  they are to the client. Under it, the message, written for where it
   was opened from and in a field it can be changed in, with a hint saying
   it can also be changed in WhatsApp. Open WhatsApp is its main button,
   opening a new tab, which it says to screen readers; Cancel beside it. A
@@ -1906,6 +1918,10 @@ These are built once, in the building-blocks PR, and every page uses them
     address. It closes the dialog as the tab opens.
   - The line at its foot is in `--text-xs` and `--muted`, 12px under its
     edge.
+  - Opened from a claim's Ask about this claim, it's titled "Ask about a
+    claim", and its message names the claim's number, item, what remains
+    of what was owed and its last day to pay (`CLIENT_PORTAL_PLAN.md`
+    §7).
   - Nothing of it is sent through Nizmo or kept.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
@@ -3019,3 +3035,10 @@ changed:
   Cancel, and its foot line under a rule, unlike other dialogs; its
   message ends, until it's changed, with where the question goes
   (`CLIENT_PORTAL_PLAN.md` §12, step 9c).
+- **2026-11-20:** Ask about this claim (§5.5), as the owner's mockup
+  draws it: a quiet icon button, a speech bubble with two lines, after
+  each claim's badges in the table and on the phone's cards, opening
+  Contact on WhatsApp titled "Ask about a claim" with that claim's
+  message. The note under the claims then points to it, in its row on
+  computers and its card on phones (`CLIENT_PORTAL_PLAN.md` §12, step
+  9d).
