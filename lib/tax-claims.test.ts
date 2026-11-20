@@ -36,7 +36,8 @@ describe("late, in days (§3.4)", () => {
     })
 
     it("gives a claim both badges where it's late and partly paid", () => {
-        expect(claimBadges({ daysLate: 48, paidAmount: 200.25 })).toEqual(["late", "partly_paid"])
+        // Partly paid first, as the owner's mockup draws them (PR 339).
+        expect(claimBadges({ daysLate: 48, paidAmount: 200.25 })).toEqual(["partly_paid", "late"])
         expect(claimBadges({ daysLate: 201, paidAmount: 0 })).toEqual(["late"])
         expect(claimBadges({ daysLate: 0, paidAmount: 10 })).toEqual(["partly_paid"])
         expect(claimBadges({ daysLate: 0, paidAmount: 0 })).toEqual([])

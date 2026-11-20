@@ -2,6 +2,7 @@
 
 import { ReceiptIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { BarsByPart, Card, Columns, EmptyState, Icon, LargeFigure, Page, PageHeader, ShareBar, StatusBadge } from '@/components/ui'
+import { PortalClaims } from '@/components/portal/PortalClaims'
 import { formatDay } from '@/components/records/types'
 import { useLanguage } from '@/context/LanguageContext'
 import { countOf } from '@/lib/plural'
@@ -11,16 +12,15 @@ import type { TranslationKey } from '@/lib/translations'
 /**
  * The client's area's first page: the client's tax position
  * (CLIENT_PORTAL_PLAN.md §6, §12 step 8c; DESIGN.md §5.5, A client's tax
- * position; PR 338). The client's name above Tax position, where the figures
- * come from and their day, what's owed, and two cards of bars, by item and by
- * how late, with a note at the end, as the owner's mockup draws them (the
- * Client tax position canvas). Before the first upload, and with nothing
- * open in the file, an empty state says so.
+ * position; PRs 338 and 339). The client's name above Tax position, where
+ * the figures come from and their day, what's owed, two cards of bars, by
+ * item and by how late, and the claims by item, with a note at the end, as
+ * the owner's mockup draws them (the Client tax position canvas). Before the
+ * first upload, and with nothing open in the file, an empty state says so.
  *
  * Its client and figures are the session's, read on the server (page.tsx).
- * The claims by item come with step 8d; the accountant, Contact the
- * accountant and Ask about this claim with step 9, so until then the note
- * says to contact the office.
+ * The accountant, Contact the accountant and Ask about this claim come with
+ * step 9, so until then the note says to contact the office.
  */
 export function PortalHome({ client, position }: { client: string; position: PortalTaxPosition }) {
     const { t, locale } = useLanguage()
@@ -106,6 +106,7 @@ export function PortalHome({ client, position }: { client: string; position: Por
                     }))} />
                 </Card>
             </Columns>
+            <PortalClaims items={position.items} totals={totals} />
             <p className="ui-portal-note">{t('portal_tax_note').replace('{date}', day(asOf))}</p>
         </Page>
     )

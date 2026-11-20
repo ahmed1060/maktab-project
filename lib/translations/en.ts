@@ -3675,6 +3675,16 @@ export const en = {
         portal_tax_late_1_to_2_years: "1 to 2 years",
         portal_tax_late_over_2_years: "More than 2 years",
         portal_tax_note: "Amounts are in Egyptian pounds, as they were on the Tax Authority's portal on {date}, and penalties for paying late aren't counted. To ask about any claim, contact the office.",
+        // The claims by item (CLIENT_PORTAL_PLAN.md §12 step 8d, PR 339).
+        portal_claims: "Claims",
+        portal_claims_hint: "Select an item to see its claims",
+        portal_claims_col_claims: "Claims",
+        portal_claims_col_earliest: "Earliest due date",
+        portal_claims_total: "Total",
+        portal_claims_total_count: "Total, {claims}",
+        portal_claim_year: "Year {year}",
+        portal_claim_due: "Last day to pay {date}",
+        portal_claim_period_due: "{period}, last day to pay {date}",
         // Change password in the client's area (CLIENT_PORTAL_PLAN.md §5.3, PR 335).
         portal_password_title: "Change password",
         portal_password_subtitle: "You stay signed in here, and anywhere else you're signed out within a minute.",

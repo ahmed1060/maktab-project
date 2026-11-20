@@ -6435,6 +6435,300 @@ a.ui-notice:focus-visible {
   }
 }
 
+/* The claims by item (DESIGN.md §5.5; PR 339), as the owner's mockup draws
+   them: a table on computers and cards on phones. The card's padding is its
+   head's and rows' own. */
+.ui-portal-claims {
+  padding: 0;
+  overflow: hidden;
+}
+/* Its title, with the hint at its end; under it on phones. */
+.ui-portal-claims-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-block-end: 1px solid var(--rule);
+}
+.ui-portal-claims-head .ui-card-title {
+  margin: 0;
+}
+.ui-portal-claims-hint {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--muted);
+}
+/* At least 940px, scrolling sideways in its card where the page is narrower;
+   its columns as the mockup sizes them. */
+.ui-claims-table {
+  width: 100%;
+  min-width: 940px;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--ink-2);
+}
+.ui-claims-col-item {
+  width: 26%;
+}
+.ui-claims-col-count {
+  width: 10%;
+}
+.ui-claims-col-due {
+  width: 14%;
+}
+.ui-claims-col-status {
+  width: 15%;
+}
+.ui-claims-table th,
+.ui-claims-table td {
+  padding: var(--space-3) var(--space-2);
+  text-align: start;
+  vertical-align: middle;
+  font-weight: inherit;
+  border-block-end: 1px solid var(--rule);
+}
+.ui-claims-table tr > :first-child {
+  padding-inline-start: var(--space-6);
+}
+.ui-claims-table tr > :last-child {
+  padding-inline-end: var(--space-6);
+}
+/* As tall as the owner's mockup draws them: the head 12px above and below,
+   an item's row and the total 16px, a claim's row 12px. */
+.ui-claims-table thead th {
+  padding-block: var(--space-3);
+  background: var(--page);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 500;
+  color: var(--muted);
+}
+/* An item's row opens its claims wherever it's clicked, and shows where
+   the pointer is (below), as clickable rows do. */
+.ui-claims-item tr {
+  cursor: pointer;
+}
+.ui-claims-item tr > * {
+  padding-block: var(--space-4);
+  transition: background-color 150ms ease-out;
+}
+.ui-claims-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: start;
+  cursor: pointer;
+}
+.ui-claims-caret {
+  flex: none;
+  color: var(--muted);
+}
+.ui-claims-item .ui-claims-remaining {
+  font-weight: 700;
+  color: var(--ink);
+}
+/* A claim's row, on --page, set in under its item's name, past its caret:
+   as specific as the first cells' padding above, and after it, so it wins. */
+.ui-claims-of > tr > * {
+  background: var(--page);
+}
+.ui-claims-table .ui-claims-of th {
+  padding-inline-start: calc(var(--space-6) + var(--space-6));
+}
+.ui-claims-of .ui-claims-remaining {
+  font-weight: 600;
+  color: var(--ink);
+}
+/* A claim's number as it's typed into the portal, left to right on either
+   page, its period under it. */
+.ui-claim-number {
+  unicode-bidi: isolate;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.ui-claim-period {
+  display: block;
+  margin-block-start: var(--space-1);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--muted);
+}
+.ui-claims-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.ui-claims-table tfoot > tr > * {
+  padding-block: var(--space-4);
+  background: var(--page);
+  font-weight: 700;
+  color: var(--ink);
+  border-block-end: 0;
+}
+/* The phone's cards; the table is the computer's. */
+.ui-claims-phone {
+  display: none;
+}
+.ui-claims-cards,
+.ui-claims-card-claims {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+/* An item's card, the button that opens its claims: at least 64px high. */
+.ui-claims-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 64px;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-block-end: 1px solid var(--rule);
+  background: var(--panel);
+  font: inherit;
+  text-align: start;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color 150ms ease-out;
+}
+/* Its focus ring inside its edge, which the card's panel would clip. */
+.ui-claims-card:focus-visible {
+  outline-offset: -2px;
+}
+/* Where there's a pointer: a tap leaves no colour behind on a phone. */
+@media (hover: hover) {
+  .ui-claims-item tr:hover > * {
+    background: var(--brand-tint);
+  }
+  .ui-claims-card:hover {
+    background: var(--brand-tint);
+  }
+}
+.ui-claims-card > .ui-claims-caret {
+  margin-block-start: var(--space-1);
+}
+.ui-claims-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ui-claims-card-name {
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  font-weight: 600;
+}
+.ui-claims-card-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.ui-claims-card-count {
+  color: var(--muted);
+}
+.ui-claims-card-remaining {
+  font-weight: 700;
+}
+/* A claim's card, on --page, set in under its item's name: past the card's
+   padding, its caret and their gap. */
+.ui-claim-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  padding-inline-start: calc(var(--space-4) + var(--space-3) + var(--space-4));
+  background: var(--page);
+  border-block-end: 1px solid var(--rule);
+}
+.ui-claim-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.ui-claim-card-when {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--muted);
+}
+/* The original, paid and remaining amounts, each under its label. */
+.ui-claim-amounts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+.ui-claim-amounts dt {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--muted);
+}
+.ui-claim-amounts dd {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.ui-claim-amounts-remaining dd {
+  font-weight: 600;
+  color: var(--ink);
+}
+.ui-claims-cards-total {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--page);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.ui-claims-cards-total-title {
+  margin: 0;
+  font-weight: 700;
+  color: var(--ink);
+}
+.ui-claims-cards-total .ui-claim-amounts dd {
+  font-weight: 600;
+  color: var(--ink);
+}
+.ui-claims-cards-total .ui-claim-amounts-remaining dd {
+  font-weight: 700;
+}
+@media (max-width: 767px) {
+  .ui-portal-claims-head {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--space-4);
+  }
+  .ui-claims-scroll {
+    display: none;
+  }
+  .ui-claims-phone {
+    display: block;
+  }
+}
+
 /* The page area (§5.1): the page-edge spacing (§4.1), and 8px under the top
    bar, as the approved mock-up has it. */
 .ui-page-area {

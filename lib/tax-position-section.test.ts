@@ -164,12 +164,13 @@ describe("the Tax position section", () => {
         expect(html.match(/<div class="ui-hint">/g)).toHaveLength(2)
     })
 
-    it("badges a claim Late and Partly paid, both where it's both", () => {
+    it("badges a claim Partly paid and Late, both where it's both", () => {
         shown(NOOR)
         const html = render()
         const late = `<span class="ui-badge ui-badge-problem">${en.tax_badge_late}</span>`
         const partly = `<span class="ui-badge ui-badge-waiting">${en.tax_badge_partly_paid}</span>`
-        expect(html).toContain(`${late} ${partly}`)
+        // Partly paid first, as the owner's mockup draws them (PR 339).
+        expect(html).toContain(`${partly} ${late}`)
         // In the table and on the phone's cards: n1 and n2 late, n2 and n4 partly paid.
         expect(html.split(late).length - 1).toBe(4)
         expect(html.split(partly).length - 1).toBe(4)

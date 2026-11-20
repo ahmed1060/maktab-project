@@ -208,7 +208,8 @@ describe("what's owed", () => {
         // One late claim of one is how many, not all.
         expect(badge(summarise(CLAIMS.slice(0, 1), TODAY, AS_OF))?.words).toBe("1 claim late")
         expect(badge(summarise(CLAIMS.slice(3), TODAY, AS_OF))).toBeUndefined()
-        expect(render(summarise(CLAIMS.slice(3), TODAY, AS_OF))).not.toContain("ui-badge")
+        // Nothing late, no badge in what's owed (the claims card below has its own, PR 339).
+        expect(/<section class="ui-panel ui-portal-owed".*?<\/section>/.exec(render(summarise(CLAIMS.slice(3), TODAY, AS_OF)))?.[0]).not.toContain("ui-badge")
     })
 
     it("the badge is under the figure, and the share paid and the facts beside it", () => {

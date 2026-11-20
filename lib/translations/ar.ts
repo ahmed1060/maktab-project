@@ -3661,6 +3661,16 @@ export const ar = {
         portal_tax_late_1_to_2_years: "من سنة إلى سنتين",
         portal_tax_late_over_2_years: "أكثر من سنتين",
         portal_tax_note: "المبالغ بالجنيه المصري كما هي على بوابة مصلحة الضرائب يوم {date}، وغرامات التأخير غير محسوبة. للاستفسار عن أي مطالبة، يُرجى التواصل مع المكتب.",
+        // The claims by item (CLIENT_PORTAL_PLAN.md §12 step 8d, PR 339).
+        portal_claims: "المطالبات",
+        portal_claims_hint: "الضغط على أي بند يعرض مطالباته",
+        portal_claims_col_claims: "المطالبات",
+        portal_claims_col_earliest: "أقدم موعد سداد",
+        portal_claims_total: "الإجمالي",
+        portal_claims_total_count: "الإجمالي، {claims}",
+        portal_claim_year: "سنة {year}",
+        portal_claim_due: "آخر موعد للسداد {date}",
+        portal_claim_period_due: "{period}، آخر موعد للسداد {date}",
         // Change password in the client's area (CLIENT_PORTAL_PLAN.md §5.3, PR 335).
         portal_password_title: "تغيير كلمة المرور",
         portal_password_subtitle: "يبقى تسجيل الدخول هنا، ويُسجَّل الخروج من أي مكان آخر خلال دقيقة.",
