@@ -6835,3 +6835,8 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     Rows that run to a card's edges still do;
   - **16px between a page's sections and cards,** on computers too (it
     was 24px), between cards side by side and in a tab's panel too.
+- **2026-11-20:** Found in the interface audit of the frame and cards'
+  alignment: a titled part inside a card, such as a task's costs paid
+  person by person or an access review on the Super Admin's pages, was
+  headed larger than its card's new 15px title. Inside a card it's now
+  14px at weight 600 (`DESIGN.md` §5.5); in a dialog it stays as it was.
