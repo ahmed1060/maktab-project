@@ -839,30 +839,39 @@ As built (step 8b, #337), the page's building blocks, from `DESIGN.md`
 
 As built (step 8c, #338), the page's top, on the client's area's first
 page (`components/portal/PortalHome.tsx`, `app/(portal)/portal/page.tsx`),
-where the line saying it comes soon was:
+where the line saying it comes soon was, as the owner's mockup draws it
+(the Client tax position canvas):
 
 - **What it's given:** the session's client's position, read on the
   server with the session's company and client (8a). A client deleted
   since the session's last check ends the session, as an ended session
   does; anything else that goes wrong is an error.
 - **The header:** the client's name above Tax position, and "From the Tax
-  Authority's portal on" the day the figures are from. The accountant
-  joins it with step 9.
-- **What's owed,** in a card: what remains as the large figure, EGP after
-  it, and under it a Problem badge while claims are late, such as "3
-  claims late", or "All open claims are late" where there's more than one
-  and all are. Beside it (under it on phones), how much of the open
-  claims' original amounts is paid, rounded down to a whole percent so it
-  never says 100% while something is left, then three facts: open claims,
-  paid, and the oldest delay in days, or None.
-- **Two cards of bars:** what's owed by item, each with its share and its
-  claims, and how late, every row in its order with its claims. The
-  amounts on the page are in the currency the large figure names, as the
-  note says.
+  Authority's portal, last updated" the day the figures are from. The
+  accountant joins it with step 9.
+- **What's owed,** in a panel headed by its label, What the company owes:
+  what remains as the large figure, EGP after it, and under it a Problem
+  badge with a warning icon while claims are late, such as "3 claims
+  late", or "All open claims are late" where there's more than one and
+  all are. Beside it, twice its width (under it on phones), how much of
+  the open claims' original amounts is paid, to the nearest whole
+  percent and 99% at most while something is left ("16% of the total
+  claims paid", "7,365.00 of 46,163.37 EGP"), then, under a line, three
+  facts: open claims, paid with its currency, and the oldest delay in
+  days, or None. On phones the facts are one to a line, between lines,
+  and the share paid's amounts go under its bar.
+- **Two cards of bars,** each title with a line under it: what's owed by
+  item, the largest first, each with its share of what's owed and its
+  claims; and how late, from the last day to pay until today, every row
+  in its order with its claims, or No claims. The two usual items with
+  long names go by short ones in the bars (تأمين صحي and صندوق أسر
+  الشهداء); their full names are there when pointed at and for screen
+  readers. The amounts on the page are in the currency the large figure
+  names, as the note says.
 - **The note,** at the page's end for now (the claims' card comes above it
-  with 8d): in Egyptian pounds, as on the portal that day, penalties for
-  paying late not counted, and to contact the office about any claim
-  until step 9 brings the accountant.
+  with 8d), in small muted text: in Egyptian pounds, as on the portal
+  that day, penalties for paying late not counted, and to contact the
+  office about any claim until step 9 brings the accountant.
 - **Before the first upload,** an empty state says the office hasn't added
   the tax position yet, with no subtitle. **A file with nothing open in
   it** says nothing was owed on the portal that day, under the subtitle,
@@ -1893,3 +1902,17 @@ with a tax position is archived, and deleted for good from the archive
   rounded down, so it never says 100% while something is left; the
   oldest delay is None where nothing is late; the currency is said once,
   after the large figure.
+- **2026-11-20:** 8c (#338), redrawn as the owner's mockup draws it (the
+  Client tax position canvas): what's owed is a panel headed by What the
+  company owes, with the share paid twice the figure's width beside it
+  and the facts under a line; each card's title has a line under it; the
+  bars and the share bar are in the mockup's sizes, and on phones the
+  share paid's amounts go under its bar. The share paid is now to the
+  nearest whole percent, 99% at most while something is left, as the
+  mockup's 16% is (it was rounded down). The two usual items with long
+  names go by short ones in the bars, their full names when pointed at
+  and for screen readers (§6).
+- **2026-11-20:** 8c (#338), from Codex's review: the share paid never
+  says 100% while something is left (99,999.99 of 100,000 is 99%), and
+  it's worked out on whole piasters, so a share just under a half, such
+  as 14.49996%, isn't rounded up (§6).
