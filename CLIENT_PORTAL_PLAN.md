@@ -1048,6 +1048,11 @@ Arabic and English.
   remains, its original amount and its last day to pay. They're filled in
   when the dialog opens. A field the message can't fill (a claim's number
   in Contact the accountant) is refused on saving.
+- **A field with nothing to fill** (Decided, 2026-11-20): before a
+  client's first file there's no day the figures are from. Nizmo's own
+  message, unchanged, then says "A question about the tax position:"
+  with no day, as now. In a message someone has changed, a line whose
+  field has nothing to fill is left out, so no half-filled line is sent.
 - **Checks:** a preview with made-up figures beside the text; up to 1,000
   characters; not empty. Each change is in the audit log, with before and
   after.
@@ -1428,9 +1433,33 @@ width:
      the phone's cards, opening the same dialog with that claim's
      message. #345, as built in §7.
 10. **The messages' templates** (§7.1): the Super Admin's, the company's
-    copy, and `client_messages.manage`.
-    - **10b.** `client_messages.manage` for the built-in Admin of the
-      companies already there.
+    copy, and `client_messages.manage`. In four PRs, the two pages as the
+    owner's mockup draws them (Message templates and Company messages):
+    - **10a. The templates kept and used:** `ClientMessageTemplate`, with
+      row-level security; the fields and the checks (not empty, up to
+      1,000 characters, only the message's own fields); and the client's
+      page filling the dialog's message from the company's copy, else
+      Nizmo's, else §7's as written. Nothing edits them yet, so the
+      messages read as they do now.
+    - **10b. The Super Admin's Client messages** under Templates: a tab
+      for each message, Arabic and English, the text with its fields as
+      chips, a button for each field that puts it where the cursor is,
+      how many characters of 1,000, who changed it last and when, Save
+      and Discard changes, and a preview with made-up figures. Each save
+      is in the audit log, with before and after. Its `DESIGN.md` block,
+      a text with fields put in by buttons, comes with it.
+    - **10c. The company's copy** on a Client portal tab in Company
+      settings, shown where the package has the add-on: each message
+      says whether it's Nizmo's or the company's, and who changed it and
+      when; Change it for this company, or Edit, opens the same editor;
+      Use Nizmo's message puts it back. `client_messages.manage` comes
+      with its routes, in the `TAX_POSITION` module and `ROLES_PLAN.md`'s
+      tables. The mockup's last card, who may change the messages, shows
+      the role editor's row, which only the Super Admin opens: nothing
+      more is built on the tab for it. Step 11's switch joins the tab
+      later, as the mockup's middle card.
+    - **10d.** `client_messages.manage` for the built-in Admin of the
+      companies already there, once 10c's release is live.
 11. **Telling the client's people by email** (§4.4).
 12. **Download the statement.**
 
@@ -2063,3 +2092,11 @@ with a tax position is archived, and deleted for good from the archive
   about a claim" with the claim's own message, ready to change. The note
   under the claims points to the button in the claim's row, or its card
   on phones.
+- **2026-11-20:** Step 10 split in four (§12): the templates kept and
+  used (10a), the Super Admin's page (10b), the company's copy with
+  `client_messages.manage` (10c), and its grant for the companies already
+  there (10d), the two pages as the owner's mockup draws them.
+- **2026-11-20 (decided by the owner):** A field with nothing to fill
+  (§7.1): Nizmo's own message keeps its undated line before the first
+  file; in a message someone has changed, a line whose field has nothing
+  to fill is left out.
