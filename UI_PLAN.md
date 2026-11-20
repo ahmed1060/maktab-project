@@ -6804,3 +6804,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
     opens the keyboard on a phone and hides half the page.
   - **`/api/user/language` with no body:** refused as a request without
     a language (400), not an error of the server's.
+- **2026-11-20:** The owner's two small fixes, built (#341): neither
+  Change password page takes the focus as it opens, the company's or the
+  client area's, so a phone's keyboard doesn't come up over it and a
+  screen reader starts at its top; and `/api/user/language` with no body,
+  or an empty one, is a 400 saying the language isn't one, as a body
+  without a language is.
