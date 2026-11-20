@@ -1973,6 +1973,37 @@ These are built once, in the building-blocks PR, and every page uses them
   buttons and its preview, side by side, the text's card three fifths of
   the width where the side bar is beside the page (1024px and wider), as
   the mockup draws them (§5.5, Page layout).
+- **A company's client messages:** the Client portal tab in Company
+  settings, as the owner's mockup draws it (Company messages), after
+  Roles.
+  - A card titled Client messages on WhatsApp, with a line under the
+    title on what the messages are for. Under it a row for each message,
+    Contact the accountant first, as Rows inside a card are (§5.5,
+    Rows), with a rule above the first.
+  - Each row's title is the message's name. Under it, a line for each
+    language, Arabic first, each named in the page's language: the
+    company's copy, with who changed it last and the day, or that it
+    uses Nizmo's message.
+  - On the row's end side: Change it for this company while both
+    languages use Nizmo's; Edit, and Use Nizmo's message, while either is
+    the company's. Each button's name says which message it's for.
+    Change it and Edit go to the message's editor; Use Nizmo's message
+    asks first, in the danger colour, naming the languages the company's
+    copy goes from, and then puts back every one of them at once. On
+    phones the buttons go under the lines.
+  - Under the rows, in `--text-xs` and `--muted`: Edit opens the same
+    editor as the Super Admin's, with the fields and the preview.
+  - Loading and failing say so in the card's place, failing with Try
+    again.
+  - **The message's editor:** a page of its own, the Client messages on
+    WhatsApp page's editor for that one message, with no tabs: the text
+    with fields put in by buttons, Arabic or English, beside its preview.
+    The header's back link goes to the Client portal tab; its title is
+    the message's name, with a line under it saying whose copy it
+    changes. The line under the buttons says the company's copy, who
+    changed it and when, or that it uses Nizmo's message, and that every
+    change is in the audit log. Leaving with unsaved changes asks first,
+    as it does there.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
