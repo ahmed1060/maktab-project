@@ -1808,7 +1808,11 @@ These are built once, in the building-blocks PR, and every page uses them
     does nothing. What couldn't be saved is said above the buttons.
     Where the client's claims changed meanwhile, it says so, and the
     file is checked again against them. Once saved, a toast says how
-    many claims were, and the section reads itself again.
+    many claims were, and the section reads itself again. After that,
+    the same toast says whether the client's people were emailed (The
+    update email): to how many, how many it couldn't be sent to, or why
+    none was, as the update email is off, they were emailed today
+    already, or none of them has set a password yet.
 - **The tax portal's export button:** a page for whoever may update
   clients' tax position, on getting the file the upload takes
   (`CLIENT_PORTAL_PLAN.md` §10). It's reached by How to get the
@@ -2185,6 +2189,23 @@ These are built once, in the building-blocks PR, and every page uses them
     theme's neutrals (§2.2) for the rest. It's at most 600px wide, and
     fits a phone. A plain-text copy goes with it, with the same words,
     for a mail app that doesn't show HTML.
+- **The update email** (`CLIENT_PORTAL_PLAN.md` §4.4): what each of a
+  client's people who has set a password receives when an upload of the
+  portal's file is saved, where the company has turned it on, at most
+  one a day for a client. In all else as the invitation's email: in the
+  language their account keeps, from the office by its name, a reply
+  going to whoever uploaded the file and none where a Super Admin did,
+  with the same top, foot, colours, width and plain-text copy.
+  - Its subject is "The tax position of <client> was updated". Then the
+    greeting, by the person's name; that the office updated the client's
+    tax position on Nizmo, with the day the figures are from, written
+    out in the email's language (17 November 2026, ١٧ نوفمبر ٢٠٢٦); and
+    one button, "Sign in", at least 48px tall, to Nizmo's sign-in page,
+    with the link written out under it as the invitation's is. Then who
+    to ask, as the invitation says it.
+  - No amounts and no claims: what the client owes stays behind its
+    sign-in.
+  - Its words were agreed with the owner on 2026-11-20.
 - **The privacy policy and the terms of service:** two documents anyone
   can open, signed in or not, as Google does before it lets Nizmo use
   Drive. As with sign-in, there's no side bar and no top bar, and they're
@@ -3142,3 +3163,9 @@ changed:
   changes, Arabic and English each with its own changes, and the message
   filled with made-up figures as a chat bubble, on three new tokens
   (`CLIENT_PORTAL_PLAN.md` §12, step 10b).
+- **2026-11-20:** The update email (§5.5), as the invitation's email in
+  all but its words, which the owner agreed: the client's tax position
+  updated, the day the figures are from, and Sign in, with no amounts.
+  Once an upload is saved, its toast says whether the client's people
+  were emailed, and why not where none was (`CLIENT_PORTAL_PLAN.md`
+  §12, step 11b).
