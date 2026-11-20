@@ -329,6 +329,8 @@ model Company {
   clientTaxPositions ClientTaxPosition[]
   /// Its clients' people who sign in to the client portal (CLIENT_PORTAL_PLAN.md §5).
   clientAccounts ClientAccount[]
+  /// Its copy of the client portal's WhatsApp messages (CLIENT_PORTAL_PLAN.md §7.1).
+  clientMessageTemplates ClientMessageTemplate[]
   locations            Location[]
   listEntries          ListEntry[]
   roles                Role[]                    @relation("CompanyRoles")
@@ -551,6 +553,8 @@ model User {
   taxUploads ClientTaxPosition[] @relation("TaxPositionUploadedBy")
   /// The clients' people they added to the client portal (CLIENT_PORTAL_PLAN.md §5.1).
   addedClientAccounts ClientAccount[] @relation("ClientAccountAddedBy")
+  /// The client portal's WhatsApp messages they changed last (CLIENT_PORTAL_PLAN.md §7.1).
+  changedClientMessages ClientMessageTemplate[] @relation("ClientMessageUpdatedBy")
   createdLocations           Location[]              @relation("LocationCreatedBy")
   createdListEntries         ListEntry[]             @relation("ListEntryCreatedBy")
   dayOffCreditSnapshots      DayOffCreditSnapshot[]
@@ -3166,4 +3170,32 @@ model ClientAccount {
 
   @@index([clientId])
   @@index([companyId])
+}
+
+/// One of the client portal's WhatsApp messages as someone changed it
+/// (CLIENT_PORTAL_PLAN.md §7.1): Nizmo's own, by the Super Admin, where it
+/// has no company, else a company's copy. Its message is "contact" or
+/// "claim", its language "ar" or "en", and its text up to 1,000 characters,
+/// with its fields in braces (lib/client-message-template.ts). A message
+/// nobody has changed has no row.
+///
+/// The database also holds what the schema can't say: each message once in
+/// each language, for Nizmo and for each company (partial unique indexes),
+/// and the messages, languages and text it may have
+/// (20270113000000_client_message_templates).
+model ClientMessageTemplate {
+  id            String   @id @default(uuid())
+  /// None for Nizmo's own.
+  companyId     String?
+  kind          String
+  language      String
+  text          String
+  /// Who changed it last, and their name as it was that day. A Super Admin
+  /// isn't one of the company's people: their name alone is kept.
+  updatedById   String?
+  updatedByName String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  company       Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  updatedBy     User?    @relation("ClientMessageUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
 }

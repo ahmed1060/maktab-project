@@ -3696,10 +3696,6 @@ export const ar = {
         contact_question_here: "(يُكتب السؤال هنا)",
         contact_open_whatsapp: "فتح واتساب",
         contact_foot: "يُفتح واتساب على الهاتف، أو واتساب ويب على الكمبيوتر، على رقم المحاسب والرسالة مكتوبة وجاهزة للإرسال. المحادثة تبقى على واتساب ولا تُحفظ هنا.",
-        contact_message_greeting: "السلام عليكم،",
-        contact_message_from: "أنا {person} من {client}.",
-        contact_message_position: "استفسار عن الموقف الضريبي بتاريخ {date}:",
-        contact_message_position_undated: "استفسار عن الموقف الضريبي:",
         // Ask about this claim (CLIENT_PORTAL_PLAN.md §7, step 9d; PR 345)
         portal_tax_note_figures: "المبالغ بالجنيه المصري كما هي على بوابة مصلحة الضرائب يوم {date}، وغرامات التأخير غير محسوبة.",
         portal_tax_note_ask_row: "للاستفسار عن أي مطالبة، زر الرسالة في صفها يفتح واتساب برقمها.",
@@ -3707,10 +3703,6 @@ export const ar = {
         portal_claim_ask: "استفسار عن المطالبة {number} على واتساب",
         portal_claim_ask_tip: "استفسار عن هذه المطالبة على واتساب",
         contact_about_claim: "استفسار عن مطالبة",
-        contact_message_claim: "استفسار عن المطالبة رقم {number}:",
-        contact_message_item: "البند: {item}",
-        contact_message_remaining: "المتبقي: {remaining} جنيه من {original}",
-        contact_message_due: "آخر موعد للسداد: {date}",
         // The claims by item (CLIENT_PORTAL_PLAN.md §12 step 8d, PR 339).
         portal_claims: "المطالبات",
         portal_claims_hint: "الضغط على أي بند يعرض مطالباته",
