@@ -2005,7 +2005,8 @@ These are built once, in the building-blocks PR, and every page uses them
     On or Off badge and Turn on or Turn off, as the company's other
     switches are (decided on 2026-11-20, in place of the mockup's
     toggle). Neither asks first: nothing is lost, and it's turned back
-    here. Loading and failing as the card above.
+    here. On phones the badge and the button go under the line, as the
+    messages' buttons do. Loading and failing as the card above.
   - **The message's editor:** a page of its own, the Client messages on
     WhatsApp page's editor for that one message, with no tabs: the text
     with fields put in by buttons, Arabic or English, beside its preview.
