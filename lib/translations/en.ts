@@ -3710,10 +3710,6 @@ export const en = {
         contact_question_here: "(Write your question here)",
         contact_open_whatsapp: "Open WhatsApp",
         contact_foot: "WhatsApp opens on a phone, or WhatsApp Web on a computer, on the accountant's number with the message ready to send. The conversation stays in WhatsApp and isn't kept here.",
-        contact_message_greeting: "Hello,",
-        contact_message_from: "This is {person} from {client}.",
-        contact_message_position: "A question about the tax position as of {date}:",
-        contact_message_position_undated: "A question about the tax position:",
         // Ask about this claim (CLIENT_PORTAL_PLAN.md §7, step 9d; PR 345)
         portal_tax_note_figures: "Amounts are in Egyptian pounds, as they were on the Tax Authority's portal on {date}, and penalties for paying late aren't counted.",
         portal_tax_note_ask_row: "To ask about any claim, the message button in its row opens WhatsApp with its number.",
@@ -3721,10 +3717,6 @@ export const en = {
         portal_claim_ask: "Ask about claim {number} on WhatsApp",
         portal_claim_ask_tip: "Ask about this claim on WhatsApp",
         contact_about_claim: "Ask about a claim",
-        contact_message_claim: "A question about claim {number}:",
-        contact_message_item: "Item: {item}",
-        contact_message_remaining: "Remaining: EGP {remaining} of {original}",
-        contact_message_due: "Last day to pay: {date}",
         // The claims by item (CLIENT_PORTAL_PLAN.md §12 step 8d, PR 339).
         portal_claims: "Claims",
         portal_claims_hint: "Select an item to see its claims",

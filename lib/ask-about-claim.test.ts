@@ -7,6 +7,7 @@ import { ar } from "./translations/ar"
 import { stripComments } from "./strip-comments"
 import { summarise, type PortalTaxPosition } from "./portal-tax"
 import { daysLate, type TaxClaimRow } from "./tax-claims"
+import { NIZMO_MESSAGES } from "./client-message-template"
 
 /**
  * Ask about this claim on the client's own page (CLIENT_PORTAL_PLAN.md §7,
@@ -57,7 +58,7 @@ const NO_NUMBER = { name: "Tamer Saleh", whatsappNumber: null }
 
 const page = (accountant: typeof WRITES | typeof NO_NUMBER | null, locale: "en" | "ar" = "en", position: PortalTaxPosition = POSITION) => {
     state.locale = locale
-    return renderToStaticMarkup(h(PortalHome, { client: "Nile Trading", person: "Mona Fouad", position, accountant }))
+    return renderToStaticMarkup(h(PortalHome, { client: "Nile Trading", person: "Mona Fouad", position, accountant, messages: NIZMO_MESSAGES }))
 }
 const between = (html: string, from: string, to: string) => {
     const start = html.indexOf(from)
@@ -114,51 +115,71 @@ describe("a button that's only an icon", () => {
 
 describe("the message for a claim", () => {
     it("in English: the claim's number, its item, what remains of the original and its last day to pay", () => {
-        expect(claimMessage(t("en"), "en", { person: "Mona Fouad", client: "Nile Trading", item: "إقرار ضريبة الدخل", claim: PARTLY })).toBe(
+        expect(claimMessage("en", NIZMO_MESSAGES.claim.en, { asOf: AS_OF, person: "Mona Fouad", client: "Nile Trading", item: "إقرار ضريبة الدخل", claim: PARTLY })).toBe(
             "Hello,\nThis is Mona Fouad from Nile Trading.\nA question about claim 000110000002:\nItem: إقرار ضريبة الدخل\nRemaining: EGP 13,723.26 of 21,088.26\nLast day to pay: 31 December 2026",
         )
     })
 
     it("in Arabic, as the plan writes it: the amounts and day in Arabic digits, the claim's number as it's typed into the portal", () => {
-        expect(claimMessage(t("ar"), "ar", { person: "منى فؤاد", client: "شركة النيل للتجارة", item: "إقرار ضريبة الدخل", claim: PARTLY })).toBe(
+        expect(claimMessage("ar", NIZMO_MESSAGES.claim.ar, { asOf: AS_OF, person: "منى فؤاد", client: "شركة النيل للتجارة", item: "إقرار ضريبة الدخل", claim: PARTLY })).toBe(
             "السلام عليكم،\nأنا منى فؤاد من شركة النيل للتجارة.\nاستفسار عن المطالبة رقم 000110000002:\nالبند: إقرار ضريبة الدخل\nالمتبقي: ١٣٬٧٢٣٫٢٦ جنيه من ٢١٬٠٨٨٫٢٦\nآخر موعد للسداد: ٣١ ديسمبر ٢٠٢٦",
         )
     })
 
     it("whole amounts with their two decimals", () => {
-        expect(claimMessage(t("en"), "en", { person: "Mona Fouad", client: "Nile Trading", item: "إقرار ضريبة الدخل", claim: LATE })).toContain("\nRemaining: EGP 1,000.00 of 1,000.00\nLast day to pay: 30 June 2025")
+        expect(claimMessage("en", NIZMO_MESSAGES.claim.en, { asOf: AS_OF, person: "Mona Fouad", client: "Nile Trading", item: "إقرار ضريبة الدخل", claim: LATE })).toContain("\nRemaining: EGP 1,000.00 of 1,000.00\nLast day to pay: 30 June 2025")
     })
 
     it("the item as the page names it, not as the claim was read", () => {
         const odd = { ...PLAIN, item: "إقرار  القيمة المضافة " }
-        expect(claimMessage(t("en"), "en", { person: "Mona Fouad", client: "Nile Trading", item: "إقرار القيمة المضافة", claim: odd })).toContain("\nItem: إقرار القيمة المضافة\n")
+        expect(claimMessage("en", NIZMO_MESSAGES.claim.en, { asOf: AS_OF, person: "Mona Fouad", client: "Nile Trading", item: "إقرار القيمة المضافة", claim: odd })).toContain("\nItem: إقرار القيمة المضافة\n")
     })
 })
 
 describe("what the dialog opens with", () => {
     it("from the page's header: Contact the accountant, with the page's message", () => {
         for (const locale of ["en", "ar"] as const) {
-            expect(askingOf(t(locale), locale, { person: "Mona Fouad", client: "Nile Trading", asOf: AS_OF }, null)).toEqual({
+            expect(askingOf(t(locale), locale, NIZMO_MESSAGES, { person: "Mona Fouad", client: "Nile Trading", asOf: AS_OF }, null)).toEqual({
                 title: (locale === "ar" ? ar : en).portal_contact_accountant,
-                message: contactMessage(t(locale), locale, { person: "Mona Fouad", client: "Nile Trading", asOf: AS_OF }),
+                message: contactMessage(locale, NIZMO_MESSAGES.contact[locale], { person: "Mona Fouad", client: "Nile Trading", asOf: AS_OF }),
             })
         }
     })
 
     it("from a claim: Ask about a claim, with that claim's message", () => {
         for (const locale of ["en", "ar"] as const) {
-            expect(askingOf(t(locale), locale, { person: "Mona Fouad", client: "Nile Trading", asOf: AS_OF }, { claim: LATE, item: "إقرار ضريبة الدخل" })).toEqual({
+            expect(askingOf(t(locale), locale, NIZMO_MESSAGES, { person: "Mona Fouad", client: "Nile Trading", asOf: AS_OF }, { claim: LATE, item: "إقرار ضريبة الدخل" })).toEqual({
                 title: (locale === "ar" ? ar : en).contact_about_claim,
-                message: claimMessage(t(locale), locale, { person: "Mona Fouad", client: "Nile Trading", item: "إقرار ضريبة الدخل", claim: LATE }),
+                message: claimMessage(locale, NIZMO_MESSAGES.claim[locale], { asOf: AS_OF, person: "Mona Fouad", client: "Nile Trading", item: "إقرار ضريبة الدخل", claim: LATE }),
             })
         }
+    })
+
+    it("the company's messages where it has its own, in the page's language", () => {
+        const ours = {
+            contact: { ar: "مرحبًا، {person} من {client}", en: "Hi, {person} of {client}, about {asOf}" },
+            claim: { ar: "مطالبة {number}", en: "Claim {number} ({item}): {remaining} of {original}, due {due}, figures of {asOf}" },
+        }
+        const page = { person: "Mona Fouad", client: "Nile Trading", asOf: AS_OF }
+        expect(askingOf(t("en"), "en", ours, page, null).message).toBe("Hi, Mona Fouad of Nile Trading, about 17 November 2026")
+        expect(askingOf(t("ar"), "ar", ours, page, null).message).toBe("مرحبًا، Mona Fouad من Nile Trading")
+        expect(askingOf(t("en"), "en", ours, page, { claim: PARTLY, item: "Income tax" }).message)
+            .toBe("Claim 000110000002 (Income tax): 13,723.26 of 21,088.26, due 31 December 2026, figures of 17 November 2026")
+        expect(askingOf(t("ar"), "ar", ours, page, { claim: PARTLY, item: "Income tax" }).message).toBe("مطالبة 000110000002")
+    })
+
+    it("the page's messages are those its server read for the session's company", () => {
+        const portal = source("app/(portal)/portal/page.tsx")
+        expect(portal).toMatch(/clientMessages\(companyId\)/)
+        expect(portal).toMatch(/<PortalHome [^>]*messages=\{messages\}/)
+        expect(source("components/portal/PortalHome.tsx")).toMatch(/messages: ClientMessages/)
     })
 
     it("a claim's button says which claim, with the name the page gives its item; the header's says none", () => {
         const home = source("components/portal/PortalHome.tsx")
         expect(home).toContain("<PortalClaims items={position.items} totals={totals} onAsk={reachable ? open : undefined} />")
         expect(home).toMatch(/onClick=\{\(\) => open\(null\)\}/)
-        expect(home).toMatch(/\{\.\.\.askingOf\(t, locale, \{ person, client, asOf \}, about\)\}/)
+        expect(home).toMatch(/\{\.\.\.askingOf\(t, locale, messages, \{ person, client, asOf \}, about\)\}/)
         const claims = source("components/portal/PortalClaims.tsx")
         expect(claims).toContain("onClick={() => onAsk({ claim: c, item: item.item })}")
         // The same in the table and on the cards.
@@ -254,10 +275,6 @@ describe("its words", () => {
         expect(en.portal_tax_note_figures).toBe("Amounts are in Egyptian pounds, as they were on the Tax Authority's portal on {date}, and penalties for paying late aren't counted.")
         expect(en.portal_tax_note_ask_row).toBe("To ask about any claim, the message button in its row opens WhatsApp with its number.")
         expect(en.portal_tax_note_ask_card).toBe("To ask about any claim, the message button on its card opens WhatsApp with its number.")
-        expect(en.contact_message_claim).toBe("A question about claim {number}:")
-        expect(en.contact_message_item).toBe("Item: {item}")
-        expect(en.contact_message_remaining).toBe("Remaining: EGP {remaining} of {original}")
-        expect(en.contact_message_due).toBe("Last day to pay: {date}")
     })
 
     it("in Arabic, as the mockup and the plan say them", () => {
@@ -267,10 +284,12 @@ describe("its words", () => {
         expect(ar.portal_tax_note_figures).toBe("المبالغ بالجنيه المصري كما هي على بوابة مصلحة الضرائب يوم {date}، وغرامات التأخير غير محسوبة.")
         expect(ar.portal_tax_note_ask_row).toBe("للاستفسار عن أي مطالبة، زر الرسالة في صفها يفتح واتساب برقمها.")
         expect(ar.portal_tax_note_ask_card).toBe("للاستفسار عن أي مطالبة، زر الرسالة في بطاقتها يفتح واتساب برقمها.")
-        expect(ar.contact_message_claim).toBe("استفسار عن المطالبة رقم {number}:")
-        expect(ar.contact_message_item).toBe("البند: {item}")
-        expect(ar.contact_message_remaining).toBe("المتبقي: {remaining} جنيه من {original}")
-        expect(ar.contact_message_due).toBe("آخر موعد للسداد: {date}")
+    })
+
+    it("the message's lines, gone from the words: they're Nizmo's own message now (lib/client-message-template.ts)", () => {
+        for (const key of ["contact_message_claim", "contact_message_item", "contact_message_remaining", "contact_message_due"]) {
+            expect([key, key in en, key in ar]).toEqual([key, false, false])
+        }
     })
 
     it("the note's words from before the button, gone", () => {

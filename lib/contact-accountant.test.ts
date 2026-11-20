@@ -26,6 +26,7 @@ vi.mock("react-dom", async (importOriginal) => ({ ...(await importOriginal<typeo
 
 const { portalAccountantOf } = await import("./client-accountant")
 const { contactMessage, whatsAppLink } = await import("./contact-message")
+const { NIZMO_MESSAGES } = await import("./client-message-template")
 const { PortalHome } = await import("@/components/portal/PortalHome")
 const { ContactWhatsApp } = await import("@/components/portal/ContactWhatsApp")
 const { ButtonExternal } = await import("@/components/ui/ButtonExternal")
@@ -35,8 +36,6 @@ beforeEach(() => {
     // The dialog is drawn into the page's body, which a test stands in for.
     vi.stubGlobal("document", { body: {} })
 })
-
-const t = (locale: "en" | "ar") => (key: string) => (locale === "ar" ? ar : en)[key as keyof typeof en] ?? key
 
 const TODAY = "2026-11-19"
 const AS_OF = "2026-11-17"
@@ -60,7 +59,7 @@ const NO_NUMBER = { name: "Tamer Saleh", whatsappNumber: null }
 const esc = (text: string) => text.replace(/&/g, "&amp;").replace(/'/g, "&#x27;").replace(/"/g, "&quot;")
 const page = (position: PortalTaxPosition, accountant: typeof WRITES | typeof NO_NUMBER | null, locale: "en" | "ar" = "en") => {
     state.locale = locale
-    return renderToStaticMarkup(h(PortalHome, { client: "Nile Trading", person: "Mona Fouad", position, accountant }))
+    return renderToStaticMarkup(h(PortalHome, { client: "Nile Trading", person: "Mona Fouad", position, accountant, messages: NIZMO_MESSAGES }))
 }
 const dialog = (props: Partial<{ open: boolean; name: string; message: string }> = {}, locale: "en" | "ar" = "en") => {
     state.locale = locale
@@ -101,17 +100,17 @@ describe("who the client's page is told of", () => {
 
 describe("the message", () => {
     it("Nizmo's own, in the page's language, from the client account's name and the client's, with the day the figures are from", () => {
-        expect(contactMessage(t("en"), "en", { person: "Mona Fouad", client: "Al Namozag Trading", asOf: "2026-11-16" }))
+        expect(contactMessage("en", NIZMO_MESSAGES.contact.en, { person: "Mona Fouad", client: "Al Namozag Trading", asOf: "2026-11-16" }))
             .toBe("Hello,\nThis is Mona Fouad from Al Namozag Trading.\nA question about the tax position as of 16 November 2026:")
         // As the plan writes it, the day in Arabic digits.
-        expect(contactMessage(t("ar"), "ar", { person: "منى فؤاد", client: "شركة النموذج للتجارة والتوريدات", asOf: "2026-11-16" }))
+        expect(contactMessage("ar", NIZMO_MESSAGES.contact.ar, { person: "منى فؤاد", client: "شركة النموذج للتجارة والتوريدات", asOf: "2026-11-16" }))
             .toBe("السلام عليكم،\nأنا منى فؤاد من شركة النموذج للتجارة والتوريدات.\nاستفسار عن الموقف الضريبي بتاريخ ١٦ نوفمبر ٢٠٢٦:")
     })
 
     it("naming no day before the first file", () => {
-        expect(contactMessage(t("en"), "en", { person: "Mona Fouad", client: "Nile Trading", asOf: null }))
+        expect(contactMessage("en", NIZMO_MESSAGES.contact.en, { person: "Mona Fouad", client: "Nile Trading", asOf: null }))
             .toBe("Hello,\nThis is Mona Fouad from Nile Trading.\nA question about the tax position:")
-        expect(contactMessage(t("ar"), "ar", { person: "منى فؤاد", client: "نايل للتجارة", asOf: null }))
+        expect(contactMessage("ar", NIZMO_MESSAGES.contact.ar, { person: "منى فؤاد", client: "نايل للتجارة", asOf: null }))
             .toBe("السلام عليكم،\nأنا منى فؤاد من نايل للتجارة.\nاستفسار عن الموقف الضريبي:")
     })
 
@@ -346,10 +345,9 @@ describe("its words", () => {
         expect(ar.contact_foot).toBe("يُفتح واتساب على الهاتف، أو واتساب ويب على الكمبيوتر، على رقم المحاسب والرسالة مكتوبة وجاهزة للإرسال. المحادثة تبقى على واتساب ولا تُحفظ هنا.")
     })
 
-    it("the message's lines", () => {
-        expect([en.contact_message_greeting, en.contact_message_from, en.contact_message_position, en.contact_message_position_undated])
-            .toEqual(["Hello,", "This is {person} from {client}.", "A question about the tax position as of {date}:", "A question about the tax position:"])
-        expect([ar.contact_message_greeting, ar.contact_message_from, ar.contact_message_position, ar.contact_message_position_undated])
-            .toEqual(["السلام عليكم،", "أنا {person} من {client}.", "استفسار عن الموقف الضريبي بتاريخ {date}:", "استفسار عن الموقف الضريبي:"])
+    it("the message's lines, gone from the words: they're Nizmo's own message now (lib/client-message-template.ts)", () => {
+        for (const key of ["contact_message_greeting", "contact_message_from", "contact_message_position", "contact_message_position_undated"]) {
+            expect([key, key in en, key in ar]).toEqual([key, false, false])
+        }
     })
 })

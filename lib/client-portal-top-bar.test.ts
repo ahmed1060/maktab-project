@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { readFileSync } from "node:fs"
 import { en } from "./translations/en"
 import { ar } from "./translations/ar"
+import { NIZMO_MESSAGES } from "./client-message-template"
 import { stripComments } from "./strip-comments"
 
 /**
@@ -230,7 +231,7 @@ describe("signing out", () => {
     it("moves from the page into the account menu", async () => {
         const { PortalHome } = await import("@/components/portal/PortalHome")
         const { summarise } = await import("./portal-tax")
-        const html = render(h(PortalHome, { client: "Nile Trading", person: "Mona Fouad", position: summarise([], "2026-11-19", null), accountant: null }))
+        const html = render(h(PortalHome, { client: "Nile Trading", person: "Mona Fouad", position: summarise([], "2026-11-19", null), accountant: null, messages: NIZMO_MESSAGES }))
         expect(html).toContain(`<h1 class="ui-page-title">${en.tax_position}</h1>`)
         expect(html).not.toContain(`>${en.sign_out}<`)
         const src = stripComments(readFileSync("components/portal/PortalTopBar.tsx", "utf8"))

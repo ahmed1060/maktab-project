@@ -8,7 +8,8 @@ import { PortalClaims } from '@/components/portal/PortalClaims'
 import { formatDay } from '@/components/records/types'
 import { useLanguage } from '@/context/LanguageContext'
 import type { PortalAccountant } from '@/lib/client-accountant'
-import { claimMessage, contactMessage, type ClaimAsked, type Words } from '@/lib/contact-message'
+import type { ClientMessages } from '@/lib/client-message-template'
+import { claimMessage, contactMessage, type ClaimAsked, type PageAsking, type Words } from '@/lib/contact-message'
 import { countOf } from '@/lib/plural'
 import { paidShare, shortItemName, type PortalTaxPosition } from '@/lib/portal-tax'
 import type { TranslationKey } from '@/lib/translations'
@@ -25,28 +26,33 @@ import type { TranslationKey } from '@/lib/translations'
  * Its client and figures are the session's, read on the server (page.tsx),
  * as is who its people can write to: the responsible accountant is named in
  * the subtitle, and where they have a WhatsApp number, Contact the accountant
- * opens Contact on WhatsApp with Nizmo's own message (step 9c; PR 344), as
- * each claim's Ask about this claim opens it with the claim's (step 9d;
- * PR 345). Where no one can be written to, there's neither, and the note says
- * to contact the office.
+ * opens Contact on WhatsApp with its message (step 9c; PR 344), as each
+ * claim's Ask about this claim opens it with the claim's (step 9d; PR 345),
+ * from the company's templates, else Nizmo's (step 10a; PR 346). Where no
+ * one can be written to, there's neither, and the note says to contact the
+ * office.
  */
 /**
  * What Contact on WhatsApp opens with: from the page's header, its title and
- * the page's message; from a claim, Ask about a claim and that claim's.
+ * the page's message; from a claim, Ask about a claim and that claim's, each
+ * from its text in the page's language.
  */
-export function askingOf(t: Words, locale: string, page: { person: string; client: string; asOf: string | null }, about: ClaimAsked | null): { title: string; message: string } {
+export function askingOf(t: Words, locale: string, messages: ClientMessages, page: PageAsking, about: ClaimAsked | null): { title: string; message: string } {
+    const language = locale === 'ar' ? 'ar' : 'en'
     return about
-        ? { title: t('contact_about_claim'), message: claimMessage(t, locale, { person: page.person, client: page.client, ...about }) }
-        : { title: t('portal_contact_accountant'), message: contactMessage(t, locale, page) }
+        ? { title: t('contact_about_claim'), message: claimMessage(locale, messages.claim[language], { ...page, ...about }) }
+        : { title: t('portal_contact_accountant'), message: contactMessage(locale, messages.contact[language], page) }
 }
 
-export function PortalHome({ client, person, position, accountant }: {
+export function PortalHome({ client, person, position, accountant, messages }: {
     client: string
     /** The client account's own name, which the message is from. */
     person: string
     position: PortalTaxPosition
     /** Who the client's people can write to (lib/client-accountant.ts). */
     accountant: PortalAccountant
+    /** The texts its messages are filled from (lib/client-message-template.ts). */
+    messages: ClientMessages
 }) {
     const { t, locale } = useLanguage()
     const [contacting, setContacting] = useState(false)
@@ -83,7 +89,7 @@ export function PortalHome({ client, person, position, accountant }: {
         <ContactWhatsApp
             open={contacting}
             onClose={() => setContacting(false)}
-            {...askingOf(t, locale, { person, client, asOf }, about)}
+            {...askingOf(t, locale, messages, { person, client, asOf }, about)}
             accountant={reachable}
             client={client}
         />

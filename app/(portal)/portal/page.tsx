@@ -5,6 +5,7 @@ import { isClientAccount } from "@/lib/client-session"
 import { SESSION_ENDED_PATH } from "@/lib/session-ended"
 import { portalTaxPosition } from "@/lib/services/tax-claim.service"
 import { portalAccountant } from "@/lib/services/client-accountant.service"
+import { clientMessages } from "@/lib/services/client-message-template.service"
 import { PortalHome } from "@/components/portal/PortalHome"
 
 export const dynamic = 'force-dynamic'
@@ -16,7 +17,9 @@ export const dynamic = 'force-dynamic'
  * that client is the session's company's (portalTaxPosition, PR 336).
  *
  * Then who its people can write to (step 9c, PR 344): the accountant's name
- * and number alone, as what's given to the page reaches the browser.
+ * and number alone, as what's given to the page reaches the browser; and
+ * the texts its messages are filled from, the session's company's (step 10a,
+ * PR 346).
  */
 export default async function PortalPage() {
     const session = await getServerSession(authOptions)
@@ -31,10 +34,10 @@ export default async function PortalPage() {
     const position = await read(companyId, clientId)
     // A client deleted since the session's last check (lib/auth.ts, every
     // minute) has ended it already: it goes the way an ended session does.
-    if (!position || !clientId) redirect(SESSION_ENDED_PATH)
-    const accountant = await portalAccountant(clientId)
+    if (!position || !clientId || !companyId) redirect(SESSION_ENDED_PATH)
+    const [accountant, messages] = await Promise.all([portalAccountant(clientId), clientMessages(companyId)])
 
-    return <PortalHome client={session.user.clientName ?? ''} person={session.user.name ?? ''} position={position} accountant={accountant} />
+    return <PortalHome client={session.user.clientName ?? ''} person={session.user.name ?? ''} position={position} accountant={accountant} messages={messages} />
 }
 
 async function read(companyId: string | null | undefined, clientId: string | null | undefined) {

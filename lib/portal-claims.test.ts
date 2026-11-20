@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { readFileSync } from "node:fs"
 import { en } from "./translations/en"
 import { ar } from "./translations/ar"
+import { NIZMO_MESSAGES } from "./client-message-template"
 import { stripComments } from "./strip-comments"
 import { summarise, claimPeriod, latestDueFirst, toggledItem, type PortalTaxPosition } from "./portal-tax"
 import { daysLate, type TaxClaimRow } from "./tax-claims"
@@ -45,7 +46,7 @@ const POSITION = summarise(CLAIMS, TODAY, AS_OF)
 const esc = (text: string) => text.replace(/&/g, "&amp;").replace(/'/g, "&#x27;").replace(/"/g, "&quot;")
 const render = (position: PortalTaxPosition = POSITION, locale: "en" | "ar" = "en") => {
     state.locale = locale
-    return renderToStaticMarkup(h(PortalHome, { client: "Nile Trading", person: "Mona Fouad", position, accountant: null }))
+    return renderToStaticMarkup(h(PortalHome, { client: "Nile Trading", person: "Mona Fouad", position, accountant: null, messages: NIZMO_MESSAGES }))
 }
 // Spaces collapsed, the non-breaking ones kept.
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/[ \n\t]+/g, " ").trim()

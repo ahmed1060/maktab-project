@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs"
 import { createElement as h } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { ar } from "./translations/ar"
+import { NIZMO_MESSAGES } from "./client-message-template"
 import { en } from "./translations/en"
 
 /**
@@ -389,7 +390,7 @@ describe("the client's area's first page", () => {
         for (const locale of ["en", "ar"] as const) {
             page.locale = locale
             const words = locale === "ar" ? ar : en
-            const html = renderToStaticMarkup(h(PortalHome, { client: "Nile Trading", person: "Mona Fouad", position, accountant: null }))
+            const html = renderToStaticMarkup(h(PortalHome, { client: "Nile Trading", person: "Mona Fouad", position, accountant: null, messages: NIZMO_MESSAGES }))
             expect(html, locale).toContain(`<p class="ui-page-overline">Nile Trading</p>`)
             expect(html, locale).toContain(`<h1 class="ui-page-title">${esc(words.tax_position)}</h1>`)
             // In the top bar's account menu since PR 334 (lib/client-portal-top-bar.test.ts).

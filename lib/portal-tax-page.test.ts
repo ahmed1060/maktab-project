@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { readFileSync } from "node:fs"
 import { en } from "./translations/en"
 import { ar } from "./translations/ar"
+import { NIZMO_MESSAGES } from "./client-message-template"
 import { stripComments } from "./strip-comments"
 import { summarise, type PortalTaxPosition } from "./portal-tax"
 import { daysLate, type TaxClaimRow } from "./tax-claims"
@@ -22,6 +23,7 @@ const state = {
     position: null as null | PortalTaxPosition | Error,
     accountant: null as null | { name: string; whatsappNumber: string | null },
     accountantRead: [] as string[],
+    messagesRead: [] as string[],
 }
 
 vi.mock("@/context/LanguageContext", () => ({
@@ -41,6 +43,14 @@ vi.mock("@/lib/services/client-accountant.service", () => ({
     portalAccountant: async (clientId: string) => {
         state.accountantRead.push(clientId)
         return state.accountant
+    },
+}))
+/** Made-up messages of the company's own. */
+const OURS = { ...NIZMO_MESSAGES, contact: { ar: "مرحبًا {person}", en: "Hi {person}" } }
+vi.mock("@/lib/services/client-message-template.service", () => ({
+    clientMessages: async (companyId: string) => {
+        state.messagesRead.push(companyId)
+        return OURS
     },
 }))
 
@@ -66,7 +76,7 @@ const POSITION = summarise(CLAIMS, TODAY, AS_OF)
 const esc = (text: string) => text.replace(/&/g, "&amp;").replace(/'/g, "&#x27;").replace(/"/g, "&quot;")
 const render = (position: PortalTaxPosition, locale: "en" | "ar" = "en") => {
     state.locale = locale
-    return renderToStaticMarkup(h(PortalHome, { client: "Nile Trading", person: "Mona Fouad", position, accountant: null }))
+    return renderToStaticMarkup(h(PortalHome, { client: "Nile Trading", person: "Mona Fouad", position, accountant: null, messages: NIZMO_MESSAGES }))
 }
 const text = (html: string) => html.replace(/<[^>]+>/g, "").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&")
 const percentAr = (n: number) => n.toLocaleString("ar-EG", { style: "percent", maximumFractionDigits: 0 })
@@ -108,6 +118,7 @@ beforeEach(() => {
     state.position = null
     state.accountant = null
     state.accountantRead = []
+    state.messagesRead = []
 })
 
 describe("what the page is given", () => {
@@ -120,8 +131,10 @@ describe("what the page is given", () => {
         expect(state.read).toEqual([{ companyId: "co-1", clientId: "client-1" }])
         // Who its people can write to, read once its client is known to be the session's company's (PR 344).
         expect(state.accountantRead).toEqual(["client-1"])
+        // And the messages, the session's company's (PR 346).
+        expect(state.messagesRead).toEqual(["co-1"])
         expect(page.type).toBe(PortalHome)
-        expect(page.props).toEqual({ client: "Nile Trading", person: "Mona Fouad", position: POSITION, accountant: { name: "Tamer Saleh", whatsappNumber: "+201001234567" } })
+        expect(page.props).toEqual({ client: "Nile Trading", person: "Mona Fouad", position: POSITION, accountant: { name: "Tamer Saleh", whatsappNumber: "+201001234567" }, messages: OURS })
         expect(readFileSync("app/(portal)/portal/page.tsx", "utf8")).not.toMatch(/params|searchParams/)
     })
 
@@ -133,6 +146,7 @@ describe("what the page is given", () => {
         state.position = new Error("connection lost")
         await expect(PortalPage()).rejects.toThrow("connection lost")
         expect(state.accountantRead).toEqual([])
+        expect(state.messagesRead).toEqual([])
     })
 
     it("nothing is read for a session that isn't a client account's", async () => {
@@ -145,6 +159,7 @@ describe("what the page is given", () => {
         await expect(PortalPage()).rejects.toThrow(`REDIRECT ${SESSION_ENDED_PATH}`)
         expect(state.read).toEqual([])
         expect(state.accountantRead).toEqual([])
+        expect(state.messagesRead).toEqual([])
     })
 })
 
