@@ -95,12 +95,13 @@ describe("a client's mobile number, on its page", () => {
     })
 })
 
-describe("the top bar's language switch, on a phone", () => {
-    /** The declarations of the one rule with this selector in the top bar's phone query (narrower than 1024px). */
+// On computers as on phones since the owner's answer of 2026-11-20 (PR 342):
+// the switch is EN and ع at every width, with the phone's 44px.
+describe("the top bar's language switch, on phones and computers", () => {
+    /** The declarations of the one rule with this selector, outside any media query. */
     function topbar(selector: string): string {
-        const blocks = [...css.matchAll(/@media \(max-width: 1023px\) \{([\s\S]*?)\n\}/g)].map(m => m[1]).join("\n")
         const escaped = selector.replace(/[.*+?^${}()|[\]\\:]/g, "\\$&")
-        const found = [...blocks.matchAll(new RegExp(`(?:^|\\n)\\s*${escaped} \\{([^}]*)\\}`, "g"))].map(m => m[1])
+        const found = [...css.matchAll(new RegExp(`\\n${escaped} \\{([^}]*)\\}`, "g"))].map(m => m[1])
         expect(found, selector).toHaveLength(1)
         return found[0]
     }

@@ -63,7 +63,7 @@ export function PortalTopBar({ company, person }: {
     const box = useRef<HTMLDivElement>(null)
     const button = useRef<HTMLButtonElement>(null)
     const menuId = useId()
-    // The account button says the person's client where a person's says their role.
+    // The account button is named with the person's client where a person's is with their role.
     const who: AccountPerson = { id: '', name: person.name, role: person.client, companyName: null, photo: null }
 
     // As the company's people's account menu signs out (components/DashboardHeader.tsx).

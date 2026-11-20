@@ -14,8 +14,9 @@ interface LanguageToggleButtonProps {
  *
  * Each option is written in its own language rather than translated into the
  * other: somebody who can't read the interface in use is exactly the person
- * reaching for this switch. On a phone's top bar they're EN and ع, still named
- * in full. English stays first in Arabic too, as the switch is about language
+ * reaching for this switch. On the top bar they're EN and ع, on computers as
+ * on phones (the owner's answer of 2026-11-20, PR 342), still named in full.
+ * Under the sign-in card they're whole. English stays first in Arabic too, as the switch is about language
  * rather than in one.
  *
  * No pending state of its own: LanguageProvider holds a full-page overlay at

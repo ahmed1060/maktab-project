@@ -74,11 +74,22 @@ describe("the language switch", () => {
         expect(html).toMatch(/aria-pressed="true" lang="ar"/)
     })
 
-    it("says EN and ع on a phone's top bar alone, and its whole names everywhere else", () => {
+    // The owner's answer of 2026-11-20 (PR 342): the top bar on computers as
+    // on phones, so EN and ع at every width. The sign-in page's switch isn't
+    // the top bar's, and says the whole names.
+    it("says EN and ع on the top bar at every width, and its whole names everywhere else", () => {
         expect(rule(".ui-segmented-short")).toContain("display: none;")
-        const phone = css.slice(css.indexOf("@media (max-width: 1023px)", css.indexOf(".ui-topbar {")))
-        expect(phone).toMatch(/\.ui-topbar \.ui-segmented-long \{\s*display: none;/)
-        expect(phone).toMatch(/\.ui-topbar \.ui-segmented-short \{\s*display: inline;/)
+        const bar = css.slice(0, css.indexOf("@media (max-width: 1023px)", css.indexOf(".ui-topbar {")))
+        expect(bar).toMatch(/\n\.ui-topbar \.ui-segmented-long \{\s*display: none;/)
+        expect(bar).toMatch(/\n\.ui-topbar \.ui-segmented-short \{\s*display: inline;/)
+    })
+
+    it("keeps each option 44px wide and 44px under a finger at every width", () => {
+        const bar = css.slice(0, css.indexOf("@media (max-width: 1023px)", css.indexOf(".ui-topbar {")))
+        const option = bar.slice(bar.indexOf("\n.ui-topbar .ui-segmented-option {"))
+        expect(option.slice(0, option.indexOf("}"))).toContain("min-inline-size: 44px;")
+        const target = bar.slice(bar.indexOf("\n.ui-topbar .ui-segmented-option::after {"))
+        expect(target.slice(0, target.indexOf("}"))).toContain("inset-block: -4px;")
     })
 
     it("is named for what it is, not for the other language", () => {
@@ -116,12 +127,13 @@ describe("the account button", () => {
         return render(h(AccountButton, { person: p, open: false, menuId: "m1", onToggle: () => {} }), locale)
     }
 
-    it("has the initials, the name, the role and a caret, and is named with all of them", async () => {
+    // The owner's answer of 2026-11-20 (PR 342): the top bar on computers as
+    // on phones, so the initials alone, still named with the name and role.
+    it("is the initials alone, named with the name and the role", async () => {
         const html = await button()
-        expect(html).toContain('<button type="button" class="ui-topbar-account" aria-expanded="false" aria-label="Account menu, Salma Fathy, Admin">')
-        expect(html).toContain('<span class="ui-avatar ui-avatar-32" aria-hidden="true">SF</span>')
-        expect(html).toContain('<span class="ui-topbar-who"><span class="ui-topbar-name"><bdi>Salma Fathy</bdi></span><span class="ui-topbar-role">Admin</span></span>')
-        expect(html).toMatch(/<svg[^>]*class="ui-icon ui-topbar-caret"/)
+        expect(html).toBe('<button type="button" class="ui-topbar-account" aria-expanded="false" aria-label="Account menu, Salma Fathy, Admin"><span class="ui-avatar ui-avatar-32" aria-hidden="true">SF</span></button>')
+        expect(html).not.toContain("ui-topbar-who")
+        expect(html).not.toContain("ui-topbar-caret")
     })
 
     it("is named in Arabic with Arabic commas, a name with $ or braces kept as it is", async () => {
@@ -138,16 +150,17 @@ describe("the account button", () => {
         expect(header).not.toContain("👨🏻")
     })
 
-    it("says the role as the app writes it, not in capitals", () => {
+    it("keeps no styles for the name, role and caret it no longer has", () => {
         expect(header).not.toContain("textTransform: 'uppercase'")
-        expect(rule(".ui-topbar-role")).toContain("color: var(--ink-2);")
-        expect(rule(".ui-topbar-name")).toContain("color: var(--ink);")
+        for (const gone of [".ui-topbar-who", ".ui-topbar-name", ".ui-topbar-role", ".ui-topbar-caret"]) expect(css, gone).not.toContain(gone)
+        expect(header).not.toContain("CaretDownIcon")
     })
 
-    it("is its photo or initials alone on a phone, and is 44px tall", () => {
+    it("is a round button 44px across at every width", () => {
+        const account = rule(".ui-topbar-account")
+        for (const part of ["inline-size: 44px;", "block-size: 44px;", "justify-content: center;", "padding: 0;", "border-radius: var(--radius-pill);"]) expect(account, part).toContain(part)
         const phone = css.slice(css.indexOf("@media (max-width: 1023px)", css.indexOf(".ui-topbar {")))
-        expect(phone).toMatch(/\.ui-topbar-who,\s*\.ui-topbar-caret \{\s*display: none;/)
-        expect(rule(".ui-topbar-account")).toContain("min-block-size: 44px;")
+        expect(phone.slice(0, phone.indexOf("/* end of the top bar */"))).not.toContain(".ui-topbar-account")
     })
 })
 

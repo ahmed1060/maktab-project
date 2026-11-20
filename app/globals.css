@@ -628,6 +628,10 @@ input::-webkit-credentials-auto-fill-button {
   --leading-sm: 18px;
   --text-md: 14px;
   --leading-md: 20px;
+  /* Card titles (DESIGN.md §3.2, §5.5; the owner's answer of 2026-11-20,
+     PR 342). */
+  --text-card: 15px;
+  --leading-card: 22px;
   --text-lg: 16px;
   --leading-lg: 24px;
   --text-xl: 18px;
@@ -644,9 +648,16 @@ input::-webkit-credentials-auto-fill-button {
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
+  --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
   --space-12: 48px;
+  /* Inside a card (DESIGN.md §4.1, §5.5): 20px above and below and 24px at
+     the sides, as the owner's mockup of a client's tax position draws it;
+     16px all round on phones (PR 342). Rows that run to a card's edges
+     reach out by the same. */
+  --card-pad-block: var(--space-5);
+  --card-pad-inline: var(--space-6);
 
   --radius-pill: 999px;
   --radius-panel: 12px;
@@ -670,6 +681,8 @@ input::-webkit-credentials-auto-fill-button {
   :root {
     --text-hero: 36px;
     --leading-hero: 44px;
+    --card-pad-block: var(--space-4);
+    --card-pad-inline: var(--space-4);
   }
 }
 
