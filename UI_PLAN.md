@@ -6778,3 +6778,9 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   twice the figure's width beside it, the cards' titles with a line under
   them, and the bars and share bar in the mockup's sizes. A card can now
   have a line under its title, and a part in bars by part a short name.
+- **2026-11-20:** The client's claims by item (`CLIENT_PORTAL_PLAN.md`
+  §12 step 8d; `DESIGN.md` §5.5): a table on computers and cards on
+  phones under the tax position's two cards of bars, each item opening to
+  its claims, the largest open at first, with a total row, as the
+  owner's mockup draws them. A claim's badges are Partly paid, then Late,
+  on the client's page for the company's people too.

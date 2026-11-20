@@ -35,8 +35,8 @@ company's app (7a), is #331, signing in finding a client account (7b) is
 top bar (7d-1) is #334, and Change password (7d-2) is #335. The tax
 position page (step 8) is built in four, and the first, what the area
 reads of it (8a), is #336. Its building blocks (8b) are #337, and the
-page's top (8c) is #338. The rest is built in the small PRs of §12, each
-its own PR.
+page's top (8c) is #338, and the claims by item (8d) are #339. The rest
+is built in the small PRs of §12, each its own PR.
 
 ---
 
@@ -868,14 +868,42 @@ where the line saying it comes soon was, as the owner's mockup draws it
   الشهداء); their full names are there when pointed at and for screen
   readers. The amounts on the page are in the currency the large figure
   names, as the note says.
-- **The note,** at the page's end for now (the claims' card comes above it
-  with 8d), in small muted text: in Egyptian pounds, as on the portal
+- **The note,** at the page's end, under the claims' card (8d), in small
+  muted text: in Egyptian pounds, as on the portal
   that day, penalties for paying late not counted, and to contact the
   office about any claim until step 9 brings the accountant.
 - **Before the first upload,** an empty state says the office hasn't added
   the tax position yet, with no subtitle. **A file with nothing open in
   it** says nothing was owed on the portal that day, under the subtitle,
   with no cards or note.
+
+As built (step 8d, #339), the claims by item, a card under the two cards
+of bars and above the note (`components/portal/PortalClaims.tsx`), as the
+owner's mockup draws it:
+
+- **On computers, a table** titled Claims, with "Select an item to see
+  its claims" at its end: Item, Claims, Original, Paid, Remaining,
+  Earliest due date and Status. Each item is a row, the largest
+  remaining first, with its claims' badges. The whole row opens its
+  claims under it; its name is the button a keyboard and a screen reader
+  use, saying whether it's open. The largest item is open at first.
+- **Each claim** is a row on the page's colour, set in under its item's
+  name: its number in Latin digits, left to right, above its period
+  ("Year 2025", "November 2025", or its two days), then its amounts,
+  last day to pay and badges. An item's claims go the latest last day to
+  pay first.
+- **A total row** at the foot: how many claims, and the original, paid
+  and remaining amounts in all.
+- **On phones, cards:** each item a card that opens, with how many claims
+  and what remains with its currency, then its badges; each claim a card
+  with its number and badges, its period and last day to pay, and its
+  three amounts; then the total ("Total, 5 claims") over the three
+  amounts in all.
+- **Badges:** Partly paid, then Late, where a claim has both, as every
+  artboard of the mockup draws them. The section for the company's people
+  (§3.5) has them in the same order now.
+- The table is 940px at the least and scrolls sideways in its card on a
+  narrower page. Ask about this claim comes with step 9.
 
 ---
 
@@ -1314,7 +1342,7 @@ width:
      bars, the note, and the page before the first upload. It replaces
      the line saying the tax position comes soon. #338.
    - **8d. The claims by item:** a table on computers and cards on
-     phones, each item opening to its claims, with a total row.
+     phones, each item opening to its claims, with a total row. #339.
 
    The accountant's name, Contact the accountant and Ask about this
    claim come with step 9, and Download the statement with step 12.
@@ -1916,3 +1944,11 @@ with a tax position is archived, and deleted for good from the archive
   says 100% while something is left (99,999.99 of 100,000 is 99%), and
   it's worked out on whole piasters, so a share just under a half, such
   as 14.49996%, isn't rounded up (§6).
+- **2026-11-20:** 8c merged (#338). 8d (#339): the claims by item, a
+  table on computers and cards on phones, each item opening to its
+  claims, with a total row (§6). My choices, easy to change: the largest
+  item is open at first and an item's claims go the latest last day to
+  pay first, as the mockup draws them; a claim's period is said as "Year
+  2025" or "November 2025" where it's a whole year or month. Partly paid
+  now comes before Late where a claim has both, here and in the section
+  for the company's people, as the mockup draws them.
