@@ -1111,6 +1111,30 @@ Arabic and English.
   server; saving the same text writes nothing. Each save is in the audit
   log as Changed a client message, with the message, its language, and
   the text before and after.
+- **As built (#348, 10c-1):** a company's messages are read, saved and
+  put back at `/api/company-messages`, for whoever holds
+  `client_messages.manage`: the company's own people for their own
+  company, whatever company they ask for, and the Super Admin for the
+  company they name. Each is refused where the company's package hasn't
+  the client portal, a company with no package included (§2), read from
+  the company itself, as the Super Admin passes the package's gate
+  whatever it bought. Reading gives each message in each language as the
+  company uses it: its own copy, by who changed it last and when, or
+  Nizmo's, as the Super Admin changed it or as written, with no who and
+  when, as the company never changed it. Saving its copy is checked as
+  Nizmo's are, says the time of the copy it started from, none where it
+  started from Nizmo's, and is refused where the copy was changed, made
+  or put back since; the same text as the company uses writes nothing,
+  so Nizmo's text unchanged makes no copy. A copy keeps who changed it,
+  the Super Admin by their name alone. Use Nizmo's message takes the
+  company's copy away, from the copy the page read, and the company then
+  follows Nizmo's again, with the Super Admin's later changes; where it
+  uses Nizmo's already, nothing is written. Each save is in the audit log
+  as Changed a client message, and each Use Nizmo's message as Went back
+  to Nizmo's client message, both with the company, the message, its
+  language, and the text before and after. Another company's copy is
+  never read or touched. Nothing shows them yet: the tab and the page are
+  10c-2.
 
 ---
 
@@ -1155,6 +1179,11 @@ sent: it's drawn from the claims as they are.
   (`ROLES_PLAN.md` §6.15). It comes with its routes in #322 (step 6a),
   labelled Lets outsiders in on the role editor. Its grant for the
   companies already there is #330 (step 6d).
+- `client_messages.manage` comes with its routes in #348 (step 10c-1),
+  labelled Change client messages on WhatsApp on the role editor, last
+  under Client portal. It brings nothing with it, as the Client portal
+  tab shows to whoever holds it (§7.1), and isn't high-risk: the
+  client's person can still change a message before sending it.
 - The built-in Admin holds all four. Other roles get them where the Super
   Admin ticks them, as only the Super Admin builds roles.
 - They go into `ROLES_PLAN.md`'s tables with the PR that adds them to the
@@ -1169,6 +1198,8 @@ sent: it's drawn from the claims as they are.
   it, is live. `client_accounts.manage`'s is #330 (step 6d), the same
   way, once #322's release, whose role editor knows it, is live; what it
   brings with it, `clients.view`, every built-in Admin role holds.
+  `client_messages.manage`'s is step 10d, the same way, once #348's
+  release is live.
 
 ---
 
@@ -1513,7 +1544,8 @@ width:
         routes: the company's messages as it uses them, each its own or
         Nizmo's; saving its copy of one, from the text it started from,
         as the Super Admin's are; and Use Nizmo's message. Each in the
-        audit log, with before and after. Nothing shows them yet.
+        audit log, with before and after. Nothing shows them yet. #348,
+        as built in §7.1.
       - **10c-2. The tab and the page:** the Client portal tab, to whoever
         holds `client_messages.manage` wherever the package has the
         add-on, and the editor on a page of its own, as the owner's
@@ -2177,3 +2209,10 @@ with a tax position is archived, and deleted for good from the archive
   the Super Admin ticked in Admin access, and the editor opens on a page
   of its own. Step 10c split in two (§12): the permission with its
   routes (10c-1), then the tab and the page (10c-2).
+- **2026-11-20:** 10c-1 as built (#348, §7.1, §9):
+  `client_messages.manage`, in the client portal's module, with its
+  routes: a company's messages as it uses them, each its own or Nizmo's;
+  saving its copy from the text it started from; and Use Nizmo's message.
+  Each change is in the audit log, with the company, before and after.
+  Refused where the company's package hasn't the client portal. Nothing
+  shows them yet.
