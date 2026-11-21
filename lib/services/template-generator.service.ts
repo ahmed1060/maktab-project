@@ -76,7 +76,8 @@ export async function generateBulkTaskTemplate(baseBuffer: Buffer, locale: Local
 
     // "Clients" sheet — deliberately just Name + Location, nothing else
     // (owner/mobile live on the Clients page itself, not needed here).
-    const clientsSheet = workbook.addWorksheet(isAr ? 'الموردين' : 'Clients', isAr ? { views: [{ rightToLeft: true }] } : undefined)
+    // «العملاء», the clients: it was «الموردين», suppliers (FIRST_CHANGES_PLAN.md §4, PR 360).
+    const clientsSheet = workbook.addWorksheet(isAr ? 'العملاء' : 'Clients', isAr ? { views: [{ rightToLeft: true }] } : undefined)
     clientsSheet.columns = [
         { header: isAr ? 'الاسم' : 'Name', key: 'name', width: 30 },
         { header: isAr ? 'الموقع' : 'Location', key: 'location', width: 35 },
@@ -119,7 +120,7 @@ export async function generateBulkTaskTemplate(baseBuffer: Buffer, locale: Local
     const clientsLastRow = Math.max(clients.length + 1, 2)
 
     // By the sheets' actual names, not "Users"/"Clients" written out: an
-    // Arabic download names them المستخدمين and الموردين, and a formula
+    // Arabic download names them المستخدمين and العملاء, and a formula
     // pointing at a sheet that does not exist leaves every dropdown in the
     // file empty. Quoted, as a name that is not plain ASCII must be.
     const clientsRange = `${sheetRef(clientsSheet.name)}!$A$2:$A$${clientsLastRow}`
