@@ -84,7 +84,7 @@ describe("the commands, written for the program picked", () => {
             for (const [way, steps] of Object.entries(ways(shell))) {
                 const lines = steps[1].lines
                 const at = lines.findIndex(l => l.text === "att_guide_unzip")
-                expect(lines[at + 1], `${shell} ${way}`).toEqual({ text: key, code: folder })
+                expect(lines[at + 1], `${shell} ${way}`).toMatchObject({ text: key, code: folder })
                 expect(steps.flatMap(s => s.lines).filter(l => l.text === "att_guide_folder" || l.text === "att_guide_folder_ps"), `${shell} ${way}`).toHaveLength(1)
                 // The page's choice says how PowerShell differs: no line of its own for it.
                 expect(steps.flatMap(s => s.lines).some(l => (l.text as string) === "att_guide_powershell"), `${shell} ${way}`).toBe(false)
@@ -98,7 +98,8 @@ describe("its words", () => {
         for (const w of [en, ar]) {
             expect(w.att_guide_folder).toContain("`Command Prompt`")
             expect(w.att_guide_folder_ps).toContain("`PowerShell`")
-            expect(w.att_guide_folder_ps).toContain("Terminal (Admin)")
+            // Its clicks, under Show me how since PR 357.
+            expect(w.att_how_ps_open).toContain("Terminal (Admin)")
             expect(w.att_guide_shell_POWERSHELL_hint).toContain("`.\\`")
             expect(w.att_guide_shell_CMD_hint).not.toContain("`.\\`")
             for (const key of ["att_guide_shell", "att_guide_subtitle", "att_guide_printed"] as const) expect(w[key], key).toBeTruthy()

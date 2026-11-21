@@ -23,7 +23,14 @@ import type { TranslationKey } from "@/lib/translations"
  *
  * Each line is a translation key, with what's typed after it in a box of its
  * own, exactly as the agent takes it, never translated. Inside a sentence,
- * what's typed, such as a file's name, is between backticks (`inlineCode`).
+ * what's typed, such as a file's name, is between backticks (`inlineCode`),
+ * and a name on the screen, such as a key, a menu or a button, between `**`.
+ *
+ * Under a line whose clicks aren't plain, Show me how opens them (PR 357), as
+ * the first customer's setup walked them (§17.13), and What it shows says what
+ * `probe` prints. They're the same for every model where the clicks are the
+ * office PC's or Nizmo's; a ZKTeco terminal's own menu is walked too, and a
+ * Hikvision one's, which differs by model, isn't yet.
  */
 
 export type TerminalProtocol = "ZKTECO" | "HIKVISION"
@@ -38,6 +45,26 @@ export type GuideLine = {
     brand?: true
     /** What's typed is one line longer than the guide's box is wide, so its box scrolls sideways (PR 306). */
     wide?: true
+    /** What's seen once it's typed, under its box (PR 357). */
+    see?: TranslationKey
+    /** A second sentence and box in the same line, such as the log after the service's status (PR 357). */
+    then?: { text: TranslationKey; code: string }
+    /** The clicks, under Show me how (PR 357). */
+    how?: GuideHow
+}
+
+/** One part of a line's clicks, under its heading where there's more than one. */
+export type GuidePart = { title?: TranslationKey; steps: TranslationKey[] }
+
+/** A line's clicks, opened under it (DESIGN.md §5.5, A guide's page; PR 357). */
+export type GuideHow = {
+    /** What a command prints rather than what to do: named What it shows, not Show me how. */
+    shows?: true
+    /** An example of what it prints, above the list. */
+    sample?: string
+    parts: GuidePart[]
+    /** A line after them, such as going back to the terminal's clock. */
+    after?: TranslationKey
 }
 
 export type GuideStep = { key: string; title: TranslationKey; who: TranslationKey; lines: GuideLine[] }
@@ -72,8 +99,45 @@ export function guidePath(companyId: string | null): string {
  * unzipped (PR 355), and how to open it (PR 356). As the README has it (PR 354).
  */
 function prompt(shell: CommandShell): GuideLine[] {
-    return [{ text: shell === "POWERSHELL" ? "att_guide_folder_ps" : "att_guide_folder", code: `cd "${FOLDER}"` }]
+    return [{ text: shell === "POWERSHELL" ? "att_guide_folder_ps" : "att_guide_folder", code: `cd "${FOLDER}"`, how: HOW_PROMPT[shell] }]
 }
+
+/**
+ * The clicks under Show me how (PR 357). At the office, a ZKTeco terminal's own
+ * menu, as the Convoy's was walked: opened with M/OK, its address under
+ * Comm., Ethernet, its comm key under Comm Key or PC Connection.
+ */
+const MENU: GuidePart = { title: "att_how_menu_title", steps: ["att_how_menu_open", "att_how_menu_admin", "att_how_menu_keys"] }
+const ADDRESS: GuidePart = { title: "att_how_address_title", steps: ["att_how_address_open", "att_how_address_note", "att_how_address_check"] }
+const COMM_KEY: GuidePart = { title: "att_how_key_title", steps: ["att_how_key_open", "att_how_key_note"] }
+const HOW_SOFTWARE: GuideHow = { parts: [{ steps: ["att_how_software_find", "att_how_software_untick", "att_how_software_close"] }] }
+const HOW_CLOCK: GuideHow = { parts: [{ steps: ["att_how_clock_open", "att_how_clock_set"] }] }
+/** On the office PC: the package into the agent's folder, and agent.json in Notepad, saved as UTF-8 without a BOM, which the agent can't read. */
+const HOW_UNZIP: GuideHow = { parts: [{ steps: ["att_how_unzip_extract", "att_how_unzip_open", "att_how_unzip_folder", "att_how_unzip_copy"] }] }
+const HOW_NOTEPAD: GuideHow = { parts: [{ steps: ["att_how_notepad_open", "att_how_notepad_paste", "att_how_notepad_save", "att_how_notepad_extension"] }] }
+const HOW_PROMPT: Record<CommandShell, GuideHow> = {
+    CMD: { parts: [{ steps: ["att_how_cmd_open", "att_how_prompt_admin", "att_how_cmd_folder"] }] },
+    POWERSHELL: { parts: [{ steps: ["att_how_ps_open", "att_how_prompt_admin", "att_how_ps_folder"] }] },
+}
+/** Here, in Nizmo: as its own screens name them. */
+const HOW_ADD: GuideHow = { parts: [{ steps: ["att_how_add_open", "att_how_add_name", "att_how_add_code"] }] }
+const HOW_BRAND: GuideHow = { parts: [{ steps: ["att_how_brand_find", "att_how_brand_edit", "att_how_brand_set"] }] }
+const HOW_NUMBERS: GuideHow = { parts: [{ steps: ["att_how_numbers_open", "att_how_numbers_pick", "att_how_numbers_who"] }] }
+
+/**
+ * What `probe` prints for a ZKTeco terminal, as the agent prints it, two
+ * spaces deep, its values made up (agent/src/zk/client.ts, `info`).
+ */
+export const PROBE_SAMPLE = JSON.stringify({
+    serialNumber: "ABC1234567890", name: "MODEL", firmware: "Ver 6.60", clock: "2026-11-21T09:30:00", users: 25, records: 4180, recordsCapacity: 100000,
+}, null, 2)
+const HOW_PROBE: GuideHow = { shows: true, sample: PROBE_SAMPLE, parts: [{ steps: ["att_how_probe_counts", "att_how_probe_clock", "att_how_probe_timeout", "att_how_probe_auth"] }] }
+
+/** Picking the PC, and checking it reaches the terminal, whatever its model (PR 357). */
+const PC: GuideLine = { text: "att_guide_office_pc", code: "ping TERMINAL-ADDRESS", see: "att_guide_ping_see" }
+
+/** The agent's log, in its folder (agent/src/main.ts): its last lines, in each program's own way. */
+const LOG: Record<CommandShell, string> = { CMD: "type logs\\agent.log", POWERSHELL: "Get-Content .\\logs\\agent.log -Tail 20" }
 
 /** The first agent that takes the scans a terminal sends it (§17.12, PR 305). */
 export const PUSH_AGENT_VERSION = "0.4.0"
@@ -116,12 +180,12 @@ function settingsFor(server: string, protocol: TerminalProtocol, pushes = false)
 /** At the office, before the agent: what each protocol's terminal needs. The model's notes go with finding its address. */
 const OFFICE: Record<TerminalProtocol, GuideLine[]> = {
     ZKTECO: [
-        { text: "att_guide_office_delete" },
-        { text: "att_guide_office_connected" },
-        { text: "att_guide_office_address" },
+        // Leaving it connected joins turning its deleting off, as the canvas has it (PR 357).
+        { text: "att_guide_office_delete", how: HOW_SOFTWARE },
+        { text: "att_guide_office_address", how: { parts: [MENU, ADDRESS, COMM_KEY], after: "att_how_menu_back" } },
         { text: "att_guide_model_notes", notes: true },
-        { text: "att_guide_office_clock" },
-        { text: "att_guide_office_pc" },
+        { text: "att_guide_office_clock", how: HOW_CLOCK },
+        PC,
     ],
     HIKVISION: [
         { text: "att_guide_hik_user" },
@@ -129,7 +193,7 @@ const OFFICE: Record<TerminalProtocol, GuideLine[]> = {
         { text: "att_guide_model_notes", notes: true },
         { text: "att_guide_hik_clock" },
         { text: "att_guide_hik_listening" },
-        { text: "att_guide_office_pc" },
+        PC,
     ],
 }
 
@@ -139,10 +203,11 @@ const OFFICE: Record<TerminalProtocol, GuideLine[]> = {
  * reading it: neither the PC software's settings nor its comm key.
  */
 const OFFICE_PUSH: GuideLine[] = [
-    { text: "att_guide_push_address" },
+    // Its address with no comm key, which only reading it needs (PR 357).
+    { text: "att_guide_push_address", how: { parts: [MENU, ADDRESS], after: "att_how_menu_back" } },
     { text: "att_guide_model_notes", notes: true },
-    { text: "att_guide_office_clock" },
-    { text: "att_guide_office_pc" },
+    { text: "att_guide_office_clock", how: HOW_CLOCK },
+    PC,
     { text: "att_guide_push_pc_address" },
 ]
 
@@ -170,16 +235,16 @@ function installed(protocol: TerminalProtocol, sends: boolean): GuideLine[] {
 function reading(protocol: TerminalProtocol, server: string): GuideLine[] {
     if (protocol === "HIKVISION") {
         return [
-            { text: "att_guide_hik_settings", code: settingsFor(server, protocol) },
+            { text: "att_guide_hik_settings", code: settingsFor(server, protocol), how: HOW_NOTEPAD },
             { text: "att_guide_hik_https" },
             // The password is asked for, never typed on the command line, where it would stay in its history (§17.4).
             { text: "att_guide_hik_probe", code: "nizmo-agent.exe probe hikvision TERMINAL-ADDRESS AGENT-USER" },
         ]
     }
     return [
-        { text: "att_guide_settings", code: settingsFor(server, protocol) },
+        { text: "att_guide_settings", code: settingsFor(server, protocol), how: HOW_NOTEPAD },
         { text: "att_guide_password" },
-        { text: "att_guide_probe", code: "nizmo-agent.exe probe TERMINAL-ADDRESS" },
+        { text: "att_guide_probe", code: "nizmo-agent.exe probe TERMINAL-ADDRESS", how: HOW_PROBE },
         // probe reads only what it's given, never agent.json (Codex on PR 282).
         { text: "att_guide_probe_key", code: "nizmo-agent.exe probe TERMINAL-ADDRESS 4370 1234" },
     ]
@@ -204,7 +269,7 @@ function refused(protocol: TerminalProtocol): GuideLine[] {
  */
 function listening(server: string): GuideLine[] {
     return [
-        { text: "att_guide_push_settings", code: settingsFor(server, "ZKTECO", true) },
+        { text: "att_guide_push_settings", code: settingsFor(server, "ZKTECO", true), how: HOW_NOTEPAD },
         { text: "att_guide_push_firewall", code: FIREWALL, wide: true },
         { text: "att_guide_push_profile" },
         { text: "att_guide_push_terminal" },
@@ -230,7 +295,8 @@ const SEND_FROM = "\"sendFrom\": \"YYYY-MM-DD\""
 export function setupGuide(protocol: TerminalProtocol, { superAdmin, server, pushes = false, shell = "CMD" }: { superAdmin: boolean; server: string; pushes?: boolean; shell?: CommandShell }): GuideStep[] {
     // Only a ZKTeco terminal sends to the agent (§17.12): a Hikvision one that pushes is read.
     const sends = pushes && protocol === "ZKTECO"
-    // Every box written for the program picked (PR 356).
+    // Every box written for the program picked (PR 356). A line's second box is
+    // written for it already, as the log is read in each program's own way (PR 357).
     return steps(protocol, superAdmin, server, sends, shell).map(step => ({
         ...step,
         lines: step.lines.map(l => (l.code === undefined ? l : { ...l, code: forShell(l.code, shell) })),
@@ -245,7 +311,7 @@ function steps(protocol: TerminalProtocol, superAdmin: boolean, server: string, 
             lines: [
                 { text: superAdmin ? "att_guide_download_sa" : "att_guide_download_other" },
                 ...installed(protocol, sends),
-                { text: "att_guide_unzip", code: FOLDER },
+                { text: "att_guide_unzip", code: FOLDER, how: HOW_UNZIP },
                 ...prompt(shell),
                 ...(sends ? listening(server) : reading(protocol, server)),
                 { text: "att_guide_unknown_publisher" },
@@ -254,12 +320,14 @@ function steps(protocol: TerminalProtocol, superAdmin: boolean, server: string, 
         {
             key: "connect", title: "att_guide_connect_title", who: "att_guide_connect_who",
             lines: [
-                { text: "att_guide_add" },
-                { text: "att_guide_enrol", code: "nizmo-agent.exe enrol CODE" },
+                { text: "att_guide_add", how: HOW_ADD },
+                { text: "att_guide_enrol", code: "nizmo-agent.exe enrol CODE", see: "att_guide_enrol_see" },
+                // The first round by hand, before the service holds the agent's folder (PR 357): it reads, so not for one that sends.
+                ...(sends ? [] : [{ text: "att_guide_check", code: "nizmo-agent.exe check", see: "att_guide_check_see" } as const]),
                 { text: "att_guide_service", code: "nizmo-agent-service.exe install\nnizmo-agent-service.exe start" },
                 // Its first call is the check that it reaches the agent, as probe is for one read.
                 ...(sends ? [{ text: "att_guide_push_called" } as const] : []),
-                { text: "att_guide_brand", brand: true },
+                { text: "att_guide_brand", brand: true, how: HOW_BRAND },
                 // Older scans come once it's told to send again, when it next asks for its options, as it does when it starts (PR 305).
                 { text: sends ? "att_guide_push_older" : "att_guide_older", code: SEND_FROM },
             ],
@@ -267,14 +335,14 @@ function steps(protocol: TerminalProtocol, superAdmin: boolean, server: string, 
         {
             key: "people", title: "att_guide_people_title", who: "att_guide_people_who",
             lines: [
-                { text: "att_guide_numbers" },
+                { text: "att_guide_numbers", how: HOW_NUMBERS },
                 { text: "att_guide_try" },
             ],
         },
         {
             key: "wrong", title: "att_guide_wrong_title", who: "att_guide_wrong_who",
             lines: [
-                { text: "att_guide_silent", code: "nizmo-agent-service.exe status" },
+                { text: "att_guide_silent", code: "nizmo-agent-service.exe status", then: { text: "att_guide_log", code: LOG[shell] } },
                 ...(sends ? WRONG_PUSH : [{ text: "att_guide_unreachable" } as const, ...refused(protocol)]),
                 { text: "att_guide_revoked" },
                 { text: "att_guide_clock" },
