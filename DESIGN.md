@@ -1753,6 +1753,73 @@ These are built once, in the building-blocks PR, and every page uses them
         accountant."
     - What's beside the select, the number or the note, is read out when
       a pick changes it.
+- **Tax position statement:** a document of a client's tax position, to
+  print or save as a PDF (`CLIENT_PORTAL_PLAN.md` §8), as the owner's
+  mockup draws it (the Statement in the Client tax position canvas,
+  redrawn on the building blocks in the Tax position statement canvas).
+  It's drawn from the claims as they are, and nothing is kept or sent.
+  - It's opened from Download the statement, a link that opens it in a
+    new tab and says so to screen readers, as a link to another site
+    does: beside Contact the accountant on the client's own page, and
+    before Upload from the tax portal on the client's Tax position, for
+    the company's people who may see it. It's there once the portal's
+    file has been uploaded for the client.
+  - Above the sheet, as for any document: the page header, with the
+    client's name above "Tax position statement", a subtitle saying the
+    print dialog saves it as a PDF, Print as the primary button and Close
+    beside it, which closes the tab. In the client's area it's under the
+    area's top bar; for the company's people, in the app's frame. On
+    phones the buttons go under the subtitle, full width.
+  - The sheet says "Tax position statement" under the company's name.
+  - Its details: the client; the day the figures are from, with "From
+    the Tax Authority's portal" under it; the responsible accountant,
+    where the client's page names one; and the day it was printed, in
+    the company's own days. Four to a row on computers, two on phones.
+  - Then four facts in a box, with a 1px `--rule` around them and between
+    them, two to a row on phones: what the company owes, with its
+    currency; what's paid, with its share of the open claims' original
+    amounts in brackets, as the client's page rounds it; how many claims
+    are open; and how many are late, in `--problem-text` while some are.
+    Each is a label in `--text-sm` and `--muted` over its value in
+    `--text-lg`, weight 600.
+  - Its claims in a document's table, captioned "Open claims by item":
+    Claim, Last day to pay, Original, Paid, Remaining and Status.
+    - The items in the client's page's order, the largest remaining
+      first, each headed by a row with its full name and, at its end, how
+      many claims it has, weight 600, the count in weight 400 and
+      `--muted`.
+    - Under it, its claims, the latest last day to pay first, as on the
+      client's page: the claim's number, in Latin digits and left to
+      right, with its period under it in `--text-sm` and `--muted`, said
+      as the client's page says it; the last day to pay; the three
+      amounts, the remaining one in weight 500; and its status: Late, in
+      weight 600 and `--problem-text`, with Partly paid under it where
+      some is paid; Partly paid alone; or Not due yet, in `--muted`.
+    - Then Total for the item, weight 600, with its three amounts.
+    - Its foot, in `--text-lg` and weight 600 under a 2px rule in
+      `--ink`: how many claims, "Total, 6 claims", and the three amounts
+      in all. What remains in all is the figure the statement is for.
+    - On phones, each claim is a block of lines: its number, with what
+      remains on the end side; its period and last day to pay; its
+      original and paid amounts; its status. An item's total is a line,
+      and the total in all has its original and paid amounts under it.
+    - Printed, as a document's table is: its headings start every page,
+      an item's heading row stays with its first claim, no claim is split
+      between two pages, and its foot comes once, at its end.
+  - At its foot, over a 1px `--rule`, in `--text-sm` and `--muted`: the
+    amounts are in Egyptian pounds as they were on the portal that day,
+    penalties for paying late aren't counted, and Late means the last day
+    to pay has passed. Then "Powered by Nizmo" at its end, in
+    `--text-xs`.
+  - With nothing open in the portal's file, the table's place says
+    nothing was owed on the portal that day.
+  - In the page's language, digits too. Saved as a PDF, it's named for
+    the client and the day the figures are from, as its page's title is.
+  - One that isn't there, or isn't theirs, says so, and one that didn't
+    load says that, with Try again, as any document does. In the client's
+    area, it's always the session's own client.
+  - Printed, the sheet is all there is (Document), with the late count
+    and statuses in `--problem-on-paper`.
 - **Uploading the tax portal's file:** how a client's tax position is
   kept up to date, by whoever may update it (`CLIENT_PORTAL_PLAN.md`
   §4.1). Its rows are read from a file and checked before any is saved
@@ -3169,3 +3236,10 @@ changed:
   Once an upload is saved, its toast says whether the client's people
   were emailed, and why not where none was (`CLIENT_PORTAL_PLAN.md`
   §12, step 11b).
+- **2026-11-21:** The tax position statement (§5.5), as the owner's
+  mockup draws it, redrawn on the building blocks (the Tax position
+  statement canvas, approved by the owner): the client's details, four
+  facts, the open claims by item with each item's total and the total in
+  all, and the note, opened in a new tab from Download the statement on
+  the client's page and on the client's Tax position
+  (`CLIENT_PORTAL_PLAN.md` §8, §12, step 12).
