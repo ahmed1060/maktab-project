@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { ChatIcon, ReceiptIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
-import { BarsByPart, Button, Card, Columns, EmptyState, Icon, LargeFigure, Page, PageHeader, ShareBar, StatusBadge } from '@/components/ui'
+import { ChatIcon, FileArrowDownIcon, ReceiptIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { BarsByPart, Button, ButtonExternal, Card, Columns, EmptyState, Icon, LargeFigure, Page, PageHeader, ShareBar, StatusBadge } from '@/components/ui'
 import { ContactWhatsApp } from '@/components/portal/ContactWhatsApp'
 import { PortalClaims } from '@/components/portal/PortalClaims'
 import { formatDay } from '@/components/records/types'
@@ -31,6 +31,9 @@ import type { TranslationKey } from '@/lib/translations'
  * from the company's templates, else Nizmo's (step 10a; PR 346). Where no
  * one can be written to, there's neither, and the note says to contact the
  * office.
+ *
+ * Once the portal's file has been uploaded, Download the statement opens the
+ * tax position statement in a tab of its own (step 12a; PR 352).
  */
 /**
  * What Contact on WhatsApp opens with: from the page's header, its title and
@@ -80,8 +83,12 @@ export function PortalHome({ client, person, position, accountant, messages }: {
             overline={client}
             title={t('tax_position')}
             subtitle={subtitle}
-            action={reachable ? (
-                <Button variant="primary" icon={ChatIcon} aria-haspopup="dialog" onClick={() => open(null)}>{t('portal_contact_accountant')}</Button>
+            action={reachable || asOf ? (
+                <>
+                    {reachable && <Button variant="primary" icon={ChatIcon} aria-haspopup="dialog" onClick={() => open(null)}>{t('portal_contact_accountant')}</Button>}
+                    {/* Once there's something to put on it (step 12a; PR 352): the statement, in a tab of its own. */}
+                    {asOf && <ButtonExternal icon={FileArrowDownIcon} href="/portal/statement">{t('tax_statement_download')}</ButtonExternal>}
+                </>
             ) : undefined}
         />
     )

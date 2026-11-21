@@ -130,14 +130,18 @@ describe("the page's header", () => {
 
     it("has Contact the accountant as its primary button, with a speech bubble, where the accountant has a number", () => {
         const html = page(POSITION, WRITES)
-        expect(html).toMatch(/<div class="ui-page-actions"><button type="button" class="ui-btn ui-btn-primary" aria-haspopup="dialog"><svg[^>]*>.*?<\/svg>Contact the accountant<\/button><\/div>/)
+        // Download the statement beside it, since PR 352.
+        expect(html).toMatch(/<div class="ui-page-actions"><button type="button" class="ui-btn ui-btn-primary" aria-haspopup="dialog"><svg[^>]*>.*?<\/svg>Contact the accountant<\/button><a class="ui-btn ui-btn-secondary" href="\/portal\/statement"/)
         expect(page(POSITION, WRITES, "ar")).toContain(">التواصل مع المحاسب</button>")
     })
 
     it("has no button where the accountant has no number, and names no one where there's none", () => {
-        expect(page(POSITION, NO_NUMBER)).not.toContain("ui-page-actions")
+        // Download the statement alone, since PR 352.
+        const statementOnly = /<div class="ui-page-actions"><a class="ui-btn ui-btn-secondary" href="\/portal\/statement"[^>]*>.*?<\/a><\/div>/
+        expect(page(POSITION, NO_NUMBER)).toMatch(statementOnly)
         const html = page(POSITION, null)
-        expect(html).not.toContain("ui-page-actions")
+        expect(html).toMatch(statementOnly)
+        expect(html).not.toContain("aria-haspopup")
         expect(html).not.toContain("Responsible accountant")
         expect(html).toContain(`<p class="ui-page-subtitle">From the Tax Authority&#x27;s portal, last updated 17\u00a0Nov\u00a02026.</p>`)
     })

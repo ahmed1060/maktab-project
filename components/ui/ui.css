@@ -2650,6 +2650,172 @@ a.ui-file-open:focus-visible,
   }
 }
 
+/* ── Tax position statement (§5.5) ── */
+/* A client's tax position as a document, as the owner's mockup draws it:
+   four facts in a box, a rule around them and between them, two to a row
+   on phones; the open claims by item, each headed by its row and closed by
+   its total; and the note and the signature at its foot. */
+/* Its details four to a row, as the mockup has them; more specific than the
+   rule putting details one to a row on phones, which comes later. */
+.ui-details.ui-details-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+/* The first two wider, as the mockup draws them, so their labels fit. */
+.ui-doc-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr);
+  margin: 0;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-field);
+  font-variant-numeric: tabular-nums;
+}
+.ui-doc-fact {
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border-inline-end: 1px solid var(--rule);
+}
+.ui-doc-fact:last-child {
+  border-inline-end: 0;
+}
+.ui-doc-fact dt {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--muted);
+}
+.ui-doc-fact dd {
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.ui-doc-fact-unit {
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--muted);
+}
+.ui-doc-fact[data-tone="problem"] dd {
+  color: var(--problem-text);
+}
+/* An item's row: its name, and how many claims at its end. */
+.ui-doc-group-row th {
+  padding-block-start: var(--space-3);
+  border-bottom: 1px solid var(--rule);
+  font-weight: 600;
+}
+tbody + tbody .ui-doc-group-row th {
+  border-top: 1px solid var(--rule);
+}
+.ui-doc-group-name,
+.ui-doc-cards-group-head,
+.ui-doc-cards-item-total,
+.ui-doc-cards-total {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.ui-doc-group-count {
+  font-weight: 400;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.ui-doc-item-total th,
+.ui-doc-item-total td {
+  font-weight: 600;
+}
+.ui-doc-table .ui-doc-remaining {
+  font-weight: 500;
+}
+.ui-doc-table .ui-doc-grand-total th,
+.ui-doc-table .ui-doc-grand-total td {
+  border-top: 2px solid var(--ink);
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+}
+/* A claim's status: Late with Partly paid under it, smaller. */
+.ui-doc-status {
+  display: block;
+}
+.ui-doc-status + .ui-doc-status {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.ui-doc-status[data-status="late"],
+.ui-doc-card-status[data-status="late"] .ui-doc-status-word {
+  font-weight: 600;
+  color: var(--problem-text);
+}
+.ui-doc-status[data-status="not_due"],
+.ui-doc-card-status[data-status="not_due"] {
+  color: var(--muted);
+}
+/* On phones: each item's claims as blocks of lines, under its name, with its total. */
+.ui-doc-cards-groups {
+  display: none;
+}
+.ui-doc-cards-group-head {
+  padding-block: var(--space-2);
+  border-top: 1px solid var(--ink);
+  font-weight: 600;
+}
+.ui-doc-cards-group .ui-doc-cards {
+  border-top: 1px solid var(--rule);
+}
+.ui-doc-cards-item-total {
+  padding-block: var(--space-2) var(--space-3);
+  font-weight: 600;
+}
+.ui-doc-card-status {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.ui-doc-cards-total {
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+  font-weight: 600;
+}
+.ui-doc-cards-groups .ui-doc-cards-foot {
+  border-top-width: 2px;
+}
+.ui-doc-foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-block-start: var(--space-3);
+  border-top: 1px solid var(--rule);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--muted);
+}
+.ui-doc-signature {
+  align-self: flex-end;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+}
+@media screen and (max-width: 767px) {
+  .ui-details.ui-details-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ui-doc-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ui-doc-fact:nth-child(2n) {
+    border-inline-end: 0;
+  }
+  .ui-doc-fact:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--rule);
+  }
+  .ui-doc-cards-groups {
+    display: block;
+  }
+}
+/* Printed: an item's heading row stays with its first claim. */
+@media print {
+  .ui-doc-group-row {
+    break-after: avoid;
+  }
+}
+
 /* ── The tax portal's export button (§5.5) ── */
 /* A page read more than it's used: its cards at a guide's width. */
 .ui-tax-export {

@@ -1246,6 +1246,22 @@ sent: it's drawn from the claims as they are.
 - The same document opens from the client's Tax position for the
   company's people, with `tax.view`.
 
+As drawn (Decided, 2026-11-21): the owner's Statement in the Client tax
+position canvas, redrawn on the building blocks in the Tax position
+statement canvas and approved by the owner (`DESIGN.md` §5.5, Tax
+position statement). What it changes from the owner's drawing:
+
+- A claim's period is under its number, so six columns fit an A4 page
+  at a size that reads.
+- The day it was printed is with its details, as a document's facts are.
+- Three statuses: Late, in the Problem colour, with Partly paid under it
+  where some is paid; Partly paid alone; and Not due yet.
+- An item's claims go the latest last day to pay first, as on the
+  client's page.
+- For the company's people, Download the statement is before Upload from
+  the tax portal on the client's Tax position, for whoever may see it,
+  and opens in a new tab as the client's does.
+
 ---
 
 ## 9. Permissions (Decided, 2026-11-17)
@@ -1663,7 +1679,31 @@ width:
       language, at most one a day for a client, as the invitation is sent;
       the upload's audit log entry says how many went. #351, as built in
       §4.4.
-12. **Download the statement.**
+12. **Download the statement.** Built in two (Decided, 2026-11-21):
+    - **12a. In the client's area:** Download the statement beside
+      Contact the accountant, once the portal's file has been uploaded,
+      opening the statement (§8) in a new tab at `/portal/statement`:
+      the session's client's tax position alone, read as the area's page
+      reads it (`portalTaxPosition`), the accountant its page names, the
+      company's name and logo, and the day it's printed in the company's
+      own days, with Print and Close above it. As built (#352):
+      - The statement's page sends its title with it, naming the PDF
+        for the client and the day the figures are from in the page's
+        language, as Next.js sends a page's title after its content; the
+        statement sets it again where the language is changed in its tab.
+      - Close closes the tab, and goes back to the area's page where the
+        browser keeps it open, such as a tab opened from its address.
+      - By its address before the first upload, the page says what the
+        area's page says then, with Close alone.
+      - "Powered by" follows System settings' switch and name.
+      - Its four details are four to a row, two on phones, where the
+        app's other details are three.
+      - A claim's period is said as the area's page says it, from one
+        place for both (`components/tax/claim-period.ts`).
+    - **12b. For the company's people:** the same document in the app,
+      at `/dashboard/clients/<id>/tax-statement`, for whoever may see
+      the client's tax position (`tax.view`), opened from Download the
+      statement on the client's Tax position.
 
 ---
 
@@ -2371,3 +2411,11 @@ with a tax position is archived, and deleted for good from the archive
   up 45 seconds after the upload began, those not sent by then counted
   as not sent, so a mail server that stalls can't hold the upload's
   answer past its route's minute (§4.4).
+- **2026-11-21 (agreed with the owner):** Download the statement as drawn
+  (§8), the owner's Statement redrawn on the building blocks, and built
+  in two (§12, step 12): in the client's area (12a), then for the
+  company's people (12b).
+- **2026-11-21:** 12a as built (#352, §12): Download the statement on the
+  client's own page once the portal's file is uploaded, opening the
+  statement in a tab of its own at `/portal/statement`, for the session's
+  client alone, its title naming the PDF.

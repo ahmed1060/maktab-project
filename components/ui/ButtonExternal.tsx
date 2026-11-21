@@ -6,7 +6,8 @@ import { Icon } from './Icon'
 
 /**
  * A link that looks like a button, to another site, such as Contact on
- * WhatsApp's Open WhatsApp (DESIGN.md §5.5; PR 344). It opens in a new tab,
+ * WhatsApp's Open WhatsApp (DESIGN.md §5.5; PR 344), or to a page meant for a
+ * tab of its own, such as the tax position statement (PR 352). It opens in a new tab,
  * which it says to screen readers, with nothing of this page passed on to
  * the site. A press is handed on, so a dialog it's in can close as the tab
  * opens. In a file of its own, as it reads the page's language: `Button.tsx`
