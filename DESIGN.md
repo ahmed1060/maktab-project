@@ -1082,13 +1082,29 @@ These are built once, in the building-blocks PR, and every page uses them
     guide's dialog, written for the program picked: in PowerShell, each
     of the agent's own commands starts with `.\`, in the boxes and in the
     lines alike.
+  - What's seen once something's typed, such as what `ping` answers, is a
+    line under its box in `--text-sm` and `--muted`.
+  - Under a line whose clicks aren't plain, Show me how opens them: a
+    quiet small button with a caret before its words that turns as it
+    opens, which says whether it's open. Under it, in a panel on
+    `--brand-tint` with a `--brand-tint-strong` hairline and
+    `--radius-panel` corners, a numbered list of the clicks, a heading in
+    weight 600 over each part where there's more than one, and a line
+    after them where one's needed, such as going back to the terminal's
+    clock. Where it shows what a command prints rather than what to do,
+    it's named What it shows, with an example of what's printed, in a
+    box on `--panel`, above its list. The names on the screen, such as a
+    key, a menu or a button, are in weight 600. Each opens on its own,
+    and all start closed.
   - On phones, as on any page: Print goes full width under the subtitle,
     a choice's options stack, 44px each, and Copy goes under its box.
   - Printed, only the guide prints, black on white: its title, a line
     naming what was picked and the day it's printed, and the steps,
     without the app's frame, the back link, the panel's controls or the
     buttons. A command too long for the page's width wraps onto the next
-    line, as paper can't scroll, so it's read whole.
+    line, as paper can't scroll, so it's read whole. Every Show me how
+    and What it shows is open, without its button and on white, its
+    list under its line, so the paper holds every click.
 - **Toast:** a few words on what an action did, such as "Saved", or why it
   couldn't be done, at the top of the screen on its end side, over every
   dialog. It's a level-2 panel (§4.3) on `--panel-raised`, with 8px
@@ -3287,3 +3303,9 @@ changed:
   Prompt and PowerShell that writes every command for the one picked,
   kept in the browser, and only the guide printed (`ATTENDANCE_PLAN.md`
   §17.7).
+- **2026-11-21:** Show me how under a guide's lines (§5.5, A guide's
+  page), as the owner approved in the Fingerprint terminal setup guide
+  canvas: the clicks of a line that needs them, opened under it, and
+  What it shows for what a command prints; what's seen once something's
+  typed, under its box; and every one open on paper
+  (`ATTENDANCE_PLAN.md` §17.7, #357).
