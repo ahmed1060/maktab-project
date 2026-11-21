@@ -7,6 +7,7 @@ import { cents } from "@/lib/task-costs"
 import type { Paging } from "@/lib/pagination"
 import { daysLate, figuresAge, type TaxPosition } from "@/lib/tax-claims"
 import { summarise, type PortalTaxPosition } from "@/lib/portal-tax"
+import type { StaffTaxStatement } from "@/lib/tax-statement"
 import { compareClaims, fileNamesClient, namedCompany, sentUpload, type ClaimDraft, type TaxClaimsNow, type TaxUploadSaved } from "@/lib/tax-file"
 import { accountantOf } from "@/lib/services/client-accountant.service"
 import { sendTaxUpdateEmails, taxEmailPlan, TAX_EMAILS_WITHIN_MS } from "@/lib/services/tax-update-email.service"
@@ -112,7 +113,28 @@ export async function taxPositionOf(user: Actor, clientId: string | null | undef
 export async function portalTaxPosition(account: { companyId: string; clientId: string }, now: Date = new Date()): Promise<PortalTaxPosition> {
     const client = await prisma.client.findFirst({ where: { id: account.clientId, companyId: account.companyId }, select: { id: true, companyId: true } })
     if (!client) throw new Error("CLIENT_NOT_FOUND")
+    return positionOf(client, now)
+}
 
+/**
+ * A client's tax position as its statement draws it, for the company's
+ * people (CLIENT_PORTAL_PLAN.md §8, §12 step 12b; PR 353): the client's
+ * figures read as the client's area reads them, so both statements agree,
+ * with the client's name and its company's name and logo. For whoever may
+ * see tax positions; read from the client's own company, so a Super Admin
+ * gets any client's and another company's reads as not there, as on the
+ * client's Tax position.
+ */
+export async function taxStatementOf(user: Actor, clientId: string | null | undefined, now: Date = new Date()): Promise<StaffTaxStatement> {
+    if (!clientId) throw new Error("TAX_CLIENT_REQUIRED")
+    if (!can(user, "tax.view")) throw new Error("TAX_VIEW_REQUIRED")
+    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, companyId: true, company: { select: { name: true, logoUrl: true } } } })
+    if (!client || (user.role !== "SUPER_ADMIN" && client.companyId !== user.companyId)) throw new Error("CLIENT_NOT_FOUND")
+    return { client: client.name, company: client.company, position: await positionOf(client, now) }
+}
+
+/** A client's every claim, by item and by how late, late counted in its company's own days. */
+async function positionOf(client: { id: string; companyId: string }, now: Date): Promise<PortalTaxPosition> {
     const timeZone = await filterTimeZone(client.companyId)
     const today = calendarDateStr(now, timeZone)
     const [position, rows] = await Promise.all([

@@ -60,3 +60,13 @@ export function resolveTitleKey(pathname: string): string | null {
 export function buildTitle(section: string | null): string {
     return section ? `${APP_NAME} — ${section}` : APP_NAME
 }
+
+// Pages that send a title of their own from the server, which the browser
+// names a printed PDF by, such as a client's tax position statement
+// (CLIENT_PORTAL_PLAN.md §12 step 12b; PR 353). The app's title for each
+// page leaves theirs as it is.
+const OWN_TITLES: ReadonlyArray<RegExp> = [/^\/dashboard\/clients\/[^/]+\/tax-statement$/]
+
+export function ownsItsTitle(pathname: string): boolean {
+    return OWN_TITLES.some(own => own.test(pathname))
+}

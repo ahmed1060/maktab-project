@@ -2,9 +2,9 @@
 
 import { Fragment, useState } from 'react'
 import useSWR from 'swr'
-import { CalendarBlankIcon, CalendarCheckIcon, CoinsIcon, HourglassIcon, ReceiptIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { CalendarBlankIcon, CalendarCheckIcon, CoinsIcon, FileArrowDownIcon, HourglassIcon, ReceiptIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
-import { Button, DataList, EmptyState, ListCard, Pager, pageInRange, Section, StatusBadge, TotalTiles, type Column } from '@/components/ui'
+import { Button, ButtonExternal, DataList, EmptyState, ListCard, Pager, pageInRange, Section, StatusBadge, TotalTiles, type Column } from '@/components/ui'
 import { formatDay } from '@/components/records/types'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { countOf } from '@/lib/plural'
@@ -31,6 +31,10 @@ import ResponsibleAccountant from './ResponsibleAccountant'
  * At its foot, before the first file too, the client's responsible
  * accountant, picked by whoever may manage clients (`picks`), with whether
  * the client's people can write to them (§7, step 9b, PR 343).
+ *
+ * Once there's a file, Download the statement comes before the upload, for
+ * whoever sees the section, archived clients too: the client's tax position
+ * statement, in a tab of its own (§8, §12 step 12b, PR 353).
  */
 export default function TaxPosition({ clientId, manages = false, picks = false, editsProfile = () => false }: {
     clientId: string
@@ -121,8 +125,16 @@ export default function TaxPosition({ clientId, manages = false, picks = false, 
         { key: 'status', header: t('tax_col_status'), cell: badges },
     ]
 
+    // The statement, as the client's area has it, before the upload.
+    const actions = (
+        <span className="ui-section-actions">
+            <ButtonExternal icon={FileArrowDownIcon} href={`/dashboard/clients/${clientId}/tax-statement`}>{t('tax_statement_download')}</ButtonExternal>
+            {upload}
+        </span>
+    )
+
     return (
-        <Section title={t('tax_position')} action={upload}>
+        <Section title={t('tax_position')} action={actions}>
             <p className="ui-hint">{before}{position.uploadedBy && <bdi>{position.uploadedBy}</bdi>}{after}{old}{how}</p>
             <TotalTiles items={[
                 { label: t('tax_owed'), value: money(totals.remaining) },

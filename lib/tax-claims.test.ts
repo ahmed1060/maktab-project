@@ -194,6 +194,8 @@ describe("the section's words, in both languages", () => {
         "tax_col_number", "tax_col_item", "tax_col_period", "tax_col_original", "tax_col_remaining", "tax_col_due", "tax_col_status",
         "tax_period", "tax_days_late", "tax_due_on", "tax_due_on_late", "tax_badge_late", "tax_badge_partly_paid", "tax_not_updated",
         "tax_show_all", "tax_show_fewer", "tax_no_open_claims", "tax_no_open_claims_detail",
+        // The statement's, on the section's heading (PR 353).
+        "tax_statement_download",
     ]
 
     it("has each of them, with what it fills in", () => {

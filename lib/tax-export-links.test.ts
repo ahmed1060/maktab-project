@@ -144,7 +144,8 @@ describe("On a client's Tax position", () => {
             state.data = data
             const html = section(true)
             expect(html.split(TAX_EXPORT_PAGE)).toHaveLength(2)
-            expect(html).not.toContain("target=")
+            // The link itself: Download the statement, on the heading, opens a tab of its own (PR 353).
+            expect(html.match(new RegExp(`<a [^>]*href="${TAX_EXPORT_PAGE}"[^>]*>`))![0]).not.toContain("target=")
         }
     })
 
@@ -152,7 +153,7 @@ describe("On a client's Tax position", () => {
         for (const data of [POSITION, NONE]) {
             state.data = data
             expect(head(section(true))).toMatch(/<button[^>]*>(<[^>]+>)*Upload from the tax portal/)
-            expect(head(section(true))).not.toContain("<a ")
+            expect(head(section(true))).not.toContain(TAX_EXPORT_PAGE)
         }
     })
 
