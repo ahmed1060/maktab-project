@@ -93,7 +93,7 @@ describe("the steps, by the model's protocol", () => {
 
     it("names the brand picked in the step that sets it on the terminal", () => {
         const connect = setupGuide("ZKTECO", { superAdmin: true, server: SERVER })[2]
-        expect(connect.lines.find(l => l.text === "att_guide_brand")).toEqual({ text: "att_guide_brand", brand: true })
+        expect(connect.lines.find(l => l.text === "att_guide_brand")).toMatchObject({ text: "att_guide_brand", brand: true })
     })
 
     it("walks Hikvision's through the agent in the same five steps, written in PR 301 and shown from PR 303", () => {
@@ -108,7 +108,8 @@ describe("the steps, by the model's protocol", () => {
             { text: "att_guide_model_notes", notes: true },
             { text: "att_guide_hik_clock" },
             { text: "att_guide_hik_listening" },
-            { text: "att_guide_office_pc" },
+            // Checking the PC reaches it, as the canvas adds (PR 357).
+            { text: "att_guide_office_pc", code: "ping TERMINAL-ADDRESS", see: "att_guide_ping_see" },
         ])
     })
 
@@ -190,13 +191,8 @@ describe("a terminal that sends its scans to the agent (PR 306)", () => {
     })
 
     it("has the office fix the terminal's address and the PC's, with the model's notes by its address, and nothing of reading it", () => {
-        expect(push()[0].lines).toEqual([
-            { text: "att_guide_push_address" },
-            { text: "att_guide_model_notes", notes: true },
-            { text: "att_guide_office_clock" },
-            { text: "att_guide_office_pc" },
-            { text: "att_guide_push_pc_address" },
-        ])
+        expect(keysOf(push()[0].lines)).toEqual(["att_guide_push_address", "att_guide_model_notes", "att_guide_office_clock", "att_guide_office_pc", "att_guide_push_pc_address"])
+        expect(push()[0].lines[1]).toEqual({ text: "att_guide_model_notes", notes: true })
     })
 
     it("installs the agent that listens, names the terminal by its address with push, lets it through the firewall, and sets the terminal to send, with no probe", () => {
@@ -262,7 +258,7 @@ describe("a terminal that sends its scans to the agent (PR 306)", () => {
     it("connects it as a terminal read is connected, with the agent's log saying it called, and older scans sent again once the terminal restarts", () => {
         const connect = push()[2]
         expect(keysOf(connect.lines)).toEqual(["att_guide_add", "att_guide_enrol", "att_guide_service", "att_guide_push_called", "att_guide_brand", "att_guide_push_older"])
-        expect(connect.lines.find(l => l.text === "att_guide_brand")).toEqual({ text: "att_guide_brand", brand: true })
+        expect(connect.lines.find(l => l.text === "att_guide_brand")).toMatchObject({ text: "att_guide_brand", brand: true })
         expect(connect.lines.find(l => l.text === "att_guide_push_older")!.code).toBe("\"sendFrom\": \"YYYY-MM-DD\"")
         // The agent's own words when it first takes what the terminal sends (PR 305).
         for (const w of [en, ar]) expect(w.att_guide_push_called).toContain("`called for the first time`")
@@ -300,12 +296,21 @@ describe("its words", () => {
         const keys = new Set<string>(["att_guide_button", "att_guide_model", "att_guide_model_pick", "att_guide_pick_first", "att_guide_direct_too", "att_guide_no_models", "att_guide_copy", "att_guide_copied", "att_guide_model_notes", "att_guide_model_notes_other",
             "att_guide_way", "att_guide_way_READ", "att_guide_way_PUSH", "att_guide_way_READ_hint", "att_guide_way_PUSH_hint",
             // The guide's page (PR 356).
-            "att_guide_subtitle", "att_guide_shell", "att_guide_shell_CMD_hint", "att_guide_shell_POWERSHELL_hint", "att_guide_printed"])
+            "att_guide_subtitle", "att_guide_shell", "att_guide_shell_CMD_hint", "att_guide_shell_POWERSHELL_hint", "att_guide_printed",
+            // Show me how (PR 357).
+            "att_guide_how", "att_guide_shows"])
         for (const [superAdmin, protocol, pushes] of [[true, "ZKTECO", false], [false, "ZKTECO", false], [true, "ZKTECO", true], [false, "ZKTECO", true], [true, "HIKVISION", false], [false, "HIKVISION", false]] as const) {
             for (const step of [...setupGuide(protocol, { superAdmin, server: SERVER, pushes }), ...setupGuide(protocol, { superAdmin, server: SERVER, pushes, shell: "POWERSHELL" })]) {
                 keys.add(step.title)
                 keys.add(step.who)
-                for (const line of step.lines) keys.add(line.text)
+                for (const line of step.lines) {
+                    keys.add(line.text)
+                    // What's seen under a box, a second box's line, and the clicks under Show me how (PR 357).
+                    if (line.see) keys.add(line.see)
+                    if (line.then) keys.add(line.then.text)
+                    for (const part of line.how?.parts ?? []) for (const key of [...(part.title ? [part.title] : []), ...part.steps]) keys.add(key)
+                    if (line.how?.after) keys.add(line.how.after)
+                }
             }
         }
         return [...keys]
@@ -511,7 +516,7 @@ describe("the guide, as the first customer's setup found it", () => {
         for (const [way, steps] of Object.entries(ways)) {
             const lines = steps[1].lines
             const at = lines.findIndex(l => l.text === "att_guide_unzip")
-            expect(lines[at + 1], way).toEqual({ text: "att_guide_folder", code: FOLDER_LINE })
+            expect(lines[at + 1], way).toMatchObject({ text: "att_guide_folder", code: FOLDER_LINE })
             // Before any command after the folder is unzipped.
             const firstCommand = lines.findIndex((l, i) => i > at && l.code !== undefined && /nizmo-agent|netsh/.test(l.code))
             expect(firstCommand, way).toBeGreaterThan(at + 1)
@@ -524,16 +529,20 @@ describe("the guide, as the first customer's setup found it", () => {
 
     it("says how to open the prompt, in both languages, with the lines after it not opening another", () => {
         for (const w of [en, ar]) {
-            for (const typed of ["`Command Prompt`", "`cmd`"]) expect(w.att_guide_folder, typed).toContain(typed)
+            expect(w.att_guide_folder).toContain("`Command Prompt`")
+            // Its clicks, under Show me how since PR 357.
+            expect(w.att_how_cmd_open).toContain("`cmd`")
             for (const key of ["att_guide_probe", "att_guide_hik_probe", "att_guide_push_firewall"] as const) expect(w[key], key).not.toContain("Command Prompt")
         }
-        expect(en.att_guide_folder).toContain("Run as administrator")
-        expect(ar.att_guide_folder).toContain("«تشغيل كمسؤول»")
+        expect(en.att_how_cmd_open).toContain("Run as administrator")
+        expect(ar.att_how_cmd_open).toContain("«تشغيل كمسؤول»")
     })
 
     it("names both places a ZKTeco terminal keeps its comm key, in both languages", () => {
         for (const w of [en, ar]) {
-            for (const typed of ["`Comm Key`", "`PC Connection`", "`0`"]) expect(w.att_guide_office_address, typed).toContain(typed)
+            // Under the address line's Show me how since PR 357.
+            for (const typed of ["`Comm Key`", "`PC Connection`"]) expect(w.att_how_key_open, typed).toContain(typed)
+            expect(w.att_how_key_note).toContain("`0`")
         }
     })
 })
