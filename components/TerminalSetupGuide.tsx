@@ -1,11 +1,11 @@
 'use client'
 
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react'
-import { CheckIcon, CopyIcon } from '@phosphor-icons/react/ssr'
+import { CaretRightIcon, CheckIcon, CopyIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
-import { forShell, inlineCode, setupGuide, type CommandShell, type GuideLine, type TerminalProtocol } from '@/lib/attendance/setup-guide'
+import { forShell, inlineCode, setupGuide, type CommandShell, type GuideHow, type GuideLine, type TerminalProtocol } from '@/lib/attendance/setup-guide'
 import { mayConnect } from '@/lib/attendance/terminal-connections'
-import { Button, Choice } from '@/components/ui'
+import { Button, Choice, Icon } from '@/components/ui'
 
 /**
  * How to set up a fingerprint terminal (ATTENDANCE_PLAN.md §17.7, PR 282):
@@ -36,12 +36,14 @@ function named(text: string, slot: string, name: string): ReactNode {
 /**
  * A sentence, what's typed in it left to right and untranslated, and the
  * model's name in its slot. A command named in it is written for the program
- * picked, as the boxes are (PR 356).
+ * picked, as the boxes are (PR 356). A name on the screen, such as a key, a
+ * menu or a button, is between `**`, and in bold (PR 357).
  */
 export function Sentence({ text, brand, shell = 'CMD' }: { text: string; brand?: string; shell?: CommandShell }) {
+    const words = (part: string) => (brand === undefined ? part : named(part, '{brand}', brand))
     return <>{inlineCode(text).map((part, i) => 'code' in part
         ? <code key={i} className="ui-guide-inline" dir="ltr" translate="no">{forShell(part.code, shell)}</code>
-        : <Fragment key={i}>{brand === undefined ? part.text : named(part.text, '{brand}', brand)}</Fragment>)}</>
+        : <Fragment key={i}>{part.text.split('**').map((bit, j) => (j % 2 === 1 ? <strong key={j}>{words(bit)}</strong> : <Fragment key={j}>{words(bit)}</Fragment>))}</Fragment>)}</>
 }
 
 /** The model's notes, the Super Admin's, in the page's language, or else the other's, marked as that language; null when it has none. */
@@ -88,13 +90,7 @@ export function SetupGuideSteps({ brand, superAdmin, directAllowed = false, serv
 
     const line = (l: GuideLine) => {
         if (l.notes) return notes && <li key={l.text}><p className="ui-guide-notes">{notes}</p></li>
-        return (
-            <li key={l.text}>
-                <p><Sentence text={t(l.text)} brand={l.brand ? brand.name : undefined} shell={shell} /></p>
-                {/* A box that scrolls sideways takes focus, to be scrolled from the keyboard. */}
-                {l.code && <CodeBox code={l.code} scrolls={l.wide} />}
-            </li>
-        )
+        return <Line key={l.text} line={l} brand={brand.name} shell={shell} />
     }
     // role="list": Safari stops reading a list as one once its markers are gone.
     return (<>
@@ -112,6 +108,61 @@ export function SetupGuideSteps({ brand, superAdmin, directAllowed = false, serv
                 </li>
             ))}
         </ol>
+    </>)
+}
+
+/**
+ * One thing to do: its sentence; what's typed, in a box of its own; what's
+ * seen once it's typed, under its box; a second sentence and box where the
+ * line has one, such as the log after the service's status; and Show me how,
+ * where its clicks aren't plain (PR 357).
+ */
+function Line({ line, brand, shell }: { line: GuideLine; brand: string; shell: CommandShell }) {
+    const { t } = useLanguage()
+    const id = useId()
+    return (
+        <li>
+            <p id={id}><Sentence text={t(line.text)} brand={line.brand ? brand : undefined} shell={shell} /></p>
+            {/* A box that scrolls sideways takes focus, to be scrolled from the keyboard. */}
+            {line.code && <CodeBox code={line.code} scrolls={line.wide} />}
+            {line.see && <p className="ui-guide-see"><Sentence text={t(line.see)} shell={shell} /></p>}
+            {line.then && <>
+                <p className="ui-guide-see"><Sentence text={t(line.then.text)} shell={shell} /></p>
+                <CodeBox code={line.then.code} />
+            </>}
+            {line.how && <ShowMeHow how={line.how} brand={brand} shell={shell} line={id} />}
+        </li>
+    )
+}
+
+/**
+ * A line's clicks, opened under it by Show me how, or What it shows for what
+ * a command prints (DESIGN.md §5.5, A guide's page; PR 357): a quiet button
+ * saying whether it's open, described by its line, with a caret that turns.
+ * Each opens on its own, and starts closed. Printed, every one is open, as
+ * the clicks are there while it's closed, hidden.
+ */
+export function ShowMeHow({ how, brand, shell, line }: { how: GuideHow; brand: string; shell: CommandShell; line: string }) {
+    const { t } = useLanguage()
+    const id = useId()
+    const [open, setOpen] = useState(false)
+    const steps = (keys: GuideHow['parts'][number]['steps']) => (
+        <ol className="ui-guide-how-steps">
+            {keys.map(key => <li key={key}><Sentence text={t(key)} brand={brand} shell={shell} /></li>)}
+        </ol>
+    )
+    return (<>
+        <Button variant="quiet" size="sm" className="ui-guide-how-button" aria-expanded={open} aria-controls={id} aria-describedby={line} onClick={() => setOpen(o => !o)}>
+            <Icon icon={CaretRightIcon} size={16} directional className="ui-guide-how-caret" />
+            {t(how.shows ? 'att_guide_shows' : 'att_guide_how')}
+        </Button>
+        <div id={id} className="ui-guide-how" hidden={!open}>
+            {how.sample && <pre className="ui-guide-sample" dir="ltr" translate="no"><code>{how.sample}</code></pre>}
+            {how.parts.map((part, i) => part.title
+                ? <div key={i} className="ui-guide-how-part"><h4 className="ui-guide-how-title">{t(part.title)}</h4>{steps(part.steps)}</div>
+                : <Fragment key={i}>{steps(part.steps)}</Fragment>)}
+            {how.after && <p className="ui-guide-how-after"><Sentence text={t(how.after)} brand={brand} shell={shell} /></p>}
+        </div>
     </>)
 }
 

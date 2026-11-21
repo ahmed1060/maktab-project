@@ -2363,6 +2363,86 @@ a.ui-file-open:focus-visible,
   line-height: var(--leading-xl);
   font-weight: 600;
 }
+/* What's seen once something's typed, under its box, and a name on the
+   screen, such as a key or a button, in bold (PR 357). */
+.ui-guide-see {
+  margin-block-start: var(--space-2);
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.ui-guide-page strong {
+  font-weight: 600;
+}
+/* Show me how (PR 357): a quiet button under its line, its caret turning
+   down while open, the other way round in Arabic, and its clicks in a
+   tinted panel, there while closed, hidden, so paper holds them all. */
+.ui-guide-how-button {
+  margin-block-start: var(--space-1);
+}
+.ui-guide-how-caret {
+  transition: transform 150ms ease-out;
+}
+.ui-guide-how-button[aria-expanded="true"] .ui-guide-how-caret {
+  transform: rotate(90deg);
+}
+[dir="rtl"] .ui-guide-how-button[aria-expanded="true"] .ui-guide-how-caret {
+  transform: scaleX(-1) rotate(90deg);
+}
+.ui-guide-how {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-block-start: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  background: var(--brand-tint);
+  border: 1px solid var(--brand-tint-strong);
+  border-radius: var(--radius-panel);
+}
+.ui-guide-how[hidden] {
+  display: none;
+}
+.ui-guide-how-title {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: 600;
+}
+.ui-guide-how-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding-inline-start: var(--space-5);
+}
+.ui-guide-how-part .ui-guide-how-steps {
+  margin-block-start: var(--space-1);
+}
+/* Counted in the page's digits: Arabic-Indic in Arabic (§3). */
+[dir="rtl"] .ui-guide-how-steps {
+  list-style-type: arabic-indic;
+}
+.ui-guide-how-after {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+/* What a command prints, as an example, above What it shows' list: on a
+   phone, a long line wraps rather than scroll out of the keyboard's reach. */
+.ui-guide-sample {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-field);
+  color: var(--ink);
+  font-family: var(--font-code);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 @media print {
   .ui-guide-page .ui-doc-print-only {
     padding-block-end: var(--space-2);
@@ -2392,6 +2472,21 @@ a.ui-file-open:focus-visible,
     overflow: visible;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+  }
+  /* Every Show me how open, on white, its list under its line, without its
+     button (PR 357). */
+  .ui-guide-page .ui-guide-how[hidden] {
+    display: flex;
+  }
+  .ui-guide-page .ui-guide-how-button {
+    display: none;
+  }
+  .ui-guide-page .ui-guide-how {
+    padding: 0;
+    padding-inline-start: var(--space-4);
+    background: none;
+    border: none;
+    border-radius: 0;
   }
 }
 /* End of a guide's page */
