@@ -13,6 +13,7 @@ import { toMajor } from '@/lib/payroll'
 import { Button, Card, Choice, Details, Dialog, EmptyState, Row } from '@/components/ui'
 import { firstOfNextMonth } from '@/components/attendance-calendar/hours-form'
 import PolicyDialog from '@/components/attendance-policy/PolicyDialog'
+import { dayCost } from '@/components/attendance-policy/policy-form'
 
 /**
  * A company's attendance policy (ATTENDANCE_PLAN.md §6): what lateness, early
@@ -62,7 +63,7 @@ export default function AttendancePolicyPanel({ companyId, readOnly, onChanged }
     const number = (n: number) => n.toLocaleString(intl, { maximumFractionDigits: 2 })
     const weekdayName = (d: number) => new Date(Date.UTC(2026, 2, 1 + d)).toLocaleDateString(intl, { weekday: 'short', timeZone: 'UTC' })
     const dateText = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString(intl, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
-    const fraction = (f: number) => f === 1 ? t('attendance_day_1') : f === 0.5 ? t('attendance_day_half') : f === 0.25 ? t('attendance_day_quarter') : f === 0.75 ? t('attendance_day_three_quarters') : number(f)
+    const fraction = (f: number) => dayCost(t, locale, f, number)
     const templateName = (tpl: Template) => (isRtl && tpl.nameAr) ? tpl.nameAr : tpl.name
     const lines = (items: string[]) => <ul className="ui-detail-lines">{items.map((line, i) => <li key={i}>{line}</li>)}</ul>
 

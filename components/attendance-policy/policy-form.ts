@@ -1,4 +1,5 @@
 import type { TranslationKey } from '@/lib/translations'
+import { countOf } from '@/lib/plural'
 import { MISSION_AMOUNT_MAX_MINOR, PERMISSION_TYPES, type DeductionRule, type MissionAllowance, type PolicyBody } from '@/lib/attendance/policy'
 import { toMajor, toMinor } from '@/lib/payroll'
 
@@ -10,6 +11,27 @@ import { toMajor, toMinor } from '@/lib/payroll'
  * A band is edited as where it ends; where it starts follows from the grace
  * and the band before (lib/attendance/policy.ts, bandsProblem).
  */
+
+/** The costs named in words, as a band's choice lists them. */
+const NAMED_COSTS: Record<string, TranslationKey> = {
+    '0.25': 'attendance_day_quarter',
+    '0.5': 'attendance_day_half',
+    '0.75': 'attendance_day_three_quarters',
+    '1': 'attendance_day_1',
+    '1.5': 'attendance_day_one_and_half',
+}
+
+/**
+ * A cost in days, in words, for the policy's dialog and its card alike:
+ * a quarter to a whole day and 1½ days by name, more whole days counted
+ * ("2 days"), and anything else, such as a cost saved before, as its number
+ * in the page's digits (PR 358).
+ */
+export function dayCost(t: (key: TranslationKey) => string, locale: string, days: number, number: (n: number) => string): string {
+    const named = NAMED_COSTS[String(days)]
+    if (named) return t(named)
+    return Number.isInteger(days) && days > 1 ? countOf(t, locale, days, 'days') : number(days)
+}
 
 export type BandForm = { toMinutes: string | null; dayFraction: number }
 export type RuleForm = {

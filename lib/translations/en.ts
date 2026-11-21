@@ -2135,6 +2135,7 @@ export const en = {
         attendance_day_half: "½ day",
         attendance_day_quarter: "¼ day",
         attendance_day_three_quarters: "¾ day",
+        attendance_day_one_and_half: "1½ days",
         attendance_grace_minutes: "Grace (minutes)",
         attendance_charge: "Charge",
         attendance_bands: "In bands",

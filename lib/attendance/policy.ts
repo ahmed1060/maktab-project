@@ -18,6 +18,15 @@ import { DEFAULT_WORK_WEEK } from "./calendar"
 const minutes = z.number().int().min(0).max(24 * 60)
 
 /**
+ * What a band may cost, in days (§6.3): a quarter to a whole day, or 1½ or 2
+ * days, as the product owner asked (FIRST_CHANGES_PLAN.md §2, PR 358).
+ */
+export const BAND_COSTS = [0.25, 0.5, 0.75, 1, 1.5, 2] as const
+
+/** Days deducted for each unexcused absent day (§6.5): 3 as the product owner asked (FIRST_CHANGES_PLAN.md §1, PR 358). */
+export const ABSENCE_MULTIPLIERS = [0, 1, 1.5, 2, 3] as const
+
+/**
  * One band: lateness in [fromMinutes, toMinutes] costs dayFraction of a day.
  * toMinutes null is "and over". A band always charges something: grace and
  * free occurrences are the ways to waive lateness, not a zero band.
@@ -25,7 +34,7 @@ const minutes = z.number().int().min(0).max(24 * 60)
 export const bandSchema = z.object({
     fromMinutes: minutes,
     toMinutes: minutes.nullable(),
-    dayFraction: z.number().gt(0).max(1),
+    dayFraction: z.number().gt(0).max(Math.max(...BAND_COSTS)),
 })
 
 /**
@@ -63,8 +72,8 @@ export const overtimeSchema = z.object({
 })
 
 export const absenceSchema = z.object({
-    /** Days deducted per unexcused absent day (§6.5): 1, 1.5, 2. */
-    multiplier: z.number().min(0).max(3),
+    /** Days deducted per unexcused absent day (§6.5): 1, 1.5, 2 or 3. */
+    multiplier: z.number().min(0).max(Math.max(...ABSENCE_MULTIPLIERS)),
 })
 
 export const PERMISSION_TYPES = ["LATE_ARRIVAL", "EARLY_LEAVE", "MIDDAY"] as const

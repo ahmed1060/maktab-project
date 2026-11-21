@@ -4,9 +4,8 @@ import { useId } from 'react'
 import { PlusIcon } from '@phosphor-icons/react/ssr'
 import { Button, Field, Select, TextInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
+import { BAND_COSTS } from '@/lib/attendance/policy'
 import { bandStarts, type RuleForm } from './policy-form'
-
-const FRACTIONS = [0.25, 0.5, 0.75, 1]
 
 /**
  * Lateness or early leave (ATTENDANCE_PLAN.md §6.3): a grace period, then
@@ -30,7 +29,7 @@ export default function RuleFields({ name, rule, errorOf, fraction, number, onCh
     const set = (patch: Partial<RuleForm>, ...fields: string[]) => onChange({ ...rule, ...patch }, fields.map(path))
     const setBands = (bands: RuleForm['bands']) => set({ bands }, 'bands')
     // A band saved with a cost not on the list keeps it as a choice.
-    const fractions = [...new Set([...FRACTIONS, ...rule.bands.map(b => b.dayFraction)])].sort((a, b) => a - b)
+    const fractions = [...new Set([...BAND_COSTS, ...rule.bands.map(b => b.dayFraction)])].sort((a, b) => a - b)
 
     const addBand = () => {
         // The open band closes 30 minutes on, and a new open band follows it.

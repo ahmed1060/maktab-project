@@ -2131,6 +2131,7 @@ export const ar = {
         attendance_day_half: "نصف يوم",
         attendance_day_quarter: "ربع يوم",
         attendance_day_three_quarters: "ثلاثة أرباع يوم",
+        attendance_day_one_and_half: "يوم ونصف",
         attendance_grace_minutes: "السماح (بالدقائق)",
         attendance_charge: "طريقة الخصم",
         attendance_bands: "على شرائح",
