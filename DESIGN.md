@@ -1420,12 +1420,13 @@ These are built once, in the building-blocks PR, and every page uses them
     goes under the words.
   - Screen readers hear it once, as it appears. It can't be closed: it
     goes when what it says stops being true.
+  - A trial's note and grace's are for the company's Admins alone, who
+    act on them; nobody else in the company sees either.
   - A trial counts its days left, and says the day it ends, on Egypt's
     calendar, as subscriptions are counted.
   - Grace says the subscription has ended, how long is left until access
-    stops, and on what day. Its Admin is told that renewing it keeps
-    everyone's access; everyone else, that an Admin of their company can
-    renew it.
+    stops, and on what day, and that renewing it keeps everyone's
+    access.
   - A preview says which role, at which company, and that nothing can be
     changed while it lasts, with Exit preview.
 - **Card:** a level-1 panel with 12px corners, for things that aren't
@@ -3309,3 +3310,7 @@ changed:
   What it shows for what a command prints; what's seen once something's
   typed, under its box; and every one open on paper
   (`ATTENDANCE_PLAN.md` §17.7, #357).
+- **2026-11-21:** A note above the page (§5.5): a company's free trial
+  and its grace are said to its Admins alone, as the owner asked
+  (`FIRST_CHANGES_PLAN.md` §3); grace no longer tells everyone else who
+  can renew it.
