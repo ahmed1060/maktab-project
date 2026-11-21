@@ -1686,7 +1686,20 @@ width:
       the session's client's tax position alone, read as the area's page
       reads it (`portalTaxPosition`), the accountant its page names, the
       company's name and logo, and the day it's printed in the company's
-      own days, with Print and Close above it.
+      own days, with Print and Close above it. As built (#352):
+      - The statement's page sends its title with it, naming the PDF
+        for the client and the day the figures are from in the page's
+        language, as Next.js sends a page's title after its content; the
+        statement sets it again where the language is changed in its tab.
+      - Close closes the tab, and goes back to the area's page where the
+        browser keeps it open, such as a tab opened from its address.
+      - By its address before the first upload, the page says what the
+        area's page says then, with Close alone.
+      - "Powered by" follows System settings' switch and name.
+      - Its four details are four to a row, two on phones, where the
+        app's other details are three.
+      - A claim's period is said as the area's page says it, from one
+        place for both (`components/tax/claim-period.ts`).
     - **12b. For the company's people:** the same document in the app,
       at `/dashboard/clients/<id>/tax-statement`, for whoever may see
       the client's tax position (`tax.view`), opened from Download the
@@ -2402,3 +2415,7 @@ with a tax position is archived, and deleted for good from the archive
   (§8), the owner's Statement redrawn on the building blocks, and built
   in two (§12, step 12): in the client's area (12a), then for the
   company's people (12b).
+- **2026-11-21:** 12a as built (#352, §12): Download the statement on the
+  client's own page once the portal's file is uploaded, opening the
+  statement in a tab of its own at `/portal/statement`, for the session's
+  client alone, its title naming the PDF.
