@@ -1087,7 +1087,8 @@ These are built once, in the building-blocks PR, and every page uses them
   - Printed, only the guide prints, black on white: its title, a line
     naming what was picked and the day it's printed, and the steps,
     without the app's frame, the back link, the panel's controls or the
-    buttons.
+    buttons. A command too long for the page's width wraps onto the next
+    line, as paper can't scroll, so it's read whole.
 - **Toast:** a few words on what an action did, such as "Saved", or why it
   couldn't be done, at the top of the screen on its end side, over every
   dialog. It's a level-2 panel (§4.3) on `--panel-raised`, with 8px
