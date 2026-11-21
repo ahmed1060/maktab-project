@@ -47,11 +47,13 @@ export function PageHeader({ title, subtitle, action, back, overline }: {
 
 /**
  * An item's facts on its own page, such as a client's owner and phone: each
- * a label above its value, up to three in a row on computers.
+ * a label above its value, up to three in a row on computers, or four where
+ * a page draws them so, such as the tax position statement (PR 352), two to
+ * a row on phones then.
  */
-export function Details({ items }: { items: { label: ReactNode; value: ReactNode }[] }) {
+export function Details({ items, columns = 3 }: { items: { label: ReactNode; value: ReactNode }[]; columns?: 3 | 4 }) {
     return (
-        <dl className="ui-details">
+        <dl className={columns === 4 ? 'ui-details ui-details-4' : 'ui-details'}>
             {items.map((item, i) => (
                 <div key={i} className="ui-detail">
                     <dt>{item.label}</dt>

@@ -3,11 +3,11 @@
 import { Fragment, useId, useState } from 'react'
 import { CaretDownIcon, CaretRightIcon, ChatTextIcon } from '@phosphor-icons/react/ssr'
 import { Icon, IconButton, StatusBadge } from '@/components/ui'
-import { formatDay } from '@/components/records/types'
+import { claimPeriodWords, dayOnOneLine } from '@/components/tax/claim-period'
 import { useLanguage } from '@/context/LanguageContext'
 import type { ClaimAsked } from '@/lib/contact-message'
 import { countOf } from '@/lib/plural'
-import { claimPeriod, latestDueFirst, toggledItem, type ItemGroup, type PortalTaxPosition } from '@/lib/portal-tax'
+import { latestDueFirst, toggledItem, type ItemGroup, type PortalTaxPosition } from '@/lib/portal-tax'
 import { claimBadges, type ClaimBadge, type TaxClaimRow } from '@/lib/tax-claims'
 import type { TranslationKey } from '@/lib/translations'
 
@@ -38,17 +38,9 @@ export function PortalClaims({ items, totals, onAsk }: {
     const money = (n: number) => n.toLocaleString(intl, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
     const count = (n: number) => n.toLocaleString(intl)
     const claims = (n: number) => countOf(t, locale, n, 'claims')
-    // A day, a month or a year kept on one line.
-    const oneLine = (s: string) => s.replace(/ /g, '\u00a0')
-    const day = (d: string) => oneLine(formatDay(d, locale))
-    const period = (c: TaxClaimRow): string | null => {
-        const p = claimPeriod(c.periodStart, c.periodEnd)
-        if (!p) return null
-        if (p.kind === 'year') return oneLine(t('portal_claim_year').replace('{year}', p.year.toLocaleString(intl, { useGrouping: false })))
-        if (p.kind === 'month') return oneLine(new Date(Date.UTC(p.year, p.month - 1, 1)).toLocaleDateString(intl, { month: 'long', year: 'numeric', timeZone: 'UTC' }))
-        if (p.kind === 'day') return day(p.day)
-        return t('tax_period').replace('{from}', day(p.from)).replace('{to}', day(p.to))
-    }
+    // A day, a month or a year kept on one line (claim-period.ts, as the statement says them).
+    const day = (d: string) => dayOnOneLine(d, locale)
+    const period = (c: TaxClaimRow): string | null => claimPeriodWords(t, locale, c)
     const badges = (list: ClaimBadge[]) => list.length > 0 && (
         <span className="ui-claims-badges">
             {list.map(badge => (
