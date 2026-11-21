@@ -67,15 +67,26 @@ describe("the bulk-task template", () => {
 
     it("names the sheets in Arabic, right to left, for an Arabic download", async () => {
         const wb = await generated("ar")
-        expect(wb.worksheets.map(s => s.name)).toEqual(["Tasks", "المستخدمين", "الموردين", "المواقع"])
+        // The clients are «العملاء»: they were «الموردين», suppliers (FIRST_CHANGES_PLAN.md §4, PR 360).
+        expect(wb.worksheets.map(s => s.name)).toEqual(["Tasks", "المستخدمين", "العملاء", "المواقع"])
         expect(wb.getWorksheet("المستخدمين")!.views[0]).toMatchObject({ rightToLeft: true })
+        expect(wb.getWorksheet("العملاء")!.views[0]).toMatchObject({ rightToLeft: true })
+        expect(wb.getWorksheet("الموردين")).toBeUndefined()
+    })
+
+    it("still uploads a template downloaded before, whose clients sheet is «الموردين»: the upload never reads that sheet by name", () => {
+        // It reads the first sheet, and the locations sheet by its name in either language (PR 360).
+        const upload = readFileSync("app/(dashboard)/dashboard/tasks/new/page.tsx", "utf8")
+        expect(upload).toContain("const worksheet = workbook.worksheets[0]")
+        expect(upload).toContain("workbook.worksheets.find(w => w.name === 'Locations' || w.name === 'المواقع')")
+        for (const name of ["'Clients'", "'الموردين'", "'العملاء'"]) expect(upload, name).not.toContain(name)
     })
 
     it("points an Arabic file's dropdowns at the Arabic sheets, which is where the lists are", async () => {
         // They used to say Users!/Clients! in every language. In an Arabic
         // file no sheet has either name, so both dropdowns were empty.
         const tasks = (await generated("ar")).getWorksheet("Tasks")!
-        expect(tasks.getCell("C3").dataValidation).toMatchObject({ formulae: ["'الموردين'!$A$2:$A$2"] })
+        expect(tasks.getCell("C3").dataValidation).toMatchObject({ formulae: ["'العملاء'!$A$2:$A$2"] })
         expect(tasks.getCell("D3").dataValidation).toMatchObject({ formulae: ["'المستخدمين'!$A$2:$A$3"] })
     })
 
