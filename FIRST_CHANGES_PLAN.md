@@ -16,7 +16,8 @@ Each part is marked:
 Status: **decided, being built.** The order is in §7. Step 1, absence 3
 days and bands of 1½ and 2 days (§1, §2), is #358. Step 2, the trial and
 grace notes for Admins only (§3), is #359. Step 3, the Arabic template's
-clients sheet (§4), is #360.
+clients sheet (§4), is #360. Step 4, the Attendance tab without a refused
+request (§5), is #361.
 
 ## 1. Absence: 3 days (Decided)
 
@@ -98,6 +99,17 @@ clients sheet (§4), is #360.
   Found in #355.
 - **The change:** the tab doesn't ask for them when the package has no
   mobile app.
+- **Built in #361:**
+  - the tab's calendar says which add-ons' sections it shows this person
+    (`lib/attendance/add-on-sections.ts`), and the tab asks only for those;
+  - the places people check in at, for a company holding the Mobile App
+    add-on;
+  - Fingerprint terminals the same way, as they were asked for and refused
+    alike: for a company holding the Terminals add-on, to whoever may set
+    them up. A company without that add-on, or a person who may not set them
+    up, was refused there too (403 or 404), with nothing on the page;
+  - each section's own routes answer the same, and a test holds the two
+    together. A section still hides itself if it's refused.
 
 ## 6. Public holidays off for a company (Decided; its look Proposed)
 
@@ -163,3 +175,6 @@ One PR at a time, each merged before the next opens.
 - **2026-11-21:** Step 3 built in #360: the Arabic template's clients
   sheet is «العملاء»; the upload never read it by name, so older templates
   still upload.
+- **2026-11-21:** Step 4 built in #361: the Attendance tab asks only for
+  the add-ons' sections it shows, the places and Fingerprint terminals
+  alike, as its calendar says.
