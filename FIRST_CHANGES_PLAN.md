@@ -13,12 +13,12 @@ Each part is marked:
 - **Proposed**: suggested, waiting for the product owner's answer.
 - **Open**: a question that needs answering before that part is built.
 
-Status: **decided, being built.** The order is in §7. Step 1, absence 3
-days and bands of 1½ and 2 days (§1, §2), is #358. Step 2, the trial and
-grace notes for Admins only (§3), is #359. Step 3, the Arabic template's
-clients sheet (§4), is #360. Step 4, the Attendance tab without a refused
-request (§5), is #361. Step 5, public holidays off (§6): the owner approved
-the mockup, and the switch is #362.
+Status: **done:** all five steps are merged, #358 to #362. The order is in
+§7. Step 1, absence 3 days and bands of 1½ and 2 days (§1, §2), is #358.
+Step 2, the trial and grace notes for Admins only (§3), is #359. Step 3, the
+Arabic template's clients sheet (§4), is #360. Step 4, the Attendance tab
+without a refused request (§5), is #361. Step 5, public holidays off (§6):
+the owner approved the mockup, and the switch is #362.
 
 ## 1. Absence: 3 days (Decided)
 
@@ -210,3 +210,5 @@ One PR at a time, each merged before the next opens.
 - **2026-11-21:** Step 5 built in #362: public holidays off, and back on,
   from a date, each change following the last, a change to come
   withdrawable, every one recorded.
+- **2026-11-21:** Done: the five steps merged, #358 to #362.
+  `LATER_CHANGES_PLAN.md` is next, to be discussed.
