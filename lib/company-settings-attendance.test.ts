@@ -78,6 +78,8 @@ const CALENDAR = {
         own: [{ id: "h1", date: "2026-12-31", name: "Year end", isPaid: false }],
     },
     canEdit: true,
+    // Which add-ons' sections the tab shows (PR 361): both, as the panels are mocked here.
+    sections: { terminals: true, mobileApp: true },
 }
 const loaded = (calendar: unknown = CALENDAR) => ({ [KEY]: { data: { data: calendar } } })
 const esc = (s: string) => s.replace(/'/g, "&#x27;").replace(/"/g, "&quot;")
