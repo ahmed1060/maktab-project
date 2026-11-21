@@ -565,8 +565,11 @@ These are built once, in the building-blocks PR, and every page uses them
   such as setting up a fingerprint terminal in an office, its card has a
   round quiet button with an "i" right after its title, 30px (44px on
   phones), named for the guide it opens, such as "How to set up a
-  fingerprint terminal", in its tooltip too. It opens the guide (§5.5,
-  Dialog) and does nothing else.
+  fingerprint terminal", in its tooltip too. It opens the guide and does
+  nothing else: a short one in a dialog (§5.5, Dialog), and one long
+  enough for a page of its own, such as setting up a fingerprint
+  terminal, on that page, in the same tab (§5.5, A guide's page). That
+  one is a link, so it can be opened in a new tab too.
 - **An icon button:** where a row's own action is only an icon, such as
   a claim's Ask about this claim (§5.5): quiet, 44px square with a 20px
   icon, on phones and computers alike. Its name tells screen readers what
@@ -1052,6 +1055,39 @@ These are built once, in the building-blocks PR, and every page uses them
     - It's worked out again as people are picked, as a statement is
       (above): the last lines stay until the next are in, the main button
       waits for its own, and one that didn't load says so, with Try again.
+- **A guide's page:** a guide too long for a dialog, such as How to set
+  up a fingerprint terminal (`ATTENDANCE_PLAN.md` §17.7), has a page of
+  its own, opened from its button beside its card's title (§5.2). It
+  changes nothing.
+  - Its header (Page header): a back link to the card's page, named for
+    the card, such as "Fingerprint terminals", which opens on the card's
+    tab; the guide's name as the title; a subtitle saying what's in it;
+    and Print, a secondary button.
+  - Then a panel of what the steps depend on, each under its label:
+    - a picker for what they're for, such as the terminal's model, and
+      until something is picked, a line saying to pick it;
+    - the facts kept with what's picked, such as the Super Admin's notes
+      on a model, as in a guide's dialog (Dialog);
+    - where what's picked has more than one way to set up, a choice (§5.3)
+      asking which, as in a guide's dialog;
+    - where what's typed depends on the program it's typed in, a choice
+      asking which, such as Command Prompt or PowerShell, Command Prompt
+      picked to start with, and a line under it saying how its commands
+      are written. What's picked is kept in that browser, for next time.
+  - Then the steps, each in a panel of its own: its number in a round
+    `--brand-tint` badge, its title in `--text-lg`, who does it and where
+    in `--text-sm` and `--muted`, then what to do, a line each, as in a
+    guide's dialog.
+  - Anything to type is in a box of its own with Copy beside it, as in a
+    guide's dialog, written for the program picked: in PowerShell, each
+    of the agent's own commands starts with `.\`, in the boxes and in the
+    lines alike.
+  - On phones, as on any page: Print goes full width under the subtitle,
+    a choice's options stack, 44px each, and Copy goes under its box.
+  - Printed, only the guide prints, black on white: its title, a line
+    naming what was picked and the day it's printed, and the steps,
+    without the app's frame, the back link, the panel's controls or the
+    buttons.
 - **Toast:** a few words on what an action did, such as "Saved", or why it
   couldn't be done, at the top of the screen on its end side, over every
   dialog. It's a level-2 panel (§4.3) on `--panel-raised`, with 8px
@@ -3243,3 +3279,10 @@ changed:
   all, and the note, opened in a new tab from Download the statement on
   the client's page and on the client's Tax position
   (`CLIENT_PORTAL_PLAN.md` §8, §12, step 12).
+- **2026-11-21:** A guide's page (§5.5), and the guide's button opening
+  it (§5.2), as the owner approved in the Fingerprint terminal setup
+  guide canvas: How to set up a fingerprint terminal moves from its
+  dialog to a page of its own, with Print, a choice between Command
+  Prompt and PowerShell that writes every command for the one picked,
+  kept in the browser, and only the guide printed (`ATTENDANCE_PLAN.md`
+  §17.7).
