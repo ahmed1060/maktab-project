@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { usePathname } from "next/navigation"
 import { useLanguage } from "@/context/LanguageContext"
-import { resolveTitleKey, buildTitle } from "@/lib/page-title"
+import { resolveTitleKey, buildTitle, ownsItsTitle } from "@/lib/page-title"
 import { moduleForTitleKey } from "@/lib/modules"
 import { useModules } from "@/lib/useModules"
 
@@ -25,6 +25,7 @@ export default function PageTitle() {
     const modules = useModules()
 
     useEffect(() => {
+        if (ownsItsTitle(pathname || "")) return
         const key = resolveTitleKey(pathname || "")
 
         // A module's tab title should say what its sidebar entry says. Routes

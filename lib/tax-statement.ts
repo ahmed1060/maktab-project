@@ -21,6 +21,13 @@ export type TaxStatement = {
     signature: { show: boolean; name: string }
 }
 
+/** What the company's people's statement reads of a client (taxStatementOf; PR 353). */
+export type StaffTaxStatement = {
+    client: string
+    company: { name: string; logoUrl: string | null }
+    position: PortalTaxPosition
+}
+
 export type StatementStatus = "late" | "partly_paid" | "not_due"
 
 /** A claim's status on the statement: Late, with Partly paid under it where some is paid; Partly paid alone; or Not due yet. */

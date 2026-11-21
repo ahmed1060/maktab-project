@@ -78,6 +78,8 @@ describe("the pages", () => {
         expect(source("app/(dashboard)/layout.tsx")).toMatch(/if \(!session\) \{\s*redirect\(SESSION_ENDED_PATH\)/)
         const sending = dashboard.filter(file => source(file).includes("redirect(SESSION_ENDED_PATH)"))
         expect(sending.sort()).toEqual([
+            // A client's tax position statement (PR 353).
+            "app/(dashboard)/dashboard/clients/[id]/tax-statement/page.tsx",
             "app/(dashboard)/dashboard/costs/page.tsx",
             "app/(dashboard)/dashboard/records/[id]/page.tsx",
             "app/(dashboard)/dashboard/requests/page.tsx",
