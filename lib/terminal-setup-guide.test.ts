@@ -114,7 +114,7 @@ describe("the steps, by the model's protocol", () => {
 
     it("gives Hikvision's agent.json its protocol, address, the agent's user and password, and probe the user, never the password", () => {
         const steps = setupGuide("HIKVISION", { superAdmin: false, server: SERVER })
-        expect(keysOf(steps[1].lines)).toEqual(["att_guide_download_other", "att_guide_hik_version", "att_guide_hik_installed", "att_guide_unzip", "att_guide_hik_settings", "att_guide_hik_https", "att_guide_hik_probe", "att_guide_unknown_publisher"])
+        expect(keysOf(steps[1].lines)).toEqual(["att_guide_download_other", "att_guide_hik_version", "att_guide_hik_installed", "att_guide_unzip", "att_guide_folder", "att_guide_powershell", "att_guide_hik_settings", "att_guide_hik_https", "att_guide_hik_probe", "att_guide_unknown_publisher"])
         const settings = steps[1].lines.find(l => l.text === "att_guide_hik_settings")!.code!
         expect(JSON.parse(settings)).toEqual({
             server: SERVER, devices: [{ protocol: "hikvision", host: "TERMINAL-ADDRESS", user: "AGENT-USER", password: "AGENT-PASSWORD", name: "Front door" }], pollSeconds: 60,
@@ -200,7 +200,7 @@ describe("a terminal that sends its scans to the agent (PR 306)", () => {
     })
 
     it("installs the agent that listens, names the terminal by its address with push, lets it through the firewall, and sets the terminal to send, with no probe", () => {
-        expect(keysOf(push(true)[1].lines)).toEqual(["att_guide_download_sa", "att_guide_push_version", "att_guide_push_installed", "att_guide_unzip", "att_guide_push_settings", "att_guide_push_firewall", "att_guide_push_profile", "att_guide_push_terminal", "att_guide_unknown_publisher"])
+        expect(keysOf(push(true)[1].lines)).toEqual(["att_guide_download_sa", "att_guide_push_version", "att_guide_push_installed", "att_guide_unzip", "att_guide_folder", "att_guide_powershell", "att_guide_push_settings", "att_guide_push_firewall", "att_guide_push_profile", "att_guide_push_terminal", "att_guide_unknown_publisher"])
         expect(keysOf(push()[1].lines)[0]).toBe("att_guide_download_other")
         // Its comm key and probe are for a terminal the agent reads.
         for (const key of ["att_guide_settings", "att_guide_password", "att_guide_probe", "att_guide_probe_key", "att_guide_auth", "att_guide_unreachable", "att_guide_office_address", "att_guide_office_delete", "att_guide_office_connected"]) {
@@ -534,5 +534,51 @@ describe("the guide's dialog", () => {
         expect(guideCss.length).toBeGreaterThan(100)
         expect(guideCss).not.toMatch(/\b(left|right)\b/)
         expect(guideCss).not.toMatch(/#[0-9a-f]{3,6}\b/i)
+    })
+})
+
+// What the first customer's setup on 21 November 2026 found (ATTENDANCE_PLAN.md
+// §17.13): the office PC's prompt was PowerShell, where a program in the folder
+// needs .\ before it, and the terminal kept its comm key under PC Connection.
+// The guide says both, as the agent's README does since PR 354 (PR 355).
+describe("the guide, as the first customer's setup found it", () => {
+    const FOLDER_LINE = 'cd "C:\\Program Files\\Nizmo Agent"'
+    const ways = {
+        "ZKTeco's, read": setupGuide("ZKTECO", { superAdmin: true, server: SERVER }),
+        "ZKTeco's, sending": setupGuide("ZKTECO", { superAdmin: true, server: SERVER, pushes: true }),
+        "Hikvision's": setupGuide("HIKVISION", { superAdmin: false, server: SERVER }),
+    }
+
+    it("opens the prompt once, in the agent's folder, right after unzipping it, with PowerShell's .\\ next", () => {
+        for (const [way, steps] of Object.entries(ways)) {
+            const lines = steps[1].lines
+            const at = lines.findIndex(l => l.text === "att_guide_unzip")
+            expect(lines[at + 1], way).toEqual({ text: "att_guide_folder", code: FOLDER_LINE })
+            expect(lines[at + 2], way).toEqual({ text: "att_guide_powershell" })
+            // Before any command after the folder is unzipped.
+            const firstCommand = lines.findIndex((l, i) => i > at + 1 && l.code !== undefined && /nizmo-agent|netsh/.test(l.code))
+            expect(firstCommand, way).toBeGreaterThan(at + 2)
+            // And only once, here.
+            expect(steps.flatMap(st => st.lines).filter(l => l.text === "att_guide_folder"), way).toHaveLength(1)
+        }
+        // As the agent's README has it (PR 354).
+        expect(readFileSync("agent/README.md", "utf8")).toContain(FOLDER_LINE)
+    })
+
+    it("says how to open the prompt, and that PowerShell needs .\\ before each command, in both languages", () => {
+        for (const w of [en, ar]) {
+            for (const typed of ["`Command Prompt`", "`cmd`"]) expect(w.att_guide_folder, typed).toContain(typed)
+            for (const typed of ["`PowerShell`", "`.\\`", "`.\\nizmo-agent.exe enrol CODE`"]) expect(w.att_guide_powershell, typed).toContain(typed)
+            // The lines after it don't open another.
+            for (const key of ["att_guide_probe", "att_guide_hik_probe", "att_guide_push_firewall"] as const) expect(w[key], key).not.toContain("Command Prompt")
+        }
+        expect(en.att_guide_folder).toContain("Run as administrator")
+        expect(ar.att_guide_folder).toContain("«تشغيل كمسؤول»")
+    })
+
+    it("names both places a ZKTeco terminal keeps its comm key, in both languages", () => {
+        for (const w of [en, ar]) {
+            for (const typed of ["`Comm Key`", "`PC Connection`", "`0`"]) expect(w.att_guide_office_address, typed).toContain(typed)
+        }
     })
 })
