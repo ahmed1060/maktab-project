@@ -14,8 +14,8 @@ them to the agent's PC over the office network. See
   terminals. Windows 10 or later, or Windows Server 2016 or later.
 - Each terminal's IP address. You can find it on the terminal under
   **Menu → Comm. → Ethernet**.
-- The terminal's **comm password**, if one is set (**Menu → Comm. → Comm Key**).
-  It is usually 0.
+- The terminal's **comm password**, if one is set: **Menu → Comm. → Comm Key**,
+  or on some models **Menu → Comm. → PC Connection → Comm Key**. It is usually 0.
 - For a **Hikvision** terminal, a user made on it for the agent, on its web
   page under **User Management**, with only the rights reading its events
   needs where the model allows, rather than its admin. See
@@ -40,8 +40,20 @@ them to the agent's PC over the office network. See
    }
    ```
 
-3. Open **Command Prompt as administrator** in that folder. Check that each
-   terminal answers:
+3. Open **Command Prompt as administrator**: press the Windows key, type `cmd`,
+   right-click **Command Prompt** and choose **Run as administrator**. Go to the
+   agent's folder:
+
+   ```
+   cd "C:\Program Files\Nizmo Agent"
+   ```
+
+   If the window that opens is **PowerShell** (its title says so), put `.\`
+   before each command in this README, as in
+   `.\nizmo-agent.exe probe 192.168.1.20`: PowerShell doesn't run a program
+   from the folder it's in without it.
+
+   Check that each terminal answers:
 
    ```
    nizmo-agent.exe probe 192.168.1.20
