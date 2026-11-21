@@ -13,7 +13,8 @@ Each part is marked:
 - **Proposed**: suggested, waiting for the product owner's answer.
 - **Open**: a question that needs answering before that part is built.
 
-Status: **decided, not built.** The order is in §7.
+Status: **decided, being built.** The order is in §7. Step 1, absence 3
+days and bands of 1½ and 2 days (§1, §2), is #358.
 
 ## 1. Absence: 3 days (Decided)
 
@@ -25,6 +26,10 @@ Status: **decided, not built.** The order is in §7.
 - **The change:** 3 days is offered too. Nothing else is added: 3, not
   2½, as the owner chose.
 - `ATTENDANCE_PLAN.md` §6.5, which lists 1, 1.5 and 2, lists 3 with them.
+- **Built in #358:** the policy keeps the list (`ABSENCE_MULTIPLIERS` in
+  `lib/attendance/policy.ts`), and its rules take up to the most on it, so
+  the choice and the check can't differ. 3 days is "3 days" in English and
+  «٣ أيام» in Arabic, as the policy counts days.
 
 ## 2. Bands: 1½ and 2 days (Decided)
 
@@ -37,6 +42,14 @@ Status: **decided, not built.** The order is in §7.
 - Escalation for repeats and the monthly cap still apply on top, as today:
   a capped rule stops at its cap.
 - Policies already saved don't change: the rules only take more than before.
+- **Built in #358:**
+  - the policy keeps the list (`BAND_COSTS`), and its rules take up to the
+    most on it;
+  - 1½ days is named as the other costs are, "1½ days" («يوم ونصف»), and 2
+    days is counted as days are, "2 days" («يومان»);
+  - the dialog and the policy's card name a cost the same way, from one
+    function (`dayCost`), where each had its own and showed a cost it didn't
+    name as a bare number.
 
 ## 3. The trial and grace notes: Admins only (Decided)
 
@@ -126,3 +139,5 @@ One PR at a time, each merged before the next opens.
   Super Admin and by a company's Admin the Super Admin allows, with the
   company's own holidays still applying. Items 7 to 10 of the list are in
   `LATER_CHANGES_PLAN.md`.
+- **2026-11-21:** Step 1 built in #358: absence 3 days, and bands of 1½
+  and 2 days, the lists kept beside the rules that check them.
