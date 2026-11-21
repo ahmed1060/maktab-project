@@ -273,5 +273,7 @@ describe("where it opens from, and its addresses", () => {
         const paper = block.slice(block.indexOf("@media print"))
         expect(paper).toMatch(/\.ui-guide-page \.ui-guide-number \{\s*background: none;\s*border: 1px solid var\(--ink\);\s*\}/)
         expect(paper).toMatch(/\.ui-guide-page \.ui-guide-code \.ui-btn \{\s*display: none;\s*\}/)
+        // Codex on PR 356: a command too long for the page, such as the firewall rule, wraps on paper, which can't scroll.
+        expect(paper).toMatch(/\.ui-guide-page \.ui-guide-code pre \{\s*overflow: visible;\s*white-space: pre-wrap;\s*overflow-wrap: anywhere;\s*\}/)
     })
 })

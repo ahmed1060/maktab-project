@@ -2386,6 +2386,13 @@ a.ui-file-open:focus-visible,
   .ui-guide-page .ui-guide-code .ui-btn {
     display: none;
   }
+  /* Paper can't scroll: a command too long for the page wraps, so it's read
+     whole (Codex on PR 356). */
+  .ui-guide-page .ui-guide-code pre {
+    overflow: visible;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
 }
 /* End of a guide's page */
 
