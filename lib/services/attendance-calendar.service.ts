@@ -4,7 +4,7 @@ import { calendarDateStr } from "@/lib/time"
 import { AuditLogService } from "./audit-log.service"
 import { recomputeAfter } from "./attendance-recompute"
 import {
-    addDays, dayHoursProblem, defaultOn, formatMinutes, hoursProblem, isDateString, overridesOverlap, spanOf, toDateString, workWeekProblem,
+    addDays, dayHoursProblem, defaultOn, formatMinutes, hoursProblem, isDateString, overridesOverlap, publicHolidaysApplyOn, spanOf, toDateString, workWeekProblem,
     type DayHours,
 } from "@/lib/attendance/calendar"
 
@@ -145,7 +145,7 @@ export class AttendanceCalendarService {
     /** Everything the Attendance settings tab shows, for one year of holidays. */
     static async calendar(companyId: string, year: number) {
         const from = DATE_ONLY(`${year}-01-01`), to = DATE_ONLY(`${year}-12-31`)
-        const [schedules, assignments, users, central, exclusions, own, today, defaults] = await Promise.all([
+        const [schedules, assignments, users, central, exclusions, own, today, defaults, publicChanges] = await Promise.all([
             prisma.workSchedule.findMany({ where: { companyId }, include: SCHEDULE_INCLUDE, orderBy: [{ archivedAt: "asc" }, { name: "asc" }] }),
             prisma.userSchedule.findMany({
                 // This company's schedules only: somebody moved here from
@@ -165,7 +165,9 @@ export class AttendanceCalendarService {
             prisma.companyHoliday.findMany({ where: { companyId, date: { gte: from, lte: to } }, orderBy: { date: "asc" } }),
             this.today(companyId),
             prisma.scheduleDefault.findMany({ where: { companyId }, orderBy: { effectiveFrom: "asc" } }),
+            prisma.publicHolidaysChange.findMany({ where: { companyId }, orderBy: { effectiveFrom: "asc" }, select: { id: true, effectiveFrom: true, apply: true } }),
         ])
+        const changes = publicChanges.map(c => ({ id: c.id, effectiveFrom: toDateString(c.effectiveFrom), apply: c.apply }))
         // The company's working days are its policy's (§6.2), Sunday to
         // Thursday until it sets one.
         const { AttendancePolicyService } = await import("./attendance-policy.service")
@@ -183,10 +185,78 @@ export class AttendanceCalendarService {
             people: users.map(u => ({ id: u.id, name: `${u.firstName} ${u.lastName}`.trim(), role: u.role })),
             holidays: {
                 year,
-                public: central.map(h => ({ id: h.id, date: toDateString(h.date), name: h.name, nameAr: h.nameAr, observed: !excluded.has(h.id) })),
+                // Whether it applies on its date: not while the company has
+                // public holidays off (FIRST_CHANGES_PLAN.md §6, PR 362).
+                public: central.map(h => ({
+                    id: h.id, date: toDateString(h.date), name: h.name, nameAr: h.nameAr, observed: !excluded.has(h.id),
+                    applies: publicHolidaysApplyOn(changes, toDateString(h.date)),
+                })),
                 own: own.map(h => ({ id: h.id, date: toDateString(h.date), name: h.name, isPaid: h.isPaid })),
             },
+            /** Public holidays apply: each change, and the earliest date the next may be from. */
+            publicHolidays: { changes, earliest: await this.publicHolidaysEarliest(companyId, changes) },
         }
+    }
+
+    /**
+     * The earliest date a change of public holidays may be from: after every
+     * approved or paid payroll month, as it governs every day from its date
+     * on, and after the last change. Null when anything goes.
+     */
+    static async publicHolidaysEarliest(companyId: string, changes: readonly { effectiveFrom: string }[]): Promise<string | null> {
+        const runs = await prisma.payrollRun.findMany({ where: { companyId, status: { in: ["APPROVED", "PAID"] } }, select: { year: true, month: true } })
+        const after = runs.map(r => (r.month === 12 ? `${r.year + 1}-01-01` : `${r.year}-${String(r.month + 1).padStart(2, "0")}-01`))
+        const last = changes.at(-1)
+        if (last) after.push(addDays(last.effectiveFrom, 1))
+        return after.sort().at(-1) ?? null
+    }
+
+    /**
+     * Turns the central public holidays off for the company, or back on, from
+     * a date (FIRST_CHANGES_PLAN.md §6, PR 362). Each change follows the
+     * last: from a later date and the other way, with none still to come, and
+     * governing no approved payroll month, as it governs every day from its
+     * date on. The company's own holidays, and the holidays it works through,
+     * stay as they are.
+     */
+    static async setPublicHolidays(companyId: string, apply: boolean, effectiveFrom: string, actorId: string) {
+        if (!isDateString(effectiveFrom)) fail("INVALID_DATE")
+        const today = await this.today(companyId)
+        await prisma.$transaction(async tx => {
+            await serialize(tx, `public-holidays:${companyId}`)
+            const last = await tx.publicHolidaysChange.findFirst({ where: { companyId }, orderBy: { effectiveFrom: "desc" }, select: { effectiveFrom: true, apply: true } })
+            const lastFrom = last ? toDateString(last.effectiveFrom) : null
+            if (lastFrom && lastFrom > today) fail("PUBLIC_HOLIDAYS_CHANGE_TO_COME")
+            if (lastFrom && effectiveFrom <= lastFrom) fail("PUBLIC_HOLIDAYS_CHANGED_LATER")
+            if ((last?.apply ?? true) === apply) fail(apply ? "PUBLIC_HOLIDAYS_ALREADY_ON" : "PUBLIC_HOLIDAYS_ALREADY_OFF")
+            await this.assertSpanUnlocked(companyId, { from: effectiveFrom, until: null }, tx)
+            const row = await tx.publicHolidaysChange.create({ data: { companyId, effectiveFrom: DATE_ONLY(effectiveFrom), apply, createdById: actorId } })
+            await AuditLogService.log(apply ? "TURN_ON_PUBLIC_HOLIDAYS" : "TURN_OFF_PUBLIC_HOLIDAYS", "ATTENDANCE_CALENDAR", row.id, {
+                tx, ...(await actorOf(tx, actorId)), details: { companyId, effectiveFrom },
+            })
+        })
+        await recomputeAfter(companyId, effectiveFrom)
+    }
+
+    static async publicHolidaysChangeOf(changeId: string) {
+        return prisma.publicHolidaysChange.findUnique({ where: { id: changeId }, select: { id: true, companyId: true } })
+    }
+
+    /** Withdraws a change of public holidays still to come: one that has begun stays, and is turned back instead. */
+    static async withdrawPublicHolidaysChange(changeId: string, actorId: string) {
+        const row = await prisma.publicHolidaysChange.findUnique({ where: { id: changeId } }) ?? fail("PUBLIC_HOLIDAYS_CHANGE_NOT_FOUND")
+        const effectiveFrom = toDateString(row.effectiveFrom)
+        if (effectiveFrom <= await this.today(row.companyId)) fail("PUBLIC_HOLIDAYS_CHANGE_BEGUN")
+        await prisma.$transaction(async tx => {
+            await serialize(tx, `public-holidays:${row.companyId}`)
+            await this.assertSpanUnlocked(row.companyId, { from: effectiveFrom, until: null }, tx)
+            const { count } = await tx.publicHolidaysChange.deleteMany({ where: { id: changeId } })
+            if (count === 0) fail("PUBLIC_HOLIDAYS_CHANGE_NOT_FOUND")
+            await AuditLogService.log("WITHDRAW_PUBLIC_HOLIDAYS_CHANGE", "ATTENDANCE_CALENDAR", changeId, {
+                tx, ...(await actorOf(tx, actorId)), details: { companyId: row.companyId, effectiveFrom },
+            })
+        })
+        await recomputeAfter(row.companyId, effectiveFrom)
     }
 
     static async scheduleOf(scheduleId: string) {

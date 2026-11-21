@@ -197,9 +197,26 @@ export function workDaysOf(version: Pick<Version, "workWeek">, companyWorkWeek: 
 }
 
 /**
+ * A company turning the central calendar of public holidays off, or back
+ * on, from a date (FIRST_CHANGES_PLAN.md §6, PR 362).
+ */
+export type PublicHolidaysChange = { effectiveFrom: string; apply: boolean }
+
+/**
+ * Whether the central public holidays apply to the company on a date: as
+ * the last change on or before it says, and they do when there's none.
+ */
+export function publicHolidaysApplyOn(changes: readonly PublicHolidaysChange[], date: string): boolean {
+    let latest: PublicHolidaysChange | null = null
+    for (const c of changes) if (c.effectiveFrom <= date && (!latest || c.effectiveFrom > latest.effectiveFrom)) latest = c
+    return latest ? latest.apply : true
+}
+
+/**
  * The holidays a company observes between two dates, inclusive: the central
- * calendar less the days it opted out of, plus its own. Its own wins a date
- * both name, since that is the one it chose.
+ * calendar less the days it opted out of, and less every day while it has
+ * them off, plus its own. Its own wins a date both name, since that is the
+ * one it chose, and still applies while the central ones are off.
  */
 export function observedHolidays(
     central: readonly { id: string; date: string; name: string }[],
@@ -207,10 +224,11 @@ export function observedHolidays(
     own: readonly { id: string; date: string; name: string; isPaid: boolean }[],
     from: string,
     to: string,
+    publicChanges: readonly PublicHolidaysChange[],
 ): Map<string, HolidayEntry> {
     const out = new Map<string, HolidayEntry>()
     for (const h of central) {
-        if (h.date < from || h.date > to || excludedIds.has(h.id)) continue
+        if (h.date < from || h.date > to || excludedIds.has(h.id) || !publicHolidaysApplyOn(publicChanges, h.date)) continue
         out.set(h.date, { date: h.date, name: h.name, isPaid: true, source: "PUBLIC", id: h.id })
     }
     for (const h of own) {

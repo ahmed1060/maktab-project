@@ -106,7 +106,7 @@ async function deriveMonth(
 
     // A day either side, for night shifts that start before the month or end after it.
     const loadFrom = addDays(from, -1), loadTo = addDays(through, 1)
-    const [schedules, assignments, defaults, people, central, exclusions, own, punches, leave, permissions, decisions, excuses, missions] = await Promise.all([
+    const [schedules, assignments, defaults, people, central, exclusions, own, punches, leave, permissions, decisions, excuses, missions, publicChanges] = await Promise.all([
         tx.workSchedule.findMany({ where: { companyId }, include: SCHEDULE_INCLUDE }),
         tx.userSchedule.findMany({ where: { schedule: { companyId }, ...scope }, select: { userId: true, scheduleId: true, effectiveFrom: true } }),
         tx.scheduleDefault.findMany({ where: { companyId }, select: { scheduleId: true, effectiveFrom: true } }),
@@ -155,6 +155,8 @@ async function deriveMonth(
             where: { companyId, status: "APPROVED", ...scope, startDate: { lte: wallClock(`${through}T00:00:00`) }, endDate: { gte: wallClock(`${from}T00:00:00`) } },
             select: { userId: true, kind: true, startDate: true, endDate: true, hoursPart: true },
         }),
+        // Whether the public holidays apply, by date (FIRST_CHANGES_PLAN.md §6, PR 362).
+        tx.publicHolidaysChange.findMany({ where: { companyId }, select: { effectiveFrom: true, apply: true } }),
     ])
     // A draft (the simulator, §6.7) stands in for every version.
     const policies = draft ? [{ id: "draft", effectiveFrom: "0000-01-01", body: draft }] : await AttendancePolicyService.versions(companyId)
@@ -167,6 +169,7 @@ async function deriveMonth(
         new Set(exclusions.map(e => e.publicHolidayId)),
         own.map(h => ({ id: h.id, date: toDateString(h.date), name: h.name, isPaid: h.isPaid })),
         loadFrom, loadTo,
+        publicChanges.map(c => ({ effectiveFrom: toDateString(c.effectiveFrom), apply: c.apply })),
     )
     const dates: string[] = []
     for (let d = loadFrom; d <= loadTo; d = addDays(d, 1)) dates.push(d)
@@ -530,7 +533,7 @@ export class AttendanceEngineService {
     }> {
         const sorted = [...dates].sort()
         const span = { gte: wallClock(`${sorted[0]}T00:00:00`), lte: wallClock(`${sorted.at(-1)}T00:00:00`) }
-        const [schedules, assignments, defaults, central, exclusions, own, policies] = await Promise.all([
+        const [schedules, assignments, defaults, central, exclusions, own, policies, publicChanges] = await Promise.all([
             db.workSchedule.findMany({ where: { companyId }, include: SCHEDULE_INCLUDE }),
             db.userSchedule.findMany({ where: { userId: { in: [...userIds] }, schedule: { companyId } }, select: { userId: true, scheduleId: true, effectiveFrom: true } }),
             db.scheduleDefault.findMany({ where: { companyId }, select: { scheduleId: true, effectiveFrom: true } }),
@@ -538,6 +541,7 @@ export class AttendanceEngineService {
             db.companyHolidayExclusion.findMany({ where: { companyId }, select: { publicHolidayId: true } }),
             db.companyHoliday.findMany({ where: { companyId, date: span } }),
             AttendancePolicyService.versions(companyId, db),
+            db.publicHolidaysChange.findMany({ where: { companyId }, select: { effectiveFrom: true, apply: true } }),
         ])
         const bySchedule = new Map(schedules.map(s => [s.id, serializeSchedule(s)]))
         const defaultChanges = defaults.map(d => ({ scheduleId: d.scheduleId, effectiveFrom: toDateString(d.effectiveFrom) }))
@@ -546,6 +550,7 @@ export class AttendanceEngineService {
             new Set(exclusions.map(e => e.publicHolidayId)),
             own.map(h => ({ id: h.id, date: toDateString(h.date), name: h.name, isPaid: h.isPaid })),
             sorted[0], sorted.at(-1)!,
+            publicChanges.map(c => ({ effectiveFrom: toDateString(c.effectiveFrom), apply: c.apply })),
         )
         const weeks = policies.map(p => ({ effectiveFrom: p.effectiveFrom, workWeek: p.body.workWeek }))
         const plans = new Map<string, Map<string, ExpectedDay>>()

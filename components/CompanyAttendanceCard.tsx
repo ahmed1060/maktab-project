@@ -19,7 +19,7 @@ import { SchedulesCard, ScheduleCard } from '@/components/attendance-calendar/Sc
 import { PeopleCard } from '@/components/attendance-calendar/People'
 import { HolidaysCard } from '@/components/attendance-calendar/Holidays'
 import HoursDialog from '@/components/attendance-calendar/HoursDialog'
-import { DefaultDialog, HolidayDialog, MoveDialog } from '@/components/attendance-calendar/Dialogs'
+import { DefaultDialog, HolidayDialog, MoveDialog, PublicHolidaysDialog } from '@/components/attendance-calendar/Dialogs'
 import type { Calendar, Confirming, Ctx, Editing, Schedule } from '@/components/attendance-calendar/types'
 
 /**
@@ -54,6 +54,8 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false, ter
     const [makingDefault, setMakingDefault] = useState<Schedule | null>(null)
     const [moving, setMoving] = useState(false)
     const [addingHoliday, setAddingHoliday] = useState(false)
+    // Public holidays being turned off (false) or back on (true), from a date (PR 362).
+    const [turningPublic, setTurningPublic] = useState<boolean | null>(null)
     const [busy, setBusy] = useState(false)
 
     const query = new URLSearchParams({ companyId, ...(year ? { year: String(year) } : {}) })
@@ -107,7 +109,7 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false, ter
     // (the audit on company settings part 3a): formatMinutes writes Latin ones.
     const digits = (text: string) => locale === 'ar' ? text.replace(/[0-9]/g, d => '٠١٢٣٤٥٦٧٨٩'[Number(d)]) : text
     const ctx: Ctx = {
-        companyId, data, active, editable, busy, locale, t, send, setEditing, setMakingDefault, setMoving, setAddingHoliday,
+        companyId, data, active, editable, busy, locale, t, send, setEditing, setMakingDefault, setMoving, setAddingHoliday, setTurningPublic,
         askFirst: setConfirming, setYear, weekdayName, dateText, digits,
         timeRange: (start, end) => t('attendance_time_range').replace('{start}', digits(formatMinutes(start))).replace('{end}', digits(formatMinutes(end))),
         dateRange: (start, end) => t('attendance_date_range').replace('{start}', dateText(start)).replace('{end}', dateText(end)),
@@ -196,6 +198,22 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false, ter
                         // Show the year it was added to, or a holiday for next year
                         // vanishes from view the moment it is saved (review on #10).
                         setYear(Number(holiday.date.slice(0, 4)))
+                    }}
+                />
+            )}
+
+            {turningPublic !== null && (
+                <PublicHolidaysDialog
+                    apply={turningPublic}
+                    today={data.today}
+                    earliest={data.publicHolidays.earliest}
+                    lastChange={data.publicHolidays.changes.at(-1)?.effectiveFrom ?? null}
+                    dateText={dateText}
+                    busy={busy}
+                    onClose={() => setTurningPublic(null)}
+                    onSubmit={async effectiveFrom => {
+                        const done = t(turningPublic ? 'attendance_public_turned_on' : 'attendance_public_turned_off')
+                        if (await send('/api/attendance/holidays/apply', 'PUT', { companyId, apply: turningPublic, effectiveFrom }, done)) setTurningPublic(null)
                     }}
                 />
             )}

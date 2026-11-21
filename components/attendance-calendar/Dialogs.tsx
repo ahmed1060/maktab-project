@@ -5,15 +5,17 @@ import DatePickerSingle from '@/components/DatePickerSingle'
 import AssigneeChecklist from '@/components/forms/AssigneeChecklist'
 import { Button, Dialog, DialogActions, Field, Select, TextInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
+import { addDays } from '@/lib/attendance/calendar'
 import { focusFirstWrong } from './focus'
 import { firstOfNextMonth } from './hours-form'
 import type { Calendar, Schedule } from './types'
 
 /**
  * The calendar's smaller dialogs (company settings part 3a): making a
- * schedule the default, moving people to a schedule, and adding a holiday of
- * the company's own. None closes while it saves: closing then would hide the
- * answer. Each says what's wrong under its field.
+ * schedule the default, moving people to a schedule, adding a holiday of
+ * the company's own, and turning public holidays off or back on. None closes
+ * while it saves: closing then would hide the answer. Each says what's wrong
+ * under its field.
  */
 
 /** Everyone not moved elsewhere works this schedule from the date chosen. */
@@ -141,6 +143,55 @@ export function HolidayDialog({ busy, onClose, onSubmit }: {
                 <DialogActions>
                     <Button onClick={onClose} disabled={busy}>{t('cancel')}</Button>
                     <Button type="submit" variant="primary" busy={busy}>{t('attendance_add_holiday')}</Button>
+                </DialogActions>
+            </form>
+        </Dialog>
+    )
+}
+
+/**
+ * Public holidays off for the company, or back on, from a date
+ * (FIRST_CHANGES_PLAN.md §6, DESIGN.md §5.5, PR 362): what changes, From
+ * when? with today to start with, that attendance is worked out again from
+ * then, and the earliest it may be, with why.
+ */
+export function PublicHolidaysDialog({ apply, today, earliest, lastChange, dateText, busy, onClose, onSubmit }: {
+    apply: boolean
+    today: string
+    earliest: string | null
+    /** The date of the company's last change, which the next one follows. */
+    lastChange: string | null
+    dateText: (date: string) => string
+    busy: boolean
+    onClose: () => void
+    onSubmit: (effectiveFrom: string) => Promise<void>
+}) {
+    const { t } = useLanguage()
+    const form = useRef<HTMLFormElement>(null)
+    const [from, setFrom] = useState(earliest && earliest > today ? earliest : today)
+    const [error, setError] = useState('')
+    // Why the earliest is what it is: the day after the last change, or after an approved payroll month.
+    const earliestLine = !earliest ? null : lastChange && earliest === addDays(lastChange, 1)
+        ? t('attendance_public_earliest_change').replace('{last}', dateText(lastChange)).replace('{date}', dateText(earliest))
+        : t('attendance_public_earliest_payroll').replace('{date}', dateText(earliest))
+    const submit = async (e: FormEvent) => {
+        e.preventDefault()
+        const problem = !from ? t('attendance_date_required')
+            : earliest && from < earliest ? t('attendance_public_too_early').replace('{date}', dateText(earliest)) : ''
+        setError(problem)
+        if (problem) { focusFirstWrong(form.current); return }
+        await onSubmit(from)
+    }
+    return (
+        <Dialog open onClose={() => { if (!busy) onClose() }} title={t(apply ? 'attendance_public_on_title' : 'attendance_public_off_title')}>
+            <form ref={form} className="ui-form" noValidate onSubmit={submit}>
+                <p>{t(apply ? 'attendance_public_on_body' : 'attendance_public_off_body')}</p>
+                <DatePickerSingle label={t('attendance_from_when')} value={from} error={error} minDate={earliest ?? undefined} disabled={busy}
+                    hint={earliestLine ? `${t('attendance_public_from_hint')} ${earliestLine}` : t('attendance_public_from_hint')}
+                    onChange={day => { setFrom(day); setError('') }} />
+                <DialogActions>
+                    <Button onClick={onClose} disabled={busy}>{t('cancel')}</Button>
+                    <Button type="submit" variant="primary" busy={busy}>{t(apply ? 'attendance_public_turn_on' : 'attendance_public_turn_off')}</Button>
                 </DialogActions>
             </form>
         </Dialog>

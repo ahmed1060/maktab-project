@@ -134,7 +134,7 @@ const AGENTS = "/api/attendance/agents?companyId=c1"
 const PLACES = "/api/attendance/locations?companyId=c1"
 const calendar = (sections: { terminals: boolean; mobileApp: boolean }) => ({
     today: "2026-11-21", companyWorkWeek: [0, 1, 2, 3, 4], companyWorkWeeks: [], schedules: [], defaults: [], assignments: [], people: [],
-    holidays: { year: 2026, public: [], own: [] }, canEdit: true, sections,
+    holidays: { year: 2026, public: [], own: [] }, canEdit: true, sections, publicHolidays: { changes: [], earliest: null },
 })
 
 async function tab(sections: { terminals: boolean; mobileApp: boolean }) {
