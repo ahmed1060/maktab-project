@@ -204,6 +204,13 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     HOLIDAY_NAME_REQUIRED: { status: 400, message: "Give the holiday a name." },
     HOLIDAY_DATE_TAKEN: { status: 409, message: "There's already a holiday on that date." },
     HOLIDAY_NOT_FOUND: { status: 404, message: "Holiday not found." },
+    // Public holidays apply (FIRST_CHANGES_PLAN.md §6, PR 362).
+    PUBLIC_HOLIDAYS_CHANGE_TO_COME: { status: 409, message: "A change of public holidays is already to come. Withdraw it first." },
+    PUBLIC_HOLIDAYS_CHANGED_LATER: { status: 409, message: "Public holidays last changed on that date or after it. Choose a later date." },
+    PUBLIC_HOLIDAYS_ALREADY_OFF: { status: 409, message: "Public holidays are already off then." },
+    PUBLIC_HOLIDAYS_ALREADY_ON: { status: 409, message: "Public holidays already apply then." },
+    PUBLIC_HOLIDAYS_CHANGE_NOT_FOUND: { status: 404, message: "That change of public holidays wasn't found." },
+    PUBLIC_HOLIDAYS_CHANGE_BEGUN: { status: 409, message: "That change has begun, so it stays. Turn public holidays back from a later date instead." },
     // The attendance policy (lib/services/attendance-policy.service.ts).
     POLICY_INVALID: { status: 400, message: "That policy is missing a setting or has one out of range." },
     BANDS_EMPTY: { status: 400, message: "Add at least one band, or charge per minute instead." },

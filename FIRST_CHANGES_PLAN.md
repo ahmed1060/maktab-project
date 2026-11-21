@@ -17,7 +17,8 @@ Status: **decided, being built.** The order is in §7. Step 1, absence 3
 days and bands of 1½ and 2 days (§1, §2), is #358. Step 2, the trial and
 grace notes for Admins only (§3), is #359. Step 3, the Arabic template's
 clients sheet (§4), is #360. Step 4, the Attendance tab without a refused
-request (§5), is #361.
+request (§5), is #361. Step 5, public holidays off (§6): the owner approved
+the mockup, and the switch is #362.
 
 ## 1. Absence: 3 days (Decided)
 
@@ -111,7 +112,7 @@ request (§5), is #361.
   - each section's own routes answer the same, and a test holds the two
     together. A section still hides itself if it's refused.
 
-## 6. Public holidays off for a company (Decided; its look Proposed)
+## 6. Public holidays off for a company (Decided)
 
 - **Today:** the Super Admin keeps the central calendar of public holidays
   (`ATTENDANCE_PLAN.md` §7.2). A company can work through them one at a
@@ -131,7 +132,7 @@ request (§5), is #361.
 - **The company's own holidays still apply (Decided).**
 - **Holidays the company already works through stay as they are,** so
   turning the switch back on returns to them.
-- **From when (Proposed):**
+- **From when (Decided, with the mockup):**
   - from a date chosen, today to start with, and days before it keep their
     holidays;
   - a date in a month whose payroll is approved is refused, as working
@@ -139,12 +140,36 @@ request (§5), is #361.
   - attendance is worked out again from that date, as it is for one holiday.
 - **Recorded:** each change goes in the audit log, with who did it and from
   when.
-- **Open, for the mockup:**
-  - where the switch sits on the Holidays section;
-  - how the central holidays show while it's off;
-  - how a day off over a public holiday counts while it's off.
+- **Decided, in the mockup** (the Public holidays off for a company canvas,
+  approved by the owner on 2026-11-21; `DESIGN.md` §5.5):
+  - **Where the switch sits:** at the top of Public holidays on the
+    Holidays card: a row, Public holidays apply, with On or Off and Turn
+    off or Turn on, as the company's other switches are. Whoever may only
+    look sees its state and no button.
+  - **How the central holidays show while it's off:** the year's still
+    listed, so the company sees what it works, each from the date without
+    its box and marked Worked through, under a line saying from when and
+    that, turned back on, those the company observed are days off again.
+    A change from a later date is listed under the switch, with Withdraw.
+  - **A day off over a public holiday while it's off:** a day of leave, as
+    on any workday; until now the holiday came first. How much of the
+    person's day-off credit it takes stays the approver's choice, as today.
 - **Built in two:** the mockup first, for the owner to approve, then the
   switch.
+- **Built in #362:**
+  - each change is a row of its own, off or back on from a date
+    (`PublicHolidaysChange`); the state on a date is the last change on or
+    before it, and with none they apply. The engine reads it everywhere it
+    works out a company's holidays (`observedHolidays`), so attendance and
+    what a day is expected to be agree;
+  - a change follows the last: from a later date and the other way, with
+    none still to come, and governing no approved payroll month, as it
+    governs every day from its date on. The dialog says the earliest date,
+    and why: an approved month, or the last change;
+  - a change still to come can be withdrawn; one that has begun stays, and
+    public holidays are turned back from a later date instead;
+  - turning them off, on, and withdrawing are in the audit log, with who
+    did it and from when.
 
 ## 7. Order
 
@@ -178,3 +203,10 @@ One PR at a time, each merged before the next opens.
 - **2026-11-21:** Step 4 built in #361: the Attendance tab asks only for
   the add-ons' sections it shows, the places and Fingerprint terminals
   alike, as its calendar says.
+- **2026-11-21:** Step 5's mockup approved by the owner, as proposed: the
+  switch at the top of Public holidays, the year's holidays listed and
+  marked Worked through while it's off, and a day off over one counted as
+  a day of leave.
+- **2026-11-21:** Step 5 built in #362: public holidays off, and back on,
+  from a date, each change following the last, a change to come
+  withdrawable, every one recorded.

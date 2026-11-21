@@ -156,7 +156,7 @@ describe("holidays (§7.2)", () => {
     ]
 
     it("inherits the central calendar, less what the company opted out of", () => {
-        const days = observedHolidays(central, new Set(["sinai"]), [], "2026-01-01", "2026-12-31")
+        const days = observedHolidays(central, new Set(["sinai"]), [], "2026-01-01", "2026-12-31", [])
         expect([...days.keys()]).toEqual(["2026-05-01"])
         expect(days.get("2026-05-01")).toMatchObject({ source: "PUBLIC", isPaid: true })
     })
@@ -166,14 +166,14 @@ describe("holidays (§7.2)", () => {
             { id: "anniv", date: "2026-05-01", name: "Founding day", isPaid: true },
             { id: "local", date: "2026-07-10", name: "Local holiday", isPaid: false },
         ]
-        const days = observedHolidays(central, new Set(), own, "2026-01-01", "2026-12-31")
+        const days = observedHolidays(central, new Set(), own, "2026-01-01", "2026-12-31", [])
         expect(days.get("2026-05-01")).toMatchObject({ source: "COMPANY", name: "Founding day" })
         expect(days.get("2026-07-10")).toMatchObject({ isPaid: false })
         expect(days.has("2026-04-25")).toBe(true)
     })
 
     it("keeps to the dates asked for", () => {
-        expect(observedHolidays(central, new Set(), [], "2026-05-02", "2026-12-31").size).toBe(0)
+        expect(observedHolidays(central, new Set(), [], "2026-05-02", "2026-12-31", []).size).toBe(0)
     })
 })
 

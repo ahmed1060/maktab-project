@@ -317,6 +317,7 @@ model Company {
   checkInReminders         CheckInReminder[]
   companyHolidays      CompanyHoliday[]
   holidayExclusions    CompanyHolidayExclusion[]
+  publicHolidaysChanges PublicHolidaysChange[]
   finalSettlements     FinalSettlement[]
   createdAt            DateTime                  @default(now())
   updatedAt            DateTime                  @updatedAt
@@ -2159,6 +2160,23 @@ model CompanyHolidayExclusion {
   publicHoliday   PublicHoliday @relation(fields: [publicHolidayId], references: [id], onDelete: Cascade)
 
   @@id([companyId, publicHolidayId])
+}
+
+/// Public holidays off for a company, or back on, from a date
+/// (FIRST_CHANGES_PLAN.md §6, PR 362). The state on a date is the last change
+/// on or before it; none means they apply. While off, every central holiday
+/// is a normal workday for the company, and its own holidays still apply.
+/// Its exclusions stay as they are, for when they're turned back on.
+model PublicHolidaysChange {
+  id            String   @id @default(uuid())
+  companyId     String
+  effectiveFrom DateTime @db.Date
+  apply         Boolean
+  createdById   String
+  createdAt     DateTime @default(now())
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, effectiveFrom])
 }
 
 // ---------------------------------------------------------------------------

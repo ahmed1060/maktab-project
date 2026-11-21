@@ -62,6 +62,13 @@ export const observedSchema = z.object({
     observed: z.boolean(),
 })
 
+/** Public holidays off for the company, or back on, from a date (FIRST_CHANGES_PLAN.md §6, PR 362). */
+export const publicHolidaysApplySchema = z.object({
+    companyId: z.string().optional(),
+    apply: z.boolean(),
+    effectiveFrom: z.string(),
+})
+
 export const publicHolidaySchema = z.object({
     date,
     name: z.string().min(1).max(120),

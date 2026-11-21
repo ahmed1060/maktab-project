@@ -7567,6 +7567,34 @@ a.ui-notice:focus-visible {
     min-height: 44px;
   }
 }
+/* Public holidays apply, on the Attendance tab's Holidays card (DESIGN.md
+   §5.5, PR 362): the switch's row, and a change to come, on the page's
+   colour, and the public holidays worked through while they're off, with no
+   box, wrapping as the mockup's do, the date kept on one line. On phones the
+   badge and the button go under the line. */
+.ui-public-switch {
+  margin-block: var(--space-2);
+  background: var(--page);
+  border-radius: var(--radius-panel);
+}
+.ui-public-off {
+  flex-wrap: wrap;
+  row-gap: 0;
+  cursor: default;
+}
+.ui-public-off > .ui-hint {
+  white-space: nowrap;
+}
+@media (max-width: 767px) {
+  .ui-public-switch .ui-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ui-public-switch .ui-row-end {
+    max-width: none;
+    justify-content: flex-start;
+  }
+}
 /* A company's client messages, on the Client portal tab (DESIGN.md §5.5;
    PR 349): rows inside the card, a rule above the first, and the line
    under them. On phones each row's buttons go under its lines, and the

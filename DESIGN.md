@@ -2141,6 +2141,37 @@ These are built once, in the building-blocks PR, and every page uses them
     changed it and when, or that it uses Nizmo's message, and that every
     change is in the audit log. Leaving with unsaved changes asks first,
     as it does there.
+- **Public holidays apply:** a company's one switch for the central
+  calendar of public holidays (`FIRST_CHANGES_PLAN.md` §6), at the top of
+  Public holidays on the Attendance tab's Holidays card, as the owner
+  approved in the Public holidays off for a company canvas.
+  - A row, as a card's Rows are, on `--page` with `--radius-panel`
+    corners, between the heading and the year's holidays. Its title is
+    Public holidays apply. Its line says what that means now: while on,
+    that the public holidays listed are days off, apart from any the
+    company works through; while off, from which date each is a normal
+    workday, and that the company's own holidays still apply. On the end
+    side, the On or Off badge and Turn off or Turn on, as the company's
+    other switches are. Whoever may only look at the tab sees the badge
+    and no button.
+  - Turning it off or on asks first, in the building blocks' dialog:
+    what changes from the date chosen, then From when?, today to start
+    with. Under it, that attendance is worked out again from that date,
+    and the earliest date it may be, as a month whose payroll is approved
+    can't change. Its button says what it does: Turn them off, or Turn
+    them on.
+  - A change from a later date is a row under the switch's, as the
+    default schedule's changes to come are: public holidays stop
+    applying, or apply again, from that date, with Withdraw named for
+    it. While one is to come, the switch has no button: it's withdrawn
+    first.
+  - While they're off, the year's public holidays from that date are
+    still listed, each without its box and with the Worked through
+    badge. A line above them says from when they're off and that, turned
+    back on, those the company observed are days off again. Those before
+    the date keep their boxes.
+  - On phones the badge and the button go under the line, as the
+    company's other switches' do.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
@@ -3314,3 +3345,9 @@ changed:
   and its grace are said to its Admins alone, as the owner asked
   (`FIRST_CHANGES_PLAN.md` §3); grace no longer tells everyone else who
   can renew it.
+- **2026-11-21:** Public holidays apply (§5.5), as the owner approved in
+  the Public holidays off for a company canvas: one switch at the top of
+  the Holidays card's public holidays, asked about with From when?, a
+  change from a later date listed to withdraw, and the year's public
+  holidays marked Worked through while it's off (`FIRST_CHANGES_PLAN.md`
+  §6).

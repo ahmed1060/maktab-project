@@ -22,7 +22,8 @@ export type Calendar = {
     people: { id: string; name: string; role: string }[]
     holidays: {
         year: number
-        public: { id: string; date: string; name: string; nameAr: string | null; observed: boolean }[]
+        /** `applies`: not while the company has public holidays off on its date (PR 362). */
+        public: { id: string; date: string; name: string; nameAr: string | null; observed: boolean; applies: boolean }[]
         own: { id: string; date: string; name: string; isPaid: boolean }[]
     }
     canEdit: boolean
@@ -32,6 +33,11 @@ export type Calendar = {
      * PR 361). The tab asks for nothing else.
      */
     sections: { terminals: boolean; mobileApp: boolean }
+    /**
+     * Public holidays apply (FIRST_CHANGES_PLAN.md §6, PR 362): each change,
+     * off or back on from a date, and the earliest the next may be from.
+     */
+    publicHolidays: { changes: { id: string; effectiveFrom: string; apply: boolean }[]; earliest: string | null }
 }
 
 /** What the hours dialog is open for. */
@@ -58,6 +64,8 @@ export type Ctx = {
     setMakingDefault: (s: Schedule) => void
     setMoving: (moving: boolean) => void
     setAddingHoliday: (adding: boolean) => void
+    /** Opens the question for turning public holidays off (false) or back on (true). */
+    setTurningPublic: (apply: boolean) => void
     /** Asks before a change that can't be taken back by itself, in a dialog. */
     askFirst: (c: Confirming) => void
     setYear: (y: number) => void
