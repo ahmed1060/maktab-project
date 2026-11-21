@@ -15,7 +15,8 @@ Each part is marked:
 
 Status: **decided, being built.** The order is in §7. Step 1, absence 3
 days and bands of 1½ and 2 days (§1, §2), is #358. Step 2, the trial and
-grace notes for Admins only (§3), is #359.
+grace notes for Admins only (§3), is #359. Step 3, the Arabic template's
+clients sheet (§4), is #360.
 
 ## 1. Absence: 3 days (Decided)
 
@@ -80,6 +81,13 @@ grace notes for Admins only (§3), is #359.
   names the sheet, follows it. The English template doesn't change.
 - **Open, settled in the build:** whether the upload reads that sheet by its
   name. If it does, a template downloaded before still uploads.
+- **Built in #360:**
+  - the sheet is «العملاء», and the client column's dropdown names it by
+    the sheet's own name, as it always has, so it follows;
+  - the upload doesn't read the clients sheet at all: it reads the first
+    sheet, and the locations sheet by its name in either language
+    (`app/(dashboard)/dashboard/tasks/new/page.tsx`). A template downloaded
+    before, with «الموردين», still uploads as it did.
 
 ## 5. Fingerprint terminals without a refused request (Decided)
 
@@ -152,3 +160,6 @@ One PR at a time, each merged before the next opens.
   and 2 days, the lists kept beside the rules that check them.
 - **2026-11-21:** Step 2 built in #359: the trial and grace notes for the
   Admin role only.
+- **2026-11-21:** Step 3 built in #360: the Arabic template's clients
+  sheet is «العملاء»; the upload never read it by name, so older templates
+  still upload.
