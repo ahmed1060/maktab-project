@@ -1471,7 +1471,6 @@ export const en = {
         note_grace_tomorrow: "Your company's subscription has ended. The last day of access is tomorrow, {date}.",
         note_grace_today: "Your company's subscription has ended. Today is the last day of access.",
         note_grace_admin: "Renewing it keeps everyone's access.",
-        note_grace_others: "An Admin of your company can renew it.",
         access_denied_title: "You can't open this page",
         access_denied_role: "Your role doesn't include it. An Admin of your company can add it to your role.",
         access_denied_super_admins: "Only a Super Admin can open it.",

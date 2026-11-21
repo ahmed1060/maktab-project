@@ -23,11 +23,16 @@ import type { TranslationKey } from '@/lib/translations'
  * of its own making under an emoji that said "2 day(s) left", "2" in Arabic
  * among Arabic-Indic digits, and "0 day(s) left" all through a trial's last
  * day; grace told everyone to renew, which only an Admin can.
+ *
+ * For the company's Admins alone, as the owner asked (DESIGN.md §5.5;
+ * FIRST_CHANGES_PLAN.md §3, PR 359): they act on it, renewing, and are the
+ * ones billing/state.ts never locks out. Nobody else in the company sees it.
  */
 export default function SubscriptionNote() {
     const { t, locale } = useLanguage()
     const viewer = useViewer()
-    const subscription = viewer?.subscription
+    if (viewer?.role !== 'ADMIN') return null
+    const subscription = viewer.subscription
     if (!subscription?.date || (subscription.state !== 'TRIAL' && subscription.state !== 'GRACE')) return null
 
     const grace = subscription.state === 'GRACE'
@@ -42,9 +47,6 @@ export default function SubscriptionNote() {
     const what = t(`${grace ? 'note_grace' : 'note_trial'}_${when}` as TranslationKey)
         .replace('{date}', day)
         .replace('{days}', countOf(t, locale, days, 'days'))
-    // Its Admin renews it, and is the one still let in once it locks
-    // (lib/billing/state.ts); everyone else is told who can.
-    const who = grace ? t(viewer?.role === 'ADMIN' ? 'note_grace_admin' : 'note_grace_others') : null
-
-    return <PageNote tone={grace ? 'problem' : 'neutral'}>{who ? `${what} ${who}` : what}</PageNote>
+    // Its Admin renews it, and is the one still let in once it locks (lib/billing/state.ts).
+    return <PageNote tone={grace ? 'problem' : 'neutral'}>{grace ? `${what} ${t('note_grace_admin')}` : what}</PageNote>
 }

@@ -11,7 +11,8 @@ import { en } from "./translations/en"
  * previewing. Each was a box of its own making under an emoji: the trial's
  * said "2 day(s) left" in English and "2" among Arabic-Indic digits, grace
  * told everyone to renew, which only an Admin can, and both read their day
- * on the reader's own calendar.
+ * on the reader's own calendar. Since PR 359 both are the company's Admins'
+ * alone (FIRST_CHANGES_PLAN.md §3).
  */
 
 const state = {
@@ -42,7 +43,8 @@ beforeEach(() => {
 const esc = (text: string) => text.replace(/&/g, "&amp;").replace(/'/g, "&#x27;").replace(/"/g, "&quot;")
 /** The words of a note, as it's read. */
 const said = (html: string) => html.match(/<p class="ui-page-note-text">([^<]*)<\/p>/)?.[1]
-const subscribed = (subscription: Record<string, unknown>, role = "EMPLOYEE") => {
+// Read by its Admin, the only one who sees it (PR 359).
+const subscribed = (subscription: Record<string, unknown>, role = "ADMIN") => {
     state.viewer = { id: "u1", role, companyId: "c1", subscription }
     return renderToStaticMarkup(h(SubscriptionNote))
 }
@@ -104,15 +106,14 @@ describe("A company's grace", () => {
     it("says the subscription has ended, and the last day of access", () => {
         const html = subscribed({ ...GRACE, daysToLastDay: 2 })
         expect(html).toContain('data-tone="problem" role="alert"')
-        expect(said(html)).toBe(esc("Your company's subscription has ended. The last day of access is 5 Nov 2026, in 2 days. An Admin of your company can renew it."))
-        expect(said(subscribed({ ...GRACE, daysToLastDay: 0 }))).toBe(esc("Your company's subscription has ended. Today is the last day of access. An Admin of your company can renew it."))
+        expect(said(html)).toBe(esc("Your company's subscription has ended. The last day of access is 5 Nov 2026, in 2 days. Renewing it keeps everyone's access."))
+        expect(said(subscribed({ ...GRACE, daysToLastDay: 0 }))).toBe(esc("Your company's subscription has ended. Today is the last day of access. Renewing it keeps everyone's access."))
     })
 
-    it("tells its Admin that renewing keeps everyone's access, and everyone else who can renew", () => {
-        expect(said(subscribed({ ...GRACE, daysToLastDay: 1 }, "ADMIN"))).toBe(esc("Your company's subscription has ended. The last day of access is tomorrow, 5 Nov 2026. Renewing it keeps everyone's access."))
+    it("tells its Admin that renewing keeps everyone's access", () => {
+        expect(said(subscribed({ ...GRACE, daysToLastDay: 1 }))).toBe(esc("Your company's subscription has ended. The last day of access is tomorrow, 5 Nov 2026. Renewing it keeps everyone's access."))
         state.locale = "ar"
-        expect(said(subscribed({ ...GRACE, daysToLastDay: 1 }, "ADMIN"))).toBe("انتهى اشتراك شركتك. آخر يوم للوصول هو غدًا، ٥ نوفمبر ٢٠٢٦. تجديده يُبقي الوصول متاحًا للجميع.")
-        expect(said(subscribed({ ...GRACE, daysToLastDay: 1 }, "TEAM_LEADER"))).toBe("انتهى اشتراك شركتك. آخر يوم للوصول هو غدًا، ٥ نوفمبر ٢٠٢٦. يمكن لمسؤول شركتك تجديده.")
+        expect(said(subscribed({ ...GRACE, daysToLastDay: 1 }))).toBe("انتهى اشتراك شركتك. آخر يوم للوصول هو غدًا، ٥ نوفمبر ٢٠٢٦. تجديده يُبقي الوصول متاحًا للجميع.")
     })
 
     it("says nothing while a subscription is simply working, or for a locked one, whose page says it", () => {
@@ -129,6 +130,34 @@ describe("A company's grace", () => {
     })
 })
 
+// FIRST_CHANGES_PLAN.md §3, PR 359: as the owner asked.
+describe("Who sees them", () => {
+    it("is the company's Admins alone: a Team Leader, an Employee, or anyone else sees neither", () => {
+        for (const role of ["EMPLOYEE", "TEAM_LEADER", "SUPER_ADMIN", ""]) {
+            for (const subscription of [{ ...TRIAL, daysToLastDay: 5 }, { ...GRACE, daysToLastDay: 2 }]) {
+                expect(subscribed(subscription, role), `${role} ${subscription.state}`).toBe("")
+            }
+        }
+        expect(said(subscribed({ ...TRIAL, daysToLastDay: 5 }, "ADMIN"))).toBeTruthy()
+        expect(said(subscribed({ ...GRACE, daysToLastDay: 2 }, "ADMIN"))).toBeTruthy()
+        state.viewer = null
+        expect(renderToStaticMarkup(h(SubscriptionNote))).toBe("")
+    })
+
+    it("is said so in DESIGN.md, which no longer tells everyone else who can renew", () => {
+        const design = readFileSync("DESIGN.md", "utf8")
+        const note = design.slice(design.indexOf("- **A note above the page,**"), design.indexOf("- **Card:**"))
+        expect(note).toContain("A trial's note and grace's are for the company's Admins alone")
+        expect(note).not.toContain("everyone else, that an Admin of their company can")
+    })
+
+    it("leaves no line for anyone else, in either language", () => {
+        expect("note_grace_others" in en).toBe(false)
+        expect("note_grace_others" in ar).toBe(false)
+        expect(readFileSync("components/SubscriptionNote.tsx", "utf8")).not.toContain("note_grace_others")
+    })
+})
+
 describe("A role being previewed", () => {
     const preview = { roleName: "Accountant", roleBuiltIn: null, companyId: "c1", companyName: "Nile Works" }
 
@@ -142,16 +171,13 @@ describe("A role being previewed", () => {
 })
 
 describe("The words", () => {
-    const keys = ["note_trial_in", "note_trial_tomorrow", "note_trial_today", "note_grace_in", "note_grace_tomorrow", "note_grace_today", "note_grace_admin", "note_grace_others", "preview_banner", "preview_exit"] as const
+    const keys = ["note_trial_in", "note_trial_tomorrow", "note_trial_today", "note_grace_in", "note_grace_tomorrow", "note_grace_today", "note_grace_admin", "preview_banner", "preview_exit"] as const
 
     it("never speak as \"we\", nor in Arabic in the masculine", () => {
         for (const key of keys) {
             expect(en[key], key).not.toMatch(/\b(we|our|us)\b/i)
             expect(ar[key], key).not.toMatch(/(^|\s)(تحقق|امسح|أدخل|اختر|حاول|انتظر|اطلب|اكتب|أكّد|انسخ|اتركه|قم|تواصل|راجع|جدد)(\s|$)|هل أنت متأكد|أنك تريد|هل تريد|نحن/)
         }
-        // The glossary's name for the role that renews (UI_PLAN.md §3.2).
-        expect(en.note_grace_others).toContain(en.role_admin)
-        expect(ar.note_grace_others).toContain(ar.role_admin)
     })
 
     it("leave the banners' behind", () => {

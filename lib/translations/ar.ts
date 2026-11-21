@@ -1412,7 +1412,6 @@ export const ar = {
         note_grace_tomorrow: "انتهى اشتراك شركتك. آخر يوم للوصول هو غدًا، {date}.",
         note_grace_today: "انتهى اشتراك شركتك. اليوم آخر يوم للوصول.",
         note_grace_admin: "تجديده يُبقي الوصول متاحًا للجميع.",
-        note_grace_others: "يمكن لمسؤول شركتك تجديده.",
         access_denied_title: "لا يمكنك فتح هذه الصفحة",
         access_denied_role: "دورك لا يشملها، ويمكن لمسؤول شركتك إضافتها إليه.",
         access_denied_super_admins: "لا يفتحها إلا مسؤول عام.",
