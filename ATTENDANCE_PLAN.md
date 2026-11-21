@@ -1020,6 +1020,14 @@ confirmed late.
   date automatically, and companies that opted out stay opted out.
 - A central change that lands inside a locked payroll period does not re-price
   it (§12).
+- **A company can turn the central calendar off, and back on, from a date**
+  (`FIRST_CHANGES_PLAN.md` §6, #362). While it's off, every central holiday is
+  a normal workday for the company, ones the Super Admin adds later too: not
+  coming in is an absence, work is paid at the workday rate, and a day off
+  over one is a day of leave. Its own holidays still apply, and the ones it
+  works through stay as they are, for when it's turned back on. Each change
+  follows the last, governs no approved payroll month, and is in the audit
+  log. Who can: whoever may change the Attendance settings tab.
 
 ---
 
@@ -1069,6 +1077,9 @@ model CompanyHoliday          // a company's own additions
   companyId, date, name, isPaid
 model CompanyHolidayExclusion // a central day this company does not observe
   companyId, publicHolidayId
+model PublicHolidaysChange    // the central calendar off, or back on, from a date (#362)
+  companyId, effectiveFrom, apply, createdById
+  @@unique([companyId, effectiveFrom])
 
 model PolicyTemplate          // Super Admin maintained
   id, name, description, body Json
