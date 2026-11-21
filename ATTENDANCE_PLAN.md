@@ -454,7 +454,9 @@ exceptions, such as a six-day warehouse. Both are built in Phase 0.
 Structured rule types: grace period; **deduction bands** (e.g. 16–30 min → ¼ day,
 31–60 → ½ day, over 60 → 1 day) **or** per-minute at the daily rate; a monthly
 free allowance; escalation for repeats; a monthly cap. Early leave has the same
-shape.
+shape. A band costs ¼, ½, ¾ or 1 day, or 1½ or 2 days (#358), as the
+product owner asked (`FIRST_CHANGES_PLAN.md` §2); escalation and the cap
+apply on top, as for any band.
 
 **Pricing is done in money, per day, at that day's rate.** Two limits of the
 existing adjustment path make this necessary: `SalaryAdjustment.amount` is a count
@@ -487,7 +489,8 @@ undecided.
 
 ### 6.5 Absence
 
-Deduction per unexcused day as a multiplier (1, 1.5, 2). A day covered by an
+Deduction per unexcused day as a multiplier (1, 1.5, 2, 3), 3 added in #358
+as the product owner asked (`FIRST_CHANGES_PLAN.md` §1). A day covered by an
 approved `DayOffRequest` is leave, never absence.
 
 ### 6.6 Permission hours — إذن (round 3, decision 11)

@@ -5,17 +5,16 @@ import DatePickerSingle from '@/components/DatePickerSingle'
 import { Button, Dialog, DialogActions, Field, Select, TextInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { countOf } from '@/lib/plural'
-import { MISSION_PAYS, PERMISSION_TYPES, type MissionAllowance, type PolicyBody } from '@/lib/attendance/policy'
+import { ABSENCE_MULTIPLIERS, MISSION_PAYS, PERMISSION_TYPES, type MissionAllowance, type PolicyBody } from '@/lib/attendance/policy'
 import { rebaseOnDate, startFromStale, type Based } from '@/lib/attendance/rebase'
 import { firstOfNextMonth } from '@/components/attendance-calendar/hours-form'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
-import { MISSION_AMOUNT_MAX, MISSION_AMOUNT_MIN, bodyFromForm, formFromBody, type FieldError, type FormErrors, type PolicyForm } from './policy-form'
+import { MISSION_AMOUNT_MAX, MISSION_AMOUNT_MIN, bodyFromForm, dayCost, formFromBody, type FieldError, type FormErrors, type PolicyForm } from './policy-form'
 import RuleFields from './RuleFields'
 import FaceFields from './FaceFields'
 import Simulation from './Simulation'
 
 const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6]
-const ABSENCE_MULTIPLIERS = [0, 1, 1.5, 2]
 const RATES = { workday: 'attendance_rate_workday', restDay: 'attendance_rate_restDay', holiday: 'attendance_rate_holiday' } as const
 const KINDS = { LATE_ARRIVAL: 'attendance_permission_type_LATE_ARRIVAL', EARLY_LEAVE: 'attendance_permission_type_EARLY_LEAVE', MIDDAY: 'attendance_permission_type_MIDDAY' } as const
 
@@ -80,7 +79,7 @@ export default function PolicyDialog({ title, start, startOn, defaultFrom, today
     const number = (n: number) => n.toLocaleString(intl, { maximumFractionDigits: 2 })
     const message = (e?: FieldError) => e && t(e.key).replace('{min}', number(e.min ?? 0)).replace('{max}', number(e.max ?? 0))
     const errorOf = (path: string) => message(errors[path])
-    const fraction = (f: number) => f === 1 ? t('attendance_day_1') : f === 0.5 ? t('attendance_day_half') : f === 0.25 ? t('attendance_day_quarter') : f === 0.75 ? t('attendance_day_three_quarters') : number(f)
+    const fraction = (f: number) => dayCost(t, locale, f, number)
 
     /**
      * The policy, or null having said under each field what's wrong and moved
