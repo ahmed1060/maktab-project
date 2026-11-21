@@ -46,15 +46,34 @@ export type GuideStep = { key: string; title: TranslationKey; who: TranslationKe
 const FOLDER = "C:\\Program Files\\Nizmo Agent"
 
 /**
- * The prompt opened once, in the agent's folder, right after it's unzipped,
- * with PowerShell's `.\` next: the first customer's setup found the office
- * PC's prompt was PowerShell, which runs no program from its folder without
- * it (ATTENDANCE_PLAN.md §17.13; PR 355). As the README has it (PR 354).
+ * The program the commands are typed in, picked on the guide's page (PR 356):
+ * Command Prompt runs the agent's commands as they are; PowerShell runs a
+ * program from the folder it's in only with `.\` before it, as the first
+ * customer's setup found (ATTENDANCE_PLAN.md §17.13).
  */
-const PROMPT: GuideLine[] = [
-    { text: "att_guide_folder", code: `cd "${FOLDER}"` },
-    { text: "att_guide_powershell" },
-]
+export type CommandShell = "CMD" | "POWERSHELL"
+export const COMMAND_SHELLS = ["CMD", "POWERSHELL"] as const satisfies readonly CommandShell[]
+/** Each program by its own name, never translated. */
+export const SHELL_NAMES: Record<CommandShell, string> = { CMD: "Command Prompt", POWERSHELL: "PowerShell" }
+
+/** What's typed, written for the program picked: in PowerShell, each line that runs the agent starts with `.\`. */
+export function forShell(code: string, shell: CommandShell): string {
+    if (shell === "CMD") return code
+    return code.split("\n").map(line => (/^nizmo-agent(-service)?\.exe\b/.test(line) ? `.\\${line}` : line)).join("\n")
+}
+
+/** The guide's page (PR 356): the company's people's own, or a company's for the Super Admin. */
+export function guidePath(companyId: string | null): string {
+    return companyId === null ? "/dashboard/settings/terminal-guide" : `/dashboard/companies/${encodeURIComponent(companyId)}/settings/terminal-guide`
+}
+
+/**
+ * The program picked, opened once, in the agent's folder, right after it's
+ * unzipped (PR 355), and how to open it (PR 356). As the README has it (PR 354).
+ */
+function prompt(shell: CommandShell): GuideLine[] {
+    return [{ text: shell === "POWERSHELL" ? "att_guide_folder_ps" : "att_guide_folder", code: `cd "${FOLDER}"` }]
+}
 
 /** The first agent that takes the scans a terminal sends it (§17.12, PR 305). */
 export const PUSH_AGENT_VERSION = "0.4.0"
@@ -208,9 +227,17 @@ const SEND_FROM = "\"sendFrom\": \"YYYY-MM-DD\""
  * Super Admin is told where the agent is built; anyone else, to ask the
  * Super Admin for it.
  */
-export function setupGuide(protocol: TerminalProtocol, { superAdmin, server, pushes = false }: { superAdmin: boolean; server: string; pushes?: boolean }): GuideStep[] {
+export function setupGuide(protocol: TerminalProtocol, { superAdmin, server, pushes = false, shell = "CMD" }: { superAdmin: boolean; server: string; pushes?: boolean; shell?: CommandShell }): GuideStep[] {
     // Only a ZKTeco terminal sends to the agent (§17.12): a Hikvision one that pushes is read.
     const sends = pushes && protocol === "ZKTECO"
+    // Every box written for the program picked (PR 356).
+    return steps(protocol, superAdmin, server, sends, shell).map(step => ({
+        ...step,
+        lines: step.lines.map(l => (l.code === undefined ? l : { ...l, code: forShell(l.code, shell) })),
+    }))
+}
+
+function steps(protocol: TerminalProtocol, superAdmin: boolean, server: string, sends: boolean, shell: CommandShell): GuideStep[] {
     return [
         { key: "office", title: "att_guide_office_title", who: "att_guide_office_who", lines: sends ? OFFICE_PUSH : OFFICE[protocol] },
         {
@@ -219,7 +246,7 @@ export function setupGuide(protocol: TerminalProtocol, { superAdmin, server, pus
                 { text: superAdmin ? "att_guide_download_sa" : "att_guide_download_other" },
                 ...installed(protocol, sends),
                 { text: "att_guide_unzip", code: FOLDER },
-                ...PROMPT,
+                ...prompt(shell),
                 ...(sends ? listening(server) : reading(protocol, server)),
                 { text: "att_guide_unknown_publisher" },
             ],

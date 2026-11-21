@@ -200,18 +200,26 @@ describe("the fingerprint terminals", () => {
         expect(route).toContain("brandId: z.string().min(1).max(64).optional()")
     })
 
-    // PR 282 (ATTENDANCE_PLAN.md §17.7; DESIGN.md §5.2): How to set up a fingerprint terminal.
-    it("have a round \"i\" right after the title, named for the guide it opens, which stays shut until it's pressed", async () => {
+    // PR 282 (ATTENDANCE_PLAN.md §17.7; DESIGN.md §5.2): How to set up a fingerprint terminal,
+    // on a page of its own since PR 356.
+    it("have a round \"i\" right after the title, named for the guide, a link to the guide's page", async () => {
         const html = await render("AttendanceTerminalsPanel", terminals())
-        expect(html).toContain(`<div class="ui-card-head"><div class="ui-card-title-group"><h2 class="ui-card-title">${en.att_term_title}</h2><button type="button" class="ui-btn ui-btn-quiet ui-btn-sm ui-guide-button" aria-label="${en.att_guide_button}" title="${en.att_guide_button}" aria-haspopup="dialog"><svg`)
+        const at = html.indexOf(`<h2 class="ui-card-title">${en.att_term_title}</h2><a `)
+        expect(at).toBeGreaterThan(0)
+        const link = html.slice(at).match(/<a [^>]*>/)![0]
+        expect(link).toContain(`class="ui-btn ui-btn-quiet ui-btn-sm ui-guide-button"`)
+        expect(link).toContain(`aria-label="${en.att_guide_button}"`)
+        expect(link).toContain(`title="${en.att_guide_button}"`)
+        // The company's people's own page; it opens nothing over this one.
+        expect(link).toContain(`href="/dashboard/settings/terminal-guide"`)
+        expect(link).not.toContain("aria-haspopup")
         expect(html).not.toContain(en.att_guide_model)
         const arabic = await render("AttendanceTerminalsPanel", terminals(), { locale: "ar" })
-        expect(arabic).toContain(`aria-label="${ar.att_guide_button}" title="${ar.att_guide_button}"`)
-        // The steps follow the brands the list offers, and whether a Super Admin reads them.
+        expect(arabic).toContain(`aria-label="${ar.att_guide_button}"`)
         const source = readFileSync("components/AttendanceTerminalsPanel.tsx", "utf8")
-        // Who is a Super Admin is worked out once, for the guide and for a terminal's first contacts (PR 294).
+        // Who is a Super Admin is worked out once, for the guide's address and for a terminal's first contacts (PR 294).
         expect(source).toContain("const superAdmin = session?.user?.role === 'SUPER_ADMIN'")
-        expect(source).toContain("<TerminalSetupGuide brands={devicesBody ? brands : null} loadFailed={!!devicesError} superAdmin={superAdmin}")
+        expect(source).toContain("<GuideLink label={t('att_guide_button')} href={guidePath(superAdmin ? companyId : null)} />")
     })
 
     it("are a card listing the agents and the terminals as rows, each with its state as a badge", async () => {

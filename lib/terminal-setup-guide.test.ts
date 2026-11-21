@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
-import { createElement as h } from "react"
+import { createElement as h, Fragment } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { readFileSync } from "node:fs"
 import { ar } from "./translations/ar"
@@ -114,7 +114,7 @@ describe("the steps, by the model's protocol", () => {
 
     it("gives Hikvision's agent.json its protocol, address, the agent's user and password, and probe the user, never the password", () => {
         const steps = setupGuide("HIKVISION", { superAdmin: false, server: SERVER })
-        expect(keysOf(steps[1].lines)).toEqual(["att_guide_download_other", "att_guide_hik_version", "att_guide_hik_installed", "att_guide_unzip", "att_guide_folder", "att_guide_powershell", "att_guide_hik_settings", "att_guide_hik_https", "att_guide_hik_probe", "att_guide_unknown_publisher"])
+        expect(keysOf(steps[1].lines)).toEqual(["att_guide_download_other", "att_guide_hik_version", "att_guide_hik_installed", "att_guide_unzip", "att_guide_folder", "att_guide_hik_settings", "att_guide_hik_https", "att_guide_hik_probe", "att_guide_unknown_publisher"])
         const settings = steps[1].lines.find(l => l.text === "att_guide_hik_settings")!.code!
         expect(JSON.parse(settings)).toEqual({
             server: SERVER, devices: [{ protocol: "hikvision", host: "TERMINAL-ADDRESS", user: "AGENT-USER", password: "AGENT-PASSWORD", name: "Front door" }], pollSeconds: 60,
@@ -200,7 +200,7 @@ describe("a terminal that sends its scans to the agent (PR 306)", () => {
     })
 
     it("installs the agent that listens, names the terminal by its address with push, lets it through the firewall, and sets the terminal to send, with no probe", () => {
-        expect(keysOf(push(true)[1].lines)).toEqual(["att_guide_download_sa", "att_guide_push_version", "att_guide_push_installed", "att_guide_unzip", "att_guide_folder", "att_guide_powershell", "att_guide_push_settings", "att_guide_push_firewall", "att_guide_push_profile", "att_guide_push_terminal", "att_guide_unknown_publisher"])
+        expect(keysOf(push(true)[1].lines)).toEqual(["att_guide_download_sa", "att_guide_push_version", "att_guide_push_installed", "att_guide_unzip", "att_guide_folder", "att_guide_push_settings", "att_guide_push_firewall", "att_guide_push_profile", "att_guide_push_terminal", "att_guide_unknown_publisher"])
         expect(keysOf(push()[1].lines)[0]).toBe("att_guide_download_other")
         // Its comm key and probe are for a terminal the agent reads.
         for (const key of ["att_guide_settings", "att_guide_password", "att_guide_probe", "att_guide_probe_key", "att_guide_auth", "att_guide_unreachable", "att_guide_office_address", "att_guide_office_delete", "att_guide_office_connected"]) {
@@ -298,9 +298,11 @@ describe("a terminal that sends its scans to the agent (PR 306)", () => {
 describe("its words", () => {
     const used = () => {
         const keys = new Set<string>(["att_guide_button", "att_guide_model", "att_guide_model_pick", "att_guide_pick_first", "att_guide_direct_too", "att_guide_no_models", "att_guide_copy", "att_guide_copied", "att_guide_model_notes", "att_guide_model_notes_other",
-            "att_guide_way", "att_guide_way_READ", "att_guide_way_PUSH", "att_guide_way_READ_hint", "att_guide_way_PUSH_hint"])
+            "att_guide_way", "att_guide_way_READ", "att_guide_way_PUSH", "att_guide_way_READ_hint", "att_guide_way_PUSH_hint",
+            // The guide's page (PR 356).
+            "att_guide_subtitle", "att_guide_shell", "att_guide_shell_CMD_hint", "att_guide_shell_POWERSHELL_hint", "att_guide_printed"])
         for (const [superAdmin, protocol, pushes] of [[true, "ZKTECO", false], [false, "ZKTECO", false], [true, "ZKTECO", true], [false, "ZKTECO", true], [true, "HIKVISION", false], [false, "HIKVISION", false]] as const) {
-            for (const step of setupGuide(protocol, { superAdmin, server: SERVER, pushes })) {
+            for (const step of [...setupGuide(protocol, { superAdmin, server: SERVER, pushes }), ...setupGuide(protocol, { superAdmin, server: SERVER, pushes, shell: "POWERSHELL" })]) {
                 keys.add(step.title)
                 keys.add(step.who)
                 for (const line of step.lines) keys.add(line.text)
@@ -357,11 +359,13 @@ async function guide(props: { brand: Brand; superAdmin?: boolean; pushes?: boole
     return renderToStaticMarkup(h(SetupGuideSteps, { superAdmin: false, server: SERVER, ...props }))
 }
 
-/** The model's guide as the dialog shows it once the model is picked: how its scans reach the agent, then its steps (PR 306). */
+/** The model's guide once it's picked: how its scans reach the agent, the agent reading them to start with, then its steps (PR 306; on the guide's page since PR 356). */
 async function guideFor(props: { brand: Brand; directAllowed?: boolean }, locale: "en" | "ar" = "en") {
     state.locale = locale
-    const { SetupGuideFor } = await import("@/components/TerminalSetupGuide")
-    return renderToStaticMarkup(h(SetupGuideFor, { superAdmin: false, server: SERVER, ...props }))
+    const { SetupGuideSteps, WayChoice } = await import("@/components/TerminalSetupGuide")
+    return renderToStaticMarkup(h(Fragment, null,
+        h(WayChoice, { brand: props.brand, way: "READ", onChange: () => {} }),
+        h(SetupGuideSteps, { superAdmin: false, server: SERVER, ...props })))
 }
 
 describe("the guide's steps on screen", () => {
@@ -478,56 +482,10 @@ describe("how a ZKTeco terminal's scans reach the agent, on screen (PR 306)", ()
     })
 })
 
-describe("the guide's dialog", () => {
-    async function dialog(brands: Brand[] | null, locale: "en" | "ar" = "en", loadFailed = false) {
-        state.locale = locale
-        const { default: TerminalSetupGuide } = await import("@/components/TerminalSetupGuide")
-        vi.stubGlobal("document", { body: {} })
-        try {
-            return renderToStaticMarkup(h(TerminalSetupGuide, { brands, loadFailed, superAdmin: false, server: SERVER, onClose: () => {} }))
-        } finally {
-            vi.unstubAllGlobals()
-        }
-    }
-
-    it("is named for the guide, asks for the model at the top, and says to pick one until it's picked", async () => {
-        const html = await dialog([CONVOY, HIK, ZK])
-        expect(html).toContain(`<h2 id="`)
-        expect(html).toContain(`class="ui-dialog-title">${en.att_guide_button}</h2>`)
-        expect(html).toMatch(new RegExp(`<div class="ui-guide"><div class="ui-field"><label for="[^"]+" class="ui-label">${en.att_guide_model}</label>`))
-        expect(html).toContain(`<option value="" selected="">${en.att_guide_model_pick}</option><option value="b1">Convoy</option><option value="b2">Hikvision</option><option value="b3">ZKTeco</option>`)
-        expect(html).toContain(`<p class="ui-card-note">${esc(en.att_guide_pick_first)}</p>`)
-        expect(html).not.toContain("ui-guide-steps")
-        // How its scans reach the agent is asked once the model is picked (PR 306).
-        expect(html).not.toContain("ui-choices")
-    })
-
-    it("changes nothing: Close is its only button", async () => {
-        const html = await dialog([CONVOY])
-        const actions = html.slice(html.indexOf(`<div class="ui-dialog-actions">`))
-        expect(actions.match(/<button/g)).toHaveLength(1)
-        expect(actions).toContain(`>${en.close}</button>`)
-    })
-
-    // Found in the browser: opened before the brands had loaded, it said there were none.
-    it("shows the picker as loading until the brands have loaded, and says if they didn't", async () => {
-        const loading = await dialog(null)
-        expect(loading).toMatch(new RegExp(`<select[^>]*disabled=""[^>]*><option value="" selected="">${en.loading}</option></select>`))
-        expect(loading).not.toContain(esc(en.att_guide_no_models))
-        const failed = await dialog(null, "en", true)
-        expect(failed).toContain(`<p class="ui-card-note" role="status">${esc(en.att_term_load_failed)}</p>`)
-        expect(failed).not.toContain("<select")
-    })
-
-    it("says when there's no model to pick yet", async () => {
-        const html = await dialog([])
-        expect(html).toContain(esc(en.att_guide_no_models))
-        expect(html).not.toContain("<select")
-    })
-
-    it("is wide enough for a command on one line, and its button is round, 30px, 44px on phones", () => {
+// The guide's dialog became a page of its own in PR 356 (lib/terminal-guide-page.test.ts).
+describe("the guide's button", () => {
+    it("is round, 30px, 44px on phones, and the guide's own styles are logical and on tokens", () => {
         const css = readFileSync("components/ui/ui.css", "utf8")
-        expect(css).toMatch(/\.ui-dialog:has\(\.ui-guide\) \{\s*width: min\(100%, 640px\);\s*\}/)
         expect(css).toMatch(/\.ui-guide-button \{[^}]*width: 30px;[^}]*border-radius: var\(--radius-pill\);[^}]*\}/)
         expect(css).toMatch(/@media \(max-width: 767px\) \{[^@]*\.ui-guide-button \{\s*width: 44px;\s*\}/)
         const guideCss = css.slice(css.indexOf("/* A guide (DESIGN.md §5.5"), css.indexOf("/* End of a guide */"))
@@ -549,15 +507,14 @@ describe("the guide, as the first customer's setup found it", () => {
         "Hikvision's": setupGuide("HIKVISION", { superAdmin: false, server: SERVER }),
     }
 
-    it("opens the prompt once, in the agent's folder, right after unzipping it, with PowerShell's .\\ next", () => {
+    it("opens the prompt once, in the agent's folder, right after unzipping it, before any command", () => {
         for (const [way, steps] of Object.entries(ways)) {
             const lines = steps[1].lines
             const at = lines.findIndex(l => l.text === "att_guide_unzip")
             expect(lines[at + 1], way).toEqual({ text: "att_guide_folder", code: FOLDER_LINE })
-            expect(lines[at + 2], way).toEqual({ text: "att_guide_powershell" })
             // Before any command after the folder is unzipped.
-            const firstCommand = lines.findIndex((l, i) => i > at + 1 && l.code !== undefined && /nizmo-agent|netsh/.test(l.code))
-            expect(firstCommand, way).toBeGreaterThan(at + 2)
+            const firstCommand = lines.findIndex((l, i) => i > at && l.code !== undefined && /nizmo-agent|netsh/.test(l.code))
+            expect(firstCommand, way).toBeGreaterThan(at + 1)
             // And only once, here.
             expect(steps.flatMap(st => st.lines).filter(l => l.text === "att_guide_folder"), way).toHaveLength(1)
         }
@@ -565,11 +522,9 @@ describe("the guide, as the first customer's setup found it", () => {
         expect(readFileSync("agent/README.md", "utf8")).toContain(FOLDER_LINE)
     })
 
-    it("says how to open the prompt, and that PowerShell needs .\\ before each command, in both languages", () => {
+    it("says how to open the prompt, in both languages, with the lines after it not opening another", () => {
         for (const w of [en, ar]) {
             for (const typed of ["`Command Prompt`", "`cmd`"]) expect(w.att_guide_folder, typed).toContain(typed)
-            for (const typed of ["`PowerShell`", "`.\\`", "`.\\nizmo-agent.exe enrol CODE`"]) expect(w.att_guide_powershell, typed).toContain(typed)
-            // The lines after it don't open another.
             for (const key of ["att_guide_probe", "att_guide_hik_probe", "att_guide_push_firewall"] as const) expect(w[key], key).not.toContain("Command Prompt")
         }
         expect(en.att_guide_folder).toContain("Run as administrator")

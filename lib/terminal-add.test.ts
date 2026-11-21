@@ -236,7 +236,8 @@ describe("on Fingerprint terminals", () => {
             expect(steps("en", { brand, directAllowed: true }).startsWith(`<p class="ui-card-note">${esc(en.att_guide_direct_too)}</p><ol class="ui-guide-steps"`)).toBe(true)
             expect(steps("ar", { brand, directAllowed: true }).startsWith(`<p class="ui-card-note">${esc(ar.att_guide_direct_too)}</p><ol class="ui-guide-steps"`)).toBe(true)
         }
-        expect(PANEL).toContain("directAllowed={directAllowed} server={window.location.origin}")
+        // The guide's page hands it what the list says of the company (PR 356).
+        expect(readFileSync("components/TerminalGuidePage.tsx", "utf8")).toContain("directAllowed={loaded?.directAllowed ?? false}")
     })
 })
 

@@ -41,6 +41,8 @@ export const ROUTE_TITLE_KEYS: ReadonlyArray<readonly [string, string]> = [
     ["/dashboard/profile-requests", "profile_requests"],
     ["/dashboard/usernames", "view_usernames"],
     ["/dashboard/maintenance", "maintenance_mode_header"],
+    // How to set up a fingerprint terminal (PR 356).
+    ["/dashboard/settings/terminal-guide", "att_guide_button"],
     ["/dashboard", "dashboard"],
 ] as const
 

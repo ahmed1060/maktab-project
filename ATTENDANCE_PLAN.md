@@ -2636,7 +2636,34 @@ model's protocol:
 What to check at the first customer's setup is in §17.13, not in the
 guide. What that setup found in the guide, opening the prompt in the
 agent's folder, PowerShell's `.\`, and the comm key under PC Connection,
-is fixed in #355 (§17.13). For the guide, the brands the terminals list offers
+is fixed in #355 (§17.13).
+
+**The guide on a page of its own (Decided, 2026-11-21).** After the first
+customer's setup, walked through click by click (§17.13), the owner asked
+for the guide to be as detailed, with the choice of typing its commands
+in Command Prompt or PowerShell. Drawn in the Fingerprint terminal setup
+guide canvas and approved by the owner the same day (`DESIGN.md` §5.5, A
+guide's page). Built in two PRs:
+
+1. **#356, the page:** the round "i" on Fingerprint terminals is a link
+   to the guide's page, in the same tab: `/dashboard/settings/terminal-guide`
+   for the company's people, `/dashboard/companies/<id>/settings/terminal-guide`
+   for the Super Admin. Its back link returns to the Attendance tab. It
+   holds what the dialog held, the model picked, how its scans reach the
+   agent and the steps, with a choice of Command Prompt or PowerShell
+   that writes every command for the one picked (in PowerShell, each of
+   the agent's own commands starts with `.\`), kept in that browser, and
+   Print, which prints the guide alone. For whoever may set terminals up,
+   as the card is.
+2. **#357, the detail:** under the lines that need it, Show me how opens
+   the clicks, as the setup walked them: the terminal's menu, address,
+   comm key and clock; the office's own PC software; making the agent's
+   folder and copying its files; `agent.json` in Notepad; opening the
+   prompt for the program picked; Add an agent; the brand; and Employee
+   numbers. With them, the lines the mockup adds: checking the PC
+   reaches the terminal (`ping`), the first round by hand (`check`) and
+   what its last line says, what `probe` shows, and reading the agent's
+   log. Printed, every Show me how is open. In both languages. For the guide, the brands the terminals list offers
 (`GET /api/attendance/devices`) carry their notes.
 
 **Built in #292: Add a terminal, and its address shown once** (part 5's
