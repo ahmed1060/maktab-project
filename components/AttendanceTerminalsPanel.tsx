@@ -10,9 +10,10 @@ import { useToast } from '@/context/ToastContext'
 import { apiErrorText } from '@/lib/api-error-text'
 import { useNow } from '@/lib/useNow'
 import type { TranslationKey } from '@/lib/translations'
-import { Button, Card, Dialog, DialogActions, EmptyState, Field, GuideButton, Row, RowMenu, Select, StatusBadge, TextInput, type MenuItem, type StatusTone } from '@/components/ui'
+import { Button, Card, Dialog, DialogActions, EmptyState, Field, GuideLink, Row, RowMenu, Select, StatusBadge, TextInput, type MenuItem, type StatusTone } from '@/components/ui'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
-import TerminalSetupGuide, { type GuideBrand } from '@/components/TerminalSetupGuide'
+import type { GuideBrand } from '@/components/TerminalSetupGuide'
+import { guidePath } from '@/lib/attendance/setup-guide'
 import { ConnectionDialog, OfficeAddressDialog, TerminalAddDialog, TerminalAddressDialog, TerminalSettingsDialog } from '@/components/TerminalAddDialog'
 import { TerminalContactsDialog } from '@/components/TerminalContactsDialog'
 import { agentReads, hasAddress, hasOfficeAddress, keepsFirstContacts, otherConnection, refusalWords } from '@/lib/attendance/terminal-connections'
@@ -36,7 +37,8 @@ import { utcOffsetLabel } from '@/lib/attendance/terminal-health'
  * everything in it (§17.10, PR 277): the server answers 404 to anyone else.
  *
  * A round "i" beside its title opens How to set up a fingerprint terminal
- * (§17.7, PR 282), its steps by the model picked from the brands offered.
+ * (§17.7, PR 282), its steps by the model picked from the brands offered, on
+ * a page of its own since PR 356.
  *
  * A terminal is also added by hand (§17.7, PR 292), with how it connects:
  * through the agent, where it waits for an agent to report it, or straight
@@ -95,7 +97,7 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
     const q = `?companyId=${encodeURIComponent(companyId)}`
     // Refreshed as heartbeats come in: health is the point of the panel.
     const { data: agentsBody, error: agentsError, isValidating, mutate: reloadAgents } = useSWR(`/api/attendance/agents${q}`, fetcher, { refreshInterval: 60_000 })
-    const { data: devicesBody, error: devicesError, mutate: reloadDevices } = useSWR(agentsBody ? `/api/attendance/devices${q}` : null, fetcher, { refreshInterval: 60_000 })
+    const { data: devicesBody, mutate: reloadDevices } = useSWR(agentsBody ? `/api/attendance/devices${q}` : null, fetcher, { refreshInterval: 60_000 })
     const [adding, setAdding] = useState(false)
     const [addingDevice, setAddingDevice] = useState(false)
     const [shownCode, setShownCode] = useState<Shown | null>(null)
@@ -111,7 +113,6 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
     const [revoking, setRevoking] = useState<Agent | null>(null)
     const [editing, setEditing] = useState<Device | null>(null)
     const [retiring, setRetiring] = useState<Device | null>(null)
-    const [guiding, setGuiding] = useState(false)
     const [busy, setBusy] = useState(false)
     // One change at a time: each new code replaces the last, so two at once
     // could leave a code on screen that no longer works (Codex on PR 164).
@@ -275,7 +276,7 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
     return (
         <Card
             title={t('att_term_title')}
-            titleAside={<GuideButton label={t('att_guide_button')} onClick={() => setGuiding(true)} />}
+            titleAside={<GuideLink label={t('att_guide_button')} href={guidePath(superAdmin ? companyId : null)} />}
             actions={<>
                 {/* It asks for a brand, so it waits for the terminals list, which offers them. */}
                 <Button icon={PlusIcon} disabled={busy || !devicesBody} onClick={() => setAddingDevice(true)}>{t('att_term_add_device')}</Button>
@@ -391,7 +392,6 @@ export default function AttendanceTerminalsPanel({ companyId }: { companyId: str
             )}
             {contactsOf && <TerminalContactsDialog deviceId={contactsOf.id} name={contactsOf.name} protocol={contactsOf.protocol} onClose={() => setContactsOf(null)} />}
             {/* The agent sends to this Nizmo, so its settings name the address it's opened on. */}
-            {guiding && <TerminalSetupGuide brands={devicesBody ? brands : null} loadFailed={!!devicesError} superAdmin={superAdmin} directAllowed={directAllowed} server={window.location.origin} onClose={() => setGuiding(false)} />}
             {editing && (
                 <TerminalDialog device={editing} brands={brands} busy={busy} onClose={() => setEditing(null)} onSubmit={async change => {
                     await send(`/api/attendance/devices/${editing.id}`, { method: 'PATCH', body: JSON.stringify(change) }, 'att_term_saved', () => setEditing(null))

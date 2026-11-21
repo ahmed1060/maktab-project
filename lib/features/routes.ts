@@ -147,6 +147,9 @@ export const PAGE_MODULE_ROUTES: ReadonlyArray<readonly [string, Module]> = [
     // A company's client message's editor (CLIENT_PORTAL_PLAN.md §7.1, PR 349),
     // opened from the Client portal tab of its own settings.
     ['/dashboard/settings/client-messages', 'TAX_POSITION'],
+    // How to set up a fingerprint terminal (ATTENDANCE_PLAN.md §17.7, PR 356),
+    // opened from Fingerprint terminals on the Attendance tab.
+    ['/dashboard/settings/terminal-guide', 'ATTENDANCE'],
 ] as const
 
 const PAGES_BY_SPECIFICITY = [...PAGE_MODULE_ROUTES].sort((a, b) => b[0].length - a[0].length)

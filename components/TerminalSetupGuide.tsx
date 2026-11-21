@@ -3,63 +3,28 @@
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { CheckIcon, CopyIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
-import { inlineCode, setupGuide, type GuideLine, type TerminalProtocol } from '@/lib/attendance/setup-guide'
+import { forShell, inlineCode, setupGuide, type CommandShell, type GuideLine, type TerminalProtocol } from '@/lib/attendance/setup-guide'
 import { mayConnect } from '@/lib/attendance/terminal-connections'
-import { Button, Choice, Dialog, Field, Select } from '@/components/ui'
+import { Button, Choice } from '@/components/ui'
 
 /**
- * How to set up a fingerprint terminal (ATTENDANCE_PLAN.md §17.7, PR 282),
- * opened by the round "i" beside Fingerprint terminals' title (DESIGN.md
- * §5.2). A guide (§5.5, Dialog): up to 640px wide, changing nothing, Close
- * its only button. The model is picked at the top, from the Super Admin's
- * brands not retired, and the steps follow its protocol, with the model's
- * notes where its address is found.
+ * How to set up a fingerprint terminal (ATTENDANCE_PLAN.md §17.7, PR 282):
+ * its pieces, shared by the guide's page (components/TerminalGuidePage.tsx,
+ * PR 356) and Add a terminal. The steps follow the protocol of the model
+ * picked from the Super Admin's brands not retired, with the model's notes
+ * where its address is found, every command written for the program picked
+ * (Command Prompt or PowerShell, PR 356).
  *
  * A model Nizmo doesn't read through the agent has no steps here. Where the
  * company may connect it straight to Nizmo (§17.8), the guide points to Add
  * a terminal, which shows what to set on it (PR 292).
  *
- * For a ZKTeco model, how its scans reach the agent is asked under the
- * model: the agent reads them, or the terminal sends them to the agent
- * (§17.12, PR 306).
+ * For a ZKTeco model, how its scans reach the agent is asked: the agent
+ * reads them, or the terminal sends them to the agent (§17.12, PR 306).
  */
 
 /** A brand the terminals list offers, with the Super Admin's notes on it. */
 export type GuideBrand = { id: string; name: string; protocol: TerminalProtocol; notesEn: string | null; notesAr: string | null }
-
-export default function TerminalSetupGuide({ brands, loadFailed = false, superAdmin, directAllowed = false, server, onClose }: {
-    /** null until the terminals list, which offers them, has loaded. */
-    brands: GuideBrand[] | null
-    loadFailed?: boolean
-    superAdmin: boolean
-    /** Whether the company may connect terminals straight to Nizmo (§17.8). */
-    directAllowed?: boolean
-    /** This Nizmo's address, which the agent sends to. */
-    server: string
-    onClose: () => void
-}) {
-    const { t } = useLanguage()
-    const [brandId, setBrandId] = useState('')
-    const brand = brands?.find(b => b.id === brandId) ?? null
-    // Opened before the list has loaded, the picker waits for it (found in the browser, PR 282).
-    const options = brands === null
-        ? [{ value: '', label: t('loading') }]
-        : [{ value: '', label: t('att_guide_model_pick') }, ...brands.map(b => ({ value: b.id, label: b.name }))]
-    return (
-        <Dialog open onClose={onClose} title={t('att_guide_button')} actions={<Button variant="primary" onClick={onClose}>{t('close')}</Button>}>
-            <div className="ui-guide">
-                {brands === null && loadFailed ? <p className="ui-card-note" role="status">{t('att_term_load_failed')}</p>
-                : brands?.length === 0 ? <p className="ui-card-note">{t('att_guide_no_models')}</p> : <>
-                    <Field label={t('att_guide_model')}>{p => (
-                        <Select {...p} name="model" value={brandId} disabled={brands === null} onChange={e => setBrandId(e.target.value)} options={options} />
-                    )}</Field>
-                    {/* Keyed by the model: picking another starts again from the agent reading its scans (PR 306). */}
-                    {brand ? <SetupGuideFor key={brand.id} brand={brand} superAdmin={superAdmin} directAllowed={directAllowed} server={server} /> : <p className="ui-card-note">{t('att_guide_pick_first')}</p>}
-                </>}
-            </div>
-        </Dialog>
-    )
-}
 
 /** A name kept as it's printed, never machine-translated, where a sentence has its slot. */
 function named(text: string, slot: string, name: string): ReactNode {
@@ -68,10 +33,14 @@ function named(text: string, slot: string, name: string): ReactNode {
     return <>{text.slice(0, at)}<bdi translate="no">{name}</bdi>{text.slice(at + slot.length)}</>
 }
 
-/** A sentence, what's typed in it left to right and untranslated, and the model's name in its slot. */
-export function Sentence({ text, brand }: { text: string; brand?: string }) {
+/**
+ * A sentence, what's typed in it left to right and untranslated, and the
+ * model's name in its slot. A command named in it is written for the program
+ * picked, as the boxes are (PR 356).
+ */
+export function Sentence({ text, brand, shell = 'CMD' }: { text: string; brand?: string; shell?: CommandShell }) {
     return <>{inlineCode(text).map((part, i) => 'code' in part
-        ? <code key={i} className="ui-guide-inline" dir="ltr" translate="no">{part.code}</code>
+        ? <code key={i} className="ui-guide-inline" dir="ltr" translate="no">{forShell(part.code, shell)}</code>
         : <Fragment key={i}>{brand === undefined ? part.text : named(part.text, '{brand}', brand)}</Fragment>)}</>
 }
 
@@ -86,26 +55,21 @@ export function ModelNotes({ brand }: { brand: Pick<GuideBrand, 'name' | 'notesE
 }
 
 /** How a ZKTeco terminal's scans reach the agent (§17.12): read by it, as most are, or sent to it. */
-const WAYS = ['READ', 'PUSH'] as const
-type Way = typeof WAYS[number]
+export const WAYS = ['READ', 'PUSH'] as const
+export type Way = typeof WAYS[number]
 
 /**
- * The guide for the model picked: for a ZKTeco model, how its scans reach
- * the agent, the agent reading them picked to start with, and a line on
- * which terminals the way picked is for (DESIGN.md §5.5, Dialog; PR 306);
- * then its steps. A Hikvision model is always read (§17.12), so it isn't
- * asked.
+ * For a ZKTeco model, how its scans reach the agent, the agent reading them
+ * picked to start with, and a line on which terminals the way picked is for
+ * (DESIGN.md §5.5, A guide's page; PR 306). A Hikvision model is always read
+ * (§17.12), so it isn't asked.
  */
-export function SetupGuideFor({ brand, superAdmin, directAllowed = false, server }: { brand: GuideBrand; superAdmin: boolean; directAllowed?: boolean; server: string }) {
+export function WayChoice({ brand, way, onChange }: { brand: GuideBrand; way: Way; onChange: (way: Way) => void }) {
     const { t } = useLanguage()
-    const [way, setWay] = useState<Way>('READ')
-    const asked = brand.protocol === 'ZKTECO'
+    if (brand.protocol !== 'ZKTECO') return null
     return (<>
-        {asked && <>
-            <Choice legend={t('att_guide_way')} name="way" value={way} onChange={setWay} options={WAYS.map(w => ({ value: w, label: t(`att_guide_way_${w}`) }))} />
-            <p className="ui-hint"><Sentence text={t(`att_guide_way_${way}_hint`)} /></p>
-        </>}
-        <SetupGuideSteps brand={brand} superAdmin={superAdmin} directAllowed={directAllowed} server={server} pushes={asked && way === 'PUSH'} />
+        <Choice legend={t('att_guide_way')} name="way" value={way} onChange={onChange} options={WAYS.map(w => ({ value: w, label: t(`att_guide_way_${w}`) }))} />
+        <p className="ui-hint"><Sentence text={t(`att_guide_way_${way}_hint`)} /></p>
     </>)
 }
 
@@ -116,9 +80,9 @@ export function SetupGuideFor({ brand, superAdmin, directAllowed = false, server
  * it straight to Nizmo, that it can be added that way too. One that sends
  * only plain HTTP can't be: Nizmo takes HTTPS alone (§17.1).
  */
-export function SetupGuideSteps({ brand, superAdmin, directAllowed = false, server, pushes = false }: { brand: GuideBrand; superAdmin: boolean; directAllowed?: boolean; server: string; pushes?: boolean }) {
+export function SetupGuideSteps({ brand, superAdmin, directAllowed = false, server, pushes = false, shell = 'CMD' }: { brand: GuideBrand; superAdmin: boolean; directAllowed?: boolean; server: string; pushes?: boolean; shell?: CommandShell }) {
     const { t, locale } = useLanguage()
-    const steps = setupGuide(brand.protocol, { superAdmin, server, pushes })
+    const steps = setupGuide(brand.protocol, { superAdmin, server, pushes, shell })
     const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'
     const notes = (brand.notesEn || brand.notesAr) ? <ModelNotes brand={brand} /> : null
 
@@ -126,7 +90,7 @@ export function SetupGuideSteps({ brand, superAdmin, directAllowed = false, serv
         if (l.notes) return notes && <li key={l.text}><p className="ui-guide-notes">{notes}</p></li>
         return (
             <li key={l.text}>
-                <p><Sentence text={t(l.text)} brand={l.brand ? brand.name : undefined} /></p>
+                <p><Sentence text={t(l.text)} brand={l.brand ? brand.name : undefined} shell={shell} /></p>
                 {/* A box that scrolls sideways takes focus, to be scrolled from the keyboard. */}
                 {l.code && <CodeBox code={l.code} scrolls={l.wide} />}
             </li>

@@ -38,14 +38,16 @@ export function Button({ variant = 'secondary', size = 'md', icon, busy = false,
 /**
  * A guide's button (DESIGN.md §5.2, PR 282): a round quiet "i" right after a
  * card's title, where what the card is for is done mostly away from Nizmo.
- * Named for the guide it opens, in its tooltip too; it opens the guide and
- * does nothing else.
+ * Named for the guide it opens, in its tooltip too. A guide long enough for
+ * a page of its own, such as How to set up a fingerprint terminal, opens on
+ * it, in the same tab (§5.5, A guide's page; PR 356): a link, so it can be
+ * opened in a new tab too.
  */
-export function GuideButton({ label, onClick }: { label: string; onClick: () => void }) {
+export function GuideLink({ label, href }: { label: string; href: string }) {
     return (
-        <button type="button" className="ui-btn ui-btn-quiet ui-btn-sm ui-guide-button" aria-label={label} title={label} aria-haspopup="dialog" onClick={onClick}>
+        <Link href={href} className="ui-btn ui-btn-quiet ui-btn-sm ui-guide-button" aria-label={label} title={label} prefetch={false}>
             <Icon icon={InfoIcon} size={18} />
-        </button>
+        </Link>
     )
 }
 

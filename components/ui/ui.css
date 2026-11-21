@@ -1433,7 +1433,8 @@
 }
 /* The model's notes, the Super Admin's, kept with finding its address, and
    their lines as they were written. */
-.ui-dialog-body .ui-guide-notes {
+.ui-dialog-body .ui-guide-notes,
+.ui-guide-page .ui-guide-notes {
   padding: var(--space-2) var(--space-3);
   border-inline-start: 3px solid var(--brand);
   border-radius: var(--radius-field);
@@ -2333,6 +2334,60 @@ a.ui-file-open:focus-visible,
     background: var(--paper);
   }
 }
+
+/* A guide's page (DESIGN.md §5.5, A guide's page; ATTENDANCE_PLAN.md §17.7,
+   PR 356): what the steps depend on in one panel, then each step in a panel
+   of its own. Only the steps print, black on white, under a line naming
+   what was picked, with no buttons. */
+.ui-guide-picks {
+  gap: var(--space-4);
+}
+.ui-guide-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.ui-guide-page .ui-guide-steps {
+  gap: var(--space-4);
+}
+.ui-guide-page .ui-guide-step {
+  padding: var(--card-pad-block) var(--card-pad-inline);
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--elev-1);
+}
+.ui-guide-print-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+  font-weight: 600;
+}
+@media print {
+  .ui-guide-page .ui-doc-print-only {
+    padding-block-end: var(--space-2);
+    border-block-end: 2px solid var(--ink);
+  }
+  .ui-guide-page .ui-guide-step {
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: none;
+  }
+  .ui-guide-page .ui-guide-number {
+    background: none;
+    border: 1px solid var(--ink);
+  }
+  /* A line and its box stay together on paper. */
+  .ui-guide-page .ui-guide-lines > li {
+    break-inside: avoid;
+  }
+  .ui-guide-page .ui-guide-code .ui-btn {
+    display: none;
+  }
+}
+/* End of a guide's page */
 
 /* ── A document's table (§5.5) ── */
 /* A document's lines with several amounts each, such as a client statement's
