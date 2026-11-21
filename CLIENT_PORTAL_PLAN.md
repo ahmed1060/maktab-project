@@ -473,6 +473,33 @@ the company's people):
   the Client portal tab, under Client messages on WhatsApp, its card as the
   mockup's middle card: one row saying what's sent, On or Off, and Turn on
   or Turn off, asking nothing first. Nothing is sent yet: that's 11b.
+- **Its words (Decided, 2026-11-20):** as agreed with the owner. Its
+  subject, "The tax position of <client> was updated" (تحديث الموقف
+  الضريبي لـ<client>); the greeting; that the office updated the client's
+  tax position on Nizmo, and the day the figures are from; Sign in, with
+  the link written out; who to ask; and the foot, as the invitation's.
+- **After an upload (Decided, 2026-11-20):** the toast saying the upload
+  is saved says too whether the client's people were emailed: to how
+  many, how many it couldn't be sent to, or why none was, as the update
+  email is off, they were emailed today already, or none of them has set
+  a password yet.
+- **As built (#351, 11b), the email:** read in the upload's own save,
+  once the client is held: the company's switch, and whether its package
+  has the client portal; the client's people whose password is set; and
+  the day the client was last emailed, kept with its tax position
+  (`ClientTaxPosition.emailedOn`, the company's day, by a migration that
+  only adds the column). Where all of those say so, the save marks the
+  day, and its audit log entry says how many it's emailed to. Each email
+  goes once the save is made, as the invitation's does, five at a time,
+  built by `lib/tax-update-email.ts` on the invitation's top and foot
+  (`lib/office-email.ts`), its link to Nizmo's sign-in page on Nizmo's
+  own address. One that can't be sent leaves the upload saved and the
+  day marked, and a second audit log entry, after the upload's, says how
+  many couldn't be. They're given up 45 seconds after the upload began,
+  those not sent by then counted as not sent, so the upload answers
+  before its route's minute is up, a mail server that stalls or not
+  (found by Codex on #351). The upload's answer says what was done, and
+  its toast says it.
 
 ---
 
@@ -1634,7 +1661,8 @@ width:
     - **11b. The email:** with the switch on, each upload saved sends one
       to each of the client's people who has set a password, in their own
       language, at most one a day for a client, as the invitation is sent;
-      the upload's audit log entry says how many went.
+      the upload's audit log entry says how many went. #351, as built in
+      §4.4.
 12. **Download the statement.**
 
 ---
@@ -2328,3 +2356,18 @@ with a tax position is archived, and deleted for good from the archive
   `client_messages.manage` where the package has the client portal, each
   change in the audit log; and its card on the Client portal tab under the
   messages' card. Nothing is sent yet.
+- **2026-11-20 (agreed with the owner):** The update email's words (§4.4),
+  in each language, and the upload's toast saying whether the client's
+  people were emailed, and why where none was.
+- **2026-11-20:** 11b as built (#351, §4.4): with the switch on and the
+  client portal in the package, each upload saved emails each of the
+  client's people who has set a password, in their own language, from
+  the office, a reply going to whoever uploaded the file, at most once a
+  day for a client, the day kept with its tax position. The upload's
+  audit log entry says how many it's emailed to, and one that can't be
+  sent gets a second entry, the upload staying saved. The toast says
+  what was done.
+- **2026-11-20:** 11b (#351, found by Codex): the update emails are given
+  up 45 seconds after the upload began, those not sent by then counted
+  as not sent, so a mail server that stalls can't hold the upload's
+  answer past its route's minute (§4.4).

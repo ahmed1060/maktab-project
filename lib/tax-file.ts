@@ -556,5 +556,18 @@ export type TaxClaimsNow = {
     claims: ClaimDraft[]
 }
 
-/** What a save did: how many claims are new, changed and gone, how many the client has now, and its count of files. */
-export type TaxUploadSaved = { added: number; changed: number; gone: number; claims: number; uploads: number }
+/**
+ * What a save did of the update email (CLIENT_PORTAL_PLAN.md §4.4, PR 351):
+ * none, as the company's switch is off or its package hasn't the client
+ * portal, as none of the client's people has set a password, or as they
+ * were emailed today already; or to how many it was sent, and how many it
+ * couldn't be.
+ */
+export type TaxUpdateEmailed =
+    | { state: "off" }
+    | { state: "nobody" }
+    | { state: "today" }
+    | { state: "sent"; sent: number; failed: number }
+
+/** What a save did: how many claims are new, changed and gone, how many the client has now, its count of files, and the update email. */
+export type TaxUploadSaved = { added: number; changed: number; gone: number; claims: number; uploads: number; email: TaxUpdateEmailed }

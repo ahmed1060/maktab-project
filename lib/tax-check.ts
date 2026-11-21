@@ -1,7 +1,9 @@
 import { fetchRetrying } from "./swr-fetcher"
+import { countOf } from "./plural"
+import type { TranslationKey } from "./translations"
 import {
     claimOf, compareClaims, dayFromFileName, fileNamesClient, namedCompany, remainingOf,
-    type ClaimDraft, type TaxClaimsNow, type TaxFile, type TaxMistake, type TaxUpload, type TaxUploadSaved,
+    type ClaimDraft, type TaxClaimsNow, type TaxFile, type TaxMistake, type TaxUpdateEmailed, type TaxUpload, type TaxUploadSaved,
 } from "./tax-file"
 
 /**
@@ -125,4 +127,22 @@ export async function saveUpload(upload: TaxUpload): Promise<{ saved: TaxUploadS
     } catch {
         return { refused: { code: null, message: null } }
     }
+}
+
+/** Why none of the client's people was emailed, in the page's words. */
+const NONE_SENT: Record<"off" | "today" | "nobody", TranslationKey> = { off: "tax_email_off", today: "tax_email_today", nobody: "tax_email_nobody" }
+
+/**
+ * What the toast says of the update email once an upload is saved
+ * (CLIENT_PORTAL_PLAN.md §4.4; DESIGN.md §5.5, Uploading the tax portal's
+ * file; PR 351): to how many it was sent, how many it couldn't be, or why
+ * none was. Nothing where the server didn't say.
+ */
+export function emailSaid(t: (key: TranslationKey) => string, locale: string, email: TaxUpdateEmailed | undefined): string {
+    if (!email) return ""
+    if (email.state !== "sent") return t(NONE_SENT[email.state])
+    return [
+        email.sent > 0 ? countOf(t, locale, email.sent, "emailed") : "",
+        email.failed > 0 ? countOf(t, locale, email.failed, "unemailed") : "",
+    ].filter(Boolean).join(" ")
 }

@@ -55,11 +55,12 @@ async function clientOf(user: Actor, clientId: string | null | undefined) {
 }
 
 /**
- * Whoever in the office sends an invitation, for its reply and the line to
- * ask them (§5.2): their name and the email their account has now. A Super
- * Admin isn't one of the office's people, so none.
+ * Whoever in the office sends an invitation, or uploads the file an update
+ * email tells of (§4.4, PR 351), for its reply and the line to ask them
+ * (§5.2): their name and the email their account has now. A Super Admin
+ * isn't one of the office's people, so none.
  */
-async function senderOf(user: Actor): Promise<{ name: string; email: string } | null> {
+export async function senderOf(user: Actor): Promise<{ name: string; email: string } | null> {
     if (user.role === "SUPER_ADMIN" || !user.id) return null
     const person = await prisma.user.findUnique({ where: { id: user.id }, select: { firstName: true, lastName: true, email: true } })
     return person ? { name: `${person.firstName} ${person.lastName}`.trim(), email: person.email } : null

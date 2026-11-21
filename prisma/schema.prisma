@@ -3119,6 +3119,9 @@ model ClientTaxPosition {
   /// there were when its check screen read the claims, and is refused where
   /// another was saved since (§4.1).
   uploads        Int      @default(1)
+  /// The day the client's people were last sent the update email, the
+  /// company's day: at most one a day for a client (§4.4).
+  emailedOn      DateTime? @db.Date
   updatedAt      DateTime @updatedAt
   client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)

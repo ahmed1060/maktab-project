@@ -154,7 +154,7 @@ describe.skipIf(!ADMIN_URL)("saving the tax portal's file, in Postgres", () => {
 
         it("has every claim new, and keeps the day, who uploaded and the company it named", async () => {
             const saved = await tax.saveTaxFile(admin, upload("fresh", 0, [claim("000201"), claim("000202", partly)], { fileCompany: "Fresh Start", confirmed: false }), NOW)
-            expect(saved).toEqual({ added: 2, changed: 0, gone: 0, claims: 2, uploads: 1 })
+            expect(saved).toEqual({ added: 2, changed: 0, gone: 0, claims: 2, uploads: 1, email: { state: "off" } })
             expect((await stored("fresh")).map(c => [c.claimNumber, c.original, c.paid, c.remaining, c.companyId])).toEqual([
                 ["000201", 1000, 0, 1000, "c1"], ["000202", 21088.26, 7365, 13723.26, "c1"],
             ])
@@ -180,7 +180,7 @@ describe.skipIf(!ADMIN_URL)("saving the tax portal's file, in Postgres", () => {
         it("has nothing changed by the same file again but the day and the count of files: each claim keeps its row", async () => {
             const before = await stored("fresh")
             const saved = await tax.saveTaxFile(admin, upload("fresh", 1, [claim("000201"), claim("000202", partly)], { asOf: "2026-11-16" }), new Date("2026-11-17T21:00:00Z"))
-            expect(saved).toEqual({ added: 0, changed: 0, gone: 0, claims: 2, uploads: 2 })
+            expect(saved).toEqual({ added: 0, changed: 0, gone: 0, claims: 2, uploads: 2, email: { state: "off" } })
             expect(await stored("fresh")).toEqual(before)
             expect(await position("fresh")).toMatchObject({ asOf: "2026-11-16", uploadedAt: "2026-11-17T21:00", uploads: 2 })
             expect((await logged("fresh")).map(entry => entry.details.added)).toEqual([2, 0])
@@ -193,7 +193,7 @@ describe.skipIf(!ADMIN_URL)("saving the tax portal's file, in Postgres", () => {
             // 000101 as it was; 000102 paid further; 000103 not in the file; 000104 new.
             const next = [N1, { ...N2, paidAmount: 300.5, remainingAmount: 200 }, claim("000104", { item: "ضريبة كسب العمل", originalAmount: 75.75, paidAmount: 0, remainingAmount: 75.75 })]
             const saved = await tax.saveTaxFile(admin, upload("noor", 1, next), NOW)
-            expect(saved).toEqual({ added: 1, changed: 1, gone: 1, claims: 3, uploads: 2 })
+            expect(saved).toEqual({ added: 1, changed: 1, gone: 1, claims: 3, uploads: 2, email: { state: "off" } })
             const after = await stored("noor")
             expect(after.map(c => [c.claimNumber, c.original, c.paid, c.remaining])).toEqual([["000101", 1000, 0, 1000], ["000102", 500.5, 300.5, 200], ["000104", 75.75, 0, 75.75]])
             // A claim that didn't change keeps its row.
@@ -204,7 +204,7 @@ describe.skipIf(!ADMIN_URL)("saving the tax portal's file, in Postgres", () => {
 
         it("takes a file with no open claim: every claim goes, and the day stays, at 0", async () => {
             const saved = await tax.saveTaxFile(admin, upload("noor", 2, [], { asOf: "2026-11-15" }), NOW)
-            expect(saved).toEqual({ added: 0, changed: 0, gone: 3, claims: 0, uploads: 3 })
+            expect(saved).toEqual({ added: 0, changed: 0, gone: 3, claims: 0, uploads: 3, email: { state: "off" } })
             expect(await stored("noor")).toEqual([])
             expect(await position("noor")).toMatchObject({ asOf: "2026-11-15", uploads: 3 })
             const got = await tax.taxPositionOf(admin, "noor", FIVE, NOW)
@@ -314,11 +314,11 @@ describe.skipIf(!ADMIN_URL)("saving the tax portal's file, in Postgres", () => {
     describe("in one go", () => {
         it("saves 2,000 claims, and replaces them", async () => {
             const many = Array.from({ length: 2000 }, (_, i) => claim(String(i).padStart(6, "0")))
-            expect(await tax.saveTaxFile(admin, upload("many", 0, many), NOW)).toEqual({ added: 2000, changed: 0, gone: 0, claims: 2000, uploads: 1 })
+            expect(await tax.saveTaxFile(admin, upload("many", 0, many), NOW)).toEqual({ added: 2000, changed: 0, gone: 0, claims: 2000, uploads: 1, email: { state: "off" } })
             expect(await stored("many")).toHaveLength(2000)
             // The first as it was, the rest paid in part, and the last hundred not in the file.
             const next = many.slice(0, 1900).map((c, i) => (i === 0 ? c : { ...c, paidAmount: 1, remainingAmount: 999 }))
-            expect(await tax.saveTaxFile(admin, upload("many", 1, next), NOW)).toEqual({ added: 0, changed: 1899, gone: 100, claims: 1900, uploads: 2 })
+            expect(await tax.saveTaxFile(admin, upload("many", 1, next), NOW)).toEqual({ added: 0, changed: 1899, gone: 100, claims: 1900, uploads: 2, email: { state: "off" } })
             expect((await db.query(`SELECT count(*)::int AS n, sum("remainingAmount")::float8 AS remaining FROM "TaxClaim" WHERE "clientId" = 'many'`)).rows).toEqual([{ n: 1900, remaining: 1000 + 1899 * 999 }])
         }, 60_000)
 
@@ -355,7 +355,7 @@ describe.skipIf(!ADMIN_URL)("saving the tax portal's file, in Postgres", () => {
 
         it("is the Super Admin for any company's client: their name is kept, and the entry is theirs", async () => {
             const saved = await tax.saveTaxFile(superAdmin, upload("theirs", 1, [claim("000601"), claim("000602")]), NOW)
-            expect(saved).toEqual({ added: 1, changed: 0, gone: 0, claims: 2, uploads: 2 })
+            expect(saved).toEqual({ added: 1, changed: 0, gone: 0, claims: 2, uploads: 2, email: { state: "off" } })
             expect(await position("theirs")).toMatchObject({ uploadedById: null, uploadedByName: "Nizmo", companyId: "c2" })
             expect((await stored("theirs")).map(c => c.companyId)).toEqual(["c2", "c2"])
             expect((await logged("theirs")).pop()).toMatchObject({ action: "UPDATE_TAX_POSITION", userId: null, superAdminId: "sa" })

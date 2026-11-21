@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest"
-import { asOfFor, changesOf, checkTaxFile, readClaimsNow, saveUpload, uploadOf, TAX_UPLOAD_URL } from "./tax-check"
+import { asOfFor, changesOf, checkTaxFile, emailSaid, readClaimsNow, saveUpload, uploadOf, TAX_UPLOAD_URL } from "./tax-check"
+import { en } from "./translations/en"
+import { ar } from "./translations/ar"
 import { readTaxSheet, sentUpload, TAX_FILE_HEADINGS as H, UNNAMED_COMPANY, type ClaimDraft, type TaxClaimsNow, type TaxFile, type TaxSheetRow } from "./tax-file"
 
 /**
@@ -164,5 +166,36 @@ describe("asking the server", () => {
         expect(await saveUpload(upload)).toMatchObject({ refused: { code: "TAX_CLAIMS_CHANGED" } })
         vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("offline") }))
         expect(await saveUpload(upload)).toEqual({ refused: { code: null, message: null } })
+    })
+})
+
+describe("what the toast says of the update email, once an upload is saved (CLIENT_PORTAL_PLAN.md §4.4, PR 351)", () => {
+    const tEn = (k: string) => (en as Record<string, string>)[k] ?? k
+    const tAr = (k: string) => (ar as Record<string, string>)[k] ?? k
+    const saidEn = (email: Parameters<typeof emailSaid>[2]) => emailSaid(tEn as any, "en", email)
+    const saidAr = (email: Parameters<typeof emailSaid>[2]) => emailSaid(tAr as any, "ar", email)
+
+    it("says to how many it was sent, and how many it couldn't be", () => {
+        expect(saidEn({ state: "sent", sent: 1, failed: 0 })).toBe("Emailed to 1 person.")
+        expect(saidEn({ state: "sent", sent: 3, failed: 0 })).toBe("Emailed to 3 people.")
+        expect(saidEn({ state: "sent", sent: 2, failed: 1 })).toBe("Emailed to 2 people. The email to 1 person couldn't be sent.")
+        expect(saidEn({ state: "sent", sent: 0, failed: 3 })).toBe("The email to 3 people couldn't be sent.")
+        expect([1, 2, 3, 11, 100].map(sent => saidAr({ state: "sent", sent, failed: 0 }))).toEqual([
+            "تم إرسال بريد إلى شخص واحد.", "تم إرسال بريد إلى شخصين.", "تم إرسال بريد إلى ٣ أشخاص.", "تم إرسال بريد إلى ١١ شخصًا.", "تم إرسال بريد إلى ١٠٠ شخص.",
+        ])
+        expect(saidAr({ state: "sent", sent: 1, failed: 2 })).toBe("تم إرسال بريد إلى شخص واحد. تعذّر إرسال البريد إلى شخصين.")
+    })
+
+    it("says why none was sent", () => {
+        expect(saidEn({ state: "off" })).toBe("No email was sent: the update email is off.")
+        expect(saidEn({ state: "today" })).toBe("No email was sent: the client's people were already emailed today.")
+        expect(saidEn({ state: "nobody" })).toBe("No email was sent: none of the client's people has set a password yet.")
+        expect(saidAr({ state: "off" })).toBe("لم يُرسل بريد: البريد عند تحديث الموقف الضريبي متوقف.")
+        expect(saidAr({ state: "today" })).toBe("لم يُرسل بريد: سبق إرسال بريد إلى أشخاص العميل اليوم.")
+        expect(saidAr({ state: "nobody" })).toBe("لم يُرسل بريد: لم يُفعَّل بعد حساب أيٍّ من أشخاص العميل.")
+    })
+
+    it("says nothing where the server didn't say", () => {
+        expect(saidEn(undefined)).toBe("")
     })
 })

@@ -47,8 +47,12 @@ describe("the plain email", () => {
     })
 
     it("escapes with the helper the invitation's email uses", () => {
-        for (const file of ["lib/email.ts", "lib/client-invitation-email.ts"]) {
+        // The office's emails share their frame and its escaping since the update email came (PR 351).
+        for (const file of ["lib/email.ts", "lib/office-email.ts"]) {
             expect(readFileSync(file, "utf8"), file).toContain('import { escapeHtml } from "./html-text"')
+        }
+        for (const file of ["lib/client-invitation-email.ts", "lib/tax-update-email.ts"]) {
+            expect(readFileSync(file, "utf8"), file).toMatch(/import \{[^}]*\bescape\b[^}]*\} from "\.\/office-email"/)
         }
     })
 })
