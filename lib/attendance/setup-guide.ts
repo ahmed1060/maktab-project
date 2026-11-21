@@ -45,6 +45,17 @@ export type GuideStep = { key: string; title: TranslationKey; who: TranslationKe
 /** Where the agent is installed on the office PC (agent/README.md, Install). */
 const FOLDER = "C:\\Program Files\\Nizmo Agent"
 
+/**
+ * The prompt opened once, in the agent's folder, right after it's unzipped,
+ * with PowerShell's `.\` next: the first customer's setup found the office
+ * PC's prompt was PowerShell, which runs no program from its folder without
+ * it (ATTENDANCE_PLAN.md §17.13; PR 355). As the README has it (PR 354).
+ */
+const PROMPT: GuideLine[] = [
+    { text: "att_guide_folder", code: `cd "${FOLDER}"` },
+    { text: "att_guide_powershell" },
+]
+
 /** The first agent that takes the scans a terminal sends it (§17.12, PR 305). */
 export const PUSH_AGENT_VERSION = "0.4.0"
 
@@ -208,6 +219,7 @@ export function setupGuide(protocol: TerminalProtocol, { superAdmin, server, pus
                 { text: superAdmin ? "att_guide_download_sa" : "att_guide_download_other" },
                 ...installed(protocol, sends),
                 { text: "att_guide_unzip", code: FOLDER },
+                ...PROMPT,
                 ...(sends ? listening(server) : reading(protocol, server)),
                 { text: "att_guide_unknown_publisher" },
             ],

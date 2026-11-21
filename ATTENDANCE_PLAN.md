@@ -2634,7 +2634,9 @@ model's protocol:
   the Super Admin for it.
 
 What to check at the first customer's setup is in §17.13, not in the
-guide. For the guide, the brands the terminals list offers
+guide. What that setup found in the guide, opening the prompt in the
+agent's folder, PowerShell's `.\`, and the comm key under PC Connection,
+is fixed in #355 (§17.13). For the guide, the brands the terminals list offers
 (`GET /api/attendance/devices`) carry their notes.
 
 **Built in #292: Add a terminal, and its address shown once** (part 5's
@@ -3478,8 +3480,13 @@ Nizmo in production, following the checklist above:
 - **The comm key's place:** the README named it as Comm., Comm Key; on
   this model it's under Comm., PC Connection. The README now names both
   (#354).
-- **The setup guide** on Fingerprint terminals says the same two things
-  as the README did, and is left for a PR of its own.
+- **The setup guide** on Fingerprint terminals said the same two things
+  as the README did. Fixed in #355: right after the agent is unzipped,
+  the guide says how to open Command Prompt as administrator, gives the
+  `cd` line to its folder, and says PowerShell needs `.\` before each
+  command; the lines after it no longer open a prompt of their own. A
+  ZKTeco terminal's comm key is under Comm Key, or under PC Connection on
+  some models. In both languages.
 - **One name for two things:** the agent and its terminal were both named
   Office entrance. Both read right, so it's left as it is; naming the
   agent for its PC or office, as Add an agent suggests, keeps them apart.
