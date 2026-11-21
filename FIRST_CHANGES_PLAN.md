@@ -14,7 +14,8 @@ Each part is marked:
 - **Open**: a question that needs answering before that part is built.
 
 Status: **decided, being built.** The order is in §7. Step 1, absence 3
-days and bands of 1½ and 2 days (§1, §2), is #358.
+days and bands of 1½ and 2 days (§1, §2), is #358. Step 2, the trial and
+grace notes for Admins only (§3), is #359.
 
 ## 1. Absence: 3 days (Decided)
 
@@ -60,6 +61,14 @@ days and bands of 1½ and 2 days (§1, §2), is #358.
   goes the same way, as proposed with it and agreed.
 - It's a check on the role's name, so it's listed in
   `lib/permissions/role-check-guard.test.ts`.
+- **Built in #359:**
+  - the note shows nothing to anyone whose role isn't Admin, a Team
+    Leader and an Employee included, as it shows nothing to the Super
+    Admin;
+  - grace always says renewing it keeps everyone's access, and the line
+    telling everyone else that an Admin can renew it is gone, in both
+    languages (`note_grace_others`);
+  - `DESIGN.md` §5.5, A note above the page, says so first.
 
 ## 4. The Arabic task template's clients sheet (Decided)
 
@@ -141,3 +150,5 @@ One PR at a time, each merged before the next opens.
   `LATER_CHANGES_PLAN.md`.
 - **2026-11-21:** Step 1 built in #358: absence 3 days, and bands of 1½
   and 2 days, the lists kept beside the rules that check them.
+- **2026-11-21:** Step 2 built in #359: the trial and grace notes for the
+  Admin role only.
