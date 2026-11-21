@@ -2666,6 +2666,41 @@ guide's page). Built in two PRs:
    log. Printed, every Show me how is open. In both languages. For the guide, the brands the terminals list offers
 (`GET /api/attendance/devices`) carry their notes.
 
+**Built in #357: Show me how.** What the build settled:
+
+- **Where it opens the clicks:** under the lines whose clicks are the same
+  whatever the model: unzipping the package into the agent's folder,
+  writing `agent.json` in Notepad, opening the program picked, Add an
+  agent, the brand, and Employee numbers. Under ZKTeco's own lines too:
+  the office's PC software, the terminal's menu, its address and comm key
+  (its address alone for one that sends), and its clock. A Hikvision
+  terminal's menus differ by model and aren't walked yet, so its own
+  lines have none.
+- **`agent.json` in Notepad:** run as administrator, as Program Files
+  takes nothing else; saved as All files, so it isn't `agent.json.txt`;
+  and in UTF-8, not UTF-8 with BOM, which the agent can't read
+  (`JSON.parse` on `readFileSync` keeps the mark).
+- **What it shows,** under `probe` for a ZKTeco terminal: an example of
+  what it prints, made up, then what `users`, `records` and `clock` say,
+  Clock off past 2 minutes (`CLOCK_WARN_SECONDS`), and what its errors
+  mean.
+- **New lines, as the canvas has them:**
+  - picking the PC checks it reaches the terminal, with `ping` and what
+    it answers;
+  - for a terminal the agent reads, the first round by hand, `check`,
+    between `enrol` and the service, as the service holds the agent's
+    folder once it runs, with what its last line, `Round:`, counts. One
+    that sends is checked by its first call instead;
+  - `enrol`'s answer under its box;
+  - after the service's status, its log, read with `type` in Command
+    Prompt and with `Get-Content` for its last 20 lines in PowerShell.
+- **Lines the canvas reworded take its words:** the office's lines, the
+  settings written in Notepad rather than copied from
+  `agent.example.json`, the prompt's line, whose clicks are now under it,
+  Add an agent, the first scans, and Not heard from. Leaving the PC
+  software connected joins turning its deleting off.
+- **Printed,** every Show me how and What it shows is open.
+
 **Built in #292: Add a terminal, and its address shown once** (part 5's
 second PR, §20). What the build settled:
 
