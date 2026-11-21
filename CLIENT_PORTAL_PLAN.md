@@ -11,7 +11,7 @@ Each part is marked:
 - **Proposed**: suggested, waiting for the product owner's answer.
 - **Open**: a question that needs answering before that part is built.
 
-Status: **being built.** The plan and its `DESIGN.md` blocks were merged
+Status: **built.** The plan and its `DESIGN.md` blocks were merged
 in #309 on 2026-11-17, and the add-on on packages (§2, §12 step 2a) in
 #310 the same day. The claims on a client's page (§3.5, §12 step 2b)
 were merged in #311 that day too, and `tax.view` for the companies
@@ -37,8 +37,13 @@ position page (step 8) is built in four, and the first, what the area
 reads of it (8a), is #336. Its building blocks (8b) are #337, and the
 page's top (8c) is #338, and the claims by item (8d) are #339.
 Contacting the accountant (step 9) is built in four, and the first, the
-WhatsApp number on people's profiles (9a), is #340. The rest is built in
-the small PRs of §12, each its own PR.
+WhatsApp number on people's profiles (9a), is #340. The responsible
+accountant (9b) is #343, Contact the accountant (9c) is #344, and Ask
+about this claim (9d) is #345. The messages' templates (step 10) are
+#346 to #349, the update email (step 11) is #350 and #351, and Download
+the statement (step 12) is #352 in the client's area and #353 for the
+company's people. With #353, every step of §12 is built; what's left is
+in §13.
 
 ---
 
@@ -1703,7 +1708,23 @@ width:
     - **12b. For the company's people:** the same document in the app,
       at `/dashboard/clients/<id>/tax-statement`, for whoever may see
       the client's tax position (`tax.view`), opened from Download the
-      statement on the client's Tax position.
+      statement on the client's Tax position. As built (#353):
+      - The client of the address, read as the client's area reads its
+        own (`taxStatementOf`, the same figures as `portalTaxPosition`),
+        only where it's the company's, unless the reader is a Super
+        Admin. Another company's client, or none, isn't found.
+      - Someone who may not see tax positions, or whose account can't
+        open pages for now, is refused before anything is read, as the
+        app's other pages refuse them.
+      - It's the client portal's, so its layout guards the module, as
+        the client's Tax position is.
+      - Its title comes with it from the server, as the client's area's
+        does, and the app's own title for each page leaves it as it is.
+      - Download the statement is before Upload from the tax portal once
+        the portal's file has been uploaded, for whoever sees the
+        section, on archived clients too, whose figures stay.
+      - Close goes back to the client's page where the browser keeps the
+        tab open.
 
 ---
 
@@ -2419,3 +2440,8 @@ with a tax position is archived, and deleted for good from the archive
   client's own page once the portal's file is uploaded, opening the
   statement in a tab of its own at `/portal/statement`, for the session's
   client alone, its title naming the PDF.
+- **2026-11-21:** 12b as built (#353, §12): Download the statement on the
+  client's Tax position, before Upload from the tax portal, opening the
+  same statement in a tab of its own at
+  `/dashboard/clients/<id>/tax-statement`, for whoever may see the
+  client's tax position. With it, the client portal's plan is built.
