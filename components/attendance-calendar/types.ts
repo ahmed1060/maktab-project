@@ -26,6 +26,12 @@ export type Calendar = {
         own: { id: string; date: string; name: string; isPaid: boolean }[]
     }
     canEdit: boolean
+    /**
+     * Which add-ons' sections the tab shows this person: Fingerprint
+     * terminals and the places people check in at (FIRST_CHANGES_PLAN.md §5,
+     * PR 361). The tab asks for nothing else.
+     */
+    sections: { terminals: boolean; mobileApp: boolean }
 }
 
 /** What the hours dialog is open for. */

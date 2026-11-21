@@ -126,10 +126,11 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false, ter
             {terminalsSetup}
             {/* Only for a company holding the Terminals add-on, and only for
                 whoever may set its terminals up, who may change everything
-                in it; hides itself otherwise (§16, §17.10). */}
-            <AttendanceTerminalsPanel companyId={companyId} />
-            {/* Only for a company holding the Mobile App add-on; hides itself otherwise (§16). */}
-            <AttendanceLocationsPanel companyId={companyId} readOnly={!editable} />
+                in it (§16, §17.10). Not asked for otherwise, as it would be
+                refused (FIRST_CHANGES_PLAN.md §5, PR 361). */}
+            {data.sections.terminals && <AttendanceTerminalsPanel companyId={companyId} />}
+            {/* Only for a company holding the Mobile App add-on (§16); not asked for otherwise. */}
+            {data.sections.mobileApp && <AttendanceLocationsPanel companyId={companyId} readOnly={!editable} />}
             {/* The policy first: its work week is what the schedules inherit. */}
             <AttendancePolicyPanel companyId={companyId} readOnly={!editable} onChanged={load} />
             <FaceLegalPanel companyId={companyId} readOnly={!editable} />

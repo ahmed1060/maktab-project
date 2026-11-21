@@ -1933,7 +1933,7 @@ Implementation:
 - Terminal-only screens (devices, the agent, mappings) require
   `ATTENDANCE_TERMINALS`; app-only screens (phones, work locations, face) require
   `ATTENDANCE_MOBILE`. The Attendance settings tab shows only the sub-sections the
-  company bought.
+  company bought, and asks only for those: its calendar says which (#361).
 - Removing one add-on from a contract keeps all attendance history; it stops new
   punches from that source.
 - **Grandfathered companies (`packageId` null) receive both** on release (round 4).
