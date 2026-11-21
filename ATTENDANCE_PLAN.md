@@ -36,7 +36,8 @@ steps for them in #306: part 8 is built. The first customer's setup,
 rehearsed against a simulated terminal, with a checklist for it and what
 each way costs to run, is planned in #307 (round 11, §17.13, §17.14); the
 one thing its rehearsal found, the agent's waiting count lagging behind its
-scans, is fixed in #308.
+scans, is fixed in #308. The setup itself was done at the office on 21
+November 2026, and is recorded in #354 (§17.13).
 Phase 5 (a day's scans read first and last, and missions, round 10) is
 planned in #270 and #271; its part 2, first and last, is built in #273,
 and part 3 in three PRs: Departure to confirm in #274, settling an
@@ -3441,6 +3442,48 @@ release.
   hours); in working hours it reads Not heard from after 15 minutes.
 - Whatever goes wrong is fixed as it's found, each fix its own PR.
 
+**Set up on 21 November 2026** (#354), by the owner at the office, with
+Nizmo in production, following the checklist above:
+
+- **The terminal:** a fixed address, ZKTeco's port 4370 and comm key 0, as
+  its screens showed on 14 November. On this model the comm key is under
+  Comm., PC Connection. Its clock was 8 minutes fast and was left as it
+  is, by the owner's choice: until it's set right, its scans are recorded
+  8 minutes late, and its card says Clock off by 8 min.
+- **Attendance Management:** deleting records once they're downloaded was
+  already off, and it downloads nothing on its own. It was closed.
+- **The agent:** the 0.4.0 package from the Attendance agent workflow's
+  run of 16 November, unzipped to `C:\Program Files\Nizmo Agent`, with an
+  `agent.json` naming `https://nizmo.vercel.app` and the terminal.
+  - `probe` read a CB 3000, firmware Ver 6.60 of 27 April 2017, holding
+    43 users and 23,180 scans of its 200,000.
+  - `enrol` took the first code. `check` read the 23,180 scans and sent
+    the 520 from 1 November: all stored, none refused.
+  - The service was installed and started, and the agent read Connected,
+    seen every minute.
+- **On Nizmo:**
+  - The terminal showed under the agent, Working, and its brand was set
+    to Convoy.
+  - 18 numbers had scans and nobody. One was matched at the visit, and
+    its scans became that person's; the office matches the rest.
+- **A scan made then** showed in Punches within about 2 minutes.
+
+**Found at the setup:**
+
+- **PowerShell:** the office PC's administrator prompt was PowerShell,
+  where the agent's commands need `.\` before them. The agent's README
+  named only Command Prompt, and didn't say how to reach the agent's
+  folder. It now gives the `cd` line and says how PowerShell differs
+  (#354).
+- **The comm key's place:** the README named it as Comm., Comm Key; on
+  this model it's under Comm., PC Connection. The README now names both
+  (#354).
+- **The setup guide** on Fingerprint terminals says the same two things
+  as the README did, and is left for a PR of its own.
+- **One name for two things:** the agent and its terminal were both named
+  Office entrance. Both read right, so it's left as it is; naming the
+  agent for its PC or office, as Add an agent suggests, keeps them apart.
+
 ### 17.14 What each way costs to run
 
 Nizmo runs on Vercel's Hobby plan and Supabase's Free plan (`TECH_STACK.md`).
@@ -3764,8 +3807,9 @@ screens, photographed by the owner on 14 November 2026, settle what it is:
   send scans to Nizmo itself, so ZKTeco straight to Nizmo (part 6) can't be
   tried on it.
 
-So it connects through the agent, built in Phase 2 and never yet tried on a
-real terminal: that setup comes first (`nizmo-agent.exe probe`, then its
+So it connects through the agent, built in Phase 2 and, until its setup on
+21 November 2026 (§17.13, #354), never tried on a real terminal: that setup
+comes first (`nizmo-agent.exe probe`, then its
 first days of scans watched, §17.13), ahead of the parts above but parts 2
 and 3. Part 2 comes before
 the terminal is set up, so that only those meant to see the setup do; part
