@@ -50,8 +50,9 @@ export function SalaryTab({ employee, records, months = true, loading, error, re
     records: SalaryRecord[]
     /**
      * Whether the months are shown: not to someone who sees another's debts
-     * or settlements and not their salary (PR 370). Without them, `loading`
-     * is the settlements' and debts', and the tab says when it has none.
+     * or settlements and not their salary (PR 370). Without them, `loading`,
+     * `error` and `retry` are the settlements' and debts', and the tab says
+     * when it has none, or when they didn't load.
      */
     months?: boolean
     loading: boolean
@@ -154,7 +155,15 @@ export function SalaryTab({ employee, records, months = true, loading, error, re
             {!months && !adjustments && settlements.length === 0 && debts.length === 0 && (
                 loading
                     ? <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
-                    : <div className="ui-panel"><EmptyState icon={ReceiptIcon} title={t('hist_nothing_yet')} /></div>
+                    // Not "nothing yet" when they didn't load (Codex on PR 370).
+                    : error
+                        ? (
+                            <div className="ui-panel">
+                                <EmptyState icon={WarningCircleIcon} title={t('hist_history_load_failed')} detail={(error as SWRError).info?.error}
+                                    action={<Button busy={retrying} onClick={retry}>{t('try_again')}</Button>} />
+                            </div>
+                        )
+                        : <div className="ui-panel"><EmptyState icon={ReceiptIcon} title={t('hist_nothing_yet')} /></div>
             )}
 
             {adjustments}

@@ -74,7 +74,8 @@ describe("an employee's history, and adding a bonus or a deduction", () => {
         const list = readFileSync("app/(dashboard)/dashboard/employees/page.tsx", "utf8")
         // History, to who sees any of its tabs, in a package with Payroll (PR 370).
         expect(list).toContain("const seesHistory = features.has('PAYROLL') && historyParts(")
-        expect(list).toContain("if (seesHistory && notAdmin) items.push({ key: 'history'")
+        expect(list).toContain("const historyOf = (e: Employee) => seesHistory && ")
+        expect(list).toContain("if (historyOf(e) && notAdmin) items.push({ key: 'history'")
         expect(list).toMatch(/features\.has\('SALARY_ADJUSTMENTS'\) && can\('salary_adjustments\.manage'\)[^\n]*\{\n\s*items\.push\(\{ key: 'bonus'/)
         const menu = readFileSync("components/DashboardHeader.tsx", "utf8")
         expect(menu).toContain("const showHistory = features.has('PAYROLL') && !['ADMIN', 'SUPER_ADMIN'].includes(currentUser.role)")

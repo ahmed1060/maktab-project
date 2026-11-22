@@ -1948,6 +1948,7 @@ export const en = {
         hist_deducted_n: "{days} deducted",
         hist_bonus_n: "{days} bonus",
         hist_load_failed: "The salary history didn't load.",
+        hist_history_load_failed: "The history didn't load.",
         hist_no_months: "No months yet",
         hist_nothing_yet: "Nothing recorded yet",
         hist_debt_col_amount: "Amount",

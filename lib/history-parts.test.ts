@@ -2,7 +2,9 @@ import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
 import { stripComments } from "./strip-comments"
 import { moduleForApiPath } from "./features/routes"
-import { historyParts } from "./history-parts"
+import { forPerson, historyParts } from "./history-parts"
+import { permissionsOf } from "./useCan"
+import { encodeGrants } from "./permissions/grants"
 
 /**
  * What an employee's history asks for and shows each viewer
@@ -17,26 +19,26 @@ import { historyParts } from "./history-parts"
 
 const ALL = () => true
 const holding = (...held: string[]) => (p: string) => held.includes(p)
-const PARTS = ["person", "months", "adjustments", "settlements", "debts", "dayOff", "costs"] as const
+const PARTS = ["months", "adjustments", "settlements", "debts", "dayOff", "costs"] as const
 const on = (parts: ReturnType<typeof historyParts>) => PARTS.filter(k => parts[k])
 
 describe("one's own history", () => {
     it("is the person, the months, the day off and the costs, holding nothing", () => {
         const parts = historyParts({ own: true, can: holding(), has: ALL })
-        expect(on(parts)).toEqual(["person", "months", "dayOff", "costs"])
+        expect(on(parts)).toEqual(["months", "dayOff", "costs"])
         expect(parts.tabs).toEqual(["salary", "day-off", "costs"])
     })
 
     it("has the bonuses, settlements and debts only with what their routes ask, as anyone's", () => {
         expect(on(historyParts({ own: true, can: holding("salary.view", "settlements.manage", "debts.view"), has: ALL })))
-            .toEqual(["person", "months", "adjustments", "settlements", "debts", "dayOff", "costs"])
+            .toEqual(["months", "adjustments", "settlements", "debts", "dayOff", "costs"])
     })
 })
 
 describe("someone else's history", () => {
     it.each([
         [[], [], []],
-        [["employees.view"], ["person"], []],
+        [["employees.view"], [], []],
         [["salary.view"], ["months", "adjustments"], ["salary"]],
         [["debts.view"], ["debts"], ["salary"]],
         [["settlements.manage"], ["settlements"], ["salary"]],
@@ -67,7 +69,7 @@ describe("the company's package", () => {
 
     it("leaves out the months, costs, debts and settlements without Payroll", () => {
         const parts = historyParts({ own: false, can: everything, has: m => m !== "PAYROLL" })
-        expect(on(parts)).toEqual(["person", "adjustments", "dayOff"])
+        expect(on(parts)).toEqual(["adjustments", "dayOff"])
         expect(parts.tabs).toEqual(["salary", "day-off"])
     })
 })
@@ -75,8 +77,20 @@ describe("the company's package", () => {
 describe("each part asks what its route asks", () => {
     const route = (path: string) => stripComments(readFileSync(`app/api/users/${path}/route.ts`, "utf8"))
 
-    it("the person: one's own, or See employees", () => {
+    it("the person: one's own, or See employees, kept to the team where that's held for one", () => {
         expect(route("")).toContain('if (userId !== session.user.id && !can(session.user, "employees.view"))')
+        expect(route("")).toContain("const hasAccess = await verifyResourceAccess(session, userId, 'USER')")
+    })
+
+    it("held for a team, checked against the person, and only See employees, See salaries and See leave requests can be", () => {
+        expect(route("[id]/salary-history")).toContain('if (!person || !can(session.user, "salary.view", person))')
+        expect(route("[id]/day-off-history")).toContain('if (!person || !can(session.user, "dayoff.view", person))')
+        expect(route("[id]/adjustments")).toContain('if (!person || !can(session.user, "salary.view", person))')
+        for (const path of ["[id]/salary-history", "[id]/day-off-history", "[id]/costs-history", "[id]/adjustments", "[id]/settlements"]) {
+            expect(route(path)).toContain("verifyResourceAccess(session,")
+        }
+        const security = stripComments(readFileSync("lib/security.ts", "utf8"))
+        expect(security).toContain('if (teamOnly("employees.view")) {')
     })
 
     it.each([
@@ -89,5 +103,48 @@ describe("each part asks what its route asks", () => {
     ])("%s: %s, in %s", (path, rule, module) => {
         expect(route(path)).toContain(rule)
         expect(moduleForApiPath(`/api/users/u2/${path.slice(5)}`)).toBe(module)
+    })
+})
+
+describe("what the viewer holds for the person (Codex on PR 370)", () => {
+    // A grant held for a team reaches only the people it leads, as the routes
+    // check it against the person: the History link and its tabs ask the same.
+    const ME = "me"
+    const viewer = (grants: Record<string, "TEAM" | "COMPANY">) => permissionsOf({
+        role: "EMPLOYEE", id: ME, companyId: "c1",
+        grants: encodeGrants(grants as never),
+    } as never)
+    const led = { userId: "p1", teamLeaderId: ME, companyId: "c1" }
+    const other = { userId: "p2", teamLeaderId: "someone-else", companyId: "c1" }
+    const parts = (grants: Record<string, "TEAM" | "COMPANY">, person: typeof led | null) => on(historyParts({ own: false, can: forPerson(viewer(grants), person), has: ALL }))
+
+    it("a day off held for a team: only for the people it leads, and not before the person is known", () => {
+        const grants = { "employees.view": "COMPANY", "dayoff.view": "TEAM" } as const
+        expect(parts(grants, led)).toEqual(["dayOff"])
+        expect(parts(grants, other)).toEqual([])
+        expect(parts(grants, null)).toEqual([])
+    })
+
+    it("a salary held for a team: the months and the bonuses only for its people", () => {
+        const grants = { "employees.view": "COMPANY", "salary.view": "TEAM" } as const
+        expect(parts(grants, led)).toEqual(["months", "adjustments"])
+        expect(parts(grants, other)).toEqual([])
+    })
+
+    it("one held for the company: anyone's, before the person is known too", () => {
+        const grants = { "employees.view": "COMPANY", "costs.view": "COMPANY", "debts.view": "COMPANY" } as const
+        expect(parts(grants, other)).toEqual(["debts", "costs"])
+        expect(parts(grants, null)).toEqual(["debts", "costs"])
+    })
+
+    it("See employees held for a team keeps all of someone else's history to that team", () => {
+        const grants = { "employees.view": "TEAM", "costs.view": "COMPANY", "settlements.manage": "COMPANY" } as const
+        expect(parts(grants, led)).toEqual(["settlements", "costs"])
+        expect(parts(grants, other)).toEqual([])
+        expect(parts(grants, null)).toEqual([])
+    })
+
+    it("without See employees, nothing is kept to a team", () => {
+        expect(parts({ "costs.view": "COMPANY" }, other)).toEqual(["costs"])
     })
 })

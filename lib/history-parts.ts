@@ -1,12 +1,11 @@
 import type { Permission } from '@/lib/permissions/catalogue'
+import type { Target } from '@/lib/permissions/can'
 import type { Module } from '@/lib/features/bundles'
 
 /** An employee's history's tabs, in the order they're shown. */
 export type HistoryTab = 'salary' | 'day-off' | 'costs'
 
 export type HistoryParts = {
-    /** Their name, for the page's title. */
-    person: boolean
     /** The Salary tab's months. */
     months: boolean
     /** Its bonuses and deductions. */
@@ -29,11 +28,13 @@ export type HistoryParts = {
  * The tabs are those parts: Salary for the months, the bonuses, settlements
  * or debts; Day off credit; Costs. The Employees list offers History to who
  * sees any of them on someone else's.
+ *
+ * `can` is what the viewer holds for this person (forPerson below); the
+ * person's name, for the title, is the page's: one's own, or See employees.
  */
 export function historyParts(viewer: { own: boolean; can: (permission: Permission) => boolean; has: (module: Module) => boolean }): HistoryParts {
     const { own, can, has } = viewer
     const parts = {
-        person: own || can('employees.view'),
         months: has('PAYROLL') && (own || can('salary.view')),
         adjustments: has('SALARY_ADJUSTMENTS') && can('salary.view'),
         settlements: has('PAYROLL') && can('settlements.manage'),
@@ -46,4 +47,22 @@ export function historyParts(viewer: { own: boolean; can: (permission: Permissio
     if (parts.dayOff) tabs.push('day-off')
     if (parts.costs) tabs.push('costs')
     return { ...parts, tabs }
+}
+
+/**
+ * What the viewer holds for this person, as the history's routes check it
+ * (Codex on PR 370). Held for the company, a permission reaches anyone in it.
+ * Held for a team, it reaches only the people the viewer leads, so it waits
+ * until the person is known; only See employees, See salaries and See leave
+ * requests can be held for a team. And with See employees held for a team,
+ * someone else's history is kept to that team (verifyResourceAccess), debts
+ * too, though their route doesn't ask: the safe side.
+ */
+export function forPerson(
+    viewer: { can: (permission: Permission, target?: Target) => boolean; scope: (permission: Permission) => string | null },
+    person: Target | null,
+): (permission: Permission) => boolean {
+    const held = (permission: Permission) => viewer.scope(permission) === 'TEAM' ? !!person && viewer.can(permission, person) : viewer.can(permission)
+    const reaches = viewer.scope('employees.view') !== 'TEAM' || held('employees.view')
+    return permission => reaches && held(permission)
 }

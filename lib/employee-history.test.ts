@@ -24,6 +24,8 @@ const state = {
     // What the page asked for, and the modules the company's package leaves out (PR 370).
     keys: [] as string[],
     off: [] as string[],
+    // The permissions held for a team, not the company (Codex on PR 370).
+    team: [] as string[],
 }
 vi.mock("next/navigation", () => ({
     useParams: () => ({ id: state.id }),
@@ -37,7 +39,13 @@ vi.mock("@/context/LanguageContext", () => ({
 }))
 vi.mock("@/context/ToastContext", () => ({ useToast: () => ({ showToast: () => {} }) }))
 vi.mock("@/lib/useCan", () => ({
-    useCan: () => ({ can: (p: string) => state.perms.includes(p), canFor: (p: string) => state.perms.includes(p) }),
+    useCan: () => ({
+        // Held for a team, it reaches the people the viewer leads, as can() has it.
+        can: (p: string, target?: { userId?: string | null; teamLeaderId?: string | null }) => state.perms.includes(p)
+            && (!target || !state.team.includes(p) || target.userId === state.me || target.teamLeaderId === state.me),
+        canFor: (p: string) => state.perms.includes(p),
+        scope: (p: string) => (state.perms.includes(p) ? (state.team.includes(p) ? "TEAM" : "COMPANY") : null),
+    }),
     useViewer: () => ({ id: state.me, role: "EMPLOYEE", companyId: "c1" }),
 }))
 vi.mock("@/lib/features/useFeatures", () => ({ useFeatures: () => ({ has: (m: string) => !state.off.includes(m) }) }))
@@ -82,8 +90,8 @@ const refused = (status: number) => ({ error: Object.assign(new Error("Request f
 
 /** Who looks at someone else's history: HR, who may see the person, their salary, their day off and their costs. */
 const HR = ["employees.view", "salary.view", "dayoff.view", "costs.view"]
-async function page({ me = "admin", query = "", perms = HR, swr = {} as Record<string, Loaded>, locale = "en" as "en" | "ar", off = [] as string[] } = {}) {
-    Object.assign(state, { me, query, perms, swr, locale, off, keys: [] })
+async function page({ me = "admin", query = "", perms = HR, swr = {} as Record<string, Loaded>, locale = "en" as "en" | "ar", off = [] as string[], team = [] as string[] } = {}) {
+    Object.assign(state, { me, query, perms, swr, locale, off, team, keys: [] })
     const { default: Page } = await import("@/app/(dashboard)/dashboard/employees/[id]/history/page")
     return renderToStaticMarkup(h(Page))
 }
@@ -213,15 +221,42 @@ describe("what the page asks for (PR 370)", () => {
     })
 
     it("says the page can't be opened to a viewer who may see none of it", async () => {
-        const html = await page({ perms: ["employees.view"] })
+        const html = await page({ perms: ["employees.view"], swr: { "/api/users?id=u2": { data: { data: YOUSSEF } } } })
         expect(html).toContain(en.access_denied_title.replace(/'/g, "&#x27;"))
         expect(html).not.toContain('role="tablist"')
         expect(state.keys.filter(k => k.startsWith("/api/users/u2/"))).toEqual([])
     })
 
+    it("says the history didn't load, with Try again, rather than that there's nothing, to a viewer who sees debts alone (Codex on PR 370)", async () => {
+        const html = await page({ perms: ["employees.view", "debts.view"], swr: { "/api/users/u2/debts": refused(500), "/api/users/u2/settlements": { data: { data: [] } } } })
+        expect(html).toContain(en.hist_history_load_failed.replace(/'/g, "&#x27;"))
+        expect(html).toContain(">Try again</button>")
+        expect(html).not.toContain(en.hist_nothing_yet)
+    })
+
+    it("asks for what's held for a team only once the person is known to be in it (Codex on PR 370)", async () => {
+        const viewer = { perms: ["employees.view", "dayoff.view", "costs.view"], team: ["dayoff.view"] }
+        const elsewhere = await page({ ...viewer, swr: { "/api/users?id=u2": { data: { data: { ...YOUSSEF, teamLeaderId: "someone-else" } } } } })
+        expect(asked("/api/users/u2/day-off-history")).toBe(false)
+        expect(tabs(elsewhere)).toEqual([en.costs_tab])
+        const led = await page({ ...viewer, swr: { "/api/users?id=u2": { data: { data: { ...YOUSSEF, teamLeaderId: "admin" } } } } })
+        expect(asked("/api/users/u2/day-off-history")).toBe(true)
+        expect(tabs(led)).toEqual([en.hist_tab_day_off, en.costs_tab])
+    })
+
+    it("waits for the person, rather than saying it can't be opened, while what it shows depends on them", async () => {
+        const viewer = { perms: ["employees.view", "dayoff.view"], team: ["dayoff.view"] }
+        const waiting = await page(viewer)
+        expect(waiting).toContain(en.loading)
+        expect(waiting).not.toContain(en.access_denied_title.replace(/'/g, "&#x27;"))
+        expect(await page({ ...viewer, swr: { "/api/users?id=u2": { data: { data: { ...YOUSSEF, teamLeaderId: "someone-else" } } } } }))
+            .toContain(en.access_denied_title.replace(/'/g, "&#x27;"))
+    })
+
     it("is in Arabic too", async () => {
         const none = { data: { data: [] } }
         expect(await page({ locale: "ar", perms: ["debts.view"], swr: { "/api/users/u2/debts": none } })).toContain(ar.hist_nothing_yet)
+        expect(await page({ locale: "ar", perms: ["debts.view"], swr: { "/api/users/u2/debts": refused(500) } })).toContain(ar.hist_history_load_failed)
     })
 })
 
