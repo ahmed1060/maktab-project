@@ -87,10 +87,14 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "tasks.pay": "COMPANY",
         "tasks.penalize": "COMPANY",
 
-        // Obligations: an Admin creates, updates, decides and deletes their
-        // company's. Reverting a decided one stays the Super Admin's.
+        // Obligations: an Admin adds, reassigns and moves along, decides and
+        // deletes their company's, split from obligations.manage since PR 367.
+        // Reverting a decided one stays the Super Admin's.
         "obligations.view": "COMPANY",
-        "obligations.manage": "COMPANY",
+        "obligations.create": "COMPANY",
+        "obligations.edit": "COMPANY",
+        "obligations.approve": "COMPANY",
+        "obligations.delete": "COMPANY",
 
         // Requests: an Admin sees and decides their company's, decides
         // name changes, and resets performance points. Deleting a completed
@@ -214,10 +218,14 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "tasks.pay": "TEAM",
         "tasks.penalize": "TEAM",
 
-        // Obligations, for their team. Company-wide-only acts — removing other
-        // people's attachments, the Admin delete path — follow from TEAM scope.
+        // Obligations, for their team, each part of obligations.manage (PR 367).
+        // Company-wide-only acts — removing other people's attachments —
+        // follow from TEAM scope.
         "obligations.view": "TEAM",
-        "obligations.manage": "TEAM",
+        "obligations.create": "TEAM",
+        "obligations.edit": "TEAM",
+        "obligations.approve": "TEAM",
+        "obligations.delete": "TEAM",
 
         // Requests raised by their team.
         "requests.view": "TEAM",

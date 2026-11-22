@@ -170,15 +170,20 @@ const GATES: Gate[] = [
     { what: "task: delete a location entry (flag: added it)", file: "components/TaskLocationHistorySection.tsx", uses: "(loc.authorId === userId || can('tasks.edit'))", before: (r, mine) => mine || managers(r), now: (p, mine) => mine || p.can("tasks.edit") },
 
     // --- Obligations -------------------------------------------------------------
-    { what: "obligations: create", file: D + "obligations/ObligationsClient.tsx", uses: "permissions.can('obligations.manage') && (", before: managers, now: p => p.can("obligations.manage") },
+    // obligations.manage split by what is done to one (PR 367): each built-in role holds all four or none, at one scope.
+    { what: "obligations: create", file: D + "obligations/ObligationsClient.tsx", uses: "permissions.can('obligations.create') && (", before: managers, now: p => p.can("obligations.create") },
     { what: "obligations: employee filters", file: D + "obligations/ObligationsClient.tsx", uses: "const ownObligationsOnly = !permissions.can('obligations.view')", before: r => r === "EMPLOYEE", now: p => !p.can("obligations.view") },
-    { what: "new obligation: team-only picker", file: D + "obligations/new/page.tsx", uses: "permissions.can('obligations.manage') && !permissions.companyWide('obligations.manage')", before: r => r === "TEAM_LEADER", now: p => p.can("obligations.manage") && !p.companyWide("obligations.manage") },
+    { what: "new obligation: team-only picker", file: D + "obligations/new/page.tsx", uses: "permissions.can('obligations.create') && !permissions.companyWide('obligations.create')", before: r => r === "TEAM_LEADER", now: p => p.can("obligations.create") && !p.companyWide("obligations.create") },
     { what: "obligation: overdue lock (flag: on it)", file: OBL, uses: "const isRestrictedRole = !seesOthers || (teamReach && isUserAssignee)", before: (r, on) => r === "EMPLOYEE" || (r === "TEAM_LEADER" && on), now: (p, on) => !p.can("obligations.view") || (p.scope("obligations.view") === "TEAM" && on) },
     { what: "obligation: acts as assignee", file: OBL, uses: "{!seesOthers && !['PENDING_CONFIRMATION'", before: r => r === "EMPLOYEE", now: p => !p.can("obligations.view") },
-    { what: "obligation: manage", file: OBL, uses: "const canManage = can('obligations.manage')", before: managers, now: p => p.can("obligations.manage") },
-    { what: "obligation: edit, delete, decide (flag: on it)", file: OBL, uses: "const mayManageThis = canManage && (scope('obligations.manage') === 'TEAM' || !obligation.assignees", before: (r, on) => managers(r) && (r === "TEAM_LEADER" || !on), now: (p, on) => p.can("obligations.manage") && (p.scope("obligations.manage") === "TEAM" || !on) },
-    { what: "obligation: remove an attachment (flag: uploaded it)", file: OBL, uses: "canManage && (att.uploadedById === userId || companyWide('obligations.manage'))", before: (r, mine) => managers(r) && (mine || admins(r)), now: (p, mine) => p.can("obligations.manage") && (mine || p.companyWide("obligations.manage")) },
-    { what: "obligation: team-only picker", file: OBL, uses: "canManage && !companyWide('obligations.manage') ?", before: r => r === "TEAM_LEADER", now: p => p.can("obligations.manage") && !p.companyWide("obligations.manage") },
+    { what: "obligation: edit", file: OBL, uses: "const canEdit = can('obligations.edit')", before: managers, now: p => p.can("obligations.edit") },
+    ...(["obligations.approve", "obligations.delete"] as const).map((perm): Gate => ({
+        what: `obligation: ${perm} (flag: on it)`, file: OBL, uses: "const ownRule = (permission: 'obligations.approve' | 'obligations.delete') => can(permission) && (scope(permission) === 'TEAM' || !isOnIt)",
+        before: (r, on) => managers(r) && (r === "TEAM_LEADER" || !on),
+        now: (p, on) => p.can(perm) && (p.scope(perm) === "TEAM" || !on),
+    })),
+    { what: "obligation: remove an attachment (flag: uploaded it)", file: OBL, uses: "canEdit && (att.uploadedById === userId || companyWide('obligations.edit'))", before: (r, mine) => managers(r) && (mine || admins(r)), now: (p, mine) => p.can("obligations.edit") && (mine || p.companyWide("obligations.edit")) },
+    { what: "obligation: team-only picker", file: OBL, uses: "canEdit && !companyWide('obligations.edit') ?", before: r => r === "TEAM_LEADER", now: p => p.can("obligations.edit") && !p.companyWide("obligations.edit") },
 ]
 
 function walk(dir: string, out: string[] = []): string[] {

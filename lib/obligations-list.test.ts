@@ -20,7 +20,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en", t: (key: string) => key }) }))
 vi.mock("@/lib/useModules", () => ({ useModules: () => ({ label: () => "Obligations" }) }))
 vi.mock("@/lib/useCan", () => ({
-    useCan: () => ({ can: (p: string) => p === "obligations.view" ? viewer.sees : p === "obligations.manage" ? viewer.manages : false }),
+    useCan: () => ({ can: (p: string) => p === "obligations.view" ? viewer.sees : /* each part of obligations.manage (PR 367) */ ["obligations.create", "obligations.edit", "obligations.approve", "obligations.delete"].includes(p) ? viewer.manages : false }),
 }))
 vi.mock("@/context/CompanyContext", () => ({ useCompany: () => ({ selectedCompanyId: null }) }))
 vi.mock("next-auth/react", () => ({ useSession: () => ({ data: null }) }))

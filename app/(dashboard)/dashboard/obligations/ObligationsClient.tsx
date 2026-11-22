@@ -166,7 +166,7 @@ export default function ObligationsClient({ obligations, total, page, totalPages
             <PageHeader
                 title={modules.label('obligations')}
                 subtitle={t('obligations_subtitle')}
-                action={permissions.can('obligations.manage') && (
+                action={permissions.can('obligations.create') && (
                     <ButtonLink href="/dashboard/obligations/new" variant="primary" icon={PlusIcon}>{t('add_obligation')}</ButtonLink>
                 )}
             />

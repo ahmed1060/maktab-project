@@ -13,7 +13,7 @@ describe("a page reached by typing its address", () => {
         // An Employee opening it asked for the colleague list, was refused,
         // and the page read .data of the refusal: a blank screen.
         const page = readFileSync("app/(dashboard)/dashboard/obligations/new/page.tsx", "utf8")
-        expect(page).toContain("const mayCreate = useCan().can('obligations.manage')")
+        expect(page).toContain("const mayCreate = useCan().can('obligations.create')")
         expect(page).toContain("if (!mayCreate) return <AccessDenied />")
         expect(page).toContain("result?.data?.data || []")
     })
