@@ -474,7 +474,7 @@ export default function RequestsClient({
                             options={[{ value: '', label: t('requests_kind_all') }, ...kinds.map(k => ({ value: k, label: kindName(k) }))]} />
                     )}</Field>
                 )}
-                {review && (
+                {employeeOptions && (
                     <Field label={t('requests_col_who')} hideLabel>{p => (
                         <Select {...p} icon={UserIcon} value={filters.employeeId} onChange={e => go({ employeeId: e.target.value })} options={employeeOptions} />
                     )}</Field>

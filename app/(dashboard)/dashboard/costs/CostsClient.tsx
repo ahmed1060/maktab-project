@@ -268,9 +268,11 @@ export default function CostsClient({ tabs, tasksWithCosts, total, page, totalPa
                 activeCount={filtersOn}
                 onReset={filtersOn > 0 || query ? resetFilters : undefined}
             >
-                <Field label={t('costs_col_employee')} hideLabel>{p => (
-                    <Select {...p} icon={UserIcon} value={filters.employeeId} onChange={e => go({ employeeId: e.target.value })} options={employeeOptions} />
-                )}</Field>
+                {employeeOptions && (
+                    <Field label={t('costs_col_employee')} hideLabel>{p => (
+                        <Select {...p} icon={UserIcon} value={filters.employeeId} onChange={e => go({ employeeId: e.target.value })} options={employeeOptions} />
+                    )}</Field>
+                )}
                 <ExtraFilterSelects filters={extraFilters} onPick={pickFilter} />
                 <DateRangePicker hideLabel dateFrom={filters.dateFrom} dateTo={filters.dateTo} onChange={(dateFrom, dateTo) => go({ dateFrom, dateTo })} />
                 <Field label={t('sort_by')} hideLabel>{p => (

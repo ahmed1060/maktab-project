@@ -257,9 +257,11 @@ export default function TasksClient({ tasks, total, page, totalPages, currentUse
             >
                 {!ownTasksOnly && (
                     <>
-                        <Field label={t('assignee_label')} hideLabel>{p => (
-                            <Select {...p} icon={UserIcon} value={filters.employeeId} onChange={e => go({ employeeId: e.target.value })} options={employeeOptions} />
-                        )}</Field>
+                        {employeeOptions && (
+                            <Field label={t('assignee_label')} hideLabel>{p => (
+                                <Select {...p} icon={UserIcon} value={filters.employeeId} onChange={e => go({ employeeId: e.target.value })} options={employeeOptions} />
+                            )}</Field>
+                        )}
                         <Field label={t('status_label')} hideLabel>{p => (
                             <Select {...p} icon={CircleHalfIcon} value={filters.status} onChange={e => go({ status: e.target.value })}
                                 options={[{ value: '', label: t('all_statuses') }, ...STATUSES.map(s => ({ value: s, label: t(`status_${s.toLowerCase()}` as TranslationKey) }))]} />

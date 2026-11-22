@@ -23,6 +23,9 @@ vi.mock("next/navigation", () => ({
     usePathname: () => "/dashboard/requests",
 }))
 vi.mock("next-auth/react", () => ({ useSession: () => ({ data: null }) }))
+/** Whether the viewer may see employees, which the person filter needs (PR 368). */
+const people = { seen: true }
+vi.mock("@/lib/useCan", () => ({ useCan: () => ({ can: (p: string) => p === "employees.view" && people.seen }) }))
 vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en", t: (key: string) => key }) }))
 vi.mock("@/context/ToastContext", () => ({ useToast: () => ({ showToast: () => {} }) }))
 vi.mock("@/context/CompanyContext", () => ({ useCompany: () => ({ selectedCompanyId: null }) }))
@@ -70,6 +73,17 @@ describe("the Requests page", () => {
         expect(html).not.toContain("requests_kind_all")
         expect(await page({ tab: "mine" })).not.toContain("all_employees")
         expect(await page({ kinds: ["internal", "dayOff"] })).toContain("requests_kind_all")
+    })
+
+    it("offers no person filter to a reviewer who may not see employees, as the list of them would be refused (PR 368)", async () => {
+        people.seen = false
+        try {
+            const html = await page()
+            expect(html).toContain("requests_show_waiting")
+            expect(html).not.toContain("all_employees")
+        } finally {
+            people.seen = true
+        }
     })
 
     it("reads each request the same way: what for, who asked, when, and its status", async () => {
