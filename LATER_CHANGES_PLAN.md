@@ -168,9 +168,20 @@ other filled in when one is typed, if that's possible.
      app reads kept for production alone, and a value for previews and
      development added from the new project. Its keys go from Supabase's
      page to Vercel's and nowhere else, never through the chat or the
-     repo.
+     repo. **Done on 2026-11-22:** production's 16 settings are kept for
+     production alone (its store's allowed environments), and "nizmo
+     dev" is connected to previews from Vercel's Storage Integrations:
+     the same 16 names, no prefix, no Supabase preview branches, each
+     marked sensitive. Not to development: Vercel can't mark those
+     sensitive, and Nizmo run on a computer uses its own local database.
+     Development can be added later, unmarked.
   4. **The first preview:** a PR's preview migrates the new project, and
-     the made-up data goes in after.
+     the made-up data goes in after. **The owner's sign-in
+     (2026-11-22):** the protected Super Admin is copied from
+     production, its email, names and password, as the owner asked; its
+     email stays checked, and it has no two-step code, since previews
+     don't have production's key for those codes or a way to send email.
+     Everything else is made up.
   5. **Checked:** the preview works against it, and production's
      database got nothing from it.
 - **Names (the owner, 2026-11-22):** the new project is "nizmo dev".
@@ -210,3 +221,7 @@ other filled in when one is typed, if that's possible.
 - **2026-11-22:** The development database's first two steps done: "nizmo
   dev" made on the free plan, with the `app-assets` bucket and its legacy
   keys. The owner's names, and "maktab drill" for the owner to delete.
+- **2026-11-22:** The development database's third step done: previews
+  have "nizmo dev"'s 16 settings, and production keeps its own. The
+  owner's sign-in for it is their protected Super Admin, copied from
+  production without the two-step code.
