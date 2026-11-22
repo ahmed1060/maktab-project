@@ -21,6 +21,11 @@ const state = {
     query: "",
     perms: [] as string[],
     swr: {} as Record<string, Loaded>,
+    // What the page asked for, and the modules the company's package leaves out (PR 370).
+    keys: [] as string[],
+    off: [] as string[],
+    // The permissions held for a team, not the company (Codex on PR 370).
+    team: [] as string[],
 }
 vi.mock("next/navigation", () => ({
     useParams: () => ({ id: state.id }),
@@ -34,13 +39,22 @@ vi.mock("@/context/LanguageContext", () => ({
 }))
 vi.mock("@/context/ToastContext", () => ({ useToast: () => ({ showToast: () => {} }) }))
 vi.mock("@/lib/useCan", () => ({
-    useCan: () => ({ can: (p: string) => state.perms.includes(p), canFor: (p: string) => state.perms.includes(p) }),
+    useCan: () => ({
+        // Held for a team, it reaches the people the viewer leads, as can() has it.
+        can: (p: string, target?: { userId?: string | null; teamLeaderId?: string | null }) => state.perms.includes(p)
+            && (!target || !state.team.includes(p) || target.userId === state.me || target.teamLeaderId === state.me),
+        canFor: (p: string) => state.perms.includes(p),
+        scope: (p: string) => (state.perms.includes(p) ? (state.team.includes(p) ? "TEAM" : "COMPANY") : null),
+    }),
+    useViewer: () => ({ id: state.me, role: "EMPLOYEE", companyId: "c1" }),
 }))
+vi.mock("@/lib/features/useFeatures", () => ({ useFeatures: () => ({ has: (m: string) => !state.off.includes(m) }) }))
 // A dialog renders in place, after hydration, so its contents are in the markup.
 vi.mock("@/lib/useHydrated", () => ({ useHydrated: () => true }))
 vi.mock("react-dom", async importOriginal => ({ ...(await importOriginal<typeof import("react-dom")>()), createPortal: (children: unknown) => children }))
 vi.mock("swr", () => ({
     default: (key: string | null) => {
+        if (key) state.keys.push(key)
         const shown = key ? state.swr[key] : undefined
         return { data: undefined, error: undefined, isLoading: !!key && !shown, isValidating: false, mutate: async () => {}, ...shown }
     },
@@ -74,8 +88,10 @@ const egp = (n: number, locale = "en-GB") => `${n.toLocaleString(locale, { minim
 const money = (n: number, locale = "en-EG") => new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
 const refused = (status: number) => ({ error: Object.assign(new Error("Request failed"), { status, info: { error: "Database unavailable" } }) })
 
-async function page({ me = "admin", query = "", perms = ["salary.view"], swr = {} as Record<string, Loaded>, locale = "en" as "en" | "ar" } = {}) {
-    Object.assign(state, { me, query, perms, swr, locale })
+/** Who looks at someone else's history: HR, who may see the person, their salary, their day off and their costs. */
+const HR = ["employees.view", "salary.view", "dayoff.view", "costs.view"]
+async function page({ me = "admin", query = "", perms = HR, swr = {} as Record<string, Loaded>, locale = "en" as "en" | "ar", off = [] as string[], team = [] as string[] } = {}) {
+    Object.assign(state, { me, query, perms, swr, locale, off, team, keys: [] })
     const { default: Page } = await import("@/app/(dashboard)/dashboard/employees/[id]/history/page")
     return renderToStaticMarkup(h(Page))
 }
@@ -108,7 +124,7 @@ describe("the frame", () => {
         expect(html).toContain(`role="tablist" aria-label="${en.history}"`)
         for (const label of [en.salary_label, en.hist_tab_day_off, en.costs_tab]) expect(html).toContain(`>${label}</button>`)
         expect(html).toMatch(new RegExp(`aria-selected="true"[^>]*>${en.costs_tab}</button>`))
-        expect(await page({ perms: [] })).toMatch(new RegExp(`aria-selected="true"[^>]*>${en.history}</button>`))
+        expect(await page({ me: "u2", perms: [] })).toMatch(new RegExp(`aria-selected="true"[^>]*>${en.history}</button>`))
     })
 
     it("has no action in the page header: each tab's actions are on its rows", async () => {
@@ -117,7 +133,7 @@ describe("the frame", () => {
         expect(salaryTab).not.toContain("ui-page-actions")
         expect(salaryTab).toMatch(new RegExp(`<h2 class="ui-section-title">(<span[^>]*>)?${en.hist_adjustments}(</span>)?</h2>`))
         // Day off credit has none: Reconsider is on each day off it can change (part 2).
-        const dayOff = await page({ query: "tab=day-off", perms: ["dayoff.approve"], swr: { "/api/users/u2/day-off-history": { data: { data: HISTORY } } } })
+        const dayOff = await page({ query: "tab=day-off", perms: ["dayoff.view", "dayoff.approve"], swr: { "/api/users/u2/day-off-history": { data: { data: HISTORY } } } })
         expect(dayOff).not.toContain("ui-page-actions")
         expect(dayOff).not.toContain("Manage deductions")
         expect(dayOff).toContain(`>${en.reevaluate}</button>`)
@@ -131,6 +147,138 @@ describe("the frame", () => {
         const failed = await page({ query: "tab=costs", swr: { "/api/users/u2/costs-history": refused(500) } })
         expect(failed).toContain(en.hist_costs_load_failed.replace(/'/g, "&#x27;"))
         expect(failed).toContain(">Try again</button>")
+    })
+})
+
+describe("what the page asks for (PR 370)", () => {
+    // Found by the list of needs (LATER_CHANGES_PLAN.md §5.3): it asked for the
+    // person, their day off and their costs whatever the viewer held, so a
+    // viewer who may see salaries alone was refused, and shown two tabs that
+    // said they didn't load. Each part is asked for only when its route answers.
+    const asked = (path: string) => state.keys.some(k => k.startsWith(path))
+    const tabs = (html: string) => [...html.matchAll(/role="tab"[^>]*>([^<]*)<\/button>/g)].map(([, label]) => label)
+
+    it("asks someone else's history only for what the viewer may see, so nothing is refused", async () => {
+        await page({ perms: ["employees.view", "salary.view"] })
+        expect(asked("/api/users?id=u2")).toBe(true)
+        expect(asked("/api/users/u2/salary-history")).toBe(true)
+        expect(asked("/api/users/u2/adjustments")).toBe(true)
+        for (const path of ["day-off-history", "costs-history", "settlements", "debts"]) expect(asked(`/api/users/u2/${path}`)).toBe(false)
+    })
+
+    it("doesn't ask for the person without See employees, and names the page History", async () => {
+        const html = await page({ perms: ["salary.view"] })
+        expect(asked("/api/users?id=u2")).toBe(false)
+        expect(html).toMatch(new RegExp(`<h1[^>]*>${en.history}</h1>`))
+    })
+
+    it("shows only the tabs the viewer can see, and opens the first when the address names another", async () => {
+        const html = await page({ query: "tab=day-off", perms: ["employees.view", "costs.view"] })
+        expect(tabs(html)).toEqual([en.costs_tab])
+        expect(html).toMatch(new RegExp(`aria-selected="true"[^>]*>${en.costs_tab}</button>`))
+        expect(asked("/api/users/u2/day-off-history")).toBe(false)
+        expect(asked("/api/users/u2/salary-history")).toBe(false)
+    })
+
+    it("asks one's own history for the person, the months, the day off and the costs, holding nothing", async () => {
+        const html = await page({ me: "u2", perms: [] })
+        for (const path of ["/api/users?id=u2", "/api/users/u2/salary-history", "/api/users/u2/day-off-history", "/api/users/u2/costs-history"]) expect(asked(path)).toBe(true)
+        for (const path of ["adjustments", "settlements", "debts"]) expect(asked(`/api/users/u2/${path}`)).toBe(false)
+        expect(tabs(html)).toEqual([en.history, en.hist_tab_day_off, en.costs_tab])
+    })
+
+    it("leaves out a tab whose part the company's package doesn't include", async () => {
+        const html = await page({ me: "u2", perms: [], off: ["DAY_OFF"] })
+        expect(tabs(html)).toEqual([en.history, en.costs_tab])
+        expect(asked("/api/users/u2/day-off-history")).toBe(false)
+    })
+
+    it("asks nothing of Payroll's without Payroll in the package, and leaves out the bonuses and deductions without Salary adjustments", async () => {
+        const everything = [...HR, "debts.view", "settlements.manage"]
+        const html = await page({ perms: everything, off: ["PAYROLL"] })
+        for (const path of ["salary-history", "costs-history", "settlements", "debts"]) expect(asked(`/api/users/u2/${path}`)).toBe(false)
+        expect(tabs(html)).toEqual([en.salary_label, en.hist_tab_day_off])
+        expect(html).not.toContain(en.hist_nothing_yet)
+        const noAdjustments = await page({ perms: everything, off: ["SALARY_ADJUSTMENTS"], swr: { "/api/users/u2/adjustments": { data: { data: ADJUSTMENTS } } } })
+        expect(asked("/api/users/u2/adjustments")).toBe(false)
+        expect(noAdjustments).not.toContain(en.hist_adjustments)
+    })
+
+    it("gives a viewer who sees debts alone the Salary tab, named History, with the debts and no months", async () => {
+        const html = await page({ perms: ["employees.view", "debts.view"], swr: { "/api/users/u2/debts": { data: { data: [DEBT] } } } })
+        expect(tabs(html)).toEqual([en.history])
+        expect(html).toContain(en.debts_title)
+        expect(asked("/api/users/u2/salary-history")).toBe(false)
+        for (const word of [en.hist_months, en.hist_no_months, en.hist_load_failed.replace(/'/g, "&#x27;")]) expect(html).not.toContain(word)
+    })
+
+    it("says so when there's nothing yet, to a viewer who sees debts or settlements alone", async () => {
+        const none = { data: { data: [] } }
+        const html = await page({ perms: ["employees.view", "debts.view", "settlements.manage"], swr: { "/api/users/u2/debts": none, "/api/users/u2/settlements": none } })
+        expect(html).toContain(en.hist_nothing_yet)
+        expect(await page({ perms: ["employees.view", "debts.view"] })).toContain(en.loading)
+        expect(await page({ swr: { "/api/users/u2/salary-history": { data: { data: [OCT] } } } })).not.toContain(en.hist_nothing_yet)
+    })
+
+    it("says the page can't be opened to a viewer who may see none of it", async () => {
+        const html = await page({ perms: ["employees.view"], swr: { "/api/users?id=u2": { data: { data: YOUSSEF } } } })
+        expect(html).toContain(en.access_denied_title.replace(/'/g, "&#x27;"))
+        expect(html).not.toContain('role="tablist"')
+        expect(state.keys.filter(k => k.startsWith("/api/users/u2/"))).toEqual([])
+    })
+
+    it("says the history didn't load, with Try again, rather than that there's nothing, to a viewer who sees debts alone (Codex on PR 370)", async () => {
+        const html = await page({ perms: ["employees.view", "debts.view"], swr: { "/api/users/u2/debts": refused(500), "/api/users/u2/settlements": { data: { data: [] } } } })
+        expect(html).toContain(en.hist_history_load_failed.replace(/'/g, "&#x27;"))
+        expect(html).toContain(">Try again</button>")
+        expect(html).not.toContain(en.hist_nothing_yet)
+    })
+
+    it("asks for what's held for a team only once the person is known to be in it (Codex on PR 370)", async () => {
+        const viewer = { perms: ["employees.view", "dayoff.view", "costs.view"], team: ["dayoff.view"] }
+        const elsewhere = await page({ ...viewer, swr: { "/api/users?id=u2": { data: { data: { ...YOUSSEF, teamLeaderId: "someone-else" } } } } })
+        expect(asked("/api/users/u2/day-off-history")).toBe(false)
+        expect(tabs(elsewhere)).toEqual([en.costs_tab])
+        const led = await page({ ...viewer, swr: { "/api/users?id=u2": { data: { data: { ...YOUSSEF, teamLeaderId: "admin" } } } } })
+        expect(asked("/api/users/u2/day-off-history")).toBe(true)
+        expect(tabs(led)).toEqual([en.hist_tab_day_off, en.costs_tab])
+    })
+
+    it("asks for what's held for a team, and lets its route decide, when the person didn't load, rather than saying it can't be opened (Codex on PR 370)", async () => {
+        const viewer = { perms: ["employees.view", "salary.view", "costs.view"], team: ["salary.view"] }
+        const failed = await page({ ...viewer, swr: { "/api/users?id=u2": refused(500) } })
+        expect(asked("/api/users/u2/salary-history")).toBe(true)
+        expect(tabs(failed)).toEqual([en.salary_label, en.costs_tab])
+        // Refused, or not there, nothing held for a team is asked for.
+        for (const status of [403, 404]) {
+            const refusedHtml = await page({ ...viewer, swr: { "/api/users?id=u2": refused(status) } })
+            expect(asked("/api/users/u2/salary-history")).toBe(false)
+            expect(tabs(refusedHtml)).toEqual([en.costs_tab])
+        }
+        expect(await page({ perms: ["employees.view", "salary.view"], team: ["salary.view"], swr: { "/api/users?id=u2": refused(403) } }))
+            .toContain(en.access_denied_title.replace(/'/g, "&#x27;"))
+    })
+
+    it("asks for what's held for a team without See employees, as the person can't be looked up, and lets its route decide (Codex on PR 370)", async () => {
+        const html = await page({ perms: ["dayoff.view"], team: ["dayoff.view"] })
+        expect(asked("/api/users?id=u2")).toBe(false)
+        expect(asked("/api/users/u2/day-off-history")).toBe(true)
+        expect(tabs(html)).toEqual([en.hist_tab_day_off])
+    })
+
+    it("waits for the person, rather than saying it can't be opened, while what it shows depends on them", async () => {
+        const viewer = { perms: ["employees.view", "dayoff.view"], team: ["dayoff.view"] }
+        const waiting = await page(viewer)
+        expect(waiting).toContain(en.loading)
+        expect(waiting).not.toContain(en.access_denied_title.replace(/'/g, "&#x27;"))
+        expect(await page({ ...viewer, swr: { "/api/users?id=u2": { data: { data: { ...YOUSSEF, teamLeaderId: "someone-else" } } } } }))
+            .toContain(en.access_denied_title.replace(/'/g, "&#x27;"))
+    })
+
+    it("is in Arabic too", async () => {
+        const none = { data: { data: [] } }
+        expect(await page({ locale: "ar", perms: ["debts.view"], swr: { "/api/users/u2/debts": none } })).toContain(ar.hist_nothing_yet)
+        expect(await page({ locale: "ar", perms: ["debts.view"], swr: { "/api/users/u2/debts": refused(500) } })).toContain(ar.hist_history_load_failed)
     })
 })
 
@@ -415,7 +563,7 @@ describe("bonuses and deductions (part 3)", () => {
     it("are a section of the Salary tab, for who can see salary", async () => {
         const html = await page({ swr: { "/api/users/u2/adjustments": { data: { data: ADJUSTMENTS } } } })
         expect(html).toMatch(new RegExp(`<h2 class="ui-section-title">(<span[^>]*>)?${en.hist_adjustments}(</span>)?</h2>`))
-        expect(await page({ perms: [] })).not.toContain(en.hist_adjustments)
+        expect(await page({ me: "u2", perms: [] })).not.toContain(en.hist_adjustments)
     })
 
     it("list each: what it was, the month it counts in, where it came from, why, and when it was entered", async () => {

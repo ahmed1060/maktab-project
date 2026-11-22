@@ -4,6 +4,7 @@ import { join } from "node:path"
 import { stripComments } from "@/lib/strip-comments"
 import { permissionsOf, type Can } from "@/lib/useCan"
 import { withGrants } from "./test-actors"
+import { historyParts } from "@/lib/history-parts"
 
 /**
  * Every role check a screen made, and the permission question that replaced it.
@@ -51,6 +52,10 @@ const OBL = D + "obligations/[id]/client.tsx"
 // What a person's profile shows and changes, for its view and its form (PRs 192 and 193).
 const ACCESS = "lib/profile-access.ts"
 const PEOPLE = D + "employees/page.tsx"
+// What an employee's history asks for and shows (PR 370).
+const HISTORY = "lib/history-parts.ts"
+/** Whether the Employees list offers History: any of its tabs on someone else's. */
+const seesHistory = (p: Can) => historyParts({ own: false, can: x => p.can(x), has: () => true }).tabs.length > 0
 
 const GATES: Gate[] = [
     // --- Clients, records, costs ---------------------------------------------
@@ -108,8 +113,17 @@ const GATES: Gate[] = [
     { what: "payroll: waive a debt", file: D + "payroll/page.tsx", uses: "const canWaive = can('debts.waive')", before: admins, now: p => p.can("debts.waive") },
 
     // --- Employees -------------------------------------------------------------
-    { what: "history: settlements", file: D + "employees/[id]/history/page.tsx", uses: "can('settlements.manage') && id", before: admins, now: p => p.can("settlements.manage") },
-    { what: "history: debts", file: D + "employees/[id]/history/page.tsx", uses: "can('debts.view') && id", before: admins, now: p => p.can("debts.view") },
+    // Each part of an employee's history is asked for only when its route
+    // answers (PR 370, lib/history-parts.ts). Before, the person, the months,
+    // the day off and the costs were asked for whoever looked, and refused.
+    { what: "history: the person (flag: one's own page)", file: D + "employees/[id]/history/page.tsx", uses: "const seesPerson = own || can('employees.view')", before: (r, own) => own || r !== "EMPLOYEE", now: (p, own) => own || p.can("employees.view") },
+    { what: "history: months (flag: one's own page)", file: HISTORY, uses: "months: has('PAYROLL') && (own || can('salary.view'))", before: (r, own) => own || admins(r), now: (p, own) => own || p.can("salary.view") },
+    { what: "history: day off (flag: one's own page)", file: HISTORY, uses: "dayOff: has('DAY_OFF') && (own || can('dayoff.view'))", before: (r, own) => own || admins(r), now: (p, own) => own || p.can("dayoff.view") },
+    { what: "history: costs (flag: one's own page)", file: HISTORY, uses: "costs: has('PAYROLL') && (own || can('costs.view'))", before: (r, own) => own || admins(r), now: (p, own) => own || p.can("costs.view") },
+    { what: "history: bonuses and deductions list", file: HISTORY, uses: "adjustments: has('SALARY_ADJUSTMENTS') && can('salary.view')", before: admins, now: p => p.can("salary.view") },
+    { what: "history: settlements", file: HISTORY, uses: "settlements: has('PAYROLL') && can('settlements.manage')", before: admins, now: p => p.can("settlements.manage") },
+    { what: "history: debts", file: HISTORY, uses: "debts: has('PAYROLL') && can('debts.view')", before: admins, now: p => p.can("debts.view") },
+    { what: "history: asks by the parts, for the person (Codex on PR 370)", file: D + "employees/[id]/history/page.tsx", uses: "const parts = historyParts({ own, can: forPerson({ can, scope }, person, lookedUp), has: features.has })", before: () => true, now: () => true },
     { what: "history: salary label", file: D + "employees/[id]/history/page.tsx", uses: "const canSeeSalary = can('salary.view')", before: admins, now: p => p.can("salary.view") },
     // Changed in Part B: not on one's own pay (ROLES_PLAN.md §4.2, rule 5).
     // Recorded first as admins(r), own page or not.
@@ -121,9 +135,14 @@ const GATES: Gate[] = [
     { what: "employees: page", file: PEOPLE, uses: "if (viewer && !can('employees.view'))", before: r => r !== "EMPLOYEE", now: p => p.can("employees.view") },
     { what: "employees: assign teams", file: PEOPLE, uses: "const canAssignTeams = can('employees.assign_team')", before: admins, now: p => p.can("employees.assign_team") },
     { what: "employees: add", file: PEOPLE, uses: "can('employees.create') && <ButtonLink href=\"/dashboard/employees/new\"", before: admins, now: p => p.can("employees.create") },
-    { what: "employees: actions row", file: PEOPLE, uses: "...(canActOnPeople ? [{ key: 'actions'", before: admins, now: p => ["employees.edit", "salary.view", "salary_adjustments.manage", "requests.reset_points", "employees.delete"].some(x => p.can(x as any)) },
+    { what: "employees: actions row", file: PEOPLE, uses: "...(canActOnPeople ? [{ key: 'actions'", before: admins, now: p => seesHistory(p) || ["employees.edit", "salary_adjustments.manage", "requests.reset_points", "employees.delete"].some(x => p.can(x as any)) },
     { what: "employees: edit", file: PEOPLE, uses: "const canEdit = (e: Employee) => can('employees.edit') && (e.role", before: admins, now: p => p.can("employees.edit") },
-    { what: "employees: history", file: PEOPLE, uses: "if (features.has('PAYROLL') && can('salary.view') && notAdmin)", before: admins, now: p => p.can("salary.view") },
+    // Offered by "See salaries" alone until PR 370, though its tabs are for day off, costs, debts and settlements too.
+    { what: "employees: history", file: PEOPLE, uses: "const seesHistory = features.has('PAYROLL') && historyParts({ own: false, can, has: features.has }).tabs.length > 0", before: admins, now: seesHistory },
+    // Each row's, for that person: a grant held for a team reaches only its people (Codex on PR 370).
+    { what: "employees: history for the row", file: PEOPLE, uses: "const historyOf = (e: Employee) => seesHistory && historyParts({ own: false, can: forPerson({ can, scope }, { userId: e.id, teamLeaderId: e.teamLeaderId ?? null, companyId: viewer?.companyId ?? null }), has: features.has }).tabs.length > 0", before: admins, now: seesHistory },
+    { what: "employees: history link", file: PEOPLE, uses: "if (historyOf(e) && notAdmin) items.push({ key: 'history'", before: admins, now: seesHistory },
+    { what: "employees: actions row asks the history's", file: PEOPLE, uses: "const canActOnPeople = can('employees.edit') || seesHistory", before: admins, now: seesHistory },
     { what: "employees: bonus and deduction", file: PEOPLE, uses: "if (features.has('SALARY_ADJUSTMENTS') && can('salary_adjustments.manage') && notAdmin)", before: admins, now: p => p.can("salary_adjustments.manage") },
     { what: "employees: reset points", file: PEOPLE, uses: "if (can('requests.reset_points') && notAdmin)", before: admins, now: p => p.can("requests.reset_points") },
     { what: "employees: delete", file: PEOPLE, uses: "if (can('employees.delete') && e.role", before: admins, now: p => p.can("employees.delete") },

@@ -45,9 +45,16 @@ export type Debt = {
 
 const DEBT_TONE: Record<Debt['status'], StatusTone> = { OUTSTANDING: 'waiting', SETTLED: 'good', WAIVED: 'neutral' }
 
-export function SalaryTab({ employee, records, loading, error, retrying, retry, adjustments, settlements, debts }: {
+export function SalaryTab({ employee, records, months = true, loading, error, retrying, retry, adjustments, settlements, debts }: {
     employee: { salary?: number } | null
     records: SalaryRecord[]
+    /**
+     * Whether the months are shown: not to someone who sees another's debts
+     * or settlements and not their salary (PR 370). Without them, `loading`,
+     * `error` and `retry` are the settlements' and debts', and the tab says
+     * when it has none, or when they didn't load.
+     */
+    months?: boolean
     loading: boolean
     error: unknown
     retrying: boolean
@@ -104,7 +111,7 @@ export function SalaryTab({ employee, records, loading, error, retrying, retry, 
         { key: 'reason', header: t('hist_debt_col_reason'), cell: d => <DebtReason debt={d} /> },
     ]
 
-    const months = (() => {
+    const monthList = (() => {
         if (records.length === 0 && loading) return <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
         if (records.length === 0 && error) return (
             <div className="ui-panel">
@@ -142,7 +149,22 @@ export function SalaryTab({ employee, records, loading, error, retrying, retry, 
                 <Card><Details items={[{ label: t('hist_base_salary'), value: amount(employee.salary) }]} /></Card>
             )}
 
-            {months}
+            {months && monthList}
+
+            {/* Without the months, the bonuses, debts and settlements are all there is. */}
+            {!months && !adjustments && settlements.length === 0 && debts.length === 0 && (
+                loading
+                    ? <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
+                    // Not "nothing yet" when they didn't load (Codex on PR 370).
+                    : error
+                        ? (
+                            <div className="ui-panel">
+                                <EmptyState icon={WarningCircleIcon} title={t('hist_history_load_failed')} detail={(error as SWRError).info?.error}
+                                    action={<Button busy={retrying} onClick={retry}>{t('try_again')}</Button>} />
+                            </div>
+                        )
+                        : <div className="ui-panel"><EmptyState icon={ReceiptIcon} title={t('hist_nothing_yet')} /></div>
+            )}
 
             {adjustments}
 

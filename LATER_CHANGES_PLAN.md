@@ -378,14 +378,14 @@ there:
 4. **Roles already saved** (rule 4), after a read-only count of the
    roles in production that break a rule.
 
-The three screens found to fix in §5.3 go in one PR of their own, as #368
-did, after the list is approved and before step 2.
+The two screens found to fix in §5.3 go in one PR of their own, as #368
+did, after the list is approved and before step 2: #370.
 
-### 5.3 The list of needs (Proposed, 2026-11-22)
+### 5.3 The list of needs (Decided, 2026-11-22)
 
 Found by reading what each screen asks the server for, against the
-permission that opens it, and where each permission's buttons are. Waiting
-for the owner's approval.
+permission that opens it, and where each permission's buttons are.
+Approved by the owner as written on 2026-11-22.
 
 **How a need is worked out:**
 - **Where it's used:** a permission needs what lets its holder reach the
@@ -439,15 +439,22 @@ permission bringing "See obligations". None found missing.
 | `tasks.transfer` | Transfer a task |
 
 **Found along the way, to fix like #368, not rules:**
-- **Suggested names:** typing a task's title or a cost's name asks for the
-  saved names, which only "Add list names" may read: anyone else is
-  refused at each letter. The Tasks and Costs lists' title and cost-name
-  filters ask the same way.
+- **Suggested names:** listed at first, wrongly. The saved names a picker
+  suggests, and the Tasks and Costs lists' title and cost-name filters,
+  are for anyone in the company: `GET /api/lists` asks no permission, and
+  nobody is refused (`lib/saved-lists.db.test.ts`). Nothing to fix.
 - **An employee's history** asks for the person, their day off and their
   costs whatever the viewer holds: someone who may see salaries alone gets
-  an error and two tabs that didn't load.
+  no name in the title and two tabs that say they didn't load. Each part is
+  now asked for only when its route answers the viewer, and its tabs are
+  those parts (`lib/history-parts.ts`, #370).
 - **The history link** on the Employees list is offered by "See salaries"
   only, though its tabs are for day off, costs, debts and settlements too.
+  It's now offered to who sees any of them on that person's history: a
+  permission held for a team counts only for the people its holder leads,
+  as the routes check; without See employees, or when looking them up
+  fails other than by a refusal, who leads them isn't known, so the route
+  decides (#370).
 
 ## Not here
 
@@ -520,3 +527,20 @@ permission bringing "See obligations". None found missing.
 - **2026-11-22:** The list of needs (§5.3), proposed for the owner's
   approval: nine needs across areas, three softer ones, the four pickers,
   and three screens to fix as #368 was.
+- **2026-11-22:** #369 merged, and the list of needs (§5.3) approved as
+  written. The three screens it found are fixed first, as #370.
+- **2026-11-22:** Checked against the code before building #370, the
+  suggested names weren't refused after all: `GET /api/lists` gives them,
+  and the filters' names, to anyone in the company. Two screens to fix,
+  not three: an employee's history and its link on the Employees list.
+- **2026-11-22:** Codex on #370: a permission held for a team reaches
+  only the people its holder leads, so the History link and the page's
+  tabs count it only for them; and a Salary tab without months says when
+  its debts and settlements didn't load, rather than that there are none.
+- **2026-11-22:** Codex on #370 again: without See employees, the page
+  can't look the person up to know who leads them, so what's held for a
+  team is asked for and its route, which looks them up, decides.
+- **2026-11-22:** Codex on #370, a third time: when looking the person up
+  fails other than by a refusal, the page doesn't know who leads them
+  either, so the route decides there too, rather than the page saying it
+  can't be opened.
