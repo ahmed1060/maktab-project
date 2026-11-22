@@ -452,7 +452,8 @@ permission bringing "See obligations". None found missing.
   only, though its tabs are for day off, costs, debts and settlements too.
   It's now offered to who sees any of them on that person's history: a
   permission held for a team counts only for the people its holder leads,
-  as the routes check (#370).
+  as the routes check; without See employees, who leads them can't be
+  looked up, so the route decides (#370).
 
 ## Not here
 
@@ -535,3 +536,6 @@ permission bringing "See obligations". None found missing.
   only the people its holder leads, so the History link and the page's
   tabs count it only for them; and a Salary tab without months says when
   its debts and settlements didn't load, rather than that there are none.
+- **2026-11-22:** Codex on #370 again: without See employees, the page
+  can't look the person up to know who leads them, so what's held for a
+  team is asked for and its route, which looks them up, decides.
