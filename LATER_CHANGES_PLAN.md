@@ -381,11 +381,11 @@ there:
 The three screens found to fix in §5.3 go in one PR of their own, as #368
 did, after the list is approved and before step 2.
 
-### 5.3 The list of needs (Proposed, 2026-11-22)
+### 5.3 The list of needs (Decided, 2026-11-22)
 
 Found by reading what each screen asks the server for, against the
-permission that opens it, and where each permission's buttons are. Waiting
-for the owner's approval.
+permission that opens it, and where each permission's buttons are.
+Approved by the owner as written on 2026-11-22.
 
 **How a need is worked out:**
 - **Where it's used:** a permission needs what lets its holder reach the
@@ -445,7 +445,7 @@ permission bringing "See obligations". None found missing.
   filters ask the same way.
 - **An employee's history** asks for the person, their day off and their
   costs whatever the viewer holds: someone who may see salaries alone gets
-  an error and two tabs that didn't load.
+  no name in the title and two tabs that say they didn't load.
 - **The history link** on the Employees list is offered by "See salaries"
   only, though its tabs are for day off, costs, debts and settlements too.
 
@@ -520,3 +520,5 @@ permission bringing "See obligations". None found missing.
 - **2026-11-22:** The list of needs (§5.3), proposed for the owner's
   approval: nine needs across areas, three softer ones, the four pickers,
   and three screens to fix as #368 was.
+- **2026-11-22:** #369 merged, and the list of needs (§5.3) approved as
+  written. The three screens it found are fixed first, as #370.
