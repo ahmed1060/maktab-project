@@ -385,7 +385,7 @@ export class AttendancePunchService {
     static async mapCode(companyId: string, input: { code: string; userId: string }, actorId: string) {
         const code = input.code.trim()
         if (!code) fail("CODE_REQUIRED")
-        if (input.userId === actorId) fail("CANNOT_CORRECT_OWN")
+        // One's own included: whoever maps numbers may map their own (ATTENDANCE_PLAN.md §14, PR 366).
         const out = await prisma.$transaction(async tx => {
             const person = await tx.user.findFirst({ where: { id: input.userId, companyId, status: { not: "DELETED" } }, select: { id: true, firstName: true, lastName: true } }) ?? fail("USER_NOT_FOUND")
             await serialize(tx, `attendance-codes:${companyId}`)

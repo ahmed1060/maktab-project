@@ -133,10 +133,9 @@ describe.skipIf(!ADMIN_URL)("punches, in Postgres", () => {
             expect((await rows(`"sourceKey" = 'hash-oct-2:2'`))[0].userId).toBe("e1")
         })
 
-        it("refuses a number taken, a person from another company, and mapping oneself", async () => {
+        it("refuses a number taken, and a person from another company", async () => {
             await expect(Punches.mapCode("c1", { code: "101", userId: "e3" }, "a1")).rejects.toEqual(refusal("CODE_TAKEN"))
             await expect(Punches.mapCode("c1", { code: "303", userId: "e2" }, "a1")).rejects.toEqual(refusal("USER_NOT_FOUND"))
-            await expect(Punches.mapCode("c1", { code: "303", userId: "a1" }, "a1")).rejects.toEqual(refusal("CANNOT_CORRECT_OWN"))
         })
 
         it("leaves punches in an approved month with nobody, since that month was paid without them", async () => {
@@ -151,6 +150,19 @@ describe.skipIf(!ADMIN_URL)("punches, in Postgres", () => {
             expect(await Punches.unmapCode(m.id, "a1")).toEqual({ unfilled: 1 })
             expect((await rows(`"hardwareUserId" = '303' AND "punchAtLocal" >= '2026-10-01'`))[0].userId).toBeNull()
             await Punches.mapCode("c1", { code: "303", userId: "e3" }, "a1")
+        })
+
+        it("lets whoever maps numbers map their own, with its waiting punches, recorded as theirs, and never remove it themselves (PR 366)", async () => {
+            await db.query(`INSERT INTO "AttendancePunch"(id, "companyId", source, "sourceKey", "hardwareUserId", "punchAtLocal", "punchAt", "resolvedWithTimeZone") VALUES ('mine505', 'c1', 'IMPORT', 'own:1', '505', '2026-10-01 08:00', now(), 'Africa/Cairo')`)
+            const mine = await Punches.mapCode("c1", { code: "505", userId: "a1" }, "a1")
+            expect(mine).toMatchObject({ filled: 1, leftInLockedMonths: 0 })
+            expect((await rows(`id = 'mine505'`))[0].userId).toBe("a1")
+            const { rows: [entry] } = await db.query(`SELECT "userId", details FROM "AuditLog" WHERE action = 'MAP_ATTENDANCE_CODE' AND "entityId" = $1`, [mine.id])
+            expect(entry).toMatchObject({ userId: "a1", details: expect.objectContaining({ code: "505", userId: "a1" }) })
+            await expect(Punches.unmapCode(mine.id, "a1")).rejects.toEqual(refusal("CANNOT_CORRECT_OWN"))
+            // Out of the later tests' way; its audit entry stays.
+            await db.query(`DELETE FROM "AttendancePunch" WHERE id = 'mine505'`)
+            await db.query(`DELETE FROM "AttendanceCode" WHERE id = $1`, [mine.id])
         })
     })
 
@@ -272,7 +284,7 @@ describe.skipIf(!ADMIN_URL)("punches, in Postgres", () => {
         const { rows: log } = await db.query(`SELECT action, "entityType", "userId" FROM "AuditLog" WHERE "entityType" LIKE 'ATTENDANCE_%' AND "entityType" NOT IN ('ATTENDANCE_CALENDAR', 'ATTENDANCE_POLICY') ORDER BY "createdAt"`)
         expect(log.map(l => l.action)).toEqual([
             "IMPORT_ATTENDANCE_PUNCHES", "MAP_ATTENDANCE_CODE", "IMPORT_ATTENDANCE_PUNCHES", "MAP_ATTENDANCE_CODE",
-            "UNMAP_ATTENDANCE_CODE", "MAP_ATTENDANCE_CODE", "ADD_ATTENDANCE_PUNCH", "VOID_ATTENDANCE_PUNCH", "IMPORT_ATTENDANCE_PUNCHES",
+            "UNMAP_ATTENDANCE_CODE", "MAP_ATTENDANCE_CODE", "MAP_ATTENDANCE_CODE", "ADD_ATTENDANCE_PUNCH", "VOID_ATTENDANCE_PUNCH", "IMPORT_ATTENDANCE_PUNCHES",
             "VOID_ATTENDANCE_IMPORT", "IMPORT_ATTENDANCE_PUNCHES",
         ])
         expect(new Set(log.map(l => l.userId))).toEqual(new Set(["a1"]))

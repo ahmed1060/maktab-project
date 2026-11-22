@@ -172,10 +172,10 @@ describe("the numbers waiting for a person", () => {
         expect(html).toContain('<ul class="ui-cards" aria-label="Numbers with nobody yet">')
     })
 
-    it("offer nobody one's own number to save", async () => {
-        const html = await page({ tab: "numbers" })
-        expect(html).toContain('<option value="u2">Sami Nabil</option>')
-        expect(html).not.toContain('<option value="u1">Hana Saad</option>')
+    it("offer one's own number in the form too, as whoever matches the numbers may match their own (PR 366)", async () => {
+        const form = card(await page({ tab: "numbers" }), "Numbers and people")
+        expect(form).toContain('<option value="u1">Hana Saad</option>')
+        expect(form).toContain('<option value="u2">Sami Nabil</option>')
     })
 
     it("say when every number has a person", async () => {

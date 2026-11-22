@@ -71,7 +71,7 @@ The owner asked to break up every "manage" permission in the roles system.
     there, in a PR of its own.
 - **How it's built (2026-11-22):**
   - **One PR for each "manage" permission:** clients first (#365), with
-    what every split shares, then obligations (#366), then the rest in
+    what every split shares, then obligations (#367), then the rest in
     the order above. Each brings its routes, its screens and
     `ROLES_PLAN.md`'s rows.
   - **Nobody loses access in between.** The old permission stays in the
@@ -329,3 +329,7 @@ other filled in when one is typed, if that's possible.
   `clients.edit` and `clients.delete` reuse two names records had until
   4 November; nothing stored keeps the old meaning, apart from older
   audit-log lines.
+- **2026-11-22:** #365 merged. A fix found at the first customer's goes
+  first, as #366 (`ATTENDANCE_PLAN.md` §14, §17.13): choosing who an
+  employee number is, and the HR officer's own. The obligations split is
+  #367.

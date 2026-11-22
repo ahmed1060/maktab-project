@@ -44,7 +44,8 @@ vi.mock("@/lib/services/attendance-punch.service", () => ({
         voidImport: async (id: string) => { reached.push(`voidImport:${id}`); return { voided: 3 } },
         codes: async (companyId: string) => { reached.push(`codes:${companyId}`); return { mapped: [], unmatched: [] } },
         mapCode: async (companyId: string, input: any) => { reached.push(`map:${companyId}:${input.code}:${input.userId}`); return { id: "m-new" } },
-        codeOf: async (id: string) => id === "m1" ? { id: "m1", companyId: "c1", code: "101", userId: "emp", user: { teamLeaderId: null } } : null,
+        codeOf: async (id: string) => id === "m1" ? { id: "m1", companyId: "c1", code: "101", userId: "emp", user: { teamLeaderId: null } }
+            : id === "mOwn" ? { id: "mOwn", companyId: "c1", code: "9", userId: "admin", user: { teamLeaderId: null } } : null,
         unmapCode: async (id: string) => { reached.push(`unmap:${id}`); return { unfilled: 0 } },
         people: async () => [],
     },
@@ -196,9 +197,22 @@ describe("files and employee numbers", () => {
         expect(reached).toEqual([])
     })
 
-    it("never map a number to oneself, and stay in one's own company", async () => {
+    it("map one's own number too, for whoever may map numbers, so the HR officer who maps them scans in too (PR 366)", async () => {
         admin()
-        expect((await mapCode({ code: "7", userId: "admin" })).status).toBe(403)
+        expect((await mapCode({ code: "7", userId: "admin" })).status).toBe(201)
+        expect(reached).toEqual(["map:c1:7:admin"])
+    })
+
+    it("never remove one's own number, nor map one's own with correcting that reaches only a team", async () => {
+        admin()
+        expect((await unmap("mOwn")).status).toBe(403)
+        leader()
+        expect((await mapCode({ code: "8", userId: "tl" })).status).toBe(403)
+        expect(reached).toEqual([])
+    })
+
+    it("stay in one's own company", async () => {
+        admin()
         expect((await mapCode({ code: "7", userId: "other" })).status).toBe(404)
         expect((await voidImport("i2")).status).toBe(404)
         expect(reached).toEqual([])

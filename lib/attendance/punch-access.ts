@@ -10,7 +10,8 @@ import { attendanceCompanyFor } from "./settings-access"
  * Who may see and correct punches (ATTENDANCE_PLAN.md §4, §14). Seeing other
  * people's is attendance.view_team; bringing punches in, adding, withdrawing
  * and mapping employee numbers is attendance.correct. Everyone sees their own,
- * and nobody corrects their own (can() refuses the permission on oneself).
+ * and nobody corrects their own (can() refuses the permission on oneself),
+ * apart from mapping their own employee number (the codes route, PR 366).
  */
 
 /**
