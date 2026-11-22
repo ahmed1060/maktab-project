@@ -381,9 +381,13 @@ there:
    written here as a table for the owner to approve. No code.
 2. **The names-only list for pickers** (rule 5), and the four pickers on
    it.
-3. **The rules in the role editor and on the server** (rules 1 to 3).
+3. **The rules in the role editor and on the server** (rules 1 to 3),
+   one PR each: rule 1 first (#372), as it's the one that refuses a
+   save; then rule 3's warning; then rule 2's notes.
 4. **Roles already saved** (rule 4), after a read-only count of the
-   roles in production that break a rule.
+   roles in production that break a rule. Counted on 2026-11-22, before
+   #372: of the 3 roles in production, none breaks rule 1, and there are
+   no templates.
 
 The two screens found to fix in §5.3 go in one PR of their own, as #368
 did, after the list is approved and before step 2: #370.
@@ -556,3 +560,6 @@ permission bringing "See obligations". None found missing.
   to anyone but the company's Admins, where creating and reassigning keep
   to the team; the owner decided it keeps to the team too. And the check
   on saving now refuses a deleted account, as the list never offers one.
+- **2026-11-22:** #371 merged. Step 3 goes one rule at a time, rule 1
+  first, as #372. A read-only count first: none of production's 3 roles
+  breaks rule 1, and it has no templates, so nobody's role stops saving.
