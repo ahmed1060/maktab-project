@@ -155,12 +155,15 @@ other filled in when one is typed, if that's possible.
     the new project needs both there too.
 - **Built in steps,** each confirmed by the owner before it touches
   anything outside the repo:
-  1. **The project:** "maktab preview", on the free plan, in the same
-     organisation and region as production (`eu-west-1`), made from here.
+  1. **The project:** "nizmo dev", as the owner named it, on the free
+     plan, in the same organisation and region as production
+     (`eu-west-1`), made from here. **Done on 2026-11-22**, for $0.
   2. **Its storage and secret:** the `app-assets` bucket made on it, and
      whether it still has a legacy JWT secret checked. If it hasn't, live
      updates don't work on previews until they're signed another way,
-     which is its own decision.
+     which is its own decision. **Done on 2026-11-22:** the bucket is
+     public with no limits, as production's is, and the project has its
+     legacy keys (HS256), so live updates can sign as they do now.
   3. **Vercel's settings, by the owner,** with a guide: each setting the
      app reads kept for production alone, and a value for previews and
      development added from the new project. Its keys go from Supabase's
@@ -170,6 +173,15 @@ other filled in when one is typed, if that's possible.
      the made-up data goes in after.
   5. **Checked:** the preview works against it, and production's
      database got nothing from it.
+- **Names (the owner, 2026-11-22):** the new project is "nizmo dev".
+  Renaming production's Supabase project ("maktab project") and the
+  Vercel project to Nizmo changes only their labels; their addresses and
+  keys stay. The GitHub repository keeps its name for now: the Super
+  Admin's backup and restore buttons call it by name.
+- **"maktab drill":** the paused project the restore drill writes into
+  (`DRILL_DATABASE_URL`), likely still holding a restored copy of real
+  data. The owner deletes it; nothing runs on it by itself, and a
+  later drill would need a fresh one.
 - **To know:** a free project is paused after a week without use; a
   preview built then fails at its migrations until it's woken, from
   Supabase's page or from here.
@@ -195,3 +207,6 @@ other filled in when one is typed, if that's possible.
   permission split by what it does, and names suggested from a list,
   what each company saves, then the rules. The development database is
   next.
+- **2026-11-22:** The development database's first two steps done: "nizmo
+  dev" made on the free plan, with the `app-assets` bucket and its legacy
+  keys. The owner's names, and "maktab drill" for the owner to delete.
