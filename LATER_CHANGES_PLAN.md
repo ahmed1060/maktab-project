@@ -351,3 +351,6 @@ other filled in when one is typed, if that's possible.
 - **2026-11-22:** #366 merged. What each part of `obligations.manage`
   covers, for #367: an obligation's details don't change once it's made,
   so editing is handing it to other people and moving it along.
+- **2026-11-22:** #367 merged. The person filter on four lists, found in
+  its walk-through, is fixed first, as #368 (`UI_PLAN.md`); then
+  locations, lists and charges.
