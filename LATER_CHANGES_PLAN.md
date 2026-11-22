@@ -351,6 +351,13 @@ They work together, each for a different case.
      a test holds the list and the check to the same people. So these
      need no "See employees", as Attendance's picker already doesn't
      (`/api/attendance/people`).
+   - **Transferring a task** had a check of its own: held for a team, it
+     went to anyone but the company's Admins. It now goes to the team, as
+     creating and reassigning do, through the same check (decided
+     2026-11-22).
+   - **A deleted account** isn't offered, and the check on saving refuses
+     handing work to one. Someone deleted who is already on the work
+     stays until it's reassigned, as now.
 
 - **Scope:** a needed permission is held at least as wide as what needs
   it, in rules 1 and 2. A company-wide one needs a company-wide one.
@@ -544,3 +551,8 @@ permission bringing "See obligations". None found missing.
   fails other than by a refusal, the page doesn't know who leads them
   either, so the route decides there too, rather than the page saying it
   can't be opened.
+- **2026-11-22:** #370 merged. Step 2, the names-only list for pickers,
+  is next, as #371. Transferring a task held for a team was found to go
+  to anyone but the company's Admins, where creating and reassigning keep
+  to the team; the owner decided it keeps to the team too. And the check
+  on saving now refuses a deleted account, as the list never offers one.

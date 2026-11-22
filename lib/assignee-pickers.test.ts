@@ -20,6 +20,8 @@ import { stripComments } from "./strip-comments"
 const PICKERS = [
     ["new task", "app/(dashboard)/dashboard/tasks/new/page.tsx"],
     ["task detail", "app/(dashboard)/dashboard/tasks/[id]/client.tsx"],
+    ["new obligation", "app/(dashboard)/dashboard/obligations/new/page.tsx"],
+    ["obligation detail", "app/(dashboard)/dashboard/obligations/[id]/client.tsx"],
 ] as const
 
 describe("no picker filters people out in the browser", () => {
@@ -47,3 +49,24 @@ describe("no picker filters people out in the browser", () => {
  * refactor rather than a test, so it is tracked separately instead of being
  * approximated here.
  */
+
+/**
+ * Each asks the names-only list for its own action (LATER_CHANGES_PLAN.md
+ * §5.1 rule 5, PR 371), not the employee list, which only "See employees"
+ * reads: the list is already who the server accepts, for that permission.
+ */
+describe("each picker asks the list for its own action", () => {
+    const ASKS: [string, string, string][] = [
+        ["new task", "app/(dashboard)/dashboard/tasks/new/page.tsx", "tasks.create"],
+        ["task detail's Transfer", "app/(dashboard)/dashboard/tasks/[id]/client.tsx", "tasks.transfer"],
+        ["new obligation", "app/(dashboard)/dashboard/obligations/new/page.tsx", "obligations.create"],
+        ["obligation detail's Reassign", "app/(dashboard)/dashboard/obligations/[id]/client.tsx", "obligations.edit"],
+    ]
+    for (const [name, path, permission] of ASKS) {
+        it(`${name}: for ${permission}, and never the employee list`, () => {
+            const source = stripComments(readFileSync(path, "utf8"))
+            expect(source).toContain(`assigneesUrl('${permission}'`)
+            expect(source).not.toMatch(/\/api\/users\?/)
+        })
+    }
+})

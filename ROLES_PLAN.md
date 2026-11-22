@@ -230,16 +230,16 @@ them, as today.
 | | `requests.review` | Decide requests and award performance points | `PATCH /requests/[id]` |
 | | `requests.reset_points` | Reset performance points (one person or all) | `users/[id]/reset-points` |
 | **Tasks** | `tasks.view` | See tasks beyond their own | `GET /tasks` |
-| | `tasks.create` | Create tasks, including bulk upload from the template | `POST /tasks`, `tasks/bulk`, `templates/*` |
+| | `tasks.create` | Create tasks, including bulk upload from the template | `POST /tasks`, `tasks/bulk`, `templates/*`, `GET /assignees` |
 | | `tasks.edit` | Edit details, items and locations | `tasks/[id]/details\|items\|locations` |
-| | `tasks.transfer` | Move a task to someone else | `tasks/[id]/transfer` |
+| | `tasks.transfer` | Move a task to someone else; held for a team, to the team, as creating does (#371) | `tasks/[id]/transfer`, `GET /assignees` |
 | | `tasks.review` | Review submitted tasks, revert a decision | `tasks/[id]/review\|revert` |
 | | `tasks.delete` | Delete a task | `tasks/[id]/delete` |
 | | `tasks.pay` | Record task payments, single or bulk — **moves money** | `tasks/[id]/payment`, `tasks/payment/bulk` |
 | | `tasks.penalize` | Apply a task penalty — **deducts pay**; its own permission, labelled "affects pay" in the role editor (decided) | `tasks/[id]/penalty` |
 | **Obligations** | `obligations.view` | See obligations | `GET /obligations` |
-| | `obligations.create` | Add one, with its people | `POST /obligations` |
-| | `obligations.edit` | Hand it to other people, move it along as a manager (back to Pending, archived, completed for someone deleted), remove others' attachments | `PUT /obligations/[id]` |
+| | `obligations.create` | Add one, with its people | `POST /obligations`, `GET /assignees` |
+| | `obligations.edit` | Hand it to other people, move it along as a manager (back to Pending, archived, completed for someone deleted), remove others' attachments | `PUT /obligations/[id]`, `GET /assignees` |
 | | `obligations.approve` | Approve or reject one handed in, and change one already approved | `PUT /obligations/[id]` with `APPROVED` or `REJECTED` |
 | | `obligations.delete` | Delete one | `DELETE /obligations/[id]` |
 | | `obligations.manage` | Split into the four above (#367): a role still holding it holds each, at its scope, until the grant for companies already there. Reverting a decided one is the Super Admin's | — |

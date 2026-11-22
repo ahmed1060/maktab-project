@@ -64,14 +64,6 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     // app/(dashboard)/dashboard/all-users/page.tsx — an Admin isn't scored, as on the Employees list
     ["app/(dashboard)/dashboard/all-users/page.tsx", "const points = (p: Person) => p.role === 'ADMIN' ? null : <span className=\"ui-chip\">{countOf(t, locale, p.totalDifficultyPoints || 0, 'pts')}</span>", THE_PERSON],
 
-    // app/(dashboard)/dashboard/obligations/new/page.tsx
-    ["app/(dashboard)/dashboard/obligations/new/page.tsx", "? sortedData.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role))", THE_PERSON],
-
-    // app/(dashboard)/dashboard/obligations/[id]/client.tsx
-    ["app/(dashboard)/dashboard/obligations/[id]/client.tsx", "const filtered = canEdit && !companyWide('obligations.edit') ? usersList.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : usersList", THE_PERSON],
-
-    // lib/services/task.service.ts
-    ["lib/services/task.service.ts", "if (targetUsers.some(u => ['ADMIN', 'SUPER_ADMIN'].includes(u.role))) {", THE_PERSON],
 
     // lib/services/assignee-guard.ts
     ["lib/services/assignee-guard.ts", "if (assignees.some(a => [\"ADMIN\", \"SUPER_ADMIN\"].includes(a.role))) {", THE_PERSON],

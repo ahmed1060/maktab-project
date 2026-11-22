@@ -24,9 +24,10 @@ vi.mock("@/components/BulkTaskReviewModal", () => ({ default: () => null }))
 vi.mock("@/components/ManageTemplatesModal", () => ({ default: () => null }))
 const people = { list: [] as object[] | null | "failed" }
 vi.mock("swr", () => ({
-    default: (key: string | null) => !key?.startsWith("/api/users") ? { data: undefined }
+    // The names-only list for creating tasks (PR 371), answered as its route answers.
+    default: (key: string | null) => !key?.startsWith("/api/assignees?for=tasks.create") ? { data: undefined }
         : people.list === "failed" ? { data: undefined, error: new Error("Request failed"), mutate: () => {}, isValidating: false }
-        : { data: people.list ? { data: { data: people.list } } : undefined },
+        : { data: people.list ? { success: true, data: people.list } : undefined },
 }))
 
 async function form(list: object[] | null | "failed" = []) {

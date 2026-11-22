@@ -29,6 +29,7 @@ import { cellToPrimitive } from '@/lib/xlsx-cell'
 import { useNow } from '@/lib/useNow'
 import { earliestDeadline } from '@/lib/deadline'
 import { useCan } from '@/lib/useCan'
+import { assigneesUrl } from '@/lib/assignees-url'
 import { useModules } from '@/lib/useModules'
 import { DownloadSimpleIcon, FileXlsIcon, IdentificationCardIcon, UploadSimpleIcon } from '@phosphor-icons/react/ssr'
 import { Button, ButtonLink, Card, Field, Page, PageHeader, TextArea, TextInput } from '@/components/ui'
@@ -36,18 +37,17 @@ import { Button, ButtonLink, Card, Field, Page, PageHeader, TextArea, TextInput 
 const NO_CLIENTS: any[] = []
 
 /**
- * Who can be assigned, from /api/users's answer, nothing before it's come:
- * employees, then team leaders, Admins and Super Admins, each by name. On
- * a copy, as the answer belongs to SWR's cache.
+ * Who can be assigned, from the names-only list's answer (PR 371), nothing
+ * before it's come: employees, then team leaders, Admins and Super Admins,
+ * each by name. On a copy, as the answer belongs to SWR's cache.
  *
  * No filtering here. This used to hide Admins from a Team Leader's list,
  * which meant the request that fetched it had already returned them: every
  * Admin's row was in the page payload, and the browser was politely not
- * drawing it. /api/users now scopes a Team Leader to their own team
- * server-side, so what arrives is already what they may see, and already
- * what the server will accept when they submit. Filtering in the browser
- * was never a restriction: it decided what a picker showed, not what a
- * request could contain.
+ * drawing it. The list is the server's rule for creating tasks, so what
+ * arrives is already what the server will accept when they submit.
+ * Filtering in the browser was never a restriction: it decided what a
+ * picker showed, not what a request could contain.
  */
 function peopleIn(result: any): any[] | undefined {
     if (!result) return undefined
@@ -103,12 +103,11 @@ export default function NewTaskPage() {
     // matched to clients by name only for someone who may read the list.
     const canUseClients = useCan().can('clients.view')
 
-    // Who can be assigned. SWR, keyed by the company a Super Admin is looking
-    // at, so switching company cannot leave the previous company's people in
-    // the picker if that answer arrives last.
-    const usersKey = session
-        ? `/api/users?${new URLSearchParams({ limit: '1000', ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}) })}`
-        : null
+    // Who can be assigned: the names-only list for creating tasks, with the
+    // usernames the bulk upload matches by (PR 371). SWR, keyed by the
+    // company a Super Admin is looking at, so switching company cannot leave
+    // the previous company's people in the picker if that answer arrives last.
+    const usersKey = session ? assigneesUrl('tasks.create', selectedCompanyId) : null
     const { data: usersResult, error: usersError, mutate: retryUsers, isValidating: retryingUsers } = useSWR(usersKey, fetcher)
     const users: any[] = useMemo(() => peopleIn(usersResult) ?? [], [usersResult])
 

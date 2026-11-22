@@ -8,7 +8,8 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useCompany } from '@/context/CompanyContext'
 import { useNow } from '@/lib/useNow'
 import { earliestDeadline } from '@/lib/deadline'
-import { permissionsOf, useCan } from '@/lib/useCan'
+import { useCan } from '@/lib/useCan'
+import { assigneesUrl } from '@/lib/assignees-url'
 import AccessDenied from '@/components/AccessDenied'
 import { fetchRetrying } from '@/lib/swr-fetcher'
 import { useModules } from '@/lib/useModules'
@@ -53,19 +54,17 @@ export default function NewObligationPage() {
 
     useEffect(() => {
         if (!mayCreate) return
-        const queryParams = new URLSearchParams()
-        queryParams.set('limit', '1000')
-        if (selectedCompanyId) queryParams.set('companyId', selectedCompanyId)
-
-        // A server error, once tried again, is given back rather than thrown:
-        // read as an empty list, it said no one matched the search.
-        fetchRetrying(`/api/users?${queryParams.toString()}`)
+        // The names-only list for adding obligations, already who the server
+        // accepts: no See employees needed, and nobody filtered out here
+        // (PR 371). A server error, once tried again, is given back rather
+        // than thrown: read as an empty list, it said no one matched.
+        fetchRetrying(assigneesUrl('obligations.create', selectedCompanyId))
             .then(res => {
                 if (!res.ok) throw new Error(`Couldn't load the people (${res.status})`)
                 return res.json()
             })
             .then(result => {
-                const usersList = result?.data?.data || []
+                const usersList = Array.isArray(result?.data) ? result.data : []
                 // Sort by role: EMPLOYEE -> TEAM_LEADER -> ADMIN -> SUPER_ADMIN
                 const sortedData = usersList.sort((a: any, b: any) => {
                     const rolePriority: { [key: string]: number } = {
@@ -83,13 +82,7 @@ export default function NewObligationPage() {
                     // Secondary sort by name if same role
                     return a.firstName.localeCompare(b.firstName)
                 })
-                // One who adds them for a team is not offered the company's Admins.
-                const permissions = permissionsOf(session?.user as any)
-                const teamOnly = permissions.can('obligations.create') && !permissions.companyWide('obligations.create')
-                const filteredData = teamOnly
-                    ? sortedData.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role))
-                    : sortedData
-                setUsers(filteredData)
+                setUsers(sortedData)
                 setPeople('loaded')
             })
             .catch(() => setPeople('failed'))

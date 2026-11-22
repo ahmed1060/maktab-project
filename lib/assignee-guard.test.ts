@@ -37,7 +37,7 @@ const admin = { user: withGrants({ id: "a-1", role: "ADMIN", companyId: CO }) }
 const superAdmin = { user: { id: "sa-1", role: "SUPER_ADMIN", companyId: null } }
 
 const reason = async (ids: string[], session: any) => {
-    const v = await checkAssignees(ids, session, "tasks.create", client)
+    const v = await checkAssignees(ids, session, "tasks.create", { client })
     return v.ok ? null : v.reason
 }
 

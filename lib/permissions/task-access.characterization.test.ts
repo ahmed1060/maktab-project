@@ -83,7 +83,11 @@ const EXPECTED: Record<string, Record<string, Row>> = {
         "delete":              [200, 200, 403, 200, 403],
         "review":              [200, 200, 403, 200, 403],
         "submit":              [200, 200, 403, 200, 200],
-        "transfer":            [200, 200, 403, 200, 200],
+        // Changed in PR 371, the owner's decision: transferring for a team goes
+        // to the team, as creating does, and 'loner' isn't on it. Recorded
+        // first as 200 for the leader. The employee is on the task, and moves
+        // their own work anywhere in the company, as before.
+        "transfer":            [200, 200, 403, 403, 200],
         "acknowledge":         [200, 403, 403, 403, 200],   // only the assignee
         "record payment":      [200, 200, 403, 200, 403],
         "apply a penalty":     [200, 200, 403, 200, 403],

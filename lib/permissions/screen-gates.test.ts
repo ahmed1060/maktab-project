@@ -192,7 +192,7 @@ const GATES: Gate[] = [
     // obligations.manage split by what is done to one (PR 367): each built-in role holds all four or none, at one scope.
     { what: "obligations: create", file: D + "obligations/ObligationsClient.tsx", uses: "permissions.can('obligations.create') && (", before: managers, now: p => p.can("obligations.create") },
     { what: "obligations: employee filters", file: D + "obligations/ObligationsClient.tsx", uses: "const ownObligationsOnly = !permissions.can('obligations.view')", before: r => r === "EMPLOYEE", now: p => !p.can("obligations.view") },
-    { what: "new obligation: team-only picker", file: D + "obligations/new/page.tsx", uses: "permissions.can('obligations.create') && !permissions.companyWide('obligations.create')", before: r => r === "TEAM_LEADER", now: p => p.can("obligations.create") && !p.companyWide("obligations.create") },
+    // The team-only pickers are the server's now: the names-only list for each action (PR 371, lib/assignees.test.ts).
     { what: "obligation: overdue lock (flag: on it)", file: OBL, uses: "const isRestrictedRole = !seesOthers || (teamReach && isUserAssignee)", before: (r, on) => r === "EMPLOYEE" || (r === "TEAM_LEADER" && on), now: (p, on) => !p.can("obligations.view") || (p.scope("obligations.view") === "TEAM" && on) },
     { what: "obligation: acts as assignee", file: OBL, uses: "{!seesOthers && !['PENDING_CONFIRMATION'", before: r => r === "EMPLOYEE", now: p => !p.can("obligations.view") },
     { what: "obligation: edit", file: OBL, uses: "const canEdit = can('obligations.edit')", before: managers, now: p => p.can("obligations.edit") },
@@ -202,7 +202,6 @@ const GATES: Gate[] = [
         now: (p, on) => p.can(perm) && (p.scope(perm) === "TEAM" || !on),
     })),
     { what: "obligation: remove an attachment (flag: uploaded it)", file: OBL, uses: "canEdit && (att.uploadedById === userId || companyWide('obligations.edit'))", before: (r, mine) => managers(r) && (mine || admins(r)), now: (p, mine) => p.can("obligations.edit") && (mine || p.companyWide("obligations.edit")) },
-    { what: "obligation: team-only picker", file: OBL, uses: "canEdit && !companyWide('obligations.edit') ?", before: r => r === "TEAM_LEADER", now: p => p.can("obligations.edit") && !p.companyWide("obligations.edit") },
 ]
 
 function walk(dir: string, out: string[] = []): string[] {
