@@ -16,7 +16,7 @@ owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
 - the company's name and icon (§1) moved to `THIRD_CHANGES_PLAN.md`;
 - the names (§3) are for all three, by a free way;
-- §2 and §3's way have a recommendation each, waiting for the owner.
+- §2's split and §3's way, as recommended, approved the same day.
 
 ## 1. The company's name and icon (Moved)
 
@@ -44,9 +44,9 @@ The owner asked to break up every "manage" permission in the roles system.
 - **Open:**
   - how fine: create, edit and delete for all, or by what each one does;
   - which to split first.
-- **Recommended (Proposed, 2026-11-22):** split each by what it does, not
-  create, edit and delete for every one. Some have nothing to delete, some
-  have something to approve, and three are one job each:
+- **Decided (approved by the owner on 2026-11-22):** split each by what it
+  does, not create, edit and delete for every one. Some have nothing to
+  delete, some have something to approve, and three are one job each:
 
   | Today | Split into |
   |---|---|
@@ -97,8 +97,8 @@ other filled in when one is typed, if that's possible.
     the owner's decision. It costs a fraction of a cent a name.
 - **A free way (Decided, 2026-11-22):** the owner wants one that's free,
   with good results, so not the API, and no name leaves Nizmo.
-- **Recommended (Proposed, 2026-11-22): a list of names, what the company
-  saves, then the rules.**
+- **Decided (approved by the owner on 2026-11-22): a list of names, what
+  the company saves, then the rules.**
   - **A list written into Nizmo** of about 2,000 common Egyptian and
     Arabic given names, each with its usual Egyptian English spelling
     (محمد Mohamed, أحمد Ahmed, مصطفى Mostafa), and the other way round.
@@ -138,13 +138,41 @@ other filled in when one is typed, if that's possible.
 - **On the free plan:** a project that isn't used for a week is paused,
   and a preview waits for it to be woken; it holds up to 500 MB, plenty
   for made-up data.
+- **What's there today** (looked at on 2026-11-22, reading only):
+  - the Supabase organisation is on the free plan, with one project
+    active, Nizmo's, and two paused ("maktab drill" and "shsd website").
+    The free plan allows two active, so there's room for one more;
+  - Vercel has 16 database settings, each one value shared by
+    production, previews and development. The app reads 7 of them:
+    `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING`,
+    `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+    `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` and
+    `DATABASE_URL`, where it's set;
+  - every build runs `prisma migrate deploy` before it builds, so a
+    preview migrates whichever database its settings name;
+  - files go to Storage's `app-assets` bucket, and live updates sign
+    their tokens with the project's JWT secret, so a preview pointed at
+    the new project needs both there too.
 - **Built in steps,** each confirmed by the owner before it touches
   anything outside the repo:
-  - the project made in the same Supabase organisation;
-  - the migrations run on it, and the made-up data added;
-  - Vercel's preview settings pointed to it; production keeps its own;
-  - a preview built and checked against it, and production's database
-    checked untouched.
+  1. **The project:** "maktab preview", on the free plan, in the same
+     organisation and region as production (`eu-west-1`), made from here.
+  2. **Its storage and secret:** the `app-assets` bucket made on it, and
+     whether it still has a legacy JWT secret checked. If it hasn't, live
+     updates don't work on previews until they're signed another way,
+     which is its own decision.
+  3. **Vercel's settings, by the owner,** with a guide: each setting the
+     app reads kept for production alone, and a value for previews and
+     development added from the new project. Its keys go from Supabase's
+     page to Vercel's and nowhere else, never through the chat or the
+     repo.
+  4. **The first preview:** a PR's preview migrates the new project, and
+     the made-up data goes in after.
+  5. **Checked:** the preview works against it, and production's
+     database got nothing from it.
+- **To know:** a free project is paused after a week without use; a
+  preview built then fails at its migrations until it's woken, from
+  Supabase's page or from here.
 
 ## Not here
 
@@ -163,3 +191,7 @@ other filled in when one is typed, if that's possible.
   "manage" permission split by what it does, three left whole, clients
   and obligations first; and names suggested from a list written into
   Nizmo, what each company saves, then the rules.
+- **2026-11-22:** The owner approved both recommendations: each "manage"
+  permission split by what it does, and names suggested from a list,
+  what each company saves, then the rules. The development database is
+  next.
