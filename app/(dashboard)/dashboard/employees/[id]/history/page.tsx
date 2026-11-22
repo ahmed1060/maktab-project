@@ -1,14 +1,16 @@
 'use client'
 import { useState } from 'react'
 import useSWR from 'swr'
-import { useSession } from 'next-auth/react'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { Page, PageHeader, Tabs } from '@/components/ui'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
-import { useCan } from '@/lib/useCan'
+import { useCan, useViewer } from '@/lib/useCan'
+import { useFeatures } from '@/lib/features/useFeatures'
+import { historyParts, type HistoryTab } from '@/lib/history-parts'
+import AccessDenied from '@/components/AccessDenied'
 import { SalaryTab, type Debt, type SalaryRecord, type Settlement } from './SalaryTab'
 import { DayOffTab, ReconsiderDayOff, type DayOffHistory, type DayOffRequest } from './DayOffTab'
 import { CostsTab, type UserCost } from './CostsTab'
@@ -25,10 +27,13 @@ import { Adjustments, type SalaryAdjustment } from './Adjustments'
  * Reconsider on each day off taken from the credit (./DayOffTab.tsx), and
  * the Costs tab (./CostsTab.tsx). Part 3: the bonuses and deductions, a
  * section of the Salary tab with Reverse and Roll back on each (./Adjustments.tsx).
+ *
+ * Each part is asked for only when its route answers the viewer, and the tabs
+ * are those parts (lib/history-parts.ts, PR 370): it asked for all of them
+ * whatever the viewer held, and showed tabs that said they didn't load.
  */
 
-type Tab = 'salary' | 'day-off' | 'costs'
-const TABS: Tab[] = ['salary', 'day-off', 'costs']
+type Tab = HistoryTab
 
 
 interface Employee {
@@ -48,12 +53,17 @@ const NO_ROWS: never[] = []
 export default function EmployeeHistoryPage() {
     const { t } = useLanguage()
     const { showToast } = useToast()
-    const { data: session } = useSession()
+    const viewer = useViewer()
     const params = useParams()
     const router = useRouter()
     const pathname = usePathname()
     const { can, canFor } = useCan()
-    // Each part of the page asks for the permission its route checks.
+    const features = useFeatures()
+    const id = params.id as string | undefined
+    // Someone else's history goes back to Employees; one's own, opened from the account menu, has nowhere to go back to.
+    const own = !!viewer && viewer.id === id
+    // Each part of the page, and its tab, only for who its route answers.
+    const parts = historyParts({ own, can, has: features.has })
     const canSeeSalary = can('salary.view')
     // Anyone's pay but their own (ROLES_PLAN.md §4.2, rule 5).
     const canAdjust = canFor('salary_adjustments.manage', params.id as string | undefined)
@@ -65,7 +75,7 @@ export default function EmployeeHistoryPage() {
     const highlightId = searchParams.get('highlight')
     // The tab is in the address, so a reload or a link opens it; ?highlight= keeps its place beside it.
     const linkedTab = searchParams.get('tab') as Tab | null
-    const activeTab: Tab = linkedTab && TABS.includes(linkedTab) ? linkedTab : 'salary'
+    const activeTab: Tab = linkedTab && parts.tabs.includes(linkedTab) ? linkedTab : parts.tabs[0] ?? 'salary'
     const setTab = (next: Tab) => {
         const q = new URLSearchParams(searchParams.toString())
         q.set('tab', next)
@@ -78,7 +88,6 @@ export default function EmployeeHistoryPage() {
     // Each part of the page is its own SWR key: they load together, one
     // failing does not stop the others, and refreshing one after an action
     // is mutate() on that key rather than a hand-written re-fetch.
-    const id = params.id as string | undefined
     // Only a network failure raises the banner, as before; a refused endpoint
     // just leaves its section empty.
     const onNetworkError = (err: unknown) => {
@@ -87,11 +96,11 @@ export default function EmployeeHistoryPage() {
         showToast(t('failed_fetch_data'), 'error')
     }
     const quiet = { onError: onNetworkError }
-    const employeeQuery = useSWR(id ? `/api/users?id=${id}` : null, fetcher, quiet)
+    const employeeQuery = useSWR(parts.person && id ? `/api/users?id=${id}` : null, fetcher, quiet)
     // Each tab says itself when its list didn't load, with Try again (PR 157, part 2).
-    const recordsQuery = useSWR(id ? `/api/users/${id}/salary-history` : null, fetcher)
-    const dayOffQuery = useSWR(id ? `/api/users/${id}/day-off-history` : null, fetcher)
-    const costsQuery = useSWR(id ? `/api/users/${id}/costs-history` : null, fetcher)
+    const recordsQuery = useSWR(parts.months && id ? `/api/users/${id}/salary-history` : null, fetcher)
+    const dayOffQuery = useSWR(parts.dayOff && id ? `/api/users/${id}/day-off-history` : null, fetcher)
+    const costsQuery = useSWR(parts.costs && id ? `/api/users/${id}/costs-history` : null, fetcher)
     const unwrap = (r: any) => r ? (r.data || r) : undefined
     const employee: Employee | null = unwrap(employeeQuery.data) ?? null
     const records: SalaryRecord[] = unwrap(recordsQuery.data) ?? NO_RECORDS
@@ -101,27 +110,28 @@ export default function EmployeeHistoryPage() {
     // The only route to an ended contract's statement. The person it is about
     // cannot sign in, so if it is not reachable from their page it is not
     // reachable at all.
-    const { data: settlementsResult } = useSWR(can('settlements.manage') && id ? `/api/users/${id}/settlements` : null, fetcher)
-    const settlements: Settlement[] = settlementsResult?.data || NO_ROWS
+    const settlementsQuery = useSWR(parts.settlements && id ? `/api/users/${id}/settlements` : null, fetcher)
+    const settlements: Settlement[] = settlementsQuery.data?.data || NO_ROWS
     // E2: raised when, recovered from which months, settled or written off by
     // whom. Every one of those was recorded and none of them was assembled.
-    const { data: debtsResult } = useSWR(can('debts.view') && id ? `/api/users/${id}/debts` : null, fetcher)
-    const debts: Debt[] = debtsResult?.data || NO_ROWS
+    const debtsQuery = useSWR(parts.debts && id ? `/api/users/${id}/debts` : null, fetcher)
+    const debts: Debt[] = debtsQuery.data?.data || NO_ROWS
 
     // The bonuses and deductions behind the months, on the Salary tab for who
     // can see salary, as their route asks (part 3). They were a window of
     // their own, opened from the header or by ?highlight=.
-    const adjustmentsQuery = useSWR(canSeeSalary && id && activeTab === 'salary' ? `/api/users/${id}/adjustments` : null, fetcher)
+    const adjustmentsQuery = useSWR(parts.adjustments && id && activeTab === 'salary' ? `/api/users/${id}/adjustments` : null, fetcher)
     const adjustments: SalaryAdjustment[] = unwrap(adjustmentsQuery.data) ?? NO_ADJUSTMENTS
 
-    // Someone else's history goes back to Employees; one's own, opened from the account menu, has nowhere to go back to.
-    const own = session?.user?.id === id
     const name = employee ? `${employee.firstName} ${employee.lastName}`.trim() : ''
     const tabLabel: Record<Tab, string> = {
         salary: canSeeSalary ? t('salary_label') : t('history'),
         'day-off': t('hist_tab_day_off'),
         costs: t('costs_tab'),
     }
+
+    // Someone else's history with no part this viewer may see.
+    if (viewer && parts.tabs.length === 0) return <AccessDenied />
 
     return (
         <Page>
@@ -131,17 +141,19 @@ export default function EmployeeHistoryPage() {
                 subtitle={name ? t('history') : undefined}
             />
             <Tabs label={t('history')} idPrefix="history-tab" value={activeTab} onChange={setTab}
-                items={TABS.map(k => ({ value: k, label: tabLabel[k], controls: 'history-panel' }))} />
+                items={parts.tabs.map(k => ({ value: k, label: tabLabel[k], controls: 'history-panel' }))} />
             <div role="tabpanel" id="history-panel" className="ui-tab-panel" aria-labelledby={`history-tab-${activeTab}`}>
             {activeTab === 'salary' ? (
                 <SalaryTab
                     employee={employee}
                     records={records}
-                    loading={recordsQuery.isLoading}
+                    months={parts.months}
+                    // Without the months, the tab waits for its settlements and debts.
+                    loading={parts.months ? recordsQuery.isLoading : settlementsQuery.isLoading || debtsQuery.isLoading}
                     error={recordsQuery.error}
                     retrying={recordsQuery.isValidating}
                     retry={() => { void recordsQuery.mutate() }}
-                    adjustments={canSeeSalary && id ? (
+                    adjustments={parts.adjustments && id ? (
                         <Adjustments
                             userId={id}
                             adjustments={adjustments}

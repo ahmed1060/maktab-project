@@ -29,6 +29,7 @@ import { employeesListUrl, type EmployeesQuery } from './list-query'
 import { fetchRetrying } from '@/lib/swr-fetcher'
 import { useLiveOnline } from '@/components/LiveUpdates'
 import { onlineTopics } from '@/lib/live-updates'
+import { historyParts } from '@/lib/history-parts'
 
 interface Employee {
     id: string
@@ -82,9 +83,12 @@ export default function EmployeesPage() {
     const { selectedCompanyId } = useCompany()
 
     const canAssignTeams = can('employees.assign_team')
+    // History, to who sees any of its tabs on someone else's: their salary,
+    // day off, costs, debts or settlements (PR 370). It was "See salaries" only.
+    const seesHistory = features.has('PAYROLL') && historyParts({ own: false, can, has: features.has }).tabs.length > 0
     // The actions on each person, each offered with the permission its route
     // checks; the column of them is shown when any is.
-    const canActOnPeople = can('employees.edit') || (features.has('PAYROLL') && can('salary.view'))
+    const canActOnPeople = can('employees.edit') || seesHistory
         || (features.has('SALARY_ADJUSTMENTS') && can('salary_adjustments.manage'))
         || can('requests.reset_points') || can('employees.delete')
     const teamOnly = can('employees.view') && !companyWide('employees.view')
@@ -261,7 +265,7 @@ export default function EmployeesPage() {
     const menuItems = (e: Employee): MenuItem[] => {
         const items: MenuItem[] = []
         const notAdmin = e.role !== 'ADMIN'
-        if (features.has('PAYROLL') && can('salary.view') && notAdmin) items.push({ key: 'history', label: t('history'), icon: ClockCounterClockwiseIcon, href: `/dashboard/employees/${e.id}/history` })
+        if (seesHistory && notAdmin) items.push({ key: 'history', label: t('history'), icon: ClockCounterClockwiseIcon, href: `/dashboard/employees/${e.id}/history` })
         if (features.has('SALARY_ADJUSTMENTS') && can('salary_adjustments.manage') && notAdmin) {
             items.push({ key: 'bonus', label: t('add_bonus'), icon: PlusCircleIcon, href: `/dashboard/employees/${e.id}/bonus` })
             items.push({ key: 'deduction', label: t('add_deduction'), icon: MinusCircleIcon, href: `/dashboard/employees/${e.id}/deduction` })

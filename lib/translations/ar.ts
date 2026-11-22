@@ -1889,6 +1889,7 @@ export const ar = {
         hist_bonus_n: "مكافأة {days}",
         hist_load_failed: "لم يتم تحميل سجل الراتب.",
         hist_no_months: "لا توجد أشهر بعد",
+        hist_nothing_yet: "لم يُسجَّل شيء بعد",
         hist_debt_col_amount: "المبلغ",
         hist_debt_col_status: "الحالة",
         hist_debt_col_due: "الاستحقاق",
