@@ -2,9 +2,8 @@
 
 This file holds the second of two plans made from the product owner's list
 of 21 November 2026: four changes to discuss once the first plan,
-`FIRST_CHANGES_PLAN.md`, is done. Nothing here is decided yet. It is
-updated with every decision and enhancement; the change log at the end
-records each update.
+`FIRST_CHANGES_PLAN.md`, is done. It is updated with every decision and
+enhancement; the change log at the end records each update.
 
 Each part is marked:
 
@@ -12,44 +11,17 @@ Each part is marked:
 - **Proposed**: suggested, waiting for the product owner's answer.
 - **Open**: a question that needs answering before that part is built.
 
-Status: **proposed, to discuss after the first plan.**
+Status: **being decided.** The first plan is done (#358 to #362). The
+owner answered on 2026-11-22:
+- the development database (§4) is decided, and comes first;
+- the company's name and icon (§1) moved to `THIRD_CHANGES_PLAN.md`;
+- the names (§3) are for all three, by a free way;
+- §2 and §3's way have a recommendation each, waiting for the owner.
 
-## 1. The company's name and icon (Proposed)
+## 1. The company's name and icon (Moved)
 
-The owner asked that once someone signs in, the browser tab shows their
-company's name and icon rather than Nizmo's. The same should go for the
-website added to a phone's home screen, and for the mobile app once it's
-released: installed as Nizmo, then showing the company's name and icon
-after sign-in.
-
-- **The browser tab:**
-  - after sign-in, it shows the company's name and its logo;
-  - the Super Admin keeps Nizmo's;
-  - a client signed in to the client area sees their accounting office's.
-- **The tab title bug:** a page reached by clicking a link has "Nizmo" as
-  its tab title, though it's right when opened by its address (found in
-  #356). It's fixed in the same work.
-- **The website on a home screen:**
-  - there's no web app manifest yet. One served for the signed-in person's
-    company would carry its name and logo, as a square icon;
-  - it takes the name and icon at the moment it's added, so it must be
-    added after signing in;
-  - an iPhone never updates them afterwards, and Android updates the icon
-    from time to time.
-- **The installed app** (`mobile/`, Capacitor around the website):
-  - an app's name and icon are fixed in the build in the stores;
-  - iOS and Android can only switch between icons built into the app, and
-    iOS shows the person a message when it does;
-  - neither can use a logo it downloads later, and the name can't change.
-- **The ways for the app:**
-  - **(a), proposed:** the store icon stays Nizmo's, and the company's logo
-    shows inside the app after sign-in;
-  - **(b):** a build of the app for each company, each with its own store
-    listing and much more upkeep.
-- **Open:**
-  - (a) or (b);
-  - what a company without a logo shows, such as its first letter on the
-    brand colour.
+Moved to `THIRD_CHANGES_PLAN.md` on 2026-11-22, as the owner asked, with
+its open questions.
 
 ## 2. Each "manage" permission split (Proposed)
 
@@ -72,6 +44,31 @@ The owner asked to break up every "manage" permission in the roles system.
 - **Open:**
   - how fine: create, edit and delete for all, or by what each one does;
   - which to split first.
+- **Recommended (Proposed, 2026-11-22):** split each by what it does, not
+  create, edit and delete for every one. Some have nothing to delete, some
+  have something to approve, and three are one job each:
+
+  | Today | Split into |
+  |---|---|
+  | `clients.manage` | `clients.create`, `clients.edit` (the responsible accountant too), `clients.delete` |
+  | `obligations.manage` | `obligations.create`, `obligations.edit`, `obligations.delete`, `obligations.approve` |
+  | `locations.manage` | `locations.create`, `locations.edit`, `locations.archive` |
+  | `lists.manage` | `lists.rename`, `lists.merge`, `lists.archive` (restore too); adding stays `lists.add` |
+  | `charges.manage` | `charges.set` (the fee, or not charged), `charges.collect` (collected, or not) |
+  | `client_accounts.manage` | `client_accounts.view`, `client_accounts.invite` (sending again too), `client_accounts.remove` |
+  | `salary_adjustments.manage` | `salary_adjustments.add` (a bonus or a deduction), `salary_adjustments.reverse` |
+  | `settlements.manage` | `settlements.view`, `settlements.resend` |
+  | `client_messages.manage` | stays one: changing the company's messages and the update email |
+  | `tax.manage` | stays one: uploading the tax portal's file |
+  | `attendance.manage_terminals` | stays one: setting the terminals up, behind the Super Admin's switch |
+
+  - The ones that move money or let outsiders in stay high-risk, each
+    part: `salary_adjustments.*`, `client_accounts.invite`.
+  - **The order:** after the development database (§4), two or three to a
+    PR: clients and obligations first, as the ones used every day; then
+    locations, lists and charges; then client accounts, salary
+    adjustments and settlements. Then the grant for companies already
+    there, in a PR of its own.
 
 ## 3. English and Arabic names (Proposed)
 
@@ -80,7 +77,8 @@ other filled in when one is typed, if that's possible.
 
 - **Today:** a name is kept once, as it was typed: an employee's first and
   last names, a client's name and its owner's, and the company's name.
-- **Open: which names.** Employees, clients, the company, or all three.
+- **Which names (Decided, 2026-11-22):** all three: employees, clients,
+  and the company.
 - **Proposed:**
   - each name kept in both languages, and shown in the page's language;
   - required for anything new;
@@ -97,9 +95,31 @@ other filled in when one is typed, if that's possible.
   - **the Claude API (Anthropic):** the best of the three. It needs an API
     key kept in Vercel, and each name typed is sent to Anthropic, which is
     the owner's decision. It costs a fraction of a cent a name.
-- **Open:**
-  - which way;
-  - with the API, whether names may leave Nizmo.
+- **A free way (Decided, 2026-11-22):** the owner wants one that's free,
+  with good results, so not the API, and no name leaves Nizmo.
+- **Recommended (Proposed, 2026-11-22): a list of names, what the company
+  saves, then the rules.**
+  - **A list written into Nizmo** of about 2,000 common Egyptian and
+    Arabic given names, each with its usual Egyptian English spelling
+    (محمد Mohamed, أحمد Ahmed, مصطفى Mostafa), and the other way round.
+    Written for Nizmo, so there's no outside list or licence to depend on.
+  - **Word by word:** an Egyptian full name is a row of given names, its
+    father's and grandfather's, so محمد أحمد محمود is Mohamed Ahmed
+    Mahmoud. Looking up each word covers most people's full names.
+  - **What the company saves teaches it:** each name saved in both
+    languages is remembered for that company, word by word, and comes
+    first next time. If an office writes Mohammed, it's suggested as
+    Mohammed from then on.
+  - **Words for businesses,** for clients and the company: شركة Company,
+    وشركاه & Partners, للمحاسبة Accounting, للتجارة Trading, مكتب Office,
+    and the like.
+  - **The rules last,** for a word in neither list, shown as a guess to
+    check.
+  - **Why:** it's free and instant, works offline, and names stay in
+    Nizmo. Most names are common ones, and a rare one corrected once is
+    learned.
+  - **Weak spots:** rare names and brand names come from the rules and
+    need correcting once.
 
 ## 4. A development database (Proposed)
 
@@ -111,10 +131,20 @@ other filled in when one is typed, if that's possible.
     only from `main`;
   - its keys live in Vercel and GitHub's secrets only, as every key does;
   - done before §2 and §3, which both add migrations.
-- **Open:**
-  - the Supabase plan for the second project;
-  - whether the preview database starts empty with made-up data, or from a
-    copy with every real name and figure replaced.
+- **Decided (2026-11-22):**
+  - the second project is on Supabase's free plan;
+  - it starts empty, with made-up data, so no real name or figure leaves
+    production.
+- **On the free plan:** a project that isn't used for a week is paused,
+  and a preview waits for it to be woken; it holds up to 500 MB, plenty
+  for made-up data.
+- **Built in steps,** each confirmed by the owner before it touches
+  anything outside the repo:
+  - the project made in the same Supabase organisation;
+  - the migrations run on it, and the made-up data added;
+  - Vercel's preview settings pointed to it; production keeps its own;
+  - a preview built and checked against it, and production's database
+    checked untouched.
 
 ## Not here
 
@@ -126,3 +156,10 @@ other filled in when one is typed, if that's possible.
   the company's name and icon, splitting each "manage" permission, names
   in both languages, and a development database. To discuss after
   `FIRST_CHANGES_PLAN.md`.
+- **2026-11-22:** The owner's answers: the development database on
+  Supabase's free plan, starting empty with made-up data, comes first; the
+  company's name and icon move to `THIRD_CHANGES_PLAN.md`; names in both
+  languages for all three, by a free way. Recommended, for the owner: each
+  "manage" permission split by what it does, three left whole, clients
+  and obligations first; and names suggested from a list written into
+  Nizmo, what each company saves, then the rules.
