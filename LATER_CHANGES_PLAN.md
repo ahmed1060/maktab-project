@@ -93,6 +93,13 @@ The owner asked to break up every "manage" permission in the roles system.
     - `clients.delete`: deleting or archiving one, deleting an archived
       one for good, and restoring one from the archive.
     - None is high-risk, as `clients.manage` isn't.
+    - **Two names used before:** until 4 November 2026, `clients.edit`
+      and `clients.delete` meant editing and deleting records. The
+      migrations renamed every role's and template's grants to
+      `records.edit` and `records.delete`, and the triggers that kept
+      renaming them are gone (`lib/records.db.test.ts`), so no role
+      gains anything. Only audit-log lines from before then that name
+      them now read with the new names.
 
 ## 3. English and Arabic names (Decided)
 
@@ -318,3 +325,7 @@ other filled in when one is typed, if that's possible.
   that can't change are noted. How the "manage" split is built: one PR
   each, clients first, the old permission read as its parts until the
   grant for companies already there.
+- **2026-11-22:** Clients split (#365): `clients.create`,
+  `clients.edit` and `clients.delete` reuse two names records had until
+  4 November; nothing stored keeps the old meaning, apart from older
+  audit-log lines.
