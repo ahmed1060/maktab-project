@@ -209,6 +209,13 @@ other filled in when one is typed, if that's possible.
   10:25:13 UTC was followed six seconds later by a restart, and the app
   couldn't reach its database for about 90 seconds; no data was lost.
   Those settings are best changed at a quiet time.
+- **Kept apart (2026-11-22):** previews and production shared
+  `NEXTAUTH_SECRET`, so a session made on a preview was one production
+  accepted until its next check, a minute at most, and the owner's copy
+  had their production ID and no two-step code. Now previews have their
+  own `NEXTAUTH_SECRET`, the copy in "nizmo dev" has its own ID, and
+  previews are behind Vercel Authentication (Standard Protection), so
+  only the Vercel team opens them; nizmo.vercel.app stays open.
 
 ## Not here
 
@@ -244,3 +251,6 @@ other filled in when one is typed, if that's possible.
   headings say what was decided. Saving the production store's settings
   restarted production's database for about 90 seconds; noted, with
   when to change them.
+- **2026-11-22:** Previews and production kept apart: previews have
+  their own `NEXTAUTH_SECRET` and are behind Vercel Authentication, and
+  the owner's copy in "nizmo dev" has its own ID.

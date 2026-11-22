@@ -90,9 +90,14 @@ Since 22 November 2026 (`LATER_CHANGES_PLAN.md` §4):
   the same 16 names. A preview's build runs `prisma migrate deploy` against
   it, so a migration being tried reaches production only once it's merged.
 - **Its data is made up,** apart from the owner's own Super Admin sign-in,
-  copied from production without the two-step code: previews don't have
-  `MFA_ENCRYPTION_KEY`, and they send no email (the `GMAIL_*` settings are
-  production only).
+  copied from production with its own ID and without the two-step code:
+  previews don't have `MFA_ENCRYPTION_KEY`, and they send no email (the
+  `GMAIL_*` settings are production only).
+- **Kept apart:** previews sign their sessions with their own
+  `NEXTAUTH_SECRET`, so production never accepts one made on a preview,
+  and only members of the Vercel team can open a preview (Vercel
+  Authentication, Standard Protection). nizmo.vercel.app stays open to
+  everyone.
 - **On a computer,** Nizmo uses the local database in `.env`, neither of
   these.
 - **Paused after a week:** the free plan pauses "nizmo dev" after a week
