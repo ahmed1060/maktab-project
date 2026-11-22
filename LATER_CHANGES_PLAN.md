@@ -23,7 +23,7 @@ owner answered on 2026-11-22:
 Moved to `THIRD_CHANGES_PLAN.md` on 2026-11-22, as the owner asked, with
 its open questions.
 
-## 2. Each "manage" permission split (Proposed)
+## 2. Each "manage" permission split (Decided)
 
 The owner asked to break up every "manage" permission in the roles system.
 
@@ -70,7 +70,7 @@ The owner asked to break up every "manage" permission in the roles system.
     adjustments and settlements. Then the grant for companies already
     there, in a PR of its own.
 
-## 3. English and Arabic names (Proposed)
+## 3. English and Arabic names (Decided)
 
 The owner asked for names in English and in Arabic, both required, with the
 other filled in when one is typed, if that's possible.
@@ -121,7 +121,7 @@ other filled in when one is typed, if that's possible.
   - **Weak spots:** rare names and brand names come from the rules and
     need correcting once.
 
-## 4. A development database (Proposed)
+## 4. A development database (Done)
 
 - **Today:** a preview build runs its migrations on the production
   database, so a change being tried touches the real one.
@@ -181,9 +181,17 @@ other filled in when one is typed, if that's possible.
      production, its email, names and password, as the owner asked; its
      email stays checked, and it has no two-step code, since previews
      don't have production's key for those codes or a way to send email.
-     Everything else is made up.
+     Everything else is made up. **Done on 2026-11-22:** #363's preview
+     (cc71ac6) applied all 122 migrations to it, with no errors. The
+     made-up data went in after: one company, with two Admins, an
+     employee, two clients with tax claims, and its attendance rules.
+     Their passwords are known to no one; the Super Admin resets one to
+     sign in as them.
   5. **Checked:** the preview works against it, and production's
-     database got nothing from it.
+     database got nothing from it. **Done on 2026-11-22:** the owner
+     signed in on the preview, and the sign-in is in "nizmo dev"'s
+     audit log. Production's database has had no migration since
+     #362's deploy.
 - **Names (the owner, 2026-11-22):** the new project is "nizmo dev".
   Renaming production's Supabase project ("maktab project") and the
   Vercel project to Nizmo changes only their labels; their addresses and
@@ -196,6 +204,11 @@ other filled in when one is typed, if that's possible.
 - **To know:** a free project is paused after a week without use; a
   preview built then fails at its migrations until it's woken, from
   Supabase's page or from here.
+- **Also to know:** saving the production store's settings in Vercel can
+  make Supabase restart production's database. On 2026-11-22 a save at
+  10:25:13 UTC was followed six seconds later by a restart, and the app
+  couldn't reach its database for about 90 seconds; no data was lost.
+  Those settings are best changed at a quiet time.
 
 ## Not here
 
@@ -225,3 +238,9 @@ other filled in when one is typed, if that's possible.
   have "nizmo dev"'s 16 settings, and production keeps its own. The
   owner's sign-in for it is their protected Super Admin, copied from
   production without the two-step code.
+- **2026-11-22:** The development database is done: #363's preview
+  migrated "nizmo dev", the made-up data went in, and the owner signed in
+  on the preview. Production's database got nothing from it. The parts'
+  headings say what was decided. Saving the production store's settings
+  restarted production's database for about 90 seconds; noted, with
+  when to change them.
