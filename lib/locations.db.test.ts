@@ -238,8 +238,8 @@ describe.skipIf(!ADMIN_URL)("locations, in Postgres", () => {
             expect(await hqOf("k5")).toEqual([{ name: "Aswan", latitude: 24.1, longitude: 32.9 }])
         })
 
-        it("is changed only by whoever may manage locations, though whoever manages clients edits the rest, and gives one to a client without one", async () => {
-            const clerk = { user: { id: "e1", role: "EMPLOYEE", companyId: "c1", grants: encodeGrants({ "clients.view": "COMPANY", "clients.manage": "COMPANY" }) } } as any
+        it("is changed only by whoever may manage locations, though whoever may edit clients edits the rest, and gives one to a client without one", async () => {
+            const clerk = { user: { id: "e1", role: "EMPLOYEE", companyId: "c1", grants: encodeGrants({ "clients.view": "COMPANY", "clients.edit": "COMPANY" }) } } as any
             const [epsilon] = (await db.query(`SELECT id FROM "Client" WHERE name = 'Epsilon'`)).rows
             const asItIs = { name: "Luxor HQ", latitude: 25.7, longitude: 32.6 }
             await expect(Clients.update({ id: epsilon.id, ownerName: "Hala", hq: { ...asItIs, name: "Moved" } }, clerk)).rejects.toMatchObject({ message: "TASK_LOCATION_FORBIDDEN" })

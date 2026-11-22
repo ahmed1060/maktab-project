@@ -2,7 +2,8 @@ import { Workbook } from "exceljs"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
 import type { Locale, TranslationKey } from "@/lib/translations"
-import { isPermission, type Permission, type Scope } from "@/lib/permissions/catalogue"
+import type { Permission } from "@/lib/permissions/catalogue"
+import { rowsHeld } from "@/lib/permissions/grant-rules"
 import { BUILT_IN_LABEL, roleLabel } from "@/lib/role-label"
 import { PERMISSION_GROUPS, permissionLabelKey, groupLabelKey, scopeLabelKey, riskLabelKey } from "@/lib/permissions/matrix"
 
@@ -51,7 +52,8 @@ export async function buildRoleMatrix(input: { companyName: string; roles: Expor
     sheet.getColumn(1).width = 42
     sheet.getColumn(2).width = 18
 
-    const scopeOf = input.roles.map(role => new Map(role.grants.filter(g => isPermission(g.permission)).map(g => [g.permission, g.scope as Scope])))
+    // As each role holds them: one being split, as its parts (catalogue.ts, `splitInto`).
+    const scopeOf = input.roles.map(role => new Map(rowsHeld(role.grants).map(g => [g.permission, g.scope])))
 
     let row = 6
     for (const group of PERMISSION_GROUPS) {

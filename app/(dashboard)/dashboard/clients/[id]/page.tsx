@@ -154,9 +154,9 @@ export default function ClientPage() {
             <PageHeader
                 title={archived ? <span className="ui-title-with-badge"><bdi>{name}</bdi><StatusBadge tone="neutral">{t('clients_archived_badge')}</StatusBadge></span> : <bdi>{name}</bdi>}
                 back={back}
-                // Archived, it takes nothing new (CLIENTS_PLAN.md §4.3): Restore, for whoever may.
+                // Archived, it takes nothing new (CLIENTS_PLAN.md §4.3): Restore, for whoever may delete, as it undoes archiving.
                 action={archived
-                    ? can('clients.manage') && <Button variant="primary" icon={ArrowCounterClockwiseIcon} busy={restoring} onClick={() => { void restore() }}>{t('clients_restore')}</Button>
+                    ? can('clients.delete') && <Button variant="primary" icon={ArrowCounterClockwiseIcon} busy={restoring} onClick={() => { void restore() }}>{t('clients_restore')}</Button>
                     : seesRecords && !sectionsFailed && can('records.contribute') && <Button variant="primary" icon={PlusIcon} onClick={() => setAdding(true)}>{t('records_add')}</Button>}
             />
 
@@ -183,8 +183,8 @@ export default function ClientPage() {
 
             {/* What it owes on the tax portal, from the portal's file (CLIENT_PORTAL_PLAN.md §3.5).
                 Made again for another client, so one client's figures never stand in for the next's while those load. */}
-            {/* Its responsible accountant at the section's foot, picked by whoever may manage clients (PR 343). */}
-            {seesTax && <TaxPosition key={id} clientId={id} manages={can('tax.manage')} picks={can('clients.manage')} editsProfile={person => editsProfile({ can, viewer, person })} />}
+            {/* Its responsible accountant at the section's foot, picked by whoever may edit clients (PR 343, PR 365). */}
+            {seesTax && <TaxPosition key={id} clientId={id} manages={can('tax.manage')} picks={can('clients.edit')} editsProfile={person => editsProfile({ can, viewer, person })} />}
             {/* Its own key beside Tax position's: two with one key are drawn over and over. Another client's page starts afresh. */}
             {seesPeople && <ClientPeople key={`people-${id}`} clientId={id} archived={archived} />}
 

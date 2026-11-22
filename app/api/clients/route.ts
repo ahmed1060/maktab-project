@@ -11,7 +11,8 @@ import { taxFiguresOld } from "@/lib/services/tax-claim.service"
 const HQ = { where: { isHq: true }, select: { id: true, name: true, latitude: true, longitude: true, radiusMeters: true } } as const
 
 // Read with clients.view — a Team Leader holds it (they pick a client when
-// creating a task) but not clients.manage; writes are checked per-method below.
+// creating a task) but none of adding, editing or deleting one; writes are
+// checked per-method below.
 export const GET = withStandardHandler(async (req, session) => {
     const userRole = session.user.role
     const userCompanyId = (session.user as any).companyId
@@ -50,13 +51,13 @@ export const GET = withStandardHandler(async (req, session) => {
     // §3.6). How many of its claims are open is its tax position's to say:
     // given only to those of them who may see tax positions, by their role
     // and their company's package.
-    const manages = can(session.user, "clients.manage")
-    const seesTax = manages && can(session.user, "tax.view") && sessionHasModule(session, "TAX_POSITION")
+    const deletes = can(session.user, "clients.delete")
+    const seesTax = deletes && can(session.user, "tax.view") && sessionHasModule(session, "TAX_POSITION")
     // That it has people who can sign in is for whoever may delete it too,
     // whose menu says Archive in place of Delete, and why; how many is for
     // those of them who may manage who signs in for a client, by their role
     // and their company's package (§3.6, PR 329).
-    const seesPeople = manages && can(session.user, "client_accounts.manage") && sessionHasModule(session, "TAX_POSITION")
+    const seesPeople = deletes && can(session.user, "client_accounts.manage") && sessionHasModule(session, "TAX_POSITION")
     // How old a client's figures are, where they're 30 days old or more
     // (§4.3, PR 321), is for whoever may see tax positions, by their role and
     // their company's package: whose file is due shows on the list.
@@ -94,16 +95,16 @@ export const GET = withStandardHandler(async (req, session) => {
         // Held by its tasks or records: it stays in the archive.
         inUse: _count.tasks > 0 || recordSections.length > 0,
         // A file uploaded for it, with claims open or none.
-        ...(manages ? { hasTax: _count.taxClaims > 0 || !!taxPosition } : {}),
+        ...(deletes ? { hasTax: _count.taxClaims > 0 || !!taxPosition } : {}),
         ...(seesTax ? { taxClaims: _count.taxClaims } : {}),
-        ...(manages ? { hasPeople: _count.accounts > 0 } : {}),
+        ...(deletes ? { hasPeople: _count.accounts > 0 } : {}),
         ...(seesPeople ? { people: _count.accounts } : {}),
         ...(old.has(client.id) ? { taxDaysOld: old.get(client.id) } : {}),
     })))
 })
 
 export const POST = withStandardHandler(async (req, session, json) => {
-    if (!can(session.user, "clients.manage")) {
+    if (!can(session.user, "clients.create")) {
         return ApiResponse.forbidden()
     }
 
@@ -126,13 +127,19 @@ export const POST = withStandardHandler(async (req, session, json) => {
 })
 
 export const PUT = withStandardHandler(async (req, session, json) => {
-    if (!can(session.user, "clients.manage")) {
+    // Editing is clients.edit's; restoring from the archive undoes archiving,
+    // so it's clients.delete's (LATER_CHANGES_PLAN.md §2, PR 365). Whoever
+    // holds neither is refused before the body is read.
+    if (!can(session.user, "clients.edit") && !can(session.user, "clients.delete")) {
         return ApiResponse.forbidden()
     }
 
     const validation = updateClientSchema.safeParse(json)
     if (!validation.success) {
         return ApiResponse.badRequest("Validation Error", validation.error.format())
+    }
+    if (!can(session.user, validation.data.restore ? "clients.delete" : "clients.edit")) {
+        return ApiResponse.forbidden()
     }
 
     try {
@@ -150,7 +157,7 @@ export const PUT = withStandardHandler(async (req, session, json) => {
 })
 
 export const DELETE = withStandardHandler(async (req, session) => {
-    if (!can(session.user, "clients.manage")) {
+    if (!can(session.user, "clients.delete")) {
         return ApiResponse.forbidden()
     }
 

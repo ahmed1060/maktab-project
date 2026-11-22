@@ -243,7 +243,11 @@ them, as today.
 | | `records.contribute` | Add a section or a record, and edit any record (built as its own right: records are a shared notebook as much as a register) | `POST /records`, `PUT /records`, `POST /records/sections` |
 | | `records.edit` | Rename a section | `PUT /records/sections` |
 | | `records.delete` | Delete a section or a record — **cannot be undone**, high-risk (§6.15) | `DELETE /records`, `DELETE /records/sections` |
-| **Clients** | `clients.view` / `clients.manage` | See clients; create, edit and delete them (named `vendors.*` until 0b, and in the database until 0c, `CLIENTS_PLAN.md` §0.3) | `clients` |
+| **Clients** | `clients.view` | See clients (named `vendors.*` until 0b, and in the database until 0c, `CLIENTS_PLAN.md` §0.3) | `GET /clients` |
+| | `clients.create` | Add a client (#365, split from `clients.manage`, `LATER_CHANGES_PLAN.md` §2) | `POST /clients` |
+| | `clients.edit` | Change a client's details, and pick its responsible accountant (#365) | `PUT /clients`, `/clients/accountant` |
+| | `clients.delete` | Delete or archive a client, delete an archived one for good, and restore one from the archive, which undoes archiving (#365) | `DELETE /clients`, `PUT /clients` with `restore` |
+| | `clients.manage` | Split into the three above (#365): nothing checks it, and it isn't offered; a role still holding it is read as holding all three, at its scope, until the grant for companies already there | — |
 | **Client portal** | `tax.view` | See a client's tax position on its page, and its tax position statement, in a company whose package has the client portal — implies `clients.view` (`CLIENT_PORTAL_PLAN.md` §8, §9) | `GET /tax-claims`; the page `/dashboard/clients/[id]/tax-statement` |
 | | `tax.manage` | Update a client's tax position by uploading the Tax Authority portal's file, which replaces its claims — implies `tax.view` (`CLIENT_PORTAL_PLAN.md` §4.1, §9) | `GET`, `POST /tax-claims/upload` |
 | | `client_accounts.manage` | List, add and remove the people of a client who sign in to the client portal — **lets people from outside the company in**, high-risk (§6.15); implies `clients.view` (`CLIENT_PORTAL_PLAN.md` §5.2, §9) | `GET`, `POST /client-accounts`, `DELETE /client-accounts/[id]` |

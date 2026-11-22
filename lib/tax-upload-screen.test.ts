@@ -93,7 +93,7 @@ describe("Upload from the tax portal", () => {
 
     it("is given by the client's page to whoever holds tax.manage", () => {
         const page = readFileSync("app/(dashboard)/dashboard/clients/[id]/page.tsx", "utf8")
-        expect(page).toContain(`<TaxPosition key={id} clientId={id} manages={can('tax.manage')} picks={can('clients.manage')} editsProfile={person => editsProfile({ can, viewer, person })} />`)
+        expect(page).toContain(`<TaxPosition key={id} clientId={id} manages={can('tax.manage')} picks={can('clients.edit')} editsProfile={person => editsProfile({ can, viewer, person })} />`)
     })
 
     it("is back at once on a client restored from its page: its tax position is read again, not kept as archived", () => {

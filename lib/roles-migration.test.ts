@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
 import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
 import { isPermission } from "@/lib/permissions/catalogue"
+import { grantsFromRows } from "@/lib/permissions/grant-rules"
 
 /**
  * The migration that made roles data seeds every company's built-in roles
@@ -87,7 +88,10 @@ describe("the roles migration seeds the built-in grants", () => {
         const fromSql = seeded()
         for (const role of ["ADMIN", "TEAM_LEADER", "EMPLOYEE"] as const) {
             const now = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[role]).filter(([permission]) => !GRANTED_LATER.includes(permission)))
-            expect(fromSql[role] ?? {}, role).toEqual(now)
+            // Read as a session reads them: clients.manage, which they seeded,
+            // is held as its parts until a later migration rewrites it (PR 365).
+            const rows = Object.entries(fromSql[role] ?? {}).map(([permission, scope]) => ({ permission, scope }))
+            expect(grantsFromRows(rows), role).toEqual(now)
         }
     })
 

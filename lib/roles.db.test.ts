@@ -8,6 +8,7 @@ import { decodeGrants, encodeGrants } from "@/lib/permissions/grants"
 import { RoleService } from "@/lib/services/role.service"
 import { RoleAssignmentService } from "@/lib/services/role-assignment.service"
 import { holdersOf } from "@/lib/permissions/holders"
+import { grantsFromRows } from "@/lib/permissions/grant-rules"
 import { AccessReportService } from "@/lib/services/access-report.service"
 import { RoleRequestService } from "@/lib/services/role-request.service"
 import { RoleChangeRequestService } from "@/lib/services/role-change-request.service"
@@ -262,9 +263,9 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                 FROM "Role" r JOIN "RoleGrant" g ON g."roleId" = r.id`)
             for (const company of ["c1", "c2"]) {
                 for (const builtIn of ["ADMIN", "TEAM_LEADER", "EMPLOYEE"] as const) {
-                    const grants = Object.fromEntries(rows
-                        .filter(r => r.companyId === company && r.builtIn === builtIn)
-                        .map(r => [r.permission, r.scope]))
+                    // Read as a session reads them: clients.manage, which the
+                    // migrations gave the Admin, is held as its parts (PR 365).
+                    const grants = grantsFromRows(rows.filter(r => r.companyId === company && r.builtIn === builtIn))
                     const now = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).filter(([permission]) => !GRANTED_LATER.includes(permission)))
                     expect(grants, `${company} ${builtIn}`).toEqual(now)
                 }

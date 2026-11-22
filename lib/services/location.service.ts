@@ -300,8 +300,8 @@ export class LocationService {
      * (ClientService.create), or a change to it when the client is edited.
      * The client's own location fields follow it.
      *
-     * Whoever may manage clients gives a client its HQ, with the client or
-     * later for one without, but changing the one it has is changing a
+     * Whoever may add or edit clients gives a client its HQ, with the client
+     * or later for one without, but changing the one it has is changing a
      * location: locations.manage, as on the Locations page.
      */
     static async saveHq(tx: Tx, client: { id: string; companyId: string }, place: PlaceInput, session: Session) {

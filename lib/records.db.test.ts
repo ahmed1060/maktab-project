@@ -226,7 +226,8 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
 
         it("are written under their new names", async () => {
             const role = await Roles.create({ companyId: "c1", name: "Desk", baseRole: "EMPLOYEE", grants: [{ permission: "clients.manage", scope: "COMPANY" }, { permission: "tasks.view", scope: "TEAM" }] }, superAdmin)
-            expect(await stored(role.id)).toEqual(["clients.manage COMPANY", "clients.view COMPANY", "tasks.view TEAM"])
+            // clients.manage is saved as its parts since PR 365.
+            expect(await stored(role.id)).toEqual(["clients.create COMPANY", "clients.delete COMPANY", "clients.edit COMPANY", "clients.view COMPANY", "tasks.view TEAM"])
             await Roles.update({ id: role.id, grants: [{ permission: "clients.view", scope: "COMPANY" }] }, superAdmin)
             expect(await stored(role.id)).toEqual(["clients.view COMPANY"])
         })
@@ -250,10 +251,12 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             const grants = async () => (await db.query(`SELECT grants FROM "RoleTemplate" WHERE id = $1`, [template.id])).rows[0].grants
             expect(await grants()).toEqual([{ permission: "tasks.view", scope: "TEAM" }, { permission: "clients.view", scope: "COMPANY" }])
             await Templates.update({ id: template.id, grants: [{ permission: "clients.manage", scope: "COMPANY" }] }, superAdmin)
-            expect((await Templates.getById(template.id)).grants).toEqual([{ permission: "clients.view", scope: "COMPANY" }, { permission: "clients.manage", scope: "COMPANY" }])
+            // clients.manage is saved as its parts since PR 365.
+            const parts = ["clients.create", "clients.edit", "clients.delete"].map(permission => ({ permission, scope: "COMPANY" }))
+            expect((await Templates.getById(template.id)).grants).toEqual([{ permission: "clients.view", scope: "COMPANY" }, ...parts])
             // A role made from it holds what it says.
             const role = await Roles.create({ companyId: "c1", name: "From the desk", fromTemplateId: template.id }, superAdmin)
-            expect(await stored(role.id)).toEqual(["clients.manage COMPANY", "clients.view COMPANY"])
+            expect(await stored(role.id)).toEqual(["clients.create COMPANY", "clients.delete COMPANY", "clients.edit COMPANY", "clients.view COMPANY"])
         })
 
         it("keep a company's name and icon for Clients under the module's new key", async () => {

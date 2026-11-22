@@ -54,7 +54,10 @@ const PEOPLE = D + "employees/page.tsx"
 
 const GATES: Gate[] = [
     // --- Clients, records, costs ---------------------------------------------
-    { what: "clients: manage", file: D + "clients/page.tsx", uses: "const canManage = can('clients.manage')", before: admins, now: p => p.can("clients.manage") },
+    // clients.manage split by what it does (PR 365): each built-in role holds all three or none.
+    { what: "clients: add", file: D + "clients/page.tsx", uses: "const mayAdd = can('clients.create')", before: admins, now: p => p.can("clients.create") },
+    { what: "clients: edit", file: D + "clients/page.tsx", uses: "const mayEdit = can('clients.edit')", before: admins, now: p => p.can("clients.edit") },
+    { what: "clients: delete, archive, restore", file: D + "clients/page.tsx", uses: "const mayDelete = can('clients.delete')", before: admins, now: p => p.can("clients.delete") },
     { what: "new task: pick a client", file: D + "tasks/new/page.tsx", uses: "useCan().can('clients.view')", before: managers, now: p => p.can("clients.view") },
     // The old Clients section's notes are a client's records now (CLIENTS_PLAN.md §0.2), with the same people allowed.
     { what: "records: add and edit", file: "components/records/RecordsList.tsx", uses: "const canEdit = can('records.contribute')", before: () => true, now: p => p.can("records.contribute") },
