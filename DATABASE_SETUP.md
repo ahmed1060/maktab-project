@@ -77,3 +77,33 @@ Realtime. Two locks keep the Data API out of every table:
 
 - **Network Restrictions**: If deployments fail, ensure your IP is added to the Supabase **Network Restrictions** (or set to "Allow All" for debugging).
 - **Vercel IP**: Vercel IPs are dynamic. It is recommended to keep Supabase open to all connections (IPv4/IPv6) for seamless deployment.
+
+## 6. Two databases: production and previews
+
+Since 22 November 2026 (`LATER_CHANGES_PLAN.md` §4):
+
+- **Production** uses the Supabase project "Nizmo". Its 16 settings in
+  Vercel come from the "Nizmo" store, allowed for Production only, so only
+  a deployment from `main` migrates it.
+- **Previews** use "nizmo dev", a second project on Supabase's free plan,
+  through the "supabase-nizmo-dev" store, connected to Preview only, with
+  the same 16 names. A preview's build runs `prisma migrate deploy` against
+  it, so a migration being tried reaches production only once it's merged.
+- **Its data is made up,** apart from the owner's own Super Admin sign-in,
+  copied from production with its own ID and without the two-step code:
+  previews don't have `MFA_ENCRYPTION_KEY`, and they send no email (the
+  `GMAIL_*` settings are production only).
+- **Kept apart:** previews sign their sessions with their own
+  `NEXTAUTH_SECRET`, so production never accepts one made on a preview,
+  and only members of the Vercel team can open a preview (Vercel
+  Authentication, Standard Protection). nizmo.vercel.app stays open to
+  everyone.
+- **On a computer,** Nizmo uses the local database in `.env`, neither of
+  these.
+- **Paused after a week:** the free plan pauses "nizmo dev" after a week
+  without use. Restore it from Supabase's dashboard first, or a preview's
+  build fails at its migrations.
+- **Saving the "Nizmo" store's settings** in Vercel can make Supabase
+  restart production's database. On 22 November 2026 a save was followed
+  six seconds later by a restart, and production couldn't reach its
+  database for about 90 seconds. Change them at a quiet time.

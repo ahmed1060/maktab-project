@@ -93,6 +93,13 @@ describe("the documents (app/(legal)/privacy and terms)", () => {
         expect(page(TermsOfService)).toContain('<h1 class="ui-page-title">Terms of service</h1><p class="ui-page-subtitle">Last updated 17 September 2026</p><p class="ui-legal-lede">')
     })
 
+    it("give Nizmo's contact address, info.nizmo@gmail.com, since the account's address changed on 26 October 2026", () => {
+        for (const html of [page(PrivacyPolicy), page(TermsOfService)]) {
+            expect(html).toContain('<a href="mailto:info.nizmo@gmail.com">info.nizmo@gmail.com</a>')
+            expect(html).not.toContain("maktab.system@gmail.com")
+        }
+    })
+
     it("name themselves in the browser's tab as the app's pages do", () => {
         expect(privacyMetadata.title).toBe("Nizmo — Privacy policy")
         expect(termsMetadata.title).toBe("Nizmo — Terms of service")
