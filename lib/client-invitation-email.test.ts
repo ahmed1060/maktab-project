@@ -202,12 +202,12 @@ describe("the link's address", () => {
     it("is Nizmo's own in production, whatever the request says", () => {
         expect(PRODUCTION_ORIGIN).toBe("https://nizmo.vercel.app")
         for (const url of ["https://nizmo.vercel.app/api/client-accounts", "https://evil.example/api/client-accounts", "http://localhost:3000/x"]) {
-            expect(appOrigin(url, { VERCEL_ENV: "production", VERCEL_URL: "maktab-project-abc-shsd.vercel.app" }), url).toBe(PRODUCTION_ORIGIN)
+            expect(appOrigin(url, { VERCEL_ENV: "production", VERCEL_URL: "nizmo-abc-shsd.vercel.app" }), url).toBe(PRODUCTION_ORIGIN)
         }
     })
 
     it("is a preview's own on a preview", () => {
-        expect(appOrigin("https://evil.example/x", { VERCEL_ENV: "preview", VERCEL_URL: "maktab-project-abc-shsd.vercel.app" })).toBe("https://maktab-project-abc-shsd.vercel.app")
+        expect(appOrigin("https://evil.example/x", { VERCEL_ENV: "preview", VERCEL_URL: "nizmo-abc-shsd.vercel.app" })).toBe("https://nizmo-abc-shsd.vercel.app")
         // Anything that isn't a preview's address is never a link's.
         for (const VERCEL_URL of ["evil.example", "evil.example/x.vercel.app", "", undefined]) {
             expect(appOrigin("https://evil.example/x", { VERCEL_ENV: "preview", VERCEL_URL }), String(VERCEL_URL)).toBe(PRODUCTION_ORIGIN)

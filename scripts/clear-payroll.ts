@@ -30,7 +30,7 @@ const prisma = createScriptClient()
 // Same repository the restore route dispatches to. Spelled here rather than
 // inferred, because a wrong guess would check somebody else's Actions history
 // and pass.
-const REPO = process.env.GITHUB_REPOSITORY || "ahmed1060/maktab-project"
+const REPO = process.env.GITHUB_REPOSITORY || "ahmed1060/nizmo"
 
 function parseArgs(argv: string[]) {
     const execute = argv.includes("--execute")

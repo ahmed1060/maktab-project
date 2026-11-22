@@ -33,7 +33,7 @@ on:
     types: [manual-backup]
 
 concurrency:
-  group: maktab-backup
+  group: nizmo-backup
   cancel-in-progress: false
 
 jobs:
@@ -142,7 +142,7 @@ jobs:
           LABEL=$(printf '%s' "${{ github.event.inputs.label }}" | tr -cd '[:alnum:]_-' | cut -c1-32)
           KIND="${{ github.event_name == 'schedule' && 'auto' || 'manual' }}"
           [ -n "$LABEL" ] && KIND="$LABEL"
-          echo "NAME=maktab_${STAMP}_${KIND}" >> $GITHUB_ENV
+          echo "NAME=nizmo_${STAMP}_${KIND}" >> $GITHUB_ENV
           # Call the versioned binary directly rather than the unversioned
           # `pg_dump` on PATH — installing postgresql-client-17 alongside
           # the runner image's pre-existing postgresql-client-16 doesn't
