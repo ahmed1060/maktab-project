@@ -85,8 +85,8 @@ Since 22 November 2026 (`LATER_CHANGES_PLAN.md` §4):
 - **Production** uses the Supabase project "Nizmo". Its 16 settings in
   Vercel come from the "Nizmo" store, allowed for Production only, so only
   a deployment from `main` migrates it.
-- **Previews** use "nizmo dev", a second project on Supabase's free plan,
-  through the "supabase-nizmo-dev" store, connected to Preview only, with
+- **Previews** use "nizmo-dev", a second project on Supabase's free plan,
+  through the "nizmo-dev" store, connected to Preview only, with
   the same 16 names. A preview's build runs `prisma migrate deploy` against
   it, so a migration being tried reaches production only once it's merged.
 - **Its data is made up,** apart from the owner's own Super Admin sign-in,
@@ -100,10 +100,15 @@ Since 22 November 2026 (`LATER_CHANGES_PLAN.md` §4):
   everyone.
 - **On a computer,** Nizmo uses the local database in `.env`, neither of
   these.
-- **Paused after a week:** the free plan pauses "nizmo dev" after a week
+- **Paused after a week:** the free plan pauses "nizmo-dev" after a week
   without use. Restore it from Supabase's dashboard first, or a preview's
   build fails at its migrations.
 - **Saving the "Nizmo" store's settings** in Vercel can make Supabase
   restart production's database. On 22 November 2026 a save was followed
   six seconds later by a restart, and production couldn't reach its
   database for about 90 seconds. Change them at a quiet time.
+- **No drill database:** "maktab drill", where a restore could be
+  rehearsed, is deleted, with `DRILL_DATABASE_URL`. A restore run with
+  the target "drill" now stops before touching anything. To rehearse
+  again, make a fresh free Supabase project and set `DRILL_DATABASE_URL`
+  to its Session pooler string.
