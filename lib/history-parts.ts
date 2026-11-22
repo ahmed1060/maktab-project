@@ -57,12 +57,19 @@ export function historyParts(viewer: { own: boolean; can: (permission: Permissio
  * requests can be held for a team. And with See employees held for a team,
  * someone else's history is kept to that team (verifyResourceAccess), debts
  * too, though their route doesn't ask: the safe side.
+ *
+ * `canLookUp`: whether the viewer may look the person up, with See employees
+ * or as their own. Without it, who leads them can't be known here, so what's
+ * held for a team is asked for, and its route, which looks them up itself,
+ * decides (Codex on PR 370).
  */
 export function forPerson(
     viewer: { can: (permission: Permission, target?: Target) => boolean; scope: (permission: Permission) => string | null },
     person: Target | null,
+    canLookUp = true,
 ): (permission: Permission) => boolean {
-    const held = (permission: Permission) => viewer.scope(permission) === 'TEAM' ? !!person && viewer.can(permission, person) : viewer.can(permission)
+    const forTeam = (permission: Permission) => person ? viewer.can(permission, person) : !canLookUp && viewer.can(permission)
+    const held = (permission: Permission) => viewer.scope(permission) === 'TEAM' ? forTeam(permission) : viewer.can(permission)
     const reaches = viewer.scope('employees.view') !== 'TEAM' || held('employees.view')
     return permission => reaches && held(permission)
 }

@@ -82,7 +82,7 @@ export default function EmployeeHistoryPage() {
     const employee: Employee | null = unwrap(employeeQuery.data) ?? null
     const person = employee ? { userId: employee.id, teamLeaderId: employee.teamLeaderId ?? null, companyId: employee.companyId ?? null } : null
     // Each part of the page, and its tab, only for who its route answers.
-    const parts = historyParts({ own, can: forPerson({ can, scope }, person), has: features.has })
+    const parts = historyParts({ own, can: forPerson({ can, scope }, person, seesPerson), has: features.has })
     const canSeeSalary = can('salary.view')
     // Anyone's pay but their own (ROLES_PLAN.md §4.2, rule 5).
     const canAdjust = canFor('salary_adjustments.manage', params.id as string | undefined)

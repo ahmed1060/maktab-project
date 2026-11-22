@@ -147,4 +147,11 @@ describe("what the viewer holds for the person (Codex on PR 370)", () => {
     it("without See employees, nothing is kept to a team", () => {
         expect(parts({ "costs.view": "COMPANY" }, other)).toEqual(["costs"])
     })
+
+    it("without See employees, the person can't be looked up, so what's held for a team is asked for and its route decides (Codex on PR 370)", () => {
+        const grants = { "dayoff.view": "TEAM", "salary.view": "TEAM" } as const
+        expect(on(historyParts({ own: false, can: forPerson(viewer(grants), null, false), has: ALL }))).toEqual(["months", "adjustments", "dayOff"])
+        // With See employees, it waits for them instead.
+        expect(on(historyParts({ own: false, can: forPerson(viewer({ ...grants, "employees.view": "COMPANY" }), null, true), has: ALL }))).toEqual([])
+    })
 })

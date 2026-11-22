@@ -244,6 +244,13 @@ describe("what the page asks for (PR 370)", () => {
         expect(tabs(led)).toEqual([en.hist_tab_day_off, en.costs_tab])
     })
 
+    it("asks for what's held for a team without See employees, as the person can't be looked up, and lets its route decide (Codex on PR 370)", async () => {
+        const html = await page({ perms: ["dayoff.view"], team: ["dayoff.view"] })
+        expect(asked("/api/users?id=u2")).toBe(false)
+        expect(asked("/api/users/u2/day-off-history")).toBe(true)
+        expect(tabs(html)).toEqual([en.hist_tab_day_off])
+    })
+
     it("waits for the person, rather than saying it can't be opened, while what it shows depends on them", async () => {
         const viewer = { perms: ["employees.view", "dayoff.view"], team: ["dayoff.view"] }
         const waiting = await page(viewer)
