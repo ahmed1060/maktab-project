@@ -43,7 +43,8 @@ describe("Set up fingerprint terminals, in the catalogue", () => {
     })
 
     it("leaves the catalogue's version as it is: no role already there holds it until a later release's migration", () => {
-        expect(CATALOGUE_VERSION).toBe(4)
+        // 4 then; PR 365 raised it to 5, for the clients split.
+        expect(CATALOGUE_VERSION).toBe(5)
     })
 
     it("is named in both languages, the Arabic without a gendered command", () => {

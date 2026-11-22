@@ -69,6 +69,37 @@ The owner asked to break up every "manage" permission in the roles system.
     locations, lists and charges; then client accounts, salary
     adjustments and settlements. Then the grant for companies already
     there, in a PR of its own.
+- **How it's built (2026-11-22):**
+  - **One PR for each "manage" permission:** clients first (#365), with
+    what every split shares, then obligations (#366), then the rest in
+    the order above. Each brings its routes, its screens and
+    `ROLES_PLAN.md`'s rows.
+  - **Nobody loses access in between.** The old permission stays in the
+    catalogue, marked as split into its parts:
+    - a role still holding it is read as holding each part, at its
+      scope: when a session's grants are loaded, and wherever a role's
+      grants are shown or compared;
+    - it isn't offered in the role editor any more, and saving a role,
+      or a template, writes the parts in its place;
+    - the catalogue's version goes up, so every session reloads its
+      grants once.
+  - **Then the grant for companies already there** rewrites each role's
+    rows from the old permission to its parts, and after it the old
+    permission is removed and its code retired.
+  - **Clients (#365):**
+    - `clients.create`: adding a client;
+    - `clients.edit`: changing its details, and picking its
+      responsible accountant;
+    - `clients.delete`: deleting or archiving one, deleting an archived
+      one for good, and restoring one from the archive.
+    - None is high-risk, as `clients.manage` isn't.
+    - **Two names used before:** until 4 November 2026, `clients.edit`
+      and `clients.delete` meant editing and deleting records. The
+      migrations renamed every role's and template's grants to
+      `records.edit` and `records.delete`, and the triggers that kept
+      renaming them are gone (`lib/records.db.test.ts`), so no role
+      gains anything. Only audit-log lines from before then that name
+      them now read with the new names.
 
 ## 3. English and Arabic names (Decided)
 
@@ -216,9 +247,20 @@ other filled in when one is typed, if that's possible.
   and the Development copies of it and of `NEXTAUTH_SECRET`, which
   nothing used, are deleted.
 - **"maktab drill":** the paused project the restore drill writes into
-  (`DRILL_DATABASE_URL`), likely still holding a restored copy of real
-  data. The owner deletes it; nothing runs on it by itself, and a
-  later drill would need a fresh one.
+  (`DRILL_DATABASE_URL`), holding a restored copy of real data from
+  17 September 2026. Nothing ran on it by itself: only a restore run by
+  hand with the target "drill". **Deleted by the owner on 2026-11-22,**
+  with `DRILL_DATABASE_URL` and the unused MongoDB store. A drill run
+  now stops before touching anything; the next one needs a fresh free
+  project and the secret set again. The payroll-clearing script's check
+  still finds the drill that passed on 17 September.
+- **"nizmo dev" in Vercel:** its store is named `nizmo-dev`, since Vercel
+  allows no spaces, and the Supabase project followed.
+- **IDs that can't change:** HERE's project ID (`maktab-project`) and
+  Google Cloud's (`maktab-backups`) keep the old name, as those services
+  never let an ID change; their names say Nizmo. So does
+  `maktab-project-zeta.vercel.app`, kept on purpose: it forwards to
+  nizmo.vercel.app, for any old link or device still using it.
 - **To know:** a free project is paused after a week without use; a
   preview built then fails at its migrations until it's woken, from
   Supabase's page or from here.
@@ -275,3 +317,15 @@ other filled in when one is typed, if that's possible.
 - **2026-11-22:** #363 merged. The rest of the renaming decided: the
   Vercel project and the GitHub repository become "nizmo", and new
   backups are named `nizmo_…`. Previews hold no production secret now.
+- **2026-11-22:** #364 merged. "maktab drill" deleted by the owner, with
+  `DRILL_DATABASE_URL` and the unused MongoDB store; the development
+  database's store is named `nizmo-dev`.
+- **2026-11-22:** The renaming finished outside the code too: HERE,
+  Google Cloud, Drive, cron-job.org and Sentry say Nizmo, and the IDs
+  that can't change are noted. How the "manage" split is built: one PR
+  each, clients first, the old permission read as its parts until the
+  grant for companies already there.
+- **2026-11-22:** Clients split (#365): `clients.create`,
+  `clients.edit` and `clients.delete` reuse two names records had until
+  4 November; nothing stored keeps the old meaning, apart from older
+  audit-log lines.

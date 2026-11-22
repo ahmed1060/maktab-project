@@ -37,6 +37,7 @@ describe("permission codes", () => {
         "tax.manage": 69,
         "client_accounts.manage": 70,
         "client_messages.manage": 71,
+        "clients.create": 72, "clients.edit": 73, "clients.delete": 74,
     }
 
     it("have not changed", () => {

@@ -1,4 +1,4 @@
-import { PERMISSIONS, isReserved, type Permission, type Scope } from "./catalogue"
+import { PERMISSIONS, isReserved, isSplit, type Permission, type Scope } from "./catalogue"
 import type { Grants } from "./grants"
 import { normalizeGrants } from "./grant-rules"
 import type { TranslationKey } from "@/lib/translations"
@@ -37,7 +37,9 @@ const GROUP_OF_AREA: Record<string, string> = {
 }
 
 // A reserved permission is not offered: nothing checks it yet (catalogue.ts).
-for (const permission of (Object.keys(PERMISSIONS) as Permission[]).filter(p => !isReserved(p))) {
+// Nor is one being split: its parts are, and a role holding it shows them
+// ticked (grant-rules.ts, grantsFromRows).
+for (const permission of (Object.keys(PERMISSIONS) as Permission[]).filter(p => !isReserved(p) && !isSplit(p))) {
     const group = PERMISSION_GROUPS.find(g => g.key === GROUP_OF_AREA[permission.split(".")[0]])
     // A permission in an area with no group would be a row nobody can tick;
     // fail loudly, at import, rather than leave it out.

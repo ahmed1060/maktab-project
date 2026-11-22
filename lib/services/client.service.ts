@@ -61,7 +61,7 @@ export class ClientService {
         const client = await prisma.client.findUnique({ where: { id } })
         if (!client) throw new Error("CLIENT_NOT_FOUND")
 
-        if (!can(session.user, "clients.manage", { companyId: client.companyId })) {
+        if (!can(session.user, "clients.edit", { companyId: client.companyId })) {
             throw new Error("FORBIDDEN")
         }
 
@@ -102,7 +102,7 @@ export class ClientService {
         const client = await prisma.client.findUnique({ where: { id } })
         if (!client) throw new Error("CLIENT_NOT_FOUND")
 
-        if (!can(session.user, "clients.manage", { companyId: client.companyId })) {
+        if (!can(session.user, "clients.delete", { companyId: client.companyId })) {
             throw new Error("FORBIDDEN")
         }
 
@@ -179,11 +179,11 @@ export class ClientService {
         })
     }
 
-    /** An archived client in use again (CLIENTS_PLAN.md §4.3). */
+    /** An archived client in use again (CLIENTS_PLAN.md §4.3): undoing archiving, so clients.delete's. */
     static async restore(id: string, session: any) {
         const client = await prisma.client.findUnique({ where: { id } })
         if (!client) throw new Error("CLIENT_NOT_FOUND")
-        if (!can(session.user, "clients.manage", { companyId: client.companyId })) throw new Error("FORBIDDEN")
+        if (!can(session.user, "clients.delete", { companyId: client.companyId })) throw new Error("FORBIDDEN")
         const { AuditLogService } = await import("./audit-log.service")
         return prisma.$transaction(async tx => {
             const restored = await tx.client.update({ where: { id }, data: { archivedAt: null } })

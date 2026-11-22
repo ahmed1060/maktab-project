@@ -29,7 +29,7 @@ import ResponsibleAccountant from './ResponsibleAccountant'
  * end of the line that names the file.
  *
  * At its foot, before the first file too, the client's responsible
- * accountant, picked by whoever may manage clients (`picks`), with whether
+ * accountant, picked by whoever may edit clients (`picks`), with whether
  * the client's people can write to them (§7, step 9b, PR 343).
  *
  * Once there's a file, Download the statement comes before the upload, for

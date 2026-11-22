@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { Workbook } from "exceljs"
 import { buildRoleMatrix } from "./role-matrix-export"
-import { PERMISSIONS, isReserved } from "./permissions/catalogue"
+import { PERMISSIONS, isReserved, isSplit } from "./permissions/catalogue"
 import { permissionLabelKey } from "./permissions/matrix"
 import { en } from "./translations/en"
 
@@ -35,8 +35,9 @@ describe("the role matrix for the contract", () => {
         const { rows } = await read(await buildRoleMatrix({ companyName: "Acme", roles, locale: "en", at: new Date() }))
         const firstColumn = rows.map(r => r[0])
         for (const permission of Object.keys(PERMISSIONS) as (keyof typeof PERMISSIONS)[]) {
-            // One nothing checks yet is not in the matrix, so not in the contract.
-            expect(firstColumn.filter(v => v === (en as any)[permissionLabelKey(permission)])).toHaveLength(isReserved(permission) ? 0 : 1)
+            // One nothing checks yet is not in the matrix, so not in the contract,
+            // and one split into parts is there as its parts (PR 365).
+            expect(firstColumn.filter(v => v === (en as any)[permissionLabelKey(permission)])).toHaveLength(isReserved(permission) || isSplit(permission) ? 0 : 1)
         }
     })
 

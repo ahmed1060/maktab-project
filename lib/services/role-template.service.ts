@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { normalizeGrants, grantRows, templateGrants } from "@/lib/permissions/grant-rules"
+import { normalizeGrants, grantRows, rowsHeld, templateGrants } from "@/lib/permissions/grant-rules"
 import { GrantsError, RoleService, checkSeparation } from "./role.service"
 import type { UserRole } from "@prisma/client"
 import type { CreateTemplateInput, UpdateTemplateInput } from "@/lib/validations/role.schema"
@@ -92,7 +92,7 @@ export class RoleTemplateService {
             roles: roles.map(role => ({
                 id: role.id, name: role.name, companyId: role.companyId, companyName: role.company.name,
                 holders: role._count.users,
-                difference: differenceOf(role.grants, template.grants),
+                difference: differenceOf(rowsHeld(role.grants), template.grants),
             })),
         }
     }
@@ -135,7 +135,8 @@ export class RoleTemplateService {
 function shape(t: { id: string; name: string; description: string | null; baseRole: UserRole; grants: unknown; updatedAt: Date }) {
     return {
         id: t.id, name: t.name, description: t.description, baseRole: t.baseRole, updatedAt: t.updatedAt,
-        grants: templateGrants(t.grants),
+        // As the template holds them: one being split, as its parts (catalogue.ts, `splitInto`).
+        grants: rowsHeld(templateGrants(t.grants)),
     }
 }
 

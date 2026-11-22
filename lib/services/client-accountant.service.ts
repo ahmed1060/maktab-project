@@ -6,7 +6,7 @@ import { accountantReach, contractEnded, ENDED_STATUSES, portalAccountantOf, typ
  * A client's responsible accountant (CLIENT_PORTAL_PLAN.md §7, §12 step 9b;
  * PR 343): who may be picked, picking one, and reading who it is.
  *
- * Picked by whoever may manage clients, from the client's own company's
+ * Picked by whoever may edit clients, from the client's own company's
  * people whose contracts haven't ended. Whose contract ends later stays
  * picked: the client's page says the client's people can't write to them
  * until another is.
@@ -14,9 +14,9 @@ import { accountantReach, contractEnded, ENDED_STATUSES, portalAccountantOf, typ
 
 const nameOf = (person: { firstName: string; lastName: string }) => `${person.firstName} ${person.lastName}`.trim()
 
-/** The client asked about: by whoever may manage clients, in the client's own company. */
+/** The client asked about: by whoever may edit clients, in the client's own company. */
 async function clientOf(user: Actor, clientId: unknown) {
-    if (!can(user, "clients.manage")) throw new Error("CLIENTS_MANAGE_REQUIRED")
+    if (!can(user, "clients.edit")) throw new Error("CLIENTS_EDIT_REQUIRED")
     if (typeof clientId !== "string" || !clientId) throw new Error("ACCOUNTANT_CLIENT_REQUIRED")
     const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, companyId: true } })
     if (!client || (user.role !== "SUPER_ADMIN" && client.companyId !== user.companyId)) throw new Error("CLIENT_NOT_FOUND")

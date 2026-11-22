@@ -72,6 +72,16 @@ type PermissionDefinition = {
      * may.
      */
     personal?: true
+    /**
+     * Being split by what it does (LATER_CHANGES_PLAN.md §2, PR 365): the
+     * permissions it's being split into. Until the grant for companies
+     * already there rewrites their roles, a role still holding it is read as
+     * holding each of these, at its scope (grant-rules.ts, grantsFromRows),
+     * and saving a role or template that names it writes these in its place
+     * (normalizeGrants). Nothing checks it, and it isn't offered in the
+     * permission matrix. Removed, its code retired, after that grant.
+     */
+    splitInto?: readonly string[]
 }
 
 const TEAM_OR_COMPANY = ["TEAM", "COMPANY"] as const
@@ -133,7 +143,14 @@ export const PERMISSIONS = {
     // These were vendors.*, with the same codes and meaning
     // (CLIENTS_PLAN.md §0.3).
     "clients.view":             { code: 29, module: "CLIENTS", scopes: COMPANY },
-    "clients.manage":           { code: 30, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
+    // Split by what it does (LATER_CHANGES_PLAN.md §2, PR 365): adding a
+    // client; changing its details and picking its responsible accountant;
+    // and deleting or archiving one, deleting an archived one for good and
+    // restoring one from the archive, which undoes archiving.
+    "clients.manage":           { code: 30, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"], splitInto: ["clients.create", "clients.edit", "clients.delete"] },
+    "clients.create":           { code: 72, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
+    "clients.edit":             { code: 73, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
+    "clients.delete":           { code: 74, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
     // The places tasks happen at (CLIENTS_PLAN.md §2.9): seeing them, adding
     // one (as the task form will), and managing them (pin and radius,
     // archiving, which is a client's HQ). Adding or managing includes seeing.
@@ -283,8 +300,13 @@ export type Permission = keyof typeof PERMISSIONS
  * tax.manage (code 69, PR 315), as for tax.view, nor
  * client_accounts.manage (code 70, PR 322), nor client_messages.manage
  * (code 71, PR 348).
+ *
+ * 5: clients.create, clients.edit and clients.delete (codes 72–74), split
+ * from clients.manage (LATER_CHANGES_PLAN.md §2, PR 365). Every role that
+ * held clients.manage holds them from now, as its parts: a session reloads
+ * once to carry them, as the routes ask for them alone.
  */
-export const CATALOGUE_VERSION = 4
+export const CATALOGUE_VERSION = 5
 
 /** Codes of permissions that no longer exist. Never handed out again. */
 export const RETIRED_CODES: readonly number[] = []
@@ -307,6 +329,25 @@ export function isPermission(value: string): value is Permission {
 /** Whether a permission is only ever about oneself (see `personal`). */
 export function isPersonal(permission: Permission): boolean {
     return (PERMISSIONS[permission] as PermissionDefinition).personal === true
+}
+
+/** What a permission is being split into, or nothing (see `splitInto`). */
+export function splitParts(permission: Permission): readonly Permission[] {
+    return ((PERMISSIONS[permission] as PermissionDefinition).splitInto ?? []) as readonly Permission[]
+}
+
+/** Whether a permission is being split, so only read as its parts (see `splitInto`). */
+export function isSplit(permission: Permission): boolean {
+    return splitParts(permission).length > 0
+}
+
+const SPLIT_FROM = new Map<Permission, Permission>(
+    (Object.keys(PERMISSIONS) as Permission[]).flatMap(p => splitParts(p).map(part => [part, p] as const))
+)
+
+/** The permission one was split from, while that one is still held by roles (see `splitInto`). */
+export function splitFrom(permission: Permission): Permission | undefined {
+    return SPLIT_FROM.get(permission)
 }
 
 /** Whether a permission is planned but not yet checked anywhere (see `reserved`). */

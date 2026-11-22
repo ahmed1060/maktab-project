@@ -19,7 +19,7 @@ import { figuresAge, TAX_OLD_AFTER_DAYS, type TaxPosition } from "./tax-claims"
 const state = {
     locale: "en",
     data: undefined as TaxPosition | undefined,
-    grants: new Set(["clients.view", "clients.manage"]),
+    grants: new Set(["clients.view", "clients.create", "clients.edit", "clients.delete"]),
     list: [] as unknown[],
 }
 const words = () => (state.locale === "ar" ? ar : en) as Record<string, string>
@@ -47,7 +47,7 @@ beforeAll(async () => {
 beforeEach(() => {
     state.locale = "en"
     state.data = undefined
-    state.grants = new Set(["clients.view", "clients.manage"])
+    state.grants = new Set(["clients.view", "clients.create", "clients.edit", "clients.delete"])
     state.list = []
 })
 

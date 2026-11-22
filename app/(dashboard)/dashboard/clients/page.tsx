@@ -103,7 +103,11 @@ export default function ClientsPage() {
         !renamed ? t(key) : locale === 'ar' ? ar.replace('{name}', clientsName) : en.replace('{name}', clientsName)
     const { can } = useCan()
     const sees = can('clients.view')
-    const canManage = can('clients.manage')
+    // Each by its own permission (LATER_CHANGES_PLAN.md §2, PR 365):
+    // restoring from the archive undoes archiving, so it's deleting's.
+    const mayAdd = can('clients.create')
+    const mayEdit = can('clients.edit')
+    const mayDelete = can('clients.delete')
 
     const [query, setQuery] = useState('')
     const [page, setPage] = useState(1)
@@ -216,16 +220,16 @@ export default function ClientsPage() {
     const menu = (c: Client): MenuItem[] => [
         // Its tasks, on the Tasks page filtered to it (CLIENTS_PLAN.md §3.6).
         { key: 'tasks', label: t('clients_view_tasks'), icon: CheckSquareIcon, href: `/dashboard/tasks?clientId=${encodeURIComponent(c.id)}` },
-        ...(!canManage ? [] : c.archivedAt ? [
+        ...(c.archivedAt ? (!mayDelete ? [] : [
             { key: 'restore', label: t('clients_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void restore(c) } },
             // Deleted for good from the archive, where no task or record holds it (CLIENT_PORTAL_PLAN.md §3.6).
             ...(c.inUse ? [] : [{ key: 'delete-for-good', label: t('clients_delete_for_good'), icon: TrashIcon, danger: true, onSelect: () => setForGood(c) }]),
-        ] : [
-            { key: 'edit', label: t('edit'), icon: PencilSimpleIcon, onSelect: () => setEditing(c) },
+        ]) : [
+            ...(mayEdit ? [{ key: 'edit', label: t('edit'), icon: PencilSimpleIcon, onSelect: () => setEditing(c) }] : []),
             // One with tasks, records, a tax position or people who can sign in is archived instead, kept with them (§4.3).
-            archivesInstead(c)
+            ...(!mayDelete ? [] : [archivesInstead(c)
                 ? { key: 'archive', label: t('clients_archive'), icon: ArchiveIcon, onSelect: () => setToDelete(c) }
-                : { key: 'delete', label: t('delete'), icon: TrashIcon, danger: true, onSelect: () => setToDelete(c) },
+                : { key: 'delete', label: t('delete'), icon: TrashIcon, danger: true, onSelect: () => setToDelete(c) }]),
         ]),
     ]
     const actions = (c: Client) => (
@@ -250,7 +254,7 @@ export default function ClientsPage() {
             ? <EmptyState icon={StorefrontIcon} title={t('clients_none_found')} action={<Button variant="quiet" onClick={() => setQuery('')}>{t('ui_reset_filters')}</Button>} />
             : archived
                 ? <EmptyState icon={ArchiveIcon} title={t('clients_none_archived')} action={<Button variant="quiet" onClick={() => setArchived(false)}>{t('ui_reset_filters')}</Button>} />
-                : <EmptyState icon={StorefrontIcon} title={t('clients_none')} action={canManage ? <Button variant="primary" icon={PlusIcon} onClick={() => setAdding(true)}>{addLabel}</Button> : undefined} />
+                : <EmptyState icon={StorefrontIcon} title={t('clients_none')} action={mayAdd ? <Button variant="primary" icon={PlusIcon} onClick={() => setAdding(true)}>{addLabel}</Button> : undefined} />
 
     // Once the session is known: before it loads nobody holds anything. Not
     // "didn't load", which Try again would never fix.
@@ -261,7 +265,7 @@ export default function ClientsPage() {
             <PageHeader
                 title={clientsName}
                 subtitle={t('clients_subtitle')}
-                action={canManage && <Button variant="primary" icon={PlusIcon} onClick={() => setAdding(true)}>{addLabel}</Button>}
+                action={mayAdd && <Button variant="primary" icon={PlusIcon} onClick={() => setAdding(true)}>{addLabel}</Button>}
             />
 
             <FilterBar

@@ -107,7 +107,7 @@ export default function ResponsibleAccountant({ clientId, accountant, archived, 
     clientId: string
     accountant: ClientAccountant
     archived: boolean
-    /** Whether the viewer may manage clients, and so pick one. */
+    /** Whether the viewer may edit clients, and so pick one. */
     picks: boolean
     /** Whether the viewer may edit a person's profile, where their number is changed (lib/profile-access.ts). */
     editsProfile: (person: { id: string; role: string }) => boolean

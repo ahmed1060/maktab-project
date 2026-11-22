@@ -12,7 +12,7 @@ const state = {
     /** Whether the session has loaded: until it has, useSession has no user. */
     loaded: true,
     role: "ADMIN",
-    grants: new Set(["clients.view", "clients.manage"]),
+    grants: new Set(["clients.view", "clients.create", "clients.edit", "clients.delete"]),
     label: undefined as string | undefined,
     keys: [] as (string | null)[],
     list: { data: { data: [] as unknown[] } } as { data?: unknown; error?: Error },
@@ -46,7 +46,7 @@ beforeEach(() => {
     state.menus = []
     state.loaded = true
     state.role = "ADMIN"
-    state.grants = new Set(["clients.view", "clients.manage"])
+    state.grants = new Set(["clients.view", "clients.create", "clients.edit", "clients.delete"])
     state.label = undefined
     state.keys = []
     state.list = { data: { data: [] } }
@@ -85,12 +85,14 @@ describe("the Clients list", () => {
         expect(html).not.toContain("clients_none")
     })
 
-    it("offers to add the first client to whoever may", async () => {
+    it("offers to add the first client to whoever may add clients, and not for editing or deleting them (PR 365)", async () => {
         const html = await page()
         expect(html).toContain("clients_none")
         expect(html).toContain("clients_add")
-        state.grants = new Set(["clients.view"])
+        state.grants = new Set(["clients.view", "clients.edit", "clients.delete"])
         expect(await page()).not.toContain("clients_add")
+        state.grants = new Set(["clients.view", "clients.create"])
+        expect(await page()).toContain("clients_add")
     })
 
     it("says Add client, and a company's own name for its clients when it has one", async () => {
@@ -139,10 +141,38 @@ describe("a client's menu on the Clients list", () => {
         expect(state.menus[1][2]).toMatchObject({ label: "clients_delete_for_good", danger: true })
     })
 
-    it("offers neither to someone who may see clients and not manage them", async () => {
+    it("offers neither to someone who may see clients and do nothing else to them", async () => {
         state.grants = new Set(["clients.view"])
         state.list = { data: { data: [client({ id: "c", name: "Gamma", hasTax: true }), client({ id: "e", name: "Echo", archivedAt: "2026-10-01T10:00:00Z", hasTax: true })] } }
         await page()
         expect(state.menus.slice(0, 2).map(keys)).toEqual([["tasks"], ["tasks"]])
+    })
+
+    /** Each action of the menu goes with its own part of clients.manage (LATER_CHANGES_PLAN.md §2, PR 365). */
+    const ROWS = () => [
+        client({ id: "a", name: "Alpha" }),
+        client({ id: "b", name: "Beta", inUse: true }),
+        client({ id: "f", name: "Fox", archivedAt: "2026-10-01T10:00:00Z" }),
+    ]
+
+    it("offers Edit to whoever may edit clients, and nothing that deletes, archives or restores", async () => {
+        state.grants = new Set(["clients.view", "clients.edit"])
+        state.list = { data: { data: ROWS() } }
+        await page()
+        expect(state.menus.slice(0, 3).map(keys)).toEqual([["tasks", "edit"], ["tasks", "edit"], ["tasks"]])
+    })
+
+    it("offers Delete, Archive, Restore and Delete permanently to whoever may delete clients, and not Edit", async () => {
+        state.grants = new Set(["clients.view", "clients.delete"])
+        state.list = { data: { data: ROWS() } }
+        await page()
+        expect(state.menus.slice(0, 3).map(keys)).toEqual([["tasks", "delete"], ["tasks", "archive"], ["tasks", "restore", "delete-for-good"]])
+    })
+
+    it("offers nothing in the menu for adding clients alone", async () => {
+        state.grants = new Set(["clients.view", "clients.create"])
+        state.list = { data: { data: ROWS() } }
+        await page()
+        expect(state.menus.slice(0, 3).map(keys)).toEqual([["tasks"], ["tasks"], ["tasks"]])
     })
 })

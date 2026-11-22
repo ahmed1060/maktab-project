@@ -13,7 +13,7 @@ import { accountantReach, contractEnded, type ClientAccountant } from "./client-
  * The responsible accountant (CLIENT_PORTAL_PLAN.md §7, §12 step 9b;
  * DESIGN.md §5.5, A client's tax position, for the company's people; PR 343),
  * as the owner's mockup draws it: at the foot of a client's Tax position, a
- * select that saves when picked, for whoever may manage clients; beside it
+ * select that saves when picked, for whoever may edit clients; beside it
  * the accountant's WhatsApp number, or a note saying why the client's people
  * can't write to anyone, with the way to fix it.
  *
@@ -68,7 +68,7 @@ describe("who the client's people can write to", () => {
     })
 })
 
-describe("the panel, for whoever may manage clients", () => {
+describe("the panel, for whoever may edit clients", () => {
     it("is a panel of its own, the pick then what's beside it", async () => {
         const html = await panel({ accountant: of(SADEK), picker: picker("u1") })
         expect(html).toMatch(/^<div class="ui-panel ui-accountant"><div class="ui-accountant-pick">/)
@@ -234,8 +234,8 @@ describe("on the client's page", () => {
         expect(TAX.lastIndexOf("<ResponsibleAccountant")).toBeGreaterThan(TAX.lastIndexOf("<DataList"))
     })
 
-    it("takes its select from clients.manage, and its profile links from the profile's own rule", () => {
-        expect(PAGE).toContain("<TaxPosition key={id} clientId={id} manages={can('tax.manage')} picks={can('clients.manage')} editsProfile={person => editsProfile({ can, viewer, person })} />")
+    it("takes its select from clients.edit, and its profile links from the profile's own rule", () => {
+        expect(PAGE).toContain("<TaxPosition key={id} clientId={id} manages={can('tax.manage')} picks={can('clients.edit')} editsProfile={person => editsProfile({ can, viewer, person })} />")
     })
 
     it("lists who may be picked only for whoever picks, on a client that isn't archived, and saves each pick", () => {
@@ -245,11 +245,11 @@ describe("on the client's page", () => {
         expect(OWN).toContain("JSON.stringify({ clientId, userId: id || null })")
     })
 
-    it("is a route of the client portal's, for whoever may manage clients", () => {
+    it("is a route of the client portal's, for whoever may edit clients", () => {
         expect(moduleForApiPath("/api/clients/accountant")).toBe("TAX_POSITION")
         // The client's own details stay the Clients module's.
         expect(moduleForApiPath("/api/clients")).toBe("CLIENTS")
-        expect(ROUTE.match(/\{ permission: "clients\.manage" \}/g)).toHaveLength(2)
+        expect(ROUTE.match(/\{ permission: "clients\.edit" \}/g)).toHaveLength(2)
     })
 })
 
@@ -293,7 +293,7 @@ describe("its words", () => {
     })
 
     it("in the server's refusals", () => {
-        expect(KNOWN_REFUSALS.CLIENTS_MANAGE_REQUIRED.status).toBe(403)
+        expect(KNOWN_REFUSALS.CLIENTS_EDIT_REQUIRED.status).toBe(403)
         expect(KNOWN_REFUSALS.ACCOUNTANT_CLIENT_REQUIRED.status).toBe(400)
         expect(KNOWN_REFUSALS.ACCOUNTANT_PERSON_INVALID.status).toBe(400)
         expect(KNOWN_REFUSALS.ACCOUNTANT_NOT_IN_COMPANY.status).toBe(400)

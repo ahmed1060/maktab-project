@@ -24,19 +24,19 @@ describe("the clients route", () => {
 
     it("says of each client whether it has a tax position, apart from its tasks and records, to whoever may delete it", () => {
         expect(route).toContain("inUse: _count.tasks > 0 || recordSections.length > 0")
-        expect(route).toContain(`const manages = can(session.user, "clients.manage")`)
-        expect(route).toContain("...(manages ? { hasTax: _count.taxClaims > 0 || !!taxPosition } : {})")
+        expect(route).toContain(`const deletes = can(session.user, "clients.delete")`)
+        expect(route).toContain("...(deletes ? { hasTax: _count.taxClaims > 0 || !!taxPosition } : {})")
     })
 
     it("gives how many claims are open only to those of them who may see tax positions", () => {
-        expect(route).toContain(`const seesTax = manages && can(session.user, "tax.view") && sessionHasModule(session, "TAX_POSITION")`)
+        expect(route).toContain(`const seesTax = deletes && can(session.user, "tax.view") && sessionHasModule(session, "TAX_POSITION")`)
         expect(route).toContain("...(seesTax ? { taxClaims: _count.taxClaims } : {})")
     })
 
     it("says whether it has people who can sign in to whoever may delete it, and how many to those of them who may manage who signs in (PR 329)", () => {
         expect(route).toContain("_count: { select: { tasks: true, taxClaims: true, accounts: true } }")
-        expect(route).toContain("...(manages ? { hasPeople: _count.accounts > 0 } : {})")
-        expect(route).toContain(`const seesPeople = manages && can(session.user, "client_accounts.manage") && sessionHasModule(session, "TAX_POSITION")`)
+        expect(route).toContain("...(deletes ? { hasPeople: _count.accounts > 0 } : {})")
+        expect(route).toContain(`const seesPeople = deletes && can(session.user, "client_accounts.manage") && sessionHasModule(session, "TAX_POSITION")`)
         expect(route).toContain("...(seesPeople ? { people: _count.accounts } : {})")
     })
 

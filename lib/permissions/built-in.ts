@@ -127,7 +127,13 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // migration gives it to the companies there before it (step 10d,
         // skipped on 2026-11-20): none was.
         "client_messages.manage": "COMPANY",
-        "clients.manage": "COMPANY",
+        // Adding, editing and deleting clients, split from clients.manage
+        // (LATER_CHANGES_PLAN.md §2): a new company's since PR 365. The
+        // companies there already hold clients.manage, read as these three
+        // until the grant for them rewrites their roles.
+        "clients.create": "COMPANY",
+        "clients.edit": "COMPANY",
+        "clients.delete": "COMPANY",
         "costs.view": "COMPANY",
         // The places tasks happen at: whoever creates tasks sees and adds
         // them; an Admin manages them (CLIENTS_PLAN.md §2.9). Given to the

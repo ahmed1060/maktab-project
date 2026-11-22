@@ -120,8 +120,8 @@ describe.skipIf(!ADMIN_URL)("the responsible accountant, in Postgres", () => {
             expect((await accountants.accountantCandidates(superAdmin, "theirs")).people).toEqual([{ id: "a2", name: "Adel Two" }])
         })
 
-        it("is asked only by whoever may manage clients, of their own company's client", async () => {
-            await expect(accountants.accountantCandidates(leader, "noor")).rejects.toThrow("CLIENTS_MANAGE_REQUIRED")
+        it("is asked only by whoever may edit clients, of their own company's client", async () => {
+            await expect(accountants.accountantCandidates(leader, "noor")).rejects.toThrow("CLIENTS_EDIT_REQUIRED")
             await expect(accountants.accountantCandidates(admin, "theirs")).rejects.toThrow("CLIENT_NOT_FOUND")
             await expect(accountants.accountantCandidates(otherAdmin, "noor")).rejects.toThrow("CLIENT_NOT_FOUND")
             await expect(accountants.accountantCandidates(admin, "nobody")).rejects.toThrow("CLIENT_NOT_FOUND")
@@ -191,9 +191,9 @@ describe.skipIf(!ADMIN_URL)("the responsible accountant, in Postgres", () => {
             expect(await everything()).toEqual(before)
         })
 
-        it("whoever may not manage clients, and what isn't a pick", async () => {
+        it("whoever may not edit clients, and what isn't a pick", async () => {
             const before = await everything()
-            await expect(set(leader, "delta", "t1")).rejects.toThrow("CLIENTS_MANAGE_REQUIRED")
+            await expect(set(leader, "delta", "t1")).rejects.toThrow("CLIENTS_EDIT_REQUIRED")
             await expect(accountants.setClientAccountant(admin, { clientId: "delta", userId: 5 })).rejects.toThrow("ACCOUNTANT_PERSON_INVALID")
             await expect(accountants.setClientAccountant(admin, { clientId: "delta" })).rejects.toThrow("ACCOUNTANT_PERSON_INVALID")
             await expect(accountants.setClientAccountant(admin, { userId: "t1" })).rejects.toThrow("ACCOUNTANT_CLIENT_REQUIRED")

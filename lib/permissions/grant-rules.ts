@@ -1,4 +1,4 @@
-import { PERMISSIONS, isPermission, isPersonal, isReserved, type Permission, type Scope } from "./catalogue"
+import { PERMISSIONS, isPermission, isPersonal, isReserved, splitParts, type Permission, type Scope } from "./catalogue"
 import type { Grants } from "./grants"
 
 /**
@@ -14,6 +14,9 @@ import type { Grants } from "./grants"
  * - A permission a grant is useless without is added (§3.8, `implies`), at the
  *   same scope — widened if it was held narrower, never narrowed. Approving
  *   payroll without seeing it is not a role anybody meant to make.
+ * - A permission being split is written as its parts, at its scope
+ *   (catalogue.ts, `splitInto`; LATER_CHANGES_PLAN.md §2): a role or
+ *   template that still names it keeps what it could do.
  */
 
 const WIDTH: Record<Scope, number> = { OWN: 1, TEAM: 2, COMPANY: 3 }
@@ -21,9 +24,16 @@ const WIDTH: Record<Scope, number> = { OWN: 1, TEAM: 2, COMPANY: 3 }
 export type GrantInput = { permission: string; scope: string }
 export type GrantsVerdict = { ok: true; grants: Grants } | { ok: false; errors: string[] }
 
-export function normalizeGrants(input: readonly GrantInput[]): GrantsVerdict {
+/** Grant inputs with each permission being split given as its parts, at its scope. */
+const withParts = (input: readonly GrantInput[]): GrantInput[] =>
+    input.flatMap(g => isPermission(g.permission) && splitParts(g.permission).length
+        ? splitParts(g.permission).map(permission => ({ permission, scope: g.scope }))
+        : [g])
+
+export function normalizeGrants(given: readonly GrantInput[]): GrantsVerdict {
     const errors: string[] = []
     const grants: Grants = {}
+    const input = withParts(given)
 
     for (const { permission, scope } of input) {
         if (!isPermission(permission)) { errors.push(`Unknown permission: ${permission}`); continue }
@@ -85,9 +95,21 @@ export function covers(held: Grants, wanted: Grants): boolean {
  */
 export function grantsFromRows(rows: { permission: string; scope: string }[]): Grants {
     const grants: Grants = {}
-    for (const g of rows) if (isPermission(g.permission)) grants[g.permission] = g.scope as Scope
+    for (const g of rows) {
+        if (!isPermission(g.permission)) continue
+        // A permission being split is held as its parts (catalogue.ts,
+        // `splitInto`): what can() checks, and what a role is shown as.
+        for (const permission of splitParts(g.permission).length ? splitParts(g.permission) : [g.permission]) grants[permission] = g.scope as Scope
+    }
     return grants
 }
+
+/**
+ * A role's grant rows as it holds them, for showing or comparing: each
+ * permission being split as its parts, in the order of their codes.
+ */
+export const rowsHeld = (rows: { permission: string; scope: string }[]): { permission: Permission; scope: Scope }[] =>
+    grantRows(grantsFromRows(rows))
 
 /** A role template's grants, a JSON list. */
 export const templateGrants = (json: unknown): GrantInput[] =>
