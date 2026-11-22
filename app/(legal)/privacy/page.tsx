@@ -250,7 +250,7 @@ export default function PrivacyPolicy() {
             <h2>Contact</h2>
             <p>
                 Questions about this policy, or about how Nizmo handles data, can be sent to{' '}
-                <a href="mailto:maktab.system@gmail.com">maktab.system@gmail.com</a>. Questions about
+                <a href="mailto:info.nizmo@gmail.com">info.nizmo@gmail.com</a>. Questions about
                 your own records should go to your employer&rsquo;s administrator first.
             </p>
 

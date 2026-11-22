@@ -155,7 +155,7 @@ export default function TermsOfService() {
             <h2>Contact</h2>
             <p>
                 Questions about these terms can be sent to{' '}
-                <a href="mailto:maktab.system@gmail.com">maktab.system@gmail.com</a>.
+                <a href="mailto:info.nizmo@gmail.com">info.nizmo@gmail.com</a>.
             </p>
 
             <div className="ui-legal-note">
