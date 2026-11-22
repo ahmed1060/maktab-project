@@ -6846,3 +6846,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   14px at weight 600 (`DESIGN.md` §5.5); in a dialog it stays as it was.
 - **2026-11-20:** Client messages joins the Super Admin's Templates
   (#347, §2.2), after Terminal brands, with a chat icon.
+- **2026-11-22:** Found in #367's walk-through: the person filter on the
+  Obligations, Tasks, Costs and Requests lists asked for the employee
+  list, which only whoever may see employees can read. A role that sees
+  one of those lists and not employees was refused on every visit, and
+  its filter offered only All employees. The filter now asks only when
+  the viewer may see employees, and isn't shown otherwise; a link that
+  names a person still filters by them (#368).
