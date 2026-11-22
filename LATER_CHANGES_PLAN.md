@@ -16,7 +16,8 @@ owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
 - the company's name and icon (§1) moved to `THIRD_CHANGES_PLAN.md`;
 - the names (§3) are for all three, by a free way;
-- §2's split and §3's way, as recommended, approved the same day.
+- §2's split and §3's way, as recommended, approved the same day;
+- rules between permissions (§5), as recommended, the same day.
 
 ## 1. The company's name and icon (Moved)
 
@@ -68,7 +69,8 @@ The owner asked to break up every "manage" permission in the roles system.
     PR: clients and obligations first, as the ones used every day; then
     locations, lists and charges; then client accounts, salary
     adjustments and settlements. Then the grant for companies already
-    there, in a PR of its own.
+    there, in a PR of its own. Since 2026-11-22, the rules between
+    permissions (§5) come before locations, lists and charges.
 - **How it's built (2026-11-22):**
   - **One PR for each "manage" permission:** clients first (#365), with
     what every split shares, then obligations (#367), then the rest in
@@ -292,6 +294,161 @@ other filled in when one is typed, if that's possible.
   previews are behind Vercel Authentication (Standard Protection), so
   only the Vercel team opens them; nizmo.vercel.app stays open.
 
+## 5. Rules between permissions (Decided)
+
+The owner asked on 2026-11-22 for rules when the Super Admin makes a role
+or changes one: some permissions can't be given without others first.
+Approved as recommended the same day.
+
+- **Today:** a permission can imply another (`implies` in
+  `lib/permissions/catalogue.ts`). Ticking it ticks the other at the same
+  scope, and the other can't be unticked while it's needed. Nearly all of
+  them stay inside one area, and the Super Admin isn't told why one was
+  ticked.
+- **Found missing (22 November):**
+  - adding or reassigning an obligation or a task needs the person
+    picker, which asks for the employee list (`employees.view`): without
+    it, nobody can be picked;
+  - the places in a file of tasks need `locations.view`;
+  - a company-wide permission whose picker is held for a team offers the
+    team only;
+  - the person filter on four lists, fixed in #368 (`UI_PLAN.md`).
+
+### 5.1 The rules
+
+They work together, each for a different case.
+
+1. **Another area's: ticked first.** A permission that can't work without
+   one from another area stays greyed in the role editor, with "Needs
+   *See locations* first", until that one is ticked. The server refuses
+   to save a role that breaks it, naming what's missing. Nothing is
+   ticked for the Super Admin: across areas, that would give access
+   nobody chose. Example: "Create tasks" needs "See locations" first.
+2. **Its own area's: ticked for you, and says why.** As today, with a
+   note on the row: "Added because *Approve obligations* needs it".
+   Unticking it asks "*Approve obligations* needs it. Remove both?"
+3. **Works with less: a warning on saving.** A permission that works
+   without another, but with less, is saved once the Super Admin confirms
+   a warning naming what's missing, as the separation-of-duties pairs are
+   (`ROLES_PLAN.md` §6.11). Example: "Create tasks" without "See
+   clients" saves with "This role can create tasks but can't pick a
+   client for them."
+4. **Roles already saved: marked, and fixed by hand.** A role that breaks
+   rule 1 says what's missing ("Can't place a task file's tasks: needs
+   *See locations*"), with a button that adds it once the Super Admin
+   confirms; the Super Admin's roles list shows which roles need it.
+   Nothing widens anyone's access on its own.
+5. **People pickers: names only.** The four pickers that hand work to
+   someone (Add obligation, reassigning one, Create task, and
+   reassigning or transferring a task) ask a list of their own instead of
+   the employee list:
+   - asked only by whoever holds that action's permission;
+   - names only: no phone, email, status or profile;
+   - the people that permission may hand work to: held for a team, the
+     team, without the company's Admins; held for the company, the
+     company; never another company's people or a deleted account.
+   - The server's check on saving (`checkAssignees`) stays the lock, and
+     a test holds the list and the check to the same people. So these
+     need no "See employees", as Attendance's picker already doesn't
+     (`/api/attendance/people`).
+
+- **Scope:** a needed permission is held at least as wide as what needs
+  it, in rules 1 and 2. A company-wide one needs a company-wide one.
+- **Everywhere a role is written:** making or editing a role, a template,
+  applying a template to roles, an Admin asking for a role, and the grant
+  for companies already there (§2).
+- **Kept true:** each need is written in the catalogue: `implies` for its
+  own area's, a `requires` list for another area's, and a list of the
+  softer ones for rule 3. A test reads what each screen asks the server
+  for against the permission that opens it and that permission's needs,
+  so a screen that quietly needs another permission fails in CI.
+
+### 5.2 Order
+
+Each a PR of its own, before the rest of §2's splits, so that each split
+from then on names its needs, and before the grant for companies already
+there:
+
+1. **The list of needs:** every permission's needs, found by reading what
+   each screen asks the server for against the routes' permissions,
+   written here as a table for the owner to approve. No code.
+2. **The names-only list for pickers** (rule 5), and the four pickers on
+   it.
+3. **The rules in the role editor and on the server** (rules 1 to 3).
+4. **Roles already saved** (rule 4), after a read-only count of the
+   roles in production that break a rule.
+
+The three screens found to fix in §5.3 go in one PR of their own, as #368
+did, after the list is approved and before step 2.
+
+### 5.3 The list of needs (Proposed, 2026-11-22)
+
+Found by reading what each screen asks the server for, against the
+permission that opens it, and where each permission's buttons are. Waiting
+for the owner's approval.
+
+**How a need is worked out:**
+- **Where it's used:** a permission needs what lets its holder reach the
+  screen it acts on, and what that screen asks the server for.
+- **Brought with another:** a permission that another one brings with it
+  carries no needs of its own. "See debts", brought by "Waive debts",
+  doesn't need "See employees", as waiving happens on Payroll.
+- **Already brought today:** a permission already brought from another
+  area keeps being brought, as it shows nothing the first doesn't. "See
+  payroll" brings "See salaries", "See tax positions" brings "See
+  clients", "Manage client accounts" brings "See clients", and "Set up
+  fingerprint terminals" brings "See company settings". Rule 1 is for
+  needs that would show more.
+
+**Rule 1, another area's, ticked first:**
+
+| Permission | Needs | Why |
+|---|---|---|
+| `tasks.create` | `locations.view` | A task needs a place, picked from the saved ones, and a file of tasks names its places |
+| `salary.edit` | `employees.view` | Changed on an employee's profile, which only "See employees" opens |
+| `dayoff.adjust_credit` | `employees.view` | The same |
+| `salary_adjustments.manage` | `employees.view` | Added from the Employees list or an employee's history |
+| `settlements.manage` | `employees.view` | On an employee's history only |
+| `debts.view` | `employees.view` | On an employee's history only, unless brought by "Waive debts" |
+| `costs.view` | `employees.view` | Somebody else's costs show on their history only |
+| `requests.reset_points` | `employees.view` | On the Employees list only |
+| `debts.waive` | `payroll.view` | Waived on the Payroll page only |
+
+Each held at least as wide: all of these are for the company.
+
+**Rule 2, its own area's, ticked with a note:** every `implies` today,
+unchanged (`lib/permissions/catalogue.ts`), such as any obligation
+permission bringing "See obligations". None found missing.
+
+**Rule 3, works with less, a warning on saving:**
+
+| Permission | Without | It works, but |
+|---|---|---|
+| `tasks.create` | `clients.view` | no client can be picked for a task |
+| `salary.view` | `employees.view` | salaries show only on Attendance's days and exceptions |
+| `settings.edit` | `salary.view` | the attendance policy's preview shows days, not money |
+
+**Rule 5, the names-only list,** for four pickers, so none of them needs
+"See employees":
+
+| Permission | Picker |
+|---|---|
+| `obligations.create` | Add obligation |
+| `obligations.edit` | Reassign an obligation |
+| `tasks.create` | Create task |
+| `tasks.transfer` | Transfer a task |
+
+**Found along the way, to fix like #368, not rules:**
+- **Suggested names:** typing a task's title or a cost's name asks for the
+  saved names, which only "Add list names" may read: anyone else is
+  refused at each letter. The Tasks and Costs lists' title and cost-name
+  filters ask the same way.
+- **An employee's history** asks for the person, their day off and their
+  costs whatever the viewer holds: someone who may see salaries alone gets
+  an error and two tabs that didn't load.
+- **The history link** on the Employees list is offered by "See salaries"
+  only, though its tabs are for day off, costs, debts and settlements too.
+
 ## Not here
 
 - The client portal's later ideas stay in `CLIENT_PORTAL_PLAN.md` §13.
@@ -354,3 +511,12 @@ other filled in when one is typed, if that's possible.
 - **2026-11-22:** #367 merged. The person filter on four lists, found in
   its walk-through, is fixed first, as #368 (`UI_PLAN.md`); then
   locations, lists and charges.
+- **2026-11-22:** #368 merged. Rules between permissions (§5), approved
+  as recommended: another area's needed permission ticked first, its own
+  area's ticked with a note, softer needs a warning, roles already saved
+  marked, and a names-only list for the four people pickers. They come
+  before the rest of §2's splits: first the list of needs, for the
+  owner's approval.
+- **2026-11-22:** The list of needs (§5.3), proposed for the owner's
+  approval: nine needs across areas, three softer ones, the four pickers,
+  and three screens to fix as #368 was.
