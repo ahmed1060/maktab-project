@@ -244,6 +244,21 @@ describe("what the page asks for (PR 370)", () => {
         expect(tabs(led)).toEqual([en.hist_tab_day_off, en.costs_tab])
     })
 
+    it("asks for what's held for a team, and lets its route decide, when the person didn't load, rather than saying it can't be opened (Codex on PR 370)", async () => {
+        const viewer = { perms: ["employees.view", "salary.view", "costs.view"], team: ["salary.view"] }
+        const failed = await page({ ...viewer, swr: { "/api/users?id=u2": refused(500) } })
+        expect(asked("/api/users/u2/salary-history")).toBe(true)
+        expect(tabs(failed)).toEqual([en.salary_label, en.costs_tab])
+        // Refused, or not there, nothing held for a team is asked for.
+        for (const status of [403, 404]) {
+            const refusedHtml = await page({ ...viewer, swr: { "/api/users?id=u2": refused(status) } })
+            expect(asked("/api/users/u2/salary-history")).toBe(false)
+            expect(tabs(refusedHtml)).toEqual([en.costs_tab])
+        }
+        expect(await page({ perms: ["employees.view", "salary.view"], team: ["salary.view"], swr: { "/api/users?id=u2": refused(403) } }))
+            .toContain(en.access_denied_title.replace(/'/g, "&#x27;"))
+    })
+
     it("asks for what's held for a team without See employees, as the person can't be looked up, and lets its route decide (Codex on PR 370)", async () => {
         const html = await page({ perms: ["dayoff.view"], team: ["dayoff.view"] })
         expect(asked("/api/users?id=u2")).toBe(false)
