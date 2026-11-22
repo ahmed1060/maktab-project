@@ -378,6 +378,77 @@ there:
 4. **Roles already saved** (rule 4), after a read-only count of the
    roles in production that break a rule.
 
+The three screens found to fix in §5.3 go in one PR of their own, as #368
+did, after the list is approved and before step 2.
+
+### 5.3 The list of needs (Proposed, 2026-11-22)
+
+Found by reading what each screen asks the server for, against the
+permission that opens it, and where each permission's buttons are. Waiting
+for the owner's approval.
+
+**How a need is worked out:**
+- **Where it's used:** a permission needs what lets its holder reach the
+  screen it acts on, and what that screen asks the server for.
+- **Brought with another:** a permission that another one brings with it
+  carries no needs of its own. "See debts", brought by "Waive debts",
+  doesn't need "See employees", as waiving happens on Payroll.
+- **Already brought today:** a permission already brought from another
+  area keeps being brought, as it shows nothing the first doesn't. "See
+  payroll" brings "See salaries", "See tax positions" brings "See
+  clients", "Manage client accounts" brings "See clients", and "Set up
+  fingerprint terminals" brings "See company settings". Rule 1 is for
+  needs that would show more.
+
+**Rule 1, another area's, ticked first:**
+
+| Permission | Needs | Why |
+|---|---|---|
+| `tasks.create` | `locations.view` | A task needs a place, picked from the saved ones, and a file of tasks names its places |
+| `salary.edit` | `employees.view` | Changed on an employee's profile, which only "See employees" opens |
+| `dayoff.adjust_credit` | `employees.view` | The same |
+| `salary_adjustments.manage` | `employees.view` | Added from the Employees list or an employee's history |
+| `settlements.manage` | `employees.view` | On an employee's history only |
+| `debts.view` | `employees.view` | On an employee's history only, unless brought by "Waive debts" |
+| `costs.view` | `employees.view` | Somebody else's costs show on their history only |
+| `requests.reset_points` | `employees.view` | On the Employees list only |
+| `debts.waive` | `payroll.view` | Waived on the Payroll page only |
+
+Each held at least as wide: all of these are for the company.
+
+**Rule 2, its own area's, ticked with a note:** every `implies` today,
+unchanged (`lib/permissions/catalogue.ts`), such as any obligation
+permission bringing "See obligations". None found missing.
+
+**Rule 3, works with less, a warning on saving:**
+
+| Permission | Without | It works, but |
+|---|---|---|
+| `tasks.create` | `clients.view` | no client can be picked for a task |
+| `salary.view` | `employees.view` | salaries show only on Attendance's days and exceptions |
+| `settings.edit` | `salary.view` | the attendance policy's preview shows days, not money |
+
+**Rule 5, the names-only list,** for four pickers, so none of them needs
+"See employees":
+
+| Permission | Picker |
+|---|---|
+| `obligations.create` | Add obligation |
+| `obligations.edit` | Reassign an obligation |
+| `tasks.create` | Create task |
+| `tasks.transfer` | Transfer a task |
+
+**Found along the way, to fix like #368, not rules:**
+- **Suggested names:** typing a task's title or a cost's name asks for the
+  saved names, which only "Add list names" may read: anyone else is
+  refused at each letter. The Tasks and Costs lists' title and cost-name
+  filters ask the same way.
+- **An employee's history** asks for the person, their day off and their
+  costs whatever the viewer holds: someone who may see salaries alone gets
+  an error and two tabs that didn't load.
+- **The history link** on the Employees list is offered by "See salaries"
+  only, though its tabs are for day off, costs, debts and settlements too.
+
 ## Not here
 
 - The client portal's later ideas stay in `CLIENT_PORTAL_PLAN.md` §13.
@@ -446,3 +517,6 @@ there:
   marked, and a names-only list for the four people pickers. They come
   before the rest of §2's splits: first the list of needs, for the
   owner's approval.
+- **2026-11-22:** The list of needs (§5.3), proposed for the owner's
+  approval: nine needs across areas, three softer ones, the four pickers,
+  and three screens to fix as #368 was.
