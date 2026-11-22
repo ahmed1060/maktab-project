@@ -450,6 +450,10 @@ a role (§4.1). The remaining rules:
 5. **Nobody approves their own request**, whatever their permission — leave,
    overtime, a missing punch, a salary change. Enforced in `can` for every
    approval-type permission, not in each route.
+   One exception, in the route rather than in `can` (#366): whoever may match
+   employee numbers to people may match their own number, so the HR officer
+   who matches them can scan in too (`ATTENDANCE_PLAN.md` §14). Removing it,
+   and correcting their own punches, stay someone else's.
 6. **A request cannot be approved by the person who made it**, and nobody can
    request a role for themselves (§6.12).
 7. **The built-in Admin role is locked.** Its permissions cannot be edited for any

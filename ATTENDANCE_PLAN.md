@@ -347,6 +347,7 @@ explicit.
 - Nobody can act on their own record where the permission is an approval — a
   person with `attendance.correct` cannot correct their own attendance; a person
   with `dayoff.approve` cannot approve their own leave.
+  Matching one's own employee number is the one exception (§14, #366).
 - Every role change and assignment is audited.
 - The check lives on the server in `withStandardHandler`, next to the existing
   feature gate. Hiding a button is a courtesy, not a control.
@@ -1897,6 +1898,15 @@ Anyone whose role holds `attendance.correct`, at their scope. The built-in Admin
 has it at company scope. The Super Admin can create an "HR Officer" role with it for a company, and
 that person keeps everything an employee has. Nobody can correct their own
 attendance.
+
+**One exception: their own employee number (#366).** Whoever may match
+numbers to people (`attendance.correct` for the whole company) may say
+which number is their own: the HR officer who matches the office's
+numbers scans in too (the owner, 22 November 2026). The number's waiting
+scans become theirs, as for anyone, and the audit log records who matched
+it. Everything else stays someone else's to do for them: adding or
+withdrawing their own punches, deciding their own requests, and removing
+their own number.
 
 ---
 
@@ -3566,6 +3576,16 @@ Nizmo in production, following the checklist above:
 - **One name for two things:** the agent and its terminal were both named
   Office entrance. Both read right, so it's left as it is; naming the
   agent for its PC or office, as Add an agent suggests, keeps them apart.
+- **Choosing who a number is (found on 22 November 2026, fixed in #366):**
+  - **People offered twice:** each number waiting under Numbers with
+    nobody yet offered everyone, including people who already had a
+    number and people already picked for another waiting number. Each now
+    offers only people with no number and not picked in another row.
+  - **A second number on purpose:** the Numbers and people form below
+    still offers everyone. A company with two terminals that number people
+    differently can give someone a second number there.
+  - **The HR officer's own number:** whoever matches the numbers couldn't
+    match their own; they can now (§14).
 
 ### 17.14 What each way costs to run
 
