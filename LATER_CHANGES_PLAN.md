@@ -98,8 +98,23 @@ The owner asked to break up every "manage" permission in the roles system.
       migrations renamed every role's and template's grants to
       `records.edit` and `records.delete`, and the triggers that kept
       renaming them are gone (`lib/records.db.test.ts`), so no role
-      gains anything. Only audit-log lines from before then that name
-      them now read with the new names.
+      gains anything. Checked read-only on the live database on 22
+      November: no role, template, access review or audit-log line names
+      either.
+  - **Obligations (#367):** an obligation has no details to change once
+    it's made, so the parts follow what can be done to one:
+    - `obligations.create`: adding one, with its people;
+    - `obligations.edit`: handing it to other people, moving it along as
+      a manager (back to Pending, archived, or completed for someone
+      deleted), and removing other people's attachments;
+    - `obligations.approve`: approving or rejecting one handed in, and
+      changing one already approved, which takes back its points;
+    - `obligations.delete`: deleting one.
+    - Each is for the whole company or a team, as `obligations.manage`
+      was, and keeps its rules: held for a team, it reaches the team's
+      obligations only; held for the company, never one's own to approve
+      or delete. The built-in Admin holds all four for the company, the
+      Team Leader for their team. None is high-risk.
 
 ## 3. English and Arabic names (Decided)
 
@@ -333,3 +348,6 @@ other filled in when one is typed, if that's possible.
   first, as #366 (`ATTENDANCE_PLAN.md` §14, §17.13): choosing who an
   employee number is, and the HR officer's own. The obligations split is
   #367.
+- **2026-11-22:** #366 merged. What each part of `obligations.manage`
+  covers, for #367: an obligation's details don't change once it's made,
+  so editing is handing it to other people and moving it along.

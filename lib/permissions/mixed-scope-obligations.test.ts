@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest"
 import { state, prismaMock, obligationState, url, withBody } from "./obligation-access.harness"
 import { encodeGrants } from "./grants"
+import { grantsFromRows } from "./grant-rules"
 import { stepUpConfirmed } from "./test-actors"
 
 vi.setConfig({ testTimeout: 60_000 })
@@ -21,7 +22,9 @@ vi.mock("@/lib/services/notification.service", () => ({ NotificationService: { n
 const P = (id: string) => ({ params: { id } })
 const route = () => import("@/app/api/obligations/[id]/route")
 const onRole = () => {
-    state.session = { user: stepUpConfirmed({ id: "tl", role: "EMPLOYEE", companyId: "c1", grants: encodeGrants({ "obligations.view": "COMPANY", "obligations.manage": "TEAM", "employees.view": "COMPANY" }) }) }
+    // As a session reads the role's rows: obligations.manage as its parts, at the team (PR 367).
+    const rows = [{ permission: "obligations.view", scope: "COMPANY" }, { permission: "obligations.manage", scope: "TEAM" }, { permission: "employees.view", scope: "COMPANY" }]
+    state.session = { user: stepUpConfirmed({ id: "tl", role: "EMPLOYEE", companyId: "c1", grants: encodeGrants(grantsFromRows(rows)) }) }
 }
 const approve = async (o: string) => { obligationState.status = "COMPLETED"; return (await route()).PUT(withBody("PUT", `/api/obligations/${o}`, { status: "APPROVED" }), P(o)) }
 const remove = async (o: string) => { obligationState.status = "IN_PROGRESS"; return (await route()).DELETE(new Request(url(`/api/obligations/${o}`), { method: "DELETE" }), P(o)) }

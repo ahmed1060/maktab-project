@@ -34,7 +34,7 @@ export async function checkAssignees(
     session: any,
     // What is being assigned: its permission's scope decides whether the
     // assigner is held to their team.
-    permission: "tasks.create" | "obligations.manage",
+    permission: "tasks.create" | "obligations.create" | "obligations.edit",
     client: Client = prisma as any,
 ): Promise<AssigneeVerdict> {
     if (!assigneeIds || assigneeIds.length === 0) return { ok: true }

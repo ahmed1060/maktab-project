@@ -128,7 +128,15 @@ export const PERMISSIONS = {
 
     // --- Obligations, records, clients, costs ------------------------------
     "obligations.view":         { code: 23, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY },
-    "obligations.manage":       { code: 24, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"] },
+    // Split by what can be done to one (LATER_CHANGES_PLAN.md §2, PR 367):
+    // adding it; handing it to other people, moving it along and removing
+    // others' attachments; approving or rejecting it, or changing one
+    // approved; and deleting it. Its details don't change once it's made.
+    "obligations.manage":       { code: 24, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"], splitInto: ["obligations.create", "obligations.edit", "obligations.approve", "obligations.delete"] },
+    "obligations.create":       { code: 75, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"] },
+    "obligations.edit":         { code: 76, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"] },
+    "obligations.approve":      { code: 77, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"] },
+    "obligations.delete":       { code: 78, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"] },
     // A client's records (CLIENTS_PLAN.md §0.2) are a shared notebook as much
     // as a register, so adding to them is its own right, apart from renaming
     // and deleting what is there.
@@ -305,8 +313,12 @@ export type Permission = keyof typeof PERMISSIONS
  * from clients.manage (LATER_CHANGES_PLAN.md §2, PR 365). Every role that
  * held clients.manage holds them from now, as its parts: a session reloads
  * once to carry them, as the routes ask for them alone.
+ *
+ * 6: obligations.create, obligations.edit, obligations.approve and
+ * obligations.delete (codes 75–78), split from obligations.manage the same
+ * way (PR 367), each at the scope obligations.manage was held at.
  */
-export const CATALOGUE_VERSION = 5
+export const CATALOGUE_VERSION = 6
 
 /** Codes of permissions that no longer exist. Never handed out again. */
 export const RETIRED_CODES: readonly number[] = []

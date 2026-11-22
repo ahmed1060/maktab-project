@@ -49,7 +49,7 @@ export default function NewObligationPage() {
     // Creating obligations is a manager's (the list offers the button only to
     // them); anyone else reaching this address by hand is told so, rather
     // than asking for a colleague list they may not read.
-    const mayCreate = useCan().can('obligations.manage')
+    const mayCreate = useCan().can('obligations.create')
 
     useEffect(() => {
         if (!mayCreate) return
@@ -83,9 +83,9 @@ export default function NewObligationPage() {
                     // Secondary sort by name if same role
                     return a.firstName.localeCompare(b.firstName)
                 })
-                // A team-scoped manager is not offered the company's Admins.
+                // One who adds them for a team is not offered the company's Admins.
                 const permissions = permissionsOf(session?.user as any)
-                const teamOnly = permissions.can('obligations.manage') && !permissions.companyWide('obligations.manage')
+                const teamOnly = permissions.can('obligations.create') && !permissions.companyWide('obligations.create')
                 const filteredData = teamOnly
                     ? sortedData.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role))
                     : sortedData

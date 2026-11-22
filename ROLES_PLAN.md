@@ -238,7 +238,11 @@ them, as today.
 | | `tasks.pay` | Record task payments, single or bulk — **moves money** | `tasks/[id]/payment`, `tasks/payment/bulk` |
 | | `tasks.penalize` | Apply a task penalty — **deducts pay**; its own permission, labelled "affects pay" in the role editor (decided) | `tasks/[id]/penalty` |
 | **Obligations** | `obligations.view` | See obligations | `GET /obligations` |
-| | `obligations.manage` | Create, edit, delete, revert | `obligations/*` |
+| | `obligations.create` | Add one, with its people | `POST /obligations` |
+| | `obligations.edit` | Hand it to other people, move it along as a manager (back to Pending, archived, completed for someone deleted), remove others' attachments | `PUT /obligations/[id]` |
+| | `obligations.approve` | Approve or reject one handed in, and change one already approved | `PUT /obligations/[id]` with `APPROVED` or `REJECTED` |
+| | `obligations.delete` | Delete one | `DELETE /obligations/[id]` |
+| | `obligations.manage` | Split into the four above (#367): a role still holding it holds each, at its scope, until the grant for companies already there. Reverting a decided one is the Super Admin's | — |
 | **Records** | `records.view` | See a client's sections and records (`CLIENTS_PLAN.md` §0.2) | `GET /records`, `GET /records/sections` |
 | | `records.contribute` | Add a section or a record, and edit any record (built as its own right: records are a shared notebook as much as a register) | `POST /records`, `PUT /records`, `POST /records/sections` |
 | | `records.edit` | Rename a section | `PUT /records/sections` |

@@ -19,7 +19,7 @@ vi.mock("@/lib/useModules", () => ({ useModules: () => ({ label: () => "Obligati
 const viewer = { sees: true, manages: true, reach: "COMPANY" as "COMPANY" | "TEAM" }
 vi.mock("@/lib/useCan", () => ({
     useCan: () => ({
-        can: (p: string) => p === "obligations.view" ? viewer.sees : p === "obligations.manage" ? viewer.manages : false,
+        can: (p: string) => p === "obligations.view" ? viewer.sees : /* each part of obligations.manage (PR 367) */ ["obligations.create", "obligations.edit", "obligations.approve", "obligations.delete"].includes(p) ? viewer.manages : false,
         companyWide: () => viewer.reach === "COMPANY",
         scope: () => viewer.reach,
     }),

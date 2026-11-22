@@ -76,13 +76,17 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
     // From the role the page passed down, so the first paint is complete.
     // Someone without obligations.view acts on an obligation only as its
     // assignee. Deciding or deleting one you are assigned to is refused to a
-    // company-wide manager (the self-approval rules in ObligationService); a
-    // Team Leader manages their team's, their own among them.
+    // company-wide approver or deleter (the self-approval rules in
+    // ObligationService); a Team Leader does it for their team, their own
+    // among them. Each action asks its own part of obligations.manage (PR 367).
     const { can, companyWide, scope } = useCan()
     const seesOthers = can('obligations.view')
-    const canManage = can('obligations.manage')
+    const canEdit = can('obligations.edit')
     const teamReach = scope('obligations.view') === 'TEAM'
-    const mayManageThis = canManage && (scope('obligations.manage') === 'TEAM' || !obligation.assignees?.some((a: any) => a.id === userId))
+    const isOnIt = obligation.assignees?.some((a: any) => a.id === userId)
+    const ownRule = (permission: 'obligations.approve' | 'obligations.delete') => can(permission) && (scope(permission) === 'TEAM' || !isOnIt)
+    const mayApproveThis = ownRule('obligations.approve')
+    const mayDeleteThis = ownRule('obligations.delete')
 
     // Moved on at the deadline, so a page left open across it locks then (lib/useDeadlineClock.ts).
     const deadlineAt = new Date(obligation.deadline).getTime()
@@ -197,9 +201,9 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
     }, [obligation.status, handleUpload, seesOthers])
 
     const attachments = attachmentsOf(obligation.attachments)
-    // Taking a file off is for whoever manages it: their own files, or
-    // anyone's for those who manage company-wide.
-    const mayRemove = (att: Attachment) => !locked && canManage && (att.uploadedById === userId || companyWide('obligations.manage'))
+    // Taking a file off is for whoever edits it: their own files, or
+    // anyone's for those who edit company-wide.
+    const mayRemove = (att: Attachment) => !locked && canEdit && (att.uploadedById === userId || companyWide('obligations.edit'))
 
     const handleRemoveAttachment = async (gone: Attachment) => {
         try {
@@ -280,8 +284,8 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
             .finally(() => setRetrying(false))
     }, [reassigning, tries, obligation.companyId])
     const usersList: any[] = loaded ?? []
-    // A team-scoped manager is not offered the company's Admins.
-    const filtered = canManage && !companyWide('obligations.manage') ? usersList.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : usersList
+    // A team-scoped editor is not offered the company's Admins.
+    const filtered = canEdit && !companyWide('obligations.edit') ? usersList.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : usersList
     const people = loaded === undefined || loaded === null ? loaded : filtered
 
     const handleReassign = async () => {
@@ -344,7 +348,7 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
         ...(userRole === 'SUPER_ADMIN' && ['APPROVED', 'COMPLETED', 'REJECTED', 'PENDING_CONFIRMATION'].includes(obligation.status)
             ? [{ key: 'revert', icon: ArrowCounterClockwiseIcon, label: t('return_to_in_progress'), onSelect: () => setReverting(true) }]
             : []),
-        ...(mayManageThis
+        ...(mayDeleteThis
             ? [{ key: 'delete', icon: TrashIcon, label: t('delete_obligation_button'), danger: true, onSelect: () => setDeleting(true) }]
             : []),
     ]
@@ -361,7 +365,7 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
                 subtitle={decidedBy}
                 back={{ href: '/dashboard/obligations', label: modules.label('obligations') }}
                 // Handed in: the manager's decision.
-                action={mayManageThis && obligation.status === 'PENDING_CONFIRMATION' && (
+                action={mayApproveThis && obligation.status === 'PENDING_CONFIRMATION' && (
                     <>
                         <Button icon={XIcon} onClick={() => action.run('reject', handleReject)} disabled={action.running} busy={action.is('reject')}>{t('reject_button')}</Button>
                         <Button variant="primary" icon={CheckIcon} onClick={() => action.run('approve', handleApprove)} disabled={action.running} busy={action.is('approve')}>{t('approve_button')}</Button>
@@ -370,13 +374,13 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
             />
 
             {/* Someone it's for was deleted: a manager settles it. */}
-            {deleted.length > 0 && canManage && !DECIDED.includes(obligation.status) && (
+            {deleted.length > 0 && canEdit && !DECIDED.includes(obligation.status) && (
                 <Card title={t('assignee_deleted_alert')}>
                     <p>{t('obligation_assignee_deleted_msg').replace('{name}', deleted.map((a: any) => `${a.firstName} ${a.lastName}`).join(locale === 'ar' ? '، ' : ', '))}</p>
                     <div className="ui-form-actions">
                         <Button variant="primary" icon={UserSwitchIcon} onClick={() => setReassigning(true)}>{t('reassign_button')}</Button>
                         <Button icon={CheckIcon} onClick={() => action.run('complete', handleForceComplete)} disabled={action.running} busy={action.is('complete')}>{t('mark_as_completed')}</Button>
-                        {mayManageThis && <Button icon={TrashIcon} onClick={() => setDeleting(true)}>{t('delete_obligation_button')}</Button>}
+                        {mayDeleteThis && <Button icon={TrashIcon} onClick={() => setDeleting(true)}>{t('delete_obligation_button')}</Button>}
                     </div>
                 </Card>
             )}

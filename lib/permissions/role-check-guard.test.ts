@@ -68,7 +68,7 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     ["app/(dashboard)/dashboard/obligations/new/page.tsx", "? sortedData.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role))", THE_PERSON],
 
     // app/(dashboard)/dashboard/obligations/[id]/client.tsx
-    ["app/(dashboard)/dashboard/obligations/[id]/client.tsx", "const filtered = canManage && !companyWide('obligations.manage') ? usersList.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : usersList", THE_PERSON],
+    ["app/(dashboard)/dashboard/obligations/[id]/client.tsx", "const filtered = canEdit && !companyWide('obligations.edit') ? usersList.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : usersList", THE_PERSON],
 
     // lib/services/task.service.ts
     ["lib/services/task.service.ts", "if (targetUsers.some(u => ['ADMIN', 'SUPER_ADMIN'].includes(u.role))) {", THE_PERSON],

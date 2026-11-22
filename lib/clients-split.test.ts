@@ -64,9 +64,9 @@ describe("the catalogue", () => {
         }
     })
 
-    it("marks clients.manage as split into the three, and nothing else as split", () => {
+    it("marks clients.manage as split into the three", () => {
         expect(splitParts("clients.manage")).toEqual(PARTS)
-        expect((Object.keys(PERMISSIONS) as Permission[]).filter(isSplit)).toEqual(["clients.manage"])
+        expect((Object.keys(PERMISSIONS) as Permission[]).filter(isSplit)).toContain("clients.manage")
     })
 
     it("offers the three in the role editor, and clients.manage no more", () => {
@@ -76,7 +76,8 @@ describe("the catalogue", () => {
     })
 
     it("goes up a version, so every session reloads its grants once and holds the parts", () => {
-        expect(CATALOGUE_VERSION).toBe(5)
+        // 5 for this split; 6 since the obligations one (PR 367).
+        expect(CATALOGUE_VERSION).toBeGreaterThanOrEqual(5)
     })
 
     it("seeds the built-in Admin with the three, and nobody with clients.manage", () => {
