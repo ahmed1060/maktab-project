@@ -11,6 +11,7 @@ import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/sessi
 import { RECURRENCE_STYLE } from '@/lib/recurrence'
 import { countOf } from '@/lib/plural'
 import { useCan } from '@/lib/useCan'
+import { assigneesUrl } from '@/lib/assignees-url'
 import { useModules } from '@/lib/useModules'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { fetchRetrying } from '@/lib/swr-fetcher'
@@ -269,24 +270,21 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
     const [tries, setTries] = useState(0)
     const [retrying, setRetrying] = useState(false)
     const [newAssigneeIds, setNewAssigneeIds] = useState<string[]>(obligation.assignees?.map((a: any) => a.id) || [])
+    // The names-only list for reassigning, in the obligation's company:
+    // already who the server accepts, so nobody is filtered out here, and no
+    // See employees is needed (PR 371).
     useEffect(() => {
         if (!reassigning) return
-        const queryParams = new URLSearchParams()
-        queryParams.set('limit', '1000')
-        if (obligation.companyId) queryParams.set('companyId', obligation.companyId)
-        fetchRetrying(`/api/users?${queryParams.toString()}`)
+        fetchRetrying(assigneesUrl('obligations.edit', obligation.companyId))
             .then(res => {
                 if (!res.ok) throw new Error(`Couldn't load the people (${res.status})`)
                 return res.json()
             })
-            .then(result => setLoaded(result?.data?.data || []))
+            .then(result => setLoaded(Array.isArray(result?.data) ? result.data : []))
             .catch(() => setLoaded(null))
             .finally(() => setRetrying(false))
     }, [reassigning, tries, obligation.companyId])
-    const usersList: any[] = loaded ?? []
-    // A team-scoped editor is not offered the company's Admins.
-    const filtered = canEdit && !companyWide('obligations.edit') ? usersList.filter((u: any) => !['ADMIN', 'SUPER_ADMIN'].includes(u.role)) : usersList
-    const people = loaded === undefined || loaded === null ? loaded : filtered
+    const people = loaded
 
     const handleReassign = async () => {
         if (newAssigneeIds.length === 0) return

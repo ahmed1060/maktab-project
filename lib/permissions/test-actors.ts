@@ -12,12 +12,13 @@ export function withGrants<T extends { role?: string | null }>(user: T): T & { g
     return isBuiltInRole(user.role) ? { ...user, grants: builtInGrantsToken(user.role) } : user
 }
 
-type Person = { id: string; role: string; companyId: string | null; teamLeaderId?: string | null }
+type Person = { id: string; role: string; companyId: string | null; teamLeaderId?: string | null; status?: string }
 
 /**
  * Whether a person matches a Prisma `where` on User — enough of Prisma's
- * language for "who should be told": fields, OR and AND, `in`, and a role's
- * grants (holdersOf). The person holds their built-in role's grants, as
+ * language for "who should be told": fields, OR and AND, `in`, `notIn` and
+ * `not` a value (who a picker offers, PR 371), and a role's grants
+ * (holdersOf). The person holds their built-in role's grants, as
  * the roles migration gave them. Anything else throws rather than guessing, so a
  * query this cannot read fails its test instead of passing it.
  */
@@ -35,6 +36,12 @@ export function matchesUserWhere(person: Person, where: Record<string, any>): bo
         }
         if (value !== null && typeof value === "object") {
             if (Array.isArray(value.in)) { if (!value.in.includes((person as any)[key])) return false; continue }
+            if (Array.isArray(value.notIn)) { if (value.notIn.includes((person as any)[key])) return false; continue }
+            const keys = Object.keys(value)
+            if (keys.length === 1 && keys[0] === "not" && (value.not === null || typeof value.not !== "object")) {
+                if ((person as any)[key] === value.not) return false
+                continue
+            }
             throw new Error(`unsupported condition on ${key}: ${JSON.stringify(value)}`)
         }
         if ((person as any)[key] !== value) return false

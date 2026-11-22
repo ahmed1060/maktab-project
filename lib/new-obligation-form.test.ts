@@ -76,7 +76,8 @@ describe("Add obligation", () => {
         // given back: a server error is an answer, not a thrown one, and read
         // as an empty list it said no one matched the search.
         const page = readFileSync("app/(dashboard)/dashboard/obligations/new/page.tsx", "utf8")
-        expect(page).toMatch(/fetchRetrying\(`\/api\/users\?\$\{queryParams\.toString\(\)\}`\)\s*\.then\(res => \{\s*if \(!res\.ok\) throw/)
+        // From the names-only list for adding obligations (PR 371).
+        expect(page).toMatch(/fetchRetrying\(assigneesUrl\('obligations\.create', selectedCompanyId\)\)\s*\.then\(res => \{\s*if \(!res\.ok\) throw/)
         expect(page).toContain(".catch(() => setPeople('failed'))")
         expect(page).toContain("onRetry={() => { setRetrying(true); setTries(n => n + 1) }}")
     })

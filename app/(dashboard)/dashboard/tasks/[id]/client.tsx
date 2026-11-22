@@ -20,6 +20,7 @@ import SectionBoundary from '@/components/SectionBoundary'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useLive } from '@/components/LiveUpdates'
 import { useCan } from '@/lib/useCan'
+import { assigneesUrl } from '@/lib/assignees-url'
 import { useModules } from '@/lib/useModules'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { useDeadlineClock } from '@/lib/useDeadlineClock'
@@ -203,22 +204,20 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
     const locked = isRestrictedRole && isOverdue
 
     // Who it can be moved to, asked for when Transfer opens: undefined while
-    // they load, null if they couldn't be. /api/users scopes a Team Leader to
-    // their own team, so it's already who the server will accept.
+    // they load, null if they couldn't be. The names-only list for
+    // transferring, in the task's company, already who the server accepts:
+    // held for a team, the team (PR 371).
     const [transferPeople, setTransferPeople] = useState<Assignable[] | null | undefined>(undefined)
     const [peopleTries, setPeopleTries] = useState(0)
     const [retryingPeople, setRetryingPeople] = useState(false)
     useEffect(() => {
         if (!isTransferModalOpen) return
-        const queryParams = new URLSearchParams()
-        queryParams.set('limit', '1000')
-        if (task.companyId) queryParams.set('companyId', task.companyId)
-        fetchRetrying(`/api/users?${queryParams.toString()}`)
+        fetchRetrying(assigneesUrl('tasks.transfer', task.companyId))
             .then(r => {
                 if (!r.ok) throw new Error(`Couldn't load the people (${r.status})`)
                 return r.json()
             })
-            .then(result => setTransferPeople(result?.data?.data || []))
+            .then(result => setTransferPeople(Array.isArray(result?.data) ? result.data : []))
             .catch(() => setTransferPeople(null))
             .finally(() => setRetryingPeople(false))
     }, [isTransferModalOpen, peopleTries, task.companyId])

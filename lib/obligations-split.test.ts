@@ -235,7 +235,8 @@ describe("the screens", () => {
 
     it("offer adding one, and the team-only picker, by obligations.create", () => {
         expect(read("app/(dashboard)/dashboard/obligations/new/page.tsx")).toContain("const mayCreate = useCan().can('obligations.create')")
-        expect(read("app/(dashboard)/dashboard/obligations/new/page.tsx")).toContain("permissions.can('obligations.create') && !permissions.companyWide('obligations.create')")
+        // The team-only picker is the names-only list for adding obligations, by the server (PR 371).
+        expect(read("app/(dashboard)/dashboard/obligations/new/page.tsx")).toContain("fetchRetrying(assigneesUrl('obligations.create', selectedCompanyId))")
         expect(read("app/(dashboard)/dashboard/obligations/ObligationsClient.tsx")).toContain("permissions.can('obligations.create') && (")
     })
 

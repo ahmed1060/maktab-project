@@ -74,6 +74,14 @@ const CREATE_CODES = {
     OUTSIDE_TEAM: "TL_CANNOT_ASSIGN_OUTSIDE_TEAM",
 } as const
 
+/** Why a transfer's new people were refused, as its route says it (PR 371). */
+const TRANSFER_CODES = {
+    NOT_FOUND: "TRANSFER_ASSIGNEE_NOT_FOUND",
+    CROSS_COMPANY: "CROSS_COMPANY_TRANSFER_FORBIDDEN",
+    ADMIN_TARGET: "TRANSFER_TO_ADMIN_FORBIDDEN",
+    OUTSIDE_TEAM: "TRANSFER_OUTSIDE_TEAM_FORBIDDEN",
+} as const
+
 export class TaskService {
     /**
      * Creates a new task with assignment and company validation.
@@ -184,7 +192,9 @@ export class TaskService {
             select: {
                 title: true, titleEntryId: true, description: true, location: true, attachments: true, comments: true, companyId: true,
                 clientId: true, locationId: true, client: { select: { name: true } },
-                company: { select: { autoVerifyLocation: true } }
+                company: { select: { autoVerifyLocation: true } },
+                // Who it already has: someone deleted among them stays (PR 371).
+                assignees: { select: { id: true } },
             }
         })
 
@@ -299,7 +309,7 @@ export class TaskService {
             // above and then whatever ids the request carried were written, so
             // a task could be handed to another company's user, who would see
             // it in their own list. Same rule as creation, same function.
-            const verdict = await checkAssignees(assigneeIds, session, "tasks.create")
+            const verdict = await checkAssignees(assigneeIds, session, "tasks.create", { kept: existingTask.assignees.map(a => a.id) })
             if (!verdict.ok) throw new Error(CREATE_CODES[verdict.reason])
             updateData.assignees = { set: assigneeIds.map((uid: string) => ({ id: uid })) }
         }
@@ -739,22 +749,12 @@ export class TaskService {
             const addedIds = newAssigneeIds.filter((id: string) => !currentAssigneeIds.includes(id))
             const removedIds = currentAssigneeIds.filter((id: string) => !newAssigneeIds.includes(id))
 
-            if (userRole !== 'SUPER_ADMIN' && addedIds.length > 0) {
-                const targetUsers = await tx.user.findMany({
-                    where: { id: { in: addedIds } },
-                    select: { companyId: true, role: true }
-                })
-                const userCompanyId = session.user.companyId
-                if (targetUsers.some(u => u.companyId !== userCompanyId)) {
-                    throw new Error("CROSS_COMPANY_TRANSFER_FORBIDDEN")
-                }
-                // TEAM_LEADER Restriction check for ADDED users
-                if (scopesToTeam(session.user, "tasks.transfer")) {
-                    if (targetUsers.some(u => ['ADMIN', 'SUPER_ADMIN'].includes(u.role))) {
-                        throw new Error("TL_RESTRICTION")
-                    }
-                }
-            }
+            // Who it's added to, by the rule creating and reassigning have:
+            // held for a team, the team, no Admins; never another company's,
+            // or a deleted account (PR 371, the owner's decision: held for a
+            // team, it went to anyone but the company's Admins).
+            const verdict = await checkAssignees(addedIds, session, "tasks.transfer", { client: tx as any })
+            if (!verdict.ok) throw new Error(TRANSFER_CODES[verdict.reason])
 
             // 2. Prepare original task update
             const existingComments: any[] = Array.isArray(originalTask.comments) ? originalTask.comments : []

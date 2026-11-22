@@ -182,7 +182,8 @@ export class ObligationService {
                 // the same rule — handing work to another team, or another
                 // company, is not made safe by the obligation already
                 // existing. Validated inside the transaction it writes to.
-                const verdict = await checkAssignees(assigneeIds, session, "obligations.edit", tx as any)
+                // Someone deleted who is already on it stays (PR 371).
+                const verdict = await checkAssignees(assigneeIds, session, "obligations.edit", { client: tx as any, kept: current.assignees.map(a => a.id) })
                 if (!verdict.ok) throw new Error(REASSIGN_CODES[verdict.reason])
                 updateData.assignees = { set: assigneeIds.map((uid: string) => ({ id: uid })) }
             }

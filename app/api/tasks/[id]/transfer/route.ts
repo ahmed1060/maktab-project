@@ -36,10 +36,14 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     } catch (error: any) {
         if (error.message === 'TASK_NOT_FOUND') return ApiResponse.notFound("Task not found")
         if (error.message === 'UNAUTHORIZED_TRANSFER') return ApiResponse.forbidden("Unauthorized to transfer this task")
-        if (error.message === 'TL_RESTRICTION') return ApiResponse.forbidden("Team Leaders cannot transfer tasks to Admins")
         // Handing a task to somebody in another company. Unmapped, the refusal
         // escaped as a 500.
         if (error.message === 'CROSS_COMPANY_TRANSFER_FORBIDDEN') return ApiResponse.forbidden("A task cannot be transferred outside its company")
+        // By the rule creating and reassigning have (PR 371): held for a team,
+        // to the team, no Admins; and never a deleted account, or nobody.
+        if (error.message === 'TRANSFER_TO_ADMIN_FORBIDDEN') return ApiResponse.forbidden("Transferring for your team, you can't transfer a task to an Admin")
+        if (error.message === 'TRANSFER_OUTSIDE_TEAM_FORBIDDEN') return ApiResponse.forbidden("Transferring for your team, you can only transfer a task to your team")
+        if (error.message === 'TRANSFER_ASSIGNEE_NOT_FOUND') return ApiResponse.badRequest("Someone picked isn't there any more")
         console.error("Transfer error:", error)
         throw error
     }

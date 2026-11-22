@@ -15,7 +15,8 @@ describe("a page reached by typing its address", () => {
         const page = readFileSync("app/(dashboard)/dashboard/obligations/new/page.tsx", "utf8")
         expect(page).toContain("const mayCreate = useCan().can('obligations.create')")
         expect(page).toContain("if (!mayCreate) return <AccessDenied />")
-        expect(page).toContain("result?.data?.data || []")
+        // What it reads of the names-only list's answer (PR 371): its list, or nobody.
+        expect(page).toContain("Array.isArray(result?.data) ? result.data : []")
     })
 })
 
