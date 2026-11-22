@@ -10,8 +10,8 @@ Before you start, make sure you have installed:
 
 ### 1. Clone & Install
 ```bash
-git clone https://github.com/YOUR_USERNAME/maktab-project.git
-cd maktab-project
+git clone https://github.com/YOUR_USERNAME/nizmo.git
+cd nizmo
 npm install
 ```
 

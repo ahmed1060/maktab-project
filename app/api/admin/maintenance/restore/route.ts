@@ -26,7 +26,7 @@ export const POST = withStandardHandler(async (req, session, body) => {
     }
 
     const res = await fetch(
-        'https://api.github.com/repos/ahmed1060/maktab-project/dispatches',
+        'https://api.github.com/repos/ahmed1060/nizmo/dispatches',
         {
             method: 'POST',
             headers: {

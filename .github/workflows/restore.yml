@@ -34,7 +34,7 @@ on:
         description: 'daily | weekly | monthly | prerestore (only used when mode=specific)'
         required: false
       baseName:
-        description: 'Backup base name, e.g. maktab_2026-09-05_0807_auto (only used when mode=specific)'
+        description: 'Backup base name, e.g. nizmo_2026-11-23_0807_auto (only used when mode=specific)'
         required: false
   repository_dispatch:            # fired from the dashboard's Disaster Recovery card
     types: [manual-restore]
@@ -42,7 +42,7 @@ on:
 # Shares backup.yml's concurrency group on purpose — a backup and a restore
 # must never run against the same database at the same time.
 concurrency:
-  group: maktab-backup
+  group: nizmo-backup
   cancel-in-progress: false
 
 # `drill` restores into DRILL_DATABASE_URL instead of production, so this whole
@@ -126,7 +126,7 @@ jobs:
         run: |
           set -o pipefail
           STAMP=$(TZ=Africa/Cairo date +%Y-%m-%d_%H%M)
-          echo "PRENAME=maktab_${STAMP}_prerestore" >> $GITHUB_ENV
+          echo "PRENAME=nizmo_${STAMP}_prerestore" >> $GITHUB_ENV
           # Same flags as backup.yml's, and that matters more here than
           # anywhere: this is the snapshot somebody restores *after* a restore
           # went wrong, so a snapshot taken on different terms from the backups

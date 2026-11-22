@@ -197,6 +197,24 @@ other filled in when one is typed, if that's possible.
   Vercel project to Nizmo changes only their labels; their addresses and
   keys stay. The GitHub repository keeps its name for now: the Super
   Admin's backup and restore buttons call it by name.
+- **The rest of the renaming (decided 2026-11-22):** the owner chose all
+  three:
+  1. **The Vercel project** becomes "nizmo", made from here. Only
+     Vercel's own addresses change (`maktab-project-…vercel.app` to
+     `nizmo-…vercel.app`); nizmo.vercel.app, which the app, the mobile
+     app and the terminals use, stays.
+  2. **The GitHub repository** becomes "nizmo", renamed by the owner.
+     GitHub forwards the old name's links and API calls, so nothing
+     stops; then one PR names it anew where the code does: the Super
+     Admin's backup and restore buttons, the payroll-clearing script and
+     the README.
+  3. **New backups are named `nizmo_…`,** in the same PR. Older
+     `maktab_…` backups still restore: the restore takes the newest by
+     how a name ends, and the clean-up goes by age.
+- **Previews hold no production secret (2026-11-22):** `CRON_SECRET` is
+  for production alone, since only production runs the scheduled jobs,
+  and the Development copies of it and of `NEXTAUTH_SECRET`, which
+  nothing used, are deleted.
 - **"maktab drill":** the paused project the restore drill writes into
   (`DRILL_DATABASE_URL`), likely still holding a restored copy of real
   data. The owner deletes it; nothing runs on it by itself, and a
@@ -254,3 +272,6 @@ other filled in when one is typed, if that's possible.
 - **2026-11-22:** Previews and production kept apart: previews have
   their own `NEXTAUTH_SECRET` and are behind Vercel Authentication, and
   the owner's copy in "nizmo dev" has its own ID.
+- **2026-11-22:** #363 merged. The rest of the renaming decided: the
+  Vercel project and the GitHub repository become "nizmo", and new
+  backups are named `nizmo_…`. Previews hold no production secret now.
