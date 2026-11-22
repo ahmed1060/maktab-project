@@ -22,8 +22,11 @@ export const POST = withStandardHandler(async (_req, session, json) => {
     if (!correctsCompany(session, access.companyId)) return ApiResponse.forbidden()
     const person = await prisma.user.findFirst({ where: { id: validation.data.userId, companyId: access.companyId }, select: { id: true, teamLeaderId: true } })
     if (!person) return ApiResponse.notFound("That person wasn't found in this company.")
-    // Mapping a number to oneself would make other punches one's own.
-    if (!correctsPerson(session, { companyId: access.companyId, userId: person.id, teamLeaderId: person.teamLeaderId })) return ApiResponse.forbidden()
+    // One's own number is the one thing whoever maps numbers may do for themselves:
+    // the HR officer who maps them scans in too (ATTENDANCE_PLAN.md §14, PR 366).
+    // Anybody else's is checked at the correcting's scope.
+    const own = person.id === session.user.id
+    if (!own && !correctsPerson(session, { companyId: access.companyId, userId: person.id, teamLeaderId: person.teamLeaderId })) return ApiResponse.forbidden()
     const result = await AttendancePunchService.mapCode(access.companyId, { code: validation.data.code, userId: person.id }, session.user.id)
     return ApiResponse.success(result, 201)
 })

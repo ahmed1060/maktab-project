@@ -11,6 +11,7 @@ import { useToast } from '@/context/ToastContext'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { send, json } from './send'
 import { useFigures } from './period'
+import { choicesForWaiting, pickedFor } from '@/lib/attendance/number-choices'
 
 /**
  * Employee numbers (ATTENDANCE_PLAN.md Phase 0): each terminal knows people
@@ -22,6 +23,11 @@ import { useFigures } from './period'
  * the numbers waiting for a person as a list (DESIGN.md §5.4), each with whose
  * it is to pick and Save; saving a number by hand in a form; the numbers
  * saved as rows; and removing one in the building blocks' dialog.
+ *
+ * Each waiting number offers only people with no number and not picked in
+ * another row; the form offers everyone, for a second number on purpose. Whoever
+ * matches the numbers may match their own, and someone else removes it
+ * (ATTENDANCE_PLAN.md §14, §17.13; PR 366).
  */
 
 type Codes = { mapped: { id: string; code: string; userId: string; name: string }[]; unmatched: { code: string; punches: number; from: string; to: string }[] }
@@ -38,8 +44,7 @@ export default function NumbersTab({ q, companyId }: { q: string; companyId: str
     const { data: body, error, isValidating, mutate } = useSWR(`/api/attendance/codes?${q}`, fetcher)
     const { data: peopleBody } = useSWR(`/api/attendance/people?${q}`, fetcher)
     const codes: Codes | null = body?.data ?? null
-    // Nobody saves their own number: their punches would be theirs to make count.
-    const people: Person[] = (peopleBody?.data?.people ?? []).filter((x: Person) => x.id !== me)
+    const people: Person[] = peopleBody?.data?.people ?? []
     const [choice, setChoice] = useState<Record<string, string>>({})
     const [newCode, setNewCode] = useState('')
     const [newPerson, setNewPerson] = useState('')
@@ -73,16 +78,21 @@ export default function NumbersTab({ q, companyId }: { q: string; companyId: str
     )
     if (!codes) return <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
 
-    const personOptions = [{ value: '', label: t('punch_choose_person') }, ...people.map(x => ({ value: x.id, label: x.name }))]
+    const optionsOf = (list: Person[]) => [{ value: '', label: t('punch_choose_person') }, ...list.map(x => ({ value: x.id, label: x.name }))]
+    // The form's: everyone, for a second number on purpose.
+    const personOptions = optionsOf(people)
+    const waitingCodes = codes.unmatched.map(u => u.code)
+    const picked = (u: Waiting) => pickedFor(u.code, choice, codes.mapped)
     const seen = (u: Waiting) => t('punch_numbers_seen').replace('{n}', num(u.punches)).replace('{from}', date(u.from)).replace('{to}', date(u.to))
-    // Whose a waiting number is, picked in its row, and Save.
+    // Whose a waiting number is, picked in its row from those with none yet, and Save.
     const whose = (u: Waiting) => (
-        <Select aria-label={t('punch_person_for').replace('{code}', u.code)} value={choice[u.code] ?? ''} disabled={action.running}
-            onChange={e => setChoice({ ...choice, [u.code]: e.target.value })} options={personOptions} />
+        <Select aria-label={t('punch_person_for').replace('{code}', u.code)} value={picked(u)} disabled={action.running}
+            onChange={e => setChoice({ ...choice, [u.code]: e.target.value })}
+            options={optionsOf(choicesForWaiting(people, { mapped: codes.mapped, picked: choice, waiting: waitingCodes, code: u.code }))} />
     )
     const save = (u: Waiting) => (
-        <Button variant="primary" size="sm" disabled={!choice[u.code] || action.running} busy={action.is(`map-${u.code}`)}
-            onClick={() => { void action.run(`map-${u.code}`, () => map(u.code, choice[u.code])) }}>{t('punch_map')}</Button>
+        <Button variant="primary" size="sm" disabled={!picked(u) || action.running} busy={action.is(`map-${u.code}`)}
+            onClick={() => { void action.run(`map-${u.code}`, () => map(u.code, picked(u))) }}>{t('punch_map')}</Button>
     )
     const columns: Column<Waiting>[] = [
         { key: 'code', header: t('punch_column_code'), cell: u => <ItemTitle title={<bdi>{u.code}</bdi>} detail={seen(u)} /> },
