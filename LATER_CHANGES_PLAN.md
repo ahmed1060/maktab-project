@@ -450,7 +450,9 @@ permission bringing "See obligations". None found missing.
   those parts (`lib/history-parts.ts`, #370).
 - **The history link** on the Employees list is offered by "See salaries"
   only, though its tabs are for day off, costs, debts and settlements too.
-  It's now offered to who sees any of them on someone else's (#370).
+  It's now offered to who sees any of them on that person's history: a
+  permission held for a team counts only for the people its holder leads,
+  as the routes check (#370).
 
 ## Not here
 
@@ -529,3 +531,7 @@ permission bringing "See obligations". None found missing.
   suggested names weren't refused after all: `GET /api/lists` gives them,
   and the filters' names, to anyone in the company. Two screens to fix,
   not three: an employee's history and its link on the Employees list.
+- **2026-11-22:** Codex on #370: a permission held for a team reaches
+  only the people its holder leads, so the History link and the page's
+  tabs count it only for them; and a Salary tab without months says when
+  its debts and settlements didn't load, rather than that there are none.
