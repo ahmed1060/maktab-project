@@ -312,6 +312,7 @@ export const ar = {
         client_hq_locked: "لا يغيّر مقرّه إلا من يحق له إدارة المواقع.",
         perm_locations_view: "عرض المواقع",
         perm_locations_add: "إضافة المواقع",
+        perm_locations_create: "إضافة المواقع",
         perm_locations_manage: "إدارة المواقع",
         perm_locations_edit: "تعديل المواقع واختيار المقر الرئيسي للعميل",
         perm_locations_archive: "أرشفة المواقع واستعادتها",

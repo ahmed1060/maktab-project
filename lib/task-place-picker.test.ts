@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs"
 
 const state = {
     role: "ADMIN",
-    grants: new Set(["clients.view", "locations.view", "locations.add"]),
+    grants: new Set(["clients.view", "locations.view", "locations.create"]),
     keys: [] as string[],
 }
 vi.mock("next-auth/react", () => ({ useSession: () => ({ data: { user: { id: "u1", role: state.role } } }) }))
@@ -41,7 +41,7 @@ vi.mock("swr", () => ({
 
 beforeEach(() => {
     state.role = "ADMIN"
-    state.grants = new Set(["clients.view", "locations.view", "locations.add"])
+    state.grants = new Set(["clients.view", "locations.view", "locations.create"])
     state.keys = []
 })
 
@@ -71,7 +71,7 @@ describe("a task's location picker", () => {
 
     it("offers + New location to whoever may add one", async () => {
         expect(await picker({ clientId: "", locationId: "" })).toContain("task_location_new")
-        state.grants.delete("locations.add")
+        state.grants.delete("locations.create")
         expect(await picker({ clientId: "", locationId: "" })).not.toContain("task_location_new")
     })
 

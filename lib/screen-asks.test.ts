@@ -74,7 +74,7 @@ const SCREENS: Record<string, Screen> = {
         opens: ["locations.view"],
         asks: {
             "GET /api/locations": needs("locations.view"),
-            "POST /api/locations": when("locations.add", "adding={adding && can('locations.add')}"),
+            "POST /api/locations": when("locations.create", "adding={adding && can('locations.create')}"),
             "PUT /api/locations": when(["locations.edit", "locations.archive"], ...LOCATION_CHANGE),
             // The client a place is for, and the list's client filter.
             "GET /api/clients": when("clients.view", ...CLIENT_PICKERS),
@@ -148,7 +148,7 @@ const SCREENS: Record<string, Screen> = {
             "GET /api/records/clients": when("records.contribute", "adding={!archived && adding && can('records.contribute')}", "const clients = useClients(choosing)"),
             "DELETE /api/records/uploads": when("records.contribute", "adding={!archived && adding && can('records.contribute')}"),
             "GET /api/locations": when("locations.view", "const seesLocations = can('locations.view')", "{seesLocations && ("),
-            "POST /api/locations": when("locations.add", "adding={!archived && addingLocation && can('locations.add')}"),
+            "POST /api/locations": when("locations.create", "adding={!archived && addingLocation && can('locations.create')}"),
             "PUT /api/locations": when(["locations.edit", "locations.archive"], ...LOCATION_CHANGE),
             "GET /api/charges": when("charges.view", "const seesCharges = can('charges.view')", "{seesCharges && <ChargesList client={{ id, name }} />}"),
             "PATCH /api/charges/[x]": when("charges.manage", ...CHARGE_FEE),

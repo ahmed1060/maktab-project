@@ -317,6 +317,7 @@ export const en = {
         client_hq_locked: "Only someone who may manage locations can change its HQ.",
         perm_locations_view: "See locations",
         perm_locations_add: "Add locations",
+        perm_locations_create: "Add locations",
         perm_locations_manage: "Manage locations",
         perm_locations_edit: "Edit locations and pick a client's HQ",
         perm_locations_archive: "Archive and restore locations",

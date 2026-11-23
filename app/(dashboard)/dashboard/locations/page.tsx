@@ -30,9 +30,9 @@ export default function LocationsPage() {
             <PageHeader
                 title={modules.label('locations')}
                 subtitle={t('locations_subtitle')}
-                action={can('locations.add') && <Button variant="primary" icon={PlusIcon} onClick={() => setAdding(true)}>{t('locations_add')}</Button>}
+                action={can('locations.create') && <Button variant="primary" icon={PlusIcon} onClick={() => setAdding(true)}>{t('locations_add')}</Button>}
             />
-            <LocationsList adding={adding && can('locations.add')} onAddingChange={setAdding} />
+            <LocationsList adding={adding && can('locations.create')} onAddingChange={setAdding} />
         </Page>
     )
 }

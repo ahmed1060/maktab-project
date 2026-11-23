@@ -253,10 +253,11 @@ them, as today.
 | | `clients.delete` | Delete or archive a client, delete an archived one for good, and restore one from the archive, which undoes archiving (#365) | `DELETE /clients`, `PUT /clients` with `restore` |
 | | `clients.manage` | Split into the three above (#365): nothing checks it, and it isn't offered; a role still holding it is read as holding all three, at its scope, until the grant for companies already there | — |
 | | `locations.view` | See the places tasks happen at: the Locations page, a client's locations, and the task form's pickers (`CLIENTS_PLAN.md` §2.9) | `GET /locations` |
-| | `locations.add` | Add a location, on the Locations page, a client's page or the task form; implies `locations.view` | `POST /locations` |
+| | `locations.create` | Add a location, on the Locations page, a client's page or the task form; implies `locations.view` (named `locations.add` until #378) | `POST /locations` |
 | | `locations.edit` | Change a location's name, pin and radius, make one its client's HQ, and change a client's HQ in the client form (#377, split from `locations.manage`, `LATER_CHANGES_PLAN.md` §2) | `PUT /locations`, `PUT /clients` with a changed HQ |
 | | `locations.archive` | Archive a location, and restore one (#377) | `PUT /locations` with `archived` |
-| | `locations.manage` | Split into the two above (#377): nothing checks it, and it isn't offered; a role still holding it is read as holding both, until the grant for companies already there. Adding stays `locations.add` | — |
+| | `locations.manage` | Split into the two above (#377): nothing checks it, and it isn't offered; a role still holding it is read as holding both, until the grant for companies already there | — |
+| | `locations.add` | Renamed `locations.create` (#378), as a split into one: nothing checks it, and it isn't offered; a role still holding it is read as holding `locations.create`, until the grant for companies already there | — |
 | **Client portal** | `tax.view` | See a client's tax position on its page, and its tax position statement, in a company whose package has the client portal — implies `clients.view` (`CLIENT_PORTAL_PLAN.md` §8, §9) | `GET /tax-claims`; the page `/dashboard/clients/[id]/tax-statement` |
 | | `tax.manage` | Update a client's tax position by uploading the Tax Authority portal's file, which replaces its claims — implies `tax.view` (`CLIENT_PORTAL_PLAN.md` §4.1, §9) | `GET`, `POST /tax-claims/upload` |
 | | `client_accounts.manage` | List, add and remove the people of a client who sign in to the client portal — **lets people from outside the company in**, high-risk (§6.15); implies `clients.view` (`CLIENT_PORTAL_PLAN.md` §5.2, §9) | `GET`, `POST /client-accounts`, `DELETE /client-accounts/[id]` |

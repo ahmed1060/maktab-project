@@ -191,12 +191,12 @@ export default function ClientPage() {
             {seesLocations && (
                 <Section
                     title={modules.label('locations')}
-                    action={!archived && can('locations.add') && <Button size="sm" icon={MapPinPlusIcon} onClick={() => setAddingLocation(true)}>{t('locations_add')}</Button>}
+                    action={!archived && can('locations.create') && <Button size="sm" icon={MapPinPlusIcon} onClick={() => setAddingLocation(true)}>{t('locations_add')}</Button>}
                 >
                     {client && client.locations.length === 0 && <p className="ui-hint">{t('locations_no_hq')}</p>}
                     <LocationsList
                         clientId={id}
-                        adding={!archived && addingLocation && can('locations.add')}
+                        adding={!archived && addingLocation && can('locations.create')}
                         onAddingChange={archived ? undefined : setAddingLocation}
                         // Its HQ, in its details, may have moved.
                         onChanged={() => { void reloadClient() }}

@@ -34,11 +34,19 @@ describe("the role matrix for the contract", () => {
     it("lists every permission a role can hold, held or not", async () => {
         const { rows } = await read(await buildRoleMatrix({ companyName: "Acme", roles, locale: "en", at: new Date() }))
         const firstColumn = rows.map(r => r[0])
-        for (const permission of Object.keys(PERMISSIONS) as (keyof typeof PERMISSIONS)[]) {
-            // One nothing checks yet is not in the matrix, so not in the contract,
-            // and one split into parts is there as its parts (PR 365).
-            expect(firstColumn.filter(v => v === (en as any)[permissionLabelKey(permission)])).toHaveLength(isReserved(permission) || isSplit(permission) ? 0 : 1)
+        const all = Object.keys(PERMISSIONS) as (keyof typeof PERMISSIONS)[]
+        // One nothing checks yet is not in the matrix, so not in the contract,
+        // and one split into parts is there as its parts (PR 365).
+        const shown = all.filter(p => !isReserved(p) && !isSplit(p))
+        const label = (p: keyof typeof PERMISSIONS) => (en as any)[permissionLabelKey(p)]
+        for (const permission of all) {
+            // Counted by its words: one renamed as a split into one keeps them
+            // for its new name (locations.add, PR 378), shown once, for that.
+            const rowsWithIt = firstColumn.filter(v => v === label(permission)).length
+            expect(rowsWithIt, permission).toBe(shown.filter(p => label(p) === label(permission)).length)
+            if (shown.includes(permission)) expect(rowsWithIt, permission).toBe(1)
         }
+        expect(firstColumn).not.toContain(label("locations.manage"))
     })
 
     it("reads right to left in Arabic, in Arabic", async () => {

@@ -185,9 +185,13 @@ export const PERMISSIONS = {
     // one (as the task form does), and changing them, split from
     // locations.manage by what is done (LATER_CHANGES_PLAN.md §2, PR 377):
     // editing one (its name, pin and radius, and which is a client's HQ),
-    // and archiving or restoring one. Each includes seeing.
+    // and archiving or restoring one. Each includes seeing. Adding was
+    // locations.add until PR 378, which the owner asked to be named
+    // locations.create as the other areas' adding is: done as a split into
+    // one, so a role still holding it holds locations.create.
     "locations.view":           { code: 55, module: "CLIENTS", scopes: COMPANY },
-    "locations.add":            { code: 56, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
+    "locations.add":            { code: 56, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"], splitInto: ["locations.create"] },
+    "locations.create":         { code: 81, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
     "locations.manage":         { code: 57, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"], splitInto: ["locations.edit", "locations.archive"] },
     "locations.edit":           { code: 79, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
     "locations.archive":        { code: 80, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
@@ -346,8 +350,11 @@ export type Permission = keyof typeof PERMISSIONS
  *
  * 7: locations.edit and locations.archive (codes 79–80), split from
  * locations.manage the same way (PR 377). Adding one stays locations.add.
+ *
+ * 8: locations.create (code 81), locations.add renamed as a split into one
+ * (PR 378).
  */
-export const CATALOGUE_VERSION = 7
+export const CATALOGUE_VERSION = 8
 
 /** Codes of permissions that no longer exist. Never handed out again. */
 export const RETIRED_CODES: readonly number[] = []

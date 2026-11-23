@@ -46,7 +46,7 @@ export const POST = withStandardHandler(async (_req, session, json) => {
     const validation = createLocationSchema.safeParse(json)
     if (!validation.success) return ApiResponse.badRequest("Validation Error", validation.error.format())
     return ApiResponse.success(await LocationService.create(session, validation.data), 201)
-}, { permission: "locations.add" })
+}, { permission: "locations.create" })
 
 /**
  * Changing a location: its details and which is its client's HQ are

@@ -121,7 +121,7 @@ export default function TaskPlacePicker({ value, onChange, companyId, current, c
                             <Select {...p} icon={MapPinIcon} value={value.locationId} onChange={e => onChange({ ...value, locationId: e.target.value })} disabled={disabled || !list}
                                 options={options} groups={groups} />
                         )}</Field>
-                        {can('locations.add') && (
+                        {can('locations.create') && (
                             <div><Button variant="quiet" size="sm" icon={PlusIcon} onClick={() => setAdding(true)} disabled={disabled}>{t('task_location_new')}</Button></div>
                         )}
                     </div>
