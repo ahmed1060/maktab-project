@@ -32,7 +32,7 @@ import { PERMISSIONS, requiresOf, type Permission } from "./permissions/catalogu
  * each split kept its rows; then the task screens (PR 387); then the
  * obligation, record and document screens (PR 388); then Requests (PR 389);
  * then the people screens (PR 390); then attendance (PR 391); then check-in
- * (PR 393); the rest wait in LATER.
+ * (PR 393); then settings and the home page (PR 395), the last.
  */
 
 /**
@@ -44,9 +44,10 @@ type Gate = string | { in: string; code: string }
 /**
  * `routes` narrows a call reaching several routes, as one built from a
  * variable does; `routeChecks`, where the route checks when its handler
- * doesn't itself, as when a service does.
+ * doesn't itself, as when a service does: one file, or each that names one
+ * of the permissions given (PR 395).
  */
-type Where = { routes?: string[]; routeChecks?: string }
+type Where = { routes?: string[]; routeChecks?: string | string[] }
 /**
  * A "when" whose route answers a permission the gate's brings, rather than
  * the gate's own, says which (`answers`): the leaders a new employee can be
@@ -110,6 +111,26 @@ const PUNCH_ACCESS = "lib/attendance/punch-access.ts"
 const CORRECTS_COMPANY = "const correctsCompany = p.companyWide('attendance.correct')"
 const CORRECTS_ROW = "const corrects = (row: { userId: string; teamLeaderId: string | null }) => row.userId !== me && p.canFor('attendance.correct', row.userId, row.teamLeaderId)"
 const FACE_TAB = ["...(p.companyWide('attendance.approve_face') ? ['face' as const] : []),", "{tab === 'face' && <FaceTab q={q} />}"]
+/**
+ * Settings' (PR 395): the tabs the server shows each person, read with See settings, saved with Edit settings; the
+ * client portal's with its own permission; and the Super Admin's tabs never, as the page refuses them and the server
+ * never shows those to anyone else.
+ */
+const SETTINGS_ACCESS = "lib/company-settings-access.ts"
+const SHOWS_TABS: Gate = { in: SETTINGS_ACCESS, code: 'const exposed: string[] = can(actor, "settings.view", { companyId: company.id }) ? exposedTabs(company) : []' }
+const EDITS: Gate[] = [{ in: "app/api/company-settings/route.ts", code: 'canEdit: can(session.user, "settings.edit", { companyId }),' }, "readOnly={!canEdit}"]
+const EDITS_ATTENDANCE: Gate[] = [...EDITS, "const editable = !readOnly && !!data?.canEdit"]
+const ATTENDANCE_TAB: Gate[] = [SHOWS_TABS, "{tab === 'attendance' && ("]
+const TERMINALS = "lib/attendance/terminals-access.ts"
+const MANAGES_TERMINALS: Gate[] = [{ in: TERMINALS, code: 'return company.terminalsSetupByCompany && can(actor, "attendance.manage_terminals", { companyId: company.id })' }, "{data.sections.terminals && <AttendanceTerminalsPanel"]
+const CLIENT_PORTAL_TAB: Gate[] = [{ in: "lib/company-settings-tabs.ts", code: 'module: "TAX_POSITION", permission: "client_messages.manage",' }, "{tab === 'client_portal' && <>"]
+const SUPER_ADMINS_TAB = notHere("if (superAdmin || refused) return <AccessDenied />", "superAdmin={false}",
+    { in: SETTINGS_ACCESS, code: "export const ELIGIBLE_SETTINGS_TABS = COMPANY_SETTINGS_TABS.filter(t => t.adminEligible)" })
+const edits = (...extra: Gate[]): Ask => ({ when: ["settings.edit"], routeChecks: SETTINGS_ACCESS, gates: [...EDITS_ATTENDANCE, ...extra] })
+const reads: Ask = { when: ["settings.view"], routeChecks: SETTINGS_ACCESS, gates: ATTENDANCE_TAB }
+const terminals: Ask = { when: ["attendance.manage_terminals"], routeChecks: TERMINALS, gates: MANAGES_TERMINALS }
+const portal: Ask = { when: ["client_messages.manage"], gates: CLIENT_PORTAL_TAB }
+
 /** Check-in's (PR 393): it imports one dialog from attendance's Requests tab, asking for a permission when late. */
 const LATE_ASKING = notHere("import { AskPermissionDialog } from '../attendance/RequestsTab'")
 
@@ -333,6 +354,107 @@ const SCREENS: Record<string, Screen> = {
             "PUT /api/role-change-requests/[x]": { superAdmin: ["end={side === 'superAdmin' && r.status === 'OPEN' && ("], routeChecks: "lib/services/role-change-request.service.ts" },
             "GET /api/access-reviews": { needs: ["employees.assign_role"], routeChecks: "lib/services/access-review.service.ts" },
             "PUT /api/access-reviews/lines/[x]": { needs: ["employees.assign_role"], routeChecks: "lib/services/access-review.service.ts" },
+        },
+    },
+    "": {
+        // The home page: what it shows is read on the server, each part behind its own check; it asks the server for nothing.
+        opens: ANYONE,
+        asks: {},
+    },
+    "settings": {
+        // The tabs the server shows: the Super Admin's switch and ticks with See settings, or the client portal's
+        // with its own permission.
+        opens: ["settings.view", "client_messages.manage"],
+        asks: {
+            "GET /api/company-settings": { needs: ["settings.view", "client_messages.manage"], routeChecks: [SETTINGS_ACCESS, "lib/company-settings-tabs.ts"] },
+            // Whether settings show in the side bar, asked again once cash advances change.
+            "GET /api/company-settings/visible": ANYONE,
+            // General, branding and payroll: saved with Edit settings.
+            "PUT /api/company-settings": { when: ["settings.edit"], routeChecks: SETTINGS_ACCESS, gates: EDITS },
+            "POST /api/companies/logo": { when: ["settings.edit"], routeChecks: SETTINGS_ACCESS, gates: EDITS },
+            "DELETE /api/companies/logo": { when: ["settings.edit"], routeChecks: SETTINGS_ACCESS, gates: EDITS },
+            // Attendance: read when the tab shows, changed with Edit settings.
+            "GET /api/attendance/calendar": reads,
+            "GET /api/attendance/policy": reads,
+            "GET /api/attendance/payroll-from": reads,
+            "GET /api/attendance/face/legal": reads,
+            "GET /api/attendance/locations": reads,
+            "POST /api/attendance/schedules": edits(),
+            "DELETE /api/attendance/schedules/[x]": edits(),
+            "POST /api/attendance/schedules/[x]/versions": edits(),
+            "DELETE /api/attendance/versions/[x]": edits(),
+            "POST /api/attendance/schedules/[x]/default": edits(),
+            "DELETE /api/attendance/defaults/[x]": edits(),
+            "POST /api/attendance/schedules/[x]/overrides": edits(),
+            "PUT /api/attendance/overrides/[x]": edits(),
+            "DELETE /api/attendance/overrides/[x]": edits(),
+            "POST /api/attendance/assignments": edits(),
+            "DELETE /api/attendance/assignments/[x]": edits(),
+            "POST /api/attendance/holidays": edits(),
+            "DELETE /api/attendance/holidays/[x]": edits(),
+            "PUT /api/attendance/holidays/apply": edits(),
+            "DELETE /api/attendance/holidays/apply/[x]": edits(),
+            "PUT /api/attendance/holidays/observed": edits(),
+            "POST /api/attendance/policy": edits(),
+            "DELETE /api/attendance/policy/[x]": edits(),
+            // A policy tried before it's saved; See salaries only decides whether the day rates show.
+            "POST /api/attendance/policy/simulate": edits(),
+            "PUT /api/attendance/payroll-from": edits(),
+            "PUT /api/attendance/face/legal": edits(),
+            "POST /api/attendance/locations": edits(),
+            "PATCH /api/attendance/locations/[x]": edits(),
+            "DELETE /api/attendance/locations/[x]": edits(),
+            "POST /api/attendance/locations/[x]/restore": edits(),
+            "PUT /api/attendance/locations/[x]/people": edits(),
+            // Fingerprint terminals, for whoever manages them where the company sets its own up.
+            "GET /api/attendance/devices": terminals,
+            "POST /api/attendance/devices": terminals,
+            "PATCH /api/attendance/devices/[x]": terminals,
+            "DELETE /api/attendance/devices/[x]": terminals,
+            "POST /api/attendance/devices/[x]/restore": terminals,
+            "POST /api/attendance/devices/[x]/address": terminals,
+            "PUT /api/attendance/devices/[x]/connection": terminals,
+            "PUT /api/attendance/devices/[x]/office-address": terminals,
+            "GET /api/attendance/agents": terminals,
+            "POST /api/attendance/agents": terminals,
+            "DELETE /api/attendance/agents/[x]": terminals,
+            "POST /api/attendance/agents/[x]/code": terminals,
+            // What a terminal sent first, for the Super Admin, who never opens this page.
+            "GET /api/attendance/devices/[x]/first-contacts": notHere("if (superAdmin || refused) return <AccessDenied />",
+                "const contactsItem = (d: Device): MenuItem[] => (superAdmin && keepsFirstContacts(d)"),
+            // The client portal: the company's own messages, and who's emailed.
+            "GET /api/company-messages": portal,
+            "DELETE /api/company-messages/[x]": portal,
+            "GET /api/company-messages/emails": portal,
+            "PUT /api/company-messages/emails": portal,
+            // The Super Admin's tabs: roles, modules, and which tabs the company sees.
+            "GET /api/roles": SUPER_ADMINS_TAB,
+            "POST /api/roles": SUPER_ADMINS_TAB,
+            "PUT /api/roles": SUPER_ADMINS_TAB,
+            "DELETE /api/roles": SUPER_ADMINS_TAB,
+            "PUT /api/roles/default": SUPER_ADMINS_TAB,
+            "GET /api/roles/export": SUPER_ADMINS_TAB,
+            "GET /api/role-templates": SUPER_ADMINS_TAB,
+            "POST /api/roles/copy": SUPER_ADMINS_TAB,
+            "GET /api/companies": SUPER_ADMINS_TAB,
+            "PUT /api/access-reviews/settings": SUPER_ADMINS_TAB,
+            "PUT /api/companies": SUPER_ADMINS_TAB,
+        },
+    },
+    "settings/client-messages/[kind]": {
+        // One of the company's client messages, from the client portal tab.
+        opens: ["client_messages.manage"],
+        asks: {
+            "GET /api/company-messages": needs("client_messages.manage"),
+            // Saved through the save path the page hands the editor (PR 395).
+            "PUT /api/company-messages/[x]/[x]": needs("client_messages.manage"),
+        },
+    },
+    "settings/terminal-guide": {
+        // How to set a terminal up, from the terminals panel.
+        opens: ["attendance.manage_terminals"],
+        asks: {
+            "GET /api/attendance/devices": { needs: ["attendance.manage_terminals"], routeChecks: TERMINALS },
         },
     },
     "check-in": {
@@ -630,12 +752,6 @@ const SCREENS: Record<string, Screen> = {
     },
 }
 
-/** Company screens for the next part (§5.2 step 5). */
-const LATER = [
-    // The home page.
-    "",
-    "settings", "settings/client-messages/[kind]", "settings/terminal-guide",
-]
 
 /** A page that only sends you on to another, which is in the table (PR 387). */
 const SENDS_ON = "sends you on"
@@ -772,21 +888,46 @@ function importedBuilders(src: string, file: string): Record<string, string> {
     return out
 }
 
+/** A file's own path builders, each by name with its path (PR 394). */
+function ownBuilders(src: string): Record<string, string> {
+    return Object.fromEntries(pathBuilders(src).map(b => [b.name, readPath(src, b.at, "`").path]))
+}
+
+/** A function handed to a component as a prop that builds a path: `name={(…) => \`/api/…\`}` or `name={(…) => builder(…)}` (PR 395). */
+const HANDED = /(\w+)=\{\([^()]*\) => (?:`\/api\/|(\w+)\()/g
+
+/**
+ * The props a file hands a path builder, each by the prop's name with its
+ * path, to be read where the component calls the prop (PR 395).
+ */
+function propBuilders(src: string, file: string): Record<string, string> {
+    const known = { ...importedBuilders(src, file), ...ownBuilders(src) }
+    const out: Record<string, string> = {}
+    for (const m of src.matchAll(HANDED)) {
+        if (!m[2]) out[m[1]] = readPath(src, m.index! + m[0].length - 5, "`").path
+        else if (known[m[2]]) out[m[1]] = known[m[2]]
+    }
+    return out
+}
+
 /**
  * Each call in a file, as "METHOD /api/path": a ${…} right after a slash is a
  * segment, [x]; one added to a segment, as a query is, ends it. A table of
  * paths is read where it's used, `TABLE.key` as that path and `TABLE[…]` as
  * each, with what a template adds after it; so is a path a function builds,
- * its own or one the file imports, `name(…)` as that path (PR 394).
+ * its own or one the file imports, `name(…)` as that path (PR 394), and one
+ * handed to it as a prop, by the prop's name (`handed`, PR 395).
  */
-function callsIn(src: string, file?: string): Set<string> {
+function callsIn(src: string, file?: string, handed: Record<string, string> = {}): Set<string> {
     const out = new Set<string>()
     const tables = pathTables(src)
     const own = pathBuilders(src)
+    // Where a path builder is handed to a component as a prop: not a call there (PR 395).
+    const handing = [...src.matchAll(HANDED)].map(m => m.index! + m[0].length - (m[2] ? m[2].length + 1 : 5))
     let i = 0
     while ((i = src.indexOf("/api/", i)) !== -1) {
         const quote = src[i - 1]
-        if (!["'", '"', "`"].includes(quote) || tables.some(t => i > t.from && i < t.to) || own.some(b => b.at === i)) { i += 5; continue }
+        if (!["'", '"', "`"].includes(quote) || tables.some(t => i > t.from && i < t.to) || own.some(b => b.at === i) || handing.includes(i)) { i += 5; continue }
         const { path, end } = readPath(src, i, quote)
         for (const method of methodsOf(src, i - 1)) out.add(`${method} ${path.replace(/\/$/, "")}`)
         i = end
@@ -802,12 +943,12 @@ function callsIn(src: string, file?: string): Set<string> {
             for (const base of bases) for (const method of methodsOf(src, templated ? at - 3 : at)) out.add(`${method} ${(base + rest).replace(/\/$/, "")}`)
         }
     }
-    const builders: Record<string, string> = { ...(file ? importedBuilders(src, file) : {}), ...Object.fromEntries(own.map(b => [b.name, readPath(src, b.at, "`").path])) }
+    const builders: Record<string, string> = { ...handed, ...(file ? importedBuilders(src, file) : {}), ...ownBuilders(src) }
     for (const [name, path] of Object.entries(builders)) {
         for (const use of src.matchAll(new RegExp(`(^|[^\\w.])${name}\\(`, "g"))) {
             const at = use.index! + use[1].length
-            // Not where it's defined.
-            if (/function\s+$/.test(src.slice(Math.max(0, at - 9), at))) continue
+            // Not where it's defined, nor where it's handed to a component as a prop.
+            if (/function\s+$/.test(src.slice(Math.max(0, at - 9), at)) || handing.includes(at)) continue
             for (const method of methodsOf(src, at)) out.add(`${method} ${path.replace(/\/$/, "")}`)
         }
     }
@@ -1023,19 +1164,22 @@ function redirectProblems(screen: string): string[] {
     const page = readFileSync(pageFile(screen), "utf8")
     const lines = page.slice(page.indexOf("export default")).split("\n").map(l => l.trim()).filter(Boolean)
     if (!/^redirect\(/.test(lines[lines.length - 2] ?? "")) out.push(`${screen}: doesn't end by sending you on`)
-    for (const f of screenFiles(pageFile(screen))) for (const call of callsIn(readFileSync(f, "utf8"), f)) out.push(`${screen}: asks ${call}`)
+    const files = [...screenFiles(pageFile(screen))]
+    const handed = Object.assign({}, ...files.map(f => propBuilders(readFileSync(f, "utf8"), f)))
+    for (const f of files) for (const call of callsIn(readFileSync(f, "utf8"), f, handed)) out.push(`${screen}: asks ${call}`)
     return out
 }
 
 describe("every dashboard page", () => {
-    it("is in the table, waiting for it, or outside it, once", () => {
+    // None waits for a part since PR 395: each page is in the table or outside it.
+    it("is in the table or outside it, once", () => {
         const pages = (function walk(dir: string): string[] {
             return readdirSync(dir).flatMap(d => {
                 const p = join(dir, d)
                 return statSync(p).isDirectory() ? walk(p) : d === "page.tsx" ? [relative(DASHBOARD, dir)] : []
             })
         })(DASHBOARD).sort()
-        const listed = [...Object.keys(SCREENS), ...LATER, ...Object.keys(OUTSIDE)]
+        const listed = [...Object.keys(SCREENS), ...Object.keys(OUTSIDE)]
         expect(listed.sort()).toEqual(pages)
     })
 
@@ -1052,7 +1196,8 @@ describe.each(Object.entries(SCREENS))("the %s screen", (screen, { opens, asks }
 
     it("asks the server for what the table says, each method at each path, no more and no less", () => {
         const found = new Set<string>()
-        for (const f of files) for (const call of callsIn(readFileSync(f, "utf8"), f)) found.add(call)
+        const handed = Object.assign({}, ...files.map(f => propBuilders(readFileSync(f, "utf8"), f)))
+        for (const f of files) for (const call of callsIn(readFileSync(f, "utf8"), f, handed)) found.add(call)
         expect([...found].sort()).toEqual(Object.keys(asks).sort())
     })
 
@@ -1071,7 +1216,7 @@ describe.each(Object.entries(SCREENS))("the %s screen", (screen, { opens, asks }
                 expect(handler, `${call}: ${relative(ROOT, route)} has no ${method}`).not.toBeNull()
                 handlers.push(handler!)
             }
-            const answers = [...handlers, ...(typeof ask === "object" && "routeChecks" in ask && ask.routeChecks ? [readFileSync(join(ROOT, ask.routeChecks), "utf8")] : [])].join("\n")
+            const answers = [...handlers, ...(typeof ask === "object" && "routeChecks" in ask && ask.routeChecks ? [ask.routeChecks].flat().map(f => readFileSync(join(ROOT, f), "utf8")) : [])].join("\n")
             if (typeof ask === "object" && "superAdmin" in ask) expect(SUPER_ADMIN_WORD.test(answers), call).toBe(true)
             if (typeof ask === "object" && ("needs" in ask || "when" in ask)) {
                 for (const p of "needs" in ask ? ask.needs : ask.answers ?? ask.when) expect(quoted(answers, p), `${call}: ${p}`).toBe(true)
@@ -1137,6 +1282,20 @@ describe("the test itself", () => {
         expect([...callsIn("import { taxEmailsApi as emails } from '@/lib/client-message-pages'\nuseSWR(emails(scope), fetcher)", card)]).toEqual(["GET /api/company-messages/emails"])
         // Built, never used: no call.
         expect([...callsIn("export const companyMessagesApi = (companyId: string | null) => `/api/company-messages${named(companyId)}`")]).toEqual([])
+    })
+
+    it("reads a path built by a function handed to a component as a prop where the component calls it (PR 395)", () => {
+        const page = join(ROOT, "components/client-messages/CompanyMessagePage.tsx")
+        const handing = "import { companyMessageApi } from '@/lib/client-message-pages'\n<MessageEditor saveUrl={(kind, language) => companyMessageApi(scope, kind, language)} />"
+        const editor = "const res = await fetch(saveUrl(kind, language), {\n    method: 'PUT',\n})"
+        // Where it's handed over isn't a call; the prop is a builder by its name.
+        expect([...callsIn(handing, page)]).toEqual([])
+        expect(propBuilders(handing, page)).toEqual({ saveUrl: "/api/company-messages/[x]/[x]" })
+        expect(propBuilders("<MessageEditor saveUrl={(kind, language) => `/api/client-messages/${kind}/${language}`} />", page)).toEqual({ saveUrl: "/api/client-messages/[x]/[x]" })
+        expect([...callsIn("<MessageEditor saveUrl={(kind, language) => `/api/client-messages/${kind}/${language}`} />", page)]).toEqual([])
+        expect([...callsIn(editor, page, propBuilders(handing, page))]).toEqual(["PUT /api/company-messages/[x]/[x]"])
+        // A prop handed anything else isn't one.
+        expect(propBuilders("<Logo onChanged={(logoUrl: string | null) => onSaved({ logoUrl })} />", page)).toEqual({})
     })
 
     it("tells it from a method given as an argument of its own, as the attendance calendar's helper takes it (PR 394)", () => {
