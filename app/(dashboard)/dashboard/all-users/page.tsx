@@ -9,7 +9,7 @@ import {
     UserMinusIcon, UsersIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
-import { refusalOf } from '@/components/CompanyRolesCard'
+import { refusalOf } from '@/lib/api-error-text'
 import DeleteTemplateDialog from '@/components/DeleteTemplateDialog'
 import { SignInLock } from '@/components/SignInLock'
 import {

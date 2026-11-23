@@ -1,7 +1,7 @@
 'use client'
 
 import { useId, useState, type FormEvent } from 'react'
-import { refusalOf } from '@/components/CompanyRolesCard'
+import { refusalOf } from '@/lib/api-error-text'
 import { Button, Card, Field, Select } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'

@@ -1,7 +1,7 @@
 'use client'
 
 import { useId, useRef, useState, type FormEvent } from 'react'
-import { refusalOf } from '@/components/CompanyRolesCard'
+import { refusalOf } from '@/lib/api-error-text'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import { Button, Dialog, DialogActions, Field, TextArea, TextInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'

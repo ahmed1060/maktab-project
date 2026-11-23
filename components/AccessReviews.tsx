@@ -4,7 +4,7 @@ import { Fragment, useRef, useState, type FormEvent, type ReactNode } from 'reac
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
 import { HourglassIcon, ShieldCheckIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
-import { refusalOf } from '@/components/CompanyRolesCard'
+import { refusalOf } from '@/lib/api-error-text'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import { Button, Card, Dialog, DialogActions, EmptyState, Field, Row, Select, StatusBadge, TextArea } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'

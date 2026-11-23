@@ -8,7 +8,7 @@ import {
     PackageIcon, PencilSimpleIcon, PlusIcon, ProhibitIcon, TrashIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
-import { refusalOf } from '@/components/CompanyRolesCard'
+import { refusalOf } from '@/lib/api-error-text'
 import { BanCompanyDialog, CompanyDialog } from '@/components/CompanyDialogs'
 import DeleteTemplateDialog from '@/components/DeleteTemplateDialog'
 import { SubscriptionBadge, SubscriptionDates } from '@/components/SubscriptionBadge'

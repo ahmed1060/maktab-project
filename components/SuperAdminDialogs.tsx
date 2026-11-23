@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { useRef, useState, type FormEvent } from 'react'
-import { refusalOf } from '@/components/CompanyRolesCard'
+import { refusalOf } from '@/lib/api-error-text'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import { Button, Choice, Dialog, DialogActions, Field, PasswordInput, TextInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
