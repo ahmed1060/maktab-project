@@ -583,7 +583,11 @@ They work together, each for a different case.
     task's place picker, which only adds. Since #389, a call built from a
     table of paths in the same file is read where the table is used, so
     Requests' decisions and withdrawals are checked, and the table's
-    entries aren't taken for calls.
+    entries aren't taken for calls. Since #391, a call's method is read
+    from the call its path is given to, whether fetch, a helper such as
+    attendance's `send`, or one a screen writes, such as its `act`, and
+    from `method: …` or `json('POST', …)` after the path, so a write sent
+    through a helper isn't taken for a read.
   - A needed call is met by each permission that opens the screen:
     itself, one it brings (`implies`), or one it needs first
     (`requires`). Anything else fails, naming the screen and the call.
@@ -619,8 +623,9 @@ there:
    employees and payroll); then the splits, each keeping its rows; then
    the rest, about 220 calls on 29 screens, in parts by area: the task
    screens (#387); obligations, records and documents (#388); Requests
-   (#389); the people screens (#390); attendance and check-in; and settings. A page that
-   only sends you on to another is outside the table.
+   (#389); the people screens (#390); attendance (#391); check-in
+   (#392); and settings. A page that only sends you on to another is
+   outside the table.
 
 The two screens found to fix in §5.3 go in one PR of their own, as #368
 did, after the list is approved and before step 2: #370.
@@ -940,3 +945,12 @@ same day as drawn in the All users: status badges canvas
   profile, one's own or someone else's; someone's cash advance; and Roles
   and access, which imports only a helper from the Super Admin's roles
   card, so the card's calls aren't made from it.
+- **2026-11-23:** #390 merged. Attendance next, as #391, and check-in
+  after it, as #392. Attendance sends its writes through a helper, `send`,
+  and one of its tabs through its own, `act`, so the test reads a call's
+  method from the call its path is given to; check-in's own calls are made
+  from `lib/mobile`, through a sender the screen passes in, which #392
+  teaches the test to follow. Attendance imports two of Requests' dialogs,
+  asking for a permission and reporting a missing punch, from the file
+  that also decides and withdraws: that file's other calls aren't made
+  from it.
