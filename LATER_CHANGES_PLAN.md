@@ -252,7 +252,12 @@ The owner asked to break up every "manage" permission in the roles system.
     - Checked read-only on the live database on 23 November: 13 rows on its
       three built-in roles. The Admin's 9; the Team Leader's `locations.add`
       and `obligations.manage`, for its team; and the Employee's
-      `locations.add` and `clients.manage`. No templates.
+      `locations.add` and `clients.manage`. No templates. They become 30
+      rows of parts, none held already, and the three roles reload once.
+    - Reading a role that holds both a split permission and one of its
+      parts keeps the wider scope too, as the migration does. Before, the
+      app read the part at the split permission's scope, which could be
+      narrower. No role on the live database holds both.
     - **It changes the live database** when it's merged, as every
       migration runs as the site is built. Opening it changes only the
       development database, through the preview.
@@ -882,3 +887,7 @@ same day as drawn in the All users: status badges canvas
 - **2026-11-23:** #384 merged. The grant for companies already there
   next, as #385: one migration that replaces each role's and template's
   split permissions by their parts. Then the old codes are retired.
+- **2026-11-23:** #385 built. Its database test found that reading a role
+  holding both a split permission and one of its parts could narrow the
+  part, so reading now keeps the wider scope, as the migration does. No
+  role on the live database holds both.
