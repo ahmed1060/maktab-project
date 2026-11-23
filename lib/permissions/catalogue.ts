@@ -203,10 +203,13 @@ export const PERMISSIONS = {
     "locations.archive":        { code: 80, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
     "costs.view":               { code: 31, module: "COSTS", scopes: COMPANY, requires: ["employees.view"] },
     // A task's costs charged to its client (CLIENTS_PLAN.md §6.6): seeing
-    // them; managing them, which is the service fee and leaving one off the
-    // client's bill; and marking them collected, which moves money.
+    // them; setting them, which is the service fee and leaving one off the
+    // client's bill; and marking them collected, which moves money. Setting
+    // was charges.manage until PR 380, named charges.set as the table splits
+    // it, as a split into one: collecting already had its own.
     "charges.view":             { code: 60, module: "COSTS", scopes: TEAM_OR_COMPANY },
-    "charges.manage":           { code: 61, module: "COSTS", scopes: COMPANY, implies: ["charges.view"] },
+    "charges.manage":           { code: 61, module: "COSTS", scopes: COMPANY, implies: ["charges.view"], splitInto: ["charges.set"] },
+    "charges.set":              { code: 85, module: "COSTS", scopes: COMPANY, implies: ["charges.view"] },
     "charges.collect":          { code: 62, module: "COSTS", scopes: COMPANY, implies: ["charges.view"], highRisk: MOVES_MONEY },
     // An employee's cash advance (CLIENTS_PLAN.md §7.7): seeing their team's
     // or the company's, and giving and settling them, with returns and
@@ -362,8 +365,11 @@ export type Permission = keyof typeof PERMISSIONS
  *
  * 9: lists.rename, lists.merge and lists.archive (codes 82–84), split from
  * lists.manage (PR 379). Adding one stays lists.add.
+ *
+ * 10: charges.set (code 85), charges.manage named as a split into one
+ * (PR 380).
  */
-export const CATALOGUE_VERSION = 9
+export const CATALOGUE_VERSION = 10
 
 /** Codes of permissions that no longer exist. Never handed out again. */
 export const RETIRED_CODES: readonly number[] = []

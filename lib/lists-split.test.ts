@@ -115,7 +115,8 @@ describe("the catalogue", () => {
     })
 
     it("goes up a version, so every session reloads its grants once", () => {
-        expect(CATALOGUE_VERSION).toBe(9)
+        // 9 for this split; 10 since charges.set (PR 380).
+        expect(CATALOGUE_VERSION).toBeGreaterThanOrEqual(9)
     })
 
     it("seeds the built-in Admin with the three, and nobody with lists.manage; everyone adds, as before", () => {

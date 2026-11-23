@@ -25,7 +25,7 @@ describe("permission codes", () => {
         "settings.view": 46, "settings.edit": 47, "audit.view": 48,
         "locations.view": 55, "locations.add": 56, "locations.manage": 57, "locations.edit": 79, "locations.archive": 80, "locations.create": 81,
         "lists.add": 58, "lists.manage": 59, "lists.rename": 82, "lists.merge": 83, "lists.archive": 84,
-        "charges.view": 60, "charges.manage": 61, "charges.collect": 62,
+        "charges.view": 60, "charges.manage": 61, "charges.collect": 62, "charges.set": 85,
         "cash_advances.view": 63, "cash_advances.give": 64,
         "dayoff.request": 65,
         "attendance.view_team": 49, "attendance.correct": 50, "attendance.approve_overtime": 51, "attendance.approve_permissions": 52,

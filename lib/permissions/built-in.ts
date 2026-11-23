@@ -163,8 +163,9 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // collected (CLIENTS_PLAN.md §6.6). Given to the companies there
         // already are by step 6's third PR, once this release's role editor
         // is live.
+        // charges.manage, read as charges.set since PR 380.
         "charges.view": "COMPANY",
-        "charges.manage": "COMPANY",
+        "charges.set": "COMPANY",
         "charges.collect": "COMPANY",
         // Cash advances: an Admin sees everyone's, gives them and settles
         // them (CLIENTS_PLAN.md §7.7). Given to the companies there already

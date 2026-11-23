@@ -119,7 +119,8 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
     const filtersOn = (clientId ? 1 : 0) + (status !== 'due' ? 1 : 0) + (dateFrom || dateTo ? 1 : 0)
     const resetFilters = () => { setQuery(''); setSearch(''); setClientId(''); setStatus('due'); setDateFrom(''); setDateTo(''); setPage(1) }
 
-    const canManage = can('charges.manage')
+    // charges.manage until PR 380: the service fee and leaving one off the bill.
+    const canSet = can('charges.set')
     const canCollect = can('charges.collect')
 
     /** "Not charged to client", or charged again, from the row's menu (§6.2). */
@@ -196,7 +197,7 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
     // A collected one is locked (§6.5) until whoever may collect marks it uncollected.
     const menu = (c: ChargeRow): MenuItem[] => c.collectedAt
         ? (canCollect ? [{ key: 'uncollect', label: t('charges_mark_uncollected'), icon: ArrowCounterClockwiseIcon, onSelect: () => setUncollecting(c) }] : [])
-        : !canManage ? [] : c.notCharged
+        : !canSet ? [] : c.notCharged
             ? [{ key: 'charge', label: t('charges_charge_again'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void setCharged(c, false) } }]
             : [
                 { key: 'fee', label: t('charges_set_fee'), icon: PencilSimpleIcon, onSelect: () => setEditing(c) },
@@ -241,7 +242,7 @@ export default function ChargesList({ client: onPage }: { client?: { id: string;
         { key: 'fee', header: t('charges_col_fee'), align: 'end', cell: c => <span className="ui-nowrap">{money(c.serviceFee)}</span> },
         { key: 'total', header: t('charges_col_total'), align: 'end', cell: c => <strong className="ui-nowrap">{money(totalOf(c))}</strong> },
         { key: 'status', header: t('charges_col_status'), cell: state },
-        ...(canManage || canCollect ? [{ key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end' as const, cell: (c: ChargeRow) => actions(c) }] : []),
+        ...(canSet || canCollect ? [{ key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end' as const, cell: (c: ChargeRow) => actions(c) }] : []),
     ]
 
     const clientOptions = [
