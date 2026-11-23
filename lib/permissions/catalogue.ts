@@ -182,11 +182,15 @@ export const PERMISSIONS = {
     "clients.edit":             { code: 73, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
     "clients.delete":           { code: 74, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
     // The places tasks happen at (CLIENTS_PLAN.md §2.9): seeing them, adding
-    // one (as the task form will), and managing them (pin and radius,
-    // archiving, which is a client's HQ). Adding or managing includes seeing.
+    // one (as the task form does), and changing them, split from
+    // locations.manage by what is done (LATER_CHANGES_PLAN.md §2, PR 377):
+    // editing one (its name, pin and radius, and which is a client's HQ),
+    // and archiving or restoring one. Each includes seeing.
     "locations.view":           { code: 55, module: "CLIENTS", scopes: COMPANY },
     "locations.add":            { code: 56, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
-    "locations.manage":         { code: 57, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
+    "locations.manage":         { code: 57, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"], splitInto: ["locations.edit", "locations.archive"] },
+    "locations.edit":           { code: 79, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
+    "locations.archive":        { code: 80, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
     "costs.view":               { code: 31, module: "COSTS", scopes: COMPANY, requires: ["employees.view"] },
     // A task's costs charged to its client (CLIENTS_PLAN.md §6.6): seeing
     // them; managing them, which is the service fee and leaving one off the
@@ -339,8 +343,11 @@ export type Permission = keyof typeof PERMISSIONS
  * 6: obligations.create, obligations.edit, obligations.approve and
  * obligations.delete (codes 75–78), split from obligations.manage the same
  * way (PR 367), each at the scope obligations.manage was held at.
+ *
+ * 7: locations.edit and locations.archive (codes 79–80), split from
+ * locations.manage the same way (PR 377). Adding one stays locations.add.
  */
-export const CATALOGUE_VERSION = 6
+export const CATALOGUE_VERSION = 7
 
 /** Codes of permissions that no longer exist. Never handed out again. */
 export const RETIRED_CODES: readonly number[] = []

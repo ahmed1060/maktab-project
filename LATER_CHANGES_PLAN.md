@@ -117,6 +117,16 @@ The owner asked to break up every "manage" permission in the roles system.
       obligations only; held for the company, never one's own to approve
       or delete. The built-in Admin holds all four for the company, the
       Team Leader for their team. None is high-risk.
+  - **Locations (#377):** adding one has had a permission of its own since
+    the Locations page, `locations.add` (`CLIENTS_PLAN.md` §2.9), so it
+    stays, as `lists.add` does: the table's `locations.create` would be
+    the same thing twice. `locations.manage` splits into two:
+    - `locations.edit`: changing one's name, pin and radius, making one
+      its client's HQ, and changing a client's HQ in the client form;
+    - `locations.archive`: archiving one, and restoring it.
+    - Each is for the company, as `locations.manage` was. The built-in
+      Admin holds both, and the Team Leader neither, as before. Neither is
+      high-risk.
 
 ## 3. English and Arabic names (Decided)
 
@@ -649,3 +659,9 @@ permission bringing "See obligations". None found missing.
   a "when" checked only that its permission was named somewhere on the
   screen. Each call is now a method and a path, and each "when" quotes
   the code that decides it.
+- **2026-11-23:** #376 merged. The splits resume with locations, as #377.
+  Adding a location has had its own permission, `locations.add`, since
+  the Locations page, so it stays, as `lists.add` does, and
+  `locations.manage` splits into two: `locations.edit` (details, pin and
+  radius, and which is a client's HQ) and `locations.archive` (archiving
+  and restoring).

@@ -385,7 +385,7 @@ function ClientForm({ title, client, pickCompany = false, companyId, onClose, on
     const [opened] = useState<PlaceDraft>(() => (client ? hqDraft(client) : emptyPlace))
     const [hq, setHq] = useState<PlaceDraft>(opened)
     // Changing the HQ it has is changing a location (LocationService.saveHq).
-    const hqLocked = !!client?.locations?.[0] && !can('locations.manage')
+    const hqLocked = !!client?.locations?.[0] && !can('locations.edit')
     const [hqErrors, setHqErrors] = useState<PlaceErrors>({})
     const [tried, setTried] = useState(false)
     const [chosenCompany, setChosenCompany] = useState('')

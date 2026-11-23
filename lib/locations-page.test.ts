@@ -14,7 +14,7 @@ type Row = { id: string; name: string; isHq: boolean; latitude: number | null; l
 
 const state = {
     role: "ADMIN",
-    grants: new Set(["locations.view", "locations.add", "locations.manage", "clients.view"]),
+    grants: new Set(["locations.view", "locations.add", "locations.edit", "locations.archive", "clients.view"]),
     keys: [] as string[],
     rows: [] as Row[],
     failed: false,
@@ -46,7 +46,7 @@ const row = (over: Partial<Row>): Row => ({
 
 beforeEach(() => {
     state.role = "ADMIN"
-    state.grants = new Set(["locations.view", "locations.add", "locations.manage", "clients.view"])
+    state.grants = new Set(["locations.view", "locations.add", "locations.edit", "locations.archive", "clients.view"])
     state.keys = []
     state.rows = []
     state.failed = false

@@ -11,9 +11,10 @@ import type { CreateLocationInput, PlaceInput, UpdateLocationInput } from "@/lib
  * branches and sites, and shared places no client owns.
  *
  * Locations are the company's, so every check is company-wide: see them
- * with locations.view, add one with locations.add, and change one (its
- * details, archiving it, making it an HQ) with locations.manage. Another
- * company's is "not found", never "not allowed".
+ * with locations.view, add one with locations.add, change one (its details,
+ * or making it an HQ) with locations.edit, and archive or restore one with
+ * locations.archive (split from locations.manage, LATER_CHANGES_PLAN.md §2,
+ * PR 377). Another company's is "not found", never "not allowed".
  *
  * Until step 2 moves tasks onto locations, the task form still copies a
  * client's own location fields into a new task: those follow its HQ here
@@ -173,12 +174,20 @@ export class LocationService {
      * Changes a location: its details, archiving or restoring it, or making
      * it its client's HQ in place of the one it has. An HQ can't be archived;
      * another is made the HQ first.
+     *
+     * Each part of a change asks its own permission (PR 377): its details
+     * and making it the HQ, locations.edit; archiving or restoring it,
+     * locations.archive. A change that's both asks both, and one that's
+     * neither is an edit.
      */
     static async update(session: Session, input: UpdateLocationInput) {
         const who = actor(session)
         const found = await prisma.location.findUnique({ where: { id: input.id }, select: { companyId: true, clientId: true } })
         if (!found) throw new Error("TASK_LOCATION_NOT_FOUND")
-        allow(session, "locations.manage", found.companyId)
+        const archives = input.archived !== undefined
+        const edits = input.name !== undefined || input.latitude !== undefined || input.radiusMeters !== undefined || input.hq === true
+        if (edits || !archives) allow(session, "locations.edit", found.companyId)
+        if (archives) allow(session, "locations.archive", found.companyId)
         await prisma.$transaction(async tx => {
             if (found.clientId) await holdClient(tx, found.clientId)
             const before = await tx.location.findUnique({ where: { id: input.id }, select: { name: true, latitude: true, longitude: true, radiusMeters: true, archivedAt: true, isHq: true, clientId: true } })
@@ -301,15 +310,15 @@ export class LocationService {
      * The client's own location fields follow it.
      *
      * Whoever may add or edit clients gives a client its HQ, with the client
-     * or later for one without, but changing the one it has is changing a
-     * location: locations.manage, as on the Locations page.
+     * or later for one without, but changing the one it has is editing a
+     * location: locations.edit, as on the Locations page.
      */
     static async saveHq(tx: Tx, client: { id: string; companyId: string }, place: PlaceInput, session: Session) {
         const hq = await tx.location.findFirst({ where: { clientId: client.id, isHq: true }, select: { id: true, name: true, latitude: true, longitude: true, radiusMeters: true } })
         const details = { name: place.name, latitude: place.latitude, longitude: place.longitude, radiusMeters: place.radiusMeters ?? null }
         if (hq) {
             const changed = (Object.keys(details) as (keyof typeof details)[]).some(k => hq[k] !== details[k])
-            if (changed && !can(session.user as any, "locations.manage", { companyId: client.companyId })) throw new Error("TASK_LOCATION_FORBIDDEN")
+            if (changed && !can(session.user as any, "locations.edit", { companyId: client.companyId })) throw new Error("TASK_LOCATION_FORBIDDEN")
             await tx.location.update({ where: { id: hq.id }, data: details })
         }
         else await tx.location.create({ data: { ...details, companyId: client.companyId, clientId: client.id, isHq: true, createdById: actor(session).byUser } })

@@ -140,11 +140,14 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "clients.delete": "COMPANY",
         "costs.view": "COMPANY",
         // The places tasks happen at: whoever creates tasks sees and adds
-        // them; an Admin manages them (CLIENTS_PLAN.md §2.9). Given to the
-        // companies there already were by migration 20261110000000.
+        // them; an Admin edits, archives and restores them (CLIENTS_PLAN.md
+        // §2.9), split from locations.manage since PR 377. Given to the
+        // companies there already were by migration 20261110000000, as
+        // locations.manage, read as these two until the grant for them.
         "locations.view": "COMPANY",
         "locations.add": "COMPANY",
-        "locations.manage": "COMPANY",
+        "locations.edit": "COMPANY",
+        "locations.archive": "COMPANY",
         // The saved lists of cost names and task titles: everyone adds a
         // name; an Admin renames, merges and archives them (CLIENTS_PLAN.md
         // §5.7). Given to the companies there already are by step 5's
