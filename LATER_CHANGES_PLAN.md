@@ -401,7 +401,25 @@ They work together, each for a different case.
   own area's, a `requires` list for another area's, and a list of the
   softer ones for rule 3. A test reads what each screen asks the server
   for against the permission that opens it and that permission's needs,
-  so a screen that quietly needs another permission fails in CI.
+  so a screen that quietly needs another permission fails in CI. As
+  built from #376 (`lib/screen-asks.test.ts`), a table checked against
+  the code:
+  - For each screen, every call it makes, found in the page and the
+    components it uses, is in the table, and nothing else: a new call
+    fails until it's written down.
+  - Each call is one of: **needed** whenever the screen is open, naming
+    the permissions its route answers; asked only **when** the screen
+    checks one first, as a button or a tab; open to **anyone** in the
+    company; or the **Super Admin's** only, such as the company picker.
+    The route, or a service it calls, names each permission the table
+    gives it, and the screen checks each "when".
+  - A needed call is met by each permission that opens the screen:
+    itself, one it brings (`implies`), or one it needs first
+    (`requires`). Anything else fails, naming the screen and the call.
+  - Every page is in the table, waiting for it, or outside it (the
+    Super Admin's own pages, and one's own). The table comes in parts:
+    first the screens the remaining splits change, so each split keeps
+    its rows; the rest after.
 
 ### 5.2 Order
 
@@ -420,7 +438,13 @@ there:
 4. **Roles already saved** (rule 4, #375), after a read-only count of the
    roles in production that break a rule. Counted on 2026-11-22, before
    #372: of the 3 roles in production, none breaks rule 1, and there are
-   no templates.
+   no templates. Built as #375.
+5. **The screen test** ("Kept true" above), decided by the owner on
+   2026-11-23 to come before the splits. In parts: #376 for the screens
+   the remaining splits change (locations, saved lists, costs, clients,
+   employees and payroll); then the splits, each keeping its rows; then
+   the rest (tasks, obligations, requests, records, attendance and
+   settings).
 
 The two screens found to fix in §5.3 go in one PR of their own, as #368
 did, after the list is approved and before step 2: #370.
@@ -612,3 +636,7 @@ permission bringing "See obligations". None found missing.
   #375. Counted again, read-only: of production's 3 roles, still none
   breaks rule 1, and there are no templates, so nothing shows the mark
   today.
+- **2026-11-23:** #375 merged. Before the splits, the owner chose the
+  screen test the rules promised ("Kept true", §5.1), as step 5. Found
+  to be about 280 calls on 45 company screens, it comes in parts: #376
+  first, for the screens the remaining splits change.
