@@ -17,8 +17,8 @@ Status: **the names (§3) next.** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their longer
-limit done (#397). Their steps (§3.1) start with both languages kept
-(#398).
+limit done (#397). Of their steps (§3.1), both languages are kept (#398),
+and Nizmo's list of names and the rules are next (#399).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -360,14 +360,14 @@ other filled in when one is typed, if that's possible.
 
 ### 3.1 The steps
 
-1. **Both languages kept (#398):**
+1. **Both languages kept (Done, #398):**
    - the Arabic columns, and the names written in Arabic copied into
      them;
    - `lib/names.ts`: a name in the page's language (the other one while
      it has only one), and the language a name is missing;
    - the server takes the Arabic names where it takes the English ones,
      not yet asked for. No screen changes.
-2. **Nizmo's list of names, and the rules,** in `lib/` alone:
+2. **Nizmo's list of names, and the rules (#399),** in `lib/` alone:
    - about 2,000 common Egyptian and Arabic given names, each with its
      usual Egyptian English spelling, read both ways;
    - business words, each in its place in either language;
@@ -1099,3 +1099,7 @@ same day as drawn in the All users: status badges canvas
   approved the name fields' design the same day, written into
   `DESIGN.md` §5.3, and §3 is split into its steps (§3.1), starting with
   both languages kept (#398).
+- **2026-11-23:** #398 merged: both languages kept (§3.1, step 1). From
+  its Codex review, an unchanged name sent back with a form leaves a
+  corrected Arabic as it is, and a company's Arabic name is in its audit
+  log. Nizmo's list of names and the rules next, as #399.
