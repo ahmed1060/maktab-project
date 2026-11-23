@@ -3,13 +3,13 @@
 import { useId, useState } from 'react'
 import { CaretDownIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
-import { Icon, Select, StatusBadge } from '@/components/ui'
+import { ConfirmDialog, Icon, Select, StatusBadge } from '@/components/ui'
 import { PERMISSIONS, type Permission, type Scope } from '@/lib/permissions/catalogue'
 import type { Grants } from '@/lib/permissions/grants'
 import { hasModule, deserializeAccess, type SerializedAccess } from '@/lib/features/bundles'
 import {
     PERMISSION_GROUPS, permissionLabelKey, groupLabelKey, scopeLabelKey, riskLabelKey,
-    setGrant, neededBy, needsFirst, drift, widestScope,
+    setGrant, neededBy, needsFirst, drift, widestScope, addedFor, untick,
 } from '@/lib/permissions/matrix'
 
 /**
@@ -21,7 +21,11 @@ import {
  * matrix.ts), so what is shown is what gets saved. A row that needs another
  * area's permission first is greyed, saying which, until that one is ticked
  * (LATER_CHANGES_PLAN.md §5.1 rule 1, PR 372); ticked without it, as a role
- * saved before may be, it says so and is marked wrong, as it can't be saved. Rows in a module outside the
+ * saved before may be, it says so and is marked wrong, as it can't be saved.
+ * A row ticked for another of its area says why, "Added because Create tasks
+ * needs it", and one another area's needs says "Needed by"; unticking either
+ * asks first, "Create tasks needs it. Remove both?", and takes what needs it
+ * with it (rule 2, PR 374), where it was greyed. Rows in a module outside the
  * company's package are greyed, not hidden: the grant is kept and starts
  * working if the package changes. With `template`, rows that differ from it are
  * marked — a company's role drifting from what it was copied from.
@@ -44,12 +48,16 @@ export default function PermissionMatrix({ grants, onChange, disabled = false, a
     const id = useId()
     const [open, setOpen] = useState<Record<string, boolean>>({})
     const [compare, setCompare] = useState(false)
+    // Unticking a row another needs, waiting for "Remove both" (PR 374).
+    const [asking, setAsking] = useState<{ permission: Permission; grants: Grants; also: Permission[] } | null>(null)
 
     const features = access ? deserializeAccess(access) : null
     const needed = neededBy(grants)
+    const added = addedFor(grants)
     const drifted = compare && template ? drift(grants, template) : new Set<Permission>()
     const label = (p: Permission) => t(permissionLabelKey(p))
     const number = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
+    const names = (ps: Permission[]) => new Intl.ListFormat(locale === 'ar' ? 'ar' : 'en', { type: 'conjunction' }).format(ps.map(label))
 
     return (
         <section className="ui-perm-matrix" aria-labelledby={`${id}-title`}>
@@ -87,6 +95,9 @@ export default function PermissionMatrix({ grants, onChange, disabled = false, a
                                     const scopes = def.scopes as readonly Scope[]
                                     const outside = !!features && def.module !== null && !hasModule(features, def.module)
                                     const requiredBy = scope ? needed[p] : undefined
+                                    // Ticked for another of its area, or kept for another area's (PR 374).
+                                    const addedBy = scope ? added[p] : undefined
+                                    const neededOnly = requiredBy?.filter(q => !addedBy?.includes(q))
                                     const missing = needsFirst(grants, p)
                                     const risk = riskLabelKey(p)
                                     const differs = drifted.has(p)
@@ -94,7 +105,8 @@ export default function PermissionMatrix({ grants, onChange, disabled = false, a
                                     // reader says it too (audit on part 4c).
                                     const notes = [
                                         ...missing.map(u => t(u.companyWide ? 'roles_needs_first_company' : 'roles_needs_first').replace('{name}', label(u.needs))),
-                                        ...(requiredBy?.length ? [t('roles_needed_by').replace('{name}', requiredBy.map(label).join(t('list_separator')))] : []),
+                                        ...(addedBy?.length ? [t(addedBy.length === 1 ? 'roles_added_because_one' : 'roles_added_because_many').replace('{names}', names(addedBy))] : []),
+                                        ...(neededOnly?.length ? [t('roles_needed_by').replace('{name}', names(neededOnly))] : []),
                                         ...(outside ? [t('roles_not_in_package')] : []),
                                         ...(differs ? [t('roles_differs')] : []),
                                     ]
@@ -108,10 +120,15 @@ export default function PermissionMatrix({ grants, onChange, disabled = false, a
                                                         // Ticked without what it needs: it can't be saved like this.
                                                         aria-invalid={scope && missing.length ? true : undefined}
                                                         checked={!!scope}
-                                                        // A row another ticked row needs would only come back; one
-                                                        // that needs another area's first waits for it.
-                                                        disabled={disabled || !!requiredBy?.length || (!scope && missing.length > 0)}
-                                                        onChange={e => onChange(setGrant(grants, p, e.target.checked ? widestScope(p) : null))} />
+                                                        // One that needs another area's first waits for it.
+                                                        disabled={disabled || (!scope && missing.length > 0)}
+                                                        onChange={e => {
+                                                            if (e.target.checked) return onChange(setGrant(grants, p, widestScope(p)))
+                                                            // Another row needs it: asked first, as that row goes too.
+                                                            const out = untick(grants, p)
+                                                            if (out.also.length) setAsking({ permission: p, ...out })
+                                                            else onChange(out.grants)
+                                                        }} />
                                                     {label(p)}
                                                 </label>
                                                 {risk && <StatusBadge tone="problem">{t(risk)}</StatusBadge>}
@@ -138,6 +155,16 @@ export default function PermissionMatrix({ grants, onChange, disabled = false, a
                     )
                 })}
             </ul>
+
+            <ConfirmDialog
+                open={!!asking}
+                overModal
+                title={asking ? t('roles_remove_title').replace('{name}', label(asking.permission)) : ''}
+                body={asking ? t(asking.also.length === 1 ? 'roles_remove_needs_one' : 'roles_remove_needs_many').replace('{names}', names(asking.also)) : ''}
+                confirmLabel={t(asking && asking.also.length > 1 ? 'roles_remove_all' : 'roles_remove_both')}
+                onConfirm={() => { if (asking) onChange(asking.grants); setAsking(null) }}
+                onCancel={() => setAsking(null)}
+            />
         </section>
     )
 }

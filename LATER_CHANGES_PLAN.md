@@ -327,6 +327,19 @@ They work together, each for a different case.
 2. **Its own area's: ticked for you, and says why.** As today, with a
    note on the row: "Added because *Approve obligations* needs it".
    Unticking it asks "*Approve obligations* needs it. Remove both?"
+   As built in #374:
+   - The row isn't greyed any more. Unticking it asks, in a
+     confirmation over the role editor: "Remove *See obligations*?",
+     then who needs it, then Cancel and "Remove both", or "Remove all"
+     where more than one needs it.
+   - What it removes is everything ticked that needs it, all the way
+     down: unticking See salaries takes See payroll and Prepare payroll
+     with it, as See payroll would only bring it back.
+   - The same for one another area's permission needs (rule 1): its
+     note stays "Needed by *Create tasks*", as the Super Admin ticked it,
+     and unticking it asks the same.
+   - Nothing is asked for a row nothing needs, and the server is
+     unchanged: it still adds what's implied, as it always has.
 3. **Works with less: a warning on saving.** A permission that works
    without another, but with less, is saved once the Super Admin confirms
    a warning naming what's missing, as the separation-of-duties pairs are
@@ -395,7 +408,7 @@ there:
    it.
 3. **The rules in the role editor and on the server** (rules 1 to 3),
    one PR each: rule 1 first (#372), as it's the one that refuses a
-   save; then rule 3's warning (#373); then rule 2's notes.
+   save; then rule 3's warning (#373); then rule 2's notes (#374).
 4. **Roles already saved** (rule 4), after a read-only count of the
    roles in production that break a rule. Counted on 2026-11-22, before
    #372: of the 3 roles in production, none breaks rule 1, and there are
@@ -583,3 +596,7 @@ permission bringing "See obligations". None found missing.
   "It works, but" for See salaries now says what's lost, as an
   employee's history also shows salaries without See employees since
   #370.
+- **2026-11-23:** #373 merged. Rule 2's notes are next, as #374, which
+  also lets a row another one needs be unticked, asking first, where it
+  was greyed: rule 1's needed rows too, as #372 kept them as rule 2's
+  were.

@@ -406,9 +406,11 @@ later, attendance deductions are the same.
 Some permissions are useless alone: approving payroll without seeing it, editing a
 salary without viewing it. The catalogue records **implies** relationships
 (`payroll.approve` implies `payroll.view`; `salary.edit` implies `salary.view`).
-The role editor ticks implied permissions automatically and will not let them be
-removed while the permission that needs them is granted, so a Super Admin cannot
-build a role that half-works.
+The role editor ticks implied permissions automatically, saying why on the row
+("Added because *Create tasks* needs it"), so a Super Admin cannot build a role
+that half-works. Unticking one asks first, "*Create tasks* needs it. Remove
+both?", and removes what needs it with it (LATER_CHANGES_PLAN.md §5.1 rule 2;
+#374). Until #374 the row was greyed while needed.
 
 A permission that needs **another area's** is recorded as **requires**
 (`tasks.create` requires `locations.view`; LATER_CHANGES_PLAN.md §5.1 rule 1,

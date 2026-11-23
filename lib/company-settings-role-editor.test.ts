@@ -115,9 +115,9 @@ describe("the permission matrix", () => {
         const html = await matrix({ grants: { "employees.create": "COMPANY", "employees.view": "TEAM" } })
         expect(html).toMatch(new RegExp(`<label class="ui-choice"><input type="checkbox" class="ui-check"[^>]*name="perm-employees.create"[^>]*checked=""[^>]*/>${en.perm_employees_create}</label>`))
         expect(html).toContain(`<span class="ui-badge ui-badge-problem">${en.risk_cannot_be_undone}</span>`)
-        // Viewing is needed by adding, so it can't be unticked while adding is ticked.
-        expect(html.match(/<input[^>]*name="perm-employees.view"[^>]*>/)![0]).toContain('disabled=""')
-        expect(html).toContain(esc(en.roles_needed_by.replace("{name}", en.perm_employees_create)))
+        // Viewing is ticked for adding, and says so; unticking it asks first (PR 374).
+        expect(html.match(/<input[^>]*name="perm-employees.view"[^>]*>/)![0]).not.toContain('disabled=""')
+        expect(html).toContain(esc(en.roles_added_because_one.replace("{names}", en.perm_employees_create)))
         expect(html).toMatch(new RegExp(`<select[^>]*aria-label="${esc(en.who_can_scope)}: ${en.perm_employees_view}"[^>]*>`))
         expect(html).toContain(`<option value="TEAM" selected="">${en.scope_TEAM}</option>`)
         // One scope only: said, not chosen.
@@ -159,7 +159,7 @@ describe("found in the browser and the audit (company settings part 4c)", () => 
         const box = html.match(/<input[^>]*name="perm-employees.view"[^>]*>/)![0]
         const described = box.match(/aria-describedby="([^"]+)"/)
         expect(described).not.toBeNull()
-        expect(html).toContain(`<span id="${described![1]}" class="ui-hint ui-choice-hint">${esc(en.roles_needed_by.replace("{name}", en.perm_employees_create))}</span>`)
+        expect(html).toContain(`<span id="${described![1]}" class="ui-hint ui-choice-hint">${esc(en.roles_added_because_one.replace("{names}", en.perm_employees_create))}</span>`)
         // A box with nothing to say has nothing to point at.
         expect(html.match(/<input[^>]*name="perm-employees.create"[^>]*>/)![0]).not.toContain("aria-describedby")
     })
