@@ -19,6 +19,10 @@ owner answered on 2026-11-22:
 - §2's split and §3's way, as recommended, approved the same day;
 - rules between permissions (§5), as recommended, the same day.
 
+On 2026-11-23 the owner asked for status counts on All users (§6), and
+approved them with their canvas the same day. They're built before the
+grant for companies already there.
+
 ## 1. The company's name and icon (Moved)
 
 Moved to `THIRD_CHANGES_PLAN.md` on 2026-11-22, as the owner asked, with
@@ -638,6 +642,62 @@ permission bringing "See obligations". None found missing.
   fails other than by a refusal, who leads them isn't known, so the route
   decides (#370).
 
+## 6. Status counts on All users (Decided)
+
+The owner asked, on 2026-11-23, for badges at the top of the Super Admin's
+All users page, each saying how many people have one status. Approved the
+same day as drawn in the All users: status badges canvas
+(https://claude.ai/artifact/Hhwmkp6AxkidZz9uSAX9FU), and described in
+`DESIGN.md` §5.5, Status counts.
+
+- **Where:** All users, on the At work tab, between the tabs and the
+  filter bar.
+  - The Left tab has none: everyone on it has the same status.
+  - A company's own Employees list has none, for now.
+- **The badges:** Online, Offline, Suspended and Archived, in that order,
+  each with its count, in its status's colours.
+  - Each is there at 0 too, so the row doesn't move.
+  - Inactive gets none. Nothing sets it, and checked read-only on the live
+    database on 23 November, nobody has it: every person there is stored
+    as active.
+- **What they count:**
+  - everyone at work in the company picked, or in every company, on every
+    page of the list, counted by the server;
+  - the search doesn't change them;
+  - Online is whoever has a tab open now, as the list's badges say
+    (`lib/presence.ts`); Offline is everyone else at work, apart from
+    those suspended or archived.
+- **Pressed:**
+  - a badge shows only its status in the list, from its first page, with
+    the company and the search as they are;
+  - the address keeps it, as it keeps the tab, so a reload or a shared
+    link shows the same;
+  - a line under the row says so, such as "Showing online people only.",
+    with Show everyone;
+  - pressed again, it shows everyone.
+- **Live:** as people come and go, Online and Offline change in place, as
+  the list's badges do. When someone's tab goes quiet with nothing heard,
+  the counts are fetched again with the list, when the first person
+  counted online would stop counting (`REALTIME_PLAN.md`, part 6b).
+  - With every company, the page hears each company the picker lists, not
+    only those on the page shown, so a count changes for someone on
+    another page too. It's the Check-ins page's way, with the same known
+    limit: about 95 companies (`REALTIME_PLAN.md`, part 4c). There's one
+    company on the live database today.
+- **How it's built (#384):**
+  - `GET /api/users` answers with `statusCounts` when asked for them, for
+    the Super Admin only. They're counted over the same company and tab as
+    the list, without its search or status: one count for each status,
+    Online and Offline as the list's own status filter asks
+    (`presenceWhere`).
+  - Asked for counts, its `onlineRunsOutInMs` covers everyone counted
+    online, not only the people on the page shown.
+  - A pressed badge asks the list for its status with the `status` the
+    route already takes: `ACTIVE`, `OFFLINE`, `SUSPENDED` or `ARCHIVED`.
+  - The words: the badges' group, "People by status", and the line, in
+    both languages.
+- **Then** the grant for companies already there (§2), as #385.
+
 ## Not here
 
 - The client portal's later ideas stay in `CLIENT_PORTAL_PLAN.md` §13.
@@ -790,3 +850,7 @@ permission bringing "See obligations". None found missing.
 - **2026-11-23:** #382 merged. Settlements next, as #383, the last of the
   table's splits: `settlements.manage` splits into `settlements.view` and
   `settlements.resend`. Then the grant for companies already there.
+- **2026-11-23:** #383 merged, the last of the table's splits. The owner
+  asked for status counts on All users and approved them with their
+  canvas: §6, built next as #384, before the grant for companies already
+  there.
