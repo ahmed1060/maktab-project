@@ -190,6 +190,27 @@ The owner asked to break up every "manage" permission in the roles system.
       holds all three. Checked read-only on the live database on 23
       November: only the built-in Admin role holds `client_accounts.manage`,
       there are no templates, and no client has people who sign in yet.
+  - **Salary adjustments (#382):** `salary_adjustments.manage` splits into
+    two, by what each does to someone's pay:
+    - `salary_adjustments.add`: adding a bonus or a deduction to someone's
+      month;
+    - `salary_adjustments.reverse`: undoing one, both ways there are to:
+      rolling back one made by mistake, and reversing one that was right
+      when it was made. Each stays its own route and its own line in the
+      audit log; both take the days off the month the adjustment landed
+      on, and neither works once that month is approved.
+    - Each moves money, so each stays high-risk and asks for the step-up
+      code, as the table says. Each keeps what `salary_adjustments.manage`
+      had: for the company, never on one's own pay, including See
+      salaries, and needing See employees to reach anyone. Neither
+      includes the other: undoing doesn't need adding.
+    - The employee list's menu offers Add bonus and Add deduction to
+      whoever holds adding; someone's history offers each adjustment's
+      Reverse and Roll back to whoever holds reversing.
+    - The built-in Admin holds both. Checked read-only on the live
+      database on 23 November: only the built-in Admin role holds
+      `salary_adjustments.manage`, there are no templates, and no
+      adjustment has been made yet.
 
 ## 3. English and Arabic names (Decided)
 
@@ -746,3 +767,7 @@ permission bringing "See obligations". None found missing.
   `client_accounts.invite` and `client_accounts.remove`. Inviting stays
   high-risk and asks for the step-up code; removing, which the table
   doesn't keep high-risk, no longer does.
+- **2026-11-23:** #381 merged. Salary adjustments next, as #382:
+  `salary_adjustments.manage` splits into `salary_adjustments.add` and
+  `salary_adjustments.reverse`, which covers rolling back and reversing.
+  Both stay high-risk.
