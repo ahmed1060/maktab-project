@@ -148,7 +148,9 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
                 "ADMIN records.contribute", "ADMIN records.delete", "ADMIN records.edit", "ADMIN records.view",
                 "EMPLOYEE records.contribute", "EMPLOYEE records.view",
                 "TEAM_LEADER records.contribute", "TEAM_LEADER records.edit", "TEAM_LEADER records.view",
-            ])
+                // Clients' own since PR 385, parts of clients.manage, held by the Admin and 0c's role.
+                "ADMIN clients.delete", "ADMIN clients.edit", "null clients.delete", "null clients.edit",
+            ].sort())
             const { rows: [employeeRole] } = await db.query(`SELECT version FROM "Role" WHERE "companyId" = 'c1' AND "builtIn" = 'EMPLOYEE'`)
             // Once for the renaming, once more for 5b's lists.add (CLIENTS_PLAN.md §5.10), and
             // once for 2b's dayoff.request (UI_PLAN.md §2.3).
@@ -166,11 +168,15 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             expect(await grants(`g.permission LIKE 'vendors.%'`)).toEqual([])
             // With Add list names, which 5b gives every role (CLIENTS_PLAN.md §5.10), and Ask
             // for leave, which 2b gives every role of a company's own (UI_PLAN.md §2.3).
-            expect(await grants(`r.id = 'r-0b'`)).toEqual(["clients.manage COMPANY", "clients.view COMPANY", "dayoff.request OWN", "lists.add COMPANY", "tasks.view TEAM"])
+            // And clients.manage written as its parts since PR 385.
+            expect(await grants(`r.id = 'r-0b'`)).toEqual(["clients.create COMPANY", "clients.delete COMPANY", "clients.edit COMPANY", "clients.view COMPANY", "dayoff.request OWN", "lists.add COMPANY", "tasks.view TEAM"])
             // The built-in roles the roles migration seeded with vendors.*.
-            expect(await grants(`r."companyId" = 'c1' AND r."builtIn" = 'ADMIN' AND g.permission LIKE 'clients.%'`)).toEqual(["clients.manage COMPANY", "clients.view COMPANY"])
+            expect(await grants(`r."companyId" = 'c1' AND r."builtIn" = 'ADMIN' AND g.permission LIKE 'clients.%'`)).toEqual(["clients.create COMPANY", "clients.delete COMPANY", "clients.edit COMPANY", "clients.view COMPANY"])
             const { rows: [template] } = await db.query(`SELECT grants FROM "RoleTemplate" WHERE id = 't-0b'`)
-            expect(template.grants).toEqual([{ permission: "clients.manage", scope: "COMPANY" }, { permission: "tasks.view", scope: "TEAM" }, { permission: "clients.view", scope: "COMPANY" }])
+            expect([...template.grants].sort((a: { permission: string }, b: { permission: string }) => a.permission.localeCompare(b.permission))).toEqual([
+                { permission: "clients.create", scope: "COMPANY" }, { permission: "clients.delete", scope: "COMPANY" }, { permission: "clients.edit", scope: "COMPANY" },
+                { permission: "clients.view", scope: "COMPANY" }, { permission: "tasks.view", scope: "TEAM" },
+            ])
         })
 
         it("moves a company's own name and icon for Clients to the module's new key, as 0c found them and 0b saved them since (0c, 0d)", async () => {
