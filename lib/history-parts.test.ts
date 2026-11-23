@@ -30,7 +30,7 @@ describe("one's own history", () => {
     })
 
     it("has the bonuses, settlements and debts only with what their routes ask, as anyone's", () => {
-        expect(on(historyParts({ own: true, can: holding("salary.view", "settlements.manage", "debts.view"), has: ALL })))
+        expect(on(historyParts({ own: true, can: holding("salary.view", "settlements.view", "debts.view"), has: ALL })))
             .toEqual(["months", "adjustments", "settlements", "debts", "dayOff", "costs"])
     })
 })
@@ -41,10 +41,10 @@ describe("someone else's history", () => {
         [["employees.view"], [], []],
         [["salary.view"], ["months", "adjustments"], ["salary"]],
         [["debts.view"], ["debts"], ["salary"]],
-        [["settlements.manage"], ["settlements"], ["salary"]],
+        [["settlements.view"], ["settlements"], ["salary"]],
         [["dayoff.view"], ["dayOff"], ["day-off"]],
         [["costs.view"], ["costs"], ["costs"]],
-        [["employees.view", "salary.view", "dayoff.view", "costs.view", "debts.view", "settlements.manage"], [...PARTS], ["salary", "day-off", "costs"]],
+        [["employees.view", "salary.view", "dayoff.view", "costs.view", "debts.view", "settlements.view"], [...PARTS], ["salary", "day-off", "costs"]],
     ])("holding %j, asks for %j and shows %j", (held, parts, tabs) => {
         const got = historyParts({ own: false, can: holding(...held), has: ALL })
         expect(on(got)).toEqual(parts)
@@ -53,7 +53,7 @@ describe("someone else's history", () => {
 })
 
 describe("the company's package", () => {
-    const everything = holding("employees.view", "salary.view", "dayoff.view", "costs.view", "debts.view", "settlements.manage")
+    const everything = holding("employees.view", "salary.view", "dayoff.view", "costs.view", "debts.view", "settlements.view")
 
     it("leaves out the day off without Day off, and its tab", () => {
         const parts = historyParts({ own: true, can: everything, has: m => m !== "DAY_OFF" })
@@ -98,7 +98,7 @@ describe("each part asks what its route asks", () => {
         ["[id]/day-off-history", 'if (!isSelf && !can(session.user, "dayoff.view"))', "DAY_OFF"],
         ["[id]/costs-history", 'if (!isSelf && !can(session.user, "costs.view"))', "PAYROLL"],
         ["[id]/adjustments", 'if (!can(session.user, "salary.view"))', "SALARY_ADJUSTMENTS"],
-        ["[id]/settlements", 'if (!can(session.user, "settlements.manage"))', "PAYROLL"],
+        ["[id]/settlements", 'if (!can(session.user, "settlements.view"))', "PAYROLL"],
         ["[id]/debts", 'if (!managesCompany(session.user, "debts.view", user.companyId))', "PAYROLL"],
     ])("%s: %s, in %s", (path, rule, module) => {
         expect(route(path)).toContain(rule)
@@ -138,7 +138,7 @@ describe("what the viewer holds for the person (Codex on PR 370)", () => {
     })
 
     it("See employees held for a team keeps all of someone else's history to that team", () => {
-        const grants = { "employees.view": "TEAM", "costs.view": "COMPANY", "settlements.manage": "COMPANY" } as const
+        const grants = { "employees.view": "TEAM", "costs.view": "COMPANY", "settlements.view": "COMPANY" } as const
         expect(parts(grants, led)).toEqual(["settlements", "costs"])
         expect(parts(grants, other)).toEqual([])
         expect(parts(grants, null)).toEqual([])

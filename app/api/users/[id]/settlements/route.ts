@@ -14,7 +14,7 @@ import { SettlementService } from "@/lib/services/settlement.service"
 export const GET = withStandardHandler(async (req, session, _json, { params }) => {
     const userId = params.id
 
-    if (!can(session.user, "settlements.manage")) {
+    if (!can(session.user, "settlements.view")) {
         return ApiResponse.forbidden("Managers only")
     }
     if (!(await verifyResourceAccess(session, userId, 'USER'))) {

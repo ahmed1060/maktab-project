@@ -33,6 +33,9 @@ const NEEDS: [Permission, Permission][] = [
     ["salary_adjustments.add", "employees.view"],
     ["salary_adjustments.reverse", "employees.view"],
     ["settlements.manage", "employees.view"],
+    // Its parts, since PR 383: seeing someone's settlements, and sending one.
+    ["settlements.view", "employees.view"],
+    ["settlements.resend", "employees.view"],
     ["debts.view", "employees.view"],
     ["costs.view", "employees.view"],
     ["requests.reset_points", "employees.view"],

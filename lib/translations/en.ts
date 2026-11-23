@@ -4166,6 +4166,8 @@ export const en = {
         perm_payroll_issue_payslips: "Issue payslips",
         perm_payroll_mark_paid: "Mark payroll paid",
         perm_settlements_manage: "Manage final settlements",
+        perm_settlements_view: "See final settlements",
+        perm_settlements_resend: "Send final settlements by email",
         perm_debts_view: "See employee debts",
         perm_debts_waive: "Waive debts",
         perm_settings_view: "See company settings",

@@ -15,12 +15,13 @@ import { en } from "./translations/en"
  */
 
 type Shown = { data?: unknown; error?: unknown }
-const state = { locale: "en" as "en" | "ar", shown: {} as Shown }
+const state = { locale: "en" as "en" | "ar", shown: {} as Shown, perms: new Set<string>() }
 vi.mock("next/navigation", () => ({ useParams: () => ({ id: "d1" }) }))
 vi.mock("@/context/LanguageContext", () => ({
     useLanguage: () => ({ locale: state.locale, t: (key: string) => (state.locale === "ar" ? ar : en)[key as keyof typeof en] ?? key }),
 }))
 vi.mock("@/context/ToastContext", () => ({ useToast: () => ({ showToast: () => {} }) }))
+vi.mock("@/lib/useCan", () => ({ useCan: () => ({ can: (k: string) => state.perms.has(k) }) }))
 vi.mock("swr", () => ({
     default: (key: string | null) => ({ data: undefined, error: undefined, isLoading: !state.shown.data && !state.shown.error, isValidating: false, mutate: async () => {}, ...(key ? state.shown : {}) }),
 }))
@@ -44,9 +45,10 @@ async function payslip({ shown = { data: { data: PAYSLIP } } as Shown, locale = 
     const { default: Page } = await import("@/app/(dashboard)/dashboard/documents/payslip/[id]/page")
     return renderToStaticMarkup(h(Page))
 }
-async function settlement({ shown = { data: { data: SETTLEMENT } } as Shown, locale = "en" as "en" | "ar" } = {}) {
+async function settlement({ shown = { data: { data: SETTLEMENT } } as Shown, locale = "en" as "en" | "ar", perms = ["settlements.view", "settlements.resend"] } = {}) {
     state.locale = locale
     state.shown = shown
+    state.perms = new Set(perms)
     const { default: Page } = await import("@/app/(dashboard)/dashboard/documents/settlement/[id]/page")
     return renderToStaticMarkup(h(Page))
 }
@@ -153,6 +155,12 @@ describe("a settlement statement", () => {
         expect(html).toContain(`<h1 class="ui-page-title">${en.doc_settlement}</h1>`)
         expect(html).toMatch(new RegExp(`<div class="ui-page-actions"><button type="button" class="ui-btn ui-btn-secondary">${en.doc_send}</button><button type="button" class="ui-btn ui-btn-primary">.*Print</button></div>`))
         expect(await settlement({ shown: { data: { data: { ...SETTLEMENT, emailedAt: "2026-10-16T09:00:00Z" } } } })).toContain(`>${en.doc_send_again}</button>`)
+    })
+
+    it("offers Print alone to whoever may only see it, as sending it is its own permission (PR 383)", async () => {
+        const html = await settlement({ perms: ["settlements.view"] })
+        expect(html).toMatch(new RegExp(`<div class="ui-page-actions"><button type="button" class="ui-btn ui-btn-primary">.*Print</button></div>`))
+        expect(html).not.toContain(`>${en.doc_send}</button>`)
     })
 
     it("shows both sides, the net, what was taken back and what's to be paid", async () => {

@@ -194,7 +194,7 @@ describe("what the page asks for (PR 370)", () => {
     })
 
     it("asks nothing of Payroll's without Payroll in the package, and leaves out the bonuses and deductions without Salary adjustments", async () => {
-        const everything = [...HR, "debts.view", "settlements.manage"]
+        const everything = [...HR, "debts.view", "settlements.view"]
         const html = await page({ perms: everything, off: ["PAYROLL"] })
         for (const path of ["salary-history", "costs-history", "settlements", "debts"]) expect(asked(`/api/users/u2/${path}`)).toBe(false)
         expect(tabs(html)).toEqual([en.salary_label, en.hist_tab_day_off])
@@ -214,7 +214,7 @@ describe("what the page asks for (PR 370)", () => {
 
     it("says so when there's nothing yet, to a viewer who sees debts or settlements alone", async () => {
         const none = { data: { data: [] } }
-        const html = await page({ perms: ["employees.view", "debts.view", "settlements.manage"], swr: { "/api/users/u2/debts": none, "/api/users/u2/settlements": none } })
+        const html = await page({ perms: ["employees.view", "debts.view", "settlements.view"], swr: { "/api/users/u2/debts": none, "/api/users/u2/settlements": none } })
         expect(html).toContain(en.hist_nothing_yet)
         expect(await page({ perms: ["employees.view", "debts.view"] })).toContain(en.loading)
         expect(await page({ swr: { "/api/users/u2/salary-history": { data: { data: [OCT] } } } })).not.toContain(en.hist_nothing_yet)

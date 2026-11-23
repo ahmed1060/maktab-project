@@ -37,7 +37,7 @@ export function historyParts(viewer: { own: boolean; can: (permission: Permissio
     const parts = {
         months: has('PAYROLL') && (own || can('salary.view')),
         adjustments: has('SALARY_ADJUSTMENTS') && can('salary.view'),
-        settlements: has('PAYROLL') && can('settlements.manage'),
+        settlements: has('PAYROLL') && can('settlements.view'),
         debts: has('PAYROLL') && can('debts.view'),
         dayOff: has('DAY_OFF') && (own || can('dayoff.view')),
         costs: has('PAYROLL') && (own || can('costs.view')),

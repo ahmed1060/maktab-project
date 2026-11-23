@@ -7,13 +7,15 @@ import { Button, Details, DocGroup, DocLine, DocNote, DocTotal, DocumentSheet, E
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
+import { useCan } from '@/lib/useCan'
 
 /**
  * One final settlement statement, to print or send again by email.
  *
  * On the building blocks (UI_PLAN.md §5 step 5, Documents part 2, PR 155;
  * DESIGN.md §5.5, Document): the page header with Send by email beside
- * Print, above the sheet so neither is on the paper, and who owes whom said
+ * Print, above the sheet so neither is on the paper, Send by email for
+ * whoever may send it (PR 383), and who owes whom said
  * in words, with its colour as a bar that prints, where the old coloured fill
  * didn't. One that isn't there, or isn't theirs to see, says so; one that
  * didn't load says that instead, with Try again.
@@ -40,6 +42,9 @@ export default function SettlementDocumentPage() {
     const { showToast } = useToast()
     const params = useParams()
     const isRtl = locale === 'ar'
+    // Send by email, for whoever may send it; seeing it is enough to print (PR 383).
+    const { can } = useCan()
+    const canSend = can('settlements.resend')
 
     const { data, error, isLoading, isValidating, mutate } = useSWR(`/api/settlements/${params.id}`, fetcher)
     // A failed refresh after a resend keeps the document on screen: the
@@ -73,7 +78,7 @@ export default function SettlementDocumentPage() {
             title={t('doc_settlement')}
             subtitle={doc?.person.name}
             action={doc && <>
-                <Button busy={sending} onClick={resend}>{doc.emailedAt ? t('doc_send_again') : t('doc_send')}</Button>
+                {canSend && <Button busy={sending} onClick={resend}>{doc.emailedAt ? t('doc_send_again') : t('doc_send')}</Button>}
                 <Button variant="primary" icon={PrinterIcon} onClick={() => window.print()}>{t('doc_print')}</Button>
             </>}
         />

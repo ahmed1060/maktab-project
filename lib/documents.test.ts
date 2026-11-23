@@ -55,15 +55,15 @@ describe("who may read one", () => {
     })
 
     it("keeps settlements to managers, because the subject cannot sign in", () => {
-        expect(SETTLEMENT_API).toContain("managesCompany(session.user, \"settlements.manage\", settlement.companyId)")
+        expect(SETTLEMENT_API).toContain("managesCompany(session.user, \"settlements.view\", settlement.companyId)")
         expect(SETTLEMENT_API).not.toContain("isOwner")
     })
 
-    it("and re-sending one is held to exactly the same test", () => {
+    it("and re-sending one is held to the same test, with sending, which includes seeing (PR 383)", () => {
         // A send is a disclosure. An action route that checked less than the
         // read route would be a way to mail somebody else's settlement to
         // whatever address is on file, without ever being able to see it.
-        expect(RESEND_API).toContain("managesCompany(session.user, \"settlements.manage\", settlement.companyId)")
+        expect(RESEND_API).toContain("managesCompany(session.user, \"settlements.resend\", settlement.companyId)")
         expect(RESEND_API).toContain("ApiResponse.forbidden")
     })
 })

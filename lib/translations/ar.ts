@@ -4150,6 +4150,8 @@ export const ar = {
         perm_payroll_issue_payslips: "إصدار قسائم الرواتب",
         perm_payroll_mark_paid: "تسجيل صرف الرواتب",
         perm_settlements_manage: "إدارة التسويات النهائية",
+        perm_settlements_view: "عرض التسويات النهائية",
+        perm_settlements_resend: "إرسال التسويات النهائية بالبريد الإلكتروني",
         perm_debts_view: "عرض ديون الموظفين",
         perm_debts_waive: "إعفاء الديون",
         perm_settings_view: "عرض إعدادات الشركة",
