@@ -591,7 +591,12 @@ They work together, each for a different case.
     here because the screen imports only part of a file is checked both
     ways: the import quoted is in the code, and no file of the screen
     takes anything else from that file, so a second import of it can't
-    leave real calls marked as not made.
+    leave real calls marked as not made. Since #393, the test also
+    follows a `lib` file that sends through a sender the screen gives it
+    (`post: Post`, as `lib/mobile` does for check-in), and reads each call
+    through that sender as POST, as the screen's senders send JSON by
+    POST; other `lib` files aren't followed, as tables of paths such as
+    `lib/features/routes.ts` aren't calls.
   - A needed call is met by each permission that opens the screen:
     itself, one it brings (`implies`), or one it needs first
     (`requires`). Anything else fails, naming the screen and the call.
@@ -971,3 +976,12 @@ same day as drawn in the All users: status badges canvas
   of the same file, taking more, would have left real calls marked as
   not made. The test now checks that the screen takes nothing else from
   that file, which keeps attendance's request dialog rows honest too.
+- **2026-11-23:** #392 merged. Check-in next, as #393. Its own calls,
+  registering a phone, checking in, face keys and photos, and the push
+  token, are made from `lib/mobile`, through a `post` the screen passes
+  in. Following every `lib` file was tried and dropped: it took tables of
+  paths for calls, 20 on Tasks alone. So the test follows only a `lib`
+  file that sends through a `post: Post` it's given, which is exactly
+  `lib/mobile`'s three. Check-in imports one dialog from attendance's
+  Requests tab, asking for a permission when late, so that tab's other
+  calls aren't made from it.

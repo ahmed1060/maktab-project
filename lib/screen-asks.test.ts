@@ -31,8 +31,8 @@ import { PERMISSIONS, requiresOf, type Permission } from "./permissions/catalogu
  * In parts: first the screens the remaining splits change (§2, PR 376), so
  * each split kept its rows; then the task screens (PR 387); then the
  * obligation, record and document screens (PR 388); then Requests (PR 389);
- * then the people screens (PR 390); then attendance (PR 391); the rest wait
- * in LATER.
+ * then the people screens (PR 390); then attendance (PR 391); then check-in
+ * (PR 393); the rest wait in LATER.
  */
 
 /**
@@ -104,6 +104,8 @@ const PUNCH_ACCESS = "lib/attendance/punch-access.ts"
 const CORRECTS_COMPANY = "const correctsCompany = p.companyWide('attendance.correct')"
 const CORRECTS_ROW = "const corrects = (row: { userId: string; teamLeaderId: string | null }) => row.userId !== me && p.canFor('attendance.correct', row.userId, row.teamLeaderId)"
 const FACE_TAB = ["...(p.companyWide('attendance.approve_face') ? ['face' as const] : []),", "{tab === 'face' && <FaceTab q={q} />}"]
+/** Check-in's (PR 393): it imports one dialog from attendance's Requests tab, asking for a permission when late. */
+const LATE_ASKING = notHere("import { AskPermissionDialog } from '../attendance/RequestsTab'")
 
 const SCREENS: Record<string, Screen> = {
     // The task screens (PR 387).
@@ -317,6 +319,52 @@ const SCREENS: Record<string, Screen> = {
             "PUT /api/role-change-requests/[x]": { superAdmin: ["end={side === 'superAdmin' && r.status === 'OPEN' && ("], routeChecks: "lib/services/role-change-request.service.ts" },
             "GET /api/access-reviews": { needs: ["employees.assign_role"], routeChecks: "lib/services/access-review.service.ts" },
             "PUT /api/access-reviews/lines/[x]": { needs: ["employees.assign_role"], routeChecks: "lib/services/access-review.service.ts" },
+        },
+    },
+    "check-in": {
+        // Everyone's, from their own phone; the Super Admin has none (lib/side-bar.ts), and the routes refuse them.
+        opens: ANYONE,
+        asks: {
+            // One's own phone and face check, and their consent to it.
+            "GET /api/attendance/phone": ANYONE,
+            "GET /api/attendance/face": ANYONE,
+            "POST /api/attendance/face/consent": ANYONE,
+            "DELETE /api/attendance/face/consent": ANYONE,
+            // Sent from lib/mobile through the sender the screen gives it: the phone registered, a check-in, the face
+            // check's key and photos, and where to send notices.
+            "POST /api/attendance/phone/challenge": ANYONE,
+            "POST /api/attendance/phone/register": ANYONE,
+            "POST /api/attendance/check-in": ANYONE,
+            "POST /api/attendance/face/key": ANYONE,
+            "POST /api/attendance/face/key/ack": ANYONE,
+            "POST /api/attendance/face/photo": ANYONE,
+            "POST /api/attendance/phone/push-token": ANYONE,
+            // Late: a permission asked for, with the hours left.
+            "GET /api/attendance/permissions/balance": ANYONE,
+            "POST /api/attendance/permissions": ANYONE,
+            // The rest of the Requests tab: one's phone withdrawn, a missing punch, and overtime approved ahead.
+            "DELETE /api/attendance/phone": LATE_ASKING,
+            "POST /api/attendance/missing-punches": LATE_ASKING,
+            "GET /api/attendance/people": LATE_ASKING,
+            "POST /api/attendance/overtime": LATE_ASKING,
+            "GET /api/attendance/missions/tasks": ASKING_DIALOGS,
+            "POST /api/attendance/missions": ASKING_DIALOGS,
+            "DELETE /api/attendance/permissions/[x]": ASKING_DIALOGS,
+            "DELETE /api/attendance/missions/[x]": ASKING_DIALOGS,
+            "DELETE /api/attendance/missing-punches/[x]": ASKING_DIALOGS,
+            "DELETE /api/attendance/overtime/[x]": ASKING_DIALOGS,
+            "DELETE /api/attendance/phones/[x]": ASKING_DIALOGS,
+            "DELETE /api/attendance/flagged/[x]": ASKING_DIALOGS,
+            "POST /api/attendance/permissions/[x]/decide": ASKING_DIALOGS,
+            "POST /api/attendance/missions/[x]/decide": ASKING_DIALOGS,
+            "POST /api/attendance/missions/[x]/cancel": ASKING_DIALOGS,
+            "POST /api/attendance/missing-punches/[x]/decide": ASKING_DIALOGS,
+            "POST /api/attendance/overtime/[x]/decide": ASKING_DIALOGS,
+            "POST /api/attendance/flagged/[x]/decide": ASKING_DIALOGS,
+            "POST /api/attendance/phones/[x]/decide": ASKING_DIALOGS,
+            "POST /api/attendance/phones/[x]/revoke": ASKING_DIALOGS,
+            "POST /api/profile-requests/[x]/[x]": ASKING_DIALOGS,
+            "PUT /api/role-requests/[x]": ASKING_DIALOGS,
         },
     },
     "attendance": {
@@ -567,7 +615,6 @@ const SCREENS: Record<string, Screen> = {
 const LATER = [
     // The home page.
     "",
-    "check-in",
     "settings", "settings/client-messages/[kind]", "settings/terminal-guide",
 ]
 
@@ -606,7 +653,14 @@ function resolveImport(from: string, spec: string): string | null {
     return null
 }
 
-/** A screen's own files: its page, and the components and hooks it uses, not the building blocks. */
+/**
+ * The sender a screen gives lib/mobile (lib/mobile/check-in-flow.ts's `Post`):
+ * check-in's sends its body as JSON by POST, as a self-test holds (PR 393).
+ */
+const GIVEN_SENDER = /\bpost: Post\b/
+
+/** A screen's own files: its page, and the components and hooks it uses, not the building blocks;
+ * and a lib file that sends through a sender it's given (PR 393). */
 function screenFiles(file: string, seen = new Set<string>()): Set<string> {
     if (seen.has(file)) return seen
     seen.add(file)
@@ -615,6 +669,8 @@ function screenFiles(file: string, seen = new Set<string>()): Set<string> {
         if (!found) continue
         const r = relative(ROOT, found)
         const follows = (r.startsWith("components/") && !r.startsWith("components/ui/")) || r.startsWith("app/(dashboard)/") || /^lib\/use[A-Z]/.test(r)
+            // A lib file that sends through the sender a screen gives it, as lib/mobile does for check-in (PR 393).
+            || (r.startsWith("lib/") && GIVEN_SENDER.test(readFileSync(found, "utf8")))
         if (follows) screenFiles(found, seen)
     }
     return seen
@@ -696,11 +752,15 @@ function callsIn(src: string): Set<string> {
  * a helper such as attendance's send, or one a screen writes, as its `act`
  * (PR 391), whose arguments after it name others: as written, built by
  * `json('POST', …)`, as both sides of a choice (`editing ? 'PUT' : 'POST'`),
- * or, given as `method`, as declared above it. A path kept in a variable is
+ * or, given as `method`, as declared above it; or given to the sender a
+ * screen gives lib/mobile, as POST (PR 393). A path kept in a variable is
  * read where it's written, as GET.
  */
 function methodsOf(src: string, start: number): string[] {
-    if (!givenToACall(src, start)) return ["GET"]
+    const call = callOf(src, start)
+    if (!call) return ["GET"]
+    // Given to the sender a screen gives lib/mobile, which sends by POST (PR 393).
+    if (call.name === "post" && GIVEN_SENDER.test(src)) return ["POST"]
     let depth = 0, k = start
     for (; k < src.length; k++) {
         const c = src[k]
@@ -719,17 +779,18 @@ function methodsOf(src: string, start: number): string[] {
 }
 
 /**
- * Whether what starts at `start` is given to a call: the nearest bracket left
- * open before it is a parenthesis, not a function's body or an object (PR 391).
+ * The call what starts at `start` is given to, by name: the nearest bracket
+ * left open before it is a parenthesis, not a function's body or an object
+ * (PR 391).
  */
-function givenToACall(src: string, start: number): boolean {
+function callOf(src: string, start: number): { name: string } | null {
     let depth = 0
     for (let k = start - 1; k >= 0; k--) {
         const c = src[k]
         if (")]}".includes(c)) depth++
-        else if ("([{".includes(c) && depth-- === 0) return c === "("
+        else if ("([{".includes(c) && depth-- === 0) return c === "(" ? { name: /([\w$]*)\s*$/.exec(src.slice(Math.max(0, k - 40), k))![1] } : null
     }
-    return false
+    return null
 }
 
 /** The route files a call can reach: [x] is the dynamic segment, or, with none, any folder. */
@@ -974,6 +1035,31 @@ describe("the test itself", () => {
         // Asked for, or shown: read.
         expect([...callsIn("useSWR(on ? `/api/attendance/people?${q}` : null, fetcher)")]).toEqual(["GET /api/attendance/people"])
         expect([...callsIn("<Photo src={`/api/face/${id}/photo?which=new`} label={t('x')} />")]).toEqual(["GET /api/face/[x]/photo"])
+    })
+
+    it("reads a call through the sender a screen gives lib/mobile as POST, and no other call so (PR 393)", () => {
+        const flow = "export async function registerPhone(device: CheckInDevice, post: Post) {\n    const { nonce } = await post(\"/api/attendance/phone/challenge\", { purpose: \"REGISTER\" })\n}"
+        expect([...callsIn(flow)]).toEqual(["POST /api/attendance/phone/challenge"])
+        // A function of the same name that isn't the sender it's given.
+        expect([...callsIn("const post = (url: string) => fetch(url)\nawait post('/api/lists', {})")]).toEqual(["GET /api/lists"])
+        // Beside the sender it's given, a call not sent through it is read as it's written.
+        expect([...callsIn("export async function f(post: Post) {\n    const tasks = await fetcher('/api/attendance/missions/tasks')\n    await post('/api/attendance/missions', {})\n}")].sort())
+            .toEqual(["GET /api/attendance/missions/tasks", "POST /api/attendance/missions"])
+    })
+
+    it("follows a lib file that sends through the sender it's given, and no other lib file (PR 393)", () => {
+        const files = [...screenFiles(pageFile("check-in"))].map(f => relative(ROOT, f))
+        expect(files).toEqual(expect.arrayContaining(["lib/mobile/check-in-flow.ts", "lib/mobile/face.ts", "lib/mobile/push.ts"]))
+        expect(files.filter(f => f.startsWith("lib/") && !/^lib\/use[A-Z]/.test(f)).sort()).toEqual(["lib/mobile/check-in-flow.ts", "lib/mobile/face.ts", "lib/mobile/push.ts"])
+    })
+
+    it("is right that the senders check-in gives lib/mobile send by POST (PR 393)", () => {
+        // Each function shaped as lib/mobile's Post, (url, body), sends its body as JSON by POST.
+        const screen = readFileSync(join(DASHBOARD, "check-in/CheckInScreen.tsx"), "utf8")
+        const senders = [...screen.matchAll(/const (\w+) = async \(url: string, body: unknown\) =>/g)].map(m => m[1])
+        const posting = [...screen.matchAll(/const (\w+) = async \(url: string, body: unknown\) => \{\n\s+const r = await send\(url, json\('POST', body\)/g)].map(m => m[1])
+        expect(senders).toEqual(["quiet", "post"])
+        expect(posting).toEqual(senders)
     })
 
     it("reads a table of paths as its uses, not its entries (PR 389)", () => {
