@@ -1154,6 +1154,27 @@ These are built once, in the building-blocks PR, and every page uses them
   - up to 4 in a row on computers, 2 on phones while their values fit
     half the row. A value is never broken, an amount from its currency
     least of all: a tile whose value needs more takes the row.
+- **Status counts:** how many of a list's people have each status, as a
+  row of pills above the list that can show only one status, such as the
+  Super Admin's All users (`LATER_CHANGES_PLAN.md` §6):
+  - one pill for each status the list's Status column can show, in its
+    order: the status's word, then its count in weight 600 with even-width
+    digits. `--text-sm`, weight 500, fully round, 44px tall, in that
+    status's badge colours (§2.3), so a word is never told by its colour
+    alone;
+  - every one is there, at 0 too, so the row doesn't move as counts
+    change;
+  - the counts are of everyone the list is for, on every page of it, such
+    as the company picked. A search doesn't change them;
+  - each pill is a button that shows only its status in the list. Pressed,
+    it has a tick before its word and a 2px `--brand` ring outside it,
+    apart from the pill by 2px of the page's colour, and says it's
+    pressed to screen readers. Pressed again, it shows everyone;
+  - while one is pressed, a line under the row says so, such as "Showing
+    online people only.", in `--text-sm` and `--muted`, with Show everyone
+    as a link-styled button;
+  - between the tabs and the filter bar, wrapping onto more lines on a
+    phone, never scrolling sideways.
 - **Donut chart:** a ring for how a whole splits into a few parts, such as
   tasks by status or day off credit used and left.
   - The ring is 160px across and thin, a tenth of that. Its parts have
@@ -2506,7 +2527,8 @@ These are built once, in the building-blocks PR, and every page uses them
     which they know of, and not as a page opens. What changed while a tab
     was out of sight is shown as it comes back.
   - **not for who's online:** someone coming or going changes only their
-    badge on the Employees list and All users, in place, untinted. People
+    badge on the Employees list and All users, and All users' status
+    counts, in place, untinted. People
     come and go dozens of times a morning, and nobody changed the list
     (`REALTIME_PLAN.md`, part 6b).
 - **How each comes in** (with Emil Design Engineering, `UI_PLAN.md` §7.1):
@@ -3351,3 +3373,9 @@ changed:
   change from a later date listed to withdraw, and the year's public
   holidays marked Worked through while it's off (`FIRST_CHANGES_PLAN.md`
   §6).
+- **2026-11-23:** Status counts (§5.5), as the owner approved in the All
+  users: status badges canvas: a pill for each status with its count, at 0
+  too, counting everyone the list is for whatever is searched, each
+  pressed to show only its status, with a line saying so and Show
+  everyone; and they change in place as people come and go (§8)
+  (`LATER_CHANGES_PLAN.md` §6).

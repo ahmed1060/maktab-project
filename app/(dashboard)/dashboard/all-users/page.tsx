@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import {
     BuildingsIcon, EnvelopeSimpleIcon, HourglassIcon, IdentificationBadgeIcon, LockIcon, MagnifyingGlassIcon, ShieldCheckIcon, TrashIcon,
     UserMinusIcon, UsersIcon, WarningCircleIcon,
@@ -14,11 +14,11 @@ import DeleteTemplateDialog from '@/components/DeleteTemplateDialog'
 import { SignInLock } from '@/components/SignInLock'
 import {
     Avatar, Button, ButtonLink, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, RowMenu,
-    SearchInput, Select, StatusBadge, TabLinks, pageInRange, type Column,
+    SearchInput, Select, StatusBadge, StatusCounts, TabLinks, pageInRange, type Column,
 } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
-import { STATUS_TONE, STATUS_WORD } from '@/lib/person-status'
+import { COUNTED_STATUSES, STATUS_TONE, STATUS_WORD, type CountedStatus } from '@/lib/person-status'
 import { countOf } from '@/lib/plural'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
@@ -35,7 +35,9 @@ import { onlineTopics } from '@/lib/live-updates'
  * other tab, kept in the address (`?show=left`), where it was a window of its
  * own; only the Super Admin deletes them for good. The Super Admins are on
  * their own page, linked from the header, where they were a table of their
- * own on this page's first page.
+ * own on this page's first page. Above the people at work, how many have each
+ * status, each pressed to show only theirs, kept in the address as
+ * `?status=` (LATER_CHANGES_PLAN.md §6, PR 384).
  */
 type Person = {
     id: string
@@ -51,7 +53,11 @@ type Person = {
     signInLockedUntil?: string | null
     ownPasswordPausedUntil?: string | null
 }
-type Listed = { data: Person[]; total: number; page: number; totalPages: number; onlineRunsOutInMs?: number | null }
+type Listed = {
+    data: Person[]; total: number; page: number; totalPages: number; onlineRunsOutInMs?: number | null
+    // How many at work have each status, in the company picked (PR 384).
+    statusCounts?: Record<CountedStatus, number>
+}
 const LIMIT = 10
 
 /** The email someone had: deleting someone keeps it under a suffix, so the address is free again. */
@@ -66,7 +72,12 @@ export default function AllUsersPage() {
     const isSuperAdmin = viewer?.role === 'SUPER_ADMIN'
     const params = useSearchParams()
     const pathname = usePathname()
+    const router = useRouter()
     const left = params.get('show') === 'left'
+    // The status pressed, from the address: only one the badges count. The
+    // Left tab asks for those who've left, whatever it says.
+    const asked = params.get('status')
+    const status: CountedStatus | '' = COUNTED_STATUSES.some(s => s === asked) ? asked as CountedStatus : ''
 
     const [companyId, setCompanyId] = useState('')
     // Asked of the server a moment after the typing stops, not per letter.
@@ -79,7 +90,7 @@ export default function AllUsersPage() {
     // Another tab, company or search starts from its first page, in the same
     // render, so the first request for it already asks for page 1.
     const [page, setPage] = useState(1)
-    const filters = `${left}/${companyId}/${search}`
+    const filters = `${left}/${companyId}/${search}/${status}`
     useAdjustOnChange([filters], () => setPage(1))
 
     const [removing, setRemoving] = useState<Person | null>(null)
@@ -95,7 +106,7 @@ export default function AllUsersPage() {
     // would carry a Delete for good for someone it isn't for (Codex on PR 173).
     const scope = `${left ? 'left' : 'at-work'}/${companyId}`
     const listUrl = isSuperAdmin
-        ? `/api/users?page=${page}&limit=${LIMIT}${left ? '&status=DELETED' : ''}&companyId=${encodeURIComponent(companyId)}&search=${encodeURIComponent(search)}`
+        ? `/api/users?page=${page}&limit=${LIMIT}${left ? '&status=DELETED' : status ? `&status=${status}` : ''}&companyId=${encodeURIComponent(companyId)}&search=${encodeURIComponent(search)}${left ? '' : '&counts=status'}`
         : null
     const { data, error, isValidating, mutate } = useSWR(scopedKey(listUrl, scope), scopedFetcher, { keepPreviousData: true })
     const failed = loadFailed(data, error, listUrl)
@@ -105,11 +116,30 @@ export default function AllUsersPage() {
     const pageCount = listed?.totalPages
     useAdjustOnChange([pageCount], () => { if (pageCount !== undefined) setPage(p => pageInRange(p, pageCount)) })
     // The badge as people come and go, in place, untinted (REALTIME_PLAN.md
-    // part 6b, DESIGN.md §8): the company picked, or each on the page.
+    // part 6b, DESIGN.md §8): the company picked, or with none every company
+    // the picker lists, for the status counts (PR 384), and each on the page.
     // Nobody who has left is online.
-    useLiveOnline(viewer && isSuperAdmin && !left ? onlineTopics(viewer, companyId || null, (listed?.data ?? []).map(p => p.company?.id)) : [], () => { void mutate() }, listed?.onlineRunsOutInMs)
+    useLiveOnline(viewer && isSuperAdmin && !left ? onlineTopics(viewer, companyId || null, [...companies.map(c => c.id), ...(listed?.data ?? []).map(p => p.company?.id)]) : [], () => { void mutate() }, listed?.onlineRunsOutInMs)
 
     if (!isSuperAdmin) return <AccessDenied superAdmins />
+
+    // Pressed, a badge shows only its status; pressed again, everyone (PR 384).
+    const isRtl = locale === 'ar'
+    const digits = isRtl ? 'ar-EG' : 'en-GB'
+    const press = (next: CountedStatus | null) => router.replace(next ? `${pathname}?status=${next}` : pathname, { scroll: false })
+    const counts = !left && listed?.statusCounts ? (
+        <StatusCounts
+            label={t('all_users_by_status')}
+            items={COUNTED_STATUSES.map(s => ({
+                key: s, word: t(STATUS_WORD[s]), tone: STATUS_TONE[s],
+                count: listed.statusCounts![s].toLocaleString(digits),
+            }))}
+            pressed={status || null}
+            onPress={press}
+            showing={status ? t('all_users_showing_status').replace('{status}', t(STATUS_WORD[status]).toLowerCase()) : ''}
+            showEveryone={t('all_users_show_everyone')}
+        />
+    ) : null
 
     const nameOf = (p: Person) => `${p.firstName} ${p.lastName}`
     const roleWord = (r: string) => t(`role_${r.toLowerCase()}` as TranslationKey) || r
@@ -225,6 +255,7 @@ export default function AllUsersPage() {
                 { href: pathname, label: t('all_users_tab_current'), current: !left },
                 { href: `${pathname}?show=left`, label: t('all_users_tab_left'), current: left },
             ]} />
+            {counts}
             <FilterBar
                 search={<Field label={t('all_users_search')} hideLabel>{p => (
                     <SearchInput {...p} name="search" autoComplete="off" placeholder={t('all_users_search')} value={typed} onChange={e => setTyped(e.target.value)} />
