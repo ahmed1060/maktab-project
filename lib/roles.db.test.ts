@@ -999,7 +999,8 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         it("copies a company's roles as independent copies, never over one it has", async () => {
             // (Built on audit.view until it was reserved — nothing checks it yet —
             // and saving a role or template with it is refused.)
-            const template = await RoleTemplateService.create({ name: "Auditor", baseRole: "EMPLOYEE", grants: [{ permission: "debts.view", scope: "COMPANY" }] }, sa)
+            // With See employees, which See debts needs first (PR 372).
+            const template = await RoleTemplateService.create({ name: "Auditor", baseRole: "EMPLOYEE", grants: [{ permission: "debts.view", scope: "COMPANY" }, { permission: "employees.view", scope: "COMPANY" }] }, sa)
             const auditor = await RoleService.create({ companyId: "c7", name: "Auditor", fromTemplateId: template.id }, sa)
             const trainee = await RoleService.create({ companyId: "c7", name: "Trainee", baseRole: "EMPLOYEE", grants: [{ permission: "tasks.view", scope: "TEAM" }] }, sa)
             await RoleService.create({ companyId: "c8", name: "trainee", baseRole: "EMPLOYEE", grants: [] }, sa)
@@ -1020,17 +1021,19 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         })
 
         it("offers a template change with each role's difference, and applies it only where picked", async () => {
-            const template = await RoleTemplateService.create({ name: "Cashier", baseRole: "EMPLOYEE", grants: [{ permission: "costs.view", scope: "COMPANY" }] }, sa)
+            // With See employees, which See costs needs first (PR 372).
+            const cashier = [{ permission: "costs.view", scope: "COMPANY" }, { permission: "employees.view", scope: "COMPANY" }]
+            const template = await RoleTemplateService.create({ name: "Cashier", baseRole: "EMPLOYEE", grants: cashier }, sa)
             const in7 = await RoleService.create({ companyId: "c7", name: "Cashier", fromTemplateId: template.id }, sa)
             const in8 = await RoleService.create({ companyId: "c8", name: "Cashier", fromTemplateId: template.id }, sa)
-            await RoleTemplateService.update({ id: template.id, grants: [{ permission: "costs.view", scope: "COMPANY" }, { permission: "clients.view", scope: "COMPANY" }] }, sa)
+            await RoleTemplateService.update({ id: template.id, grants: [...cashier, { permission: "clients.view", scope: "COMPANY" }] }, sa)
 
             const offer = await RoleTemplateService.offers(template.id)
             expect(offer.roles.map(r => [r.companyName, r.difference.added])).toEqual([["Eight", ["clients.view"]], ["Seven", ["clients.view"]]])
             await RoleTemplateService.applyTo(template.id, [in7.id], {}, sa)
-            expect((await RoleService.getById(in7.id)).grants.map(g => g.permission).sort()).toEqual(["clients.view", "costs.view"])
+            expect((await RoleService.getById(in7.id)).grants.map(g => g.permission).sort()).toEqual(["clients.view", "costs.view", "employees.view"])
             expect((await RoleService.getById(in7.id)).version).toBe(in7.version + 1)
-            expect((await RoleService.getById(in8.id)).grants.map(g => g.permission)).toEqual(["costs.view"])
+            expect((await RoleService.getById(in8.id)).grants.map(g => g.permission).sort()).toEqual(["costs.view", "employees.view"])
             // Only its own copies.
             const other = await RoleService.create({ companyId: "c8", name: "Other", baseRole: "EMPLOYEE", grants: [] }, sa)
             await expect(RoleTemplateService.applyTo(template.id, [other.id], {}, sa)).rejects.toThrow("NOT_FROM_TEMPLATE")
@@ -1089,7 +1092,8 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             // Held already: editing something else does not ask again…
             await RoleService.update({ id: role.id, grants: [...both, { permission: "records.view", scope: "COMPANY" }] }, sa)
             // …a new pair does.
-            await expect(RoleService.update({ id: role.id, grants: [...both, { permission: "salary.edit", scope: "COMPANY" }] }, sa)).rejects.toThrow("SEPARATION_UNACKNOWLEDGED")
+            // With See employees, which Change salaries needs first (PR 372).
+            await expect(RoleService.update({ id: role.id, grants: [...both, { permission: "salary.edit", scope: "COMPANY" }, { permission: "employees.view", scope: "COMPANY" }] }, sa)).rejects.toThrow("SEPARATION_UNACKNOWLEDGED")
         })
 
         it("asks of templates too", async () => {

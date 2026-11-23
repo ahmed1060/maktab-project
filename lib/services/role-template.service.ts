@@ -49,7 +49,8 @@ export class RoleTemplateService {
             const verdict = normalizeGrants(input.grants)
             if (!verdict.ok) throw new GrantsError(verdict.errors)
             grants = grantRows(verdict.grants)
-            const had = normalizeGrants(before.grants)
+            // Read to compare, not saved: what it held before, as it was (PR 372).
+            const had = normalizeGrants(before.grants, { needs: false })
             conflicts = checkSeparation(had.ok ? had.grants : {}, verdict.grants, input.acknowledgeConflicts)
         }
         const after = {

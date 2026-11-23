@@ -1,4 +1,4 @@
-import { PERMISSIONS, isPermission, isPersonal, isReserved, splitParts, type Permission, type Scope } from "./catalogue"
+import { PERMISSIONS, isPermission, isPersonal, isReserved, requiresOf, splitParts, type Permission, type Scope } from "./catalogue"
 import type { Grants } from "./grants"
 
 /**
@@ -17,6 +17,11 @@ import type { Grants } from "./grants"
  * - A permission being split is written as its parts, at its scope
  *   (catalogue.ts, `splitInto`; LATER_CHANGES_PLAN.md §2): a role or
  *   template that still names it keeps what it could do.
+ * - A permission that needs another area's first is refused without it
+ *   (`requires`; LATER_CHANGES_PLAN.md §5.1 rule 1, PR 372), naming what's
+ *   missing: nothing across areas is added for the Super Admin. `needs:
+ *   false` is for what isn't a save: a tick on the screen, which greys
+ *   instead, and grants read to compare.
  */
 
 const WIDTH: Record<Scope, number> = { OWN: 1, TEAM: 2, COMPANY: 3 }
@@ -30,7 +35,7 @@ const withParts = (input: readonly GrantInput[]): GrantInput[] =>
         ? splitParts(g.permission).map(permission => ({ permission, scope: g.scope }))
         : [g])
 
-export function normalizeGrants(given: readonly GrantInput[]): GrantsVerdict {
+export function normalizeGrants(given: readonly GrantInput[], { needs = true }: { needs?: boolean } = {}): GrantsVerdict {
     const errors: string[] = []
     const grants: Grants = {}
     const input = withParts(given)
@@ -67,7 +72,37 @@ export function normalizeGrants(given: readonly GrantInput[]): GrantsVerdict {
             }
         }
     }
+    if (!errors.length && needs) {
+        for (const unmet of unmetNeeds(grants)) {
+            errors.push(`${unmet.permission} needs ${unmet.needs}${unmet.companyWide ? " for the company" : ""} first`)
+        }
+    }
     return errors.length ? { ok: false, errors } : { ok: true, grants }
+}
+
+export type UnmetNeed = { permission: Permission; needs: Permission; companyWide: boolean }
+
+/**
+ * What these grants hold without another area's permission it needs
+ * (catalogue.ts, `requires`; LATER_CHANGES_PLAN.md §5.1 rule 1, PR 372): not
+ * held, or held narrower than what needs it (`companyWide`, as each needing
+ * one is the company's). A permission another held one brings with it
+ * carries no needs of its own: See debts, brought by Waive debts, is used on
+ * Payroll, not an employee's history.
+ */
+export function unmetNeeds(grants: Grants): UnmetNeed[] {
+    const held = Object.entries(grants) as [Permission, Scope][]
+    const brought = new Set(held.flatMap(([p]) => ((PERMISSIONS[p] as { implies?: readonly string[] }).implies ?? []) as Permission[]))
+    const out: UnmetNeed[] = []
+    for (const [permission, scope] of held) {
+        if (brought.has(permission)) continue
+        for (const needs of requiresOf(permission)) {
+            const has = grants[needs]
+            if (has && WIDTH[has] >= WIDTH[scope]) continue
+            out.push({ permission, needs, companyWide: !!has })
+        }
+    }
+    return out
 }
 
 /** Grants as rows, for the database and the API. */

@@ -9,7 +9,7 @@ import type { Grants } from '@/lib/permissions/grants'
 import { hasModule, deserializeAccess, type SerializedAccess } from '@/lib/features/bundles'
 import {
     PERMISSION_GROUPS, permissionLabelKey, groupLabelKey, scopeLabelKey, riskLabelKey,
-    setGrant, neededBy, drift, widestScope,
+    setGrant, neededBy, needsFirst, drift, widestScope,
 } from '@/lib/permissions/matrix'
 
 /**
@@ -18,7 +18,10 @@ import {
  * than one scope — a scope selector.
  *
  * Ticking a row adds what it needs, as the server will (lib/permissions/
- * matrix.ts), so what is shown is what gets saved. Rows in a module outside the
+ * matrix.ts), so what is shown is what gets saved. A row that needs another
+ * area's permission first is greyed, saying which, until that one is ticked
+ * (LATER_CHANGES_PLAN.md §5.1 rule 1, PR 372); ticked without it, as a role
+ * saved before may be, it says so and is marked wrong, as it can't be saved. Rows in a module outside the
  * company's package are greyed, not hidden: the grant is kept and starts
  * working if the package changes. With `template`, rows that differ from it are
  * marked — a company's role drifting from what it was copied from.
@@ -84,11 +87,13 @@ export default function PermissionMatrix({ grants, onChange, disabled = false, a
                                     const scopes = def.scopes as readonly Scope[]
                                     const outside = !!features && def.module !== null && !hasModule(features, def.module)
                                     const requiredBy = scope ? needed[p] : undefined
+                                    const missing = needsFirst(grants, p)
                                     const risk = riskLabelKey(p)
                                     const differs = drifted.has(p)
                                     // Why it's greyed or marked, tied to its box so a screen
                                     // reader says it too (audit on part 4c).
                                     const notes = [
+                                        ...missing.map(u => t(u.companyWide ? 'roles_needs_first_company' : 'roles_needs_first').replace('{name}', label(u.needs))),
                                         ...(requiredBy?.length ? [t('roles_needed_by').replace('{name}', requiredBy.map(label).join(t('list_separator')))] : []),
                                         ...(outside ? [t('roles_not_in_package')] : []),
                                         ...(differs ? [t('roles_differs')] : []),
@@ -100,14 +105,18 @@ export default function PermissionMatrix({ grants, onChange, disabled = false, a
                                                 <label className="ui-choice">
                                                     <input type="checkbox" className="ui-check" name={`perm-${p}`}
                                                         aria-describedby={notes.length ? notes.map((_, i) => noteId(i)).join(' ') : undefined}
+                                                        // Ticked without what it needs: it can't be saved like this.
+                                                        aria-invalid={scope && missing.length ? true : undefined}
                                                         checked={!!scope}
-                                                        // A row another ticked row needs would only come back.
-                                                        disabled={disabled || !!requiredBy?.length}
+                                                        // A row another ticked row needs would only come back; one
+                                                        // that needs another area's first waits for it.
+                                                        disabled={disabled || !!requiredBy?.length || (!scope && missing.length > 0)}
                                                         onChange={e => onChange(setGrant(grants, p, e.target.checked ? widestScope(p) : null))} />
                                                     {label(p)}
                                                 </label>
                                                 {risk && <StatusBadge tone="problem">{t(risk)}</StatusBadge>}
-                                                {notes.map((note, i) => <span key={i} id={noteId(i)} className="ui-hint ui-choice-hint">{note}</span>)}
+                                                {/* Ticked without what it needs, its note is an error: it can't be saved like this (PR 372). */}
+                                                {notes.map((note, i) => <span key={i} id={noteId(i)} className={`${scope && i < missing.length ? 'ui-error' : 'ui-hint'} ui-choice-hint`}>{note}</span>)}
                                             </span>
                                             {scopes.length > 1 ? (
                                                 <Select

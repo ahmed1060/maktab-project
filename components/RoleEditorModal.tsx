@@ -12,6 +12,7 @@ import type { Grants } from '@/lib/permissions/grants'
 import type { SerializedAccess } from '@/lib/features/bundles'
 import { fromRows, toRows } from '@/lib/permissions/matrix'
 import { conflictsIn, newConflicts } from '@/lib/permissions/separation'
+import { unmetNeeds } from '@/lib/permissions/grant-rules'
 
 /**
  * Creating or editing a company's role, or a role template — the same form:
@@ -61,13 +62,18 @@ type Props = {
     onSubmit: (submission: RoleSubmission) => Promise<boolean>
 }
 
-type RoleErrors = { name?: TranslationKey; acknowledge?: TranslationKey }
+type RoleErrors = { name?: TranslationKey; acknowledge?: TranslationKey; needs?: TranslationKey }
 
-/** What's wrong on Save, each said under its field: a name, and a new pair of duties kept on purpose. */
-export function roleErrors({ name, addedPairs, acknowledged }: { name: string; addedPairs: number; acknowledged: boolean }): RoleErrors {
+/**
+ * What's wrong on Save, each said under its field: a name, a new pair of
+ * duties kept on purpose, and a permission ticked without another area's it
+ * needs (PR 372), as a role saved before may be.
+ */
+export function roleErrors({ name, addedPairs, acknowledged, unmet = 0 }: { name: string; addedPairs: number; acknowledged: boolean; unmet?: number }): RoleErrors {
     const errors: RoleErrors = {}
     if (!name.trim()) errors.name = 'roles_name_required'
     if (addedPairs > 0 && !acknowledged) errors.acknowledge = 'sod_acknowledge_required'
+    if (unmet > 0) errors.needs = 'roles_needs_missing'
     return errors
 }
 
@@ -122,9 +128,9 @@ function Editor({ onClose, kind, role, templates = [], access, onSubmit }: Props
     const submit = async (e: FormEvent) => {
         e.preventDefault()
         if (locked) return
-        const found = roleErrors({ name, addedPairs: addedPairs.length, acknowledged })
+        const found = roleErrors({ name, addedPairs: addedPairs.length, acknowledged, unmet: unmetNeeds(grants).length })
         setErrors(found)
-        if (found.name || found.acknowledge) { focusFirstWrong(formRef.current); return }
+        if (found.name || found.acknowledge || found.needs) { focusFirstWrong(formRef.current); return }
         setSaving(true)
         try {
             const ok = await onSubmit({
@@ -168,13 +174,17 @@ function Editor({ onClose, kind, role, templates = [], access, onSubmit }: Props
                         options={BASE_ROLES.map(b => ({ value: b, label: t(BUILT_IN_LABEL[b]) }))} />
                 )}</Field>
 
-                <PermissionMatrix
-                    grants={grants}
-                    onChange={setGrants}
-                    disabled={locked}
-                    access={access}
-                    template={compareWith ? fromRows(compareWith.grants) : null}
-                />
+                {/* A field, so Save goes to the first row still needing another (PR 372). */}
+                <div className="ui-field">
+                    <PermissionMatrix
+                        grants={grants}
+                        onChange={g => { setGrants(g); setErrors(x => ({ ...x, needs: undefined })) }}
+                        disabled={locked}
+                        access={access}
+                        template={compareWith ? fromRows(compareWith.grants) : null}
+                    />
+                    {errors.needs && <span className="ui-error" role="alert">{t(errors.needs)}</span>}
+                </div>
 
                 {pairs.length > 0 && (
                     <section className="ui-dialog-note" data-tone="problem" aria-labelledby={`${id}-sod`}>
