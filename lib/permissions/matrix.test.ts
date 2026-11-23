@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { PERMISSIONS, isReserved, isSplit, type Permission } from "./catalogue"
+import { PERMISSIONS, isReserved, type Permission } from "./catalogue"
 import { normalizeGrants } from "./grant-rules"
 import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
@@ -8,13 +8,12 @@ import { PERMISSION_GROUPS, permissionLabelKey, groupLabelKey, scopeLabelKey, ri
 const ALL = Object.keys(PERMISSIONS) as Permission[]
 
 describe("the permission matrix", () => {
-    it("shows every permission, once, but those nothing checks yet, and those split into parts", () => {
+    it("shows every permission, once, but those nothing checks yet", () => {
         const shown = PERMISSION_GROUPS.flatMap(g => g.permissions)
         // Reserved ones are left out, so no role promises access it does not
         // give (catalogue.ts): the audit log. Company settings came off the
-        // list when a company's own people could be shown them. One split
-        // into parts is shown as its parts (PR 365).
-        expect(shown.sort()).toEqual(ALL.filter(p => !isReserved(p) && !isSplit(p)).sort())
+        // list when a company's own people could be shown them.
+        expect(shown.sort()).toEqual(ALL.filter(p => !isReserved(p)).sort())
         expect(ALL.filter(isReserved).sort()).toEqual(["audit.view"])
         expect(PERMISSION_GROUPS.every(g => g.permissions.length > 0)).toBe(true)
     })

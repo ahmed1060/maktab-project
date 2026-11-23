@@ -8,7 +8,7 @@ vi.setConfig({ testTimeout: 60_000 })
 
 /**
  * A role that sees every obligation but manages only its team's:
- * obligations.view for the company, obligations.manage for a team. "tl" leads
+ * obligations.view for the company, obligations.manage for a team, now its parts. "tl" leads
  * "emp"; "loner" is outside the team.
  */
 
@@ -22,8 +22,11 @@ vi.mock("@/lib/services/notification.service", () => ({ NotificationService: { n
 const P = (id: string) => ({ params: { id } })
 const route = () => import("@/app/api/obligations/[id]/route")
 const onRole = () => {
-    // As a session reads the role's rows: obligations.manage as its parts, at the team (PR 367).
-    const rows = [{ permission: "obligations.view", scope: "COMPANY" }, { permission: "obligations.manage", scope: "TEAM" }, { permission: "employees.view", scope: "COMPANY" }]
+    // Managing its team's, as obligations.manage for a team became: its parts, at the team (PR 367, PR 385).
+    const rows = [
+        { permission: "obligations.view", scope: "COMPANY" }, { permission: "employees.view", scope: "COMPANY" },
+        ...["obligations.create", "obligations.edit", "obligations.approve", "obligations.delete"].map(permission => ({ permission, scope: "TEAM" })),
+    ]
     state.session = { user: stepUpConfirmed({ id: "tl", role: "EMPLOYEE", companyId: "c1", grants: encodeGrants(grantsFromRows(rows)) }) }
 }
 const approve = async (o: string) => { obligationState.status = "COMPLETED"; return (await route()).PUT(withBody("PUT", `/api/obligations/${o}`, { status: "APPROVED" }), P(o)) }

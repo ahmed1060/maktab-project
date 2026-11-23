@@ -1,12 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { readFileSync } from "node:fs"
-import { PERMISSIONS, CATALOGUE_VERSION, splitParts, isSplit } from "@/lib/permissions/catalogue"
-import { normalizeGrants, grantsFromRows } from "@/lib/permissions/grant-rules"
+import { PERMISSIONS, CATALOGUE_VERSION } from "@/lib/permissions/catalogue"
 import { encodeGrants, type Grants } from "@/lib/permissions/grants"
-import { can } from "@/lib/permissions/can"
 import { PERMISSION_GROUPS } from "@/lib/permissions/matrix"
 import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
-import { holdersOf } from "@/lib/permissions/holders"
 import { historyParts } from "@/lib/history-parts"
 import { stripComments } from "./strip-comments"
 import { en } from "./translations/en"
@@ -62,12 +59,6 @@ const signIn = (grants: Grants) => { state.session = { user: actor(grants) } }
 const REACH = { "employees.view": "COMPANY", "salary.view": "COMPANY" } as Grants
 const SEES = { ...REACH, [VIEW]: "COMPANY" } as Grants
 const SENDS = { ...REACH, [VIEW]: "COMPANY", [RESEND]: "COMPANY" } as Grants
-/** A role saved before PR 383, still holding the old name. */
-const OLD_ROLE = grantsFromRows([
-    { permission: "employees.view", scope: "COMPANY" },
-    { permission: "salary.view", scope: "COMPANY" },
-    { permission: "settlements.manage", scope: "COMPANY" },
-])
 
 const url = (p: string) => `https://nizmo.test${p}`
 const list = async () => (await import("@/app/api/users/[id]/settlements/route")).GET(new Request(url("/api/users/emp/settlements")), { params: { id: "emp" } })
@@ -87,11 +78,6 @@ describe("the catalogue", () => {
         for (const p of PARTS) expect((PERMISSIONS[p as keyof typeof PERMISSIONS] as { highRisk?: string }).highRisk, p).toBeUndefined()
     })
 
-    it("keeps settlements.manage, split into the two", () => {
-        expect(splitParts("settlements.manage")).toEqual(PARTS)
-        expect(isSplit("settlements.manage")).toBe(true)
-    })
-
     it("offers See and Send in the role editor's payroll, where settlements.manage was, and it no more", () => {
         expect(PERMISSION_GROUPS.find(g => g.key === "payroll")?.permissions).toEqual([
             "payroll.view", "payroll.prepare", "payroll.approve", "payroll.issue_payslips", "payroll.mark_paid", ...PARTS, "debts.view", "debts.waive",
@@ -109,34 +95,7 @@ describe("the catalogue", () => {
             expect(BUILT_IN_GRANTS.TEAM_LEADER[p as keyof Grants], p).toBeUndefined()
             expect(BUILT_IN_GRANTS.EMPLOYEE[p as keyof Grants], p).toBeUndefined()
         }
-        for (const role of Object.values(BUILT_IN_GRANTS)) expect(role["settlements.manage"]).toBeUndefined()
-    })
-})
-
-describe("a role still holding settlements.manage", () => {
-    it("is read as holding both", () => {
-        expect(OLD_ROLE[VIEW]).toBe("COMPANY")
-        expect(OLD_ROLE[RESEND]).toBe("COMPANY")
-        expect(OLD_ROLE["settlements.manage"]).toBeUndefined()
-    })
-
-    it("is saved as both, with See salaries", () => {
-        const verdict = normalizeGrants([{ permission: "employees.view", scope: "COMPANY" }, { permission: "settlements.manage", scope: "COMPANY" }])
-        expect(verdict.ok).toBe(true)
-        if (verdict.ok) {
-            expect(verdict.grants).toMatchObject({ [VIEW]: "COMPANY", [RESEND]: "COMPANY", "salary.view": "COMPANY" })
-            expect(verdict.grants["settlements.manage"]).toBeUndefined()
-        }
-    })
-
-    it("is found when asking who may see or send one", () => {
-        for (const p of PARTS) {
-            expect(holdersOf(p as keyof typeof PERMISSIONS, "COMPANY")).toEqual({ assignedRole: { grants: { some: { permission: { in: [p, "settlements.manage"] }, scope: "COMPANY" } } } })
-        }
-    })
-
-    it("gives a session made from it both", () => {
-        for (const p of PARTS) expect(can(actor(OLD_ROLE), p as keyof typeof PERMISSIONS, { companyId: "c1" })).toBe(true)
+        for (const role of Object.values(BUILT_IN_GRANTS)) expect((role as Record<string, unknown>)["settlements.manage"]).toBeUndefined()
     })
 })
 
@@ -153,12 +112,6 @@ describe("seeing them", () => {
         expect(listed.status).toBe(403)
         expect(await listed.json()).toMatchObject({ error: "Managers only" })
         expect((await statement()).status).toBe(403)
-    })
-
-    it("is still open to a role saved with settlements.manage", async () => {
-        signIn(OLD_ROLE)
-        expect((await list()).status).toBe(200)
-        expect((await statement()).status).toBe(200)
     })
 
     it("is never another company's", async () => {
@@ -187,11 +140,6 @@ describe("sending the statement", () => {
         signIn(SEES)
         expect((await resend()).status).toBe(403)
         expect(sent).toEqual([])
-    })
-
-    it("is still open to a role saved with settlements.manage", async () => {
-        signIn(OLD_ROLE)
-        expect((await resend()).status).toBe(200)
     })
 
     it("leaves no route asking settlements.manage", () => {

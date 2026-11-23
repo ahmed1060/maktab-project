@@ -144,7 +144,7 @@ export class RoleTemplateService {
 function shape(t: { id: string; name: string; description: string | null; baseRole: UserRole; grants: unknown; updatedAt: Date }) {
     return {
         id: t.id, name: t.name, description: t.description, baseRole: t.baseRole, updatedAt: t.updatedAt,
-        // As the template holds them: one being split, as its parts (catalogue.ts, `splitInto`).
+        // As the template holds them, in the order of their codes (grant-rules.ts, rowsHeld).
         grants: rowsHeld(templateGrants(t.grants)),
     }
 }

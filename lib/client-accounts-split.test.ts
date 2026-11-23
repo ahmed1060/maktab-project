@@ -1,12 +1,10 @@
 import { describe, it, expect, vi } from "vitest"
 import { readFileSync } from "node:fs"
-import { PERMISSIONS, CATALOGUE_VERSION, splitParts, isSplit } from "@/lib/permissions/catalogue"
-import { normalizeGrants, grantsFromRows } from "@/lib/permissions/grant-rules"
+import { PERMISSIONS, CATALOGUE_VERSION } from "@/lib/permissions/catalogue"
+import { normalizeGrants } from "@/lib/permissions/grant-rules"
 import { encodeGrants, type Grants } from "@/lib/permissions/grants"
-import { can } from "@/lib/permissions/can"
 import { PERMISSION_GROUPS } from "@/lib/permissions/matrix"
 import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
-import { holdersOf } from "@/lib/permissions/holders"
 import { stepUpConfirmed } from "@/lib/permissions/test-actors"
 import { isHighRisk } from "@/lib/step-up"
 import { serializeAccess } from "@/lib/features/bundles"
@@ -60,7 +58,6 @@ const signIn = (grants: Grants, confirmed = true) => {
     state.session = { user: confirmed ? user : { ...user, stepUpAt: null } }
 }
 const holding = (...parts: Part[]): Grants => Object.fromEntries([["clients.view", "COMPANY"], ...parts.map(p => [p, "COMPANY"])])
-const OLD_ROLE = grantsFromRows([{ permission: "clients.view", scope: "COMPANY" }, { permission: "client_accounts.manage", scope: "COMPANY" }])
 
 const list = async () => (await import("@/app/api/client-accounts/route")).GET(new Request(url("/api/client-accounts?clientId=nobody")), { params: {} })
 const add = async () => (await import("@/app/api/client-accounts/route")).POST(withBody("POST", "/api/client-accounts", { clientId: "nobody", name: "Mona Fouad", email: "mona@example.com" }), { params: {} })
@@ -88,11 +85,6 @@ describe("the catalogue", () => {
         expect(verdict.ok && verdict.grants).toEqual({ "client_accounts.remove": "COMPANY", "client_accounts.view": "COMPANY", "clients.view": "COMPANY" })
     })
 
-    it("marks client_accounts.manage as split into the three", () => {
-        expect(splitParts("client_accounts.manage")).toEqual(PARTS)
-        expect(isSplit("client_accounts.manage")).toBe(true)
-    })
-
     it("offers the three under Client portal in the role editor, and client_accounts.manage no more", () => {
         expect(PERMISSION_GROUPS.find(g => g.key === "client_portal")?.permissions).toEqual(["tax.view", "tax.manage", ...PARTS, "client_messages.manage"])
         expect(PERMISSION_GROUPS.flatMap(g => g.permissions)).not.toContain("client_accounts.manage")
@@ -109,32 +101,7 @@ describe("the catalogue", () => {
             expect(BUILT_IN_GRANTS.TEAM_LEADER[p], p).toBeUndefined()
             expect(BUILT_IN_GRANTS.EMPLOYEE[p], p).toBeUndefined()
         }
-        for (const role of Object.values(BUILT_IN_GRANTS)) expect(role["client_accounts.manage"]).toBeUndefined()
-    })
-})
-
-describe("a role still holding client_accounts.manage", () => {
-    it("is read as holding the three", () => {
-        for (const p of PARTS) expect(OLD_ROLE[p], p).toBe("COMPANY")
-        expect(OLD_ROLE["client_accounts.manage"]).toBeUndefined()
-    })
-
-    it("is saved as the three, with seeing clients", () => {
-        const verdict = normalizeGrants([{ permission: "client_accounts.manage", scope: "COMPANY" }])
-        expect(verdict.ok).toBe(true)
-        if (verdict.ok) {
-            for (const p of PARTS) expect(verdict.grants[p], p).toBe("COMPANY")
-            expect(verdict.grants["clients.view"]).toBe("COMPANY")
-            expect(verdict.grants["client_accounts.manage"]).toBeUndefined()
-        }
-    })
-
-    it("is found when asking who may invite", () => {
-        expect(holdersOf("client_accounts.invite", "COMPANY")).toEqual({ assignedRole: { grants: { some: { permission: { in: ["client_accounts.invite", "client_accounts.manage"] }, scope: "COMPANY" } } } })
-    })
-
-    it("gives a session made from it each part", () => {
-        for (const p of PARTS) expect(can(actor(OLD_ROLE), p, { companyId: "c1" }), p).toBe(true)
+        for (const role of Object.values(BUILT_IN_GRANTS)) expect((role as Record<string, unknown>)["client_accounts.manage"]).toBeUndefined()
     })
 })
 
@@ -196,10 +163,6 @@ describe("the routes, each part alone", () => {
         await expect(service.removeClientPerson(user("client_accounts.view", "client_accounts.remove"), "someone")).rejects.toMatchObject({ message: "CLIENT_PERSON_NOT_FOUND" })
     })
 
-    it("lets a role still holding client_accounts.manage do all of it", async () => {
-        signIn(OLD_ROLE)
-        for (const ask of [list, add, resend, remove]) expect((await ask()).status).toBe(404)
-    })
 })
 
 describe("the client's page", () => {

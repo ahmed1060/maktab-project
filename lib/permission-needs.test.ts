@@ -28,12 +28,10 @@ const NEEDS: [Permission, Permission][] = [
     ["tasks.create", "locations.view"],
     ["salary.edit", "employees.view"],
     ["dayoff.adjust_credit", "employees.view"],
-    ["salary_adjustments.manage", "employees.view"],
-    // Its parts, since PR 382: adding a bonus or deduction, and undoing one.
+    // Split since PR 382: adding a bonus or deduction, and undoing one.
     ["salary_adjustments.add", "employees.view"],
     ["salary_adjustments.reverse", "employees.view"],
-    ["settlements.manage", "employees.view"],
-    // Its parts, since PR 383: seeing someone's settlements, and sending one.
+    // Split since PR 383: seeing someone's settlements, and sending one.
     ["settlements.view", "employees.view"],
     ["settlements.resend", "employees.view"],
     ["debts.view", "employees.view"],

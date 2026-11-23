@@ -231,8 +231,9 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             (await db.query(`SELECT permission, scope FROM "RoleGrant" WHERE "roleId" = $1 ORDER BY permission`, [roleId])).rows.map(r => `${r.permission} ${r.scope}`)
 
         it("are written under their new names", async () => {
-            const role = await Roles.create({ companyId: "c1", name: "Desk", baseRole: "EMPLOYEE", grants: [{ permission: "clients.manage", scope: "COMPANY" }, { permission: "tasks.view", scope: "TEAM" }] }, superAdmin)
-            // clients.manage is saved as its parts since PR 365.
+            // clients.manage's parts since PR 365, it retired since PR 386.
+            const parts = ["clients.create", "clients.edit", "clients.delete"].map(permission => ({ permission, scope: "COMPANY" }))
+            const role = await Roles.create({ companyId: "c1", name: "Desk", baseRole: "EMPLOYEE", grants: [...parts, { permission: "tasks.view", scope: "TEAM" }] }, superAdmin)
             expect(await stored(role.id)).toEqual(["clients.create COMPANY", "clients.delete COMPANY", "clients.edit COMPANY", "clients.view COMPANY", "tasks.view TEAM"])
             await Roles.update({ id: role.id, grants: [{ permission: "clients.view", scope: "COMPANY" }] }, superAdmin)
             expect(await stored(role.id)).toEqual(["clients.view COMPANY"])
@@ -256,9 +257,9 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             const template = await Templates.create({ name: "Clients desk", baseRole: "EMPLOYEE", grants: [{ permission: "clients.view", scope: "COMPANY" }, { permission: "tasks.view", scope: "TEAM" }] }, superAdmin)
             const grants = async () => (await db.query(`SELECT grants FROM "RoleTemplate" WHERE id = $1`, [template.id])).rows[0].grants
             expect(await grants()).toEqual([{ permission: "tasks.view", scope: "TEAM" }, { permission: "clients.view", scope: "COMPANY" }])
-            await Templates.update({ id: template.id, grants: [{ permission: "clients.manage", scope: "COMPANY" }] }, superAdmin)
-            // clients.manage is saved as its parts since PR 365.
+            // clients.manage's parts since PR 365, it retired since PR 386.
             const parts = ["clients.create", "clients.edit", "clients.delete"].map(permission => ({ permission, scope: "COMPANY" }))
+            await Templates.update({ id: template.id, grants: parts }, superAdmin)
             expect((await Templates.getById(template.id)).grants).toEqual([{ permission: "clients.view", scope: "COMPANY" }, ...parts])
             // A role made from it holds what it says.
             const role = await Roles.create({ companyId: "c1", name: "From the desk", fromTemplateId: template.id }, superAdmin)

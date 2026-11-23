@@ -13,8 +13,8 @@ describe("step-up confirmation (ROLES_PLAN.md §6.15)", () => {
 
     it("covers every permission the catalogue marks high-risk, and nothing else", () => {
         expect(HIGH_RISK.sort()).toEqual([
-            "attendance.manage_terminals", "cash_advances.give", "charges.collect", "client_accounts.invite", "client_accounts.manage", "debts.waive", "employees.delete", "employees.end_contract", "payroll.approve",
-            "payroll.mark_paid", "records.delete", "salary.edit", "salary_adjustments.add", "salary_adjustments.manage", "salary_adjustments.reverse", "tasks.delete", "tasks.pay", "tasks.penalize",
+            "attendance.manage_terminals", "cash_advances.give", "charges.collect", "client_accounts.invite", "debts.waive", "employees.delete", "employees.end_contract", "payroll.approve",
+            "payroll.mark_paid", "records.delete", "salary.edit", "salary_adjustments.add", "salary_adjustments.reverse", "tasks.delete", "tasks.pay", "tasks.penalize",
         ])
         expect(stepUpRefusal({ mfaEnabled: false }, "tasks.view", 60)).toBeNull()
     })

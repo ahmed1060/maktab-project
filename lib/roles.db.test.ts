@@ -130,6 +130,21 @@ const CLIENT_ACCOUNTS = "20270106000000_client_accounts"
 const CLIENT_ACCOUNTS_GRANTED = "20270109000000_client_accounts_granted"
 // Every split permission written as its parts (LATER_CHANGES_PLAN.md §2, PR 385).
 const SPLIT_GRANTED = "20270118000000_split_permissions_granted"
+/**
+ * Grant rows as that migration writes them: each split permission as its
+ * parts, from its own list, at its scope, the wider kept. What the app reads
+ * a role saved before it as, the split ones being retired since (PR 386).
+ */
+const asParts = (rows: { permission: string; scope: string }[]) => {
+    const pairs = [...sql(SPLIT_GRANTED).matchAll(/\('([a-z_.]+)', '([a-z_.]+)'\)/g)].map(m => [m[1], m[2]])
+    const WIDTH: Record<string, number> = { OWN: 1, TEAM: 2, COMPANY: 3 }
+    const out = new Map<string, string>()
+    for (const r of rows) {
+        const parts = [...new Set(pairs.filter(([old]) => old === r.permission).map(([, part]) => part))]
+        for (const p of parts.length ? parts : [r.permission]) if (!out.has(p) || WIDTH[r.scope] > WIDTH[out.get(p)!]) out.set(p, r.scope)
+    }
+    return [...out].map(([permission, scope]) => ({ permission, scope }))
+}
 // User.whatsappNumber, which every read of a person's whole row now carries
 // (CLIENT_PORTAL_PLAN.md §7, step 9a, PR 340).
 const WHATSAPP_NUMBER = "20270111000000_user_whatsapp_number"
@@ -265,9 +280,10 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                 FROM "Role" r JOIN "RoleGrant" g ON g."roleId" = r.id`)
             for (const company of ["c1", "c2"]) {
                 for (const builtIn of ["ADMIN", "TEAM_LEADER", "EMPLOYEE"] as const) {
-                    // Read as a session reads them: clients.manage, which the
-                    // migrations gave the Admin, is held as its parts (PR 365).
-                    const grants = grantsFromRows(rows.filter(r => r.companyId === company && r.builtIn === builtIn))
+                    // As the grant for companies already there writes them:
+                    // clients.manage, which the migrations gave the Admin, and
+                    // the others split since, as their parts (PR 385).
+                    const grants = grantsFromRows(asParts(rows.filter(r => r.companyId === company && r.builtIn === builtIn)))
                     const now = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).filter(([permission]) => !GRANTED_LATER.includes(permission)))
                     expect(grants, `${company} ${builtIn}`).toEqual(now)
                 }
@@ -428,7 +444,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                 // Nothing old is left, and every role is read as it was.
                 const { rows: left } = await db.query(`SELECT count(*)::int AS n FROM "RoleGrant" WHERE permission = ANY($1)`, [OLD])
                 expect(left).toEqual([{ n: 0 }])
-                for (const [id, grants] of before) expect(grantsFromRows(after.get(id) as any), id).toEqual(grantsFromRows(grants as any))
+                for (const [id, grants] of before) expect(grantsFromRows(after.get(id) as any), id).toEqual(grantsFromRows(asParts(grants)))
                 // The wider scope is kept, either way round.
                 const scopeOf = (role: string, permission: string) => after.get(role)?.find(g => g.permission === permission)?.scope
                 expect(["create", "edit", "approve", "delete"].map(p => scopeOf("split-wider", `obligations.${p}`))).toEqual(["TEAM", "TEAM", "TEAM", "COMPANY"])

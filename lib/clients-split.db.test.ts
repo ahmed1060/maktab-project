@@ -4,10 +4,11 @@ import { Client } from "pg"
 
 /**
  * clients.manage split into clients.create, clients.edit and clients.delete
- * (LATER_CHANGES_PLAN.md §2, PR 365), against a real Postgres: until the
- * grant for companies already there rewrites their roles, a role or a
- * template still holding clients.manage is read everywhere as holding the
- * three, at its scope. lib/clients-split.test.ts has the routes and screens.
+ * (LATER_CHANGES_PLAN.md §2, PR 365), against a real Postgres: a role or a
+ * template saved with clients.manage before the grant for companies already
+ * there (PR 385) is read everywhere as holding the three, at its scope, as
+ * that grant wrote them, clients.manage being retired since (PR 386).
+ * lib/clients-split.test.ts has the routes and screens.
  *
  * Needs a Postgres it may create databases on: set ROLES_TEST_DATABASE_URL to
  * its maintenance database. Skipped without it (CI has no database).
@@ -24,7 +25,8 @@ INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayO
  ('e1', 'e1@x.co', 'p', 'Eman', 'One', 'EMPLOYEE', 2026, 'e1', 'c1', NULL);
 `
 // A template and a role made from it, both holding clients.manage as they
-// were saved before the split, and Eman holding the role.
+// were saved before the split, and Eman holding the role: there before the
+// grant for companies already there.
 const OLD_GRANTS = `
 INSERT INTO "RoleTemplate"(id, name, "baseRole", grants, "updatedAt") VALUES
  ('t-desk', 'Clients desk', 'EMPLOYEE', '[{"permission":"clients.view","scope":"COMPANY"},{"permission":"clients.manage","scope":"COMPANY"}]', now());
@@ -34,8 +36,9 @@ UPDATE "User" SET "roleId" = 'r-desk' WHERE id = 'e1';
 `
 
 const PARTS = ["clients.create", "clients.edit", "clients.delete"]
+const SPLIT_GRANTED = "20270118000000_split_permissions_granted"
 
-describe.skipIf(!ADMIN_URL)("a role and a template still holding clients.manage, in Postgres", () => {
+describe.skipIf(!ADMIN_URL)("a role and a template saved with clients.manage, in Postgres", () => {
     const dbName = `clients_split_test_${Date.now()}`
     let db: Client
     let prisma: typeof import("@/lib/prisma").prisma
@@ -50,10 +53,10 @@ describe.skipIf(!ADMIN_URL)("a role and a template still holding clients.manage,
         db = new Client({ connectionString: url.toString() })
         await db.connect()
         for (const m of MIGRATIONS) {
+            if (m === SPLIT_GRANTED) await db.query(OLD_GRANTS)
             await db.query(sql(m))
             if (m === "20260920000000_team_leader") await db.query(PEOPLE)
         }
-        await db.query(OLD_GRANTS)
         process.env.POSTGRES_PRISMA_URL = url.toString()
         prisma = (await import("@/lib/prisma")).prisma
     }, 180_000)

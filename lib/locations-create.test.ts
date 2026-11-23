@@ -1,12 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { readFileSync } from "node:fs"
-import { PERMISSIONS, CATALOGUE_VERSION, splitParts, isSplit } from "@/lib/permissions/catalogue"
-import { normalizeGrants, grantsFromRows } from "@/lib/permissions/grant-rules"
+import { PERMISSIONS, CATALOGUE_VERSION } from "@/lib/permissions/catalogue"
 import { encodeGrants, type Grants } from "@/lib/permissions/grants"
-import { can } from "@/lib/permissions/can"
 import { PERMISSION_GROUPS } from "@/lib/permissions/matrix"
 import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
-import { holdersOf } from "@/lib/permissions/holders"
 import { stepUpConfirmed } from "@/lib/permissions/test-actors"
 import { state, prismaMock as clientsPrisma, withBody } from "@/lib/permissions/client-access.harness"
 import { stripComments } from "./strip-comments"
@@ -48,8 +45,6 @@ vi.mock("@/lib/services/notification.service", () => ({ NotificationService: { n
 const actor = (grants: Grants) => ({ id: "admin", role: "ADMIN", companyId: "c1", grants: encodeGrants(grants) })
 const signIn = (grants: Grants) => { state.session = { user: stepUpConfirmed(actor(grants)) } }
 const SEES = { "locations.view": "COMPANY" } as Grants
-/** A role saved before PR 378, still holding the old name. */
-const OLD_ROLE = grantsFromRows([{ permission: "locations.view", scope: "COMPANY" }, { permission: "locations.add", scope: "COMPANY" }])
 
 const add = async () => (await import("@/app/api/locations/route")).POST(withBody("POST", "/api/locations", { name: "Shared yard", latitude: 30.05, longitude: 31.25 }), { params: {} })
 
@@ -60,12 +55,6 @@ describe("the catalogue", () => {
         expect(PERMISSIONS["locations.create"].code).toBe(81)
         expect(PERMISSIONS["locations.create"]).toMatchObject({ module: "CLIENTS", scopes: ["COMPANY"], implies: ["locations.view"] })
         expect((PERMISSIONS["locations.create"] as { highRisk?: string }).highRisk).toBeUndefined()
-    })
-
-    it("keeps locations.add, split into locations.create alone, its code kept until it's retired", () => {
-        expect(splitParts("locations.add")).toEqual(["locations.create"])
-        expect(isSplit("locations.add")).toBe(true)
-        expect(PERMISSIONS["locations.add"].code).toBe(56)
     })
 
     it("offers locations.create in the role editor, where Add locations was, and locations.add no more", () => {
@@ -84,31 +73,7 @@ describe("the catalogue", () => {
         expect(BUILT_IN_GRANTS.ADMIN["locations.create"]).toBe("COMPANY")
         expect(BUILT_IN_GRANTS.TEAM_LEADER["locations.create"]).toBe("COMPANY")
         expect(BUILT_IN_GRANTS.EMPLOYEE["locations.create"]).toBeUndefined()
-        for (const role of Object.values(BUILT_IN_GRANTS)) expect(role["locations.add"]).toBeUndefined()
-    })
-})
-
-describe("a role still holding locations.add", () => {
-    it("is read as holding locations.create, and not the old name", () => {
-        expect(OLD_ROLE["locations.create"]).toBe("COMPANY")
-        expect(OLD_ROLE["locations.add"]).toBeUndefined()
-    })
-
-    it("is saved as locations.create, for a role or a template that still names it", () => {
-        const verdict = normalizeGrants([{ permission: "locations.add", scope: "COMPANY" }])
-        expect(verdict.ok).toBe(true)
-        if (verdict.ok) {
-            expect(verdict.grants["locations.create"]).toBe("COMPANY")
-            expect(verdict.grants["locations.add"]).toBeUndefined()
-        }
-    })
-
-    it("is found when asking who may add locations", () => {
-        expect(holdersOf("locations.create", "COMPANY")).toEqual({ assignedRole: { grants: { some: { permission: { in: ["locations.create", "locations.add"] }, scope: "COMPANY" } } } })
-    })
-
-    it("gives a session made from it locations.create", () => {
-        expect(can(actor(OLD_ROLE), "locations.create", { companyId: "c1" })).toBe(true)
+        for (const role of Object.values(BUILT_IN_GRANTS)) expect((role as Record<string, unknown>)["locations.add"]).toBeUndefined()
     })
 })
 
@@ -120,11 +85,6 @@ describe("adding a location", () => {
         signIn({ ...SEES, "locations.create": "COMPANY" })
         expect((await add()).status).toBe(201)
         expect(added.new).toMatchObject({ name: "Shared yard", companyId: "c1", clientId: null })
-    })
-
-    it("is still open to a role saved with locations.add", async () => {
-        signIn(OLD_ROLE)
-        expect((await add()).status).toBe(201)
     })
 
     it("is offered by its new name on every screen that offered it", () => {

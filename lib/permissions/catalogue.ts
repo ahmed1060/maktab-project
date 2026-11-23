@@ -94,16 +94,6 @@ type PermissionDefinition = {
      * may.
      */
     personal?: true
-    /**
-     * Being split by what it does (LATER_CHANGES_PLAN.md §2, PR 365): the
-     * permissions it's being split into. Until the grant for companies
-     * already there rewrites their roles, a role still holding it is read as
-     * holding each of these, at its scope (grant-rules.ts, grantsFromRows),
-     * and saving a role or template that names it writes these in its place
-     * (normalizeGrants). Nothing checks it, and it isn't offered in the
-     * permission matrix. Removed, its code retired, after that grant.
-     */
-    splitInto?: readonly string[]
 }
 
 const TEAM_OR_COMPANY = ["TEAM", "COMPANY"] as const
@@ -146,10 +136,9 @@ export const PERMISSIONS = {
     // §5.7): adding a name to one, as "+ Add" does, and changing them, split
     // from lists.manage by what is done (LATER_CHANGES_PLAN.md §2, PR 379):
     // renaming a name, merging one into another, and archiving or restoring
-    // one. lists.manage included adding; none of its parts does, as none
-    // needs it, and a role saved with lists.manage holds lists.add too.
+    // one. lists.manage, retired in PR 386, included adding; none of its
+    // parts does, as none needs it.
     "lists.add":                { code: 58, module: "TASKS", scopes: COMPANY },
-    "lists.manage":             { code: 59, module: "TASKS", scopes: COMPANY, implies: ["lists.add"], splitInto: ["lists.rename", "lists.merge", "lists.archive"] },
     "lists.rename":             { code: 82, module: "TASKS", scopes: COMPANY },
     "lists.merge":              { code: 83, module: "TASKS", scopes: COMPANY },
     "lists.archive":            { code: 84, module: "TASKS", scopes: COMPANY },
@@ -160,7 +149,6 @@ export const PERMISSIONS = {
     // adding it; handing it to other people, moving it along and removing
     // others' attachments; approving or rejecting it, or changing one
     // approved; and deleting it. Its details don't change once it's made.
-    "obligations.manage":       { code: 24, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"], splitInto: ["obligations.create", "obligations.edit", "obligations.approve", "obligations.delete"] },
     "obligations.create":       { code: 75, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"] },
     "obligations.edit":         { code: 76, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"] },
     "obligations.approve":      { code: 77, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"] },
@@ -183,7 +171,6 @@ export const PERMISSIONS = {
     // client; changing its details and picking its responsible accountant;
     // and deleting or archiving one, deleting an archived one for good and
     // restoring one from the archive, which undoes archiving.
-    "clients.manage":           { code: 30, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"], splitInto: ["clients.create", "clients.edit", "clients.delete"] },
     "clients.create":           { code: 72, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
     "clients.edit":             { code: 73, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
     "clients.delete":           { code: 74, module: "CLIENTS", scopes: COMPANY, implies: ["clients.view"] },
@@ -194,11 +181,9 @@ export const PERMISSIONS = {
     // and archiving or restoring one. Each includes seeing. Adding was
     // locations.add until PR 378, which the owner asked to be named
     // locations.create as the other areas' adding is: done as a split into
-    // one, so a role still holding it holds locations.create.
+    // one, and retired in PR 386.
     "locations.view":           { code: 55, module: "CLIENTS", scopes: COMPANY },
-    "locations.add":            { code: 56, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"], splitInto: ["locations.create"] },
     "locations.create":         { code: 81, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
-    "locations.manage":         { code: 57, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"], splitInto: ["locations.edit", "locations.archive"] },
     "locations.edit":           { code: 79, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
     "locations.archive":        { code: 80, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
     "costs.view":               { code: 31, module: "COSTS", scopes: COMPANY, requires: ["employees.view"] },
@@ -208,7 +193,6 @@ export const PERMISSIONS = {
     // was charges.manage until PR 380, named charges.set as the table splits
     // it, as a split into one: collecting already had its own.
     "charges.view":             { code: 60, module: "COSTS", scopes: TEAM_OR_COMPANY },
-    "charges.manage":           { code: 61, module: "COSTS", scopes: COMPANY, implies: ["charges.view"], splitInto: ["charges.set"] },
     "charges.set":              { code: 85, module: "COSTS", scopes: COMPANY, implies: ["charges.view"] },
     "charges.collect":          { code: 62, module: "COSTS", scopes: COMPANY, implies: ["charges.view"], highRisk: MOVES_MONEY },
     // An employee's cash advance (CLIENTS_PLAN.md §7.7): seeing their team's
@@ -235,7 +219,6 @@ export const PERMISSIONS = {
     // removing one without seeing them. Inviting lets someone from outside
     // the company in, so it asks for the step-up confirmation; removing
     // takes access away, and doesn't.
-    "client_accounts.manage":   { code: 70, module: "TAX_POSITION", scopes: COMPANY, implies: ["clients.view"], highRisk: LETS_OUTSIDERS_IN, splitInto: ["client_accounts.view", "client_accounts.invite", "client_accounts.remove"] },
     "client_accounts.view":     { code: 86, module: "TAX_POSITION", scopes: COMPANY, implies: ["clients.view"] },
     "client_accounts.invite":   { code: 87, module: "TAX_POSITION", scopes: COMPANY, implies: ["client_accounts.view"], highRisk: LETS_OUTSIDERS_IN },
     "client_accounts.remove":   { code: 88, module: "TAX_POSITION", scopes: COMPANY, implies: ["client_accounts.view"] },
@@ -267,7 +250,6 @@ export const PERMISSIONS = {
     // (LATER_CHANGES_PLAN.md §2, PR 382). Each moves money, so each asks for
     // the step-up confirmation; each is never on one's own pay; and neither
     // includes the other, as undoing one doesn't need adding one.
-    "salary_adjustments.manage": { code: 37, module: "SALARY_ADJUSTMENTS", scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY, notOnOwn: true, requires: ["employees.view"], splitInto: ["salary_adjustments.add", "salary_adjustments.reverse"] },
     "salary_adjustments.add":   { code: 89, module: "SALARY_ADJUSTMENTS", scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY, notOnOwn: true, requires: ["employees.view"] },
     "salary_adjustments.reverse": { code: 90, module: "SALARY_ADJUSTMENTS", scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY, notOnOwn: true, requires: ["employees.view"] },
 
@@ -282,7 +264,6 @@ export const PERMISSIONS = {
     // settlements.manage by what is done (LATER_CHANGES_PLAN.md §2, PR 383).
     // Sending is from the statement, so it includes seeing it. A statement
     // moves no money, so neither asks for the step-up confirmation.
-    "settlements.manage":       { code: 43, module: "PAYROLL", scopes: COMPANY, implies: ["salary.view"], requires: ["employees.view"], splitInto: ["settlements.view", "settlements.resend"] },
     "settlements.view":         { code: 91, module: "PAYROLL", scopes: COMPANY, implies: ["salary.view"], requires: ["employees.view"] },
     "settlements.resend":       { code: 92, module: "PAYROLL", scopes: COMPANY, implies: ["settlements.view"], requires: ["employees.view"] },
     "debts.view":               { code: 44, module: "PAYROLL", scopes: COMPANY, requires: ["employees.view"] },
@@ -399,11 +380,36 @@ export type Permission = keyof typeof PERMISSIONS
  *
  * 13: settlements.view and settlements.resend (codes 91–92), split from
  * settlements.manage (PR 383).
+ *
+ * Not raised for retiring the nine split permissions (PR 386): every token
+ * issued since each split's own raise holds their parts, never them.
  */
 export const CATALOGUE_VERSION = 13
 
+/**
+ * Permissions that no longer exist, by name, with the code each had: never
+ * handed out again (RETIRED_CODES), and still named in words where a record
+ * kept them, such as an audit log entry or an access review
+ * (matrix.ts, namedPermissionKey).
+ *
+ * The nine split by what they do (LATER_CHANGES_PLAN.md §2): retired in PR
+ * 386, once the grant for companies already there (PR 385) wrote their parts
+ * in every role and template.
+ */
+export const RETIRED = {
+    "obligations.manage": 24, "clients.manage": 30, "salary_adjustments.manage": 37, "settlements.manage": 43,
+    "locations.add": 56, "locations.manage": 57, "lists.manage": 59, "charges.manage": 61, "client_accounts.manage": 70,
+} as const
+
+export type RetiredPermission = keyof typeof RETIRED
+
 /** Codes of permissions that no longer exist. Never handed out again. */
-export const RETIRED_CODES: readonly number[] = []
+export const RETIRED_CODES: readonly number[] = Object.values(RETIRED)
+
+/** Whether a name is a permission that no longer exists (see `RETIRED`). */
+export function isRetired(value: string): value is RetiredPermission {
+    return Object.prototype.hasOwnProperty.call(RETIRED, value)
+}
 
 const BY_CODE = new Map<number, Permission>(
     (Object.keys(PERMISSIONS) as Permission[]).map(p => [PERMISSIONS[p].code, p])
@@ -425,11 +431,6 @@ export function isPersonal(permission: Permission): boolean {
     return (PERMISSIONS[permission] as PermissionDefinition).personal === true
 }
 
-/** What a permission is being split into, or nothing (see `splitInto`). */
-export function splitParts(permission: Permission): readonly Permission[] {
-    return ((PERMISSIONS[permission] as PermissionDefinition).splitInto ?? []) as readonly Permission[]
-}
-
 /** Another area's permissions this one can't work without (see `requires`). */
 export function requiresOf(permission: Permission): readonly Permission[] {
     return ((PERMISSIONS[permission] as PermissionDefinition).requires ?? []) as readonly Permission[]
@@ -438,20 +439,6 @@ export function requiresOf(permission: Permission): readonly Permission[] {
 /** Other permissions this one works without, but does less (see `lessWithout`). */
 export function lessWithoutOf(permission: Permission): readonly Permission[] {
     return ((PERMISSIONS[permission] as PermissionDefinition).lessWithout ?? []) as readonly Permission[]
-}
-
-/** Whether a permission is being split, so only read as its parts (see `splitInto`). */
-export function isSplit(permission: Permission): boolean {
-    return splitParts(permission).length > 0
-}
-
-const SPLIT_FROM = new Map<Permission, Permission>(
-    (Object.keys(PERMISSIONS) as Permission[]).flatMap(p => splitParts(p).map(part => [part, p] as const))
-)
-
-/** The permission one was split from, while that one is still held by roles (see `splitInto`). */
-export function splitFrom(permission: Permission): Permission | undefined {
-    return SPLIT_FROM.get(permission)
 }
 
 /** Whether a permission is planned but not yet checked anywhere (see `reserved`). */

@@ -1,4 +1,4 @@
-import { PERMISSIONS, isReserved, isSplit, requiresOf, type Permission, type Scope } from "./catalogue"
+import { PERMISSIONS, isPermission, isReserved, isRetired, requiresOf, type Permission, type RetiredPermission, type Scope } from "./catalogue"
 import type { Grants } from "./grants"
 import { normalizeGrants, unmetNeeds, type UnmetNeed } from "./grant-rules"
 import type { TranslationKey } from "@/lib/translations"
@@ -37,9 +37,7 @@ const GROUP_OF_AREA: Record<string, string> = {
 }
 
 // A reserved permission is not offered: nothing checks it yet (catalogue.ts).
-// Nor is one being split: its parts are, and a role holding it shows them
-// ticked (grant-rules.ts, grantsFromRows).
-for (const permission of (Object.keys(PERMISSIONS) as Permission[]).filter(p => !isReserved(p) && !isSplit(p))) {
+for (const permission of (Object.keys(PERMISSIONS) as Permission[]).filter(p => !isReserved(p))) {
     const group = PERMISSION_GROUPS.find(g => g.key === GROUP_OF_AREA[permission.split(".")[0]])
     // A permission in an area with no group would be a row nobody can tick;
     // fail loudly, at import, rather than leave it out.
@@ -47,7 +45,15 @@ for (const permission of (Object.keys(PERMISSIONS) as Permission[]).filter(p => 
     group.permissions.push(permission)
 }
 
-export const permissionLabelKey = (permission: Permission) => `perm_${permission.replace(/\./g, "_")}` as TranslationKey
+export const permissionLabelKey = (permission: Permission | RetiredPermission) => `perm_${permission.replace(/\./g, "_")}` as TranslationKey
+
+/**
+ * A permission's name in words, as a record kept it: one that exists, or one
+ * retired (catalogue.ts, `RETIRED`), as an audit log entry or an access
+ * review may name it. Null for anything else, shown as it was written.
+ */
+export const namedPermissionKey = (value: string): TranslationKey | null =>
+    isPermission(value) || isRetired(value) ? permissionLabelKey(value) : null
 export const groupLabelKey = (group: string) => `perm_group_${group}` as TranslationKey
 export const scopeLabelKey = (scope: Scope) => `scope_${scope}` as TranslationKey
 

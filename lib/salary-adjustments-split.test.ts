@@ -1,12 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { readFileSync } from "node:fs"
-import { PERMISSIONS, CATALOGUE_VERSION, splitParts, isSplit } from "@/lib/permissions/catalogue"
-import { normalizeGrants, grantsFromRows } from "@/lib/permissions/grant-rules"
+import { PERMISSIONS, CATALOGUE_VERSION } from "@/lib/permissions/catalogue"
 import { encodeGrants, type Grants } from "@/lib/permissions/grants"
-import { can } from "@/lib/permissions/can"
 import { PERMISSION_GROUPS } from "@/lib/permissions/matrix"
 import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
-import { holdersOf } from "@/lib/permissions/holders"
 import { stepUpConfirmed } from "@/lib/permissions/test-actors"
 import { stripComments } from "./strip-comments"
 import { en } from "./translations/en"
@@ -67,12 +64,6 @@ const signIn = (grants: Grants, confirmed = true) => {
 const REACH = { "employees.view": "COMPANY", "salary.view": "COMPANY" } as Grants
 const ADDS = { ...REACH, [ADD]: "COMPANY" } as Grants
 const REVERSES = { ...REACH, [REVERSE]: "COMPANY" } as Grants
-/** A role saved before PR 382, still holding the old name. */
-const OLD_ROLE = grantsFromRows([
-    { permission: "employees.view", scope: "COMPANY" },
-    { permission: "salary.view", scope: "COMPANY" },
-    { permission: "salary_adjustments.manage", scope: "COMPANY" },
-])
 
 const url = (p: string) => `https://nizmo.test${p}`
 const post = (p: string, body: unknown) => new Request(url(p), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
@@ -102,12 +93,6 @@ describe("the catalogue", () => {
         }
     })
 
-    it("keeps salary_adjustments.manage, split into the two, and still marked high-risk", () => {
-        expect(splitParts("salary_adjustments.manage")).toEqual(PARTS)
-        expect(isSplit("salary_adjustments.manage")).toBe(true)
-        expect((PERMISSIONS["salary_adjustments.manage"] as { highRisk?: string }).highRisk).toBe("Moves money")
-    })
-
     it("offers Add and Reverse in the role editor's salaries, and salary_adjustments.manage no more", () => {
         expect(PERMISSION_GROUPS.find(g => g.key === "salaries")?.permissions).toEqual(["salary.view", "salary.edit", ...PARTS])
         expect(PERMISSION_GROUPS.flatMap(g => g.permissions)).not.toContain("salary_adjustments.manage")
@@ -123,37 +108,7 @@ describe("the catalogue", () => {
             expect(BUILT_IN_GRANTS.TEAM_LEADER[p as keyof Grants], p).toBeUndefined()
             expect(BUILT_IN_GRANTS.EMPLOYEE[p as keyof Grants], p).toBeUndefined()
         }
-        for (const role of Object.values(BUILT_IN_GRANTS)) expect(role["salary_adjustments.manage"]).toBeUndefined()
-    })
-})
-
-describe("a role still holding salary_adjustments.manage", () => {
-    it("is read as holding both", () => {
-        expect(OLD_ROLE[ADD]).toBe("COMPANY")
-        expect(OLD_ROLE[REVERSE]).toBe("COMPANY")
-        expect(OLD_ROLE["salary_adjustments.manage"]).toBeUndefined()
-    })
-
-    it("is saved as both, with See salaries", () => {
-        const verdict = normalizeGrants([{ permission: "employees.view", scope: "COMPANY" }, { permission: "salary_adjustments.manage", scope: "COMPANY" }])
-        expect(verdict.ok).toBe(true)
-        if (verdict.ok) {
-            expect(verdict.grants).toMatchObject({ [ADD]: "COMPANY", [REVERSE]: "COMPANY", "salary.view": "COMPANY" })
-            expect(verdict.grants["salary_adjustments.manage"]).toBeUndefined()
-        }
-    })
-
-    it("is found when asking who may add or undo one", () => {
-        for (const p of PARTS) {
-            expect(holdersOf(p as keyof typeof PERMISSIONS, "COMPANY")).toEqual({ assignedRole: { grants: { some: { permission: { in: [p, "salary_adjustments.manage"] }, scope: "COMPANY" } } } })
-        }
-    })
-
-    it("gives a session made from it both, over someone else's pay and never its own", () => {
-        for (const p of PARTS) {
-            expect(can(actor(OLD_ROLE), p as keyof typeof PERMISSIONS, { userId: "emp", companyId: "c1", teamLeaderId: null })).toBe(true)
-            expect(can(actor(OLD_ROLE), p as keyof typeof PERMISSIONS, { userId: "admin", companyId: "c1", teamLeaderId: null })).toBe(false)
-        }
+        for (const role of Object.values(BUILT_IN_GRANTS)) expect((role as Record<string, unknown>)["salary_adjustments.manage"]).toBeUndefined()
     })
 })
 
@@ -170,12 +125,6 @@ describe("adding a bonus or a deduction", () => {
         await refusedPlainly(await bonus())
         await refusedPlainly(await deduction())
         expect(done).toEqual([])
-    })
-
-    it("is still open to a role saved with salary_adjustments.manage", async () => {
-        signIn(OLD_ROLE)
-        expect((await bonus()).status).toBe(200)
-        expect((await deduction()).status).toBe(200)
     })
 
     it("is never on one's own pay, and says so", async () => {
@@ -210,12 +159,6 @@ describe("undoing one: reversing it, or rolling it back", () => {
         await refusedPlainly(await reverse())
         await refusedPlainly(await rollback())
         expect(done).toEqual([])
-    })
-
-    it("is still open to a role saved with salary_adjustments.manage", async () => {
-        signIn(OLD_ROLE)
-        expect((await reverse()).status).toBe(200)
-        expect((await rollback()).status).toBe(200)
     })
 
     it("is never on one's own pay, and says so", async () => {

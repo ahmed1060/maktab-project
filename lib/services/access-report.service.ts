@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { PERMISSIONS, isPermission, splitFrom, type Permission, type Scope } from "@/lib/permissions/catalogue"
+import { PERMISSIONS, isPermission, type Permission, type Scope } from "@/lib/permissions/catalogue"
 import { rowsHeld } from "@/lib/permissions/grant-rules"
 import { holdersOf } from "@/lib/permissions/holders"
 
@@ -19,9 +19,7 @@ export class AccessReportService {
             where: { companyId, status: { not: "DELETED" }, ...holdersOf(permission) },
             select: {
                 id: true, firstName: true, lastName: true, status: true,
-                // Or what it was split from, which a role may still hold
-                // (catalogue.ts, `splitInto`): the scope is the same.
-                assignedRole: { select: { id: true, name: true, builtIn: true, grants: { where: { permission: { in: [permission, ...(splitFrom(permission) ? [splitFrom(permission)!] : [])] } }, select: { scope: true } } } },
+                assignedRole: { select: { id: true, name: true, builtIn: true, grants: { where: { permission }, select: { scope: true } } } },
             },
             orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
         })
