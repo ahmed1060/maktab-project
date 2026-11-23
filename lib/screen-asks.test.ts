@@ -96,6 +96,12 @@ const ASKS_ROLE = profile(": can('employees.request_role') ? 'ask'")
 const LIST_ADD = "return { suggest, onAdd: can('lists.add') && (!superAdmin || !!company) ? add : undefined }"
 
 /**
+ * The names-only list a picker that hands work to someone asks (PR 371), its path built by lib/assignees-url.ts and so
+ * found since PR 394: the route answers the permission named in `for`, one of its list, for whoever holds it.
+ */
+const ASSIGNEES = "app/api/assignees/route.ts"
+
+/**
  * Attendance's (PR 391): its Requests tab imports two of Requests' dialogs, asking for a permission and reporting a
  * missing punch, from the file that also decides and withdraws, so the rest of that file's calls aren't made here.
  */
@@ -127,6 +133,10 @@ const SCREENS: Record<string, Screen> = {
             // An assignee's: what changed seen, and their work sent in. The server checks they're on the task.
             "PUT /api/tasks/[x]/acknowledge": ANYONE,
             "PUT /api/tasks/[x]/submit": ANYONE,
+            // Who to transfer it to: from its menu, or when someone it was given to is gone.
+            "GET /api/assignees": { when: ["tasks.transfer"], routeChecks: ASSIGNEES,
+                gates: ["const canTransfer = can('tasks.transfer')", "const transferable = !isRestricted && canTransfer && ['IN_PROGRESS', 'PENDING'].includes(task.status)",
+                    "{deleted.length > 0 && canTransfer && !DECIDED.includes(task.status) && ("] },
             // Removing a note, file or cost: one's own, or anyone's with Edit tasks, decided item by item by the server.
             "DELETE /api/tasks/[x]/items": ANYONE,
             "DELETE /api/tasks/[x]/locations": ANYONE,
@@ -173,6 +183,9 @@ const SCREENS: Record<string, Screen> = {
             "PUT /api/obligations/[x]": ANYONE,
             "DELETE /api/obligations/[x]": { when: ["obligations.delete"], routeChecks: "lib/services/obligation.service.ts",
                 gates: ["const mayDeleteThis = ownRule('obligations.delete')", "...(mayDeleteThis\n"] },
+            // Who to hand it on to, when someone it was handed to is gone.
+            "GET /api/assignees": { when: ["obligations.edit"], routeChecks: ASSIGNEES,
+                gates: ["const canEdit = can('obligations.edit')", "{deleted.length > 0 && canEdit && !DECIDED.includes(obligation.status) && ("] },
             "POST /api/obligations/[x]/revert": superAdmin("...(userRole === 'SUPER_ADMIN' && ['APPROVED', 'COMPLETED', 'REJECTED', 'PENDING_CONFIRMATION'].includes(obligation.status)"),
             "POST /api/upload": ANYONE,
         },
@@ -181,6 +194,7 @@ const SCREENS: Record<string, Screen> = {
         opens: ["obligations.create"],
         asks: {
             "POST /api/obligations": { needs: ["obligations.create"], routeChecks: "lib/services/obligation.service.ts" },
+            "GET /api/assignees": { needs: ["obligations.create"], routeChecks: ASSIGNEES },
         },
     },
     "records": {
@@ -441,12 +455,15 @@ const SCREENS: Record<string, Screen> = {
             "POST /api/tasks": needs("tasks.create"),
             // The spreadsheet to fill in, and its places, which an upload checks its rows against: See locations, which adding a task needs first (§5.3).
             "GET /api/templates/download": needs("tasks.create"),
+            "GET /api/assignees": { needs: ["tasks.create"], routeChecks: ASSIGNEES },
             "GET /api/locations": needs("locations.view"),
             "GET /api/clients": when("clients.view", "const canUseClients = useCan().can('clients.view')", ...TASK_PLACE_CLIENTS),
             "POST /api/locations": when("locations.create", TASK_PLACE_NEW),
             "PUT /api/locations": TASK_PLACE_NO_EDIT,
             // The Super Admin manages the templates instead of downloading one.
             "GET /api/templates/status": superAdmin("{userRole === 'SUPER_ADMIN'", "const allCompanies = isOpen && !selectedCompanyId"),
+            // The template there now, for the Super Admin managing them (lib/bulk-templates.ts, found since PR 394).
+            "GET /api/templates/raw": superAdmin("{userRole === 'SUPER_ADMIN'", "? <Button icon={FileXlsIcon} onClick={() => setIsManageTemplatesOpen(true)}>{t('manage_templates')}</Button>"),
             "GET /api/companies": superAdmin(LOCATION_COMPANY),
             "GET /api/lists": ANYONE,
             "POST /api/lists": when("lists.add", LIST_ADD),
@@ -520,6 +537,8 @@ const SCREENS: Record<string, Screen> = {
             "PUT /api/clients": when("clients.delete", "? can('clients.delete') && <Button variant=\"primary\" icon={ArrowCounterClockwiseIcon}"),
             "GET /api/clients/accountant": when("clients.edit", "picks={can('clients.edit')}", "if (picks && !archived) return <AccountantPicker"),
             "PUT /api/clients/accountant": when("clients.edit", "picks={can('clients.edit')}", "if (picks && !archived) return <AccountantPicker"),
+            // Who signs in for it (lib/client-people.ts, found since PR 394).
+            "GET /api/client-accounts": when("client_accounts.view", "const seesPeople = features.has('TAX_POSITION') && can('client_accounts.view')", "{seesPeople && <ClientPeople"),
             "GET /api/records": when("records.view", "const seesRecords = can('records.view')", "{seesRecords && !sectionsFailed && ("),
             "POST /api/records": when("records.contribute", "adding={!archived && adding && can('records.contribute')}"),
             "PUT /api/records": when("records.contribute", "const canEdit = can('records.contribute')", "...(canEdit ? [{ key: 'edit'"),
@@ -717,18 +736,57 @@ function pathTables(src: string): { name: string; from: number; to: number; path
 }
 
 /**
+ * The functions in a file that build a path (PR 394), each by name with where
+ * its path starts: an arrow that is the path, `const name = (…) => \`/api/…\``,
+ * or a function whose own body returns it. One with no name, built where it's
+ * asked, isn't: its path is a call there.
+ */
+function pathBuilders(src: string): { name: string; at: number }[] {
+    const out: { name: string; at: number }[] = []
+    for (const m of src.matchAll(/\bconst (\w+) = \([^()]*\)(?::[^=]*)? => `\/api\//g)) out.push({ name: m[1], at: m.index! + m[0].length - 5 })
+    for (const m of src.matchAll(/\breturn `\/api\//g)) {
+        let depth = 0, k = m.index! - 1
+        for (; k >= 0; k--) {
+            if (src[k] === "}") depth++
+            else if (src[k] === "{" && depth-- === 0) break
+        }
+        const head = k < 0 ? null : /\bfunction (\w+)\s*\([^)]*\)[^{]*$/.exec(src.slice(Math.max(0, k - 300), k))
+        if (head) out.push({ name: head[1], at: m.index! + m[0].length - 5 })
+    }
+    return out
+}
+
+/** The path builders a file imports, by the name it uses for each (PR 394). */
+function importedBuilders(src: string, file: string): Record<string, string> {
+    const out: Record<string, string> = {}
+    for (const m of src.matchAll(/import\s+\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/g)) {
+        const from = resolveImport(file, m[2])
+        if (!from) continue
+        const built = readFileSync(from, "utf8")
+        const paths = Object.fromEntries(pathBuilders(built).map(b => [b.name, readPath(built, b.at, "`").path]))
+        for (const entry of m[1].split(",").map(e => e.trim()).filter(Boolean)) {
+            const [name, local = name] = entry.replace(/^type\s+/, "").split(/\s+as\s+/)
+            if (paths[name]) out[local] = paths[name]
+        }
+    }
+    return out
+}
+
+/**
  * Each call in a file, as "METHOD /api/path": a ${…} right after a slash is a
  * segment, [x]; one added to a segment, as a query is, ends it. A table of
  * paths is read where it's used, `TABLE.key` as that path and `TABLE[…]` as
- * each, with what a template adds after it.
+ * each, with what a template adds after it; so is a path a function builds,
+ * its own or one the file imports, `name(…)` as that path (PR 394).
  */
-function callsIn(src: string): Set<string> {
+function callsIn(src: string, file?: string): Set<string> {
     const out = new Set<string>()
     const tables = pathTables(src)
+    const own = pathBuilders(src)
     let i = 0
     while ((i = src.indexOf("/api/", i)) !== -1) {
         const quote = src[i - 1]
-        if (!["'", '"', "`"].includes(quote) || tables.some(t => i > t.from && i < t.to)) { i += 5; continue }
+        if (!["'", '"', "`"].includes(quote) || tables.some(t => i > t.from && i < t.to) || own.some(b => b.at === i)) { i += 5; continue }
         const { path, end } = readPath(src, i, quote)
         for (const method of methodsOf(src, i - 1)) out.add(`${method} ${path.replace(/\/$/, "")}`)
         i = end
@@ -744,6 +802,15 @@ function callsIn(src: string): Set<string> {
             for (const base of bases) for (const method of methodsOf(src, templated ? at - 3 : at)) out.add(`${method} ${(base + rest).replace(/\/$/, "")}`)
         }
     }
+    const builders: Record<string, string> = { ...(file ? importedBuilders(src, file) : {}), ...Object.fromEntries(own.map(b => [b.name, readPath(src, b.at, "`").path])) }
+    for (const [name, path] of Object.entries(builders)) {
+        for (const use of src.matchAll(new RegExp(`(^|[^\\w.])${name}\\(`, "g"))) {
+            const at = use.index! + use[1].length
+            // Not where it's defined.
+            if (/function\s+$/.test(src.slice(Math.max(0, at - 9), at))) continue
+            for (const method of methodsOf(src, at)) out.add(`${method} ${path.replace(/\/$/, "")}`)
+        }
+    }
     return out
 }
 
@@ -751,7 +818,8 @@ function callsIn(src: string): Set<string> {
  * The methods a call sends: GET, unless the path is given to a call, fetch,
  * a helper such as attendance's send, or one a screen writes, as its `act`
  * (PR 391), whose arguments after it name others: as written, built by
- * `json('POST', …)`, as both sides of a choice (`editing ? 'PUT' : 'POST'`),
+ * `json('POST', …)`, given as an argument of its own (`'DELETE'`, PR 394),
+ * as both sides of a choice (`editing ? 'PUT' : 'POST'`),
  * or, given as `method`, as declared above it; or given to the sender a
  * screen gives lib/mobile, as POST (PR 393). A path kept in a variable is
  * read where it's written, as GET.
@@ -769,13 +837,31 @@ function methodsOf(src: string, start: number): string[] {
     }
     const args = src.slice(start, k)
     const verbs = (text: string) => [...new Set([...text.matchAll(VERB)].map(m => m[1]))]
-    const given = [...args.matchAll(/(?:method:|\bjson\()\s*([^,}\n]+)/g)].flatMap(m => verbs(m[1]))
+    const given = [
+        ...[...args.matchAll(/(?:method:|\bjson\()\s*([^,}\n]+)/g)].flatMap(m => verbs(m[1])),
+        // A method given as an argument of its own, as the attendance calendar's helper takes it (PR 394).
+        ...topLevelArgs(args).slice(1).flatMap(arg => (/^(['"])(GET|POST|PUT|PATCH|DELETE)\1$/.test(arg) ? [arg.slice(1, -1)] : [])),
+    ]
     if (given.length) return [...new Set(given)]
     if (/\bmethod\s*[:,}]/.test(args)) {
         const declared = src.slice(0, start).split("\n").reverse().find(line => /\bmethod\b/.test(line) && verbs(line).length)
         if (declared) return verbs(declared)
     }
     return ["GET"]
+}
+
+/** A call's arguments from `args` on, each trimmed: split at its own commas, not those inside brackets (PR 394). */
+function topLevelArgs(args: string): string[] {
+    const out: string[] = []
+    let depth = 0, from = 0
+    for (let k = 0; k < args.length; k++) {
+        const c = args[k]
+        if ("([{".includes(c)) depth++
+        else if (")]}".includes(c)) depth--
+        else if (c === "," && depth === 0) { out.push(args.slice(from, k).trim()); from = k + 1 }
+    }
+    out.push(args.slice(from).trim())
+    return out
 }
 
 /**
@@ -937,7 +1023,7 @@ function redirectProblems(screen: string): string[] {
     const page = readFileSync(pageFile(screen), "utf8")
     const lines = page.slice(page.indexOf("export default")).split("\n").map(l => l.trim()).filter(Boolean)
     if (!/^redirect\(/.test(lines[lines.length - 2] ?? "")) out.push(`${screen}: doesn't end by sending you on`)
-    for (const f of screenFiles(pageFile(screen))) for (const call of callsIn(readFileSync(f, "utf8"))) out.push(`${screen}: asks ${call}`)
+    for (const f of screenFiles(pageFile(screen))) for (const call of callsIn(readFileSync(f, "utf8"), f)) out.push(`${screen}: asks ${call}`)
     return out
 }
 
@@ -966,7 +1052,7 @@ describe.each(Object.entries(SCREENS))("the %s screen", (screen, { opens, asks }
 
     it("asks the server for what the table says, each method at each path, no more and no less", () => {
         const found = new Set<string>()
-        for (const f of files) for (const call of callsIn(readFileSync(f, "utf8"))) found.add(call)
+        for (const f of files) for (const call of callsIn(readFileSync(f, "utf8"), f)) found.add(call)
         expect([...found].sort()).toEqual(Object.keys(asks).sort())
     })
 
@@ -1035,6 +1121,30 @@ describe("the test itself", () => {
         // Asked for, or shown: read.
         expect([...callsIn("useSWR(on ? `/api/attendance/people?${q}` : null, fetcher)")]).toEqual(["GET /api/attendance/people"])
         expect([...callsIn("<Photo src={`/api/face/${id}/photo?which=new`} label={t('x')} />")]).toEqual(["GET /api/face/[x]/photo"])
+    })
+
+    it("reads a path a function builds where it's used, with the method of the call it's given to, not where it's built (PR 394)", () => {
+        // Built and used in one file, by an arrow or by a function's own return.
+        expect([...callsIn("const address = (p: Payment) => `/api/companies/${p.companyId}/payments/${p.id}`\nawait fetch(address(p), { method: 'PUT', body })")])
+            .toEqual(["PUT /api/companies/[x]/payments/[x]"])
+        expect([...callsIn("export function usersQuery(q: Query): string {\n    const params = new URLSearchParams()\n    if (q.page) { params.set('page', q.page) }\n    return `/api/users?${params}`\n}\nawait fetch(usersQuery(q), { method: 'POST' })")])
+            .toEqual(["POST /api/users"])
+        // Built where it's asked, by a function with no name: a call there, as before.
+        expect([...callsIn("useSWRInfinite((i, previous) => {\n    return `/api/attendance/discrepancies${q}`\n}, fetcher)")]).toEqual(["GET /api/attendance/discrepancies"])
+        // Built in another file it imports, by its own name or another.
+        const card = join(ROOT, "components/client-messages/CompanyMessagesCard.tsx")
+        expect([...callsIn("import { nizmoAgainApi } from '@/lib/client-message-pages'\nawait fetch(nizmoAgainApi(scope, kind), { method: 'DELETE' })", card)]).toEqual(["DELETE /api/company-messages/[x]"])
+        expect([...callsIn("import { taxEmailsApi as emails } from '@/lib/client-message-pages'\nuseSWR(emails(scope), fetcher)", card)]).toEqual(["GET /api/company-messages/emails"])
+        // Built, never used: no call.
+        expect([...callsIn("export const companyMessagesApi = (companyId: string | null) => `/api/company-messages${named(companyId)}`")]).toEqual([])
+    })
+
+    it("tells it from a method given as an argument of its own, as the attendance calendar's helper takes it (PR 394)", () => {
+        expect([...callsIn("run: () => send(`/api/attendance/versions/${v.id}`, 'DELETE', undefined, t('attendance_withdrawn')),")]).toEqual(["DELETE /api/attendance/versions/[x]"])
+        expect([...callsIn("ok = await send('/api/attendance/schedules', 'POST', { companyId, ...payload }, t('done'))")]).toEqual(["POST /api/attendance/schedules"])
+        // A verb given to a call inside another argument isn't this call's.
+        expect([...callsIn("await send('/api/attendance/schedules', 'POST', label(kind, 'PUT', size))")]).toEqual(["POST /api/attendance/schedules"])
+        expect([...callsIn("useSWR(['/api/attendance/calendar', 'x'], fetcher)")]).toEqual(["GET /api/attendance/calendar"])
     })
 
     it("reads a call through the sender a screen gives lib/mobile as POST, and no other call so (PR 393)", () => {
