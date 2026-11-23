@@ -615,7 +615,7 @@ there:
    the remaining splits change (locations, saved lists, costs, clients,
    employees and payroll); then the splits, each keeping its rows; then
    the rest, about 220 calls on 29 screens, in parts by area: the task
-   screens (#387); obligations, records and documents; requests and the
+   screens (#387); obligations, records and documents (#388); requests and the
    people screens; attendance and check-in; and settings. A page that
    only sends you on to another is outside the table.
 
@@ -924,3 +924,7 @@ same day as drawn in the All users: status badges canvas
   220 calls on 29 screens, comes in parts by area. Two kinds of row are
   added for them: a screen anyone in the company opens, which needs
   nothing, and a call not made here.
+- **2026-11-23:** #387 merged. The obligation, record and document
+  screens next, as #388, with the two tax pages, which ask the server for
+  nothing: the statement is drawn on the server, and the export page
+  gives a bookmark to run on the tax portal's own site.

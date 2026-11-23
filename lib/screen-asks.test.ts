@@ -29,8 +29,8 @@ import { PERMISSIONS, requiresOf, type Permission } from "./permissions/catalogu
  *   showing each person what they may see, needs nothing (PR 387).
  *
  * In parts: first the screens the remaining splits change (§2, PR 376), so
- * each split kept its rows; then the task screens (PR 387); the rest wait in
- * LATER.
+ * each split kept its rows; then the task screens (PR 387); then the
+ * obligation, record and document screens (PR 388); the rest wait in LATER.
  */
 
 /**
@@ -137,6 +137,70 @@ const SCREENS: Record<string, Screen> = {
             "GET /api/realtime/token": ANYONE,
         },
     },
+    // The obligation, record and document screens, and the two tax pages that ask nothing (PR 388).
+    "obligations": {
+        // Everyone's, as Tasks is: their own, and their team's or the company's with See obligations.
+        opens: ANYONE,
+        asks: {
+            "GET /api/users": when("employees.view", "const asks = on && can('employees.view')"),
+        },
+    },
+    "obligations/[id]": {
+        opens: ANYONE,
+        asks: {
+            // Moving it along is its assignees'; editing, handing it on and deciding it each need their own
+            // permission, decided change by change by the server (lib/services/obligation.service.ts).
+            "PUT /api/obligations/[x]": ANYONE,
+            "DELETE /api/obligations/[x]": { when: ["obligations.delete"], routeChecks: "lib/services/obligation.service.ts",
+                gates: ["const mayDeleteThis = ownRule('obligations.delete')", "...(mayDeleteThis\n"] },
+            "POST /api/obligations/[x]/revert": superAdmin("...(userRole === 'SUPER_ADMIN' && ['APPROVED', 'COMPLETED', 'REJECTED', 'PENDING_CONFIRMATION'].includes(obligation.status)"),
+            "POST /api/upload": ANYONE,
+        },
+    },
+    "obligations/new": {
+        opens: ["obligations.create"],
+        asks: {
+            "POST /api/obligations": { needs: ["obligations.create"], routeChecks: "lib/services/obligation.service.ts" },
+        },
+    },
+    "records": {
+        opens: ["records.view"],
+        asks: {
+            "GET /api/records": needs("records.view"),
+            // A record's client's sections, in its form.
+            "GET /api/records/sections": needs("records.view"),
+            "POST /api/records": when("records.contribute", "adding={adding && can('records.contribute')}"),
+            "PUT /api/records": when("records.contribute", "const canEdit = can('records.contribute')"),
+            "DELETE /api/records": when("records.delete", "const canDelete = can('records.delete')"),
+            // The client a new record is for, and the files of one not saved.
+            "GET /api/records/clients": when("records.contribute", "adding={adding && can('records.contribute')}", "const clients = useClients(choosing)"),
+            "DELETE /api/records/uploads": when("records.contribute", "adding={adding && can('records.contribute')}"),
+            "POST /api/upload": ANYONE,
+        },
+    },
+    "documents": {
+        // One's own payslips: their route lets the person they're for, or whoever sees payroll.
+        opens: ANYONE,
+        asks: {
+            "GET /api/users/[x]/payslips": ANYONE,
+        },
+    },
+    "documents/payslip/[id]": {
+        opens: ANYONE,
+        asks: {
+            "GET /api/payslips/[x]": ANYONE,
+        },
+    },
+    "documents/settlement/[id]": {
+        opens: ["settlements.view"],
+        asks: {
+            "GET /api/settlements/[x]": needs("settlements.view"),
+            "POST /api/settlements/[x]/resend": when("settlements.resend", "const canSend = can('settlements.resend')", "{canSend && <Button busy={sending} onClick={resend}>"),
+        },
+    },
+    // Drawn on the server, and a bookmark to run on the tax portal's own site: neither asks the server for anything.
+    "clients/[id]/tax-statement": { opens: ["tax.view"], asks: {} },
+    "tax-export": { opens: ["tax.manage"], asks: {} },
     "tasks/new": {
         opens: ["tasks.create"],
         asks: {
@@ -317,10 +381,8 @@ const SCREENS: Record<string, Screen> = {
 const LATER = [
     // The home page.
     "",
-    "attendance", "cash-advances/[userId]", "check-in", "clients/[id]/tax-statement", "documents",
-    "documents/payslip/[id]", "documents/settlement/[id]", "employees/[id]", "obligations", "obligations/[id]", "obligations/new",
-    "records", "requests", "roles-and-access",
-    "settings", "settings/client-messages/[kind]", "settings/terminal-guide", "tax-export",
+    "attendance", "cash-advances/[userId]", "check-in", "employees/[id]", "requests", "roles-and-access",
+    "settings", "settings/client-messages/[kind]", "settings/terminal-guide",
 ]
 
 /** A page that only sends you on to another, which is in the table (PR 387). */
