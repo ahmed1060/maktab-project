@@ -31,7 +31,8 @@ import { PERMISSIONS, requiresOf, type Permission } from "./permissions/catalogu
  * In parts: first the screens the remaining splits change (§2, PR 376), so
  * each split kept its rows; then the task screens (PR 387); then the
  * obligation, record and document screens (PR 388); then Requests (PR 389);
- * then the people screens (PR 390); the rest wait in LATER.
+ * then the people screens (PR 390); then attendance (PR 391); the rest wait
+ * in LATER.
  */
 
 /**
@@ -95,6 +96,16 @@ const ASKS_ROLE = profile(": can('employees.request_role') ? 'ask'")
 const ROLES_CARD_HELPER = notHere("import { refusalOf } from '@/components/CompanyRolesCard'")
 // A saved name added from where it's typed (components/lists/useListNames.ts).
 const LIST_ADD = "return { suggest, onAdd: can('lists.add') && (!superAdmin || !!company) ? add : undefined }"
+
+/**
+ * Attendance's (PR 391): its Requests tab imports two of Requests' dialogs, asking for a permission and reporting a
+ * missing punch, from the file that also decides and withdraws, so the rest of that file's calls aren't made here.
+ */
+const ASKING_DIALOGS = notHere("import { AskPermission, ReportMissingPunch } from '../requests/AttendanceDialogs'")
+const PUNCH_ACCESS = "lib/attendance/punch-access.ts"
+const CORRECTS_COMPANY = "const correctsCompany = p.companyWide('attendance.correct')"
+const CORRECTS_ROW = "const corrects = (row: { userId: string; teamLeaderId: string | null }) => row.userId !== me && p.canFor('attendance.correct', row.userId, row.teamLeaderId)"
+const FACE_TAB = ["...(p.companyWide('attendance.approve_face') ? ['face' as const] : []),", "{tab === 'face' && <FaceTab q={q} />}"]
 
 const SCREENS: Record<string, Screen> = {
     // The task screens (PR 387).
@@ -320,6 +331,74 @@ const SCREENS: Record<string, Screen> = {
             "PUT /api/access-reviews/settings": ROLES_CARD_HELPER,
         },
     },
+    "attendance": {
+        // Everyone's: one's own days and punches, and, with See team attendance, other people's at its scope.
+        opens: ANYONE,
+        asks: {
+            "GET /api/attendance/people": ANYONE,
+            "GET /api/attendance/days": ANYONE,
+            "GET /api/attendance/punches": ANYONE,
+            // One's own: the permission hours left, asking for one, a missing punch reported, and the phone one checks in from.
+            "GET /api/attendance/permissions/balance": ANYONE,
+            "POST /api/attendance/permissions": ANYONE,
+            "POST /api/attendance/missing-punches": ANYONE,
+            "GET /api/attendance/phone": ANYONE,
+            "DELETE /api/attendance/phone": ANYONE,
+            "GET /api/realtime/token": ANYONE,
+            // What needs a decision, for whoever sees other people's.
+            "GET /api/attendance/exceptions": { when: ["attendance.view_team"], routeChecks: PUNCH_ACCESS,
+                gates: ["const seesOthers = p.can('attendance.view_team')", "{tab === 'exceptions' && today && seesOthers && <ExceptionsTab"] },
+            // Correcting: a punch added or withdrawn, a day decided or its decision undone, for each person the role reaches.
+            "POST /api/attendance/punches": { when: ["attendance.correct"], routeChecks: PUNCH_ACCESS,
+                gates: ["action={p.can('attendance.correct') ? <Button variant=\"primary\" size=\"sm\" onClick={() => setAdding(true)}", CORRECTS_ROW, "const settle = (r: Row) => (corrects(r) ? ("] },
+            "POST /api/attendance/punches/[x]/void": { when: ["attendance.correct"], routeChecks: PUNCH_ACCESS,
+                gates: ["? p.canFor('attendance.correct', punch.userId, leaderOf.get(punch.userId) ?? null)", "const mayWithdraw = (punch: Punch) => mayCorrect(punch) && punch.userId !== me", "const withdrawButton = (x: Punch) => (mayWithdraw(x) ?"] },
+            "POST /api/attendance/decisions": { when: ["attendance.correct"], routeChecks: PUNCH_ACCESS,
+                gates: [CORRECTS_ROW, "const decisionButtons = (row: Row, subject: Subject) => corrects(row) ? (", "const settle = (r: Row) => (corrects(r) ? ("] },
+            "DELETE /api/attendance/decisions/[x]": { when: ["attendance.correct"], routeChecks: PUNCH_ACCESS, gates: [CORRECTS_ROW, "const undo = (d: Decided) => (corrects(d) ? ("] },
+            // Overtime decided, or approved ahead.
+            "POST /api/attendance/overtime": when("attendance.approve_overtime",
+                "const approvesOvertime = (row: Row) => row.userId !== me && p.canFor('attendance.approve_overtime', row.userId, row.teamLeaderId)",
+                "const decideOvertime = (r: Row) => (approvesOvertime(r) ? (", "const decidesOvertime = p.can('attendance.approve_overtime')", "{decidesOvertime && ("),
+            // The company's: its month worked out again, its files imported, and who each terminal number is.
+            "POST /api/attendance/recompute": { when: ["attendance.correct"], routeChecks: PUNCH_ACCESS,
+                gates: [CORRECTS_COMPANY, "action={correctsCompany ? <Button size=\"sm\" onClick={() => { void recompute() }}"] },
+            "GET /api/attendance/imports": { when: ["attendance.correct"], routeChecks: PUNCH_ACCESS, gates: [CORRECTS_COMPANY, "{tab === 'import' && correctsCompany && <ImportTab"] },
+            "POST /api/attendance/imports": { when: ["attendance.correct"], routeChecks: PUNCH_ACCESS, gates: [CORRECTS_COMPANY, "{tab === 'import' && correctsCompany && <ImportTab"] },
+            "POST /api/attendance/imports/[x]/void": { when: ["attendance.correct"], routeChecks: PUNCH_ACCESS, gates: [CORRECTS_COMPANY, "{tab === 'import' && correctsCompany && <ImportTab"] },
+            "GET /api/attendance/import-template": { when: ["attendance.correct"], routeChecks: PUNCH_ACCESS, gates: [CORRECTS_COMPANY, "{tab === 'import' && correctsCompany && <ImportTab"] },
+            "GET /api/attendance/codes": { when: ["attendance.correct"], routeChecks: PUNCH_ACCESS, gates: [CORRECTS_COMPANY, "{tab === 'numbers' && correctsCompany && <NumbersTab"] },
+            "POST /api/attendance/codes": { when: ["attendance.correct"], routeChecks: PUNCH_ACCESS, gates: [CORRECTS_COMPANY, "{tab === 'numbers' && correctsCompany && <NumbersTab"] },
+            "DELETE /api/attendance/codes/[x]": { when: ["attendance.correct"], routeChecks: PUNCH_ACCESS, gates: [CORRECTS_COMPANY, "{tab === 'numbers' && correctsCompany && <NumbersTab"] },
+            // Face verification, for whoever decides it company-wide.
+            "GET /api/attendance/face/people": when("attendance.approve_face", ...FACE_TAB),
+            "PUT /api/attendance/face/people": when("attendance.approve_face", ...FACE_TAB),
+            "POST /api/attendance/face/reverify": when("attendance.approve_face", ...FACE_TAB),
+            "GET /api/attendance/face/reviews": { when: ["attendance.approve_face"], gates: FACE_TAB, routeChecks: "lib/attendance/face-access.ts" },
+            "POST /api/attendance/face/reviews/[x]/decide": { when: ["attendance.approve_face"], gates: FACE_TAB, routeChecks: "lib/attendance/face-access.ts" },
+            "GET /api/attendance/face/reviews/[x]/photo": { when: ["attendance.approve_face"], gates: FACE_TAB, routeChecks: "lib/attendance/face-access.ts" },
+            // A flagged check-in's photos are Requests' dialog; the face tab takes only the photo frame.
+            "GET /api/attendance/flagged/[x]/face": notHere("import { FacePhoto as Photo, useWatermark } from '@/components/FacePhoto'"),
+            "GET /api/attendance/missions/tasks": ASKING_DIALOGS,
+            "POST /api/attendance/missions": ASKING_DIALOGS,
+            "DELETE /api/attendance/permissions/[x]": ASKING_DIALOGS,
+            "DELETE /api/attendance/missions/[x]": ASKING_DIALOGS,
+            "DELETE /api/attendance/missing-punches/[x]": ASKING_DIALOGS,
+            "DELETE /api/attendance/overtime/[x]": ASKING_DIALOGS,
+            "DELETE /api/attendance/phones/[x]": ASKING_DIALOGS,
+            "DELETE /api/attendance/flagged/[x]": ASKING_DIALOGS,
+            "POST /api/attendance/permissions/[x]/decide": ASKING_DIALOGS,
+            "POST /api/attendance/missions/[x]/decide": ASKING_DIALOGS,
+            "POST /api/attendance/missions/[x]/cancel": ASKING_DIALOGS,
+            "POST /api/attendance/missing-punches/[x]/decide": ASKING_DIALOGS,
+            "POST /api/attendance/overtime/[x]/decide": ASKING_DIALOGS,
+            "POST /api/attendance/flagged/[x]/decide": ASKING_DIALOGS,
+            "POST /api/attendance/phones/[x]/decide": ASKING_DIALOGS,
+            "POST /api/attendance/phones/[x]/revoke": ASKING_DIALOGS,
+            "POST /api/profile-requests/[x]/[x]": ASKING_DIALOGS,
+            "PUT /api/role-requests/[x]": ASKING_DIALOGS,
+        },
+    },
     "tasks/new": {
         opens: ["tasks.create"],
         asks: {
@@ -500,7 +579,7 @@ const SCREENS: Record<string, Screen> = {
 const LATER = [
     // The home page.
     "",
-    "attendance", "check-in",
+    "check-in",
     "settings", "settings/client-messages/[kind]", "settings/terminal-guide",
 ]
 
@@ -625,12 +704,15 @@ function callsIn(src: string): Set<string> {
 }
 
 /**
- * The methods a call sends: GET, unless the path is fetch's first argument
- * and its options name others: as written, as both sides of a choice
- * (`editing ? 'PUT' : 'POST'`), or, given as `method`, as declared above it.
+ * The methods a call sends: GET, unless the path is given to a call, fetch,
+ * a helper such as attendance's send, or one a screen writes, as its `act`
+ * (PR 391), whose arguments after it name others: as written, built by
+ * `json('POST', …)`, as both sides of a choice (`editing ? 'PUT' : 'POST'`),
+ * or, given as `method`, as declared above it. A path kept in a variable is
+ * read where it's written, as GET.
  */
 function methodsOf(src: string, start: number): string[] {
-    if (!/(?:fetch|fetchRetrying)\(\s*$/.test(src.slice(Math.max(0, start - 40), start))) return ["GET"]
+    if (!givenToACall(src, start)) return ["GET"]
     let depth = 0, k = start
     for (; k < src.length; k++) {
         const c = src[k]
@@ -638,14 +720,28 @@ function methodsOf(src: string, start: number): string[] {
         else if (")]}".includes(c)) { if (depth === 0) break; depth-- }
     }
     const args = src.slice(start, k)
-    const named = args.match(/method:\s*([^,}\n]+)/)
     const verbs = (text: string) => [...new Set([...text.matchAll(VERB)].map(m => m[1]))]
-    if (named && verbs(named[1]).length) return verbs(named[1])
-    if (named || /\bmethod\s*[,}]/.test(args)) {
+    const given = [...args.matchAll(/(?:method:|\bjson\()\s*([^,}\n]+)/g)].flatMap(m => verbs(m[1]))
+    if (given.length) return [...new Set(given)]
+    if (/\bmethod\s*[:,}]/.test(args)) {
         const declared = src.slice(0, start).split("\n").reverse().find(line => /\bmethod\b/.test(line) && verbs(line).length)
         if (declared) return verbs(declared)
     }
     return ["GET"]
+}
+
+/**
+ * Whether what starts at `start` is given to a call: the nearest bracket left
+ * open before it is a parenthesis, not a function's body or an object (PR 391).
+ */
+function givenToACall(src: string, start: number): boolean {
+    let depth = 0
+    for (let k = start - 1; k >= 0; k--) {
+        const c = src[k]
+        if (")]}".includes(c)) depth++
+        else if ("([{".includes(c) && depth-- === 0) return c === "("
+    }
+    return false
 }
 
 /** The route files a call can reach: [x] is the dynamic segment, or, with none, any folder. */
@@ -831,6 +927,17 @@ describe("the test itself", () => {
         expect([...callsIn("await fetch('/api/locations', {\n method: editing ? 'PUT' : 'POST',\n })")].sort()).toEqual(["POST /api/locations", "PUT /api/locations"])
         expect([...callsIn("const go = async (method: 'POST' | 'PUT' = 'PUT') => {\n await fetch('/api/lists', { method, body })")].sort()).toEqual(["POST /api/lists", "PUT /api/lists"])
         expect([...callsIn("const url = '/api/charges'; await fetch(url, { method: 'POST' })")]).toEqual(["GET /api/charges"])
+        expect([...callsIn("const save = async () => {\n    const url = `/api/lists?${params}`\n    await fetch('/api/lists', { method: 'PUT' })\n}")].sort()).toEqual(["GET /api/lists", "PUT /api/lists"])
+    })
+
+    it("tells it from the call the path is given to: a helper such as attendance's send, or a screen's own, its options written or built by json (PR 391)", () => {
+        expect([...callsIn("const r = await send('/api/attendance/codes', json('POST', { code }), t('x'))")]).toEqual(["POST /api/attendance/codes"])
+        expect([...callsIn("const r = await send(`/api/attendance/codes/${removing.id}`, { method: 'DELETE' }, t('x'))")]).toEqual(["DELETE /api/attendance/codes/[x]"])
+        expect([...callsIn("void act(`undo:${d.id}`, `/api/attendance/decisions/${d.id}`, { method: 'DELETE' }, 'exc_undone')")]).toEqual(["DELETE /api/attendance/decisions/[x]"])
+        expect([...callsIn("await send('/api/consent', accept ? json('POST', { version }) : { method: 'DELETE' }, '')")].sort()).toEqual(["DELETE /api/consent", "POST /api/consent"])
+        // Asked for, or shown: read.
+        expect([...callsIn("useSWR(on ? `/api/attendance/people?${q}` : null, fetcher)")]).toEqual(["GET /api/attendance/people"])
+        expect([...callsIn("<Photo src={`/api/face/${id}/photo?which=new`} label={t('x')} />")]).toEqual(["GET /api/face/[x]/photo"])
     })
 
     it("reads a table of paths as its uses, not its entries (PR 389)", () => {
