@@ -7,12 +7,18 @@ enhancement; the change log at the end records each update.
 
 Each part is marked:
 
+- **Done**: built and merged.
 - **Decided**: the product owner agreed to it.
 - **Proposed**: suggested, waiting for the product owner's answer.
 - **Open**: a question that needs answering before that part is built.
+- **Moved**: carried to another plan.
 
-Status: **being decided.** The first plan is done (#358 to #362). The
-owner answered on 2026-11-22:
+Status: **the names (§3) next.** Done: the development database (§4),
+each "manage" permission split (§2), the rules between permissions with
+their screen test (§5, #369 to #395), and status counts on All users (§6,
+#384). The names are decided, and start with their design for the owner.
+
+The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
 - the company's name and icon (§1) moved to `THIRD_CHANGES_PLAN.md`;
 - the names (§3) are for all three, by a free way;
@@ -455,7 +461,7 @@ other filled in when one is typed, if that's possible.
   previews are behind Vercel Authentication (Standard Protection), so
   only the Vercel team opens them; nizmo.vercel.app stays open.
 
-## 5. Rules between permissions (Decided)
+## 5. Rules between permissions (Done)
 
 The owner asked on 2026-11-22 for rules when the Super Admin makes a role
 or changes one: some permissions can't be given without others first.
@@ -625,18 +631,19 @@ Each a PR of its own, before the rest of §2's splits, so that each split
 from then on names its needs, and before the grant for companies already
 there:
 
-1. **The list of needs:** every permission's needs, found by reading what
-   each screen asks the server for against the routes' permissions,
-   written here as a table for the owner to approve. No code.
-2. **The names-only list for pickers** (rule 5), and the four pickers on
-   it.
-3. **The rules in the role editor and on the server** (rules 1 to 3),
-   one PR each: rule 1 first (#372), as it's the one that refuses a
-   save; then rule 3's warning (#373); then rule 2's notes (#374).
-4. **Roles already saved** (rule 4, #375), after a read-only count of the
-   roles in production that break a rule. Counted on 2026-11-22, before
-   #372: of the 3 roles in production, none breaks rule 1, and there are
-   no templates. Built as #375.
+1. **The list of needs** (Done, #369): every permission's needs, found
+   by reading what each screen asks the server for against the routes'
+   permissions, written here as a table for the owner to approve. No
+   code.
+2. **The names-only list for pickers** (Done, #371) (rule 5), and the
+   four pickers on it.
+3. **The rules in the role editor and on the server** (Done) (rules 1
+   to 3), one PR each: rule 1 first (#372), as it's the one that refuses
+   a save; then rule 3's warning (#373); then rule 2's notes (#374).
+4. **Roles already saved** (Done) (rule 4, #375), after a read-only
+   count of the roles in production that break a rule. Counted on
+   2026-11-22, before #372: of the 3 roles in production, none breaks
+   rule 1, and there are no templates. Built as #375.
 5. **The screen test** (Done, #395) ("Kept true" above), decided by the owner on
    2026-11-23 to come before the splits. In parts: #376 for the screens
    the remaining splits change (locations, saved lists, costs, clients,
@@ -730,7 +737,7 @@ permission bringing "See obligations". None found missing.
   fails other than by a refusal, who leads them isn't known, so the route
   decides (#370).
 
-## 6. Status counts on All users (Decided)
+## 6. Status counts on All users (Done)
 
 The owner asked, on 2026-11-23, for badges at the top of the Super Admin's
 All users page, each saying how many people have one status. Approved the
@@ -1017,3 +1024,7 @@ same day as drawn in the All users: status badges canvas
   builds the save path as a prop, so the test learns that form too:
   read by the prop's name where the editor calls it, as a PUT, not as a
   read where it's handed over.
+- **2026-11-23:** #395 merged: the screen test is done, and with it the
+  rules between permissions (§5). §5 and status counts on All users (§6,
+  #384) marked done, with §5.2's steps. The names (§3) next, starting with
+  a mockup of the name fields for the owner.
