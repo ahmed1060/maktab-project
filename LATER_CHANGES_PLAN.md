@@ -248,7 +248,7 @@ The owner asked to break up every "manage" permission in the roles system.
     - Access reviews keep the names they were opened with, as they record
       what was held then.
     - The old permissions stay in the catalogue, read as their parts, until
-      their codes are retired in a PR of their own.
+      their codes are retired in a PR of their own (#386).
     - Checked read-only on the live database on 23 November: 13 rows on its
       three built-in roles. The Admin's 9; the Team Leader's `locations.add`
       and `obligations.manage`, for its team; and the Employee's
@@ -261,6 +261,23 @@ The owner asked to break up every "manage" permission in the roles system.
     - **It changes the live database** when it's merged, as every
       migration runs as the site is built. Opening it changes only the
       development database, through the preview.
+  - **The old permissions retired (#386):** the nine split permissions
+    are removed from the catalogue, now that no role or template names
+    them. Checked read-only on the live database after #385: none left.
+    - Their codes are retired, never handed out again.
+    - Reading and writing a split permission as its parts goes too, as
+      nothing is split any more. A role or template saved naming one is
+      refused, as any name the catalogue doesn't know is.
+    - Asking who holds a part asks for the part alone.
+    - Their names stay, in both languages, as retired names with their
+      codes, so what recorded them still reads in words: two entries of
+      the live audit log name one, and an access review opened before
+      #385 could too.
+    - The catalogue's version isn't raised: every session since each
+      split's own raise holds the parts, never the old ones.
+    - Nothing changes on the live database. Another database, such as a
+      local one, needs #385's migration first, or its roles lose what
+      they hold under the old names.
 
 ## 3. English and Arabic names (Decided)
 
@@ -891,3 +908,6 @@ same day as drawn in the All users: status badges canvas
   holding both a split permission and one of its parts could narrow the
   part, so reading now keeps the wider scope, as the migration does. No
   role on the live database holds both.
+- **2026-11-23:** #385 merged and live: the three built-in roles hold 30
+  rows of parts, and no old rows. The old permissions retired next, as
+  #386.

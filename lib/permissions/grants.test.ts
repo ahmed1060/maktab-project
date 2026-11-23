@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { PERMISSIONS, RETIRED_CODES, ALL_PERMISSIONS, isSplit } from "./catalogue"
+import { PERMISSIONS, RETIRED_CODES, ALL_PERMISSIONS } from "./catalogue"
 import { encodeGrants, decodeGrants } from "./grants"
 import { BUILT_IN_GRANTS } from "./built-in"
 
@@ -16,16 +16,16 @@ describe("permission codes", () => {
         "profile_requests.review": 11, "requests.view": 12, "requests.review": 13, "requests.reset_points": 14,
         "tasks.view": 15, "tasks.create": 16, "tasks.edit": 17, "tasks.transfer": 18, "tasks.review": 19,
         "tasks.delete": 20, "tasks.pay": 21, "tasks.penalize": 22,
-        "obligations.view": 23, "obligations.manage": 24, "records.view": 25, "records.contribute": 26,
-        "records.edit": 27, "records.delete": 28, "clients.view": 29, "clients.manage": 30, "costs.view": 31,
+        "obligations.view": 23, "records.view": 25, "records.contribute": 26,
+        "records.edit": 27, "records.delete": 28, "clients.view": 29, "costs.view": 31,
         "dayoff.view": 32, "dayoff.approve": 33, "dayoff.adjust_credit": 34,
-        "salary.view": 35, "salary.edit": 36, "salary_adjustments.manage": 37,
+        "salary.view": 35, "salary.edit": 36,
         "payroll.view": 38, "payroll.prepare": 39, "payroll.approve": 40, "payroll.issue_payslips": 41,
-        "payroll.mark_paid": 42, "settlements.manage": 43, "debts.view": 44, "debts.waive": 45,
+        "payroll.mark_paid": 42, "debts.view": 44, "debts.waive": 45,
         "settings.view": 46, "settings.edit": 47, "audit.view": 48,
-        "locations.view": 55, "locations.add": 56, "locations.manage": 57, "locations.edit": 79, "locations.archive": 80, "locations.create": 81,
-        "lists.add": 58, "lists.manage": 59, "lists.rename": 82, "lists.merge": 83, "lists.archive": 84,
-        "charges.view": 60, "charges.manage": 61, "charges.collect": 62, "charges.set": 85,
+        "locations.view": 55, "locations.edit": 79, "locations.archive": 80, "locations.create": 81,
+        "lists.add": 58, "lists.rename": 82, "lists.merge": 83, "lists.archive": 84,
+        "charges.view": 60, "charges.collect": 62, "charges.set": 85,
         "cash_advances.view": 63, "cash_advances.give": 64,
         "dayoff.request": 65,
         "attendance.view_team": 49, "attendance.correct": 50, "attendance.approve_overtime": 51, "attendance.approve_permissions": 52,
@@ -35,7 +35,6 @@ describe("permission codes", () => {
         "attendance.approve_missions": 67,
         "tax.view": 68,
         "tax.manage": 69,
-        "client_accounts.manage": 70,
         "client_accounts.view": 86, "client_accounts.invite": 87, "client_accounts.remove": 88,
         "salary_adjustments.add": 89, "salary_adjustments.reverse": 90,
         "settlements.view": 91, "settlements.resend": 92,
@@ -69,9 +68,9 @@ describe("grants in the token", () => {
     })
 
     it("are compact", () => {
-        // Everything a session can hold: one being split never is, as it's read as its parts (PR 365).
-        const everything = Object.fromEntries(ALL_PERMISSIONS.filter(p => !isSplit(p)).map(p => [p, "COMPANY"]))
-        // 400 exactly with the 82 there are since PR 382, in a session cookie of about 4 KB.
+        // Everything a session can hold, as each permission there is.
+        const everything = Object.fromEntries(ALL_PERMISSIONS.map(p => [p, "COMPANY"]))
+        // 400 exactly with the 82 a session could hold since PR 382, in a session cookie of about 4 KB.
         expect(encodeGrants(everything as any).length).toBeLessThan(500)
         expect(encodeGrants({ "employees.view": "COMPANY", "tasks.view": "TEAM" })).toBe("1.3,15.2")
     })

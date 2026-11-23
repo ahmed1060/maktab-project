@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync, readdirSync } from "node:fs"
 import { moduleForApiPath } from "./features/routes"
-import { PERMISSIONS, isPermission, isReserved } from "./permissions/catalogue"
+import { PERMISSIONS, RETIRED, isPermission } from "./permissions/catalogue"
 import { PERMISSION_GROUPS, permissionLabelKey, riskLabelKey } from "./permissions/matrix"
 import { normalizeGrants } from "./permissions/grant-rules"
 import { BUILT_IN_GRANTS } from "./permissions/built-in"
@@ -26,13 +26,11 @@ const PARTS = ["client_accounts.view", "client_accounts.invite", "client_account
 const INVITE = "client_accounts.invite"
 
 describe("client_accounts.manage (§9)", () => {
-    it("was company-wide, in the tax position's module, with seeing clients, and high-risk; split into seeing, inviting and removing", () => {
-        expect((PERMISSIONS as Record<string, unknown>)[PERMISSION]).toEqual({
-            code: 70, module: "TAX_POSITION", scopes: ["COMPANY"], implies: ["clients.view"], highRisk: "Lets outsiders in", splitInto: PARTS,
-        })
-        expect(isPermission(PERMISSION)).toBe(true)
-        expect(isReserved(PERMISSION as never)).toBe(false)
-        expect(Object.values(PERMISSIONS).filter(p => p.code === 70)).toHaveLength(1)
+    it("was company-wide, in the tax position's module, with seeing clients, and high-risk; split into seeing, inviting and removing, and retired (PR 386)", () => {
+        expect(isPermission(PERMISSION)).toBe(false)
+        expect(RETIRED[PERMISSION]).toBe(70)
+        expect(Object.values(PERMISSIONS).filter(p => (p.code as number) === 70)).toEqual([])
+        for (const p of PARTS) expect(PERMISSIONS[p]).toMatchObject({ module: "TAX_POSITION", scopes: ["COMPANY"] })
     })
 
     it("asks for the step-up confirmation to invite, and says why on the role editor, in both languages", () => {
@@ -57,7 +55,7 @@ describe("client_accounts.manage (§9)", () => {
     })
 
     it("brings seeing clients with its parts, and nothing of the tax position", () => {
-        const verdict = normalizeGrants([{ permission: PERMISSION, scope: "COMPANY" }])
+        const verdict = normalizeGrants(PARTS.map(permission => ({ permission, scope: "COMPANY" })))
         expect(verdict.ok).toBe(true)
         if (!verdict.ok) return
         expect(verdict.grants).toEqual({ ...Object.fromEntries(PARTS.map(p => [p, "COMPANY"])), "clients.view": "COMPANY" })
@@ -251,7 +249,8 @@ describe("Manage who signs in for a client, for the companies already there (§1
     it("comes after the release that knows it, and what it brings, seeing clients, every built-in Admin role holds", () => {
         const names = readdirSync("prisma/migrations").filter(m => m !== "migration_lock.toml").sort()
         expect(names.indexOf(NAME)).toBeGreaterThan(names.indexOf("20270106000000_client_accounts"))
-        expect(PERMISSIONS["client_accounts.manage"].implies).toEqual(["clients.view"])
+        // What it brought, seeing clients, its parts bring too (PR 381).
+        expect(PERMISSIONS["client_accounts.view"].implies).toEqual(["clients.view"])
         expect(BUILT_IN_GRANTS.ADMIN["clients.view"]).toBe("COMPANY")
     })
 

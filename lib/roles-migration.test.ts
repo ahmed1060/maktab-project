@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
 import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
-import { isPermission } from "@/lib/permissions/catalogue"
+import { isPermission, isRetired } from "@/lib/permissions/catalogue"
 import { grantsFromRows } from "@/lib/permissions/grant-rules"
 
 /**
@@ -83,14 +83,28 @@ function seeded(): Record<string, Record<string, string>> {
  */
 const GRANTED_LATER = ["client_messages.manage"]
 
+/**
+ * What the grant for companies already there wrote in place of each
+ * permission split by what it does (PR 385), as its migration lists them:
+ * those it seeded were retired since (PR 386).
+ */
+const SPLIT_INTO = (() => {
+    const sql = readFileSync("prisma/migrations/20270118000000_split_permissions_granted/migration.sql", "utf8")
+    // Listed twice, for the roles and the templates: each pair once.
+    const pairs = [...sql.matchAll(/\('([a-z_.]+)', '([a-z_.]+)'\)/g)]
+    const parts: Record<string, string[]> = {}
+    for (const [, old, part] of pairs) if (!(parts[old] ??= []).includes(part)) parts[old].push(part)
+    return parts
+})()
+
 describe("the roles migration seeds the built-in grants", () => {
     it("exactly as lib/permissions/built-in.ts has them", () => {
         const fromSql = seeded()
         for (const role of ["ADMIN", "TEAM_LEADER", "EMPLOYEE"] as const) {
             const now = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[role]).filter(([permission]) => !GRANTED_LATER.includes(permission)))
-            // Read as a session reads them: clients.manage, which they seeded,
-            // is held as its parts until a later migration rewrites it (PR 365).
-            const rows = Object.entries(fromSql[role] ?? {}).map(([permission, scope]) => ({ permission, scope }))
+            // As a later migration rewrote them: clients.manage, which they
+            // seeded, and the others split since, as their parts (PR 385).
+            const rows = Object.entries(fromSql[role] ?? {}).flatMap(([permission, scope]) => (SPLIT_INTO[permission] ?? [permission]).map(p => ({ permission: p, scope })))
             expect(grantsFromRows(rows), role).toEqual(now)
         }
     })
@@ -103,8 +117,8 @@ describe("the roles migration seeds the built-in grants", () => {
         })
     })
 
-    it("names only permissions that exist", () => {
-        const unknown = Object.values(seeded()).flatMap(g => Object.keys(g)).filter(p => !isPermission(p))
+    it("names only permissions that exist, or were split and retired since (PR 386)", () => {
+        const unknown = Object.values(seeded()).flatMap(g => Object.keys(g)).filter(p => !isPermission(p) && !isRetired(p))
         expect(unknown).toEqual([])
     })
 

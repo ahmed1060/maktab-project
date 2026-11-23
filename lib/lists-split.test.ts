@@ -1,12 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { readFileSync } from "node:fs"
-import { PERMISSIONS, CATALOGUE_VERSION, splitParts, isSplit, type Permission } from "@/lib/permissions/catalogue"
-import { normalizeGrants, grantsFromRows } from "@/lib/permissions/grant-rules"
+import { PERMISSIONS, CATALOGUE_VERSION } from "@/lib/permissions/catalogue"
 import { encodeGrants, type Grants } from "@/lib/permissions/grants"
-import { can } from "@/lib/permissions/can"
 import { PERMISSION_GROUPS } from "@/lib/permissions/matrix"
 import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
-import { holdersOf } from "@/lib/permissions/holders"
 import { stepUpConfirmed } from "@/lib/permissions/test-actors"
 import { state, prismaMock as clientsPrisma, withBody } from "@/lib/permissions/client-access.harness"
 import { listActions } from "@/lib/saved-lists"
@@ -76,7 +73,6 @@ const actor = (grants: Grants) => ({ id: "admin", role: "ADMIN", companyId: "c1"
 const signIn = (grants: Grants) => { state.session = { user: stepUpConfirmed(actor(grants)) } }
 const holding = (...parts: Part[]): Grants => Object.fromEntries(parts.map(p => [p, "COMPANY"]))
 const allBut = (part: Part) => holding(...PARTS.filter(p => p !== part))
-const OLD_ROLE = grantsFromRows([{ permission: "lists.add", scope: "COMPANY" }, { permission: "lists.manage", scope: "COMPANY" }])
 
 const route = () => import("@/app/api/lists/route")
 const put = async (body: Record<string, unknown>) => (await route()).PUT(withBody("PUT", "/api/lists", body), { params: {} })
@@ -102,12 +98,6 @@ describe("the catalogue", () => {
         for (const p of PARTS) expect((PERMISSIONS[p] as { implies?: readonly string[] }).implies, p).toBeUndefined()
     })
 
-    it("marks lists.manage as split into the three, and keeps adding as lists.add", () => {
-        expect(splitParts("lists.manage")).toEqual(PARTS)
-        expect((Object.keys(PERMISSIONS) as Permission[]).filter(isSplit)).toContain("lists.manage")
-        expect(isSplit("lists.add")).toBe(false)
-    })
-
     it("offers the three in the role editor beside Add list names, and lists.manage no more", () => {
         const group = PERMISSION_GROUPS.find(g => g.permissions.includes("lists.add"))!.permissions
         expect(group.filter(p => p.startsWith("lists."))).toEqual(["lists.add", ...PARTS])
@@ -126,44 +116,9 @@ describe("the catalogue", () => {
             expect(BUILT_IN_GRANTS.EMPLOYEE[p], p).toBeUndefined()
         }
         for (const role of Object.values(BUILT_IN_GRANTS)) {
-            expect(role["lists.manage"]).toBeUndefined()
+            expect((role as Record<string, unknown>)["lists.manage"]).toBeUndefined()
             expect(role["lists.add"]).toBe("COMPANY")
         }
-    })
-})
-
-describe("a role still holding lists.manage", () => {
-    it("is read as holding the three, and adding as it was saved with it", () => {
-        for (const p of PARTS) expect(OLD_ROLE[p], p).toBe("COMPANY")
-        expect(OLD_ROLE["lists.add"]).toBe("COMPANY")
-        expect(OLD_ROLE["lists.manage"]).toBeUndefined()
-    })
-
-    it("is saved as the three, and with adding, as lists.manage includes it", () => {
-        const verdict = normalizeGrants([{ permission: "lists.manage", scope: "COMPANY" }])
-        expect(verdict.ok).toBe(true)
-        if (verdict.ok) {
-            for (const p of PARTS) expect(verdict.grants[p], p).toBe("COMPANY")
-            expect(verdict.grants["lists.add"]).toBe("COMPANY")
-            expect(verdict.grants["lists.manage"]).toBeUndefined()
-        }
-    })
-
-    it("keeps what a split one brought at its own scope, never narrowing what's held wider", () => {
-        const verdict = normalizeGrants([{ permission: "obligations.view", scope: "COMPANY" }, { permission: "obligations.manage", scope: "TEAM" }])
-        expect(verdict.ok).toBe(true)
-        if (verdict.ok) {
-            expect(verdict.grants["obligations.view"]).toBe("COMPANY")
-            expect(verdict.grants["obligations.approve"]).toBe("TEAM")
-        }
-    })
-
-    it("is found when asking who holds a part", () => {
-        expect(holdersOf("lists.merge", "COMPANY")).toEqual({ assignedRole: { grants: { some: { permission: { in: ["lists.merge", "lists.manage"] }, scope: "COMPANY" } } } })
-    })
-
-    it("gives a session made from it each part", () => {
-        for (const p of PARTS) expect(can(actor(OLD_ROLE), p, { companyId: "c1" }), p).toBe(true)
     })
 })
 
@@ -211,10 +166,6 @@ describe("changing a name, each part alone", () => {
         expect(written).toEqual([])
     })
 
-    it("lets a role still holding lists.manage do all of it", async () => {
-        signIn(OLD_ROLE)
-        for (const change of [rename, merge, archive, restore]) expect((await change()).status).toBe(200)
-    })
 })
 
 describe("the Saved lists page", () => {

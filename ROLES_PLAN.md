@@ -241,13 +241,13 @@ them, as today.
 | | `lists.rename` | Rename a saved name (#379, split from `lists.manage`, `LATER_CHANGES_PLAN.md` §2); opens the Saved lists page | `PUT /lists` with `name` |
 | | `lists.merge` | Merge a saved name into another of its list (#379); opens the Saved lists page | `PUT /lists` with `into` |
 | | `lists.archive` | Archive a saved name, and restore one (#379); opens the Saved lists page | `PUT /lists` with `archived` |
-| | `lists.manage` | Split into the three above (#379): nothing checks it, and it isn't offered; a role still holding it is read as holding all three, until the grant for companies already there. It included `lists.add`, which none of them does, and saving a role that still names it keeps `lists.add` | — |
+| | `lists.manage` | Retired (#386): split into the three above (#379), and the grant for companies already there (#385) wrote it as them in every role and template. It included `lists.add`, which none of them does | — |
 | **Obligations** | `obligations.view` | See obligations | `GET /obligations` |
 | | `obligations.create` | Add one, with its people | `POST /obligations`, `GET /assignees` |
 | | `obligations.edit` | Hand it to other people, move it along as a manager (back to Pending, archived, completed for someone deleted), remove others' attachments | `PUT /obligations/[id]`, `GET /assignees` |
 | | `obligations.approve` | Approve or reject one handed in, and change one already approved | `PUT /obligations/[id]` with `APPROVED` or `REJECTED` |
 | | `obligations.delete` | Delete one | `DELETE /obligations/[id]` |
-| | `obligations.manage` | Split into the four above (#367): a role still holding it holds each, at its scope, until the grant for companies already there. Reverting a decided one is the Super Admin's | — |
+| | `obligations.manage` | Retired (#386): split into the four above (#367), and the grant for companies already there (#385) wrote it as them in every role and template, each at its scope. Reverting a decided one is the Super Admin's | — |
 | **Records** | `records.view` | See a client's sections and records (`CLIENTS_PLAN.md` §0.2) | `GET /records`, `GET /records/sections` |
 | | `records.contribute` | Add a section or a record, and edit any record (built as its own right: records are a shared notebook as much as a register) | `POST /records`, `PUT /records`, `POST /records/sections` |
 | | `records.edit` | Rename a section | `PUT /records/sections` |
@@ -256,25 +256,25 @@ them, as today.
 | | `clients.create` | Add a client (#365, split from `clients.manage`, `LATER_CHANGES_PLAN.md` §2) | `POST /clients` |
 | | `clients.edit` | Change a client's details, and pick its responsible accountant (#365) | `PUT /clients`, `/clients/accountant` |
 | | `clients.delete` | Delete or archive a client, delete an archived one for good, and restore one from the archive, which undoes archiving (#365) | `DELETE /clients`, `PUT /clients` with `restore` |
-| | `clients.manage` | Split into the three above (#365): nothing checks it, and it isn't offered; a role still holding it is read as holding all three, at its scope, until the grant for companies already there | — |
+| | `clients.manage` | Retired (#386): split into the three above (#365), and the grant for companies already there (#385) wrote it as them in every role and template | — |
 | | `locations.view` | See the places tasks happen at: the Locations page, a client's locations, and the task form's pickers (`CLIENTS_PLAN.md` §2.9) | `GET /locations` |
 | | `locations.create` | Add a location, on the Locations page, a client's page or the task form; implies `locations.view` (named `locations.add` until #378) | `POST /locations` |
 | | `locations.edit` | Change a location's name, pin and radius, make one its client's HQ, and change a client's HQ in the client form (#377, split from `locations.manage`, `LATER_CHANGES_PLAN.md` §2) | `PUT /locations`, `PUT /clients` with a changed HQ |
 | | `locations.archive` | Archive a location, and restore one (#377) | `PUT /locations` with `archived` |
-| | `locations.manage` | Split into the two above (#377): nothing checks it, and it isn't offered; a role still holding it is read as holding both, until the grant for companies already there | — |
-| | `locations.add` | Renamed `locations.create` (#378), as a split into one: nothing checks it, and it isn't offered; a role still holding it is read as holding `locations.create`, until the grant for companies already there | — |
+| | `locations.manage` | Retired (#386): split into the two above (#377), and the grant for companies already there (#385) wrote it as them in every role and template | — |
+| | `locations.add` | Retired (#386): renamed `locations.create` (#378), as a split into one, and the grant for companies already there (#385) wrote it as `locations.create` in every role and template | — |
 | **Client portal** | `tax.view` | See a client's tax position on its page, and its tax position statement, in a company whose package has the client portal — implies `clients.view` (`CLIENT_PORTAL_PLAN.md` §8, §9) | `GET /tax-claims`; the page `/dashboard/clients/[id]/tax-statement` |
 | | `tax.manage` | Update a client's tax position by uploading the Tax Authority portal's file, which replaces its claims — implies `tax.view` (`CLIENT_PORTAL_PLAN.md` §4.1, §9) | `GET`, `POST /tax-claims/upload` |
 | | `client_accounts.view` | See a client's people who sign in to the client portal, on its page, and how many go with it where Delete permanently names them; implies `clients.view` (#381, split from `client_accounts.manage`, `LATER_CHANGES_PLAN.md` §2) | `GET /client-accounts` |
 | | `client_accounts.invite` | Add one of a client's people, as invited, and send their invitation again — **lets people from outside the company in**, high-risk (§6.15); implies `client_accounts.view` (#381) | `POST /client-accounts`, `POST /client-accounts/[id]/invitation` |
 | | `client_accounts.remove` | Remove one of a client's people, taking their sign-in away; not high-risk, as it takes access away; implies `client_accounts.view` (#381) | `DELETE /client-accounts/[id]` |
-| | `client_accounts.manage` | Split into the three above (#381): nothing checks it, and it isn't offered; a role still holding it is read as holding all three, until the grant for companies already there. Was: list, add and remove the people of a client who sign in to the client portal, high-risk, implying `clients.view` (`CLIENT_PORTAL_PLAN.md` §5.2, §9) | — |
+| | `client_accounts.manage` | Retired (#386): split into the three above (#381), and the grant for companies already there (#385) wrote it as them in every role and template. Was: list, add and remove the people of a client who sign in to the client portal, high-risk, implying `clients.view` (`CLIENT_PORTAL_PLAN.md` §5.2, §9) | — |
 | | `client_messages.manage` | Change the company's copy of the client messages on WhatsApp, and go back to Nizmo's, and turn the update email on or off; implies nothing, as the Client portal tab shows to whoever holds it (`CLIENT_PORTAL_PLAN.md` §7.1, §9) | `GET /company-messages`, `PUT`, `DELETE /company-messages/[kind]/[language]`, `DELETE /company-messages/[kind]`, `GET`, `PUT /company-messages/emails` |
 | **Costs** | `costs.view` | See costs, including a person's cost history | `users/[id]/costs-history` |
 | | `charges.view` | See the costs charged to a task's client, on the Charged to clients tab and a client's page (`CLIENTS_PLAN.md` §6.6) | `GET /charges`, `GET /charges/statement` |
 | | `charges.set` | Set a charge's service fee, typed as the fee or as the total, and leave a cost off its client's bill or charge it again (#380, named `charges.manage` until then, `LATER_CHANGES_PLAN.md` §2) | `PATCH /charges/[costId]` |
 | | `charges.collect` | Mark a client's charges collected, and one uncollected — **moves money**, high-risk | `POST /charges/collect`, `POST /charges/[costId]/uncollect` |
-| | `charges.manage` | Named `charges.set` (#380), as a split into one: nothing checks it, and it isn't offered; a role still holding it is read as holding `charges.set`, never `charges.collect`, until the grant for companies already there | — |
+| | `charges.manage` | Retired (#386): named `charges.set` (#380), as a split into one, and the grant for companies already there (#385) wrote it as `charges.set`, never `charges.collect`, in every role and template | — |
 | **Day off** | `dayoff.view` | See others' leave and balances | `admin/day-off-requests`, `users/[id]/day-off-history` |
 | | `dayoff.approve` | Approve / reject / re-evaluate leave | `admin/day-off-requests/[id]*` |
 | | `dayoff.adjust_credit` | Change someone's leave balance | `PUT /users` (credit fields) |
@@ -283,7 +283,7 @@ them, as today.
 | | `salary.edit` | Change a salary — implies view | `PUT /users` (salary) |
 | | `salary_adjustments.add` | Add a bonus or a deduction to someone's month — never one's own pay; **moves money**, high-risk (§6.15); implies `salary.view`, needs `employees.view` (#382, split from `salary_adjustments.manage`, `LATER_CHANGES_PLAN.md` §2) | `POST users/[id]/bonus`, `POST users/[id]/deduction` |
 | | `salary_adjustments.reverse` | Undo one: reverse it, as right when it was made, or roll it back, as a mistake — never one's own pay; **moves money**, high-risk (§6.15); implies `salary.view`, needs `employees.view` (#382) | `POST users/[id]/adjustments/[adjId]/reverse`, `…/rollback` |
-| | `salary_adjustments.manage` | Split into the two above (#382): nothing checks it, and it isn't offered; a role still holding it is read as holding both, until the grant for companies already there. Was: bonus / deduction, reverse, roll back | — |
+| | `salary_adjustments.manage` | Retired (#386): split into the two above (#382), and the grant for companies already there (#385) wrote it as them in every role and template. Was: bonus / deduction, reverse, roll back | — |
 | **Payroll** | `payroll.view` | See the monthly run, payslips, export — implies `salary.view` | `payroll/[y]/[m]` GET, `export`, `payslips/*` |
 | | `payroll.prepare` | Save the draft run | `payroll/[y]/[m]` POST |
 | | `payroll.approve` | Approve (freeze) the month | `payroll/[y]/[m]/approve` |
@@ -291,7 +291,7 @@ them, as today.
 | | `payroll.mark_paid` | Mark the month paid | `payroll/[y]/[m]/paid` |
 | | `settlements.view` | See someone's final settlements, in their history, and open the statement; implies `salary.view`, needs `employees.view` (#383, split from `settlements.manage`, `LATER_CHANGES_PLAN.md` §2) | `GET users/[id]/settlements`, `GET settlements/[id]` |
 | | `settlements.resend` | Send the statement by email, or again, from its page; implies `settlements.view`, needs `employees.view` (#383) | `POST settlements/[id]/resend` |
-| | `settlements.manage` | Split into the two above (#383): nothing checks it, and it isn't offered; a role still holding it is read as holding both, until the grant for companies already there. Was: see and resend final settlements | — |
+| | `settlements.manage` | Retired (#386): split into the two above (#383), and the grant for companies already there (#385) wrote it as them in every role and template. Was: see and resend final settlements | — |
 | | `debts.view` | See debts | `users/[id]/debts` |
 | | `debts.waive` | Forgive a debt — separate because it gives money away | `debts/[id]/waive` |
 | **Settings** | `settings.view` / `settings.edit` | Within the tabs the Super Admin exposed (attendance plan §5.2) | company settings |
@@ -837,7 +837,7 @@ A few permissions move money, give it away, or cannot be undone: `tasks.pay`,
 `tasks.penalize`, `tasks.delete`, `records.delete`, `salary.edit`,
 `salary_adjustments.add` and `salary_adjustments.reverse`, adding and
 undoing bonuses and deductions (one permission, `salary_adjustments.manage`,
-until #382), `payroll.approve`, `payroll.mark_paid`,
+until #382, retired in #386), `payroll.approve`, `payroll.mark_paid`,
 `debts.waive`, `employees.delete`, `employees.end_contract`,
 `charges.collect`, marking a client's charges collected (`CLIENTS_PLAN.md`
 §6.6), `cash_advances.give`, giving and settling employees' cash
@@ -848,7 +848,8 @@ companies already there in #278). One lets people from outside the
 company in: `client_accounts.invite`, inviting the people of a client
 who sign in to the client portal (`CLIENT_PORTAL_PLAN.md` §9, built in
 #322 as part of `client_accounts.manage`, with the built-in Admin's grant
-for the companies already there in #330, and split from it in #381). The
+for the companies already there in #330, and split from it in #381; it was
+retired in #386). The
 catalogue (`lib/permissions/catalogue.ts`, `highRisk`) is the list the
 code checks.
 

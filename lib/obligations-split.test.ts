@@ -1,12 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { readFileSync } from "node:fs"
-import { PERMISSIONS, CATALOGUE_VERSION, splitParts, isSplit, type Permission } from "@/lib/permissions/catalogue"
-import { normalizeGrants, grantsFromRows } from "@/lib/permissions/grant-rules"
+import { PERMISSIONS, CATALOGUE_VERSION } from "@/lib/permissions/catalogue"
 import { encodeGrants, type Grants } from "@/lib/permissions/grants"
-import { can } from "@/lib/permissions/can"
 import { PERMISSION_GROUPS } from "@/lib/permissions/matrix"
 import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
-import { holdersOf } from "@/lib/permissions/holders"
 import { stepUpConfirmed } from "@/lib/permissions/test-actors"
 import { state, prismaMock, obligationState, OBLIGATIONS, url, withBody } from "@/lib/permissions/obligation-access.harness"
 import { en } from "./translations/en"
@@ -48,7 +45,6 @@ const signIn = (grants: Grants, id = "admin1b") => {
 }
 const holding = (...parts: Part[]): Grants => Object.fromEntries([["obligations.view", "COMPANY"], ["employees.view", "COMPANY"], ...parts.map(p => [p, "COMPANY"])])
 const allBut = (part: Part) => holding(...PARTS.filter(p => p !== part))
-const OLD_ROLE = (scope: "TEAM" | "COMPANY") => grantsFromRows([{ permission: "obligations.view", scope: "COMPANY" }, { permission: "obligations.manage", scope }])
 
 const P = (id: string) => ({ params: { id } })
 const later = () => new Date(Date.now() + 7 * 86_400_000).toISOString()
@@ -82,11 +78,6 @@ describe("the catalogue", () => {
         }
     })
 
-    it("marks obligations.manage as split into the four", () => {
-        expect(splitParts("obligations.manage")).toEqual(PARTS)
-        expect((Object.keys(PERMISSIONS) as Permission[]).filter(isSplit)).toContain("obligations.manage")
-    })
-
     it("offers the four in the role editor, and obligations.manage no more", () => {
         const group = PERMISSION_GROUPS.find(g => g.key === "obligations")!.permissions
         for (const p of PARTS) expect(group).toContain(p)
@@ -104,35 +95,7 @@ describe("the catalogue", () => {
             expect(BUILT_IN_GRANTS.TEAM_LEADER[p], p).toBe("TEAM")
             expect(BUILT_IN_GRANTS.EMPLOYEE[p], p).toBeUndefined()
         }
-        for (const role of Object.values(BUILT_IN_GRANTS)) expect(role["obligations.manage"]).toBeUndefined()
-    })
-})
-
-describe("a role still holding obligations.manage", () => {
-    it("is read as holding each part, at its scope", () => {
-        for (const scope of ["TEAM", "COMPANY"] as const) {
-            const grants = OLD_ROLE(scope)
-            for (const p of PARTS) expect(grants[p], `${p} ${scope}`).toBe(scope)
-            expect(grants["obligations.manage"]).toBeUndefined()
-        }
-    })
-
-    it("is saved as the four, at its scope", () => {
-        const verdict = normalizeGrants([{ permission: "obligations.manage", scope: "TEAM" }])
-        expect(verdict.ok).toBe(true)
-        if (verdict.ok) {
-            for (const p of PARTS) expect(verdict.grants[p], p).toBe("TEAM")
-            expect(verdict.grants["obligations.manage"]).toBeUndefined()
-        }
-    })
-
-    it("is found when asking who holds a part, at a scope", () => {
-        expect(holdersOf("obligations.approve", "TEAM")).toEqual({ assignedRole: { grants: { some: { permission: { in: ["obligations.approve", "obligations.manage"] }, scope: "TEAM" } } } })
-    })
-
-    it("gives a session made from it each part", () => {
-        const actor = { id: "admin1b", role: "ADMIN", companyId: "c1", grants: encodeGrants(OLD_ROLE("COMPANY")) }
-        for (const p of PARTS) expect(can(actor, p, { companyId: "c1" }), p).toBe(true)
+        for (const role of Object.values(BUILT_IN_GRANTS)) expect((role as Record<string, unknown>)["obligations.manage"]).toBeUndefined()
     })
 })
 
@@ -194,13 +157,6 @@ describe("the routes, each part alone", () => {
         expect((await remove()).status).toBe(200)
     })
 
-    it("lets a role still holding obligations.manage do all of it", async () => {
-        state.session = { user: stepUpConfirmed({ id: "admin1b", role: "ADMIN", companyId: "c1", grants: encodeGrants({ ...OLD_ROLE("COMPANY"), "employees.view": "COMPANY" }) }) }
-        expect((await create()).status).toBe(201)
-        expect((await decide()).status).toBe(200)
-        expect((await archive()).status).toBe(200)
-        expect((await remove()).status).toBe(200)
-    })
 })
 
 describe("each part keeps the rules obligations.manage had", () => {
@@ -266,6 +222,6 @@ describe("the screens", () => {
         expect(row("obligations.edit")).toContain("`PUT /obligations/[id]`")
         expect(row("obligations.approve")).toContain("`PUT /obligations/[id]`")
         expect(row("obligations.delete")).toContain("`DELETE /obligations/[id]`")
-        expect(row("obligations.manage")).toContain("Split into the four above")
+        expect(row("obligations.manage")).toContain("Retired (#386): split into the four above")
     })
 })

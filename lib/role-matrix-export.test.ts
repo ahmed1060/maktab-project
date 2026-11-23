@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { Workbook } from "exceljs"
 import { buildRoleMatrix } from "./role-matrix-export"
-import { PERMISSIONS, isReserved, isSplit } from "./permissions/catalogue"
+import { PERMISSIONS, isReserved } from "./permissions/catalogue"
 import { permissionLabelKey } from "./permissions/matrix"
 import { en } from "./translations/en"
 
@@ -35,18 +35,17 @@ describe("the role matrix for the contract", () => {
         const { rows } = await read(await buildRoleMatrix({ companyName: "Acme", roles, locale: "en", at: new Date() }))
         const firstColumn = rows.map(r => r[0])
         const all = Object.keys(PERMISSIONS) as (keyof typeof PERMISSIONS)[]
-        // One nothing checks yet is not in the matrix, so not in the contract,
-        // and one split into parts is there as its parts (PR 365).
-        const shown = all.filter(p => !isReserved(p) && !isSplit(p))
+        // One nothing checks yet is not in the matrix, so not in the contract.
+        const shown = all.filter(p => !isReserved(p))
         const label = (p: keyof typeof PERMISSIONS) => (en as any)[permissionLabelKey(p)]
         for (const permission of all) {
-            // Counted by its words: one renamed as a split into one keeps them
-            // for its new name (locations.add, PR 378), shown once, for that.
+            // Counted by its words, each shown once.
             const rowsWithIt = firstColumn.filter(v => v === label(permission)).length
             expect(rowsWithIt, permission).toBe(shown.filter(p => label(p) === label(permission)).length)
             if (shown.includes(permission)) expect(rowsWithIt, permission).toBe(1)
         }
-        expect(firstColumn).not.toContain(label("locations.manage"))
+        // Nor one retired (PR 386).
+        expect(firstColumn).not.toContain(en.perm_locations_manage)
     })
 
     it("reads right to left in Arabic, in Arabic", async () => {

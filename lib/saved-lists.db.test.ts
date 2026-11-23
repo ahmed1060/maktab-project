@@ -4,7 +4,6 @@ import { Client } from "pg"
 import { withGrants } from "@/lib/permissions/test-actors"
 import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
 import { grantsFromRows } from "@/lib/permissions/grant-rules"
-import { splitParts } from "@/lib/permissions/catalogue"
 
 /**
  * The saved lists of cost names and task titles (CLIENTS_PLAN.md §5), against
@@ -151,7 +150,7 @@ describe.skipIf(!ADMIN_URL)("saved lists, in Postgres", () => {
                 }
             }
             // Only the built-in Admin manages the lists: lists.manage, written as its parts since PR 385.
-            expect(rows.filter(r => splitParts("lists.manage").includes(r.permission)).map(r => r.builtIn)).toEqual(Array(6).fill("ADMIN"))
+            expect(rows.filter(r => ["lists.rename", "lists.merge", "lists.archive"].includes(r.permission)).map(r => r.builtIn)).toEqual(Array(6).fill("ADMIN"))
         })
 
         it("gives a company's own roles Add list names, as Everyone has it, and keeps what they held", async () => {

@@ -52,7 +52,7 @@ export async function buildRoleMatrix(input: { companyName: string; roles: Expor
     sheet.getColumn(1).width = 42
     sheet.getColumn(2).width = 18
 
-    // As each role holds them: one being split, as its parts (catalogue.ts, `splitInto`).
+    // As each role holds them (grant-rules.ts, rowsHeld).
     const scopeOf = input.roles.map(role => new Map(rowsHeld(role.grants).map(g => [g.permission, g.scope])))
 
     let row = 6

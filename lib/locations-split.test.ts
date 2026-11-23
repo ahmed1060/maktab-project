@@ -1,12 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { readFileSync } from "node:fs"
-import { PERMISSIONS, CATALOGUE_VERSION, splitParts, isSplit, type Permission } from "@/lib/permissions/catalogue"
-import { normalizeGrants, grantsFromRows } from "@/lib/permissions/grant-rules"
+import { PERMISSIONS, CATALOGUE_VERSION, type Permission } from "@/lib/permissions/catalogue"
 import { encodeGrants, type Grants } from "@/lib/permissions/grants"
-import { can } from "@/lib/permissions/can"
 import { PERMISSION_GROUPS } from "@/lib/permissions/matrix"
 import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
-import { holdersOf } from "@/lib/permissions/holders"
 import { stepUpConfirmed } from "@/lib/permissions/test-actors"
 import { state, prismaMock as clientsPrisma, withBody } from "@/lib/permissions/client-access.harness"
 import { locationActions } from "@/lib/locations"
@@ -68,7 +65,6 @@ type Part = typeof PARTS[number]
 const actor = (grants: Grants) => ({ id: "admin", role: "ADMIN", companyId: "c1", grants: encodeGrants(grants) })
 const signIn = (grants: Grants) => { state.session = { user: stepUpConfirmed(actor(grants)) } }
 const holding = (...parts: Part[]): Grants => Object.fromEntries([["locations.view", "COMPANY"], ["locations.create", "COMPANY"], ...parts.map(p => [p, "COMPANY"])])
-const OLD_ROLE = grantsFromRows([{ permission: "locations.view", scope: "COMPANY" }, { permission: "locations.manage", scope: "COMPANY" }])
 
 const put = async (body: Record<string, unknown>) => (await import("@/app/api/locations/route")).PUT(withBody("PUT", "/api/locations", body), { params: {} })
 const edit = () => put({ id: "branch", name: "Maadi", latitude: 30.05, longitude: 31.25, radiusMeters: 150 })
@@ -89,14 +85,6 @@ describe("the catalogue", () => {
         }
     })
 
-    it("marks locations.manage as split into the two, and keeps adding apart", () => {
-        expect(splitParts("locations.manage")).toEqual(PARTS)
-        expect((Object.keys(PERMISSIONS) as Permission[]).filter(isSplit)).toContain("locations.manage")
-        // locations.add, named locations.create since PR 378 (lib/locations-create.test.ts).
-        expect(splitParts("locations.add")).not.toContain("locations.edit")
-        expect(PERMISSIONS["locations.add"].code).toBe(56)
-    })
-
     it("offers the two in the role editor beside See and Add locations, and locations.manage no more", () => {
         const group = PERMISSION_GROUPS.find(g => g.key === "clients")!.permissions
         for (const p of ["locations.view", "locations.create", ...PARTS] as Permission[]) expect(group).toContain(p)
@@ -115,32 +103,7 @@ describe("the catalogue", () => {
             expect(BUILT_IN_GRANTS.EMPLOYEE[p], p).toBeUndefined()
         }
         expect(BUILT_IN_GRANTS.TEAM_LEADER["locations.create"]).toBe("COMPANY")
-        for (const role of Object.values(BUILT_IN_GRANTS)) expect(role["locations.manage"]).toBeUndefined()
-    })
-})
-
-describe("a role still holding locations.manage", () => {
-    it("is read as holding both, and not the old one", () => {
-        for (const p of PARTS) expect(OLD_ROLE[p], p).toBe("COMPANY")
-        expect(OLD_ROLE["locations.manage"]).toBeUndefined()
-    })
-
-    it("is saved as the two, for a role or a template that still names it", () => {
-        const verdict = normalizeGrants([{ permission: "locations.manage", scope: "COMPANY" }])
-        expect(verdict.ok).toBe(true)
-        if (verdict.ok) {
-            for (const p of PARTS) expect(verdict.grants[p], p).toBe("COMPANY")
-            expect(verdict.grants["locations.manage"]).toBeUndefined()
-        }
-    })
-
-    it("is found when asking who holds a part", () => {
-        expect(holdersOf("locations.archive", "COMPANY")).toEqual({ assignedRole: { grants: { some: { permission: { in: ["locations.archive", "locations.manage"] }, scope: "COMPANY" } } } })
-    })
-
-    it("gives a session made from it both parts", () => {
-        const user = actor(OLD_ROLE)
-        for (const p of PARTS) expect(can(user, p, { companyId: "c1" }), p).toBe(true)
+        for (const role of Object.values(BUILT_IN_GRANTS)) expect((role as Record<string, unknown>)["locations.manage"]).toBeUndefined()
     })
 })
 
@@ -213,11 +176,6 @@ describe("changing a location, each part alone", () => {
         signIn(holding())
         expect((await put({ id: "branch" })).status).toBe(403)
         expect((await put({ nonsense: true })).status).toBe(403)
-    })
-
-    it("lets a role still holding locations.manage do all of it", async () => {
-        signIn(OLD_ROLE)
-        for (const change of [edit, makeHq, archive, restore, restoreAsHq]) expect((await change()).status).toBe(200)
     })
 
     it("still adds one with its own permission alone, locations.create since PR 378", () => {

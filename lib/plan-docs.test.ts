@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "node:fs"
-import { PERMISSIONS } from "./permissions/catalogue"
+import { PERMISSIONS, RETIRED } from "./permissions/catalogue"
 
 /**
  * The two plans are marked built, so they are read as the description of
@@ -13,9 +13,9 @@ const ATTENDANCE = readFileSync("ATTENDANCE_PLAN.md", "utf8")
 const section = (doc: string, from: string, to: string) => doc.slice(doc.indexOf(from), doc.indexOf(to, doc.indexOf(from)))
 
 describe("the roles plan", () => {
-    it("names only permissions the catalogue has, in its permission table", () => {
+    it("names only permissions the catalogue has, or had and retired, in its permission table", () => {
         const named = ROLES.split("\n").filter(l => l.startsWith("|")).flatMap(l => [...l.matchAll(/`([a-z_]+\.[a-z_]+)`/g)].map(m => m[1]))
-        expect(named.filter(p => !(p in PERMISSIONS))).toEqual([])
+        expect(named.filter(p => !(p in PERMISSIONS) && !(p in RETIRED))).toEqual([])
         // The three record rights (once the old Clients section's), not the one the first draft had.
         for (const p of ["records.contribute", "records.edit", "records.delete"]) expect(named).toContain(p)
     })
@@ -25,7 +25,8 @@ describe("the roles plan", () => {
         const highRisk = Object.entries(PERMISSIONS).filter(([, d]) => (d as { highRisk?: string }).highRisk).map(([p]) => p)
         // 16 since PR 381: client_accounts.invite, and client_accounts.manage, split into it, still marked.
         // 18 since PR 382: salary_adjustments.add and .reverse, beside salary_adjustments.manage.
-        expect(highRisk.length).toBe(18)
+        // 16 since PR 386: client_accounts.manage and salary_adjustments.manage retired.
+        expect(highRisk.length).toBe(16)
         for (const p of highRisk) expect(stepUp, p).toContain(`\`${p}\``)
     })
 

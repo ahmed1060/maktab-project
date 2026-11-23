@@ -1,4 +1,4 @@
-import { PERMISSIONS, isPermission, isPersonal, isReserved, lessWithoutOf, requiresOf, splitParts, type Permission, type Scope } from "./catalogue"
+import { PERMISSIONS, isPermission, isPersonal, isReserved, lessWithoutOf, requiresOf, type Permission, type Scope } from "./catalogue"
 import type { Grants } from "./grants"
 
 /**
@@ -14,9 +14,6 @@ import type { Grants } from "./grants"
  * - A permission a grant is useless without is added (§3.8, `implies`), at the
  *   same scope — widened if it was held narrower, never narrowed. Approving
  *   payroll without seeing it is not a role anybody meant to make.
- * - A permission being split is written as its parts, at its scope
- *   (catalogue.ts, `splitInto`; LATER_CHANGES_PLAN.md §2): a role or
- *   template that still names it keeps what it could do.
  * - A permission that needs another area's first is refused without it
  *   (`requires`; LATER_CHANGES_PLAN.md §5.1 rule 1, PR 372), naming what's
  *   missing: nothing across areas is added for the Super Admin. `needs:
@@ -29,18 +26,11 @@ const WIDTH: Record<Scope, number> = { OWN: 1, TEAM: 2, COMPANY: 3 }
 export type GrantInput = { permission: string; scope: string }
 export type GrantsVerdict = { ok: true; grants: Grants } | { ok: false; errors: string[] }
 
-/** Grant inputs with each permission being split given as its parts, at its scope. */
-const withParts = (input: readonly GrantInput[]): GrantInput[] =>
-    input.flatMap(g => isPermission(g.permission) && splitParts(g.permission).length
-        ? splitParts(g.permission).map(permission => ({ permission, scope: g.scope }))
-        : [g])
-
 export function normalizeGrants(given: readonly GrantInput[], { needs = true }: { needs?: boolean } = {}): GrantsVerdict {
     const errors: string[] = []
     const grants: Grants = {}
-    const input = withParts(given)
 
-    for (const { permission, scope } of input) {
+    for (const { permission, scope } of given) {
         if (!isPermission(permission)) { errors.push(`Unknown permission: ${permission}`); continue }
         // Nothing checks it yet: a role holding it would promise access it
         // does not give (catalogue.ts, `reserved`).
@@ -54,26 +44,6 @@ export function normalizeGrants(given: readonly GrantInput[], { needs = true }: 
         grants[permission] = scope as Scope
     }
     if (errors.length) return { ok: false, errors }
-
-    // What a permission being split brought comes with its parts, at its
-    // scope, as a role saved with it held that too: lists.manage brought
-    // lists.add, which none of its parts does (PR 379). Never narrowing what
-    // is held wider, as a role seeing every obligation and managing its
-    // team's keeps seeing them all.
-    for (const g of given) {
-        if (!isPermission(g.permission) || !splitParts(g.permission).length) continue
-        const scope = g.scope as Scope
-        for (const implied of (PERMISSIONS[g.permission] as { implies?: readonly string[] }).implies ?? []) {
-            if (!isPermission(implied)) continue
-            const held = grants[implied]
-            if (held && WIDTH[held] >= WIDTH[scope]) continue
-            if (!(PERMISSIONS[implied].scopes as readonly string[]).includes(scope)) {
-                errors.push(`${g.permission} at ${scope} needs ${implied}, which cannot be granted at ${scope}`)
-                continue
-            }
-            grants[implied] = scope
-        }
-    }
 
     // Until nothing changes: an implied permission may imply another.
     for (let changed = true; changed;) {
@@ -180,23 +150,14 @@ export function covers(held: Grants, wanted: Grants): boolean {
 export function grantsFromRows(rows: { permission: string; scope: string }[]): Grants {
     const grants: Grants = {}
     for (const g of rows) {
-        if (!isPermission(g.permission)) continue
-        // A permission being split is held as its parts (catalogue.ts,
-        // `splitInto`): what can() checks, and what a role is shown as. A part
-        // the role holds wider keeps its scope, as the grant for companies
-        // already there keeps the wider (PR 385).
-        for (const permission of splitParts(g.permission).length ? splitParts(g.permission) : [g.permission]) {
-            const held = grants[permission]
-            if (held && WIDTH[held] >= WIDTH[g.scope as Scope]) continue
-            grants[permission] = g.scope as Scope
-        }
+        if (isPermission(g.permission)) grants[g.permission] = g.scope as Scope
     }
     return grants
 }
 
 /**
- * A role's grant rows as it holds them, for showing or comparing: each
- * permission being split as its parts, in the order of their codes.
+ * A role's grant rows as it holds them, for showing or comparing: those the
+ * catalogue knows, in the order of their codes.
  */
 export const rowsHeld = (rows: { permission: string; scope: string }[]): { permission: Permission; scope: Scope }[] =>
     grantRows(grantsFromRows(rows))

@@ -10,8 +10,8 @@ import { Button, Card, Dialog, DialogActions, EmptyState, Field, Row, Select, St
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
-import { isPermission, type Scope } from '@/lib/permissions/catalogue'
-import { permissionLabelKey, scopeLabelKey } from '@/lib/permissions/matrix'
+import type { Scope } from '@/lib/permissions/catalogue'
+import { namedPermissionKey, scopeLabelKey } from '@/lib/permissions/matrix'
 import { roleLabel } from '@/lib/role-label'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
@@ -46,7 +46,8 @@ export function reasonError(reason: string): TranslationKey | null {
 function useLineWords() {
     const { t } = useLanguage()
     return {
-        permission: (l: Line) => isPermission(l.permission) ? t(permissionLabelKey(l.permission)) : l.permission,
+        // As the review was opened: a permission retired since still in words (PR 386).
+        permission: (l: Line) => { const key = namedPermissionKey(l.permission); return key ? t(key) : l.permission },
         scope: (l: Line) => t(scopeLabelKey(l.scope as Scope)),
         role: (l: Line) => roleLabel({ name: l.roleName, builtIn: l.roleBuiltIn }, t),
     }

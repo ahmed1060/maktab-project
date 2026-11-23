@@ -9,8 +9,8 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import { countOf } from '@/lib/plural'
-import { isPermission, type Scope } from '@/lib/permissions/catalogue'
-import { permissionLabelKey, scopeLabelKey } from '@/lib/permissions/matrix'
+import type { Scope } from '@/lib/permissions/catalogue'
+import { namedPermissionKey, scopeLabelKey } from '@/lib/permissions/matrix'
 import type { TranslationKey } from '@/lib/translations'
 
 /**
@@ -48,7 +48,7 @@ function OfferDialog({ template, onClose }: { template: { id: string; name: stri
     const { data, error, isValidating, mutate } = useSWR(`/api/role-templates/push?id=${template.id}`, fetcher)
     const roles: Offer[] | null = data ? data.data?.roles ?? [] : null
 
-    const label = (p: string) => isPermission(p) ? t(permissionLabelKey(p)) : p
+    const label = (p: string) => { const key = namedPermissionKey(p); return key ? t(key) : p }
     const scope = (s: string) => t(scopeLabelKey(s as Scope))
     const list = (items: string[]) => items.join(t('list_separator'))
     const differs = (d: Difference) => d.added.length + d.removed.length + d.rescoped.length > 0

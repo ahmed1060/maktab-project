@@ -1,6 +1,6 @@
 import type { TranslationKey } from "@/lib/translations"
-import { isPermission, type Scope } from "@/lib/permissions/catalogue"
-import { permissionLabelKey, scopeLabelKey } from "@/lib/permissions/matrix"
+import type { Scope } from "@/lib/permissions/catalogue"
+import { namedPermissionKey, scopeLabelKey } from "@/lib/permissions/matrix"
 import { MODULES, MODULE_KEYS, isModuleKey } from "@/lib/modules"
 
 /**
@@ -71,7 +71,9 @@ export function describeValue(value: unknown, field: string, { t, locale }: Read
         if (field === "pairs") return t(`sod_${value}` as TranslationKey) || value
         // How a terminal connects, as Fingerprint terminals says it, not as a punch's source (PR 298).
         if (field === "connection") return t(`att_term_connection_${value}` as TranslationKey) || value
-        if (isPermission(value)) return t(permissionLabelKey(value))
+        // A permission, or one retired since the entry was written (PR 386).
+        const permission = namedPermissionKey(value)
+        if (permission) return t(permission)
         if (DATE.test(value)) return new Date(value).toLocaleDateString(locale, { timeZone: "UTC" })
         if (DATE_TIME.test(value)) {
             const at = new Date(value)
