@@ -143,10 +143,16 @@ export const PERMISSIONS = {
     "tasks.pay":                { code: 21, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], highRisk: MOVES_MONEY },
     "tasks.penalize":           { code: 22, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], highRisk: "Affects pay" },
     // The company's saved lists of cost names and task titles (CLIENTS_PLAN.md
-    // §5.7): adding a name to one, as "+ Add" does, and managing them
-    // (renaming, merging and archiving names), which includes adding.
+    // §5.7): adding a name to one, as "+ Add" does, and changing them, split
+    // from lists.manage by what is done (LATER_CHANGES_PLAN.md §2, PR 379):
+    // renaming a name, merging one into another, and archiving or restoring
+    // one. lists.manage included adding; none of its parts does, as none
+    // needs it, and a role saved with lists.manage holds lists.add too.
     "lists.add":                { code: 58, module: "TASKS", scopes: COMPANY },
-    "lists.manage":             { code: 59, module: "TASKS", scopes: COMPANY, implies: ["lists.add"] },
+    "lists.manage":             { code: 59, module: "TASKS", scopes: COMPANY, implies: ["lists.add"], splitInto: ["lists.rename", "lists.merge", "lists.archive"] },
+    "lists.rename":             { code: 82, module: "TASKS", scopes: COMPANY },
+    "lists.merge":              { code: 83, module: "TASKS", scopes: COMPANY },
+    "lists.archive":            { code: 84, module: "TASKS", scopes: COMPANY },
 
     // --- Obligations, records, clients, costs ------------------------------
     "obligations.view":         { code: 23, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY },
@@ -353,8 +359,11 @@ export type Permission = keyof typeof PERMISSIONS
  *
  * 8: locations.create (code 81), locations.add renamed as a split into one
  * (PR 378).
+ *
+ * 9: lists.rename, lists.merge and lists.archive (codes 82–84), split from
+ * lists.manage (PR 379). Adding one stays lists.add.
  */
-export const CATALOGUE_VERSION = 8
+export const CATALOGUE_VERSION = 9
 
 /** Codes of permissions that no longer exist. Never handed out again. */
 export const RETIRED_CODES: readonly number[] = []

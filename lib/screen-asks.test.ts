@@ -82,12 +82,14 @@ const SCREENS: Record<string, Screen> = {
         },
     },
     "lists": {
-        opens: ["lists.manage"],
+        // Each part of what was Manage lists (PR 379).
+        opens: ["lists.rename", "lists.merge", "lists.archive"],
         asks: {
             // Renaming, merging and archiving are this screen's whole job.
             "GET /api/lists": ANYONE,
-            "PUT /api/lists": needs("lists.manage"),
-            "POST /api/lists": needs("lists.add"),
+            "PUT /api/lists": needs("lists.rename", "lists.merge", "lists.archive"),
+            // Adding, which none of them includes.
+            "POST /api/lists": when("lists.add", "<SavedLists adding={adding && can('lists.add')}", "action={can('lists.add') && <Button variant=\"primary\" icon={PlusIcon} onClick={() => setAdding(true)}>"),
         },
     },
     "costs": {

@@ -1,6 +1,7 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { ListService } from "@/lib/services/list.service"
+import { can } from "@/lib/permissions/can"
 
 /**
  * The company's saved lists of cost names and task titles (CLIENTS_PLAN.md
@@ -24,9 +25,15 @@ export const POST = withStandardHandler(async (_req, session, json) => {
     return ApiResponse.success(await ListService.add(session, { kind: json?.kind, name: json?.name, companyId: json?.companyId }), 201)
 }, { permission: "lists.add" })
 
-/** Renaming, merging and archiving a name (§5.6). */
+/**
+ * Renaming, merging and archiving a name (§5.6): lists.rename's,
+ * lists.merge's and lists.archive's (LATER_CHANGES_PLAN.md §2, PR 379).
+ * Whoever holds none is refused before the change is read; ListService asks
+ * each its own.
+ */
 export const PUT = withStandardHandler(async (_req, session, json) => {
+    if (!can(session.user, "lists.rename") && !can(session.user, "lists.merge") && !can(session.user, "lists.archive")) return ApiResponse.forbidden()
     if (typeof json?.archived === "boolean") return ApiResponse.success(await ListService.setArchived(session, { id: json.id, archived: json.archived }))
     if (json?.into !== undefined) return ApiResponse.success(await ListService.merge(session, { id: json.id, into: json.into }))
     return ApiResponse.success(await ListService.rename(session, { id: json?.id, name: json?.name }))
-}, { permission: "lists.manage" })
+})

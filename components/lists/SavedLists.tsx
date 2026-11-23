@@ -15,7 +15,7 @@ import {
     type Column, type MenuItem,
 } from '@/components/ui'
 import type { TranslationKey } from '@/lib/translations'
-import { LIST_NAME_LIMITS } from '@/lib/saved-lists'
+import { LIST_NAME_LIMITS, listActions, type ListAction } from '@/lib/saved-lists'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { useCan } from '@/lib/useCan'
 import { countOf } from '@/lib/plural'
@@ -82,14 +82,16 @@ export default function SavedLists({ adding, onAddingChange }: {
         }
     }
 
-    const menu = (n: Name): MenuItem[] => n.archived
-        ? [{ key: 'restore', label: t('lists_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void change({ id: n.id, archived: false }, 'lists_restored') } }]
-        : [
-            { key: 'rename', label: t('lists_rename'), icon: PencilSimpleIcon, onSelect: () => setRenaming(n) },
-            { key: 'merge', label: t('lists_merge'), icon: ArrowsMergeIcon, onSelect: () => setMerging(n) },
-            { key: 'archive', label: t('lists_archive'), icon: ArchiveIcon, onSelect: () => setToArchive(n) },
-        ]
-    const actions = (n: Name) => (
+    // Split from Manage lists (PR 379): each name is offered what's held.
+    const may = { rename: can('lists.rename'), merge: can('lists.merge'), archive: can('lists.archive') }
+    const item = (n: Name, action: ListAction): MenuItem => ({
+        rename: { key: 'rename', label: t('lists_rename'), icon: PencilSimpleIcon, onSelect: () => setRenaming(n) },
+        merge: { key: 'merge', label: t('lists_merge'), icon: ArrowsMergeIcon, onSelect: () => setMerging(n) },
+        archive: { key: 'archive', label: t('lists_archive'), icon: ArchiveIcon, onSelect: () => setToArchive(n) },
+        restore: { key: 'restore', label: t('lists_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void change({ id: n.id, archived: false }, 'lists_restored') } },
+    } satisfies Record<ListAction, MenuItem>)[action]
+    const menu = (n: Name): MenuItem[] => listActions(n, may).map(action => item(n, action))
+    const actions = (n: Name) => menu(n).length > 0 && (
         <span className="ui-row-actions">
             <RowMenu label={t('ui_more_actions_for').replace('{name}', n.name)} tooltip={t('ui_more_actions')} items={menu(n)} />
         </span>

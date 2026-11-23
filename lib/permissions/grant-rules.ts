@@ -55,6 +55,26 @@ export function normalizeGrants(given: readonly GrantInput[], { needs = true }: 
     }
     if (errors.length) return { ok: false, errors }
 
+    // What a permission being split brought comes with its parts, at its
+    // scope, as a role saved with it held that too: lists.manage brought
+    // lists.add, which none of its parts does (PR 379). Never narrowing what
+    // is held wider, as a role seeing every obligation and managing its
+    // team's keeps seeing them all.
+    for (const g of given) {
+        if (!isPermission(g.permission) || !splitParts(g.permission).length) continue
+        const scope = g.scope as Scope
+        for (const implied of (PERMISSIONS[g.permission] as { implies?: readonly string[] }).implies ?? []) {
+            if (!isPermission(implied)) continue
+            const held = grants[implied]
+            if (held && WIDTH[held] >= WIDTH[scope]) continue
+            if (!(PERMISSIONS[implied].scopes as readonly string[]).includes(scope)) {
+                errors.push(`${g.permission} at ${scope} needs ${implied}, which cannot be granted at ${scope}`)
+                continue
+            }
+            grants[implied] = scope
+        }
+    }
+
     // Until nothing changes: an implied permission may imply another.
     for (let changed = true; changed;) {
         changed = false

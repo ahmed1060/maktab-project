@@ -237,6 +237,11 @@ them, as today.
 | | `tasks.delete` | Delete a task | `tasks/[id]/delete` |
 | | `tasks.pay` | Record task payments, single or bulk — **moves money** | `tasks/[id]/payment`, `tasks/payment/bulk` |
 | | `tasks.penalize` | Apply a task penalty — **deducts pay**; its own permission, labelled "affects pay" in the role editor (decided) | `tasks/[id]/penalty` |
+| | `lists.add` | Add a name to the saved lists of task titles and cost names, as "+ Add" does in a picker (`CLIENTS_PLAN.md` §5.7) | `POST /lists` |
+| | `lists.rename` | Rename a saved name (#379, split from `lists.manage`, `LATER_CHANGES_PLAN.md` §2); opens the Saved lists page | `PUT /lists` with `name` |
+| | `lists.merge` | Merge a saved name into another of its list (#379); opens the Saved lists page | `PUT /lists` with `into` |
+| | `lists.archive` | Archive a saved name, and restore one (#379); opens the Saved lists page | `PUT /lists` with `archived` |
+| | `lists.manage` | Split into the three above (#379): nothing checks it, and it isn't offered; a role still holding it is read as holding all three, until the grant for companies already there. It included `lists.add`, which none of them does, and saving a role that still names it keeps `lists.add` | — |
 | **Obligations** | `obligations.view` | See obligations | `GET /obligations` |
 | | `obligations.create` | Add one, with its people | `POST /obligations`, `GET /assignees` |
 | | `obligations.edit` | Hand it to other people, move it along as a manager (back to Pending, archived, completed for someone deleted), remove others' attachments | `PUT /obligations/[id]`, `GET /assignees` |

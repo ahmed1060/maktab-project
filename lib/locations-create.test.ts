@@ -76,7 +76,8 @@ describe("the catalogue", () => {
     })
 
     it("goes up a version, so every session reloads its grants once and holds the new name", () => {
-        expect(CATALOGUE_VERSION).toBe(8)
+        // 8 for this rename; 9 since the lists split (PR 379).
+        expect(CATALOGUE_VERSION).toBeGreaterThanOrEqual(8)
     })
 
     it("seeds the built-in Admin and Team Leader with locations.create, and nobody with locations.add", () => {

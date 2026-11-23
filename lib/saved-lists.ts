@@ -98,3 +98,21 @@ export function withCostNamed(name: FilterName | null): Record<string, unknown> 
     if (!name) return NOTHING
     return { companyId: name.companyId, costs: { some: costNamed(name) } }
 }
+
+/** What a saved name's row menu can offer, each its own part of changing one (PR 379). */
+export type ListAction = 'rename' | 'merge' | 'archive' | 'restore'
+
+/**
+ * What a saved name's row menu offers (LATER_CHANGES_PLAN.md §2, PR 379):
+ * renaming it with lists.rename, merging it into another with lists.merge,
+ * and archiving it or restoring it with lists.archive. An archived one is
+ * restored before anything else.
+ */
+export function listActions(name: { archived: boolean }, may: { rename: boolean; merge: boolean; archive: boolean }): ListAction[] {
+    if (name.archived) return may.archive ? ['restore'] : []
+    const actions: ListAction[] = []
+    if (may.rename) actions.push('rename')
+    if (may.merge) actions.push('merge')
+    if (may.archive) actions.push('archive')
+    return actions
+}
