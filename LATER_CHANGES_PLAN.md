@@ -211,6 +211,22 @@ The owner asked to break up every "manage" permission in the roles system.
       database on 23 November: only the built-in Admin role holds
       `salary_adjustments.manage`, there are no templates, and no
       adjustment has been made yet.
+  - **Settlements (#383):** `settlements.manage` splits into two:
+    - `settlements.view`: seeing someone's final settlements in their
+      history, and opening the statement;
+    - `settlements.resend`: sending the statement by email, or sending it
+      again, from the statement's page.
+    - Each is for the company, as `settlements.manage` was, and needs See
+      employees, as the person is reached from their history. Seeing
+      includes See salaries, as `settlements.manage` did; sending includes
+      seeing, as it's sent from the statement. Neither is high-risk, as
+      `settlements.manage` isn't: a statement moves no money.
+    - The statement's page offers Send by email, or Send again, to whoever
+      holds sending; whoever holds seeing alone can open it and print it.
+    - The built-in Admin holds both. Checked read-only on the live
+      database on 23 November: only the built-in Admin role holds
+      `settlements.manage`, there are no templates, and no settlement has
+      been made yet.
 
 ## 3. English and Arabic names (Decided)
 
@@ -771,3 +787,6 @@ permission bringing "See obligations". None found missing.
   `salary_adjustments.manage` splits into `salary_adjustments.add` and
   `salary_adjustments.reverse`, which covers rolling back and reversing.
   Both stay high-risk.
+- **2026-11-23:** #382 merged. Settlements next, as #383, the last of the
+  table's splits: `settlements.manage` splits into `settlements.view` and
+  `settlements.resend`. Then the grant for companies already there.
