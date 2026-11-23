@@ -18,3 +18,15 @@ export function apiErrorText(text: string, fallback: string): string {
         return raw.startsWith('<') ? fallback : raw
     }
 }
+
+/**
+ * The refusal the server gave, with every reason it gave: a grant refused names
+ * each in `details.errors`. Here since PR 392, beside the message above: it
+ * lived in the Super Admin's roles card, and every screen borrowing it from
+ * there reached the card and its calls.
+ */
+export async function refusalOf(res: Response, fallback: string): Promise<string> {
+    const body = await res.json().catch(() => ({}))
+    const reasons: string[] = body?.details?.errors ?? []
+    return [body?.error || fallback, ...reasons].join(' — ')
+}

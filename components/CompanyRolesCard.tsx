@@ -18,6 +18,7 @@ import { BUILT_IN_LABEL, roleLabel } from '@/lib/role-label'
 import { unmetLines } from '@/lib/permissions/matrix'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { useLeaveGuard } from '@/lib/useUnsavedChanges'
+import { refusalOf } from '@/lib/api-error-text'
 
 /**
  * A company's roles, in its settings (ROLES_PLAN.md §6.2): how many people hold
@@ -30,13 +31,6 @@ import { useLeaveGuard } from '@/lib/useUnsavedChanges'
  */
 
 type Role = EditableRole & { id: string; companyId: string; version: number; isDefault: boolean; holders: number; locked: boolean; builtIn: BaseRole | null }
-
-/** The refusal the server gave, with every reason a grant was refused. */
-export async function refusalOf(res: Response, fallback: string): Promise<string> {
-    const body = await res.json().catch(() => ({}))
-    const reasons: string[] = body?.details?.errors ?? []
-    return [body?.error || fallback, ...reasons].join(' — ')
-}
 
 export default function CompanyRolesCard({ companyId }: { companyId: string }) {
     const { t, locale } = useLanguage()

@@ -2,7 +2,7 @@
 
 import { useRef, useState, type FormEvent } from 'react'
 import useSWR from 'swr'
-import { refusalOf } from '@/components/CompanyRolesCard'
+import { refusalOf } from '@/lib/api-error-text'
 import { Button, Dialog, DialogActions, Field, Select } from '@/components/ui'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import { useLanguage } from '@/context/LanguageContext'

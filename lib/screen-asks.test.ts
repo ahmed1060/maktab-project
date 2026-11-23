@@ -92,8 +92,6 @@ const feed = (code: string): Gate => ({ in: FEED, code })
 // What a profile offers, each for whoever may (lib/profile-access.ts, PR 390).
 const profile = (code: string): Gate => ({ in: "lib/profile-access.ts", code })
 const ASKS_ROLE = profile(": can('employees.request_role') ? 'ask'")
-// Roles and access imports only a helper from the roles card, which is the Super Admin's (PR 390).
-const ROLES_CARD_HELPER = notHere("import { refusalOf } from '@/components/CompanyRolesCard'")
 // A saved name added from where it's typed (components/lists/useListNames.ts).
 const LIST_ADD = "return { suggest, onAdd: can('lists.add') && (!superAdmin || !!company) ? add : undefined }"
 
@@ -319,16 +317,6 @@ const SCREENS: Record<string, Screen> = {
             "PUT /api/role-change-requests/[x]": { superAdmin: ["end={side === 'superAdmin' && r.status === 'OPEN' && ("], routeChecks: "lib/services/role-change-request.service.ts" },
             "GET /api/access-reviews": { needs: ["employees.assign_role"], routeChecks: "lib/services/access-review.service.ts" },
             "PUT /api/access-reviews/lines/[x]": { needs: ["employees.assign_role"], routeChecks: "lib/services/access-review.service.ts" },
-            "GET /api/roles": ROLES_CARD_HELPER,
-            "POST /api/roles": ROLES_CARD_HELPER,
-            "PUT /api/roles": ROLES_CARD_HELPER,
-            "DELETE /api/roles": ROLES_CARD_HELPER,
-            "PUT /api/roles/default": ROLES_CARD_HELPER,
-            "GET /api/roles/export": ROLES_CARD_HELPER,
-            "GET /api/role-templates": ROLES_CARD_HELPER,
-            "POST /api/roles/copy": ROLES_CARD_HELPER,
-            "GET /api/companies": ROLES_CARD_HELPER,
-            "PUT /api/access-reviews/settings": ROLES_CARD_HELPER,
         },
     },
     "attendance": {
@@ -806,6 +794,50 @@ function gateProblems(asks: Record<string, Ask>, text: string): string[] {
     return out
 }
 
+/**
+ * What a file's imports take from `target` (PR 392): each name, `default` for
+ * a default import, and `*` for all of it, as `* as` or `import()` take; types
+ * alone bring no code, so none.
+ */
+function takenFrom(src: string, file: string, target: string): string[] {
+    const out: string[] = []
+    for (const m of src.matchAll(/import\s+([^;'"]*?)\s*from\s*['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g)) {
+        if (resolveImport(file, m[2] ?? m[3]) !== target) continue
+        if (m[3]) { out.push("*"); continue }
+        const clause = m[1].trim()
+        if (/^type\b/.test(clause)) continue
+        const named = clause.match(/\{([^}]*)\}/)?.[1] ?? ""
+        const rest = clause.replace(/\{[^}]*\}/, "").replace(/,/g, " ").trim()
+        if (rest) out.push(rest.startsWith("*") ? "*" : "default")
+        for (const name of named.split(",").map(n => n.trim()).filter(n => n && !n.startsWith("type "))) out.push(name.split(/\s+as\s+/)[0])
+    }
+    return out
+}
+
+/**
+ * A call said not to be made here because the screen imports only part of a
+ * file, the import quoted as the reason (PR 392): anything else any file of the
+ * screen takes from that file, by any path to it, as a second import would
+ * otherwise leave real calls marked as not made.
+ */
+function importProblems(asks: Record<string, Ask>, sources: { file: string; src: string }[]): string[] {
+    const out = new Set<string>()
+    for (const ask of Object.values(asks)) {
+        if (typeof ask !== "object" || !("notHere" in ask)) continue
+        for (const code of ask.notHere.map(gateCode)) {
+            const quoted = code.match(/^import \{[^}]+\} from '([^']+)'$/)
+            const where = quoted && sources.find(s => s.src.includes(code))
+            const target = where && resolveImport(where.file, quoted[1])
+            if (!where || !target) continue
+            const allowed = takenFrom(code, where.file, target)
+            for (const { file, src } of sources) {
+                for (const name of takenFrom(src, file, target)) if (!allowed.includes(name)) out.add(`${relative(ROOT, file)} takes ${name} from ${relative(ROOT, target)}`)
+            }
+        }
+    }
+    return [...out]
+}
+
 /** A gated call whose route answers what its gate's permission doesn't keep held. */
 function answerProblems(asks: Record<string, Ask>): string[] {
     const out: string[] = []
@@ -911,6 +943,10 @@ describe.each(Object.entries(SCREENS))("the %s screen", (screen, { opens, asks }
     it("answers each call that's only for some for whoever its gate lets ask it", () => {
         expect(answerProblems(asks)).toEqual([])
     })
+
+    it("takes nothing else from a file whose calls it says aren't made here (PR 392)", () => {
+        expect(importProblems(asks, files.map(file => ({ file, src: readFileSync(file, "utf8") })))).toEqual([])
+    })
 })
 
 describe("the test itself", () => {
@@ -984,6 +1020,31 @@ describe("the test itself", () => {
         expect(gateProblems({ "PUT /api/locations": notHere("forTask={{ clientId }}") }, code)).toEqual([])
         expect(gateProblems({ "PUT /api/locations": notHere("editing={true}") }, code)).toEqual(["PUT /api/locations: not in the code: editing={true}"])
         expect(gateProblems({ "PUT /api/locations": notHere() }, code)).toEqual(["PUT /api/locations: no gate"])
+    })
+
+    it("reads what an import takes: by name, the default, all of it, and no types (PR 392)", () => {
+        const tab = join(DASHBOARD, "attendance/RequestsTab.tsx")
+        const dialogs = join(DASHBOARD, "requests/AttendanceDialogs.tsx")
+        expect(takenFrom("import { AskPermission, ReportMissingPunch } from '../requests/AttendanceDialogs'", tab, dialogs)).toEqual(["AskPermission", "ReportMissingPunch"])
+        expect(takenFrom("import Dialogs, { AskPermission as Ask } from '../requests/AttendanceDialogs'", tab, dialogs)).toEqual(["default", "AskPermission"])
+        expect(takenFrom("import * as dialogs from '@/app/(dashboard)/dashboard/requests/AttendanceDialogs'", tab, dialogs)).toEqual(["*"])
+        expect(takenFrom("const d = await import('../requests/AttendanceDialogs')", tab, dialogs)).toEqual(["*"])
+        expect(takenFrom("import type { FeedRow } from '../requests/AttendanceDialogs'\nimport { type FeedRow, AskMission } from '../requests/AttendanceDialogs'", tab, dialogs)).toEqual(["AskMission"])
+        expect(takenFrom("import { send } from './send'", tab, dialogs)).toEqual([])
+    })
+
+    it("finds a screen taking more from a file whose calls it says aren't made here, by any path to it (PR 392)", () => {
+        const tab = join(DASHBOARD, "attendance/RequestsTab.tsx")
+        const page = join(DASHBOARD, "attendance/page.tsx")
+        const asks = { "POST /api/attendance/missions": notHere("import { AskPermission } from '../requests/AttendanceDialogs'") }
+        const only = { file: tab, src: "import { AskPermission } from '../requests/AttendanceDialogs'" }
+        expect(importProblems(asks, [only])).toEqual([])
+        expect(importProblems(asks, [{ ...only, src: `${only.src}\nimport { AskMission } from '../requests/AttendanceDialogs'` }]))
+            .toEqual(["app/(dashboard)/dashboard/attendance/RequestsTab.tsx takes AskMission from app/(dashboard)/dashboard/requests/AttendanceDialogs.tsx"])
+        expect(importProblems(asks, [only, { file: page, src: "import Dialogs from '@/app/(dashboard)/dashboard/requests/AttendanceDialogs'" }]))
+            .toEqual(["app/(dashboard)/dashboard/attendance/page.tsx takes default from app/(dashboard)/dashboard/requests/AttendanceDialogs.tsx"])
+        // A reason that isn't an import is gateProblems' alone.
+        expect(importProblems({ "PUT /api/locations": notHere("forTask={{ clientId }}") }, [only])).toEqual([])
     })
 
     it("finds a page said to send you on that asks for something or doesn't send you on (PR 387)", () => {
