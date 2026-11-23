@@ -127,6 +127,20 @@ The owner asked to break up every "manage" permission in the roles system.
     - Each is for the company, as `locations.manage` was. The built-in
       Admin holds both, and the Team Leader neither, as before. Neither is
       high-risk.
+  - **`locations.add` renamed `locations.create` (#378),** as the owner
+    asked on 2026-11-23, to match the table and the other areas' adding.
+    It's done as a split into one, with the same machinery, so nobody
+    loses access and no migration is needed now:
+    - `locations.create` has a code of its own, and does all that
+      `locations.add` did: adding a location on the Locations page, a
+      client's page or the task form. Its name stays "Add locations".
+    - `locations.add` stays in the catalogue, split into
+      `locations.create`: a role still holding it, which is every
+      company's built-in Admin and Team Leader today, is read as holding
+      `locations.create`, and saving it writes the new name.
+    - The catalogue's version goes up, so every session reloads once.
+    - Its rows are rewritten with the grant for companies already there,
+      and its code retired with the others.
 
 ## 3. English and Arabic names (Decided)
 
@@ -665,3 +679,8 @@ permission bringing "See obligations". None found missing.
   `locations.manage` splits into two: `locations.edit` (details, pin and
   radius, and which is a client's HQ) and `locations.archive` (archiving
   and restoring).
+- **2026-11-23:** #377 merged. The owner asked for `locations.add` to be
+  named `locations.create`, as the table had it. It's done as #378, as a
+  split into one with the splits' own machinery: a role still holding
+  `locations.add` holds `locations.create`, so nobody loses access, and
+  the rows are rewritten with the grant for companies already there.
