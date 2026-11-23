@@ -8,3 +8,10 @@ import type { TranslationKey } from '@/lib/translations'
  */
 export const STATUS_TONE: Record<string, StatusTone> = { ACTIVE: 'good', OFFLINE: 'neutral', SUSPENDED: 'problem', ARCHIVED: 'neutral' }
 export const STATUS_WORD: Record<string, TranslationKey> = { ACTIVE: 'status_online', OFFLINE: 'status_offline', SUSPENDED: 'status_suspended', ARCHIVED: 'status_archived' }
+
+/**
+ * The statuses the Super Admin's All users counts, in the order its badges
+ * are (LATER_CHANGES_PLAN.md §6, PR 384): those its At work tab shows.
+ */
+export const COUNTED_STATUSES = ['ACTIVE', 'OFFLINE', 'SUSPENDED', 'ARCHIVED'] as const
+export type CountedStatus = typeof COUNTED_STATUSES[number]

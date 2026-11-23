@@ -10,8 +10,9 @@ import { lockedUntil } from "@/lib/sign-in-lock"
 import { ownPasswordPausedUntil } from "@/lib/own-password"
 import { UserService } from "@/lib/services/user.service"
 import { parsePaging } from "@/lib/pagination"
-import { buildUserWhereClause, buildUserOrderBy } from "@/lib/services/user-query"
-import { onlineRunsOutIn, presenceStatus } from "@/lib/presence"
+import { buildUserWhereClause, buildUserOrderBy, countedParams } from "@/lib/services/user-query"
+import type { CountedStatus } from "@/lib/person-status"
+import { onlineRunsOutIn, presenceStatus, presenceWhere } from "@/lib/presence"
 import { verifyResourceAccess } from "@/lib/security"
 import { can } from "@/lib/permissions/can"
 import { shapeUser } from "@/lib/permissions/shape"
@@ -137,7 +138,9 @@ export const GET = withStandardHandler(async (req, session) => {
         if (comp) filterCompanyId = comp.id
     }
 
-    const built = buildUserWhereClause(session as any, searchParams, filterCompanyId, VALID_ROLES, VALID_STATUSES)
+    // When "lately" is, for who's online: the list's and its counts' the same.
+    const now = new Date()
+    const built = buildUserWhereClause(session as any, searchParams, filterCompanyId, VALID_ROLES, VALID_STATUSES, now)
     if (built.empty) return ApiResponse.success({ data: [], total: 0, page: 1, totalPages: 0 })
     const whereClause = built.whereClause
 
@@ -183,8 +186,31 @@ export const GET = withStandardHandler(async (req, session) => {
     // And whose password tries are paused, which Unlock lifts too (lib/own-password.ts).
     const paused = can(session.user, "employees.reset_password") ? await ownPasswordPausedUntil(users.map(u => u.id)) : null
 
+    // How many at work have each status, for the Super Admin's All users when
+    // it asks (LATER_CHANGES_PLAN.md §6, PR 384): over the company picked, on
+    // every page, never the search or the status shown. Not on the Left tab,
+    // where everyone has the same status. Online and Offline as the list's
+    // own filter asks them; and those counted online, for when the first of
+    // them would stop counting, as the page shown may hold none of them.
+    const counted = searchParams.get('counts') === 'status' && session.user.role === 'SUPER_ADMIN' && searchParams.get('status') !== 'DELETED'
+        ? buildUserWhereClause(session as any, countedParams(searchParams), filterCompanyId, VALID_ROLES, VALID_STATUSES, now)
+        : null
+    const counts = counted && !counted.empty ? await (async () => {
+        const all = counted.whereClause
+        const [online, offline, suspended, archived] = await Promise.all([
+            prisma.user.findMany({
+                where: { AND: [all, presenceWhere("ACTIVE", now)] },
+                select: { status: true, openTabs: { where: { here: true }, orderBy: { seenAt: "desc" }, take: 1, select: { seenAt: true } } },
+            }),
+            prisma.user.count({ where: { AND: [all, presenceWhere("OFFLINE", now)] } }),
+            prisma.user.count({ where: { AND: [all, { status: "SUSPENDED" }] } }),
+            prisma.user.count({ where: { AND: [all, { status: "ARCHIVED" }] } }),
+        ])
+        const statusCounts: Record<CountedStatus, number> = { ACTIVE: online.length, OFFLINE: offline, SUSPENDED: suspended, ARCHIVED: archived }
+        return { statusCounts, runsOut: onlineRunsOutIn(online.map(u => ({ status: u.status, lastSeen: u.openTabs[0]?.seenAt ?? null })), now) }
+    })() : null
+
     // Each one's newest tab stays here: it says nothing the badge doesn't.
-    const now = new Date()
     const usersWithStatus = users.map(({ openTabs, ...user }) => {
         // Online while a tab of theirs is open (lib/presence.ts).
         const effectiveStatus = presenceStatus(user.status, openTabs[0]?.seenAt ?? null, now)
@@ -195,12 +221,16 @@ export const GET = withStandardHandler(async (req, session) => {
         }
     })
 
+    // When the list is drawn again with nothing heard, as the first person on
+    // it online would run out (part 6b): a tab whose leaving wasn't heard runs
+    // out with nothing written, so no live signal says so. With counts, the
+    // first of everyone counted online.
+    const pageRunsOut = onlineRunsOutIn(users.map(u => ({ status: u.status, lastSeen: u.openTabs[0]?.seenAt ?? null })), now)
+    const runsOut = [pageRunsOut, counts?.runsOut ?? null].filter((ms): ms is number => ms !== null)
     return ApiResponse.success({
         data: usersWithStatus, total, page, totalPages: Math.ceil(total / limit),
-        // When the list is drawn again with nothing heard, as the first person
-        // on it online would run out (part 6b): a tab whose leaving wasn't
-        // heard runs out with nothing written, so no live signal says so.
-        onlineRunsOutInMs: onlineRunsOutIn(users.map(u => ({ status: u.status, lastSeen: u.openTabs[0]?.seenAt ?? null })), now),
+        ...(counts ? { statusCounts: counts.statusCounts } : {}),
+        onlineRunsOutInMs: runsOut.length ? Math.min(...runsOut) : null,
     })
 })
 

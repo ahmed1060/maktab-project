@@ -937,7 +937,8 @@ describe("the screens that are drawn again", () => {
         expect(employees).not.toContain("useArrivals")
         // The company picked, or each on the page; nobody who has left is online.
         const allUsers = read("app/(dashboard)/dashboard/all-users/page.tsx")
-        expect(allUsers).toContain("useLiveOnline(viewer && isSuperAdmin && !left ? onlineTopics(viewer, companyId || null, (listed?.data ?? []).map(p => p.company?.id)) : [], () => { void mutate() }, listed?.onlineRunsOutInMs)")
+        // Every company the picker lists while none is picked, for the status counts (PR 384).
+        expect(allUsers).toContain("useLiveOnline(viewer && isSuperAdmin && !left ? onlineTopics(viewer, companyId || null, [...companies.map(c => c.id), ...(listed?.data ?? []).map(p => p.company?.id)]) : [], () => { void mutate() }, listed?.onlineRunsOutInMs)")
         expect(allUsers).not.toContain("useArrivals")
         const live = read("components/LiveUpdates.tsx")
         expect(live).toContain("export function useLiveOnline(topics: string[], onChange: () => void, runsOutInMs: number | null | undefined) {")

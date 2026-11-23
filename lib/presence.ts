@@ -65,11 +65,11 @@ export function presenceWhere(filter: "ACTIVE" | "OFFLINE", now: Date = new Date
     // A tab's row stays as it goes, marked gone, so a report sent before that,
     // arriving after, can't bring it back (UserService.updateActivity).
     const fresh = { here: true, seenAt: { gte: new Date(now.getTime() - ONLINE_WINDOW_MS) } }
-    if (filter === "ACTIVE") return { status: "ACTIVE", openTabs: { some: fresh } }
+    if (filter === "ACTIVE") return { status: "ACTIVE" as const, openTabs: { some: fresh } }
     return {
         OR: [
-            { status: "OFFLINE" },
-            { status: "ACTIVE", openTabs: { none: fresh } },
+            { status: "OFFLINE" as const },
+            { status: "ACTIVE" as const, openTabs: { none: fresh } },
         ],
     }
 }

@@ -7622,3 +7622,52 @@ a.ui-notice:focus-visible {
   }
 }
 /* end of a text with fields put in by buttons */
+
+/* ── Status counts (§5.5; LATER_CHANGES_PLAN.md §6, PR 384) ──
+   A pill for each status, its word then its count, in its badge's colours;
+   pressed, a tick and a brand ring outside it, apart by the page's colour. */
+.ui-status-counts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ui-status-counts-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.ui-status-count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding-inline: var(--space-4);
+  border: none;
+  border-radius: var(--radius-pill);
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: box-shadow 150ms ease-out;
+}
+.ui-status-count-n {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ui-status-count[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px var(--page), 0 0 0 4px var(--brand);
+}
+.ui-status-count:focus-visible {
+  outline: 2px solid var(--brand-text);
+  outline-offset: 4px;
+}
+.ui-status-counts-line {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+/* end of status counts */

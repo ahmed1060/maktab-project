@@ -163,3 +163,14 @@ export function buildUserOrderBy(searchParams: URLSearchParams): Record<string, 
         default: return [{ company: { name: 'asc' } }, { firstName: 'asc' }]
     }
 }
+
+/**
+ * What the counts are asked over: the list's own question without its
+ * search, the status it shows or its page, so they're of everyone at work in
+ * the company picked, on every page (PR 384).
+ */
+export function countedParams(searchParams: URLSearchParams): URLSearchParams {
+    const counted = new URLSearchParams(searchParams)
+    for (const key of ["search", "status", "includeDeleted", "page", "limit", "counts"]) counted.delete(key)
+    return counted
+}

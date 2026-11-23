@@ -91,7 +91,10 @@ describe("when the list is drawn again, with nothing heard", () => {
         const route = read("app/api/users/route.ts")
         expect(route).toContain("const now = new Date()")
         expect(route).toContain("presenceStatus(user.status, openTabs[0]?.seenAt ?? null, now)")
-        expect(route).toContain("onlineRunsOutInMs: onlineRunsOutIn(users.map(u => ({ status: u.status, lastSeen: u.openTabs[0]?.seenAt ?? null })), now),")
+        expect(route).toContain("const pageRunsOut = onlineRunsOutIn(users.map(u => ({ status: u.status, lastSeen: u.openTabs[0]?.seenAt ?? null })), now)")
+        // With status counts, the first of everyone counted online too (PR 384).
+        expect(route).toContain("const runsOut = [pageRunsOut, counts?.runsOut ?? null].filter((ms): ms is number => ms !== null)")
+        expect(route).toContain("onlineRunsOutInMs: runsOut.length ? Math.min(...runsOut) : null,")
     })
 
     // The database signals a tab here again after its row ran out: it reads
