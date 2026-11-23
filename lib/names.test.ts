@@ -98,6 +98,16 @@ describe("the Arabic kept beside a name being saved", () => {
         expect(arabicBeside("محمد", undefined)).toBe("محمد")
     })
 
+    it("is left as it is for a name sent back unchanged, where it has one (Codex review on PR 398)", () => {
+        expect(arabicBeside("مني", undefined, { en: "مني", ar: "منى" })).toBeUndefined()
+        // Changed, or with none yet: the name itself.
+        expect(arabicBeside("منى", undefined, { en: "مني", ar: "منى" })).toBe("منى")
+        expect(arabicBeside("مني", undefined, { en: "مني", ar: null })).toBe("مني")
+        expect(arabicBeside("مني", undefined, { en: "مني", ar: " " })).toBe("مني")
+        // One given is kept, whatever was there.
+        expect(arabicBeside("مني", "منى", { en: "مني", ar: "منى" })).toBe("منى")
+    })
+
     it("is left as it is otherwise", () => {
         expect(arabicBeside("Mohamed", undefined)).toBeUndefined()
         expect(arabicBeside(undefined, undefined)).toBeUndefined()

@@ -192,5 +192,66 @@ describe.skipIf(!ADMIN_URL)("English and Arabic names, in Postgres", () => {
             await CompanyService.update({ id: made.id, name: "مكتب الأمل الجديد" } as any, superAdmin)
             expect(await company(made.id)).toEqual({ name: "مكتب الأمل الجديد", nameAr: "مكتب الأمل الجديد" })
         })
+
+        it("are in the company's audit log when changed alone, as its name is (Codex review on PR 398)", async () => {
+            await CompanyService.update({ id: "c1", nameAr: "مكتب النيل" } as any, superAdmin)
+            const logged = (await db.query(`SELECT details FROM "AuditLog" WHERE "entityId" = 'c1' AND action = 'UPDATE_COMPANY' ORDER BY "createdAt"`)).rows
+            expect(logged.at(-1).details).toEqual({ nameAr: { old: "مكتب النيل للمحاسبة", new: "مكتب النيل" } })
+            // The same again is no change, and isn't logged.
+            await CompanyService.update({ id: "c1", nameAr: "مكتب النيل" } as any, superAdmin)
+            expect((await db.query(`SELECT count(*)::int AS n FROM "AuditLog" WHERE "entityId" = 'c1' AND action = 'UPDATE_COMPANY'`)).rows[0].n).toBe(logged.length)
+        })
+    })
+
+    describe("a name saved before in Arabic, its Arabic corrected since (Codex review on PR 398)", () => {
+        // مني in the column there before, as it was typed; منى its Arabic, as corrected.
+        beforeAll(async () => {
+            await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", "firstNameAr", "lastNameAr", role, "lastDayOffResetYear", username, "companyId", "roleId")
+                SELECT 'e4', 'e4@x', 'p', 'مني', 'Adel', 'منى', NULL, 'EMPLOYEE', 2026, 'legacy-e4', 'c1', "roleId" FROM "User" WHERE id = 'e3'`)
+            await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", "firstNameAr", "lastNameAr", role, "lastDayOffResetYear", username, "companyId", "roleId")
+                SELECT 'e5', 'e5@x', 'p', 'سامي', 'Nabil', NULL, NULL, 'EMPLOYEE', 2026, 'legacy-e5', 'c1', "roleId" FROM "User" WHERE id = 'e3'`)
+            await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "nameAr", "ownerNameAr", "mobileNumber", "locationName", "updatedAt") VALUES ('k5', 'c1', 'مكتب مني', 'مني', 'مكتب منى', 'منى', '01001234574', 'HQ', now())`)
+            await db.query(`INSERT INTO "Company"(id, name, "nameAr", "updatedAt") VALUES ('c3', 'مكتب مني', 'مكتب منى', now())`)
+        })
+
+        it("keeps its Arabic when the name comes back unchanged with the rest of a profile", async () => {
+            await UserService.update({ id: "e4", firstName: "مني", lastName: "Adel", gender: "FEMALE" } as any, as("a1", "ADMIN"))
+            expect(await person("e4")).toMatchObject({ firstName: "مني", firstNameAr: "منى" })
+        })
+
+        it("keeps it from the person's own profile too, which may not change it", async () => {
+            await UserService.update({ id: "e4", firstName: "مني", lastName: "Adel" } as any, as("e4", "EMPLOYEE"))
+            expect(await person("e4")).toMatchObject({ firstName: "مني", firstNameAr: "منى" })
+        })
+
+        it("gets its Arabic from the name itself where it has none yet", async () => {
+            await UserService.update({ id: "e5", firstName: "سامي", lastName: "Nabil" } as any, as("e5", "EMPLOYEE"))
+            expect(await person("e5")).toMatchObject({ firstName: "سامي", firstNameAr: "سامي" })
+        })
+
+        it("keeps it when a name change is approved that leaves this name as it is", async () => {
+            const request = await db.query(`INSERT INTO "ProfileUpdateRequest"(id, "userId", "oldFirstName", "oldLastName", "newFirstName", "newLastName", status, "updatedAt") VALUES ('p2', 'e4', 'مني', 'Adel', 'مني', 'عادل', 'PENDING', now()) RETURNING id`)
+            await ProfileService.approveRequest(request.rows[0].id, "", as("a1", "ADMIN"))
+            expect(await person("e4")).toEqual({ firstName: "مني", lastName: "عادل", firstNameAr: "منى", lastNameAr: "عادل" })
+        })
+
+        it("keeps a last name's too, from a profile and from an approved change", async () => {
+            await UserService.update({ id: "e4", lastNameAr: "عادلي" } as any, as("a1", "ADMIN"))
+            await UserService.update({ id: "e4", firstName: "مني", lastName: "عادل" } as any, as("a1", "ADMIN"))
+            expect(await person("e4")).toEqual({ firstName: "مني", lastName: "عادل", firstNameAr: "منى", lastNameAr: "عادلي" })
+            const request = await db.query(`INSERT INTO "ProfileUpdateRequest"(id, "userId", "oldFirstName", "oldLastName", "newFirstName", "newLastName", status, "updatedAt") VALUES ('p3', 'e4', 'مني', 'عادل', 'منى', 'عادل', 'PENDING', now()) RETURNING id`)
+            await ProfileService.approveRequest(request.rows[0].id, "", as("a1", "ADMIN"))
+            expect(await person("e4")).toEqual({ firstName: "منى", lastName: "عادل", firstNameAr: "منى", lastNameAr: "عادلي" })
+        })
+
+        it("keeps a client's when its names come back unchanged", async () => {
+            await ClientService.update({ id: "k5", name: "مكتب مني", ownerName: "مني" } as any, as("a1", "ADMIN"))
+            expect(await client("k5")).toEqual({ name: "مكتب مني", ownerName: "مني", nameAr: "مكتب منى", ownerNameAr: "منى" })
+        })
+
+        it("keeps a company's when its name comes back unchanged", async () => {
+            await CompanyService.update({ id: "c3", name: "مكتب مني" } as any, superAdmin)
+            expect(await company("c3")).toEqual({ name: "مكتب مني", nameAr: "مكتب منى" })
+        })
     })
 })

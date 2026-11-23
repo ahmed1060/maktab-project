@@ -72,8 +72,14 @@ export function missingLanguages(names: TwoLanguages[]): ("en" | "ar")[] {
  * itself where it's written in Arabic, as a form that asks for one name only
  * sends it, so a name in Arabic always has its Arabic. Undefined leaves the
  * Arabic as it is.
+ *
+ * `before` is the name as it was. A name sent back unchanged with the rest of
+ * a form leaves an Arabic it has as it is, so one corrected since is never
+ * written over (Codex review on PR 398); one with no Arabic yet gets it.
  */
-export function arabicBeside(name: string | undefined, given: string | undefined): string | undefined {
+export function arabicBeside(name: string | undefined, given: string | undefined, before?: TwoLanguages): string | undefined {
     if (given !== undefined) return given
-    return name !== undefined && hasArabic(name) ? name : undefined
+    if (name === undefined || !hasArabic(name)) return undefined
+    if (before && name === before.en && before.ar?.trim()) return undefined
+    return name
 }

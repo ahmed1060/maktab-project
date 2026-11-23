@@ -324,6 +324,8 @@ export class UserService {
         // 1. Name Change Restrictions
         // Their names in Arabic too (LATER_CHANGES_PLAN.md §3, PR 398): the
         // ones they have, sent back with the rest of the profile, are no change.
+        // An Arabic taken from a name itself (below) is either a changed name's,
+        // refused here already, or the very name, kept where it had none.
         const changes = (sent: string | undefined, kept: string | null) => sent !== undefined && sent !== kept
         if (isSelf && regularUser && ['EMPLOYEE', 'TEAM_LEADER'].includes(regularUser.role)) {
             if ((firstName && firstName !== regularUser.firstName) || (lastName && lastName !== regularUser.lastName)
@@ -338,8 +340,8 @@ export class UserService {
         // Their names in Arabic, or a name itself changed in Arabic by a form
         // that asks for one name only. A Super Admin's name is kept once.
         if (regularUser) {
-            const firstAr = arabicBeside(firstName || undefined, firstNameAr)
-            const lastAr = arabicBeside(lastName || undefined, lastNameAr)
+            const firstAr = arabicBeside(firstName || undefined, firstNameAr, { en: regularUser.firstName, ar: regularUser.firstNameAr })
+            const lastAr = arabicBeside(lastName || undefined, lastNameAr, { en: regularUser.lastName, ar: regularUser.lastNameAr })
             if (firstAr !== undefined) updateData.firstNameAr = firstAr
             if (lastAr !== undefined) updateData.lastNameAr = lastAr
         }

@@ -75,8 +75,8 @@ export class ClientService {
         const details = {
             name: fields.name, ownerName: fields.ownerName, mobileNumber: fields.mobileNumber,
             // Its names in Arabic, or a name itself changed in Arabic.
-            nameAr: arabicBeside(fields.name, fields.nameAr),
-            ownerNameAr: arabicBeside(fields.ownerName, fields.ownerNameAr),
+            nameAr: arabicBeside(fields.name, fields.nameAr, { en: client.name, ar: client.nameAr }),
+            ownerNameAr: arabicBeside(fields.ownerName, fields.ownerNameAr, { en: client.ownerName, ar: client.ownerNameAr }),
         }
         const { AuditLogService } = await import("./audit-log.service")
         return prisma.$transaction(async tx => {

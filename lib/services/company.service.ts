@@ -307,7 +307,7 @@ export class CompanyService {
         }
 
         // Its name in Arabic, or the name itself changed in Arabic.
-        const arabic = arabicBeside(name || undefined, nameAr)
+        const arabic = arabicBeside(name || undefined, nameAr, { en: existing.name, ar: existing.nameAr })
         const data: Prisma.CompanyUpdateInput = {
             ...(name && { name }),
             ...(arabic !== undefined && { nameAr: arabic }),
@@ -367,6 +367,8 @@ export class CompanyService {
         // Audit Log (Centralized)
         const changes: any = {}
         if (name && name !== existing.name) changes.name = { old: existing.name, new: name }
+        // Its name in Arabic, as its name is (Codex review on PR 398).
+        if (arabic !== undefined && arabic !== existing.nameAr) changes.nameAr = { old: existing.nameAr, new: arabic }
         if (newCode !== undefined) changes.usernameCode = { old: existing.usernameCode, new: newCode }
         if (isBanned !== undefined && isBanned !== existing.isBanned) changes.isBanned = { old: existing.isBanned, new: isBanned }
         if (autoVerifyLocation !== undefined && autoVerifyLocation !== existing.autoVerifyLocation) {

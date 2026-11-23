@@ -73,9 +73,11 @@ export class ProfileService {
         if (!person || !can(session.user, "profile_requests.review", person)) throw new Error("OWN_REQUEST")
 
         // A name changed in Arabic is its Arabic too (LATER_CHANGES_PLAN.md
-        // §3, PR 398); one changed in English leaves the Arabic as it is.
-        const firstNameAr = arabicBeside(request.newFirstName, undefined)
-        const lastNameAr = arabicBeside(request.newLastName, undefined)
+        // §3, PR 398); one changed in English, or left as it is, leaves the
+        // Arabic as it is.
+        const now = await prisma.user.findUnique({ where: { id: request.userId }, select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } })
+        const firstNameAr = arabicBeside(request.newFirstName, undefined, now ? { en: now.firstName, ar: now.firstNameAr } : undefined)
+        const lastNameAr = arabicBeside(request.newLastName, undefined, now ? { en: now.lastName, ar: now.lastNameAr } : undefined)
         return await prisma.$transaction(async (tx) => {
             await tx.user.update({
                 where: { id: request.userId },
