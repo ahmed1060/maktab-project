@@ -16,7 +16,8 @@ Each part is marked:
 Status: **the names (§3) next.** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
-#384). The names are decided, and start with their design for the owner.
+#384). The names are decided: their design is with the owner, and their
+longer limit goes first (#397).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -335,6 +336,13 @@ other filled in when one is typed, if that's possible.
     learned.
   - **Weak spots:** rare names and brand names come from the rules and
     need correcting once.
+- **A name's length (Decided, 2026-11-23):** an employee's first and last
+  names take up to 40 characters, where they took 15. A name is usually
+  longer in English than in Arabic, as its vowels are written out:
+  محمد عبد الرحمن is 15 characters, and Mohamed Abdelrahman is 19. It's
+  raised first, in #397, as it helps the names typed today too.
+- **The design (2026-11-23):** the name fields drawn for the owner on a
+  canvas, waiting for their approval before anything else is built.
 
 ## 4. A development database (Done)
 
@@ -1028,3 +1036,6 @@ same day as drawn in the All users: status badges canvas
   rules between permissions (§5). §5 and status counts on All users (§6,
   #384) marked done, with §5.2's steps. The names (§3) next, starting with
   a mockup of the name fields for the owner.
+- **2026-11-23:** #396 merged. The name fields drawn for the owner, who
+  asked for names of up to 40 characters, where they were 15: #397, before
+  the rest of §3.
