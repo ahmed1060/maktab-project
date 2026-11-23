@@ -60,13 +60,16 @@ const hint = (chunk: string) => chunk.match(/<span id="[^"]+" class="ui-hint">(.
 const wrong = (chunk: string) => chunk.match(/<span id="[^"]+" class="ui-error">(.*?)<\/span>/)?.[1] ?? null
 
 describe("what's checked before anything is sent", () => {
-    it("asks for a first and a last name, of up to 15 characters, as the server takes them", async () => {
+    it("asks for a first and a last name, of up to 40 characters, as the server takes them", async () => {
         const { profileErrors } = await import("@/lib/profile-form")
         const ok = { firstName: "Mona", lastName: "Ali", password: "" }
         expect(profileErrors(ok)).toEqual({})
         expect(profileErrors({ ...ok, firstName: "  ", lastName: "" })).toEqual({ firstName: "profile_first_name_invalid", lastName: "profile_last_name_invalid" })
+        // Up to 40 (the owner's answer of 2026-11-23, PR 397; it was 15), as an English name spells its vowels out.
+        expect(profileErrors({ ...ok, firstName: "Abdelrahmanovich", lastName: "a".repeat(40) })).toEqual({})
         // One a typed limit can't stop: loaded as it was, longer than the route now takes.
-        expect(profileErrors({ ...ok, firstName: "Abdelrahmanovich" })).toEqual({ firstName: "profile_first_name_invalid" })
+        expect(profileErrors({ ...ok, firstName: "a".repeat(41) })).toEqual({ firstName: "profile_first_name_invalid" })
+        expect(profileErrors({ ...ok, lastName: "a".repeat(41) })).toEqual({ lastName: "profile_last_name_invalid" })
     })
 
     it("checks only what may be changed: an email, a changed username, a new password, pay and day off credit", async () => {
@@ -159,11 +162,11 @@ describe("the form, on the building blocks", () => {
         const html = await form()
         const first = field(html, en.first_name_label)
         expect(tag(first)).toMatch(/name="firstName"/)
-        expect(tag(first)).toMatch(/maxLength="15"/i)
+        expect(tag(first)).toMatch(/maxLength="40"/i)
         expect(tag(first)).toContain('dir="auto"')
-        expect(hint(first)).toBe("4 of 15 characters")
+        expect(hint(first)).toBe("4 of 40 characters")
         state.locale = "ar"
-        expect(hint(field(await form(), ar.first_name_label))).toBe("٤ من ١٥ حرف")
+        expect(hint(field(await form(), ar.first_name_label))).toBe("٤ من ٤٠ حرف")
     })
 
     it("asks for one's own name to be approved, where it is, before the names", async () => {

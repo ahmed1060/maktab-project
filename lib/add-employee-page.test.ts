@@ -77,9 +77,9 @@ describe("Add employee", () => {
     it("takes the name, email and password as the building blocks' fields, each with its label above it", async () => {
         const html = await render()
         expect(html).toMatch(label(en.first_name_label))
-        expect(html).toMatch(input({ name: "firstName", autoComplete: "off", maxLength: "15" }))
+        expect(html).toMatch(input({ name: "firstName", autoComplete: "off", maxLength: "40" }))
         expect(html).toMatch(label(en.last_name_label))
-        expect(html).toMatch(input({ name: "lastName", autoComplete: "off", maxLength: "15" }))
+        expect(html).toMatch(input({ name: "lastName", autoComplete: "off", maxLength: "40" }))
         expect(html).toMatch(input({ name: "email", type: "email", autoComplete: "off", spellCheck: "false" }))
         // The building blocks' password field, its eye named for what it does, and how long it must be said under it.
         expect(html).toMatch(input({ name: "password", type: "password", autoComplete: "new-password", maxLength: "72" }))
@@ -216,10 +216,10 @@ describe("Add employee, found in the browser", () => {
 })
 
 describe("Add employee, found in the web interface audit", () => {
-    it("says how much of a name it takes, as it stops at 15 characters", async () => {
+    it("says how much of a name it takes, as it stops at 40 characters", async () => {
         // Typing stopped at the 15th character with nothing to say why.
         const html = await render()
-        const count = esc(en.ui_characters_used.replace("{used}", "0").replace("{max}", "15"))
+        const count = esc(en.ui_characters_used.replace("{used}", "0").replace("{max}", "40"))
         expect(html.split(count).length - 1).toBe(2)
     })
 })
