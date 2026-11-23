@@ -410,6 +410,14 @@ The role editor ticks implied permissions automatically and will not let them be
 removed while the permission that needs them is granted, so a Super Admin cannot
 build a role that half-works.
 
+A permission that needs **another area's** is recorded as **requires**
+(`tasks.create` requires `locations.view`; LATER_CHANGES_PLAN.md §5.1 rule 1,
+§5.3; #372). Nothing is ticked for the Super Admin, as across areas that would
+give access nobody chose: the role editor greys the row, "Needs *See locations*
+first", until that one is ticked, held at least as wide, and saving a role or
+template without it is refused, naming what's missing. A permission another
+one brings with it carries no needs of its own.
+
 It also enforces **scope/base-role compatibility**: TEAM scope is offered only on
 TEAM_LEADER-based roles, where a team exists to scope to.
 
