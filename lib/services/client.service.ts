@@ -72,7 +72,7 @@ export class ClientService {
         return prisma.$transaction(async tx => {
             await tx.client.update({ where: { id }, data: details })
             // Its HQ's details, and its own location fields with them: a
-            // change to the HQ it has needs locations.manage.
+            // change to the HQ it has needs locations.edit (PR 377).
             if (hq) await LocationService.saveHq(tx, client, hq, session)
 
             await AuditLogService.log('UPDATE_VENDOR', 'VENDOR', id, {

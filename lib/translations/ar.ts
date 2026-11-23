@@ -313,6 +313,8 @@ export const ar = {
         perm_locations_view: "عرض المواقع",
         perm_locations_add: "إضافة المواقع",
         perm_locations_manage: "إدارة المواقع",
+        perm_locations_edit: "تعديل المواقع واختيار المقر الرئيسي للعميل",
+        perm_locations_archive: "أرشفة المواقع واستعادتها",
         perm_lists_add: "إضافة أسماء إلى القوائم",
         perm_lists_manage: "إدارة القوائم",
         lists_add_to_list: "إضافة «{name}» إلى القائمة",

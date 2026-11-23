@@ -16,8 +16,9 @@ import {
     type Column, type MenuItem,
 } from '@/components/ui'
 import type { TranslationKey } from '@/lib/translations'
+import type { LocationAction } from '@/lib/locations'
 import { googleMapsLink } from '@/lib/attendance/geo'
-import { LOCATION_RADIUS_DEFAULT, locationLabel } from '@/lib/locations'
+import { LOCATION_RADIUS_DEFAULT, locationActions, locationLabel } from '@/lib/locations'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { useCan } from '@/lib/useCan'
 import { countOf } from '@/lib/plural'
@@ -103,7 +104,11 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
     const changed = () => { void mutate(); onChanged?.() }
 
     const canAdd = can('locations.add')
-    const canManage = can('locations.manage')
+    // Split from Manage locations (PR 377): editing one and making it an HQ,
+    // and archiving or restoring one.
+    const canEdit = can('locations.edit')
+    const canArchive = can('locations.archive')
+    const changes = canEdit || canArchive
 
     /** A change from the row's menu: making it the HQ, archiving it, or restoring it. */
     const change = async (l: LocationItem, body: { hq?: true; archived?: boolean }, done: TranslationKey) => {
@@ -132,15 +137,16 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
         setToArchive(null)
     }
 
-    const menu = (l: LocationItem): MenuItem[] => l.archivedAt
-        ? [{ key: 'restore', label: t('locations_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void change(l, { archived: false }, 'locations_restored') } }]
-        : [
-            { key: 'edit', label: t('locations_edit'), icon: PencilSimpleIcon, onSelect: () => setEditing(l) },
-            // A client's HQ is replaced, never archived: another is made its HQ first.
-            ...(l.client && !l.isHq ? [{ key: 'hq', label: t('locations_set_hq'), icon: StarIcon, onSelect: () => { void change(l, { hq: true }, 'locations_hq_set') } }] : []),
-            ...(!l.isHq ? [{ key: 'archive', label: t('locations_archive'), icon: ArchiveIcon, onSelect: () => setToArchive(l) }] : []),
-        ]
-    const actions = (l: LocationItem) => canManage && (
+    // Each as locationActions offers it: a client's HQ is replaced, never
+    // archived, so another is made its HQ first.
+    const item = (l: LocationItem, action: LocationAction): MenuItem => ({
+        edit: { key: 'edit', label: t('locations_edit'), icon: PencilSimpleIcon, onSelect: () => setEditing(l) },
+        hq: { key: 'hq', label: t('locations_set_hq'), icon: StarIcon, onSelect: () => { void change(l, { hq: true }, 'locations_hq_set') } },
+        archive: { key: 'archive', label: t('locations_archive'), icon: ArchiveIcon, onSelect: () => setToArchive(l) },
+        restore: { key: 'restore', label: t('locations_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void change(l, { archived: false }, 'locations_restored') } },
+    } satisfies Record<LocationAction, MenuItem>)[action]
+    const menu = (l: LocationItem): MenuItem[] => locationActions(l, { edit: canEdit, archive: canArchive }).map(action => item(l, action))
+    const actions = (l: LocationItem) => menu(l).length > 0 && (
         <span className="ui-row-actions">
             <RowMenu label={t('ui_more_actions_for').replace('{name}', l.name)} tooltip={t('ui_more_actions')} items={menu(l)} />
         </span>
@@ -172,7 +178,7 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
         ...(everyCompany ? [{ key: 'company', header: t('clients_col_company'), cell: (l: LocationItem) => <bdi>{l.company.name}</bdi> }] : []),
         { key: 'pin', header: t('locations_col_pin'), cell: pin },
         { key: 'radius', header: t('locations_col_radius'), cell: radius },
-        ...(canManage ? [{ key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end' as const, cell: actions }] : []),
+        ...(changes ? [{ key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end' as const, cell: actions }] : []),
     ]
 
     const clientOptions = [
@@ -232,7 +238,7 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
                                     { icon: MapPinIcon, text: pin(l) },
                                     { icon: MapPinAreaIcon, text: radius(l) },
                                 ]}
-                                foot={canManage ? <>{actions(l)}</> : undefined}
+                                foot={changes ? <>{actions(l)}</> : undefined}
                             />
                         )}
                         footer={<Pager page={page} pageCount={totalPages} onPage={setPage} summary={countOf(t, locale, total, 'locations')} />}

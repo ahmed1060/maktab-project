@@ -67,7 +67,7 @@ const LOCATION_COMPANY = "const pickCompany = choosing && sharedChosen && superA
 const CHARGE_FEE = ["const canManage = can('charges.manage')", ": !canManage ? [] : c.notCharged"]
 const CHARGE_COLLECT = ["const canCollect = can('charges.collect')", "{canCollect && offer && <Button"]
 const CHARGE_UNCOLLECT = ["const canCollect = can('charges.collect')", "? (canCollect ? [{ key: 'uncollect'"]
-const LOCATION_EDIT = ["const canManage = can('locations.manage')", "const actions = (l: LocationItem) => canManage && ("]
+const LOCATION_CHANGE = ["const canEdit = can('locations.edit')", "const canArchive = can('locations.archive')", "locationActions(l, { edit: canEdit, archive: canArchive })"]
 
 const SCREENS: Record<string, Screen> = {
     "locations": {
@@ -75,7 +75,7 @@ const SCREENS: Record<string, Screen> = {
         asks: {
             "GET /api/locations": needs("locations.view"),
             "POST /api/locations": when("locations.add", "adding={adding && can('locations.add')}"),
-            "PUT /api/locations": when("locations.manage", ...LOCATION_EDIT),
+            "PUT /api/locations": when(["locations.edit", "locations.archive"], ...LOCATION_CHANGE),
             // The client a place is for, and the list's client filter.
             "GET /api/clients": when("clients.view", ...CLIENT_PICKERS),
             "GET /api/companies": superAdmin(LOCATION_COMPANY),
@@ -149,7 +149,7 @@ const SCREENS: Record<string, Screen> = {
             "DELETE /api/records/uploads": when("records.contribute", "adding={!archived && adding && can('records.contribute')}"),
             "GET /api/locations": when("locations.view", "const seesLocations = can('locations.view')", "{seesLocations && ("),
             "POST /api/locations": when("locations.add", "adding={!archived && addingLocation && can('locations.add')}"),
-            "PUT /api/locations": when("locations.manage", ...LOCATION_EDIT),
+            "PUT /api/locations": when(["locations.edit", "locations.archive"], ...LOCATION_CHANGE),
             "GET /api/charges": when("charges.view", "const seesCharges = can('charges.view')", "{seesCharges && <ChargesList client={{ id, name }} />}"),
             "PATCH /api/charges/[x]": when("charges.manage", ...CHARGE_FEE),
             "POST /api/charges/collect": when("charges.collect", ...CHARGE_COLLECT),

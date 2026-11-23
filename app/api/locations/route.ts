@@ -3,6 +3,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { parsePaging } from "@/lib/pagination"
 import { createLocationSchema, updateLocationSchema } from "@/lib/validations/location.schema"
 import { LocationService } from "@/lib/services/location.service"
+import { can } from "@/lib/permissions/can"
 
 /**
  * The places tasks happen at (CLIENTS_PLAN.md §2): the Locations page, and
@@ -47,8 +48,15 @@ export const POST = withStandardHandler(async (_req, session, json) => {
     return ApiResponse.success(await LocationService.create(session, validation.data), 201)
 }, { permission: "locations.add" })
 
+/**
+ * Changing a location: its details and which is its client's HQ are
+ * locations.edit's, archiving and restoring it locations.archive's
+ * (LATER_CHANGES_PLAN.md §2, PR 377). Whoever holds neither is refused before
+ * the change is read; LocationService asks each part of it its own.
+ */
 export const PUT = withStandardHandler(async (_req, session, json) => {
+    if (!can(session.user, "locations.edit") && !can(session.user, "locations.archive")) return ApiResponse.forbidden()
     const validation = updateLocationSchema.safeParse(json)
     if (!validation.success) return ApiResponse.badRequest("Validation Error", validation.error.format())
     return ApiResponse.success(await LocationService.update(session, validation.data))
-}, { permission: "locations.manage" })
+})

@@ -47,3 +47,25 @@ export function numberedLabels<T extends { label: string }>(list: T[]): (T & { l
         return { ...l, label }
     })
 }
+
+/** What a location's row menu can offer, each its own part of what changes one (PR 377). */
+export type LocationAction = 'edit' | 'hq' | 'archive' | 'restore'
+
+/**
+ * What a location's row menu offers (LATER_CHANGES_PLAN.md §2, PR 377):
+ * editing it and making it its client's HQ with locations.edit, archiving it
+ * or restoring it with locations.archive. A client's HQ is replaced, never
+ * archived, a shared one is nobody's HQ, and an archived one is restored
+ * before anything else.
+ */
+export function locationActions(
+    location: { archivedAt: unknown; isHq: boolean; client: unknown },
+    may: { edit: boolean; archive: boolean },
+): LocationAction[] {
+    if (location.archivedAt) return may.archive ? ['restore'] : []
+    const actions: LocationAction[] = []
+    if (may.edit) actions.push('edit')
+    if (may.edit && location.client && !location.isHq) actions.push('hq')
+    if (may.archive && !location.isHq) actions.push('archive')
+    return actions
+}

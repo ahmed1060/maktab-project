@@ -318,6 +318,8 @@ export const en = {
         perm_locations_view: "See locations",
         perm_locations_add: "Add locations",
         perm_locations_manage: "Manage locations",
+        perm_locations_edit: "Edit locations and pick a client's HQ",
+        perm_locations_archive: "Archive and restore locations",
         perm_lists_add: "Add list names",
         perm_lists_manage: "Manage lists",
         lists_add_to_list: "Add “{name}” to the list",
