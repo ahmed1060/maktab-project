@@ -418,6 +418,14 @@ first", until that one is ticked, held at least as wide, and saving a role or
 template without it is refused, naming what's missing. A permission another
 one brings with it carries no needs of its own.
 
+A permission that **works with less** without another is recorded as
+**lessWithout** (`tasks.create` does less without `clients.view`: no client
+can be picked for a task; LATER_CHANGES_PLAN.md §5.1 rule 3, §5.3; #373). It
+saves, as a separation-of-duties pair does (§6.11): the role editor lists each
+one the role holds, one a save newly brings is confirmed, and the server
+refuses it unconfirmed and records the decision. Held or not counts, not how
+wide, and one another held permission brings with it warns of nothing.
+
 It also enforces **scope/base-role compatibility**: TEAM scope is offered only on
 TEAM_LEADER-based roles, where a team exists to scope to.
 
