@@ -28,7 +28,7 @@ grant for companies already there.
 Moved to `THIRD_CHANGES_PLAN.md` on 2026-11-22, as the owner asked, with
 its open questions.
 
-## 2. Each "manage" permission split (Decided)
+## 2. Each "manage" permission split (Done)
 
 The owner asked to break up every "manage" permission in the roles system.
 
@@ -577,10 +577,16 @@ They work together, each for a different case.
     only, such as the company picker, with its code quoted too. That
     method's handler, or a service it names, names each permission the
     table gives it, and each quoted gate is in the code, naming its
-    permission.
+    permission. Since #387, a call can also be **not here**: in a
+    component the screen uses, but never sent from this screen, with the
+    code that shows why quoted, as the location form's editing is from a
+    task's place picker, which only adds.
   - A needed call is met by each permission that opens the screen:
     itself, one it brings (`implies`), or one it needs first
     (`requires`). Anything else fails, naming the screen and the call.
+    A screen anyone in the company opens, showing each person what they
+    may see, such as Tasks, has no needed call (#387): each is asked
+    only of whoever holds its permission.
   - Every page is in the table, waiting for it, or outside it (the
     Super Admin's own pages, and one's own). The table comes in parts:
     first the screens the remaining splits change, so each split keeps
@@ -608,8 +614,10 @@ there:
    2026-11-23 to come before the splits. In parts: #376 for the screens
    the remaining splits change (locations, saved lists, costs, clients,
    employees and payroll); then the splits, each keeping its rows; then
-   the rest (tasks, obligations, requests, records, attendance and
-   settings).
+   the rest, about 220 calls on 29 screens, in parts by area: the task
+   screens (#387); obligations, records and documents; requests and the
+   people screens; attendance and check-in; and settings. A page that
+   only sends you on to another is outside the table.
 
 The two screens found to fix in §5.3 go in one PR of their own, as #368
 did, after the list is approved and before step 2: #370.
@@ -911,3 +919,8 @@ same day as drawn in the All users: status badges canvas
 - **2026-11-23:** #385 merged and live: the three built-in roles hold 30
   rows of parts, and no old rows. The old permissions retired next, as
   #386.
+- **2026-11-23:** #386 merged and live, and §2 is done. The screen test
+  goes on with the task screens, as #387. The rest, found to be about
+  220 calls on 29 screens, comes in parts by area. Two kinds of row are
+  added for them: a screen anyone in the company opens, which needs
+  nothing, and a call not made here.

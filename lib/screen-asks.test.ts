@@ -19,14 +19,18 @@ import { PERMISSIONS, requiresOf, type Permission } from "./permissions/catalogu
  *   with the code that decides it quoted (`gates`), in the screen, or in the
  *   server where it gives a button what it needs only for its holders; open
  *   to **anyone** in the company; or the **Super Admin's** only, with its
- *   gates too. That method's handler names each permission given, and each
- *   gate is in the code, as quoted, naming its permission;
+ *   gates too; or **not here**, in a component the screen uses but never
+ *   sent from it, with the code that shows why (PR 387). That method's
+ *   handler names each permission given, and each gate is in the code, as
+ *   quoted, naming its permission;
  * - a needed call is met by each permission that opens the screen: itself,
  *   one it brings (`implies`), or one it needs first (`requires`), as rules 1
- *   and 2 keep those held with it.
+ *   and 2 keep those held with it. A screen **anyone** in the company opens,
+ *   showing each person what they may see, needs nothing (PR 387).
  *
- * In parts: these are the screens the remaining splits change (§2), so each
- * split keeps its rows; the rest wait in LATER.
+ * In parts: first the screens the remaining splits change (§2, PR 376), so
+ * each split kept its rows; then the task screens (PR 387); the rest wait in
+ * LATER.
  */
 
 /**
@@ -51,14 +55,18 @@ type Ask =
     | ({ needs: Permission[] } & Where)
     | ({ when: Permission[]; gates: Gate[]; answers?: Permission[] } & Where)
     | ({ superAdmin: Gate[] } & Where)
+    | ({ notHere: Gate[] } & Where)
     | "anyone"
 
-type Screen = { opens: Permission[]; asks: Record<string, Ask> }
+/** What opens a screen: its permissions, or, where anyone in the company may and is shown what they may see, anyone. */
+type Screen = { opens: Permission[] | "anyone"; asks: Record<string, Ask> }
 
 const ANYONE = "anyone" as const
 const needs = (...permissions: Permission[]): Ask => ({ needs: permissions })
 const when = (permission: Permission | Permission[], ...gates: Gate[]): Ask => ({ when: [permission].flat(), gates })
 const superAdmin = (...gates: Gate[]): Ask => ({ superAdmin: gates })
+/** In a component the screen uses, but never sent from this screen, for the reason quoted. */
+const notHere = (...gates: Gate[]): Ask => ({ notHere: gates })
 
 // Shared by several screens: the components' own checks.
 const CLIENT_PICKERS = ["useClientOptions(onePage && can('clients.view'), true)", "const clients = useClientOptions(choosing && can('clients.view'))"]
@@ -70,8 +78,82 @@ const CHARGE_UNCOLLECT = ["const canCollect = can('charges.collect')", "? (canCo
 // A client's people: seen with client_accounts.view, each change with its own part (PR 381).
 const PEOPLE_MAY = "const may = { invite: can('client_accounts.invite'), remove: can('client_accounts.remove') }"
 const LOCATION_CHANGE = ["const canEdit = can('locations.edit')", "const canArchive = can('locations.archive')", "locationActions(l, { edit: canEdit, archive: canArchive })"]
+// A task's place (components/locations/TaskPlacePicker.tsx): its client and places for whoever sees them, a new place for whoever adds them.
+const TASK_PLACE_CLIENTS = ["const seesClients = can('clients.view')", "const clients = useClientOptions(choosing && can('clients.view'))"]
+const TASK_PLACE_LOCATIONS = "const seesLocations = can('locations.view')"
+const TASK_PLACE_NEW = "{can('locations.create') && ("
+// The picker opens the place form only to add one, for the task, so the form's editing is never sent from it.
+const TASK_PLACE_NO_EDIT = notHere("forTask={{ clientId: value.clientId || null, clientName, companyId }}", { in: "components/locations/LocationForm.tsx", code: "method: editing ? 'PUT' : 'POST'" })
+// A saved name added from where it's typed (components/lists/useListNames.ts).
+const LIST_ADD = "return { suggest, onAdd: can('lists.add') && (!superAdmin || !!company) ? add : undefined }"
 
 const SCREENS: Record<string, Screen> = {
+    // The task screens (PR 387).
+    "tasks": {
+        // Everyone's, showing each their own tasks, and their team's or the company's with See tasks.
+        opens: ANYONE,
+        asks: {
+            "GET /api/clients": when("clients.view", ...PLACE_FILTERS),
+            "GET /api/locations": when("locations.view", ...PLACE_FILTERS),
+            "GET /api/users": when("employees.view", "const asks = on && can('employees.view')"),
+            "GET /api/lists": ANYONE,
+            "GET /api/realtime/token": ANYONE,
+        },
+    },
+    "tasks/[id]": {
+        // Each task for its assignees, and for whoever sees it with See tasks.
+        opens: ANYONE,
+        asks: {
+            // An assignee's: what changed seen, and their work sent in. The server checks they're on the task.
+            "PUT /api/tasks/[x]/acknowledge": ANYONE,
+            "PUT /api/tasks/[x]/submit": ANYONE,
+            // Removing a note, file or cost: one's own, or anyone's with Edit tasks, decided item by item by the server.
+            "DELETE /api/tasks/[x]/items": ANYONE,
+            "DELETE /api/tasks/[x]/locations": ANYONE,
+            // One's own cash advance, while adding a cost.
+            "GET /api/cash-advances/[x]": ANYONE,
+            "GET /api/company-settings/visible": ANYONE,
+            "POST /api/tasks/[x]/review": when("tasks.review", "const reviewing = !isRestricted && mayManage('tasks.review') && task.status === 'PENDING_CONFIRMATION'"),
+            "PUT /api/tasks/[x]/locations": when("tasks.review", "const canVerify = can('tasks.review') && task.status === 'PENDING_CONFIRMATION'"),
+            "PUT /api/tasks/[x]/details": when("tasks.edit", "const editable = !isRestricted && ['PENDING', 'IN_PROGRESS'].includes(task.status) && mayManage('tasks.edit')"),
+            "DELETE /api/tasks/[x]/delete": when("tasks.delete", "...(!isRestricted && mayManage('tasks.delete') && !hasPaidCosts"),
+            "GET /api/tasks/[x]/transfer": when("tasks.transfer", "const canTransfer = can('tasks.transfer')", "const transferable = !isRestricted && canTransfer && ['IN_PROGRESS', 'PENDING'].includes(task.status)"),
+            "POST /api/tasks/[x]/transfer": when("tasks.transfer", "const canTransfer = can('tasks.transfer')", "const transferable = !isRestricted && canTransfer && ['IN_PROGRESS', 'PENDING'].includes(task.status)",
+                "{deleted.length > 0 && canTransfer && !DECIDED.includes(task.status) && ("),
+            // Paid or not, the whole task's for the company's payer, each person's share for whoever pays.
+            "PUT /api/tasks/[x]/payment": when("tasks.pay", "...(owesCosts && companyWide('tasks.pay') && (task.paymentStatus === 'PAID' || task.paymentStatus === 'PENDING_PAYMENT')",
+                "const settlements = can('tasks.pay') && isReviewed(task.status) && shared && Object.keys(getMemberCosts(task)).length > 0"),
+            "POST /api/tasks/[x]/penalty": when("tasks.penalize", "const mayPenalise = features.has('SALARY_ADJUSTMENTS') && can('tasks.penalize') && !['PENDING', 'IN_PROGRESS'].includes(task.status)"),
+            "POST /api/tasks/[x]/revert": superAdmin("...(userRole === 'SUPER_ADMIN' && ['APPROVED', 'COMPLETED', 'REJECTED', 'PENDING_CONFIRMATION'].includes(task.status) && task.paymentStatus === 'PENDING_PAYMENT'"),
+            // Its place, when its details are edited.
+            "GET /api/clients": when("clients.view", ...TASK_PLACE_CLIENTS),
+            "GET /api/locations": when("locations.view", TASK_PLACE_LOCATIONS),
+            "POST /api/locations": when("locations.create", TASK_PLACE_NEW),
+            "PUT /api/locations": TASK_PLACE_NO_EDIT,
+            "GET /api/companies": superAdmin(LOCATION_COMPANY),
+            "GET /api/lists": ANYONE,
+            "POST /api/lists": when("lists.add", LIST_ADD),
+            "POST /api/upload": ANYONE,
+            "GET /api/realtime/token": ANYONE,
+        },
+    },
+    "tasks/new": {
+        opens: ["tasks.create"],
+        asks: {
+            "POST /api/tasks": needs("tasks.create"),
+            // The spreadsheet to fill in, and its places, which an upload checks its rows against: See locations, which adding a task needs first (§5.3).
+            "GET /api/templates/download": needs("tasks.create"),
+            "GET /api/locations": needs("locations.view"),
+            "GET /api/clients": when("clients.view", "const canUseClients = useCan().can('clients.view')", ...TASK_PLACE_CLIENTS),
+            "POST /api/locations": when("locations.create", TASK_PLACE_NEW),
+            "PUT /api/locations": TASK_PLACE_NO_EDIT,
+            // The Super Admin manages the templates instead of downloading one.
+            "GET /api/templates/status": superAdmin("{userRole === 'SUPER_ADMIN'", "const allCompanies = isOpen && !selectedCompanyId"),
+            "GET /api/companies": superAdmin(LOCATION_COMPANY),
+            "GET /api/lists": ANYONE,
+            "POST /api/lists": when("lists.add", LIST_ADD),
+        },
+    },
     "locations": {
         opens: ["locations.view"],
         asks: {
@@ -235,12 +317,14 @@ const SCREENS: Record<string, Screen> = {
 const LATER = [
     // The home page.
     "",
-    "attendance", "cash-advances/[userId]", "check-in", "clients/[id]/tax-statement", "day-off-requests", "documents",
+    "attendance", "cash-advances/[userId]", "check-in", "clients/[id]/tax-statement", "documents",
     "documents/payslip/[id]", "documents/settlement/[id]", "employees/[id]", "obligations", "obligations/[id]", "obligations/new",
-    "profile-requests", "records", "records/[id]", "requests", "requests/history", "role-requests", "roles-and-access",
-    "settings", "settings/client-messages/[kind]", "settings/terminal-guide", "tasks", "tasks/[id]", "tasks/new", "tax-export",
-    "vendors", "vendors/[id]",
+    "records", "requests", "roles-and-access",
+    "settings", "settings/client-messages/[kind]", "settings/terminal-guide", "tax-export",
 ]
+
+/** A page that only sends you on to another, which is in the table (PR 387). */
+const SENDS_ON = "sends you on"
 
 /** Not a permission's screen: the Super Admin's own, one's own, or a notice. */
 const OUTSIDE: Record<string, string> = {
@@ -255,6 +339,9 @@ const OUTSIDE: Record<string, string> = {
     "cash-advances/mine": "one's own", "change-password": "one's own", "email-settings": "one's own", "mfa-settings": "one's own",
     "security-settings": "one's own",
     "maintenance": "a notice", "subscription-expired": "a notice",
+    "day-off-requests": `${SENDS_ON} to Requests`, "profile-requests": `${SENDS_ON} to Requests`, "requests/history": `${SENDS_ON} to Requests`,
+    "role-requests": `${SENDS_ON} to Roles and access, or Requests`, "records/[id]": `${SENDS_ON} to the record on its client's page`,
+    "vendors": `${SENDS_ON} to Clients`, "vendors/[id]": `${SENDS_ON} to the client`,
     // Each part against its route, for every kind of viewer (lib/history-parts.test.ts, PR 370).
     "employees/[id]/history": "tested part by part in lib/history-parts.test.ts",
 }
@@ -390,8 +477,8 @@ const SUPER_ADMIN_WORD = /super_?admin/i
 function gateProblems(asks: Record<string, Ask>, text: string): string[] {
     const out: string[] = []
     for (const [call, ask] of Object.entries(asks)) {
-        if (typeof ask !== "object" || !("gates" in ask || "superAdmin" in ask)) continue
-        const gates = "gates" in ask ? ask.gates : ask.superAdmin
+        if (typeof ask !== "object" || !("gates" in ask || "superAdmin" in ask || "notHere" in ask)) continue
+        const gates = "gates" in ask ? ask.gates : "superAdmin" in ask ? ask.superAdmin : ask.notHere
         if (!gates.length) out.push(`${call}: no gate`)
         for (const gate of gates) {
             const where = typeof gate === "string" ? text : readFileSync(join(ROOT, gate.in), "utf8")
@@ -399,7 +486,7 @@ function gateProblems(asks: Record<string, Ask>, text: string): string[] {
         }
         const codes = gates.map(gateCode).join("\n")
         if ("gates" in ask) for (const p of ask.when) { if (!quoted(codes, p)) out.push(`${call}: no gate naming ${p}`) }
-        else if (!SUPER_ADMIN_WORD.test(codes)) out.push(`${call}: no gate naming the Super Admin`)
+        else if ("superAdmin" in ask && !SUPER_ADMIN_WORD.test(codes)) out.push(`${call}: no gate naming the Super Admin`)
     }
     return out
 }
@@ -416,6 +503,36 @@ function answerProblems(asks: Record<string, Ask>): string[] {
     return out
 }
 
+/**
+ * A needed call the permissions opening a screen don't keep held, each named;
+ * on a screen anyone opens, any needed call.
+ */
+function openerProblems(opens: Screen["opens"], asks: Record<string, Ask>): string[] {
+    const out: string[] = []
+    for (const opener of opens === ANYONE ? [ANYONE] : opens) {
+        const held = opener === ANYONE ? new Set<Permission>() : heldWith(opener)
+        for (const [call, ask] of Object.entries(asks)) {
+            if (typeof ask === "object" && "needs" in ask && !ask.needs.some(p => held.has(p))) {
+                out.push(`${opener} opens it, but ${call} needs ${ask.needs.join(" or ")}`)
+            }
+        }
+    }
+    return out
+}
+
+/**
+ * What's wrong with a page said to send you on to another: its page doesn't
+ * end by sending you on, or it asks the server for something.
+ */
+function redirectProblems(screen: string): string[] {
+    const out: string[] = []
+    const page = readFileSync(pageFile(screen), "utf8")
+    const lines = page.slice(page.indexOf("export default")).split("\n").map(l => l.trim()).filter(Boolean)
+    if (!/^redirect\(/.test(lines[lines.length - 2] ?? "")) out.push(`${screen}: doesn't end by sending you on`)
+    for (const f of screenFiles(pageFile(screen))) for (const call of callsIn(readFileSync(f, "utf8"))) out.push(`${screen}: asks ${call}`)
+    return out
+}
+
 describe("every dashboard page", () => {
     it("is in the table, waiting for it, or outside it, once", () => {
         const pages = (function walk(dir: string): string[] {
@@ -426,6 +543,12 @@ describe("every dashboard page", () => {
         })(DASHBOARD).sort()
         const listed = [...Object.keys(SCREENS), ...LATER, ...Object.keys(OUTSIDE)]
         expect(listed.sort()).toEqual(pages)
+    })
+
+    it("sends you on, where it's said to, and asks the server for nothing", () => {
+        const sends = Object.entries(OUTSIDE).filter(([, why]) => why.startsWith(SENDS_ON)).map(([page]) => page)
+        expect(sends.length).toBeGreaterThan(0)
+        expect(sends.flatMap(redirectProblems)).toEqual([])
     })
 })
 
@@ -464,17 +587,8 @@ describe.each(Object.entries(SCREENS))("the %s screen", (screen, { opens, asks }
         expect(gateProblems(asks, text)).toEqual([])
     })
 
-    it("needs nothing the permission that opens it doesn't keep held", () => {
-        const unmet: string[] = []
-        for (const opener of opens) {
-            const held = heldWith(opener)
-            for (const [call, ask] of Object.entries(asks)) {
-                if (typeof ask === "object" && "needs" in ask && !ask.needs.some(p => held.has(p))) {
-                    unmet.push(`${opener} opens it, but ${call} needs ${ask.needs.join(" or ")}`)
-                }
-            }
-        }
-        expect(unmet).toEqual([])
+    it("needs nothing the permission that opens it doesn't keep held, nor anything if anyone opens it", () => {
+        expect(openerProblems(opens, asks)).toEqual([])
     })
 
     it("answers each call that's only for some for whoever its gate lets ask it", () => {
@@ -518,6 +632,28 @@ describe("the test itself", () => {
         const leaders = (answers: Permission[]): Ask => ({ when: ["employees.assign_team"], gates: [], answers })
         expect(answerProblems({ "GET /api/users": leaders(["employees.view"]) })).toEqual([])
         expect(answerProblems({ "GET /api/users": leaders(["salary.view"]) })).toEqual(["employees.assign_team asks GET /api/users, which answers salary.view"])
+    })
+
+    it("finds a needed call on a screen anyone opens, or one the permission opening it doesn't keep held (PR 387)", () => {
+        const asks = { "GET /api/locations": needs("locations.view"), "GET /api/lists": ANYONE }
+        expect(openerProblems("anyone", { "GET /api/lists": ANYONE, "POST /api/lists": when("lists.add", "x") })).toEqual([])
+        expect(openerProblems("anyone", asks)).toEqual(["anyone opens it, but GET /api/locations needs locations.view"])
+        expect(openerProblems(["tasks.create"], asks)).toEqual([])
+        expect(openerProblems(["tasks.view"], asks)).toEqual(["tasks.view opens it, but GET /api/locations needs locations.view"])
+    })
+
+    it("finds a call not made here whose reason isn't in the code (PR 387)", () => {
+        const code = "forTask={{ clientId }}"
+        expect(gateProblems({ "PUT /api/locations": notHere("forTask={{ clientId }}") }, code)).toEqual([])
+        expect(gateProblems({ "PUT /api/locations": notHere("editing={true}") }, code)).toEqual(["PUT /api/locations: not in the code: editing={true}"])
+        expect(gateProblems({ "PUT /api/locations": notHere() }, code)).toEqual(["PUT /api/locations: no gate"])
+    })
+
+    it("finds a page said to send you on that asks for something or doesn't send you on (PR 387)", () => {
+        expect(redirectProblems("vendors")).toEqual([])
+        // It sends an old address on, but ends showing the list.
+        expect(redirectProblems("tasks")).toEqual(expect.arrayContaining(["tasks: doesn't end by sending you on", "tasks: asks GET /api/realtime/token"]))
+        expect(redirectProblems("obligations")).toEqual(["obligations: doesn't end by sending you on", "obligations: asks GET /api/users"])
     })
 
     it("keeps held what a permission brings and needs first, and nothing else", () => {
