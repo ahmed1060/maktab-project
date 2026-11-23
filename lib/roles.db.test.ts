@@ -1101,6 +1101,43 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             await RoleTemplateService.create({ name: "Payroll all", baseRole: "EMPLOYEE", grants: both, acknowledgeConflicts: true }, sa)
         })
     })
+    describe("works with less (PR 373, LATER_CHANGES_PLAN.md §5.1 rule 3)", () => {
+        const sa = { user: { id: "sa", role: "SUPER_ADMIN" } }
+        // Create tasks, with See locations it needs first (rule 1), and no See clients.
+        const tasks = [{ permission: "tasks.create", scope: "COMPANY" }, { permission: "locations.view", scope: "COMPANY" }]
+        const missing = [{ permission: "tasks.create", without: "clients.view" }]
+
+        beforeAll(async () => {
+            await db.query(`INSERT INTO "SuperAdmin" (id, email, password, "firstName", "lastName", username, "updatedAt")
+                VALUES ('sa', 'sa@test', 'x', 'Super', 'Admin', 'sa', now()) ON CONFLICT DO NOTHING`)
+        })
+
+        it("asks before a role works with less, and records the answer", async () => {
+            await expect(RoleService.create({ companyId: "c2", name: "Task desk", baseRole: "EMPLOYEE", grants: tasks }, sa)).rejects.toThrow("LESS_UNACKNOWLEDGED")
+            const role = await RoleService.create({ companyId: "c2", name: "Task desk", baseRole: "EMPLOYEE", grants: tasks, acknowledgeLess: true }, sa)
+            const [created] = (await db.query(`SELECT details FROM "AuditLog" WHERE action = 'CREATE_ROLE' AND "entityId" = $1`, [role.id])).rows
+            expect(created.details.worksWithLess).toEqual({ missing, acknowledged: true })
+            // Held already: editing something else does not ask again…
+            await RoleService.update({ id: role.id, grants: [...tasks, { permission: "records.view", scope: "COMPANY" }] }, sa)
+            // …a new one does, and is recorded on the edit.
+            const salaries = [...tasks, { permission: "salary.view", scope: "COMPANY" }]
+            await expect(RoleService.update({ id: role.id, grants: salaries }, sa)).rejects.toThrow("LESS_UNACKNOWLEDGED")
+            await RoleService.update({ id: role.id, grants: salaries, acknowledgeLess: true }, sa)
+            const [edited] = (await db.query(`SELECT details FROM "AuditLog" WHERE action = 'UPDATE_ROLE' AND "entityId" = $1 ORDER BY "createdAt" DESC LIMIT 1`, [role.id])).rows
+            expect(edited.details.worksWithLess).toEqual({ missing: [{ permission: "salary.view", without: "employees.view" }], acknowledged: true })
+        })
+
+        it("asks of templates too, and not again when one is applied", async () => {
+            await expect(RoleTemplateService.create({ name: "Task desk", baseRole: "EMPLOYEE", grants: tasks }, sa)).rejects.toThrow("LESS_UNACKNOWLEDGED")
+            const template = await RoleTemplateService.create({ name: "Task desk", baseRole: "EMPLOYEE", grants: tasks, acknowledgeLess: true }, sa)
+            const [audit] = (await db.query(`SELECT details FROM "AuditLog" WHERE action = 'CREATE_ROLE_TEMPLATE' AND "entityId" = $1`, [template.id])).rows
+            expect(audit.details.worksWithLess).toEqual({ missing, acknowledged: true })
+            // A role copied from it, holding nothing yet, then given the template's.
+            const role = await RoleService.create({ companyId: "c2", name: "From the desk", fromTemplateId: template.id, grants: [] }, sa)
+            await RoleTemplateService.applyTo(template.id, [role.id], {}, sa)
+            expect((await RoleService.getById(role.id)).grants.map(g => g.permission)).toContain("tasks.create")
+        })
+    })
     describe("periodic access review (B5, §6.14)", () => {
         const sa = { user: { id: "sa", role: "SUPER_ADMIN" } }
         const admin = { user: { id: "a1", role: "ADMIN", companyId: "c1", grants: builtInGrantsToken("ADMIN") } }

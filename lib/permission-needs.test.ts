@@ -158,8 +158,8 @@ describe("the role editor", () => {
     it("won't send a role whose permissions still need others, and says so", () => {
         const source = stripComments(readFileSync("components/RoleEditorModal.tsx", "utf8"))
         expect(source).toContain("if (unmet > 0) errors.needs = 'roles_needs_missing'")
-        expect(source).toContain("roleErrors({ name, addedPairs: addedPairs.length, acknowledged, unmet: unmetNeeds(grants).length })")
-        expect(source).toContain("if (found.name || found.acknowledge || found.needs)")
+        expect(source).toContain("roleErrors({ name, addedPairs: addedPairs.length, acknowledged, unmet: unmetNeeds(grants).length, addedLess: addedLess.length, keptLess })")
+        expect(source).toContain("if (found.name || found.acknowledge || found.needs || found.less)")
         expect(source).toContain('{errors.needs && <span className="ui-error" role="alert">{t(errors.needs)}</span>}')
     })
 

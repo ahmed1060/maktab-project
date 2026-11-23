@@ -10,9 +10,9 @@ import { useLanguage } from '@/context/LanguageContext'
 import type { TranslationKey } from '@/lib/translations'
 import type { Grants } from '@/lib/permissions/grants'
 import type { SerializedAccess } from '@/lib/features/bundles'
-import { fromRows, toRows } from '@/lib/permissions/matrix'
+import { fromRows, permissionLabelKey, toRows } from '@/lib/permissions/matrix'
 import { conflictsIn, newConflicts } from '@/lib/permissions/separation'
-import { unmetNeeds } from '@/lib/permissions/grant-rules'
+import { newWorksWithLess, unmetNeeds, worksWithLess, type WorksWithLess } from '@/lib/permissions/grant-rules'
 
 /**
  * Creating or editing a company's role, or a role template — the same form:
@@ -49,6 +49,7 @@ export type RoleSubmission = {
     fromTemplateId?: string
     applyNow?: boolean
     acknowledgeConflicts?: boolean
+    acknowledgeLess?: boolean
 }
 
 type Props = {
@@ -62,19 +63,32 @@ type Props = {
     onSubmit: (submission: RoleSubmission) => Promise<boolean>
 }
 
-type RoleErrors = { name?: TranslationKey; acknowledge?: TranslationKey; needs?: TranslationKey }
+type RoleErrors = { name?: TranslationKey; acknowledge?: TranslationKey; needs?: TranslationKey; less?: TranslationKey }
 
 /**
  * What's wrong on Save, each said under its field: a name, a new pair of
- * duties kept on purpose, and a permission ticked without another area's it
- * needs (PR 372), as a role saved before may be.
+ * duties kept on purpose, a permission ticked without another area's it
+ * needs (PR 372), as a role saved before may be, and one newly working with
+ * less kept that way on purpose (PR 373).
  */
-export function roleErrors({ name, addedPairs, acknowledged, unmet = 0 }: { name: string; addedPairs: number; acknowledged: boolean; unmet?: number }): RoleErrors {
+export function roleErrors({ name, addedPairs, acknowledged, unmet = 0, addedLess = 0, keptLess = false }: {
+    name: string; addedPairs: number; acknowledged: boolean; unmet?: number; addedLess?: number; keptLess?: boolean
+}): RoleErrors {
     const errors: RoleErrors = {}
     if (!name.trim()) errors.name = 'roles_name_required'
     if (addedPairs > 0 && !acknowledged) errors.acknowledge = 'sod_acknowledge_required'
     if (unmet > 0) errors.needs = 'roles_needs_missing'
+    if (addedLess > 0 && !keptLess) errors.less = 'roles_less_acknowledge_required'
     return errors
+}
+
+/** "Create tasks without See clients: no client can be picked for a task." */
+function lessLine(t: (key: TranslationKey) => string, { permission, without }: WorksWithLess): string {
+    const effect = `roles_less_${permission.replace(/\./g, '_')}_${without.replace(/\./g, '_')}` as TranslationKey
+    return t('roles_less_item')
+        .replace('{permission}', t(permissionLabelKey(permission)))
+        .replace('{without}', t(permissionLabelKey(without)))
+        .replace('{effect}', t(effect))
 }
 
 const BASE_ROLES: BaseRole[] = ['EMPLOYEE', 'TEAM_LEADER', 'ADMIN']
@@ -98,6 +112,7 @@ function Editor({ onClose, kind, role, templates = [], access, onSubmit }: Props
     const [templateId, setTemplateId] = useState('')
     const [applyNow, setApplyNow] = useState(false)
     const [acknowledged, setAcknowledged] = useState(false)
+    const [keptLess, setKeptLess] = useState(false)
     const [saving, setSaving] = useState(false)
     const [errors, setErrors] = useState<RoleErrors>({})
 
@@ -113,6 +128,10 @@ function Editor({ onClose, kind, role, templates = [], access, onSubmit }: Props
     // not hold before must be acknowledged, and the decision is recorded.
     const pairs = conflictsIn(grants)
     const addedPairs = newConflicts(original, grants)
+    // Rule 3 (PR 373): every permission it holds that works with less is
+    // shown; one it did not hold before is kept on purpose, and recorded.
+    const less = worksWithLess(grants)
+    const addedLess = newWorksWithLess(original, grants)
     const compareWith = role?.copiedFromTemplateId ? templates.find(tp => tp.id === role.copiedFromTemplateId) : null
 
     const startFrom = (templateId: string) => {
@@ -128,9 +147,9 @@ function Editor({ onClose, kind, role, templates = [], access, onSubmit }: Props
     const submit = async (e: FormEvent) => {
         e.preventDefault()
         if (locked) return
-        const found = roleErrors({ name, addedPairs: addedPairs.length, acknowledged, unmet: unmetNeeds(grants).length })
+        const found = roleErrors({ name, addedPairs: addedPairs.length, acknowledged, unmet: unmetNeeds(grants).length, addedLess: addedLess.length, keptLess })
         setErrors(found)
-        if (found.name || found.acknowledge || found.needs) { focusFirstWrong(formRef.current); return }
+        if (found.name || found.acknowledge || found.needs || found.less) { focusFirstWrong(formRef.current); return }
         setSaving(true)
         try {
             const ok = await onSubmit({
@@ -138,6 +157,7 @@ function Editor({ onClose, kind, role, templates = [], access, onSubmit }: Props
                 ...(isNew && templateId ? { fromTemplateId: templateId } : {}),
                 ...(reachesHolders && applyNow ? { applyNow: true } : {}),
                 ...(addedPairs.length && acknowledged ? { acknowledgeConflicts: true } : {}),
+                ...(addedLess.length && keptLess ? { acknowledgeLess: true } : {}),
             })
             if (ok) onClose()
         } finally {
@@ -200,6 +220,25 @@ function Editor({ onClose, kind, role, templates = [], access, onSubmit }: Props
                                     {t('sod_acknowledge')}
                                 </label>
                                 {errors.acknowledge && <span id={`${id}-ack`} className="ui-error">{t(errors.acknowledge)}</span>}
+                            </div>
+                        )}
+                    </section>
+                )}
+
+                {less.length > 0 && (
+                    <section className="ui-dialog-note" data-tone="waiting" aria-labelledby={`${id}-less`}>
+                        <h3 className="ui-subsection-title" id={`${id}-less`}>{t('roles_less_title')}</h3>
+                        <p>{t('roles_less_hint')}</p>
+                        <ul>{less.map(l => <li key={`${l.permission} ${l.without}`}>{lessLine(t, l)}</li>)}</ul>
+                        {addedLess.length > 0 && (
+                            <div className="ui-field">
+                                <label className="ui-choice">
+                                    <input type="checkbox" className="ui-check" name="acknowledgeLess" checked={keptLess}
+                                        aria-invalid={errors.less ? true : undefined} aria-describedby={errors.less ? `${id}-less-ack` : undefined}
+                                        onChange={e => { setKeptLess(e.target.checked); setErrors(x => ({ ...x, less: undefined })) }} />
+                                    {t('roles_less_acknowledge')}
+                                </label>
+                                {errors.less && <span id={`${id}-less-ack`} className="ui-error">{t(errors.less)}</span>}
                             </div>
                         )}
                     </section>

@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { BUILT_IN_GRANTS, type BuiltInRole } from "@/lib/permissions/built-in"
 import { encodeGrants, type Grants } from "@/lib/permissions/grants"
 import type { Scope } from "@/lib/permissions/catalogue"
-import { normalizeGrants, grantRows, grantsFromRows, templateGrants } from "@/lib/permissions/grant-rules"
+import { normalizeGrants, grantRows, grantsFromRows, newWorksWithLess, templateGrants, type WorksWithLess } from "@/lib/permissions/grant-rules"
 import type { CreateRoleInput, UpdateRoleInput } from "@/lib/validations/role.schema"
 import type { UserRole } from "@prisma/client"
 import { resolveBundles, serializeAccess, type SerializedAccess } from "@/lib/features/bundles"
@@ -187,6 +187,7 @@ export class RoleService {
         const verdict = normalizeGrants(input.grants ?? (template ? templateGrants(template.grants) : undefined) ?? [])
         if (!verdict.ok) throw new GrantsError(verdict.errors)
         const conflicts = checkSeparation({}, verdict.grants, input.acknowledgeConflicts)
+        const less = checkLess({}, verdict.grants, input.acknowledgeLess)
 
         const role = await prisma.$transaction(async (tx) => {
             const created = await tx.role.create({
@@ -202,6 +203,7 @@ export class RoleService {
                 details: {
                     companyId: input.companyId, after: { name: input.name, baseRole, grants: grantRows(verdict.grants) }, fromTemplateId: template?.id ?? null,
                     ...(conflicts.length ? { separationOfDuties: { pairs: conflicts, acknowledged: true } } : {}),
+                    ...(less.length ? { worksWithLess: { missing: less, acknowledged: true } } : {}),
                 },
             })
             return created
@@ -230,11 +232,13 @@ export class RoleService {
 
         let grants = null as ReturnType<typeof grantRows> | null
         let conflicts: string[] = []
+        let less: WorksWithLess[] = []
         if (regrants) {
             const verdict = normalizeGrants(input.grants!)
             if (!verdict.ok) throw new GrantsError(verdict.errors)
             grants = grantRows(verdict.grants)
             conflicts = checkSeparation(grantsFromRows(before.grants), verdict.grants, input.acknowledgeConflicts)
+            less = checkLess(grantsFromRows(before.grants), verdict.grants, input.acknowledgeLess)
         }
         // What a session carries changed: bump the version so holders reload
         // within a minute (§4.4).
@@ -273,6 +277,7 @@ export class RoleService {
                     holders: before.holders,
                     appliedNow: !!(input.applyNow && accessChanged),
                     ...(conflicts.length ? { separationOfDuties: { pairs: conflicts, acknowledged: true } } : {}),
+                    ...(less.length ? { worksWithLess: { missing: less, acknowledged: true } } : {}),
                 },
             })
         })
@@ -341,6 +346,7 @@ export class RoleService {
                 ...(templateExists ? { fromTemplateId: role.copiedFromTemplateId! } : {}),
                 // Decided when the source role was saved.
                 acknowledgeConflicts: true,
+                acknowledgeLess: true,
             }, session)
             copied.push({ from: role.id, to: created.id, name: role.name })
         }
@@ -351,7 +357,7 @@ export class RoleService {
                 const from = source.find(r => r.builtIn === kind)
                 const to = target.find(r => r.builtIn === kind)
                 if (from && to && !sameGrants(from.grants, to.grants)) {
-                    await RoleService.update({ id: to.id, grants: from.grants, acknowledgeConflicts: true }, session)
+                    await RoleService.update({ id: to.id, grants: from.grants, acknowledgeConflicts: true, acknowledgeLess: true }, session)
                     builtInsUpdated.push(to.name)
                 }
             }
@@ -450,6 +456,25 @@ export function checkSeparation(before: Grants, after: Grants, acknowledged: boo
     const added = newConflicts(before, after)
     if (added.length && !acknowledged) throw new SeparationError(added)
     return added
+}
+
+/**
+ * Rule 3 between permissions (LATER_CHANGES_PLAN.md §5.1, PR 373): what a
+ * save newly brings that works with less, as a pair is: allowed, but only
+ * on purpose. Refused until confirmed, and the caller records it with the
+ * decision. Returns it.
+ */
+export function checkLess(before: Grants, after: Grants, acknowledged: boolean | undefined): WorksWithLess[] {
+    const added = newWorksWithLess(before, after)
+    if (added.length && !acknowledged) throw new LessError(added)
+    return added
+}
+
+/** A save that newly works with less, not yet confirmed. */
+export class LessError extends Error {
+    constructor(public readonly missing: WorksWithLess[]) {
+        super("LESS_UNACKNOWLEDGED")
+    }
 }
 
 /** A save that newly holds both sides of a pair, not yet acknowledged. */

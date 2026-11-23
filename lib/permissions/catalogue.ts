@@ -68,6 +68,17 @@ type PermissionDefinition = {
      */
     requires?: readonly string[]
     /**
+     * Other permissions it works without, but does less (LATER_CHANGES_PLAN.md
+     * §5.1 rule 3, §5.3; PR 373): Create tasks without See clients can't pick
+     * a client for a task. Saved, as a separation-of-duties pair is
+     * (ROLES_PLAN.md §6.11): the role editor lists each one a role holds, one
+     * a save newly brings is confirmed, and the server refuses it unconfirmed
+     * and records the decision. Held at all counts, not how wide, and a
+     * permission another held one brings with it warns of nothing
+     * (grant-rules.ts, worksWithLess).
+     */
+    lessWithout?: readonly string[]
+    /**
      * Never about oneself (ROLES_PLAN.md §4.2, rules 1, 5 and 6): nobody
      * approves their own leave, sets their own pay or allowance, decides their
      * own name change, or changes or requests their own role, whatever their
@@ -124,7 +135,7 @@ export const PERMISSIONS = {
 
     // --- Tasks -------------------------------------------------------------
     "tasks.view":               { code: 15, module: "TASKS", scopes: TEAM_OR_COMPANY },
-    "tasks.create":             { code: 16, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], requires: ["locations.view"] },
+    "tasks.create":             { code: 16, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], requires: ["locations.view"], lessWithout: ["clients.view"] },
     "tasks.edit":               { code: 17, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"] },
     "tasks.transfer":           { code: 18, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"] },
     "tasks.review":             { code: 19, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"] },
@@ -225,7 +236,7 @@ export const PERMISSIONS = {
     // One permission for seeing a salary anywhere — profile, history, payroll,
     // payslips (decided, ROLES_PLAN.md §3.2). Its module is settled when the
     // Employees screens migrate, since a salary is shown there too.
-    "salary.view":              { code: 35, module: null, scopes: TEAM_OR_COMPANY },
+    "salary.view":              { code: 35, module: null, scopes: TEAM_OR_COMPANY, lessWithout: ["employees.view"] },
     "salary.edit":              { code: 36, module: null, scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY, notOnOwn: true, requires: ["employees.view"] },
     "salary_adjustments.manage": { code: 37, module: "SALARY_ADJUSTMENTS", scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY, notOnOwn: true, requires: ["employees.view"] },
 
@@ -244,7 +255,7 @@ export const PERMISSIONS = {
     // (ATTENDANCE_PLAN.md §5.2, lib/company-settings-access.ts). Reserved:
     // the audit log is the Super Admin's page.
     "settings.view":            { code: 46, module: null, scopes: COMPANY },
-    "settings.edit":            { code: 47, module: null, scopes: COMPANY, implies: ["settings.view"] },
+    "settings.edit":            { code: 47, module: null, scopes: COMPANY, implies: ["settings.view"], lessWithout: ["salary.view"] },
     "audit.view":               { code: 48, module: null, scopes: COMPANY, reserved: true },
 
     // --- Attendance (ATTENDANCE_PLAN.md §4.1, §14) ---------------------------
@@ -362,6 +373,11 @@ export function splitParts(permission: Permission): readonly Permission[] {
 /** Another area's permissions this one can't work without (see `requires`). */
 export function requiresOf(permission: Permission): readonly Permission[] {
     return ((PERMISSIONS[permission] as PermissionDefinition).requires ?? []) as readonly Permission[]
+}
+
+/** Other permissions this one works without, but does less (see `lessWithout`). */
+export function lessWithoutOf(permission: Permission): readonly Permission[] {
+    return ((PERMISSIONS[permission] as PermissionDefinition).lessWithout ?? []) as readonly Permission[]
 }
 
 /** Whether a permission is being split, so only read as its parts (see `splitInto`). */
