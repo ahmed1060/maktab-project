@@ -133,11 +133,11 @@ describe("the role editor's matrix", () => {
         expect(box(await matrix({ "tasks.create": "COMPANY", "tasks.view": "COMPANY", "locations.view": "COMPANY" }), "tasks.create")).not.toContain("aria-invalid")
     })
 
-    it("keeps the one needed ticked while what needs it is, as it does for its own area's", async () => {
+    it("says what needs the one needed, and asks before it goes, as for its own area's (PR 374)", async () => {
         const grants = { "tasks.create": "COMPANY", "tasks.view": "COMPANY", "locations.view": "COMPANY" } as Grants
         expect(neededBy(grants)["locations.view"]).toEqual(["tasks.create"])
         const html = await matrix(grants)
-        expect(box(html, "locations.view")).toContain('disabled=""')
+        expect(box(html, "locations.view")).not.toContain('disabled=""')
         expect(row(html, "locations.view")).toContain(en.roles_needed_by.replace("{name}", en.perm_tasks_create))
         // Brought by Waive debts, See debts needs nothing of its own.
         const waiver = { "debts.waive": "COMPANY", "debts.view": "COMPANY", "payroll.view": "COMPANY", "salary.view": "COMPANY", "employees.view": "COMPANY" } as Grants

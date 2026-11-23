@@ -63,7 +63,8 @@ function confirmHandlers() {
 describe("every confirmation", () => {
     // Leaving a tab or a page with unsaved changes: it navigates, there is nothing to wait for.
     // The messages' editor's (PR 347), shared by the company's copy's page since PR 349.
-    const NOT_WORK = ["components/CompanySettingsTabs.tsx", "components/client-messages/MessageEditor.tsx"]
+    // Unticking a row another needs in the role editor (PR 374): it changes the form, and sends nothing.
+    const NOT_WORK = ["components/CompanySettingsTabs.tsx", "components/client-messages/MessageEditor.tsx", "components/PermissionMatrix.tsx"]
     const handlers = confirmHandlers().filter(h => !NOT_WORK.some(f => h.where.startsWith(f)))
 
     it("finds them all", () => {

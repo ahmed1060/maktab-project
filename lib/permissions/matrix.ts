@@ -73,7 +73,8 @@ export const widestScope = (permission: Permission): Scope => {
  * Grants after ticking, unticking or rescoping one row, with what the rest now
  * needs added — the server does the same (normalizeGrants), so the screen
  * shows what will be saved. Unticking something another ticked row needs
- * changes nothing: it would only come back.
+ * changes nothing here, as it would only come back: the matrix unticks with
+ * untick(), taking what needs it too (PR 374).
  */
 export function setGrant(grants: Grants, permission: Permission, scope: Scope | null): Grants {
     const next: Grants = { ...grants }
@@ -86,9 +87,9 @@ export function setGrant(grants: Grants, permission: Permission, scope: Scope | 
 }
 
 /**
- * For each permission, the ticked rows that need it — why it cannot be
- * unticked: its own area's (`implies`), and another area's (`requires`, PR
- * 372), for a row nothing else brings.
+ * For each permission, the ticked rows that need it — what unticking it takes
+ * with it (untick, PR 374): its own area's (`implies`), and another area's
+ * (`requires`, PR 372), for a row nothing else brings.
  */
 export function neededBy(grants: Grants): Partial<Record<Permission, Permission[]>> {
     const out: Partial<Record<Permission, Permission[]>> = {}
@@ -102,6 +103,48 @@ export function neededBy(grants: Grants): Partial<Record<Permission, Permission[
         for (const needs of requiresOf(p)) (out[needs] ??= []).push(p)
     }
     return out
+}
+
+/**
+ * For each permission, the ticked rows of its own area that brought it
+ * (`implies`) — why it was ticked for the Super Admin, said on its row
+ * (LATER_CHANGES_PLAN.md §5.1 rule 2, PR 374). Not another area's, which the
+ * Super Admin ticked themselves (rule 1).
+ */
+export function addedFor(grants: Grants): Partial<Record<Permission, Permission[]>> {
+    const out: Partial<Record<Permission, Permission[]>> = {}
+    for (const p of Object.keys(grants) as Permission[]) {
+        for (const implied of (PERMISSIONS[p] as { implies?: readonly Permission[] }).implies ?? []) {
+            (out[implied] ??= []).push(p)
+        }
+    }
+    return out
+}
+
+const ORDER = Object.keys(PERMISSIONS) as Permission[]
+
+/**
+ * Unticking a row (LATER_CHANGES_PLAN.md §5.1 rule 2, PR 374): the grants
+ * without it, and `also`, what's ticked that needs it, all the way down,
+ * which goes with it, as what's left would only bring it back. With
+ * something in `also`, the matrix asks first.
+ */
+export function untick(grants: Grants, permission: Permission): { grants: Grants; also: Permission[] } {
+    const needed = neededBy(grants)
+    const going = new Set<Permission>([permission])
+    for (let grew = true; grew;) {
+        grew = false
+        for (const p of [...going]) {
+            for (const q of needed[p] ?? []) if (!going.has(q)) { going.add(q); grew = true }
+        }
+    }
+    const kept = Object.entries(grants).filter(([p]) => !going.has(p as Permission)).map(([p, s]) => ({ permission: p, scope: s as string }))
+    // A tick, not a save, as setGrant: what's left still needing another area's is marked (PR 372).
+    const verdict = normalizeGrants(kept, { needs: false })
+    return {
+        grants: verdict.ok ? verdict.grants : grants,
+        also: ORDER.filter(p => p !== permission && going.has(p)),
+    }
 }
 
 /**
