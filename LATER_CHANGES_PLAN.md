@@ -587,7 +587,11 @@ They work together, each for a different case.
     from the call its path is given to, whether fetch, a helper such as
     attendance's `send`, or one a screen writes, such as its `act`, and
     from `method: …` or `json('POST', …)` after the path, so a write sent
-    through a helper isn't taken for a read.
+    through a helper isn't taken for a read. Since #392, a call not made
+    here because the screen imports only part of a file is checked both
+    ways: the import quoted is in the code, and no file of the screen
+    takes anything else from that file, so a second import of it can't
+    leave real calls marked as not made.
   - A needed call is met by each permission that opens the screen:
     itself, one it brings (`implies`), or one it needs first
     (`requires`). Anything else fails, naming the screen and the call.
@@ -624,8 +628,11 @@ there:
    the rest, about 220 calls on 29 screens, in parts by area: the task
    screens (#387); obligations, records and documents (#388); Requests
    (#389); the people screens (#390); attendance (#391); check-in
-   (#392); and settings. A page that only sends you on to another is
-   outside the table.
+   (#393); and settings. A page that only sends you on to another is
+   outside the table. Before check-in, #392 moves the helper that 15
+   files borrowed from the Super Admin's roles card, for a refusal's
+   words, into a file of its own, so Roles and access no longer reaches
+   the card's calls.
 
 The two screens found to fix in §5.3 go in one PR of their own, as #368
 did, after the list is approved and before step 2: #370.
@@ -954,3 +961,13 @@ same day as drawn in the All users: status badges canvas
   asking for a permission and reporting a missing punch, from the file
   that also decides and withdraws: that file's other calls aren't made
   from it.
+- **2026-11-23:** The owner agreed to two fixes before check-in, as #392,
+  so check-in becomes #393. Roles and access borrowed one helper,
+  `refusalOf`, from the Super Admin's roles card, as 14 other files did,
+  so the test counted the card's 10 calls as the screen's, written down
+  as not made here. The helper moves into `lib/api-error-text.ts`, beside
+  the one it's like, and those rows go. And a not-here row whose reason
+  is an import only checked that the import was there: a second import
+  of the same file, taking more, would have left real calls marked as
+  not made. The test now checks that the screen takes nothing else from
+  that file, which keeps attendance's request dialog rows honest too.
