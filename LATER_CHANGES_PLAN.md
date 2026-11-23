@@ -231,6 +231,31 @@ The owner asked to break up every "manage" permission in the roles system.
       database on 23 November: only the built-in Admin role holds
       `settlements.manage`, there are no templates, and no settlement has
       been made yet.
+  - **The grant for companies already there (#385):** one migration, for
+    every company's roles and for the role templates. It writes down what
+    the app has read since each split, so nobody gains or loses anything:
+    - each row of a split permission becomes a row for each of its parts,
+      at the same scope. A part the role holds already keeps the wider of
+      the two scopes;
+    - the old rows are deleted, and each role changed goes up a version, so
+      its holders reload their grants once;
+    - each template naming a split permission names its parts instead, the
+      same way;
+    - a test checks the parts bring nothing the old permission didn't: what
+      each part brings with it or needs first is another part, or something
+      the old permission brought or needed too;
+    - run again, it finds nothing, and nobody reloads.
+    - Access reviews keep the names they were opened with, as they record
+      what was held then.
+    - The old permissions stay in the catalogue, read as their parts, until
+      their codes are retired in a PR of their own.
+    - Checked read-only on the live database on 23 November: 13 rows on its
+      three built-in roles. The Admin's 9; the Team Leader's `locations.add`
+      and `obligations.manage`, for its team; and the Employee's
+      `locations.add` and `clients.manage`. No templates.
+    - **It changes the live database** when it's merged, as every
+      migration runs as the site is built. Opening it changes only the
+      development database, through the preview.
 
 ## 3. English and Arabic names (Decided)
 
@@ -854,3 +879,6 @@ same day as drawn in the All users: status badges canvas
   asked for status counts on All users and approved them with their
   canvas: §6, built next as #384, before the grant for companies already
   there.
+- **2026-11-23:** #384 merged. The grant for companies already there
+  next, as #385: one migration that replaces each role's and template's
+  split permissions by their parts. Then the old codes are retired.
