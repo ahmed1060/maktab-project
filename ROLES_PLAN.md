@@ -418,7 +418,9 @@ A permission that needs **another area's** is recorded as **requires**
 give access nobody chose: the role editor greys the row, "Needs *See locations*
 first", until that one is ticked, held at least as wide, and saving a role or
 template without it is refused, naming what's missing. A permission another
-one brings with it carries no needs of its own.
+one brings with it carries no needs of its own. A role or template saved before
+that breaks it is marked in the Super Admin's lists, "Needs a permission", and
+its row in the editor offers "Add *See locations*" (rule 4; #375).
 
 A permission that **works with less** without another is recorded as
 **lessWithout** (`tasks.create` does less without `clients.view`: no client
