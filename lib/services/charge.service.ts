@@ -141,7 +141,7 @@ export class ChargeService {
      * charges so: refused if it's gone, or isn't a charge (its task has no
      * client).
      */
-    private static async held(tx: Prisma.TransactionClient, session: Session, costId: string, permission: "charges.manage" | "charges.collect") {
+    private static async held(tx: Prisma.TransactionClient, session: Session, costId: string, permission: "charges.set" | "charges.collect") {
         if (typeof costId !== "string" || !costId) throw new Error("CHARGE_NOT_FOUND")
         // Its task first, then the cost, as deleting the task, changing its
         // client and removing a cost hold the task: none of them reads its
@@ -162,7 +162,7 @@ export class ChargeService {
 
     /** One that may be changed: a collected charge is locked (§6.5). */
     private static async open(tx: Prisma.TransactionClient, session: Session, costId: string) {
-        const cost = await ChargeService.held(tx, session, costId, "charges.manage")
+        const cost = await ChargeService.held(tx, session, costId, "charges.set")
         if (cost.collectedAt) throw new Error("CHARGE_COLLECTED")
         return cost
     }

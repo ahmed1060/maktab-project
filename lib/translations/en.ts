@@ -3582,6 +3582,7 @@ export const en = {
         perm_costs_view: "See costs",
         perm_charges_view: "See charges",
         perm_charges_manage: "Manage charges",
+        perm_charges_set: "Set service fees, and what's charged to the client",
         perm_charges_collect: "Mark charges collected",
         perm_tax_view: "See clients' tax position",
         perm_tax_manage: "Update clients' tax position from the tax portal's file",

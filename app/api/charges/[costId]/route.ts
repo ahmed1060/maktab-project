@@ -11,4 +11,4 @@ import { ChargeService } from "@/lib/services/charge.service"
 export const PATCH = withStandardHandler(async (_req, session, json, { params }) => {
     if (json?.notCharged !== undefined) return ApiResponse.success(await ChargeService.setNotCharged(session, params.costId, json.notCharged))
     return ApiResponse.success(await ChargeService.setServiceFee(session, params.costId, { serviceFee: json?.serviceFee, total: json?.total }))
-}, { permission: "charges.manage" })
+}, { permission: "charges.set" })

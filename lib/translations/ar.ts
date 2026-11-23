@@ -3568,6 +3568,7 @@ export const ar = {
         perm_costs_view: "عرض التكاليف",
         perm_charges_view: "عرض المستحقات",
         perm_charges_manage: "إدارة المستحقات",
+        perm_charges_set: "تحديد رسوم الخدمة وما يُحمَّل على العميل",
         perm_charges_collect: "تسجيل تحصيل المستحقات",
         perm_tax_view: "عرض الموقف الضريبي للعملاء",
         perm_tax_manage: "تحديث الموقف الضريبي للعملاء من ملف بوابة الضرائب",

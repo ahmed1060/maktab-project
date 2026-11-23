@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "node:fs"
 import { Client } from "pg"
 import { withGrants } from "@/lib/permissions/test-actors"
 import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
+import { grantsFromRows } from "@/lib/permissions/grant-rules"
 
 /**
  * Client charges (CLIENTS_PLAN.md §6, step 6b), against a real Postgres: a
@@ -363,7 +364,8 @@ describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
             const rows = await chargeGrants()
             for (const company of ["c1", "c2"]) {
                 for (const builtIn of ["ADMIN", "TEAM_LEADER", "EMPLOYEE"] as const) {
-                    const given = Object.fromEntries(rows.filter(r => r.companyId === company && r.builtIn === builtIn).map(r => [r.permission, r.scope]))
+                    // As the rows are read: charges.manage as charges.set since PR 380, until the grant rewrites them.
+                    const given = grantsFromRows(rows.filter(r => r.companyId === company && r.builtIn === builtIn))
                     const theirs = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).filter(([permission]) => permission.startsWith("charges.")))
                     // Two's Team Leader was given See charges for the company in the role editor, and keeps it.
                     expect(given, `${company} ${builtIn}`).toEqual(company === "c2" && builtIn === "TEAM_LEADER" ? { "charges.view": "COMPANY" } : theirs)

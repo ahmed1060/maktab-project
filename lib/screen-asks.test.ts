@@ -64,7 +64,7 @@ const superAdmin = (...gates: Gate[]): Ask => ({ superAdmin: gates })
 const CLIENT_PICKERS = ["useClientOptions(onePage && can('clients.view'), true)", "const clients = useClientOptions(choosing && can('clients.view'))"]
 const PLACE_FILTERS = ["const seesClients = can('clients.view') && !waits", "const seesLocations = can('locations.view') && !waits"]
 const LOCATION_COMPANY = "const pickCompany = choosing && sharedChosen && superAdmin && !selectedCompanyId"
-const CHARGE_FEE = ["const canManage = can('charges.manage')", ": !canManage ? [] : c.notCharged"]
+const CHARGE_FEE = ["const canSet = can('charges.set')", ": !canSet ? [] : c.notCharged"]
 const CHARGE_COLLECT = ["const canCollect = can('charges.collect')", "{canCollect && offer && <Button"]
 const CHARGE_UNCOLLECT = ["const canCollect = can('charges.collect')", "? (canCollect ? [{ key: 'uncollect'"]
 const LOCATION_CHANGE = ["const canEdit = can('locations.edit')", "const canArchive = can('locations.archive')", "locationActions(l, { edit: canEdit, archive: canArchive })"]
@@ -100,7 +100,7 @@ const SCREENS: Record<string, Screen> = {
             "POST /api/tasks/payment/bulk": when("tasks.pay", "const pays = can(session.user as any, 'tasks.pay')",
                 { in: "lib/services/costs-query.ts", code: 'if (!can(user, "tasks.pay")) return null' }),
             "GET /api/charges": when("charges.view", "const seesCharges = can(session.user as any, 'charges.view')"),
-            "PATCH /api/charges/[x]": when("charges.manage", ...CHARGE_FEE),
+            "PATCH /api/charges/[x]": when("charges.set", ...CHARGE_FEE),
             "POST /api/charges/collect": when("charges.collect", ...CHARGE_COLLECT),
             "POST /api/charges/[x]/uncollect": when("charges.collect", ...CHARGE_UNCOLLECT),
             "GET /api/cash-advances": when("cash_advances.view", "const seesAdvances = can(session.user as any, 'cash_advances.view')"),
@@ -153,7 +153,7 @@ const SCREENS: Record<string, Screen> = {
             "POST /api/locations": when("locations.create", "adding={!archived && addingLocation && can('locations.create')}"),
             "PUT /api/locations": when(["locations.edit", "locations.archive"], ...LOCATION_CHANGE),
             "GET /api/charges": when("charges.view", "const seesCharges = can('charges.view')", "{seesCharges && <ChargesList client={{ id, name }} />}"),
-            "PATCH /api/charges/[x]": when("charges.manage", ...CHARGE_FEE),
+            "PATCH /api/charges/[x]": when("charges.set", ...CHARGE_FEE),
             "POST /api/charges/collect": when("charges.collect", ...CHARGE_COLLECT),
             "POST /api/charges/[x]/uncollect": when("charges.collect", ...CHARGE_UNCOLLECT),
             "GET /api/tax-claims": when("tax.view", "const seesTax = features.has('TAX_POSITION') && can('tax.view')", "{seesTax && <TaxPosition"),

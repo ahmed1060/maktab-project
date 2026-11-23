@@ -161,6 +161,19 @@ The owner asked to break up every "manage" permission in the roles system.
       its parts.
     - The built-in Admin holds all three; the Team Leader and Employee
       add names, as before.
+  - **Charges (#380):** marking charges collected, or not, has had a
+    permission of its own since the Charged to clients tab,
+    `charges.collect` (`CLIENTS_PLAN.md` §6.6), high-risk as it moves
+    money, so it stays. What `charges.manage` did is the table's other
+    part, so it's named `charges.set`, as a split into one, as #378 did
+    for `locations.add`:
+    - `charges.set`: setting a charge's service fee, typed as the fee or
+      as the total, and leaving a cost off its client's bill, or charging
+      it again;
+    - for the company, as `charges.manage` was, and not high-risk. The
+      built-in Admin holds it; a role still holding `charges.manage` is
+      read as holding `charges.set`, until the grant for companies
+      already there.
 
 ## 3. English and Arabic names (Decided)
 
@@ -708,3 +721,7 @@ permission bringing "See obligations". None found missing.
   splits into `lists.rename`, `lists.merge` and `lists.archive`, and
   adding stays `lists.add`. Unlike `lists.manage`, none of the three
   includes adding, as none needs it.
+- **2026-11-23:** #379 merged. Charges next, as #380. `charges.collect`
+  already has its own permission, so what `charges.manage` did, the
+  service fee and leaving a cost off the bill, is named `charges.set`,
+  as a split into one.

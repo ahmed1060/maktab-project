@@ -268,6 +268,10 @@ them, as today.
 | | `client_accounts.manage` | List, add and remove the people of a client who sign in to the client portal — **lets people from outside the company in**, high-risk (§6.15); implies `clients.view` (`CLIENT_PORTAL_PLAN.md` §5.2, §9) | `GET`, `POST /client-accounts`, `DELETE /client-accounts/[id]` |
 | | `client_messages.manage` | Change the company's copy of the client messages on WhatsApp, and go back to Nizmo's, and turn the update email on or off; implies nothing, as the Client portal tab shows to whoever holds it (`CLIENT_PORTAL_PLAN.md` §7.1, §9) | `GET /company-messages`, `PUT`, `DELETE /company-messages/[kind]/[language]`, `DELETE /company-messages/[kind]`, `GET`, `PUT /company-messages/emails` |
 | **Costs** | `costs.view` | See costs, including a person's cost history | `users/[id]/costs-history` |
+| | `charges.view` | See the costs charged to a task's client, on the Charged to clients tab and a client's page (`CLIENTS_PLAN.md` §6.6) | `GET /charges`, `GET /charges/statement` |
+| | `charges.set` | Set a charge's service fee, typed as the fee or as the total, and leave a cost off its client's bill or charge it again (#380, named `charges.manage` until then, `LATER_CHANGES_PLAN.md` §2) | `PATCH /charges/[costId]` |
+| | `charges.collect` | Mark a client's charges collected, and one uncollected — **moves money**, high-risk | `POST /charges/collect`, `POST /charges/[costId]/uncollect` |
+| | `charges.manage` | Named `charges.set` (#380), as a split into one: nothing checks it, and it isn't offered; a role still holding it is read as holding `charges.set`, never `charges.collect`, until the grant for companies already there | — |
 | **Day off** | `dayoff.view` | See others' leave and balances | `admin/day-off-requests`, `users/[id]/day-off-history` |
 | | `dayoff.approve` | Approve / reject / re-evaluate leave | `admin/day-off-requests/[id]*` |
 | | `dayoff.adjust_credit` | Change someone's leave balance | `PUT /users` (credit fields) |
