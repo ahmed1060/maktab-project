@@ -15,6 +15,7 @@ import RoleEditorModal, { type BaseRole, type EditableRole, type RoleSubmission,
 import type { SerializedAccess } from '@/lib/features/bundles'
 import { countOf } from '@/lib/plural'
 import { BUILT_IN_LABEL, roleLabel } from '@/lib/role-label'
+import { unmetLines } from '@/lib/permissions/matrix'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { useLeaveGuard } from '@/lib/useUnsavedChanges'
 
@@ -169,6 +170,8 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
                 <ul className="ui-rows ui-rows-flush" aria-label={t('roles_title')}>
                     {roles.map(role => {
                         const name = roleLabel(role, t)
+                        // Saved before rule 1, and what it still needs (PR 375).
+                        const unmet = unmetLines(t, role.grants)
                         return (
                             <Row
                                 key={role.id}
@@ -177,6 +180,7 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
                                     {role.builtIn && <>{' '}<StatusBadge tone="neutral">{t('roles_built_in')}</StatusBadge></>}
                                     {role.locked && <>{' '}<StatusBadge tone="neutral">{t('roles_locked')}</StatusBadge></>}
                                     {role.isDefault && <>{' '}<StatusBadge tone="good">{t('roles_default')}</StatusBadge></>}
+                                    {unmet.length > 0 && <>{' '}<StatusBadge tone="problem">{t('roles_needs_fixing')}</StatusBadge></>}
                                 </>}
                                 // A built-in role is its own base: said only of the others.
                                 detail={facts([
@@ -184,6 +188,7 @@ export default function CompanyRolesCard({ companyId }: { companyId: string }) {
                                     countOf(t, locale, role.holders, 'employees'),
                                     countOf(t, locale, role.grants.length, 'permissions'),
                                 ])}
+                                note={unmet}
                                 end={<RowMenu label={t('ui_more_actions_for').replace('{name}', name)} tooltip={t('ui_more_actions')} items={menu(role)} />}
                             />
                         )

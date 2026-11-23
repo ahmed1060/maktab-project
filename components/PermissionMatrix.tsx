@@ -3,13 +3,13 @@
 import { useId, useState } from 'react'
 import { CaretDownIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
-import { ConfirmDialog, Icon, Select, StatusBadge } from '@/components/ui'
+import { Button, ConfirmDialog, Icon, Select, StatusBadge } from '@/components/ui'
 import { PERMISSIONS, type Permission, type Scope } from '@/lib/permissions/catalogue'
 import type { Grants } from '@/lib/permissions/grants'
 import { hasModule, deserializeAccess, type SerializedAccess } from '@/lib/features/bundles'
 import {
     PERMISSION_GROUPS, permissionLabelKey, groupLabelKey, scopeLabelKey, riskLabelKey,
-    setGrant, neededBy, needsFirst, drift, widestScope, addedFor, untick,
+    setGrant, neededBy, needsFirst, drift, widestScope, addedFor, untick, withNeed,
 } from '@/lib/permissions/matrix'
 
 /**
@@ -25,7 +25,9 @@ import {
  * A row ticked for another of its area says why, "Added because Create tasks
  * needs it", and one another area's needs says "Needed by"; unticking either
  * asks first, "Create tasks needs it. Remove both?", and takes what needs it
- * with it (rule 2, PR 374), where it was greyed. Rows in a module outside the
+ * with it (rule 2, PR 374), where it was greyed. A role saved before rule 1
+ * is offered the fix on its row, "Add See locations", a tick like any (rule
+ * 4, PR 375). Rows in a module outside the
  * company's package are greyed, not hidden: the grant is kept and starts
  * working if the package changes. With `template`, rows that differ from it are
  * marked — a company's role drifting from what it was copied from.
@@ -134,6 +136,13 @@ export default function PermissionMatrix({ grants, onChange, disabled = false, a
                                                 {risk && <StatusBadge tone="problem">{t(risk)}</StatusBadge>}
                                                 {/* Ticked without what it needs, its note is an error: it can't be saved like this (PR 372). */}
                                                 {notes.map((note, i) => <span key={i} id={noteId(i)} className={`${scope && i < missing.length ? 'ui-error' : 'ui-hint'} ui-choice-hint`}>{note}</span>)}
+                                                {/* Saved before rule 1: the fix, on its row (PR 375). */}
+                                                {scope && missing.map(u => (
+                                                    <Button key={u.needs} size="sm" disabled={disabled}
+                                                        onClick={() => onChange(withNeed(grants, p, u.needs))}>
+                                                        {t('roles_add_needed').replace('{name}', label(u.needs))}
+                                                    </Button>
+                                                ))}
                                             </span>
                                             {scopes.length > 1 ? (
                                                 <Select
