@@ -182,8 +182,14 @@ export function grantsFromRows(rows: { permission: string; scope: string }[]): G
     for (const g of rows) {
         if (!isPermission(g.permission)) continue
         // A permission being split is held as its parts (catalogue.ts,
-        // `splitInto`): what can() checks, and what a role is shown as.
-        for (const permission of splitParts(g.permission).length ? splitParts(g.permission) : [g.permission]) grants[permission] = g.scope as Scope
+        // `splitInto`): what can() checks, and what a role is shown as. A part
+        // the role holds wider keeps its scope, as the grant for companies
+        // already there keeps the wider (PR 385).
+        for (const permission of splitParts(g.permission).length ? splitParts(g.permission) : [g.permission]) {
+            const held = grants[permission]
+            if (held && WIDTH[held] >= WIDTH[g.scope as Scope]) continue
+            grants[permission] = g.scope as Scope
+        }
     }
     return grants
 }

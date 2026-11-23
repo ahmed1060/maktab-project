@@ -128,6 +128,8 @@ const CLIENT_ACCOUNTS = "20270106000000_client_accounts"
 // The built-in Admin role's client_accounts.manage, for the companies there
 // before it (CLIENT_PORTAL_PLAN.md §9, §12 step 6d, PR 330).
 const CLIENT_ACCOUNTS_GRANTED = "20270109000000_client_accounts_granted"
+// Every split permission written as its parts (LATER_CHANGES_PLAN.md §2, PR 385).
+const SPLIT_GRANTED = "20270118000000_split_permissions_granted"
 // User.whatsappNumber, which every read of a person's whole row now carries
 // (CLIENT_PORTAL_PLAN.md §7, step 9a, PR 340).
 const WHATSAPP_NUMBER = "20270111000000_user_whatsapp_number"
@@ -391,6 +393,72 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
                 WHERE EXISTS (SELECT 1 FROM "RoleGrant" g WHERE g."roleId" = r.id AND g.permission = 'client_accounts.manage')
                   AND NOT EXISTS (SELECT 1 FROM "RoleGrant" g WHERE g."roleId" = r.id AND g.permission = 'clients.view')`)
             expect(seeing).toEqual([{ roles: 0 }])
+        })
+
+        it("writes every split permission as its parts, in each role and template, the wider scope kept, nobody gaining or losing anything: run again, nobody reloads (PR 385)", async () => {
+            // A company's own roles, each holding a part of obligations.manage
+            // already: one wider than it, one narrower; and a template naming
+            // one wider too.
+            await db.query(`
+                INSERT INTO "Role"(id, "companyId", name, "baseRole", "updatedAt") VALUES
+                    ('split-wider', 'c1', 'Split, a part wider', 'TEAM_LEADER', now()),
+                    ('split-narrower', 'c1', 'Split, a part narrower', 'TEAM_LEADER', now());
+                INSERT INTO "RoleGrant"("roleId", permission, scope) VALUES
+                    ('split-wider', 'obligations.view', 'COMPANY'), ('split-wider', 'obligations.manage', 'TEAM'), ('split-wider', 'obligations.delete', 'COMPANY'),
+                    ('split-narrower', 'obligations.view', 'COMPANY'), ('split-narrower', 'obligations.manage', 'COMPANY'), ('split-narrower', 'obligations.approve', 'TEAM');
+                INSERT INTO "RoleTemplate"(id, name, "baseRole", grants, "updatedAt") VALUES ('split-template', 'Split template', 'EMPLOYEE',
+                    '[{"permission":"clients.view","scope":"COMPANY"},{"permission":"clients.manage","scope":"COMPANY"},{"permission":"locations.add","scope":"COMPANY"},{"permission":"obligations.manage","scope":"TEAM"},{"permission":"obligations.delete","scope":"COMPANY"}]', now());
+            `)
+            try {
+                const OLD = ["lists.manage", "obligations.manage", "clients.manage", "locations.add", "locations.manage", "charges.manage", "client_accounts.manage", "salary_adjustments.manage", "settlements.manage"]
+                const read = async () => {
+                    const { rows } = await db.query(`SELECT "roleId", permission, scope FROM "RoleGrant" ORDER BY "roleId", permission`)
+                    const byRole = new Map<string, { permission: string; scope: string }[]>()
+                    for (const r of rows) byRole.set(r.roleId, [...(byRole.get(r.roleId) ?? []), { permission: r.permission, scope: r.scope }])
+                    return byRole
+                }
+                const versions = `SELECT id, version FROM "Role" ORDER BY id`
+                const before = await read()
+                const { rows: versionsBefore } = await db.query(versions)
+                const holding = new Set([...before].filter(([, grants]) => grants.some(g => OLD.includes(g.permission))).map(([id]) => id))
+                expect(holding.size).toBeGreaterThan(2)
+
+                await db.query(sql(SPLIT_GRANTED))
+                const after = await read()
+                // Nothing old is left, and every role is read as it was.
+                const { rows: left } = await db.query(`SELECT count(*)::int AS n FROM "RoleGrant" WHERE permission = ANY($1)`, [OLD])
+                expect(left).toEqual([{ n: 0 }])
+                for (const [id, grants] of before) expect(grantsFromRows(after.get(id) as any), id).toEqual(grantsFromRows(grants as any))
+                // The wider scope is kept, either way round.
+                const scopeOf = (role: string, permission: string) => after.get(role)?.find(g => g.permission === permission)?.scope
+                expect(["create", "edit", "approve", "delete"].map(p => scopeOf("split-wider", `obligations.${p}`))).toEqual(["TEAM", "TEAM", "TEAM", "COMPANY"])
+                expect(["create", "edit", "approve", "delete"].map(p => scopeOf("split-narrower", `obligations.${p}`))).toEqual(["COMPANY", "COMPANY", "COMPANY", "COMPANY"])
+                // Those whose rows changed reload, once; nobody else does.
+                const { rows: versionsAfter } = await db.query(versions)
+                for (const { id, version } of versionsAfter) {
+                    const was = versionsBefore.find((r: { id: string }) => r.id === id).version
+                    expect(version, id).toBe(holding.has(id) ? was + 1 : was)
+                }
+                // A template names the parts instead, at the same scope, the
+                // wider kept.
+                const { rows: template } = await db.query(`SELECT grants FROM "RoleTemplate" WHERE id = 'split-template'`)
+                expect([...template[0].grants].sort((a: any, b: any) => a.permission.localeCompare(b.permission))).toEqual([
+                    { permission: "clients.create", scope: "COMPANY" }, { permission: "clients.delete", scope: "COMPANY" },
+                    { permission: "clients.edit", scope: "COMPANY" }, { permission: "clients.view", scope: "COMPANY" },
+                    { permission: "locations.create", scope: "COMPANY" },
+                    { permission: "obligations.approve", scope: "TEAM" }, { permission: "obligations.create", scope: "TEAM" },
+                    { permission: "obligations.delete", scope: "COMPANY" }, { permission: "obligations.edit", scope: "TEAM" },
+                ])
+
+                // Run again, it finds nothing.
+                const { rows: templateBefore } = await db.query(`SELECT "updatedAt" FROM "RoleTemplate" WHERE id = 'split-template'`)
+                await db.query(sql(SPLIT_GRANTED))
+                expect((await db.query(versions)).rows).toEqual(versionsAfter)
+                expect(await read()).toEqual(after)
+                expect((await db.query(`SELECT "updatedAt" FROM "RoleTemplate" WHERE id = 'split-template'`)).rows).toEqual(templateBefore)
+            } finally {
+                await db.query(`DELETE FROM "RoleTemplate" WHERE id = 'split-template'; DELETE FROM "Role" WHERE id IN ('split-wider', 'split-narrower')`)
+            }
         })
 
         it("puts everyone on the built-in role matching theirs, and the Super Admin and company-less on none", async () => {

@@ -125,7 +125,9 @@ describe.skipIf(!ADMIN_URL)("locations, in Postgres", () => {
             const { rows } = await db.query(`
                 SELECT r."companyId", r."builtIn", r.version, array_agg(g.permission ORDER BY g.permission) FILTER (WHERE g.permission LIKE 'locations.%') AS locations
                 FROM "Role" r LEFT JOIN "RoleGrant" g ON g."roleId" = r.id GROUP BY r.id ORDER BY r."companyId", r."builtIn"`)
-            const want = { ADMIN: ["locations.add", "locations.manage", "locations.view"], TEAM_LEADER: ["locations.add", "locations.view"], EMPLOYEE: null } as Record<string, string[] | null>
+            // Written as their parts since PR 385: locations.add as locations.create, and
+            // locations.manage as locations.edit and locations.archive.
+            const want = { ADMIN: ["locations.archive", "locations.create", "locations.edit", "locations.view"], TEAM_LEADER: ["locations.create", "locations.view"], EMPLOYEE: null } as Record<string, string[] | null>
             for (const role of rows) expect(role.locations, `${role.companyId} ${role.builtIn}`).toEqual(want[role.builtIn])
         })
 

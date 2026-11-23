@@ -88,6 +88,14 @@ describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
     let rolesBefore: { id: string; companyId: string; builtIn: string | null; version: number }[] = []
     // As 6c's migration left them, before later ones gave roles more.
     let versionsAfter: Record<string, number> = {}
+    /** Every role's rows and version, to see a migration run again change nothing. */
+    const roleState = async () => ({
+        grants: (await db.query(`SELECT "roleId", permission, scope FROM "RoleGrant" ORDER BY 1, 2`)).rows,
+        versions: (await db.query(`SELECT id, version FROM "Role" ORDER BY id`)).rows,
+    })
+    // Run again straight after it ran: a later one writes what it gave as
+    // its parts (PR 385), so run again after that, it would give it again.
+    let ranAgain: { before: unknown; after: unknown } = { before: null, after: undefined }
 
     beforeAll(async () => {
         const a = new Client({ connectionString: ADMIN_URL })
@@ -106,7 +114,12 @@ describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
                 await db.query(BEFORE_GRANTED)
                 rolesBefore = (await db.query(`SELECT id, "companyId", "builtIn", version FROM "Role" ORDER BY id`)).rows
             }
-            if (m === CHARGES_GRANTED) versionsAfter = Object.fromEntries((await db.query(`SELECT id, version FROM "Role"`)).rows.map(r => [r.id, r.version]))
+            if (m === CHARGES_GRANTED) {
+                versionsAfter = Object.fromEntries((await db.query(`SELECT id, version FROM "Role"`)).rows.map(r => [r.id, r.version]))
+                const before = await roleState()
+                await db.query(sql(m))
+                ranAgain = { before, after: await roleState() }
+            }
         }
         await db.query(CHARGES)
         process.env.POSTGRES_PRISMA_URL = url.toString()
@@ -356,7 +369,6 @@ describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
         const chargeGrants = async () => (await db.query(`
             SELECT r.id, r."companyId", r."builtIn", g.permission, g.scope FROM "Role" r JOIN "RoleGrant" g ON g."roleId" = r.id
             WHERE g.permission LIKE 'charges.%' ORDER BY r."companyId", r.id, g.permission`)).rows
-        const versions = async () => Object.fromEntries((await db.query(`SELECT id, version FROM "Role"`)).rows.map(r => [r.id, r.version]))
         const givenOne = (r: { companyId: string; builtIn: string | null }) =>
             r.builtIn === "ADMIN" || (r.builtIn === "TEAM_LEADER" && r.companyId !== "c2")
 
@@ -380,11 +392,9 @@ describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
             for (const role of rolesBefore) expect(versionsAfter[role.id], `${role.companyId} ${role.builtIn ?? role.id}`).toBe(givenOne(role) ? role.version + 1 : role.version)
         })
 
-        it("changes nothing run again", async () => {
-            const [grants, before] = [await chargeGrants(), await versions()]
-            await db.query(sql(CHARGES_GRANTED))
-            expect(await chargeGrants()).toEqual(grants)
-            expect(await versions()).toEqual(before)
+        it("changes nothing run again", () => {
+            expect((ranAgain.before as { grants: unknown[] }).grants.length).toBeGreaterThan(0)
+            expect(ranAgain.after).toEqual(ranAgain.before)
         })
     })
 })
