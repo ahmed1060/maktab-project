@@ -30,7 +30,8 @@ import { PERMISSIONS, requiresOf, type Permission } from "./permissions/catalogu
  *
  * In parts: first the screens the remaining splits change (§2, PR 376), so
  * each split kept its rows; then the task screens (PR 387); then the
- * obligation, record and document screens (PR 388); the rest wait in LATER.
+ * obligation, record and document screens (PR 388); then Requests (PR 389);
+ * the rest wait in LATER.
  */
 
 /**
@@ -84,6 +85,9 @@ const TASK_PLACE_LOCATIONS = "const seesLocations = can('locations.view')"
 const TASK_PLACE_NEW = "{can('locations.create') && ("
 // The picker opens the place form only to add one, for the task, so the form's editing is never sent from it.
 const TASK_PLACE_NO_EDIT = notHere("forTask={{ clientId: value.clientId || null, clientName, companyId }}", { in: "components/locations/LocationForm.tsx", code: "method: editing ? 'PUT' : 'POST'" })
+// The request feed gives each row what may be done with it, for whoever may (lib/requests/feed.ts, PR 389).
+const FEED = "lib/requests/feed.ts"
+const feed = (code: string): Gate => ({ in: FEED, code })
 // A saved name added from where it's typed (components/lists/useListNames.ts).
 const LIST_ADD = "return { suggest, onAdd: can('lists.add') && (!superAdmin || !!company) ? add : undefined }"
 
@@ -201,6 +205,54 @@ const SCREENS: Record<string, Screen> = {
     // Drawn on the server, and a bookmark to run on the tax portal's own site: neither asks the server for anything.
     "clients/[id]/tax-statement": { opens: ["tax.view"], asks: {} },
     "tax-export": { opens: ["tax.manage"], asks: {} },
+    // Requests (PR 389).
+    "requests": {
+        // Everyone's: what they asked for, and what waits on them.
+        opens: ANYONE,
+        asks: {
+            // Asking, and withdrawing what one asked for.
+            "POST /api/requests": ANYONE,
+            "DELETE /api/requests/[x]": ANYONE,
+            "POST /api/attendance/permissions": ANYONE,
+            "GET /api/attendance/permissions/balance": ANYONE,
+            "DELETE /api/attendance/permissions/[x]": ANYONE,
+            "POST /api/attendance/missions": ANYONE,
+            "GET /api/attendance/missions/tasks": ANYONE,
+            "DELETE /api/attendance/missions/[x]": ANYONE,
+            "POST /api/attendance/missing-punches": ANYONE,
+            "DELETE /api/attendance/missing-punches/[x]": ANYONE,
+            "POST /api/day-off-requests": when("dayoff.request", "const mayAskDayOff = sessionHasModule({ user: viewer }, 'DAY_OFF') && can(viewer, 'dayoff.request')"),
+            // A role asked for, withdrawn by whoever asked, decided by whoever gives roles.
+            "PUT /api/role-requests/[x]": { when: ["employees.assign_role", "employees.request_role"], routeChecks: "lib/services/role-request.service.ts",
+                gates: [feed('mayDecide: waits && r.requestedById !== v.id && can(v, "employees.assign_role", target),'), feed('if (v.role === "SUPER_ADMIN" || !can(v, "employees.request_role")) return null')] },
+            // Deciding, each kind for whoever decides it.
+            "PATCH /api/requests/[x]": { when: ["requests.review"], routeChecks: "lib/services/request.service.ts",
+                gates: [feed('const reaches = can(v, "requests.view", target) && can(v, "requests.review", target)')] },
+            "PATCH /api/admin/day-off-requests/[x]": when("dayoff.approve", feed('const mayDecide = !decided && can(v, "dayoff.view", target) && can(v, "dayoff.approve", target)')),
+            "POST /api/attendance/permissions/[x]/decide": when("attendance.approve_permissions", feed('mayDecide: waits && can(v, "attendance.approve_permissions", target),')),
+            "POST /api/attendance/missions/[x]/decide": when("attendance.approve_missions", feed('const mayDecide = waits && can(v, "attendance.approve_missions", target)')),
+            "POST /api/attendance/missions/[x]/cancel": when("attendance.approve_missions", feed('mayCancel: r.status === "APPROVED" && can(v, "attendance.approve_missions", target),')),
+            "POST /api/attendance/missing-punches/[x]/decide": when("attendance.correct", feed('mayDecide: waits && can(v, "attendance.correct", target),')),
+            "POST /api/attendance/flagged/[x]/decide": { when: ["attendance.correct"], routeChecks: "lib/attendance/punch-access.ts",
+                gates: [feed('mayDecide: waits && can(v, "attendance.correct", target),')] },
+            "GET /api/attendance/flagged/[x]/face": when("attendance.approve_face", feed('mayViewFace: waits && p.flagReasons.includes("FACE_UNVERIFIED") && can(v, "attendance.approve_face", target),')),
+            "POST /api/attendance/overtime": when("attendance.approve_overtime", feed('mayDecide: can(v, "attendance.approve_overtime", target),')),
+            "DELETE /api/attendance/overtime/[x]": when("attendance.approve_overtime", feed('mayWithdraw: can(v, "attendance.approve_overtime", target),')),
+            "POST /api/attendance/phones/[x]/decide": { when: ["attendance.approve_devices"], routeChecks: "lib/attendance/phone-access.ts",
+                gates: [feed('const decides = can(v, "attendance.approve_devices", target)'), feed("mayDecide: waits && decides,")] },
+            "POST /api/attendance/phones/[x]/revoke": { when: ["attendance.approve_devices"], routeChecks: "lib/attendance/phone-access.ts",
+                gates: [feed('const decides = can(v, "attendance.approve_devices", target)'), feed('mayRevoke: p.status === "ACTIVE" && decides,')] },
+            "POST /api/profile-requests/[x]/[x]": { when: ["profile_requests.review"], routeChecks: "lib/services/profile.service.ts",
+                gates: [feed('mayDecide: waits && can(v, "profile_requests.review", target),')] },
+            // The attendance kinds' table joined to an ending another kind has: overtime is decided at its own path, and a
+            // phone or a flagged check-in can't be withdrawn.
+            "POST /api/attendance/overtime/[x]/decide": notHere("? await fetch(ATTENDANCE_API.overtime, {"),
+            "DELETE /api/attendance/phones/[x]": notHere(feed("mayDecide: waits && decides,\n        mayDelete: false,\n        mayWithdraw: false,\n        mayRevoke")),
+            "DELETE /api/attendance/flagged/[x]": notHere(feed('mayDecide: waits && can(v, "attendance.correct", target),\n        mayDelete: false,\n        mayWithdraw: false,\n        flagged: {')),
+            "GET /api/users": when("employees.view", "const asks = on && can('employees.view')"),
+            "GET /api/realtime/token": ANYONE,
+        },
+    },
     "tasks/new": {
         opens: ["tasks.create"],
         asks: {
@@ -381,7 +433,7 @@ const SCREENS: Record<string, Screen> = {
 const LATER = [
     // The home page.
     "",
-    "attendance", "cash-advances/[userId]", "check-in", "employees/[id]", "requests", "roles-and-access",
+    "attendance", "cash-advances/[userId]", "check-in", "employees/[id]", "roles-and-access",
     "settings", "settings/client-messages/[kind]", "settings/terminal-guide",
 ]
 
@@ -437,32 +489,70 @@ function screenFiles(file: string, seen = new Set<string>()): Set<string> {
 const VERB = /['"](GET|POST|PUT|PATCH|DELETE)['"]/g
 
 /**
+ * A path from `at` in a string opened by `quote`, to its end: a ${…} right
+ * after a slash is a segment, [x]; one added to a segment, as a query is,
+ * ends it.
+ */
+function readPath(src: string, at: number, quote: string): { path: string; end: number } {
+    let path = "", j = at
+    while (j < src.length) {
+        const c = src[j]
+        if (c === quote || c === "?" || /\s/.test(c)) break
+        if (quote === "`" && c === "$" && src[j + 1] === "{") {
+            if (!path.endsWith("/")) break
+            let depth = 0, k = j + 1
+            for (; k < src.length; k++) { if (src[k] === "{") depth++; else if (src[k] === "}" && --depth === 0) break }
+            path += "[x]"
+            j = k + 1
+            continue
+        }
+        path += c
+        j++
+    }
+    return { path, end: j }
+}
+
+/**
+ * The tables of paths in a file (PR 389): `const NAME = { key: '/api/…', … }`,
+ * each path by its key, and where the table is, as its entries aren't calls.
+ */
+function pathTables(src: string): { name: string; from: number; to: number; paths: Record<string, string> }[] {
+    const out: { name: string; from: number; to: number; paths: Record<string, string> }[] = []
+    for (const m of src.matchAll(/const (\w+)(?::[^=\n]+)? = \{\n([\s\S]*?)\n\}/g)) {
+        const paths: Record<string, string> = {}
+        for (const e of m[2].matchAll(/^\s+(\w+):\s*['"](\/api\/[^'"]+)['"]/gm)) paths[e[1]] = e[2]
+        if (Object.keys(paths).length) out.push({ name: m[1], from: m.index!, to: m.index! + m[0].length, paths })
+    }
+    return out
+}
+
+/**
  * Each call in a file, as "METHOD /api/path": a ${…} right after a slash is a
- * segment, [x]; one added to a segment, as a query is, ends it.
+ * segment, [x]; one added to a segment, as a query is, ends it. A table of
+ * paths is read where it's used, `TABLE.key` as that path and `TABLE[…]` as
+ * each, with what a template adds after it.
  */
 function callsIn(src: string): Set<string> {
     const out = new Set<string>()
+    const tables = pathTables(src)
     let i = 0
     while ((i = src.indexOf("/api/", i)) !== -1) {
         const quote = src[i - 1]
-        if (!["'", '"', "`"].includes(quote)) { i += 5; continue }
-        let path = "", j = i
-        while (j < src.length) {
-            const c = src[j]
-            if (c === quote || c === "?" || /\s/.test(c)) break
-            if (quote === "`" && c === "$" && src[j + 1] === "{") {
-                if (!path.endsWith("/")) break
-                let depth = 0, k = j + 1
-                for (; k < src.length; k++) { if (src[k] === "{") depth++; else if (src[k] === "}" && --depth === 0) break }
-                path += "[x]"
-                j = k + 1
-                continue
-            }
-            path += c
-            j++
-        }
+        if (!["'", '"', "`"].includes(quote) || tables.some(t => i > t.from && i < t.to)) { i += 5; continue }
+        const { path, end } = readPath(src, i, quote)
         for (const method of methodsOf(src, i - 1)) out.add(`${method} ${path.replace(/\/$/, "")}`)
-        i = j
+        i = end
+    }
+    for (const table of tables) {
+        for (const use of src.matchAll(new RegExp(`\\b${table.name}(?:\\.(\\w+)|\\[[^\\]]+\\])`, "g"))) {
+            const at = use.index!
+            if (at >= table.from && at < table.to) continue
+            const bases = use[1] ? [table.paths[use[1]]] : Object.values(table.paths)
+            // In a template, as its start: what comes after it is the rest of the path.
+            const templated = src.slice(at - 3, at) === "`${"
+            const rest = templated ? readPath(src, at + use[0].length + 1, "`").path : ""
+            for (const base of bases) for (const method of methodsOf(src, templated ? at - 3 : at)) out.add(`${method} ${(base + rest).replace(/\/$/, "")}`)
+        }
     }
     return out
 }
@@ -626,6 +716,8 @@ describe.each(Object.entries(SCREENS))("the %s screen", (screen, { opens, asks }
 
     it("asks routes whose handler for that method answers as the table says", () => {
         for (const [call, ask] of Object.entries(asks)) {
+            // Never sent from here: a table's path joined to another kind's ending may have no route at all (PR 389).
+            if (typeof ask === "object" && "notHere" in ask) continue
             const [method, path] = call.split(" ")
             const reached = routesFor(path)
             expect(reached.length, call).toBeGreaterThan(0)
@@ -672,6 +764,15 @@ describe("the test itself", () => {
         expect([...callsIn("await fetch('/api/locations', {\n method: editing ? 'PUT' : 'POST',\n })")].sort()).toEqual(["POST /api/locations", "PUT /api/locations"])
         expect([...callsIn("const go = async (method: 'POST' | 'PUT' = 'PUT') => {\n await fetch('/api/lists', { method, body })")].sort()).toEqual(["POST /api/lists", "PUT /api/lists"])
         expect([...callsIn("const url = '/api/charges'; await fetch(url, { method: 'POST' })")]).toEqual(["GET /api/charges"])
+    })
+
+    it("reads a table of paths as its uses, not its entries (PR 389)", () => {
+        const table = "const API: Record<Kind, string> = {\n    a: '/api/alpha',\n    // A note.\n    b: '/api/beta',\n}\n"
+        expect([...callsIn(table)]).toEqual([])
+        expect([...callsIn(`${table}await fetch(API.a, { method: 'POST' })`)]).toEqual(["POST /api/alpha"])
+        expect([...callsIn(`${table}await fetch(\`\${API[kind]}/\${id}/decide\`, { method: 'POST' })`)].sort()).toEqual(["POST /api/alpha/[x]/decide", "POST /api/beta/[x]/decide"])
+        expect([...callsIn(`${table}await fetch(\`\${API.b}/\${id}\`, { method: 'DELETE' })`)]).toEqual(["DELETE /api/beta/[x]"])
+        expect([...callsIn(`${table}const url = API.a`)]).toEqual(["GET /api/alpha"])
     })
 
     it("reads only the handler for the method", () => {
