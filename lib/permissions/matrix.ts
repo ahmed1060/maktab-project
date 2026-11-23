@@ -1,6 +1,6 @@
-import { PERMISSIONS, isReserved, isSplit, type Permission, type Scope } from "./catalogue"
+import { PERMISSIONS, isReserved, isSplit, requiresOf, type Permission, type Scope } from "./catalogue"
 import type { Grants } from "./grants"
-import { normalizeGrants } from "./grant-rules"
+import { normalizeGrants, unmetNeeds, type UnmetNeed } from "./grant-rules"
 import type { TranslationKey } from "@/lib/translations"
 
 /**
@@ -79,19 +79,38 @@ export function setGrant(grants: Grants, permission: Permission, scope: Scope | 
     const next: Grants = { ...grants }
     if (scope) next[permission] = scope
     else delete next[permission]
-    const verdict = normalizeGrants(Object.entries(next).map(([p, s]) => ({ permission: p, scope: s as string })))
+    // A tick, not a save: what still needs another area's is greyed, or
+    // marked, on the screen, and the server refuses it (PR 372).
+    const verdict = normalizeGrants(Object.entries(next).map(([p, s]) => ({ permission: p, scope: s as string })), { needs: false })
     return verdict.ok ? verdict.grants : grants
 }
 
-/** For each permission, the ticked rows that need it — why it cannot be unticked. */
+/**
+ * For each permission, the ticked rows that need it — why it cannot be
+ * unticked: its own area's (`implies`), and another area's (`requires`, PR
+ * 372), for a row nothing else brings.
+ */
 export function neededBy(grants: Grants): Partial<Record<Permission, Permission[]>> {
     const out: Partial<Record<Permission, Permission[]>> = {}
-    for (const held of Object.keys(grants) as Permission[]) {
-        for (const implied of (PERMISSIONS[held] as { implies?: readonly Permission[] }).implies ?? []) {
-            (out[implied] ??= []).push(held)
+    const held = Object.keys(grants) as Permission[]
+    const brought = new Set(held.flatMap(p => (PERMISSIONS[p] as { implies?: readonly Permission[] }).implies ?? []))
+    for (const p of held) {
+        for (const implied of (PERMISSIONS[p] as { implies?: readonly Permission[] }).implies ?? []) {
+            (out[implied] ??= []).push(p)
         }
+        if (brought.has(p)) continue
+        for (const needs of requiresOf(p)) (out[needs] ??= []).push(p)
     }
     return out
+}
+
+/**
+ * What a row still needs from another area (LATER_CHANGES_PLAN.md §5.1 rule
+ * 1, PR 372): ticked, at its scope; not, as ticking it would give it, its
+ * widest. Greyed until each is ticked, held wide enough.
+ */
+export function needsFirst(grants: Grants, permission: Permission): UnmetNeed[] {
+    return unmetNeeds({ ...grants, [permission]: grants[permission] ?? widestScope(permission) }).filter(u => u.permission === permission)
 }
 
 /** The rows where two sets of grants differ — a company role against its template. */

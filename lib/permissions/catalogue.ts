@@ -57,6 +57,17 @@ type PermissionDefinition = {
     highRisk?: string
     implies?: readonly string[]
     /**
+     * Another area's permissions it can't work without (LATER_CHANGES_PLAN.md
+     * §5.1 rule 1, §5.3; PR 372). Unlike `implies`, nothing is ticked for the
+     * Super Admin, as across areas that would give access nobody chose: the
+     * role editor greys it, "Needs ... first", until each is ticked, and
+     * saving a role or template without one is refused (normalizeGrants).
+     * Each is held at least as wide as what needs it, and a permission that
+     * another held one brings with it carries no needs of its own
+     * (grant-rules.ts, unmetNeeds).
+     */
+    requires?: readonly string[]
+    /**
      * Never about oneself (ROLES_PLAN.md §4.2, rules 1, 5 and 6): nobody
      * approves their own leave, sets their own pay or allowance, decides their
      * own name change, or changes or requests their own role, whatever their
@@ -109,11 +120,11 @@ export const PERMISSIONS = {
     "profile_requests.review":  { code: 11, module: "PROFILE_REQUESTS", scopes: COMPANY, notOnOwn: true },
     "requests.view":            { code: 12, module: "REQUESTS", scopes: TEAM_OR_COMPANY },
     "requests.review":          { code: 13, module: "REQUESTS", scopes: TEAM_OR_COMPANY, implies: ["requests.view"] },
-    "requests.reset_points":    { code: 14, module: "REQUESTS", scopes: COMPANY, implies: ["requests.view"] },
+    "requests.reset_points":    { code: 14, module: "REQUESTS", scopes: COMPANY, implies: ["requests.view"], requires: ["employees.view"] },
 
     // --- Tasks -------------------------------------------------------------
     "tasks.view":               { code: 15, module: "TASKS", scopes: TEAM_OR_COMPANY },
-    "tasks.create":             { code: 16, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"] },
+    "tasks.create":             { code: 16, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"], requires: ["locations.view"] },
     "tasks.edit":               { code: 17, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"] },
     "tasks.transfer":           { code: 18, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"] },
     "tasks.review":             { code: 19, module: "TASKS", scopes: TEAM_OR_COMPANY, implies: ["tasks.view"] },
@@ -165,7 +176,7 @@ export const PERMISSIONS = {
     "locations.view":           { code: 55, module: "CLIENTS", scopes: COMPANY },
     "locations.add":            { code: 56, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
     "locations.manage":         { code: 57, module: "CLIENTS", scopes: COMPANY, implies: ["locations.view"] },
-    "costs.view":               { code: 31, module: "COSTS", scopes: COMPANY },
+    "costs.view":               { code: 31, module: "COSTS", scopes: COMPANY, requires: ["employees.view"] },
     // A task's costs charged to its client (CLIENTS_PLAN.md §6.6): seeing
     // them; managing them, which is the service fee and leaving one off the
     // client's bill; and marking them collected, which moves money.
@@ -204,7 +215,7 @@ export const PERMISSIONS = {
     // --- Day off -----------------------------------------------------------
     "dayoff.view":              { code: 32, module: "DAY_OFF", scopes: TEAM_OR_COMPANY },
     "dayoff.approve":           { code: 33, module: "DAY_OFF", scopes: TEAM_OR_COMPANY, implies: ["dayoff.view"], notOnOwn: true },
-    "dayoff.adjust_credit":     { code: 34, module: "DAY_OFF", scopes: COMPANY, implies: ["dayoff.view"], notOnOwn: true },
+    "dayoff.adjust_credit":     { code: 34, module: "DAY_OFF", scopes: COMPANY, implies: ["dayoff.view"], notOnOwn: true, requires: ["employees.view"] },
     // Asking for leave of one's own (UI_PLAN.md §2.3, part 2a): given to a
     // role or not, as the Requests page offers a day off only to those who
     // may ask. Only ever one's own, so its scope is too.
@@ -215,8 +226,8 @@ export const PERMISSIONS = {
     // payslips (decided, ROLES_PLAN.md §3.2). Its module is settled when the
     // Employees screens migrate, since a salary is shown there too.
     "salary.view":              { code: 35, module: null, scopes: TEAM_OR_COMPANY },
-    "salary.edit":              { code: 36, module: null, scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY, notOnOwn: true },
-    "salary_adjustments.manage": { code: 37, module: "SALARY_ADJUSTMENTS", scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY, notOnOwn: true },
+    "salary.edit":              { code: 36, module: null, scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY, notOnOwn: true, requires: ["employees.view"] },
+    "salary_adjustments.manage": { code: 37, module: "SALARY_ADJUSTMENTS", scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY, notOnOwn: true, requires: ["employees.view"] },
 
     // --- Payroll -----------------------------------------------------------
     "payroll.view":             { code: 38, module: "PAYROLL", scopes: COMPANY, implies: ["salary.view"] },
@@ -224,9 +235,9 @@ export const PERMISSIONS = {
     "payroll.approve":          { code: 40, module: "PAYROLL", scopes: COMPANY, implies: ["payroll.view"], highRisk: MOVES_MONEY },
     "payroll.issue_payslips":   { code: 41, module: "PAYROLL", scopes: COMPANY, implies: ["payroll.view"] },
     "payroll.mark_paid":        { code: 42, module: "PAYROLL", scopes: COMPANY, implies: ["payroll.view"], highRisk: MOVES_MONEY },
-    "settlements.manage":       { code: 43, module: "PAYROLL", scopes: COMPANY, implies: ["salary.view"] },
-    "debts.view":               { code: 44, module: "PAYROLL", scopes: COMPANY },
-    "debts.waive":              { code: 45, module: "PAYROLL", scopes: COMPANY, implies: ["debts.view"], highRisk: MOVES_MONEY },
+    "settlements.manage":       { code: 43, module: "PAYROLL", scopes: COMPANY, implies: ["salary.view"], requires: ["employees.view"] },
+    "debts.view":               { code: 44, module: "PAYROLL", scopes: COMPANY, requires: ["employees.view"] },
+    "debts.waive":              { code: 45, module: "PAYROLL", scopes: COMPANY, implies: ["debts.view"], highRisk: MOVES_MONEY, requires: ["payroll.view"] },
 
     // --- Settings and audit --------------------------------------------------
     // A company's settings, the tabs the Super Admin shows it
@@ -346,6 +357,11 @@ export function isPersonal(permission: Permission): boolean {
 /** What a permission is being split into, or nothing (see `splitInto`). */
 export function splitParts(permission: Permission): readonly Permission[] {
     return ((PERMISSIONS[permission] as PermissionDefinition).splitInto ?? []) as readonly Permission[]
+}
+
+/** Another area's permissions this one can't work without (see `requires`). */
+export function requiresOf(permission: Permission): readonly Permission[] {
+    return ((PERMISSIONS[permission] as PermissionDefinition).requires ?? []) as readonly Permission[]
 }
 
 /** Whether a permission is being split, so only read as its parts (see `splitInto`). */
