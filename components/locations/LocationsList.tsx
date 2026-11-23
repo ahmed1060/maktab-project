@@ -103,7 +103,7 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
     const resetFilters = () => { setQuery(''); setSearch(''); setForClient(''); setArchived(false); setPage(1) }
     const changed = () => { void mutate(); onChanged?.() }
 
-    const canAdd = can('locations.add')
+    const canAdd = can('locations.create')
     // Split from Manage locations (PR 377): editing one and making it an HQ,
     // and archiving or restoring one.
     const canEdit = can('locations.edit')

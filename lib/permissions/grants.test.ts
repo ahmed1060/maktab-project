@@ -23,7 +23,7 @@ describe("permission codes", () => {
         "payroll.view": 38, "payroll.prepare": 39, "payroll.approve": 40, "payroll.issue_payslips": 41,
         "payroll.mark_paid": 42, "settlements.manage": 43, "debts.view": 44, "debts.waive": 45,
         "settings.view": 46, "settings.edit": 47, "audit.view": 48,
-        "locations.view": 55, "locations.add": 56, "locations.manage": 57, "locations.edit": 79, "locations.archive": 80,
+        "locations.view": 55, "locations.add": 56, "locations.manage": 57, "locations.edit": 79, "locations.archive": 80, "locations.create": 81,
         "lists.add": 58, "lists.manage": 59,
         "charges.view": 60, "charges.manage": 61, "charges.collect": 62,
         "cash_advances.view": 63, "cash_advances.give": 64,

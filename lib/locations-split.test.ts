@@ -19,7 +19,8 @@ vi.setConfig({ testTimeout: 120_000 })
 /**
  * locations.manage split by what it does (LATER_CHANGES_PLAN.md §2, PR 377).
  * Adding one has had its own permission since the Locations page,
- * locations.add, so it stays, and locations.manage is two:
+ * locations.add (locations.create since PR 378), so it stays, and
+ * locations.manage is two:
  * - locations.edit changes one's name, pin and radius, makes one its
  *   client's HQ, and changes a client's HQ in the client form;
  * - locations.archive archives one, and restores it.
@@ -66,7 +67,7 @@ type Part = typeof PARTS[number]
 
 const actor = (grants: Grants) => ({ id: "admin", role: "ADMIN", companyId: "c1", grants: encodeGrants(grants) })
 const signIn = (grants: Grants) => { state.session = { user: stepUpConfirmed(actor(grants)) } }
-const holding = (...parts: Part[]): Grants => Object.fromEntries([["locations.view", "COMPANY"], ["locations.add", "COMPANY"], ...parts.map(p => [p, "COMPANY"])])
+const holding = (...parts: Part[]): Grants => Object.fromEntries([["locations.view", "COMPANY"], ["locations.create", "COMPANY"], ...parts.map(p => [p, "COMPANY"])])
 const OLD_ROLE = grantsFromRows([{ permission: "locations.view", scope: "COMPANY" }, { permission: "locations.manage", scope: "COMPANY" }])
 
 const put = async (body: Record<string, unknown>) => (await import("@/app/api/locations/route")).PUT(withBody("PUT", "/api/locations", body), { params: {} })
@@ -88,22 +89,23 @@ describe("the catalogue", () => {
         }
     })
 
-    it("marks locations.manage as split into the two, and keeps adding as locations.add", () => {
+    it("marks locations.manage as split into the two, and keeps adding apart", () => {
         expect(splitParts("locations.manage")).toEqual(PARTS)
         expect((Object.keys(PERMISSIONS) as Permission[]).filter(isSplit)).toContain("locations.manage")
-        expect(isSplit("locations.add")).toBe(false)
+        // locations.add, named locations.create since PR 378 (lib/locations-create.test.ts).
+        expect(splitParts("locations.add")).not.toContain("locations.edit")
         expect(PERMISSIONS["locations.add"].code).toBe(56)
-        expect("locations.create" in PERMISSIONS).toBe(false)
     })
 
     it("offers the two in the role editor beside See and Add locations, and locations.manage no more", () => {
         const group = PERMISSION_GROUPS.find(g => g.key === "clients")!.permissions
-        for (const p of ["locations.view", "locations.add", ...PARTS] as Permission[]) expect(group).toContain(p)
+        for (const p of ["locations.view", "locations.create", ...PARTS] as Permission[]) expect(group).toContain(p)
         expect(PERMISSION_GROUPS.flatMap(g => g.permissions)).not.toContain("locations.manage")
     })
 
     it("goes up a version, so every session reloads its grants once", () => {
-        expect(CATALOGUE_VERSION).toBe(7)
+        // 7 for this split; 8 since locations.create (PR 378).
+        expect(CATALOGUE_VERSION).toBeGreaterThanOrEqual(7)
     })
 
     it("seeds the built-in Admin with both, and nobody with locations.manage; the Team Leader adds, as before", () => {
@@ -112,7 +114,7 @@ describe("the catalogue", () => {
             expect(BUILT_IN_GRANTS.TEAM_LEADER[p], p).toBeUndefined()
             expect(BUILT_IN_GRANTS.EMPLOYEE[p], p).toBeUndefined()
         }
-        expect(BUILT_IN_GRANTS.TEAM_LEADER["locations.add"]).toBe("COMPANY")
+        expect(BUILT_IN_GRANTS.TEAM_LEADER["locations.create"]).toBe("COMPANY")
         for (const role of Object.values(BUILT_IN_GRANTS)) expect(role["locations.manage"]).toBeUndefined()
     })
 })
@@ -218,9 +220,9 @@ describe("changing a location, each part alone", () => {
         for (const change of [edit, makeHq, archive, restore, restoreAsHq]) expect((await change()).status).toBe(200)
     })
 
-    it("still adds one with locations.add alone", () => {
+    it("still adds one with its own permission alone, locations.create since PR 378", () => {
         const route = stripComments(readFileSync("app/api/locations/route.ts", "utf8"))
-        expect(route).toMatch(/LocationService\.create\(session, validation\.data\), 201\)\n\}, \{ permission: "locations\.add" \}\)/)
+        expect(route).toMatch(/LocationService\.create\(session, validation\.data\), 201\)\n\}, \{ permission: "locations\.create" \}\)/)
     })
 })
 

@@ -11,10 +11,11 @@ import type { CreateLocationInput, PlaceInput, UpdateLocationInput } from "@/lib
  * branches and sites, and shared places no client owns.
  *
  * Locations are the company's, so every check is company-wide: see them
- * with locations.view, add one with locations.add, change one (its details,
- * or making it an HQ) with locations.edit, and archive or restore one with
- * locations.archive (split from locations.manage, LATER_CHANGES_PLAN.md §2,
- * PR 377). Another company's is "not found", never "not allowed".
+ * with locations.view, add one with locations.create (locations.add until
+ * PR 378), change one (its details, or making it an HQ) with locations.edit,
+ * and archive or restore one with locations.archive (split from
+ * locations.manage, LATER_CHANGES_PLAN.md §2, PR 377). Another company's is
+ * "not found", never "not allowed".
  *
  * Until step 2 moves tasks onto locations, the task form still copies a
  * client's own location fields into a new task: those follow its HQ here
@@ -140,7 +141,7 @@ export class LocationService {
                 if (!client) throw new Error("CLIENT_NOT_FOUND")
                 if (!isSuperAdmin(session) && session.user.companyId !== client.companyId) throw new Error("CLIENT_NOT_FOUND")
                 companyId = client.companyId
-                allow(session, "locations.add", companyId)
+                allow(session, "locations.create", companyId)
                 await holdClient(tx, input.clientId)
                 // An archived client takes nothing new (CLIENTS_PLAN.md §4.3).
                 if ((await tx.client.findUnique({ where: { id: input.clientId }, select: { archivedAt: true } }))?.archivedAt) throw new Error("CLIENT_ARCHIVED")
@@ -149,7 +150,7 @@ export class LocationService {
                 const company = isSuperAdmin(session) ? input.companyId : session.user.companyId
                 if (!company) throw new Error("COMPANY_SELECTION_REQUIRED")
                 companyId = company
-                allow(session, "locations.add", companyId)
+                allow(session, "locations.create", companyId)
             }
             const location = await tx.location.create({
                 data: {

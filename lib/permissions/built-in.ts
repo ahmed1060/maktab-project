@@ -143,9 +143,10 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // them; an Admin edits, archives and restores them (CLIENTS_PLAN.md
         // §2.9), split from locations.manage since PR 377. Given to the
         // companies there already were by migration 20261110000000, as
-        // locations.manage, read as these two until the grant for them.
+        // locations.add and locations.manage, read as locations.create (PR
+        // 378) and these two until the grant for them.
         "locations.view": "COMPANY",
-        "locations.add": "COMPANY",
+        "locations.create": "COMPANY",
         "locations.edit": "COMPANY",
         "locations.archive": "COMPANY",
         // The saved lists of cost names and task titles: everyone adds a
@@ -243,9 +244,10 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "records.edit": "COMPANY",
         "clients.view": "COMPANY",
         // They create tasks, so they see and add the places tasks happen at
-        // (CLIENTS_PLAN.md §2.9). Migration 20261110000000.
+        // (CLIENTS_PLAN.md §2.9). Migration 20261110000000, as locations.add,
+        // read as locations.create since PR 378.
         "locations.view": "COMPANY",
-        "locations.add": "COMPANY",
+        "locations.create": "COMPANY",
         // Everyone adds names to the saved lists (CLIENTS_PLAN.md §5.7).
         "lists.add": "COMPANY",
         // What their team's tasks' clients owe for their costs, to see
