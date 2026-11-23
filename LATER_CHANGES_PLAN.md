@@ -580,7 +580,10 @@ They work together, each for a different case.
     permission. Since #387, a call can also be **not here**: in a
     component the screen uses, but never sent from this screen, with the
     code that shows why quoted, as the location form's editing is from a
-    task's place picker, which only adds.
+    task's place picker, which only adds. Since #389, a call built from a
+    table of paths in the same file is read where the table is used, so
+    Requests' decisions and withdrawals are checked, and the table's
+    entries aren't taken for calls.
   - A needed call is met by each permission that opens the screen:
     itself, one it brings (`implies`), or one it needs first
     (`requires`). Anything else fails, naming the screen and the call.
@@ -615,8 +618,8 @@ there:
    the remaining splits change (locations, saved lists, costs, clients,
    employees and payroll); then the splits, each keeping its rows; then
    the rest, about 220 calls on 29 screens, in parts by area: the task
-   screens (#387); obligations, records and documents (#388); requests and the
-   people screens; attendance and check-in; and settings. A page that
+   screens (#387); obligations, records and documents (#388); Requests
+   (#389); the people screens; attendance and check-in; and settings. A page that
    only sends you on to another is outside the table.
 
 The two screens found to fix in §5.3 go in one PR of their own, as #368
@@ -928,3 +931,8 @@ same day as drawn in the All users: status badges canvas
   screens next, as #388, with the two tax pages, which ask the server for
   nothing: the statement is drawn on the server, and the export page
   gives a bookmark to run on the tax portal's own site.
+- **2026-11-23:** #388 merged. Requests next, as #389, on its own: its
+  attendance calls are built from a table of paths, which the test read
+  as lists the page never asks for, missing its decisions and
+  withdrawals. The test now reads such a table where it's used. The
+  people screens follow.
