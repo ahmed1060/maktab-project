@@ -602,6 +602,10 @@ They work together, each for a different case.
     used, with the method of the call it's given to, not where it's
     built; and a method given as an argument of its own, as the attendance
     calendar's helper takes it (`send(path, 'DELETE', …)`), is read too.
+    Since #395, a function handed to a component as a prop that builds a
+    path, `saveUrl={(kind, language) => companyMessageApi(…)}`, is read by
+    the prop's name where the component calls it, as the message editor
+    saves with `fetch(saveUrl(…), { method: 'PUT' })`.
   - A needed call is met by each permission that opens the screen:
     itself, one it brings (`implies`), or one it needs first
     (`requires`). Anything else fails, naming the screen and the call.
@@ -611,7 +615,9 @@ They work together, each for a different case.
   - Every page is in the table, waiting for it, or outside it (the
     Super Admin's own pages, and one's own). The table comes in parts:
     first the screens the remaining splits change, so each split keeps
-    its rows; the rest after.
+    its rows; the rest after. Since #395 none waits: every page is in
+    the table or outside it, and a new page fails until it's one or the
+    other.
 
 ### 5.2 Order
 
@@ -631,7 +637,7 @@ there:
    roles in production that break a rule. Counted on 2026-11-22, before
    #372: of the 3 roles in production, none breaks rule 1, and there are
    no templates. Built as #375.
-5. **The screen test** ("Kept true" above), decided by the owner on
+5. **The screen test** (Done, #395) ("Kept true" above), decided by the owner on
    2026-11-23 to come before the splits. In parts: #376 for the screens
    the remaining splits change (locations, saved lists, costs, clients,
    employees and payroll); then the splits, each keeping its rows; then
@@ -1004,3 +1010,10 @@ same day as drawn in the All users: status badges canvas
   `send(path, 'DELETE', …)`, which the test read as GET. #394 teaches the
   test both and writes the six calls down; settings and the home page
   follow as #395, the last part.
+- **2026-11-23:** #394 merged. Settings and the home page next, as #395,
+  the last part: settings' 64 calls, its client message page's 2 and
+  terminal guide's 1, and the home page, which asks the server for
+  nothing. The client message page hands the editor a function that
+  builds the save path as a prop, so the test learns that form too:
+  read by the prop's name where the editor calls it, as a PUT, not as a
+  read where it's handed over.
