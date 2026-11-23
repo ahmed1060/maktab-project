@@ -90,7 +90,8 @@ export default function EmployeeHistoryPage() {
     const parts = historyParts({ own, can: forPerson({ can, scope }, person, lookedUp), has: features.has })
     const canSeeSalary = can('salary.view')
     // Anyone's pay but their own (ROLES_PLAN.md §4.2, rule 5).
-    const canAdjust = canFor('salary_adjustments.manage', params.id as string | undefined)
+    // Reverse and Roll back, with undoing one (split, PR 382).
+    const canUndo = canFor('salary_adjustments.reverse', params.id as string | undefined)
     const canReevaluateDayOff = can('dayoff.approve')
 
     // The day off whose days are being reconsidered, from its row on the Day off credit tab.
@@ -180,7 +181,7 @@ export default function EmployeeHistoryPage() {
                             error={adjustmentsQuery.error}
                             retrying={adjustmentsQuery.isValidating}
                             retry={() => { void adjustmentsQuery.mutate() }}
-                            canUndo={canAdjust}
+                            canUndo={canUndo}
                             highlighted={visualHighlightId}
                             scrollTo={highlightId}
                             // An undone one moves its month's figures too. Through the

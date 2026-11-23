@@ -92,7 +92,7 @@ export default function EmployeesPage() {
     // The actions on each person, each offered with the permission its route
     // checks; the column of them is shown when any is.
     const canActOnPeople = can('employees.edit') || seesHistory
-        || (features.has('SALARY_ADJUSTMENTS') && can('salary_adjustments.manage'))
+        || (features.has('SALARY_ADJUSTMENTS') && can('salary_adjustments.add'))
         || can('requests.reset_points') || can('employees.delete')
     const teamOnly = can('employees.view') && !companyWide('employees.view')
 
@@ -269,7 +269,7 @@ export default function EmployeesPage() {
         const items: MenuItem[] = []
         const notAdmin = e.role !== 'ADMIN'
         if (historyOf(e) && notAdmin) items.push({ key: 'history', label: t('history'), icon: ClockCounterClockwiseIcon, href: `/dashboard/employees/${e.id}/history` })
-        if (features.has('SALARY_ADJUSTMENTS') && can('salary_adjustments.manage') && notAdmin) {
+        if (features.has('SALARY_ADJUSTMENTS') && can('salary_adjustments.add') && notAdmin) {
             items.push({ key: 'bonus', label: t('add_bonus'), icon: PlusCircleIcon, href: `/dashboard/employees/${e.id}/bonus` })
             items.push({ key: 'deduction', label: t('add_deduction'), icon: MinusCircleIcon, href: `/dashboard/employees/${e.id}/deduction` })
         }

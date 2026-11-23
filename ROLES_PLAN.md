@@ -281,7 +281,9 @@ them, as today.
 | | `dayoff.request` | Ask for leave of one's own: granted at Own only, and personal, so it's no access over anybody (§4.2, rule 4). Held by the built-in Employee and Team Leader, not the Admin, nor the Super Admin, who's nobody's employee (`UI_PLAN.md` §2.3, part 2) | `POST /day-off-requests` |
 | **Salaries** | `salary.view` | See salary figures anywhere (decided: one permission) | `users/[id]/salary-history`, profile, payroll |
 | | `salary.edit` | Change a salary — implies view | `PUT /users` (salary) |
-| | `salary_adjustments.manage` | Bonus / deduction, reverse, roll back | `users/[id]/bonus\|deduction\|adjustments/*` |
+| | `salary_adjustments.add` | Add a bonus or a deduction to someone's month — never one's own pay; **moves money**, high-risk (§6.15); implies `salary.view`, needs `employees.view` (#382, split from `salary_adjustments.manage`, `LATER_CHANGES_PLAN.md` §2) | `POST users/[id]/bonus`, `POST users/[id]/deduction` |
+| | `salary_adjustments.reverse` | Undo one: reverse it, as right when it was made, or roll it back, as a mistake — never one's own pay; **moves money**, high-risk (§6.15); implies `salary.view`, needs `employees.view` (#382) | `POST users/[id]/adjustments/[adjId]/reverse`, `…/rollback` |
+| | `salary_adjustments.manage` | Split into the two above (#382): nothing checks it, and it isn't offered; a role still holding it is read as holding both, until the grant for companies already there. Was: bonus / deduction, reverse, roll back | — |
 | **Payroll** | `payroll.view` | See the monthly run, payslips, export — implies `salary.view` | `payroll/[y]/[m]` GET, `export`, `payslips/*` |
 | | `payroll.prepare` | Save the draft run | `payroll/[y]/[m]` POST |
 | | `payroll.approve` | Approve (freeze) the month | `payroll/[y]/[m]/approve` |
@@ -302,7 +304,8 @@ payslips and audit history point at.
 Separation-of-duties pairs to warn about (§6.11), from this list:
 `payroll.prepare` + `payroll.approve`; `salary.edit` + `payroll.approve`;
 `employees.create` + `salary.edit`; `tasks.pay` + `tasks.review`;
-`salary_adjustments.manage` + `payroll.approve`.
+`salary_adjustments.add` or `salary_adjustments.reverse` (one permission,
+`salary_adjustments.manage`, until #382) + `payroll.approve`.
 
 Attendance adds its own when it is built (`attendance.correct`,
 `attendance.approve_face`, …).
@@ -830,7 +833,9 @@ the Super Admin. Clients with an auditor will be asked for exactly this record.
 
 A few permissions move money, give it away, or cannot be undone: `tasks.pay`,
 `tasks.penalize`, `tasks.delete`, `records.delete`, `salary.edit`,
-`salary_adjustments.manage`, `payroll.approve`, `payroll.mark_paid`,
+`salary_adjustments.add` and `salary_adjustments.reverse`, adding and
+undoing bonuses and deductions (one permission, `salary_adjustments.manage`,
+until #382), `payroll.approve`, `payroll.mark_paid`,
 `debts.waive`, `employees.delete`, `employees.end_contract`,
 `charges.collect`, marking a client's charges collected (`CLIENTS_PLAN.md`
 §6.6), `cash_advances.give`, giving and settling employees' cash

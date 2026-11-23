@@ -261,7 +261,15 @@ export const PERMISSIONS = {
     // Employees screens migrate, since a salary is shown there too.
     "salary.view":              { code: 35, module: null, scopes: TEAM_OR_COMPANY, lessWithout: ["employees.view"] },
     "salary.edit":              { code: 36, module: null, scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY, notOnOwn: true, requires: ["employees.view"] },
-    "salary_adjustments.manage": { code: 37, module: "SALARY_ADJUSTMENTS", scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY, notOnOwn: true, requires: ["employees.view"] },
+    // Bonuses and deductions on someone's month: adding one, and undoing one
+    // (rolled back as a mistake, or reversed as right when it was made),
+    // split from salary_adjustments.manage by what is done to the pay
+    // (LATER_CHANGES_PLAN.md §2, PR 382). Each moves money, so each asks for
+    // the step-up confirmation; each is never on one's own pay; and neither
+    // includes the other, as undoing one doesn't need adding one.
+    "salary_adjustments.manage": { code: 37, module: "SALARY_ADJUSTMENTS", scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY, notOnOwn: true, requires: ["employees.view"], splitInto: ["salary_adjustments.add", "salary_adjustments.reverse"] },
+    "salary_adjustments.add":   { code: 89, module: "SALARY_ADJUSTMENTS", scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY, notOnOwn: true, requires: ["employees.view"] },
+    "salary_adjustments.reverse": { code: 90, module: "SALARY_ADJUSTMENTS", scopes: COMPANY, implies: ["salary.view"], highRisk: MOVES_MONEY, notOnOwn: true, requires: ["employees.view"] },
 
     // --- Payroll -----------------------------------------------------------
     "payroll.view":             { code: 38, module: "PAYROLL", scopes: COMPANY, implies: ["salary.view"] },
@@ -378,8 +386,11 @@ export type Permission = keyof typeof PERMISSIONS
  * 11: client_accounts.view, client_accounts.invite and
  * client_accounts.remove (codes 86–88), split from client_accounts.manage
  * (PR 381).
+ *
+ * 12: salary_adjustments.add and salary_adjustments.reverse (codes 89–90),
+ * split from salary_adjustments.manage (PR 382).
  */
-export const CATALOGUE_VERSION = 11
+export const CATALOGUE_VERSION = 12
 
 /** Codes of permissions that no longer exist. Never handed out again. */
 export const RETIRED_CODES: readonly number[] = []

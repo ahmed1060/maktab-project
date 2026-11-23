@@ -118,7 +118,7 @@ describe("the reversal route exists beside the rollback one", () => {
     it("is its own endpoint", () => {
         const route = read("app/api/users/[id]/adjustments/[adjId]/reverse/route.ts")
         expect(route).toContain("SalaryService.reverseAdjustment")
-        expect(route).toContain('can(session.user, "salary_adjustments.manage")')
+        expect(route).toContain('can(session.user, "salary_adjustments.reverse")')
     })
 
     it("and both refuse an adjustment that is already terminal", () => {

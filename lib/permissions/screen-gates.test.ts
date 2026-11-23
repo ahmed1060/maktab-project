@@ -127,7 +127,7 @@ const GATES: Gate[] = [
     { what: "history: salary label", file: D + "employees/[id]/history/page.tsx", uses: "const canSeeSalary = can('salary.view')", before: admins, now: p => p.can("salary.view") },
     // Changed in Part B: not on one's own pay (ROLES_PLAN.md §4.2, rule 5).
     // Recorded first as admins(r), own page or not.
-    { what: "history: adjustments (flag: one's own page)", file: D + "employees/[id]/history/page.tsx", uses: "const canAdjust = canFor('salary_adjustments.manage', params.id as string | undefined)", before: (r, own) => admins(r) && !own, now: (p, own, role) => p.canFor("salary_adjustments.manage", own ? ACTOR[role].id : "someone-else") },
+    { what: "history: adjustments (flag: one's own page)", file: D + "employees/[id]/history/page.tsx", uses: "const canUndo = canFor('salary_adjustments.reverse', params.id as string | undefined)", before: (r, own) => admins(r) && !own, now: (p, own, role) => p.canFor("salary_adjustments.reverse", own ? ACTOR[role].id : "someone-else") },
     { what: "history: re-evaluate day off", file: D + "employees/[id]/history/page.tsx", uses: "const canReevaluateDayOff = can('dayoff.approve')", before: admins, now: p => p.can("dayoff.approve") },
     { what: "new employee: team leader", file: D + "employees/new/page.tsx", uses: "const canAssignTeam = can('employees.assign_team')", before: r => r === "SUPER_ADMIN" || r === "ADMIN", now: p => p.can("employees.assign_team") },
     { what: "new employee: role", file: D + "employees/new/page.tsx", uses: "const canAssignRole = can('employees.assign_role')", before: r => r === "SUPER_ADMIN" || r === "ADMIN", now: p => p.can("employees.assign_role") },
@@ -135,7 +135,7 @@ const GATES: Gate[] = [
     { what: "employees: page", file: PEOPLE, uses: "if (viewer && !can('employees.view'))", before: r => r !== "EMPLOYEE", now: p => p.can("employees.view") },
     { what: "employees: assign teams", file: PEOPLE, uses: "const canAssignTeams = can('employees.assign_team')", before: admins, now: p => p.can("employees.assign_team") },
     { what: "employees: add", file: PEOPLE, uses: "can('employees.create') && <ButtonLink href=\"/dashboard/employees/new\"", before: admins, now: p => p.can("employees.create") },
-    { what: "employees: actions row", file: PEOPLE, uses: "...(canActOnPeople ? [{ key: 'actions'", before: admins, now: p => seesHistory(p) || ["employees.edit", "salary_adjustments.manage", "requests.reset_points", "employees.delete"].some(x => p.can(x as any)) },
+    { what: "employees: actions row", file: PEOPLE, uses: "...(canActOnPeople ? [{ key: 'actions'", before: admins, now: p => seesHistory(p) || ["employees.edit", "salary_adjustments.add", "requests.reset_points", "employees.delete"].some(x => p.can(x as any)) },
     { what: "employees: edit", file: PEOPLE, uses: "const canEdit = (e: Employee) => can('employees.edit') && (e.role", before: admins, now: p => p.can("employees.edit") },
     // Offered by "See salaries" alone until PR 370, though its tabs are for day off, costs, debts and settlements too.
     { what: "employees: history", file: PEOPLE, uses: "const seesHistory = features.has('PAYROLL') && historyParts({ own: false, can, has: features.has }).tabs.length > 0", before: admins, now: seesHistory },
@@ -143,7 +143,7 @@ const GATES: Gate[] = [
     { what: "employees: history for the row", file: PEOPLE, uses: "const historyOf = (e: Employee) => seesHistory && historyParts({ own: false, can: forPerson({ can, scope }, { userId: e.id, teamLeaderId: e.teamLeaderId ?? null, companyId: viewer?.companyId ?? null }), has: features.has }).tabs.length > 0", before: admins, now: seesHistory },
     { what: "employees: history link", file: PEOPLE, uses: "if (historyOf(e) && notAdmin) items.push({ key: 'history'", before: admins, now: seesHistory },
     { what: "employees: actions row asks the history's", file: PEOPLE, uses: "const canActOnPeople = can('employees.edit') || seesHistory", before: admins, now: seesHistory },
-    { what: "employees: bonus and deduction", file: PEOPLE, uses: "if (features.has('SALARY_ADJUSTMENTS') && can('salary_adjustments.manage') && notAdmin)", before: admins, now: p => p.can("salary_adjustments.manage") },
+    { what: "employees: bonus and deduction", file: PEOPLE, uses: "if (features.has('SALARY_ADJUSTMENTS') && can('salary_adjustments.add') && notAdmin)", before: admins, now: p => p.can("salary_adjustments.add") },
     { what: "employees: reset points", file: PEOPLE, uses: "if (can('requests.reset_points') && notAdmin)", before: admins, now: p => p.can("requests.reset_points") },
     { what: "employees: delete", file: PEOPLE, uses: "if (can('employees.delete') && e.role", before: admins, now: p => p.can("employees.delete") },
     { what: "profile: sends salary", file: ACCESS, uses: "changeSalary: can('salary.edit') && !own", before: r => r === "ADMIN" || r === "SUPER_ADMIN", now: p => p.can("salary.edit") },

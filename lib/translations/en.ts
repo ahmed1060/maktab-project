@@ -4158,6 +4158,8 @@ export const en = {
         perm_salary_view: "See salaries",
         perm_salary_edit: "Change salaries",
         perm_salary_adjustments_manage: "Add bonuses and deductions",
+        perm_salary_adjustments_add: "Add bonuses and deductions",
+        perm_salary_adjustments_reverse: "Reverse or roll back bonuses and deductions",
         perm_payroll_view: "See payroll",
         perm_payroll_prepare: "Prepare payroll",
         perm_payroll_approve: "Approve payroll",

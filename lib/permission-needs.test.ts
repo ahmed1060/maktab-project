@@ -29,6 +29,9 @@ const NEEDS: [Permission, Permission][] = [
     ["salary.edit", "employees.view"],
     ["dayoff.adjust_credit", "employees.view"],
     ["salary_adjustments.manage", "employees.view"],
+    // Its parts, since PR 382: adding a bonus or deduction, and undoing one.
+    ["salary_adjustments.add", "employees.view"],
+    ["salary_adjustments.reverse", "employees.view"],
     ["settlements.manage", "employees.view"],
     ["debts.view", "employees.view"],
     ["costs.view", "employees.view"],

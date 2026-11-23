@@ -201,18 +201,18 @@ const SCREENS: Record<string, Screen> = {
         },
     },
     "employees/[id]/bonus": {
-        opens: ["salary_adjustments.manage"],
+        opens: ["salary_adjustments.add"],
         asks: {
             // Whose pay it is, by name: See employees, which adding one needs first (§5.3).
             "GET /api/users": needs("employees.view"),
-            "POST /api/users/[x]/[x]": { needs: ["salary_adjustments.manage"], routes: ["users/[id]/bonus", "users/[id]/deduction"] },
+            "POST /api/users/[x]/[x]": { needs: ["salary_adjustments.add"], routes: ["users/[id]/bonus", "users/[id]/deduction"] },
         },
     },
     "employees/[id]/deduction": {
-        opens: ["salary_adjustments.manage"],
+        opens: ["salary_adjustments.add"],
         asks: {
             "GET /api/users": needs("employees.view"),
-            "POST /api/users/[x]/[x]": { needs: ["salary_adjustments.manage"], routes: ["users/[id]/bonus", "users/[id]/deduction"] },
+            "POST /api/users/[x]/[x]": { needs: ["salary_adjustments.add"], routes: ["users/[id]/bonus", "users/[id]/deduction"] },
         },
     },
     "payroll": {
@@ -522,7 +522,7 @@ describe("the test itself", () => {
 
     it("keeps held what a permission brings and needs first, and nothing else", () => {
         expect([...heldWith("payroll.prepare")].sort()).toEqual(["payroll.prepare", "payroll.view", "salary.view"])
-        expect(heldWith("salary_adjustments.manage").has("employees.view")).toBe(true)
+        expect(heldWith("salary_adjustments.add").has("employees.view")).toBe(true)
         expect(heldWith("locations.view").has("clients.view")).toBe(false)
     })
 })

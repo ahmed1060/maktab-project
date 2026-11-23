@@ -39,7 +39,7 @@ export default function AddAdjustment({ kind }: { kind: AdjustmentKind }) {
     // Adjusting pay is theirs who may (the list offers it only to them), and
     // nobody's own (ROLES_PLAN.md §4.2, rule 5): said here, where the form
     // let them fill it in and the server refused it.
-    const mayAdjust = can('salary_adjustments.manage')
+    const mayAdjust = can('salary_adjustments.add')
     const own = !!viewer?.id && viewer.id === id
     const person = useSWR<{ data: { firstName: string; lastName: string } }>(mayAdjust && id && !own ? `/api/users?id=${id}` : null, fetcher)
     const name = person.data?.data ? `${person.data.data.firstName} ${person.data.data.lastName}`.trim() : ''

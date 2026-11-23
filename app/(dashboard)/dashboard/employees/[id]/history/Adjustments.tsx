@@ -66,7 +66,7 @@ export function Adjustments({ userId, adjustments, loading, error, retrying, ret
     error: unknown
     retrying: boolean
     retry: () => void
-    /** salary_adjustments.manage over this person: never one's own pay. */
+    /** salary_adjustments.reverse over this person: never one's own pay (PR 382). */
     canUndo: boolean
     /** The one a notification opened, while it's marked. */
     highlighted: string | null
