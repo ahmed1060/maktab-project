@@ -705,6 +705,53 @@ These are built once, in the building-blocks PR, and every page uses them
     the list: pick one, or add it from the suggestions for whoever may add
     names, or ask whoever keeps the saved lists for anyone else. With no
     name, it says a name is needed.
+- **A name in English and in Arabic,** such as an employee's first or
+  last name, a client's name or its owner's, or the company's
+  (`LATER_CHANGES_PLAN.md` §3), is a group under the name's visible
+  label, with a field for each language:
+  - each field has its own visible label, "In English" and "In Arabic".
+    The page's language comes first, on the start side; on phones they
+    stack, the page's language on top. The Arabic field is right to left
+    and the English one left to right, whatever the page's language;
+  - each takes up to the name's limit, 40 characters for a person's, and
+    says how many it has, as the name fields do today;
+  - when one is typed and the other is empty, the empty one offers what
+    it may be: a secondary button under it, 30px tall (44px on phones),
+    "Use “Mohamed”", with where it comes from beside it in `--muted`:
+    "The usual spelling", from Nizmo's list of names, or "Used for 4
+    people here", from what this company has saved. Nothing goes in the
+    field until the button is pressed or the name is typed, so a
+    suggestion is never saved by itself;
+  - a word in neither list is Nizmo's guess. It's underlined with dots in
+    the button, and a line under it, in `--ink-2`, says so: "“Elshnawy”
+    is a guess: check its spelling.";
+  - when the empty field is focused, its spellings open under it, in the
+    list a name picked from a saved list has (above), with its keys and
+    sizes: this company's first, the most used first, each with how many
+    it's used for on the end side, then the usual spelling. Picking one
+    fills the field;
+  - a business's name, a client's or the company's, puts each business
+    word where its language puts it: شركة النور للتجارة is suggested as
+    "El Nour Trading Company";
+  - both are needed for anything new. Saved with one empty, the error is
+    under that field, "Enter the last name in Arabic, or use the
+    suggestion.", with the suggestion still under it;
+  - a name saved before in one language is asked for the other the next
+    time it's edited. A note at the top of the form says so, beside a
+    round neutral icon and over a hairline: "Names are now kept in English
+    and in Arabic. This name has no Arabic yet: add it to save the
+    changes.";
+  - a name is shown in the page's language everywhere, or in the one it
+    has while it has only one, kept in its own direction (§7).
+- **The names still missing a language** are listed on the Employees and
+  Clients pages:
+  - a panel above the filter bar says how many have only one language,
+    and that each is asked for the other the next time it's edited. It
+    goes once none are left;
+  - the filter bar's Names select ("All names", "Missing a language")
+    lists them, with a Missing column of neutral badges, "No Arabic" or
+    "No English";
+  - Company settings says so of the company's own name, above its fields.
 - **A pick of several from a long list,** such as a task's assignees, is
   a group under its visible label:
   - a search field, which narrows the list as it's typed;
@@ -3379,3 +3426,12 @@ changed:
   pressed to show only its status, with a line saying so and Show
   everyone; and they change in place as people come and go (§8)
   (`LATER_CHANGES_PLAN.md` §6).
+- **2026-11-23:** A name in English and in Arabic, and the names still
+  missing a language (§5.3), as the owner approved in the English and
+  Arabic names canvas: a field for each language under the name's label,
+  the other one offered as a button to press, never saved by itself, its
+  spellings listed with this company's first, a guess underlined with
+  dots, business words in their place, both needed for anything new, a
+  name saved before asked for the other on its next edit, and the ones
+  still missing listed on the Employees and Clients pages
+  (`LATER_CHANGES_PLAN.md` §3).

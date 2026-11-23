@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { placeSchema } from "./location.schema"
+import { arabicName } from "./arabic-name.schema"
 
 // Permissive on purpose — a phone number field that's too strict about
 // format (country codes, spacing, dashes) rejects real numbers more often
@@ -13,6 +14,10 @@ const mobileNumberSchema = z.string()
 export const createClientSchema = z.object({
     name: z.string().min(1, "Client name is required").max(100),
     ownerName: z.string().min(1, "Owner name is required").max(100),
+    // Its name and its owner's in Arabic (LATER_CHANGES_PLAN.md §3, PR 398),
+    // beside the English ones above; not yet asked for.
+    nameAr: arabicName(1, 100).optional(),
+    ownerNameAr: arabicName(1, 100).optional(),
     mobileNumber: mobileNumberSchema,
     /** Its HQ (CLIENTS_PLAN.md §2.1): every client has one, with its pin. */
     hq: placeSchema,
@@ -23,6 +28,8 @@ export const updateClientSchema = z.object({
     id: z.string().min(1, "Client ID is required"),
     name: z.string().min(1, "Client name is required").max(100).optional(),
     ownerName: z.string().min(1, "Owner name is required").max(100).optional(),
+    nameAr: arabicName(1, 100).optional(),
+    ownerNameAr: arabicName(1, 100).optional(),
     mobileNumber: mobileNumberSchema.optional(),
     hq: placeSchema.optional(),
     /** Back from the archive (CLIENTS_PLAN.md §4.3); nothing else changes with it. */

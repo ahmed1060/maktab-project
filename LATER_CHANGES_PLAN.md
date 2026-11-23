@@ -16,8 +16,9 @@ Each part is marked:
 Status: **the names (§3) next.** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
-#384). The names are decided: their design is with the owner, and their
-longer limit goes first (#397).
+#384). The names are decided, their design approved and their longer
+limit done (#397). Their steps (§3.1) start with both languages kept
+(#398).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -341,8 +342,63 @@ other filled in when one is typed, if that's possible.
   longer in English than in Arabic, as its vowels are written out:
   محمد عبد الرحمن is 15 characters, and Mohamed Abdelrahman is 19. It's
   raised first, in #397, as it helps the names typed today too.
-- **The design (2026-11-23):** the name fields drawn for the owner on a
-  canvas, waiting for their approval before anything else is built.
+- **The design (approved by the owner on 2026-11-23):** the name fields
+  drawn on the English and Arabic names canvas, written into `DESIGN.md`
+  §5.3: a name in English and in Arabic, and the names still missing a
+  language.
+- **How a name is kept:**
+  - an Arabic column beside each name: an employee's first and last
+    names, a client's name and its owner's, and the company's name. The
+    column there today keeps the English;
+  - a name written in Arabic before today stays where it is, and is
+    copied into its Arabic column, so nothing anyone sees changes. Its
+    Arabic letters say it has no English yet, so nothing is guessed or
+    moved;
+  - a client's Arabic name is unique in its company, and a company's
+    across Nizmo, as their English names are;
+  - a message already sent keeps the name it was written with.
+
+### 3.1 The steps
+
+1. **Both languages kept (#398):**
+   - the Arabic columns, and the names written in Arabic copied into
+     them;
+   - `lib/names.ts`: a name in the page's language (the other one while
+     it has only one), and the language a name is missing;
+   - the server takes the Arabic names where it takes the English ones,
+     not yet asked for. No screen changes.
+2. **Nizmo's list of names, and the rules,** in `lib/` alone:
+   - about 2,000 common Egyptian and Arabic given names, each with its
+     usual Egyptian English spelling, read both ways;
+   - business words, each in its place in either language;
+   - the rules for a word in neither, marked as a guess;
+   - a full name looked up word by word.
+3. **What the company saves teaches it:**
+   - a table of the company's spellings, word by word, with how many
+     names use each, behind row-level security;
+   - learned whenever a name is saved in both languages;
+   - read by the forms that take a name, by whoever may use them. The
+     screen test (`lib/screen-asks.test.ts`) lists the new call.
+4. **Employees' names:**
+   - the two fields on Add employee, an employee's page and one's own
+     profile, and in a request to change one's own name;
+   - needed for anyone new, and asked for on anyone else's next edit;
+   - the suggestion, the spellings and the guesses.
+5. **Employees' names in the page's language** on the Employees page,
+   with the ones still missing a language, and its search finding
+   either.
+6. **Clients' names:**
+   - the two fields for the name and the owner's name, on Add client and
+     a client's page, with business words;
+   - the Clients page in the page's language, with the ones still
+     missing a language, and its search finding either.
+7. **The company's name:** Company settings and the Super Admin's
+   company forms, the note above its fields, and the name in the page's
+   language wherever it's shown.
+8. **The other screens show names in the page's language,** by area:
+   tasks, obligations, records, attendance, requests, payroll, the
+   client's area, and notifications and messages written from then on.
+   As many PRs as it takes, each listing its screens.
 
 ## 4. A development database (Done)
 
@@ -1039,3 +1095,7 @@ same day as drawn in the All users: status badges canvas
 - **2026-11-23:** #396 merged. The name fields drawn for the owner, who
   asked for names of up to 40 characters, where they were 15: #397, before
   the rest of §3.
+- **2026-11-23:** #397 merged: names of up to 40 characters. The owner
+  approved the name fields' design the same day, written into
+  `DESIGN.md` §5.3, and §3 is split into its steps (§3.1), starting with
+  both languages kept (#398).

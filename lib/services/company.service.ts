@@ -10,6 +10,7 @@ import { resolveSubscriptionState, needsAttention, computeTrialEnd, DEFAULT_TRIA
 import { assertRecentStepUp } from "@/lib/step-up"
 import { SystemSettingsService } from "./system-settings.service"
 import { CreateCompanyInput, UpdateCompanyInput } from "../validations/company.schema"
+import { arabicBeside } from "@/lib/names"
 import { parseModuleIcons, parseModuleOverrides, planOverrideWrite, sameOverrides } from "@/lib/modules"
 import { bucketPathFor, logoExtension, validateLogo } from "@/lib/company-logo"
 import type { CompanyBranding } from "@/lib/company-scope"
@@ -54,6 +55,10 @@ export class CompanyService {
         const typed = input.usernameCode
         if (typed && await codeInUse(typed, null)) throw new Error("COMPANY_CODE_TAKEN")
 
+        // Its name in Arabic (LATER_CHANGES_PLAN.md §3, PR 398), or the name
+        // itself where it's written in Arabic.
+        const nameAr = arabicBeside(input.name, input.nameAr) ?? null
+
         const company = await (async () => {
             for (let attempt = 0; ; attempt++) {
                 const usernameCode = typed ?? await suggestCode(input.name, null)
@@ -63,7 +68,7 @@ export class CompanyService {
                     // transaction: an account can only be created on one of a company's
                     // roles, so a company without them could hire nobody.
                     return await prisma.$transaction(async (tx) => {
-                        const data = { name: input.name, trialPreset, packageId: input.packageId ?? null, usernameCode, usernameNext }
+                        const data = { name: input.name, nameAr, trialPreset, packageId: input.packageId ?? null, usernameCode, usernameNext }
                         const created = await tx.company.create({ data })
                         await RoleService.seedBuiltInRoles(tx, created.id)
                         return created
@@ -260,7 +265,7 @@ export class CompanyService {
     }
 
     static async update(input: UpdateCompanyInput, session: any) {
-        const { id, name, usernameCode, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs, brandColour, cashAdvancesAllowed, cashAdvancesOn, costNamesFromListOnly, confirmHighRisk, terminalsSetupByCompany, terminalsDirectAllowed } = input
+        const { id, name, nameAr, usernameCode, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs, brandColour, cashAdvancesAllowed, cashAdvancesOn, costNamesFromListOnly, confirmHighRisk, terminalsSetupByCompany, terminalsDirectAllowed } = input
         const existing = await prisma.company.findUnique({ where: { id } })
         if (!existing) throw new Error("COMPANY_NOT_FOUND")
 
@@ -301,8 +306,11 @@ export class CompanyService {
             throw new Error("CANNOT_RENAME_SHSD")
         }
 
+        // Its name in Arabic, or the name itself changed in Arabic.
+        const arabic = arabicBeside(name || undefined, nameAr, { en: existing.name, ar: existing.nameAr })
         const data: Prisma.CompanyUpdateInput = {
             ...(name && { name }),
+            ...(arabic !== undefined && { nameAr: arabic }),
             ...(isBanned !== undefined && { isBanned }),
             ...(autoVerifyLocation !== undefined && { autoVerifyLocation }),
             ...(nextLabels !== undefined && { moduleLabels: nextLabels ?? Prisma.DbNull }),
@@ -359,6 +367,8 @@ export class CompanyService {
         // Audit Log (Centralized)
         const changes: any = {}
         if (name && name !== existing.name) changes.name = { old: existing.name, new: name }
+        // Its name in Arabic, as its name is (Codex review on PR 398).
+        if (arabic !== undefined && arabic !== existing.nameAr) changes.nameAr = { old: existing.nameAr, new: arabic }
         if (newCode !== undefined) changes.usernameCode = { old: existing.usernameCode, new: newCode }
         if (isBanned !== undefined && isBanned !== existing.isBanned) changes.isBanned = { old: existing.isBanned, new: isBanned }
         if (autoVerifyLocation !== undefined && autoVerifyLocation !== existing.autoVerifyLocation) {
