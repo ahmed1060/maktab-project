@@ -31,7 +31,7 @@ import { PERMISSIONS, requiresOf, type Permission } from "./permissions/catalogu
  * In parts: first the screens the remaining splits change (§2, PR 376), so
  * each split kept its rows; then the task screens (PR 387); then the
  * obligation, record and document screens (PR 388); then Requests (PR 389);
- * the rest wait in LATER.
+ * then the people screens (PR 390); the rest wait in LATER.
  */
 
 /**
@@ -88,6 +88,11 @@ const TASK_PLACE_NO_EDIT = notHere("forTask={{ clientId: value.clientId || null,
 // The request feed gives each row what may be done with it, for whoever may (lib/requests/feed.ts, PR 389).
 const FEED = "lib/requests/feed.ts"
 const feed = (code: string): Gate => ({ in: FEED, code })
+// What a profile offers, each for whoever may (lib/profile-access.ts, PR 390).
+const profile = (code: string): Gate => ({ in: "lib/profile-access.ts", code })
+const ASKS_ROLE = profile(": can('employees.request_role') ? 'ask'")
+// Roles and access imports only a helper from the roles card, which is the Super Admin's (PR 390).
+const ROLES_CARD_HELPER = notHere("import { refusalOf } from '@/components/CompanyRolesCard'")
 // A saved name added from where it's typed (components/lists/useListNames.ts).
 const LIST_ADD = "return { suggest, onAdd: can('lists.add') && (!superAdmin || !!company) ? add : undefined }"
 
@@ -251,6 +256,68 @@ const SCREENS: Record<string, Screen> = {
             "DELETE /api/attendance/flagged/[x]": notHere(feed('mayDecide: waits && can(v, "attendance.correct", target),\n        mayDelete: false,\n        mayWithdraw: false,\n        flagged: {')),
             "GET /api/users": when("employees.view", "const asks = on && can('employees.view')"),
             "GET /api/realtime/token": ANYONE,
+        },
+    },
+    // The people screens (PR 390).
+    "employees/[id]": {
+        // One's own profile (the header's My profile), and someone else's with See employees, as the users route checks.
+        opens: ANYONE,
+        asks: {
+            // Theirs, read and saved: one's own, or another's with See and Edit employees, decided field by field by the server.
+            "GET /api/users": ANYONE,
+            "PUT /api/users": ANYONE,
+            "POST /api/auth/verify": ANYONE,
+            // One's own name change, asked for and waiting.
+            "GET /api/profile-requests": ANYONE,
+            "POST /api/profile-requests": ANYONE,
+            "POST /api/users/[x]/reset-password": when("employees.reset_password", profile("resetPassword: can('employees.reset_password') && !own && actsOnThem,")),
+            "GET /api/users/[x]/employment": when("employees.end_contract", profile("endContract: can('employees.end_contract') && !own && actsOnThem && person.role !== 'SUPER_ADMIN',")),
+            "POST /api/users/[x]/employment": when("employees.end_contract", profile("endContract: can('employees.end_contract') && !own && actsOnThem && person.role !== 'SUPER_ADMIN',")),
+            // Their role: given by whoever gives roles, asked for by whoever may only ask.
+            "GET /api/roles/assignable": when(["employees.assign_role", "employees.request_role"], "const picksRole = !!access.changeRole && (!seeing || access.changeRole === 'ask')",
+                profile(": can('employees.assign_role') ? 'assign'"), ASKS_ROLE),
+            "GET /api/role-requests": when("employees.request_role", "useSWR(access.changeRole === 'ask' ? `/api/role-requests?userId=", ASKS_ROLE),
+            "POST /api/role-requests": when("employees.request_role", ASKS_ROLE),
+            "GET /api/companies": superAdmin("if (userRole === 'SUPER_ADMIN') {", "fetchCompanies()"),
+        },
+    },
+    "cash-advances/[userId]": {
+        // Someone's cash advance, from Costs; one's own is cash-advances/mine.
+        opens: ["cash_advances.view"],
+        asks: {
+            "GET /api/cash-advances/[x]": { needs: ["cash_advances.view"], routeChecks: "lib/services/cash-advance.service.ts" },
+            // Giving and moving, for whoever gives, as the server says.
+            "POST /api/cash-advances/[x]": when("cash_advances.give", "const giving = advance.canGive && (", { in: "lib/services/cash-advance.service.ts", code: 'canGive: can(user, "cash_advances.give", target),' }),
+            "GET /api/cash-advances/[x]/purposes": when("cash_advances.give", "const giving = advance.canGive && (", { in: "lib/services/cash-advance.service.ts", code: 'canGive: can(user, "cash_advances.give", target),' }),
+            "POST /api/cash-advances/[x]/move": when("cash_advances.give", "const canMove = advance.canGive && !mine", { in: "lib/services/cash-advance.service.ts", code: 'canGive: can(user, "cash_advances.give", target),' }),
+            // What they're owed, paid with what's given: the server says what's owed only to whoever pays.
+            "POST /api/tasks/payment/bulk": when("tasks.pay", "const paying = owed && payOwed === 'yes' ? owed : null", { in: "lib/services/costs-query.ts", code: 'if (!can(user, "tasks.pay")) return null' }),
+            // Confirming receipt is on one's own page alone.
+            "POST /api/cash-advances/entries/[x]/confirm": notHere("const confirmButton = (e: AdvanceEntry) => mine && awaitingOf(e) && (", "return <CashAdvanceHistory userId={userId} />"),
+            "POST /api/upload": ANYONE,
+            "GET /api/realtime/token": ANYONE,
+        },
+    },
+    "roles-and-access": {
+        // A company's own: its role change requests and access reviews. The Super Admin answers both from their own pages.
+        opens: ["employees.assign_role"],
+        asks: {
+            "GET /api/role-change-requests": { needs: ["employees.assign_role"], routeChecks: "lib/services/role-change-request.service.ts" },
+            "POST /api/role-change-requests": { needs: ["employees.assign_role"], routeChecks: "lib/services/role-change-request.service.ts" },
+            "GET /api/roles/assignable": needs("employees.assign_role"),
+            "PUT /api/role-change-requests/[x]": { superAdmin: ["end={side === 'superAdmin' && r.status === 'OPEN' && ("], routeChecks: "lib/services/role-change-request.service.ts" },
+            "GET /api/access-reviews": { needs: ["employees.assign_role"], routeChecks: "lib/services/access-review.service.ts" },
+            "PUT /api/access-reviews/lines/[x]": { needs: ["employees.assign_role"], routeChecks: "lib/services/access-review.service.ts" },
+            "GET /api/roles": ROLES_CARD_HELPER,
+            "POST /api/roles": ROLES_CARD_HELPER,
+            "PUT /api/roles": ROLES_CARD_HELPER,
+            "DELETE /api/roles": ROLES_CARD_HELPER,
+            "PUT /api/roles/default": ROLES_CARD_HELPER,
+            "GET /api/roles/export": ROLES_CARD_HELPER,
+            "GET /api/role-templates": ROLES_CARD_HELPER,
+            "POST /api/roles/copy": ROLES_CARD_HELPER,
+            "GET /api/companies": ROLES_CARD_HELPER,
+            "PUT /api/access-reviews/settings": ROLES_CARD_HELPER,
         },
     },
     "tasks/new": {
@@ -433,7 +500,7 @@ const SCREENS: Record<string, Screen> = {
 const LATER = [
     // The home page.
     "",
-    "attendance", "cash-advances/[userId]", "check-in", "employees/[id]", "roles-and-access",
+    "attendance", "check-in",
     "settings", "settings/client-messages/[kind]", "settings/terminal-guide",
 ]
 
