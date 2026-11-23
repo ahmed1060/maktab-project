@@ -10,6 +10,7 @@ import { clientAccountHasEmail, isEmailClash } from "@/lib/account-email"
 import { generateTempPassword } from "@/lib/generate-password"
 
 import { CreateUserInput, UpdateUserInput } from "../validations/user.schema"
+import { arabicBeside } from "@/lib/names"
 import { calendarMonth, calendarYear, DEFAULT_TIME_ZONE } from "@/lib/time"
 import { effectiveFromChoice } from "@/lib/salary-history"
 import { checkTeamAssignment, clearsOwnLeader, stripsLeadership } from "@/lib/team-assignment"
@@ -55,7 +56,7 @@ async function keepAsWritten(tx: Prisma.TransactionClient, table: 'User' | 'Supe
 export class UserService {
     static async create(input: CreateUserInput, session: any) {
         const userRole = session.user.role
-        const { firstName, lastName, email, password, role, roleId, gender, companyId, username } = input
+        const { firstName, lastName, firstNameAr, lastNameAr, email, password, role, roleId, gender, companyId, username } = input
         // Each of these is its own permission, as it is when editing somebody
         // (update() below): creating an account is not a way round them. What
         // the creator may not set is not written, as an edit leaves it; the
@@ -192,6 +193,10 @@ export class UserService {
             const created = await tx.user.create({
                 data: {
                     firstName, lastName, email, username: name, password: hashedPassword,
+                    // Their names in Arabic (LATER_CHANGES_PLAN.md §3, PR 398), or
+                    // the names themselves where they're written in Arabic.
+                    firstNameAr: arabicBeside(firstName, firstNameAr) ?? null,
+                    lastNameAr: arabicBeside(lastName, lastNameAr) ?? null,
                     ...assignment, status: 'OFFLINE', gender: gender || 'MALE', companyId: targetCompanyId,
                     teamLeaderId: teamLeaderId || null,
                     salary: salary || 0,
@@ -264,7 +269,7 @@ export class UserService {
      */
     static async update(input: UpdateUserInput, session: any, from?: { sid?: unknown; sessionVersion?: unknown } | null) {
         const userRole = session.user.role
-        const { id, firstName, lastName, email, password, currentPassword, confirmPassword, role, roleId, actingUntil, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username, status, teamLeaderId, reassignReportsTo, whatsappNumber: typedWhatsApp } = input
+        const { id, firstName, lastName, firstNameAr, lastNameAr, email, password, currentPassword, confirmPassword, role, roleId, actingUntil, gender, salary, companyId, avatar, dayOffCredit, baseDayOffCredit, username, status, teamLeaderId, reassignReportsTo, whatsappNumber: typedWhatsApp } = input
 
         const regularUser = await prisma.user.findUnique({ where: { id } })
         const superAdminUser = !regularUser ? await prisma.superAdmin.findUnique({ where: { id } }) : null
@@ -317,8 +322,12 @@ export class UserService {
         }
 
         // 1. Name Change Restrictions
+        // Their names in Arabic too (LATER_CHANGES_PLAN.md §3, PR 398): the
+        // ones they have, sent back with the rest of the profile, are no change.
+        const changes = (sent: string | undefined, kept: string | null) => sent !== undefined && sent !== kept
         if (isSelf && regularUser && ['EMPLOYEE', 'TEAM_LEADER'].includes(regularUser.role)) {
-            if ((firstName && firstName !== regularUser.firstName) || (lastName && lastName !== regularUser.lastName)) {
+            if ((firstName && firstName !== regularUser.firstName) || (lastName && lastName !== regularUser.lastName)
+                || changes(firstNameAr, regularUser.firstNameAr) || changes(lastNameAr, regularUser.lastNameAr)) {
                 throw new Error("NAME_CHANGE_REQUIRES_ADMIN")
             }
         }
@@ -326,6 +335,14 @@ export class UserService {
         // 2. Basic Data
         if (firstName) updateData.firstName = firstName
         if (lastName) updateData.lastName = lastName
+        // Their names in Arabic, or a name itself changed in Arabic by a form
+        // that asks for one name only. A Super Admin's name is kept once.
+        if (regularUser) {
+            const firstAr = arabicBeside(firstName || undefined, firstNameAr)
+            const lastAr = arabicBeside(lastName || undefined, lastNameAr)
+            if (firstAr !== undefined) updateData.firstNameAr = firstAr
+            if (lastAr !== undefined) updateData.lastNameAr = lastAr
+        }
         if (email) {
             const currentEmail = regularUser?.email ?? superAdminUser?.email
             if (email !== currentEmail) {

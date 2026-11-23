@@ -5,6 +5,7 @@ import { checkTimeZone } from "@/lib/timezone"
 import { ELIGIBLE_SETTINGS_TABS } from "@/lib/company-settings-access"
 import { brandColourSchema } from "./brand-colour.schema"
 import { CODE_PATTERN } from "@/lib/username-code"
+import { arabicName } from "./arabic-name.schema"
 
 // A company's username code (lib/username-code.ts): 2 to 8 English letters,
 // kept in lower case however it was typed.
@@ -17,6 +18,9 @@ export const trialPresetSchema = z.enum(['TWO_DAYS', 'SEVEN_DAYS', 'FOURTEEN_DAY
 
 export const createCompanySchema = z.object({
     name: z.string().min(2, "Company name must be at least 2 characters").max(50),
+    // Its name in Arabic (LATER_CHANGES_PLAN.md §3, PR 398), beside the
+    // English one above; not yet asked for.
+    nameAr: arabicName(2, 50).optional(),
     // Optional so an existing client that does not send it still works; the
     // service supplies the default rather than leaving the company with no
     // trial at all.
@@ -31,6 +35,7 @@ export const createCompanySchema = z.object({
 export const updateCompanySchema = z.object({
     id: z.string().min(1, "Company ID is required"),
     name: z.string().min(2).max(50).optional(),
+    nameAr: arabicName(2, 50).optional(),
     // Changes only until the company's first username is given.
     usernameCode: usernameCodeSchema.optional(),
     isBanned: z.boolean().optional(),

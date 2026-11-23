@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { optional } from "@/lib/notice"
 import { can } from "@/lib/permissions/can"
 import { CreateProfileRequestInput } from "../validations/profile.schema"
+import { arabicBeside } from "@/lib/names"
 
 export class ProfileService {
     static async getMany(where: any, skip: number, take: number) {
@@ -71,10 +72,18 @@ export class ProfileService {
         const person = await personTarget(request.userId)
         if (!person || !can(session.user, "profile_requests.review", person)) throw new Error("OWN_REQUEST")
 
+        // A name changed in Arabic is its Arabic too (LATER_CHANGES_PLAN.md
+        // §3, PR 398); one changed in English leaves the Arabic as it is.
+        const firstNameAr = arabicBeside(request.newFirstName, undefined)
+        const lastNameAr = arabicBeside(request.newLastName, undefined)
         return await prisma.$transaction(async (tx) => {
             await tx.user.update({
                 where: { id: request.userId },
-                data: { firstName: request.newFirstName, lastName: request.newLastName }
+                data: {
+                    firstName: request.newFirstName, lastName: request.newLastName,
+                    ...(firstNameAr !== undefined && { firstNameAr }),
+                    ...(lastNameAr !== undefined && { lastNameAr }),
+                }
             })
             await tx.profileUpdateRequest.update({
                 where: { id },

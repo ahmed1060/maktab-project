@@ -3,6 +3,7 @@ import { CreateClientInput, UpdateClientInput } from "../validations/client.sche
 import { can } from "@/lib/permissions/can"
 import { googleMapsLink } from "@/lib/attendance/geo"
 import { LocationService } from "./location.service"
+import { arabicBeside } from "@/lib/names"
 
 export class ClientService {
     static async create(input: CreateClientInput, session: any) {
@@ -10,7 +11,7 @@ export class ClientService {
         const userId = session.user.id
         const userCompanyId = (session.user as any).companyId
 
-        const { name, ownerName, mobileNumber, hq, companyId } = input
+        const { name, ownerName, nameAr, ownerNameAr, mobileNumber, hq, companyId } = input
 
         let targetCompanyId = userCompanyId
         if (userRole === 'SUPER_ADMIN') {
@@ -30,6 +31,10 @@ export class ClientService {
                 data: {
                     name,
                     ownerName,
+                    // Its names in Arabic (LATER_CHANGES_PLAN.md §3, PR 398), or
+                    // the names themselves where they're written in Arabic.
+                    nameAr: arabicBeside(name, nameAr) ?? null,
+                    ownerNameAr: arabicBeside(ownerName, ownerNameAr) ?? null,
                     mobileNumber,
                     // Its HQ's, which the task form copies into a new task
                     // until step 2 (LocationService.saveHq keeps them so).
@@ -67,7 +72,12 @@ export class ClientService {
 
         const { hq, ...fields } = rest
         // Restoring is ClientService.restore's, never a side effect of an edit.
-        const details = { name: fields.name, ownerName: fields.ownerName, mobileNumber: fields.mobileNumber }
+        const details = {
+            name: fields.name, ownerName: fields.ownerName, mobileNumber: fields.mobileNumber,
+            // Its names in Arabic, or a name itself changed in Arabic.
+            nameAr: arabicBeside(fields.name, fields.nameAr),
+            ownerNameAr: arabicBeside(fields.ownerName, fields.ownerNameAr),
+        }
         const { AuditLogService } = await import("./audit-log.service")
         return prisma.$transaction(async tx => {
             await tx.client.update({ where: { id }, data: details })

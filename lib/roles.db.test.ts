@@ -151,6 +151,10 @@ const WHATSAPP_NUMBER = "20270111000000_user_whatsapp_number"
 // Company.taxUpdateEmails, the update email's switch, which every read of a
 // company's whole row now carries (CLIENT_PORTAL_PLAN.md §4.4, step 11a, PR 350).
 const TAX_UPDATE_EMAILS = "20270115000000_company_tax_update_emails"
+// User.firstNameAr and lastNameAr, and Company.nameAr, which hiring and a new
+// company write, and every read of a person's or a company's whole row now
+// carries (LATER_CHANGES_PLAN.md §3, step 1, PR 398).
+const NAMES_IN_ARABIC = "20270119000000_names_in_arabic"
 // Given to a new company's built-in roles only: no migration gives it to the
 // companies there before it, as none was when it came (CLIENT_PORTAL_PLAN.md
 // §9, §12 step 10d, skipped on 2026-11-20; PR 348).
@@ -233,6 +237,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(CLIENT_ACCOUNTS_GRANTED))
         await db.query(sql(WHATSAPP_NUMBER))
         await db.query(sql(TAX_UPDATE_EMAILS))
+        await db.query(sql(NAMES_IN_ARABIC))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).

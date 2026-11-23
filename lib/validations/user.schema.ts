@@ -2,10 +2,15 @@ import { z } from "zod"
 import { partialWithoutDefaults } from "./partial-update"
 import { usernameSchema } from "./username.schema"
 import { NAME_MAX, PASSWORD_MAX, PASSWORD_MIN } from "@/lib/new-employee-form"
+import { arabicName } from "./arabic-name.schema"
 
 export const createUserSchema = z.object({
     firstName: z.string().min(1).max(NAME_MAX, "First name too long"),
     lastName: z.string().min(1).max(NAME_MAX, "Last name too long"),
+    // Their names in Arabic (LATER_CHANGES_PLAN.md §3, PR 398), beside the
+    // English ones above; not yet asked for.
+    firstNameAr: arabicName(1, NAME_MAX).optional(),
+    lastNameAr: arabicName(1, NAME_MAX).optional(),
     // F-15: was a regex requiring `user(20)@domain(10).com` — rejected
     // most real addresses (anything not .com, any local part over 20
     // chars, any domain label over 10). A proper email format check plus a

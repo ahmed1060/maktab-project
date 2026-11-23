@@ -146,6 +146,10 @@ model Package {
 model Company {
   id                   String                    @id @default(uuid())
   name                 String                    @unique
+  /// Its name in Arabic (LATER_CHANGES_PLAN.md §3, PR 398), `name` keeping
+  /// the English. One written in Arabic before is in `name` still, copied
+  /// here; its Arabic letters say it has no English yet (lib/names.ts).
+  nameAr               String?                   @unique
   isBanned             Boolean                   @default(false)
   // Company Settings: whether a submitted task location auto-verifies
   // against the task's target location at all, for any task belonging to
@@ -485,6 +489,12 @@ model User {
   password                   String
   firstName                  String
   lastName                   String
+  /// Their names in Arabic (LATER_CHANGES_PLAN.md §3, PR 398), `firstName`
+  /// and `lastName` keeping the English. One written in Arabic before is
+  /// there still, copied here; its Arabic letters say it has no English yet
+  /// (lib/names.ts).
+  firstNameAr                String?
+  lastNameAr                 String?
   role                       UserRole
   avatar                     String?
   gender                     String                  @default("MALE")
@@ -1244,6 +1254,12 @@ model Client {
   companyId    String
   name         String
   ownerName    String
+  /// Its name and its owner's in Arabic (LATER_CHANGES_PLAN.md §3, PR 398),
+  /// `name` and `ownerName` keeping the English. One written in Arabic
+  /// before is there still, copied here; its Arabic letters say it has no
+  /// English yet (lib/names.ts).
+  nameAr       String?
+  ownerNameAr  String?
   mobileNumber String
   // Mirrors Task.location's {name, link} shape (stored there as JSON text)
   // so copying a client's location into a task at creation time is a direct
@@ -1279,6 +1295,7 @@ model Client {
   responsibleAccountant   User?    @relation("ClientAccountant", fields: [responsibleAccountantId], references: [id], onDelete: SetNull)
 
   @@unique([name, companyId])
+  @@unique([nameAr, companyId])
   @@index([companyId])
   @@index([responsibleAccountantId])
 }
