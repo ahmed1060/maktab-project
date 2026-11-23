@@ -1788,7 +1788,8 @@
   min-width: 0;
 }
 .ui-perm-main > .ui-badge,
-.ui-perm-main > .ui-choice-hint {
+.ui-perm-main > .ui-choice-hint,
+.ui-perm-main > .ui-btn {
   margin-block-start: 0;
   margin-inline-start: calc(18px + var(--space-2));
 }

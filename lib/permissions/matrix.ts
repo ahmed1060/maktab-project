@@ -156,6 +156,39 @@ export function needsFirst(grants: Grants, permission: Permission): UnmetNeed[] 
     return unmetNeeds({ ...grants, [permission]: grants[permission] ?? widestScope(permission) }).filter(u => u.permission === permission)
 }
 
+const SCOPE_ORDER: readonly Scope[] = ["OWN", "TEAM", "COMPANY"]
+
+/**
+ * A role saved before rule 1, fixed in the role editor (LATER_CHANGES_PLAN.md
+ * §5.1 rule 4, PR 375): what `permission` needs from another area, ticked at
+ * the narrowest scope at least as wide as it's held. A tick, as setGrant: the
+ * form changes, and Save is the confirmation.
+ */
+export function withNeed(grants: Grants, permission: Permission, needs: Permission): Grants {
+    const scope = narrowestAtLeast(PERMISSIONS[needs].scopes as readonly Scope[], grants[permission] ?? widestScope(permission))
+    return setGrant(grants, needs, scope ?? widestScope(needs))
+}
+
+/**
+ * The narrowest of `scopes` at least as wide as `scope`, or none. Today every
+ * need is the company's, so it's the widest; a need offered for a team, for a
+ * permission held for one, would widen nobody further than that (PR 375).
+ */
+export function narrowestAtLeast(scopes: readonly Scope[], scope: Scope): Scope | undefined {
+    return scopes.find(s => SCOPE_ORDER.indexOf(s) >= SCOPE_ORDER.indexOf(scope))
+}
+
+/**
+ * What a role or template saved before still needs from another area, a line
+ * for each, for the Super Admin's lists (rule 4, PR 375): "Create tasks needs
+ * See locations first". Empty for one that meets rule 1.
+ */
+export function unmetLines(t: (key: TranslationKey) => string, rows: readonly { permission: string; scope: string }[]): string[] {
+    return unmetNeeds(fromRows(rows)).map(u => t(u.companyWide ? "roles_unmet_line_company" : "roles_unmet_line")
+        .replace("{permission}", t(permissionLabelKey(u.permission)))
+        .replace("{name}", t(permissionLabelKey(u.needs))))
+}
+
 /** The rows where two sets of grants differ — a company role against its template. */
 export function drift(grants: Grants, template: Grants): Set<Permission> {
     const out = new Set<Permission>()

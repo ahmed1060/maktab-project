@@ -362,7 +362,15 @@ They work together, each for a different case.
    rule 1 says what's missing ("Can't place a task file's tasks: needs
    *See locations*"), with a button that adds it once the Super Admin
    confirms; the Super Admin's roles list shows which roles need it.
-   Nothing widens anyone's access on its own.
+   Nothing widens anyone's access on its own. As built in #375:
+   - The company's roles, and the role templates, mark each that breaks
+     rule 1 with a "Needs a permission" badge in the Problem colour, and
+     a line for each need: "Create tasks needs *See locations* first".
+   - In the role editor, the row, ticked and in red since #372, has a
+     button beside its note, "Add *See locations*", which ticks it, at
+     the narrowest scope that's wide enough. It changes the form only:
+     Save, with what it reaches, is the Super Admin's confirmation, and
+     nothing is written until then.
 5. **People pickers: names only.** The four pickers that hand work to
    someone (Add obligation, reassigning one, Create task, and
    reassigning or transferring a task) ask a list of their own instead of
@@ -409,7 +417,7 @@ there:
 3. **The rules in the role editor and on the server** (rules 1 to 3),
    one PR each: rule 1 first (#372), as it's the one that refuses a
    save; then rule 3's warning (#373); then rule 2's notes (#374).
-4. **Roles already saved** (rule 4), after a read-only count of the
+4. **Roles already saved** (rule 4, #375), after a read-only count of the
    roles in production that break a rule. Counted on 2026-11-22, before
    #372: of the 3 roles in production, none breaks rule 1, and there are
    no templates.
@@ -600,3 +608,7 @@ permission bringing "See obligations". None found missing.
   also lets a row another one needs be unticked, asking first, where it
   was greyed: rule 1's needed rows too, as #372 kept them as rule 2's
   were.
+- **2026-11-23:** #374 merged, and step 3 is done. Step 4 is next, as
+  #375. Counted again, read-only: of production's 3 roles, still none
+  breaks rule 1, and there are no templates, so nothing shows the mark
+  today.

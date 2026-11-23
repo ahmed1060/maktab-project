@@ -9,12 +9,13 @@ import DeleteTemplateDialog from '@/components/DeleteTemplateDialog'
 import TemplateOfferModal from '@/components/TemplateOfferModal'
 import RoleEditorModal, { type RoleSubmission, type Template } from '@/components/RoleEditorModal'
 import { refusalOf } from '@/components/CompanyRolesCard'
-import { Button, EmptyState, Page, PageHeader, Row, RowMenu, Rows, type MenuItem } from '@/components/ui'
+import { Button, EmptyState, Page, PageHeader, Row, RowMenu, Rows, StatusBadge, type MenuItem } from '@/components/ui'
 import { useToast } from '@/context/ToastContext'
 import { useLanguage } from '@/context/LanguageContext'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { BUILT_IN_LABEL } from '@/lib/role-label'
 import { countOf } from '@/lib/plural'
+import { unmetLines } from '@/lib/permissions/matrix'
 
 /**
  * Role templates (ROLES_PLAN.md §6.1): the Super Admin's library of roles to
@@ -116,19 +117,23 @@ export default function RoleTemplatesPage() {
             ) : (
                 // A panel of rows: a card with no title kept its padding above them (audit on part 1).
                 <Rows label={t('role_templates_title')}>
-                        {templates.map(template => (
-                            <Row
-                                key={template.id}
-                                title={<bdi>{template.name}</bdi>}
-                                detail={facts([
-                                    t('roles_based_on').replace('{role}', t(BUILT_IN_LABEL[template.baseRole])),
-                                    countOf(t, locale, template.grants.length, 'permissions'),
-                                ])}
-                                // Written in either language: kept in its own direction (audit on part 1).
-                                note={template.description && <bdi>{template.description}</bdi>}
-                                end={<RowMenu label={t('ui_more_actions_for').replace('{name}', template.name)} tooltip={t('ui_more_actions')} items={menu(template)} />}
-                            />
-                        ))}
+                        {templates.map(template => {
+                            // Saved before rule 1, and what it still needs (PR 375).
+                            const unmet = unmetLines(t, template.grants)
+                            return (
+                                <Row
+                                    key={template.id}
+                                    title={<><bdi>{template.name}</bdi>{unmet.length > 0 && <>{' '}<StatusBadge tone="problem">{t('roles_needs_fixing')}</StatusBadge></>}</>}
+                                    detail={facts([
+                                        t('roles_based_on').replace('{role}', t(BUILT_IN_LABEL[template.baseRole])),
+                                        countOf(t, locale, template.grants.length, 'permissions'),
+                                    ])}
+                                    // Written in either language: kept in its own direction (audit on part 1).
+                                    note={[...unmet, template.description && <bdi>{template.description}</bdi>]}
+                                    end={<RowMenu label={t('ui_more_actions_for').replace('{name}', template.name)} tooltip={t('ui_more_actions')} items={menu(template)} />}
+                                />
+                            )
+                        })}
                 </Rows>
             )}
 
