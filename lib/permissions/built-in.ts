@@ -124,8 +124,12 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // A client's people who sign in to the client portal
         // (CLIENT_PORTAL_PLAN.md §9): a new company's since PR 322, and
         // given to the companies there already by PR 330's migration, once
-        // PR 322's role editor, which knows it, was live.
-        "client_accounts.manage": "COMPANY",
+        // PR 322's role editor, which knows it, was live. Split from
+        // client_accounts.manage since PR 381, read as these three until the
+        // grant for them.
+        "client_accounts.view": "COMPANY",
+        "client_accounts.invite": "COMPANY",
+        "client_accounts.remove": "COMPANY",
         // The company's own copy of the client messages on WhatsApp
         // (CLIENT_PORTAL_PLAN.md §7.1, §9): a new company's since PR 348. No
         // migration gives it to the companies there before it (step 10d,

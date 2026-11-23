@@ -265,7 +265,10 @@ them, as today.
 | | `locations.add` | Renamed `locations.create` (#378), as a split into one: nothing checks it, and it isn't offered; a role still holding it is read as holding `locations.create`, until the grant for companies already there | — |
 | **Client portal** | `tax.view` | See a client's tax position on its page, and its tax position statement, in a company whose package has the client portal — implies `clients.view` (`CLIENT_PORTAL_PLAN.md` §8, §9) | `GET /tax-claims`; the page `/dashboard/clients/[id]/tax-statement` |
 | | `tax.manage` | Update a client's tax position by uploading the Tax Authority portal's file, which replaces its claims — implies `tax.view` (`CLIENT_PORTAL_PLAN.md` §4.1, §9) | `GET`, `POST /tax-claims/upload` |
-| | `client_accounts.manage` | List, add and remove the people of a client who sign in to the client portal — **lets people from outside the company in**, high-risk (§6.15); implies `clients.view` (`CLIENT_PORTAL_PLAN.md` §5.2, §9) | `GET`, `POST /client-accounts`, `DELETE /client-accounts/[id]` |
+| | `client_accounts.view` | See a client's people who sign in to the client portal, on its page, and how many go with it where Delete permanently names them; implies `clients.view` (#381, split from `client_accounts.manage`, `LATER_CHANGES_PLAN.md` §2) | `GET /client-accounts` |
+| | `client_accounts.invite` | Add one of a client's people, as invited, and send their invitation again — **lets people from outside the company in**, high-risk (§6.15); implies `client_accounts.view` (#381) | `POST /client-accounts`, `POST /client-accounts/[id]/invitation` |
+| | `client_accounts.remove` | Remove one of a client's people, taking their sign-in away; not high-risk, as it takes access away; implies `client_accounts.view` (#381) | `DELETE /client-accounts/[id]` |
+| | `client_accounts.manage` | Split into the three above (#381): nothing checks it, and it isn't offered; a role still holding it is read as holding all three, until the grant for companies already there. Was: list, add and remove the people of a client who sign in to the client portal, high-risk, implying `clients.view` (`CLIENT_PORTAL_PLAN.md` §5.2, §9) | — |
 | | `client_messages.manage` | Change the company's copy of the client messages on WhatsApp, and go back to Nizmo's, and turn the update email on or off; implies nothing, as the Client portal tab shows to whoever holds it (`CLIENT_PORTAL_PLAN.md` §7.1, §9) | `GET /company-messages`, `PUT`, `DELETE /company-messages/[kind]/[language]`, `DELETE /company-messages/[kind]`, `GET`, `PUT /company-messages/emails` |
 | **Costs** | `costs.view` | See costs, including a person's cost history | `users/[id]/costs-history` |
 | | `charges.view` | See the costs charged to a task's client, on the Charged to clients tab and a client's page (`CLIENTS_PLAN.md` §6.6) | `GET /charges`, `GET /charges/statement` |
@@ -835,15 +838,18 @@ advances (`CLIENTS_PLAN.md` §7.7), and `attendance.manage_terminals`,
 setting up fingerprint terminals (`ATTENDANCE_PLAN.md` §17.10, round 9;
 Phase 4, part 2, built in #277, with the built-in Admin's grant for the
 companies already there in #278). One lets people from outside the
-company in: `client_accounts.manage`, managing the people of a client
+company in: `client_accounts.invite`, inviting the people of a client
 who sign in to the client portal (`CLIENT_PORTAL_PLAN.md` §9, built in
-#322, with the built-in Admin's grant for the companies already there in
-#330). The catalogue (`lib/permissions/catalogue.ts`, `highRisk`) is the
-list the code checks.
+#322 as part of `client_accounts.manage`, with the built-in Admin's grant
+for the companies already there in #330, and split from it in #381). The
+catalogue (`lib/permissions/catalogue.ts`, `highRisk`) is the list the
+code checks.
 
 Adding one of a client's people is what lets someone in, so
-`client_accounts.manage` is marked "lets outsiders in". Adding one and
-removing one ask for the code; listing a client's people doesn't.
+`client_accounts.invite` is marked "lets outsiders in". Adding one and
+sending their invitation again ask for the code; listing a client's people
+doesn't, and since #381 removing one, `client_accounts.remove`, which
+takes access away, doesn't either.
 
 An agent's code or a terminal's address lets punches into attendance, and
 so into pay, so `attendance.manage_terminals` is marked "affects pay". The

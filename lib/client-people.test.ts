@@ -24,9 +24,9 @@ describe("a person's row", () => {
         expect(personStatus({ ...active, lastSignInAt: null })).toEqual({ kind: "never" })
     })
 
-    it("offers Resend invitation only to someone still invited, and Remove to everyone", () => {
-        expect(personActions(invited)).toEqual(["resend", "remove"])
-        expect(personActions(active)).toEqual(["remove"])
+    it("offers Resend invitation only to someone still invited, and Remove to everyone, to whoever may do each (PR 381)", () => {
+        expect(personActions(invited, { invite: true, remove: true })).toEqual(["resend", "remove"])
+        expect(personActions(active, { invite: true, remove: true })).toEqual(["remove"])
     })
 
     it("reads a client's people from the route that lists them", () => {
@@ -79,7 +79,7 @@ describe("the section on a client's page", () => {
     const page = () => readFileSync("app/(dashboard)/dashboard/clients/[id]/page.tsx", "utf8")
 
     it("is for whoever may manage a client's people, where the package has the client portal", () => {
-        expect(page()).toContain("const seesPeople = features.has('TAX_POSITION') && can('client_accounts.manage')")
+        expect(page()).toContain("const seesPeople = features.has('TAX_POSITION') && can('client_accounts.view')")
         expect(page()).toMatch(/\{seesPeople && <ClientPeople key=\{`people-\$\{id\}`\} clientId=\{id\} archived=\{archived\} \/>\}/)
     })
 

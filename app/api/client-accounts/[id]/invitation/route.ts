@@ -19,8 +19,8 @@ export const maxDuration = 60
  * fills with them. The link is to Nizmo's own address (lib/app-origin.ts).
  */
 export const POST = withStandardHandler(async (req, session, _json, { params }) => {
-    await assertStepUp(session, "client_accounts.manage")
+    await assertStepUp(session, "client_accounts.invite")
     const { limited, resetAt } = await RateLimiter.getLimitData(`invitation-resend:${params.id}`, 5, 60 * 60 * 1000)
     if (limited) return resetHeldBack(resetAt)
     return ApiResponse.success(await resendClientInvitation(session.user as any, params.id, new Date(), appOrigin(req.url)))
-}, { permission: "client_accounts.manage" })
+}, { permission: "client_accounts.invite" })

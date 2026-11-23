@@ -67,6 +67,8 @@ const LOCATION_COMPANY = "const pickCompany = choosing && sharedChosen && superA
 const CHARGE_FEE = ["const canSet = can('charges.set')", ": !canSet ? [] : c.notCharged"]
 const CHARGE_COLLECT = ["const canCollect = can('charges.collect')", "{canCollect && offer && <Button"]
 const CHARGE_UNCOLLECT = ["const canCollect = can('charges.collect')", "? (canCollect ? [{ key: 'uncollect'"]
+// A client's people: seen with client_accounts.view, each change with its own part (PR 381).
+const PEOPLE_MAY = "const may = { invite: can('client_accounts.invite'), remove: can('client_accounts.remove') }"
 const LOCATION_CHANGE = ["const canEdit = can('locations.edit')", "const canArchive = can('locations.archive')", "locationActions(l, { edit: canEdit, archive: canArchive })"]
 
 const SCREENS: Record<string, Screen> = {
@@ -157,9 +159,9 @@ const SCREENS: Record<string, Screen> = {
             "POST /api/charges/collect": when("charges.collect", ...CHARGE_COLLECT),
             "POST /api/charges/[x]/uncollect": when("charges.collect", ...CHARGE_UNCOLLECT),
             "GET /api/tax-claims": when("tax.view", "const seesTax = features.has('TAX_POSITION') && can('tax.view')", "{seesTax && <TaxPosition"),
-            "POST /api/client-accounts": when("client_accounts.manage", "const seesPeople = features.has('TAX_POSITION') && can('client_accounts.manage')", "{seesPeople && <ClientPeople"),
-            "DELETE /api/client-accounts/[x]": when("client_accounts.manage", "const seesPeople = features.has('TAX_POSITION') && can('client_accounts.manage')", "{seesPeople && <ClientPeople"),
-            "POST /api/client-accounts/[x]/invitation": when("client_accounts.manage", "const seesPeople = features.has('TAX_POSITION') && can('client_accounts.manage')", "{seesPeople && <ClientPeople"),
+            "POST /api/client-accounts": when("client_accounts.invite", "const seesPeople = features.has('TAX_POSITION') && can('client_accounts.view')", "{seesPeople && <ClientPeople", PEOPLE_MAY),
+            "DELETE /api/client-accounts/[x]": when("client_accounts.remove", "const seesPeople = features.has('TAX_POSITION') && can('client_accounts.view')", "{seesPeople && <ClientPeople", PEOPLE_MAY),
+            "POST /api/client-accounts/[x]/invitation": when("client_accounts.invite", "const seesPeople = features.has('TAX_POSITION') && can('client_accounts.view')", "{seesPeople && <ClientPeople", PEOPLE_MAY),
             "GET /api/companies": superAdmin(LOCATION_COMPANY),
             "POST /api/upload": ANYONE,
             "GET /api/realtime/token": ANYONE,

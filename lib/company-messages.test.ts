@@ -46,7 +46,7 @@ describe("client_messages.manage (§9)", () => {
     })
 
     it("is under Client portal in the permission matrix, last, named in both languages as the mockup names it", () => {
-        expect(PERMISSION_GROUPS.find(g => g.key === "client_portal")?.permissions).toEqual(["tax.view", "tax.manage", "client_accounts.manage", PERMISSION])
+        expect(PERMISSION_GROUPS.find(g => g.key === "client_portal")?.permissions).toEqual(["tax.view", "tax.manage", "client_accounts.view", "client_accounts.invite", "client_accounts.remove", PERMISSION])
         expect((en as Record<string, string>)[permissionLabelKey(PERMISSION as never)]).toBe("Change client messages on WhatsApp")
         expect((ar as Record<string, string>)[permissionLabelKey(PERMISSION as never)]).toBe("تغيير رسائل العملاء على واتساب")
     })

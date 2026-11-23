@@ -11,12 +11,15 @@ import { fetcher } from '@/lib/swr-fetcher'
 import type { ClientPeople as People, ClientPerson } from '@/lib/client-accounts'
 import { clientPeopleUrl, personActions, personRefusal, personStatus, type PersonChange } from '@/lib/client-people'
 import { waitText } from '@/lib/login-errors'
+import { useCan } from '@/lib/useCan'
 import AddClientPerson from './AddClientPerson'
 
 /**
  * People who can sign in, on a client's page (CLIENT_PORTAL_PLAN.md §5.2,
  * step 6c-1, PR 326; DESIGN.md §5.5, People who can sign in): the client's
- * people who sign in to the client portal, for whoever may manage them.
+ * people who sign in to the client portal, for whoever may see them, with
+ * Add person for whoever may invite one and Remove for whoever may remove one
+ * (PR 381).
  * Each says when they last signed in, or that they're invited; Add person
  * invites one, and each row's menu sends their invitation again or removes
  * them. An archived client's people are listed, to be removed, and none is
@@ -34,6 +37,9 @@ export default function ClientPeople({ clientId, archived }: { clientId: string;
     const [adding, setAdding] = useState(false)
     const [removing, setRemoving] = useState<ClientPerson | null>(null)
     const people = data?.data
+    // Split from Manage who signs in (PR 381): inviting, and removing.
+    const { can } = useCan()
+    const may = { invite: can('client_accounts.invite'), remove: can('client_accounts.remove') }
 
     // When they were invited or last signed in: a moment, on the reader's calendar.
     const day = (iso: string) => formatMoment(iso, locale)
@@ -85,7 +91,7 @@ export default function ClientPeople({ clientId, archived }: { clientId: string;
         }
     }
 
-    const menu = (person: ClientPerson): MenuItem[] => personActions(person).map(action => action === 'resend'
+    const menu = (person: ClientPerson): MenuItem[] => personActions(person, may).map(action => action === 'resend'
         ? { key: 'resend', label: t('client_people_resend'), icon: ArrowClockwiseIcon, onSelect: () => { void resend(person) } }
         : { key: 'remove', label: t('client_people_remove'), icon: TrashIcon, danger: true, onSelect: () => setRemoving(person) })
 
@@ -96,7 +102,7 @@ export default function ClientPeople({ clientId, archived }: { clientId: string;
                 {status.kind === 'invited'
                     ? <StatusBadge tone="waiting">{t('client_people_invited')}</StatusBadge>
                     : <span className="ui-item-detail">{status.kind === 'last' ? t('client_people_last').replace('{day}', day(status.at)) : t('client_people_never')}</span>}
-                <RowMenu label={t('ui_more_actions_for').replace('{name}', person.name)} tooltip={t('ui_more_actions')} items={menu(person)} />
+                {menu(person).length > 0 && <RowMenu label={t('ui_more_actions_for').replace('{name}', person.name)} tooltip={t('ui_more_actions')} items={menu(person)} />}
             </span>
         )
     }
@@ -104,7 +110,7 @@ export default function ClientPeople({ clientId, archived }: { clientId: string;
     return (
         <Section
             title={t('client_people_title')}
-            action={!archived && people && <Button size="sm" icon={UserPlusIcon} onClick={() => setAdding(true)}>{t('client_people_add')}</Button>}
+            action={!archived && people && may.invite && <Button size="sm" icon={UserPlusIcon} onClick={() => setAdding(true)}>{t('client_people_add')}</Button>}
         >
             <p className="ui-hint">{t('client_people_line')}</p>
             {!people

@@ -21,20 +21,23 @@ import { ar } from "./translations/ar"
  */
 
 const PERMISSION = "client_accounts.manage"
+// Split by what is done since PR 381 (LATER_CHANGES_PLAN.md §2; lib/client-accounts-split.test.ts).
+const PARTS = ["client_accounts.view", "client_accounts.invite", "client_accounts.remove"] as const
+const INVITE = "client_accounts.invite"
 
 describe("client_accounts.manage (§9)", () => {
-    it("is company-wide, in the tax position's module, with seeing clients, and high-risk", () => {
+    it("was company-wide, in the tax position's module, with seeing clients, and high-risk; split into seeing, inviting and removing", () => {
         expect((PERMISSIONS as Record<string, unknown>)[PERMISSION]).toEqual({
-            code: 70, module: "TAX_POSITION", scopes: ["COMPANY"], implies: ["clients.view"], highRisk: "Lets outsiders in",
+            code: 70, module: "TAX_POSITION", scopes: ["COMPANY"], implies: ["clients.view"], highRisk: "Lets outsiders in", splitInto: PARTS,
         })
         expect(isPermission(PERMISSION)).toBe(true)
         expect(isReserved(PERMISSION as never)).toBe(false)
         expect(Object.values(PERMISSIONS).filter(p => p.code === 70)).toHaveLength(1)
     })
 
-    it("asks for the step-up confirmation, and says why on the role editor, in both languages", () => {
-        expect(isHighRisk(PERMISSION as never)).toBe(true)
-        const key = riskLabelKey(PERMISSION as never)
+    it("asks for the step-up confirmation to invite, and says why on the role editor, in both languages", () => {
+        expect(isHighRisk(INVITE)).toBe(true)
+        const key = riskLabelKey(INVITE)
         expect(key).toBe("risk_lets_outsiders_in")
         expect((en as Record<string, string>)[key!]).toBe("Lets outsiders in")
         expect((ar as Record<string, string>)[key!]).toBeTruthy()
@@ -53,32 +56,37 @@ describe("client_accounts.manage (§9)", () => {
         }
     })
 
-    it("brings seeing clients with it, and nothing of the tax position", () => {
+    it("brings seeing clients with its parts, and nothing of the tax position", () => {
         const verdict = normalizeGrants([{ permission: PERMISSION, scope: "COMPANY" }])
         expect(verdict.ok).toBe(true)
         if (!verdict.ok) return
-        expect(verdict.grants).toEqual({ [PERMISSION]: "COMPANY", "clients.view": "COMPANY" })
+        expect(verdict.grants).toEqual({ ...Object.fromEntries(PARTS.map(p => [p, "COMPANY"])), "clients.view": "COMPANY" })
     })
 
-    it("is under Client portal in the permission matrix, after the tax position's, named in both languages", () => {
-        expect(PERMISSION_GROUPS.find(g => g.key === "client_portal")?.permissions).toEqual(["tax.view", "tax.manage", PERMISSION, "client_messages.manage"])
-        for (const words of [en, ar] as Record<string, string>[]) expect(words[permissionLabelKey(PERMISSION as never)]).toBeTruthy()
+    it("is under Client portal in the permission matrix as its parts, after the tax position's, each named in both languages", () => {
+        expect(PERMISSION_GROUPS.find(g => g.key === "client_portal")?.permissions).toEqual(["tax.view", "tax.manage", ...PARTS, "client_messages.manage"])
+        for (const p of [PERMISSION, ...PARTS]) for (const words of [en, ar] as Record<string, string>[]) expect(words[permissionLabelKey(p as never)], p).toBeTruthy()
+        // Kept for what the audit log says of roles saved before the split.
         expect((en as Record<string, string>)[permissionLabelKey(PERMISSION as never)]).toBe("Manage who signs in for a client")
     })
 
-    it("is the built-in Admin's, and nobody else's until the Super Admin gives it", () => {
-        expect((BUILT_IN_GRANTS.ADMIN as Record<string, string>)[PERMISSION]).toBe("COMPANY")
-        expect((BUILT_IN_GRANTS.TEAM_LEADER as Record<string, string>)[PERMISSION]).toBeUndefined()
-        expect((BUILT_IN_GRANTS.EMPLOYEE as Record<string, string>)[PERMISSION]).toBeUndefined()
+    it("is the built-in Admin's, as its parts, and nobody else's until the Super Admin gives it", () => {
+        for (const p of PARTS) {
+            expect((BUILT_IN_GRANTS.ADMIN as Record<string, string>)[p], p).toBe("COMPANY")
+            expect((BUILT_IN_GRANTS.TEAM_LEADER as Record<string, string>)[p], p).toBeUndefined()
+            expect((BUILT_IN_GRANTS.EMPLOYEE as Record<string, string>)[p], p).toBeUndefined()
+        }
+        for (const role of Object.values(BUILT_IN_GRANTS)) expect((role as Record<string, string>)[PERMISSION]).toBeUndefined()
     })
 
-    it("is in the roles plan: in its table with its routes, and among the high-risk ones", () => {
+    it("is in the roles plan: each part in its table with its routes, and inviting among the high-risk ones", () => {
         const plan = readFileSync("ROLES_PLAN.md", "utf8")
-        const row = plan.split("\n").find(line => line.startsWith("|") && line.includes(`\`${PERMISSION}\``))
-        expect(row).toContain("`clients.view`")
-        expect(row).toContain("/client-accounts")
-        expect(row).toContain("high-risk")
-        expect(plan.slice(plan.indexOf("### 6.15"), plan.indexOf("- **Marked in the catalogue"))).toContain(`\`${PERMISSION}\``)
+        const row = (p: string) => plan.split("\n").find(line => line.startsWith("|") && line.includes(`| \`${p}\` |`))
+        expect(row("client_accounts.view")).toContain("`clients.view`")
+        expect(row(INVITE)).toContain("/client-accounts")
+        expect(row(INVITE)).toContain("high-risk")
+        expect(row("client_accounts.remove")).toContain("DELETE /client-accounts/[id]")
+        expect(plan.slice(plan.indexOf("### 6.15"), plan.indexOf("- **Marked in the catalogue"))).toContain(`\`${INVITE}\``)
     })
 })
 
@@ -91,20 +99,19 @@ describe("the routes (§5.2)", () => {
         expect(moduleForApiPath("/api/client-accounts/abc")).toBe("TAX_POSITION")
     })
 
-    it("list, add and remove, each for whoever holds the permission", () => {
-        expect(list()).toMatch(/export const GET = withStandardHandler\([\s\S]*?\{ permission: "client_accounts\.manage" \}\)/)
-        expect(list()).toMatch(/export const POST = withStandardHandler\([\s\S]*?\{ permission: "client_accounts\.manage" \}\)/)
-        expect(one()).toMatch(/export const DELETE = withStandardHandler\([\s\S]*?\{ permission: "client_accounts\.manage" \}\)/)
-        for (const source of [list(), one()]) expect(source.match(/withStandardHandler\(/g)!.length).toBe(source.match(/\{ permission: "client_accounts\.manage" \}\)/g)!.length)
+    it("list, add and remove, each for whoever holds its part (PR 381)", () => {
+        expect(list()).toMatch(/export const GET = withStandardHandler\([\s\S]*?\{ permission: "client_accounts\.view" \}\)/)
+        expect(list()).toMatch(/export const POST = withStandardHandler\([\s\S]*?\{ permission: "client_accounts\.invite" \}\)/)
+        expect(one()).toMatch(/export const DELETE = withStandardHandler\([\s\S]*?\{ permission: "client_accounts\.remove" \}\)/)
+        for (const source of [list(), one()]) expect(source.match(/withStandardHandler\(/g)!.length).toBe(source.match(/\{ permission: "client_accounts\.(view|invite|remove)" \}\)/g)!.length)
     })
 
-    it("ask for the step-up confirmation on adding and on removing, before anything is done, and not on listing", () => {
+    it("ask for the step-up confirmation on adding, before anything is done, and not on listing or removing", () => {
         const post = list().slice(list().indexOf("export const POST"))
-        expect(post).toContain('await assertStepUp(session, "client_accounts.manage")')
+        expect(post).toContain('await assertStepUp(session, "client_accounts.invite")')
         expect(post.indexOf("await assertStepUp")).toBeLessThan(post.indexOf("await addClientPerson"))
-        const remove = one().slice(one().indexOf("export const DELETE"))
-        expect(remove).toContain('await assertStepUp(session, "client_accounts.manage")')
-        expect(remove.indexOf("await assertStepUp")).toBeLessThan(remove.indexOf("await removeClientPerson"))
+        // Removing takes access away: not high-risk since PR 381.
+        expect(one()).not.toMatch(/await assertStepUp/)
         // Listing changes nothing.
         expect(list().slice(list().indexOf("export const GET"), list().indexOf("export const POST"))).not.toMatch(/await assertStepUp/)
     })
@@ -228,7 +235,8 @@ describe("Manage who signs in for a client, for the companies already there (§1
     it("a migration gives it to the built-in Admin role alone, company-wide", () => {
         const rows = [...sql().matchAll(/\('(\w+)', '([\w.]+)', '(\w+)'\)/g)].map(([, role, permission, scope]) => [role, permission, scope])
         expect(rows).toEqual([["ADMIN", PERMISSION, "COMPANY"]])
-        expect(BUILT_IN_GRANTS.ADMIN["client_accounts.manage"]).toBe("COMPANY")
+        // Read as its parts since PR 381, which the built-in Admin is seeded with.
+        for (const p of PARTS) expect(BUILT_IN_GRANTS.ADMIN[p], p).toBe("COMPANY")
         expect(BUILT_IN_GRANTS.TEAM_LEADER).not.toHaveProperty(PERMISSION)
         expect(BUILT_IN_GRANTS.EMPLOYEE).not.toHaveProperty(PERMISSION)
     })
@@ -250,7 +258,7 @@ describe("Manage who signs in for a client, for the companies already there (§1
     it("opens nothing by itself: the package still has to have the client portal, and adding someone still asks for the code", () => {
         expect(sql()).not.toMatch(/"Package"|"Company"|"ClientAccount"/)
         expect(moduleForApiPath("/api/client-accounts")).toBe("TAX_POSITION")
-        expect(isHighRisk(PERMISSION as never)).toBe(true)
+        expect(isHighRisk(INVITE)).toBe(true)
     })
 })
 

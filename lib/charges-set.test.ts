@@ -80,7 +80,8 @@ describe("the catalogue", () => {
     })
 
     it("goes up a version, so every session reloads its grants once", () => {
-        expect(CATALOGUE_VERSION).toBe(10)
+        // 10 for this; 11 since the client accounts split (PR 381).
+        expect(CATALOGUE_VERSION).toBeGreaterThanOrEqual(10)
     })
 
     it("seeds the built-in Admin with charges.set, and nobody with charges.manage", () => {

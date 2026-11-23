@@ -23,7 +23,8 @@ describe("the roles plan", () => {
     it("lists every high-risk permission under step-up confirmation", () => {
         const stepUp = section(ROLES, "### 6.15", "- **Marked in the catalogue")
         const highRisk = Object.entries(PERMISSIONS).filter(([, d]) => (d as { highRisk?: string }).highRisk).map(([p]) => p)
-        expect(highRisk.length).toBe(15)
+        // 16 since PR 381: client_accounts.invite, and client_accounts.manage, split into it, still marked.
+        expect(highRisk.length).toBe(16)
         for (const p of highRisk) expect(stepUp, p).toContain(`\`${p}\``)
     })
 
