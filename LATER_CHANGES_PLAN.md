@@ -404,15 +404,19 @@ They work together, each for a different case.
   so a screen that quietly needs another permission fails in CI. As
   built from #376 (`lib/screen-asks.test.ts`), a table checked against
   the code:
-  - For each screen, every call it makes, found in the page and the
-    components it uses, is in the table, and nothing else: a new call
-    fails until it's written down.
+  - For each screen, every call it makes, a method and a path, found in
+    the page and the components it uses, is in the table, and nothing
+    else: a new call, or a new method at a path already there, fails
+    until it's written down.
   - Each call is one of: **needed** whenever the screen is open, naming
-    the permissions its route answers; asked only **when** the screen
-    checks one first, as a button or a tab; open to **anyone** in the
-    company; or the **Super Admin's** only, such as the company picker.
-    The route, or a service it calls, names each permission the table
-    gives it, and the screen checks each "when".
+    the permissions its route answers; asked only **when** the viewer
+    holds one, quoting the code that decides it, in the screen or, where
+    the server gives a button what it needs only for its holders, in the
+    server; open to **anyone** in the company; or the **Super Admin's**
+    only, such as the company picker, with its code quoted too. That
+    method's handler, or a service it names, names each permission the
+    table gives it, and each quoted gate is in the code, naming its
+    permission.
   - A needed call is met by each permission that opens the screen:
     itself, one it brings (`implies`), or one it needs first
     (`requires`). Anything else fails, naming the screen and the call.
@@ -640,3 +644,8 @@ permission bringing "See obligations". None found missing.
   screen test the rules promised ("Kept true", §5.1), as step 5. Found
   to be about 280 calls on 45 company screens, it comes in parts: #376
   first, for the screens the remaining splits change.
+- **2026-11-23:** Codex on #376: one path can carry two calls needing
+  different permissions (reading a month's payroll, and saving it), and
+  a "when" checked only that its permission was named somewhere on the
+  screen. Each call is now a method and a path, and each "when" quotes
+  the code that decides it.
