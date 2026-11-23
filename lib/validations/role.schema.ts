@@ -15,6 +15,12 @@ const baseRole = z.enum(["ADMIN", "TEAM_LEADER", "EMPLOYEE"])
  * decision is always made on purpose and recorded.
  */
 const acknowledgeConflicts = z.boolean().optional()
+/**
+ * The Super Admin's "keep it this way" for a permission the grants newly
+ * hold that works with less without another (LATER_CHANGES_PLAN.md §5.1 rule
+ * 3, PR 373). Without it such a save is refused, as for a pair.
+ */
+const acknowledgeLess = z.boolean().optional()
 
 export const createRoleSchema = z.object({
     companyId: z.string().min(1),
@@ -26,6 +32,7 @@ export const createRoleSchema = z.object({
     baseRole: baseRole.optional(),
     grants: z.array(grant).max(200).optional(),
     acknowledgeConflicts,
+    acknowledgeLess,
 })
 
 export const updateRoleSchema = z.object({
@@ -38,6 +45,7 @@ export const updateRoleSchema = z.object({
     // them within a minute (§4.4). For a removal that must be instant.
     applyNow: z.boolean().optional(),
     acknowledgeConflicts,
+    acknowledgeLess,
 })
 
 export const createTemplateSchema = z.object({
@@ -46,6 +54,7 @@ export const createTemplateSchema = z.object({
     baseRole,
     grants: z.array(grant).max(200),
     acknowledgeConflicts,
+    acknowledgeLess,
 })
 
 export const updateTemplateSchema = z.object({
@@ -55,6 +64,7 @@ export const updateTemplateSchema = z.object({
     baseRole: baseRole.optional(),
     grants: z.array(grant).max(200).optional(),
     acknowledgeConflicts,
+    acknowledgeLess,
 })
 
 export type CreateRoleInput = z.infer<typeof createRoleSchema>

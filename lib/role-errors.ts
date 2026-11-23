@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { ApiResponse } from "@/lib/api-response"
-import { GrantsError, SeparationError } from "@/lib/services/role.service"
+import { GrantsError, LessError, SeparationError } from "@/lib/services/role.service"
 
 /**
  * What the role and template services refuse, as answers. Shared by the routes
@@ -10,6 +10,7 @@ export function roleErrorResponse(error: any) {
     if (error instanceof GrantsError) return ApiResponse.badRequest("Some permissions cannot be granted that way", { errors: error.errors })
     // The editor warns before saving; this is for a caller that did not look.
     if (error instanceof SeparationError) return ApiResponse.badRequest("This role would hold both sides of a separation-of-duties pair. Confirm to keep both.", { separationOfDuties: error.pairs })
+    if (error instanceof LessError) return ApiResponse.badRequest("Some of this role's permissions would work with less without another. Confirm to keep it this way.", { worksWithLess: error.missing })
     switch (error?.message) {
         case "ROLE_NOT_FOUND": return ApiResponse.notFound("Role not found")
         case "TEMPLATE_NOT_FOUND": return ApiResponse.notFound("Template not found")

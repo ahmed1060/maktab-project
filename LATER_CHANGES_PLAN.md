@@ -331,8 +331,20 @@ They work together, each for a different case.
    without another, but with less, is saved once the Super Admin confirms
    a warning naming what's missing, as the separation-of-duties pairs are
    (`ROLES_PLAN.md` §6.11). Example: "Create tasks" without "See
-   clients" saves with "This role can create tasks but can't pick a
-   client for them."
+   clients" saves with "Create tasks without See clients: no client can
+   be picked for a task." As built in #373:
+   - The role editor lists, under the matrix, each one the role holds,
+     in the Waiting on someone colour a warning takes (`DESIGN.md` §2.3).
+   - One that a save newly brings needs "I understand, keep it this way"
+     ticked. The server refuses it otherwise, as it does an
+     unacknowledged pair, and records the decision. One the role or
+     template held before isn't asked again.
+   - Held or not: how wide it's held doesn't count here, as scope is for
+     rules 1 and 2. A permission another held one brings with it carries
+     none, as for rule 1: "See salaries", brought by "See payroll", warns
+     of nothing.
+   - Applying a template and copying a company's roles don't ask again,
+     as for the pairs: it was decided when the template or role was saved.
 4. **Roles already saved: marked, and fixed by hand.** A role that breaks
    rule 1 says what's missing ("Can't place a task file's tasks: needs
    *See locations*"), with a button that adds it once the Super Admin
@@ -383,7 +395,7 @@ there:
    it.
 3. **The rules in the role editor and on the server** (rules 1 to 3),
    one PR each: rule 1 first (#372), as it's the one that refuses a
-   save; then rule 3's warning; then rule 2's notes.
+   save; then rule 3's warning (#373); then rule 2's notes.
 4. **Roles already saved** (rule 4), after a read-only count of the
    roles in production that break a rule. Counted on 2026-11-22, before
    #372: of the 3 roles in production, none breaks rule 1, and there are
@@ -436,7 +448,7 @@ permission bringing "See obligations". None found missing.
 | Permission | Without | It works, but |
 |---|---|---|
 | `tasks.create` | `clients.view` | no client can be picked for a task |
-| `salary.view` | `employees.view` | salaries show only on Attendance's days and exceptions |
+| `salary.view` | `employees.view` | salaries don't show on the Employees list or a profile, only where a page shows them without it, such as Attendance's days and exceptions |
 | `settings.edit` | `salary.view` | the attendance policy's preview shows days, not money |
 
 **Rule 5, the names-only list,** for four pickers, so none of them needs
@@ -563,3 +575,11 @@ permission bringing "See obligations". None found missing.
 - **2026-11-22:** #371 merged. Step 3 goes one rule at a time, rule 1
   first, as #372. A read-only count first: none of production's 3 roles
   breaks rule 1, and it has no templates, so nobody's role stops saving.
+- **2026-11-23:** #372 merged. Rule 3's warning is next, as #373. A
+  read-only count first: of production's 3 roles, one would show it, the
+  built-in Employee, which holds See salaries for the company without See
+  employees. Nothing is refused for it: the note shows, and only a save
+  that newly brings one asks to confirm. The owner was told. Rule 3's
+  "It works, but" for See salaries now says what's lost, as an
+  employee's history also shows salaries without See employees since
+  #370.

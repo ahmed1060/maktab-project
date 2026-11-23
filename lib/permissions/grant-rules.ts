@@ -1,4 +1,4 @@
-import { PERMISSIONS, isPermission, isPersonal, isReserved, requiresOf, splitParts, type Permission, type Scope } from "./catalogue"
+import { PERMISSIONS, isPermission, isPersonal, isReserved, lessWithoutOf, requiresOf, splitParts, type Permission, type Scope } from "./catalogue"
 import type { Grants } from "./grants"
 
 /**
@@ -103,6 +103,35 @@ export function unmetNeeds(grants: Grants): UnmetNeed[] {
         }
     }
     return out
+}
+
+export type WorksWithLess = { permission: Permission; without: Permission }
+
+/**
+ * What these grants hold that works with less (catalogue.ts, `lessWithout`;
+ * LATER_CHANGES_PLAN.md §5.1 rule 3, PR 373): a permission without another
+ * it does less without. Held at all counts, not how wide, as scope is for
+ * rules 1 and 2; and a permission another held one brings with it warns of
+ * nothing, as for rule 1: See salaries, brought by See payroll, is for
+ * Payroll.
+ */
+export function worksWithLess(grants: Grants): WorksWithLess[] {
+    const held = Object.keys(grants) as Permission[]
+    const brought = new Set(held.flatMap(p => ((PERMISSIONS[p] as { implies?: readonly string[] }).implies ?? []) as Permission[]))
+    const out: WorksWithLess[] = []
+    for (const permission of held) {
+        if (brought.has(permission)) continue
+        for (const without of lessWithoutOf(permission)) {
+            if (!grants[without]) out.push({ permission, without })
+        }
+    }
+    return out
+}
+
+/** What `after` works with less without that `before` didn't: what a save newly brings. */
+export function newWorksWithLess(before: Grants, after: Grants): WorksWithLess[] {
+    const had = new Set(worksWithLess(before).map(l => `${l.permission} ${l.without}`))
+    return worksWithLess(after).filter(l => !had.has(`${l.permission} ${l.without}`))
 }
 
 /** Grants as rows, for the database and the API. */
