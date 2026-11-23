@@ -4142,6 +4142,8 @@ export const ar = {
         perm_salary_view: "عرض الرواتب",
         perm_salary_edit: "تعديل الرواتب",
         perm_salary_adjustments_manage: "إضافة المكافآت والخصومات",
+        perm_salary_adjustments_add: "إضافة المكافآت والخصومات",
+        perm_salary_adjustments_reverse: "إلغاء المكافآت والخصومات أو التراجع عنها",
         perm_payroll_view: "عرض كشوف الرواتب",
         perm_payroll_prepare: "إعداد كشوف الرواتب",
         perm_payroll_approve: "اعتماد كشوف الرواتب",

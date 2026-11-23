@@ -129,7 +129,7 @@ describe("the frame", () => {
 
     it("has no action in the page header: each tab's actions are on its rows", async () => {
         // Bonuses and deductions are a section of the Salary tab, each with its own actions (part 3).
-        const salaryTab = await page({ perms: ["salary.view", "salary_adjustments.manage"], swr: { "/api/users/u2/adjustments": { data: { data: ADJUSTMENTS } } } })
+        const salaryTab = await page({ perms: ["salary.view", "salary_adjustments.reverse"], swr: { "/api/users/u2/adjustments": { data: { data: ADJUSTMENTS } } } })
         expect(salaryTab).not.toContain("ui-page-actions")
         expect(salaryTab).toMatch(new RegExp(`<h2 class="ui-section-title">(<span[^>]*>)?${en.hist_adjustments}(</span>)?</h2>`))
         // Day off credit has none: Reconsider is on each day off it can change (part 2).

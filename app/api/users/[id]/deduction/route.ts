@@ -7,7 +7,7 @@ import { assertStepUp } from "@/lib/step-up"
 
 export const POST = withStandardHandler(async (req, session, json, { params }) => {
     const userId = params.id
-    if (!can(session.user, "salary_adjustments.manage")) {
+    if (!can(session.user, "salary_adjustments.add")) {
         return ApiResponse.forbidden()
     }
 
@@ -17,11 +17,11 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     // Nobody adjusts their own pay (ROLES_PLAN.md §4.2, rule 5): asked of the
     // person, which can() refuses when it is the caller.
     const person = await personTarget(userId)
-    if (!person || !can(session.user, "salary_adjustments.manage", person)) {
+    if (!person || !can(session.user, "salary_adjustments.add", person)) {
         return ApiResponse.forbidden("You cannot adjust your own pay")
     }
     // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
-    await assertStepUp(session, "salary_adjustments.manage")
+    await assertStepUp(session, "salary_adjustments.add")
 
     const { amount, reason } = json
     if (!amount || typeof amount !== 'number' || amount <= 0 || amount > 1000) {

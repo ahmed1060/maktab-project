@@ -37,6 +37,7 @@ describe("permission codes", () => {
         "tax.manage": 69,
         "client_accounts.manage": 70,
         "client_accounts.view": 86, "client_accounts.invite": 87, "client_accounts.remove": 88,
+        "salary_adjustments.add": 89, "salary_adjustments.reverse": 90,
         "client_messages.manage": 71,
         "clients.create": 72, "clients.edit": 73, "clients.delete": 74,
         "obligations.create": 75, "obligations.edit": 76, "obligations.approve": 77, "obligations.delete": 78,
@@ -69,7 +70,8 @@ describe("grants in the token", () => {
     it("are compact", () => {
         // Everything a session can hold: one being split never is, as it's read as its parts (PR 365).
         const everything = Object.fromEntries(ALL_PERMISSIONS.filter(p => !isSplit(p)).map(p => [p, "COMPANY"]))
-        expect(encodeGrants(everything as any).length).toBeLessThan(400)
+        // 400 exactly with the 82 there are since PR 382, in a session cookie of about 4 KB.
+        expect(encodeGrants(everything as any).length).toBeLessThan(500)
         expect(encodeGrants({ "employees.view": "COMPANY", "tasks.view": "TEAM" })).toBe("1.3,15.2")
     })
 

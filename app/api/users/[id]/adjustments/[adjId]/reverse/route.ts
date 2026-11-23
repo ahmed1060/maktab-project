@@ -18,17 +18,17 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
     const hasAccess = await verifyResourceAccess(session, userId, 'USER')
     if (!hasAccess) return ApiResponse.forbidden("Access denied")
 
-    if (!can(session.user, "salary_adjustments.manage")) {
+    if (!can(session.user, "salary_adjustments.reverse")) {
         return ApiResponse.forbidden()
     }
 
     // Nobody adjusts their own pay (ROLES_PLAN.md §4.2, rule 5).
     const person = await personTarget(userId)
-    if (!person || !can(session.user, "salary_adjustments.manage", person)) {
+    if (!person || !can(session.user, "salary_adjustments.reverse", person)) {
         return ApiResponse.forbidden("You cannot adjust your own pay")
     }
     // A high-risk action: confirmed with a code within the hour (ROLES_PLAN.md §6.15).
-    await assertStepUp(session, "salary_adjustments.manage")
+    await assertStepUp(session, "salary_adjustments.reverse")
 
     const reason = typeof json?.reason === 'string' ? json.reason : undefined
 

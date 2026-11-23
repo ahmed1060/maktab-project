@@ -52,8 +52,9 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "salary.view": "COMPANY",
 
         // Adjustments: an Admin records, reverses and rolls back bonuses and
-        // deductions for their company's people.
-        "salary_adjustments.manage": "COMPANY",
+        // deductions for their company's people (split, PR 382).
+        "salary_adjustments.add": "COMPANY",
+        "salary_adjustments.reverse": "COMPANY",
 
         // Day off: an Admin sees their company's requests and decides them,
         // and sets people's balances and yearly allowances.

@@ -24,7 +24,8 @@ describe("the roles plan", () => {
         const stepUp = section(ROLES, "### 6.15", "- **Marked in the catalogue")
         const highRisk = Object.entries(PERMISSIONS).filter(([, d]) => (d as { highRisk?: string }).highRisk).map(([p]) => p)
         // 16 since PR 381: client_accounts.invite, and client_accounts.manage, split into it, still marked.
-        expect(highRisk.length).toBe(16)
+        // 18 since PR 382: salary_adjustments.add and .reverse, beside salary_adjustments.manage.
+        expect(highRisk.length).toBe(18)
         for (const p of highRisk) expect(stepUp, p).toContain(`\`${p}\``)
     })
 

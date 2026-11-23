@@ -14,7 +14,7 @@ const DIGIT_SCOPE: Record<string, Scope> = { "1": "OWN", "2": "TEAM", "3": "COMP
 /**
  * Grants as the session token carries them: "code.scope" pairs, comma
  * separated — "1.3,14.2" is employees.view at COMPANY and tasks.view at TEAM.
- * A role holding every permission is a couple of hundred bytes.
+ * A role holding every permission is a few hundred bytes.
  */
 export function encodeGrants(grants: Grants): string {
     return (Object.entries(grants) as [Permission, Scope][])

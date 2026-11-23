@@ -60,7 +60,7 @@ beforeAll(async () => {
 beforeEach(() => {
     state.locale = "en"
     state.viewer = { id: "a1", role: "ADMIN" }
-    state.perms = new Set(["salary_adjustments.manage", "employees.view"])
+    state.perms = new Set(["salary_adjustments.add", "employees.view"])
     state.swr = { "/api/users?id=u2": { data: { data: { id: "u2", firstName: "Mona", lastName: "Adel" } } } }
     state.keys = []
     state.personId = "u2"
