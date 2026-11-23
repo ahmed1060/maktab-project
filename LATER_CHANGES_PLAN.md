@@ -619,7 +619,7 @@ there:
    employees and payroll); then the splits, each keeping its rows; then
    the rest, about 220 calls on 29 screens, in parts by area: the task
    screens (#387); obligations, records and documents (#388); Requests
-   (#389); the people screens; attendance and check-in; and settings. A page that
+   (#389); the people screens (#390); attendance and check-in; and settings. A page that
    only sends you on to another is outside the table.
 
 The two screens found to fix in §5.3 go in one PR of their own, as #368
@@ -936,3 +936,7 @@ same day as drawn in the All users: status badges canvas
   as lists the page never asks for, missing its decisions and
   withdrawals. The test now reads such a table where it's used. The
   people screens follow.
+- **2026-11-23:** #389 merged. The people screens next, as #390: a
+  profile, one's own or someone else's; someone's cash advance; and Roles
+  and access, which imports only a helper from the Super Admin's roles
+  card, so the card's calls aren't made from it.
