@@ -60,7 +60,7 @@ export default function ClientPage() {
     const features = useFeatures()
     const seesTax = features.has('TAX_POSITION') && can('tax.view')
     // Its people who sign in to the client portal, for whoever may manage them (PR 326).
-    const seesPeople = features.has('TAX_POSITION') && can('client_accounts.manage')
+    const seesPeople = features.has('TAX_POSITION') && can('client_accounts.view')
     const [adding, setAdding] = useState(false)
     const [addingLocation, setAddingLocation] = useState(false)
     const [restoring, setRestoring] = useState(false)

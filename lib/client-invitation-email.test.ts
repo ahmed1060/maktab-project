@@ -235,10 +235,10 @@ describe("the routes that send it", () => {
     it("send an invitation again only with the step-up confirmation, up to 5 times an hour for each person", () => {
         const source = resend()
         expect(source).toMatch(/export const POST = withStandardHandler\(/)
-        expect(source).toContain('{ permission: "client_accounts.manage" }')
+        expect(source).toContain('{ permission: "client_accounts.invite" }')
         const service = source.indexOf("await resendClientInvitation(")
-        expect(source.indexOf('await assertStepUp(session, "client_accounts.manage")')).toBeGreaterThan(0)
-        expect(source.indexOf('await assertStepUp(session, "client_accounts.manage")')).toBeLessThan(service)
+        expect(source.indexOf('await assertStepUp(session, "client_accounts.invite")')).toBeGreaterThan(0)
+        expect(source.indexOf('await assertStepUp(session, "client_accounts.invite")')).toBeLessThan(service)
         expect(source).toContain("RateLimiter.getLimitData(`invitation-resend:${params.id}`, 5, 60 * 60 * 1000)")
         expect(source.indexOf("getLimitData")).toBeLessThan(service)
         expect(source).toContain("resetHeldBack(resetAt)")

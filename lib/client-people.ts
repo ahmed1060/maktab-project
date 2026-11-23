@@ -16,9 +16,15 @@ export function personStatus(person: Pick<ClientPerson, "state" | "invitedAt" | 
     return person.lastSignInAt ? { kind: "last", at: person.lastSignInAt } : { kind: "never" }
 }
 
-/** What a row's menu offers: Resend invitation only to someone still invited, as one active signs in. */
-export function personActions(person: Pick<ClientPerson, "state">): ("resend" | "remove")[] {
-    return person.state === "invited" ? ["resend", "remove"] : ["remove"]
+/**
+ * What a row's menu offers: Resend invitation only to someone still invited,
+ * as one active signs in, and with inviting; Remove with removing (PR 381).
+ */
+export function personActions(person: Pick<ClientPerson, "state">, may: { invite: boolean; remove: boolean }): ("resend" | "remove")[] {
+    const actions: ("resend" | "remove")[] = []
+    if (may.invite && person.state === "invited") actions.push("resend")
+    if (may.remove) actions.push("remove")
+    return actions
 }
 
 /** Where a client's people are read from. */

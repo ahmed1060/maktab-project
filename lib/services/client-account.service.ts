@@ -42,12 +42,13 @@ const personOf = (row: GivenRow): ClientPerson => ({
 })
 
 /**
- * The client whose people are asked about: by whoever may manage them, in
- * the client's own company, so another company's reads as not there
- * whatever the address says. The Super Admin manages any company's.
+ * The client whose people are asked about: by whoever may see them, or
+ * invite one (PR 381), in the client's own company, so another company's
+ * reads as not there whatever the address says. The Super Admin's are any
+ * company's.
  */
-async function clientOf(user: Actor, clientId: string | null | undefined) {
-    if (!can(user, "client_accounts.manage")) throw new Error("CLIENT_ACCOUNTS_MANAGE_REQUIRED")
+async function clientOf(user: Actor, clientId: string | null | undefined, permission: "client_accounts.view" | "client_accounts.invite") {
+    if (!can(user, permission)) throw new Error("CLIENT_ACCOUNTS_MANAGE_REQUIRED")
     if (!clientId) throw new Error("CLIENT_PERSON_CLIENT_REQUIRED")
     const client = NIZMO_ID.test(clientId) ? await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, companyId: true, archivedAt: true, company: { select: { name: true } } } }) : null
     if (!client || (user.role !== "SUPER_ADMIN" && client.companyId !== user.companyId)) throw new Error("CLIENT_NOT_FOUND")
@@ -133,7 +134,7 @@ async function takeBack(undo: (tx: Prisma.TransactionClient) => Promise<void>): 
  * still listed, so they can be removed.
  */
 export async function clientPeople(user: Actor, clientId: string | null | undefined): Promise<ClientPeople> {
-    const client = await clientOf(user, clientId)
+    const client = await clientOf(user, clientId, "client_accounts.view")
     const rows = await prisma.clientAccount.findMany({ where: { clientId: client.id }, select: GIVEN, orderBy: [{ invitedAt: "asc" }, { createdAt: "asc" }, { id: "asc" }] })
     return { client: { id: client.id, name: client.name, archived: !!client.archivedAt }, max: MAX_CLIENT_PEOPLE, people: rows.map(personOf) }
 }
@@ -151,13 +152,13 @@ export async function clientPeople(user: Actor, clientId: string | null | undefi
  * account, capitals aside (§5.1).
  */
 export async function addClientPerson(user: Adder, body: unknown, now: Date = new Date(), origin: string = PRODUCTION_ORIGIN): Promise<ClientPerson> {
-    if (!can(user, "client_accounts.manage")) throw new Error("CLIENT_ACCOUNTS_MANAGE_REQUIRED")
+    if (!can(user, "client_accounts.invite")) throw new Error("CLIENT_ACCOUNTS_MANAGE_REQUIRED")
     const sent = sentPerson(body)
     if ("problem" in sent) {
         throw new Error({ client: "CLIENT_PERSON_CLIENT_REQUIRED", name: "CLIENT_PERSON_NAME_REQUIRED", name_long: "CLIENT_PERSON_NAME_TOO_LONG", email: "CLIENT_PERSON_EMAIL_INVALID", language: "CLIENT_PERSON_LANGUAGE_INVALID" }[sent.problem])
     }
     const { person } = sent
-    const client = await clientOf(user, person.clientId)
+    const client = await clientOf(user, person.clientId, "client_accounts.invite")
     if (client.archivedAt) throw new Error("CLIENT_ARCHIVED")
     // Read before anything is held: who sends it, and the colour it's drawn in.
     const sender = await senderOf(user)
@@ -255,7 +256,7 @@ export async function addClientPerson(user: Adder, body: unknown, now: Date = ne
  * the new link is saved; one that can't be sent puts the earlier link back.
  */
 export async function resendClientInvitation(user: Actor, id: string | null | undefined, now: Date = new Date(), origin: string = PRODUCTION_ORIGIN): Promise<{ resent: true }> {
-    if (!can(user, "client_accounts.manage")) throw new Error("CLIENT_ACCOUNTS_MANAGE_REQUIRED")
+    if (!can(user, "client_accounts.invite")) throw new Error("CLIENT_ACCOUNTS_MANAGE_REQUIRED")
     const account = id && NIZMO_ID.test(id)
         ? await prisma.clientAccount.findUnique({ where: { id }, select: { id: true, clientId: true, companyId: true, company: { select: { name: true } } } })
         : null
@@ -330,7 +331,7 @@ export async function resendClientInvitation(user: Actor, id: string | null | un
  * reads as not there.
  */
 export async function removeClientPerson(user: Actor, id: string | null | undefined): Promise<{ removed: true }> {
-    if (!can(user, "client_accounts.manage")) throw new Error("CLIENT_ACCOUNTS_MANAGE_REQUIRED")
+    if (!can(user, "client_accounts.remove")) throw new Error("CLIENT_ACCOUNTS_MANAGE_REQUIRED")
     const account = id && NIZMO_ID.test(id)
         ? await prisma.clientAccount.findUnique({ where: { id }, select: { id: true, name: true, email: true, clientId: true, companyId: true, client: { select: { name: true } } } })
         : null

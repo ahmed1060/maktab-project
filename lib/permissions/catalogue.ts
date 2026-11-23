@@ -227,12 +227,18 @@ export const PERMISSIONS = {
     // Keeping it up to date: uploading the portal's file, which replaces the
     // client's claims (§4.1). Useless without seeing what it replaces.
     "tax.manage":               { code: 69, module: "TAX_POSITION", scopes: COMPANY, implies: ["tax.view"] },
-    // A client's people who sign in to the client portal (§5.2): listing
-    // them, adding one and removing one. They're on the client's page, so
-    // it's useless without seeing clients. Adding one lets someone from
-    // outside the company in, so adding and removing ask for the step-up
-    // confirmation.
-    "client_accounts.manage":   { code: 70, module: "TAX_POSITION", scopes: COMPANY, implies: ["clients.view"], highRisk: LETS_OUTSIDERS_IN },
+    // A client's people who sign in to the client portal (§5.2): seeing
+    // them, inviting one (adding them, and sending their invitation again),
+    // and removing one, split from client_accounts.manage by what is done
+    // (LATER_CHANGES_PLAN.md §2, PR 381). They're on the client's page, so
+    // seeing them is useless without seeing clients, and inviting or
+    // removing one without seeing them. Inviting lets someone from outside
+    // the company in, so it asks for the step-up confirmation; removing
+    // takes access away, and doesn't.
+    "client_accounts.manage":   { code: 70, module: "TAX_POSITION", scopes: COMPANY, implies: ["clients.view"], highRisk: LETS_OUTSIDERS_IN, splitInto: ["client_accounts.view", "client_accounts.invite", "client_accounts.remove"] },
+    "client_accounts.view":     { code: 86, module: "TAX_POSITION", scopes: COMPANY, implies: ["clients.view"] },
+    "client_accounts.invite":   { code: 87, module: "TAX_POSITION", scopes: COMPANY, implies: ["client_accounts.view"], highRisk: LETS_OUTSIDERS_IN },
+    "client_accounts.remove":   { code: 88, module: "TAX_POSITION", scopes: COMPANY, implies: ["client_accounts.view"] },
     // The company's own copy of the client messages on WhatsApp (§7.1):
     // reading them, changing one, and going back to Nizmo's. It brings
     // nothing with it: the Client portal tab shows to whoever holds it,
@@ -368,8 +374,12 @@ export type Permission = keyof typeof PERMISSIONS
  *
  * 10: charges.set (code 85), charges.manage named as a split into one
  * (PR 380).
+ *
+ * 11: client_accounts.view, client_accounts.invite and
+ * client_accounts.remove (codes 86–88), split from client_accounts.manage
+ * (PR 381).
  */
-export const CATALOGUE_VERSION = 10
+export const CATALOGUE_VERSION = 11
 
 /** Codes of permissions that no longer exist. Never handed out again. */
 export const RETIRED_CODES: readonly number[] = []

@@ -36,7 +36,7 @@ describe("the clients route", () => {
     it("says whether it has people who can sign in to whoever may delete it, and how many to those of them who may manage who signs in (PR 329)", () => {
         expect(route).toContain("_count: { select: { tasks: true, taxClaims: true, accounts: true } }")
         expect(route).toContain("...(deletes ? { hasPeople: _count.accounts > 0 } : {})")
-        expect(route).toContain(`const seesPeople = deletes && can(session.user, "client_accounts.manage") && sessionHasModule(session, "TAX_POSITION")`)
+        expect(route).toContain(`const seesPeople = deletes && can(session.user, "client_accounts.view") && sessionHasModule(session, "TAX_POSITION")`)
         expect(route).toContain("...(seesPeople ? { people: _count.accounts } : {})")
     })
 

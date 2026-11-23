@@ -13,7 +13,7 @@ describe("step-up confirmation (ROLES_PLAN.md §6.15)", () => {
 
     it("covers every permission the catalogue marks high-risk, and nothing else", () => {
         expect(HIGH_RISK.sort()).toEqual([
-            "attendance.manage_terminals", "cash_advances.give", "charges.collect", "client_accounts.manage", "debts.waive", "employees.delete", "employees.end_contract", "payroll.approve",
+            "attendance.manage_terminals", "cash_advances.give", "charges.collect", "client_accounts.invite", "client_accounts.manage", "debts.waive", "employees.delete", "employees.end_contract", "payroll.approve",
             "payroll.mark_paid", "records.delete", "salary.edit", "salary_adjustments.manage", "tasks.delete", "tasks.pay", "tasks.penalize",
         ])
         expect(stepUpRefusal({ mfaEnabled: false }, "tasks.view", 60)).toBeNull()
@@ -65,9 +65,9 @@ describe("every high-risk action asks", () => {
         // Who is told of a silent agent or terminal (ATTENDANCE_PLAN.md §17.10).
         "lib/services/attendance-terminal-alerts.ts": "attendance.manage_terminals for who is told of a silent agent or terminal",
         // Same checks as the routes that call it, after the route asked; listing a client's people changes nothing.
-        "lib/services/client-account.service.ts": "called by POST /api/client-accounts and DELETE /api/client-accounts/[id], which ask",
+        "lib/services/client-account.service.ts": "called by POST /api/client-accounts and POST /api/client-accounts/[id]/invitation, which ask",
         // Whether the Clients list says how many of a client's people go with it (CLIENT_PORTAL_PLAN.md §3.6, PR 329).
-        "app/api/clients/route.ts": "client_accounts.manage for how many of a client's people Delete permanently names; nothing is granted",
+        "app/api/clients/route.ts": "client_accounts.view for how many of a client's people Delete permanently names; nothing is granted",
     }
     const uses = (source: string, p: string) => new RegExp(`["']${p.replace(".", "\\.")}["']`).test(source)
 

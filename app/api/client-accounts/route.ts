@@ -11,9 +11,10 @@ export const maxDuration = 60
 
 /**
  * A client's people who sign in to the client portal (CLIENT_PORTAL_PLAN.md
- * §5.2), for whoever may manage them, in a company whose package has the
- * client portal: the path is the tax position's module's in
- * lib/features/routes.ts.
+ * §5.2), in a company whose package has the client portal: the path is the
+ * tax position's module's in lib/features/routes.ts. Listing them is
+ * client_accounts.view's, adding one client_accounts.invite's (split from
+ * client_accounts.manage, LATER_CHANGES_PLAN.md §2, PR 381).
  *
  * GET lists a client's people, and asks for no code: it changes nothing.
  * POST adds one, as invited: it's what lets someone from outside the
@@ -23,9 +24,9 @@ export const maxDuration = 60
  */
 export const GET = withStandardHandler(async (req, session) => {
     return ApiResponse.success(await clientPeople(session.user as any, new URL(req.url).searchParams.get("clientId")))
-}, { permission: "client_accounts.manage" })
+}, { permission: "client_accounts.view" })
 
 export const POST = withStandardHandler(async (req, session, body) => {
-    await assertStepUp(session, "client_accounts.manage")
+    await assertStepUp(session, "client_accounts.invite")
     return ApiResponse.success(await addClientPerson(session.user as any, body, new Date(), appOrigin(req.url)), 201)
-}, { permission: "client_accounts.manage" })
+}, { permission: "client_accounts.invite" })

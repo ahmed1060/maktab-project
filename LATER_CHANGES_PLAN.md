@@ -174,6 +174,22 @@ The owner asked to break up every "manage" permission in the roles system.
       built-in Admin holds it; a role still holding `charges.manage` is
       read as holding `charges.set`, until the grant for companies
       already there.
+  - **Client accounts (#381):** `client_accounts.manage` splits into three:
+    - `client_accounts.view`: seeing a client's people who sign in to the
+      client portal, on its page, and how many go with it where Delete
+      permanently names them;
+    - `client_accounts.invite`: adding one, as invited, and sending their
+      invitation again. It lets someone from outside the company in, so
+      it stays high-risk and asks for the step-up code, as the table says;
+    - `client_accounts.remove`: removing one, which takes their sign-in
+      away. Not high-risk, as the table keeps only inviting so, so it no
+      longer asks for the code.
+    - Each is for the company, in a package with the client portal, as
+      `client_accounts.manage` was. Seeing includes seeing clients;
+      inviting and removing include seeing the people. The built-in Admin
+      holds all three. Checked read-only on the live database on 23
+      November: only the built-in Admin role holds `client_accounts.manage`,
+      there are no templates, and no client has people who sign in yet.
 
 ## 3. English and Arabic names (Decided)
 
@@ -725,3 +741,8 @@ permission bringing "See obligations". None found missing.
   already has its own permission, so what `charges.manage` did, the
   service fee and leaving a cost off the bill, is named `charges.set`,
   as a split into one.
+- **2026-11-23:** #380 merged. Client accounts next, as #381:
+  `client_accounts.manage` splits into `client_accounts.view`,
+  `client_accounts.invite` and `client_accounts.remove`. Inviting stays
+  high-risk and asks for the step-up code; removing, which the table
+  doesn't keep high-risk, no longer does.

@@ -98,7 +98,7 @@ describe("tax.view (§9)", () => {
 
     it("has its own group in the permission matrix, named in both languages", () => {
         const group = PERMISSION_GROUPS.find(g => g.key === "client_portal")
-        expect(group?.permissions).toEqual(["tax.view", "tax.manage", "client_accounts.manage", "client_messages.manage"])
+        expect(group?.permissions).toEqual(["tax.view", "tax.manage", "client_accounts.view", "client_accounts.invite", "client_accounts.remove", "client_messages.manage"])
         expect(PERMISSION_GROUPS.map(g => g.key).indexOf("client_portal")).toBe(PERMISSION_GROUPS.map(g => g.key).indexOf("costs") + 1)
         for (const words of [en, ar] as Record<string, string>[]) {
             expect(words[groupLabelKey("client_portal")]).toBeTruthy()

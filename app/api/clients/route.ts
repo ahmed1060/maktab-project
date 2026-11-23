@@ -57,7 +57,7 @@ export const GET = withStandardHandler(async (req, session) => {
     // whose menu says Archive in place of Delete, and why; how many is for
     // those of them who may manage who signs in for a client, by their role
     // and their company's package (§3.6, PR 329).
-    const seesPeople = deletes && can(session.user, "client_accounts.manage") && sessionHasModule(session, "TAX_POSITION")
+    const seesPeople = deletes && can(session.user, "client_accounts.view") && sessionHasModule(session, "TAX_POSITION")
     // How old a client's figures are, where they're 30 days old or more
     // (§4.3, PR 321), is for whoever may see tax positions, by their role and
     // their company's package: whose file is due shows on the list.
