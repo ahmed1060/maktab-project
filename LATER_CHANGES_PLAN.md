@@ -596,7 +596,12 @@ They work together, each for a different case.
     (`post: Post`, as `lib/mobile` does for check-in), and reads each call
     through that sender as POST, as the screen's senders send JSON by
     POST; other `lib` files aren't followed, as tables of paths such as
-    `lib/features/routes.ts` aren't calls.
+    `lib/features/routes.ts` aren't calls. Since #394, a path a function
+    builds, in the screen's files or a file they import, such as
+    `assigneesUrl(…)` from `lib/assignees-url.ts`, is read where it's
+    used, with the method of the call it's given to, not where it's
+    built; and a method given as an argument of its own, as the attendance
+    calendar's helper takes it (`send(path, 'DELETE', …)`), is read too.
   - A needed call is met by each permission that opens the screen:
     itself, one it brings (`implies`), or one it needs first
     (`requires`). Anything else fails, naming the screen and the call.
@@ -633,8 +638,10 @@ there:
    the rest, about 220 calls on 29 screens, in parts by area: the task
    screens (#387); obligations, records and documents (#388); Requests
    (#389); the people screens (#390); attendance (#391); check-in
-   (#393); and settings. A page that only sends you on to another is
-   outside the table. Before check-in, #392 moves the helper that 15
+   (#393); then paths a function builds, which the test couldn't see,
+   found missing on five screens already in the table (#394); and
+   settings with the home page (#395), the last. A page that only sends
+   you on to another is outside the table. Before check-in, #392 moves the helper that 15
    files borrowed from the Super Admin's roles card, for a refusal's
    words, into a file of its own, so Roles and access no longer reaches
    the card's calls.
@@ -985,3 +992,15 @@ same day as drawn in the All users: status badges canvas
   `lib/mobile`'s three. Check-in imports one dialog from attendance's
   Requests tab, asking for a permission when late, so that tab's other
   calls aren't made from it.
+- **2026-11-23:** #393 merged. Reading settings for the last part
+  showed two forms the test couldn't see. A path a function builds, such
+  as `nizmoAgainApi(…)`, wasn't read where it's used, and the builders in
+  `lib` weren't read at all: six calls were missing on five screens
+  already in the table, the assignee lists on new task, a task, new
+  obligation and an obligation, the raw template on new task, and a
+  client's people. Each turned out gated as it should be, so nothing in
+  the app was open; the test was blind to them. And the attendance
+  calendar's helper takes its method as an argument of its own,
+  `send(path, 'DELETE', …)`, which the test read as GET. #394 teaches the
+  test both and writes the six calls down; settings and the home page
+  follow as #395, the last part.
