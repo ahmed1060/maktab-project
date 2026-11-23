@@ -9,7 +9,9 @@ import { LIST_KINDS, LIST_NAME_LIMITS, likeText, listName, sameListName, type Fi
  *
  * Anyone in the company is offered the names as they type a title or a
  * cost's name; lists.add adds one, as "+ Add" does, and only that adds one;
- * lists.manage renames, merges and archives them. A name is in a list once,
+ * lists.rename renames one, lists.merge merges one into another, and
+ * lists.archive archives or restores one (split from lists.manage,
+ * LATER_CHANGES_PLAN.md §2, PR 379). A name is in a list once,
  * ignoring capitals, archived ones too. Another company's name is "not
  * found", never "not allowed".
  */
@@ -31,6 +33,14 @@ function companyOf(session: Session, companyId?: string | null): string {
 
 function allow(session: Session, permission: Permission, companyId: string) {
     if (!can(session.user as any, permission, { companyId })) throw new Error("LIST_NAME_FORBIDDEN")
+}
+
+/** What changes a name (PR 379): whoever holds any of it sees the Saved lists page. */
+const LIST_CHANGES = ["lists.rename", "lists.merge", "lists.archive"] as const satisfies readonly Permission[]
+
+/** Whoever may change a company's names in any way: the Saved lists page's. */
+function allowAny(session: Session, companyId: string) {
+    if (!LIST_CHANGES.some(p => can(session.user as any, p, { companyId }))) throw new Error("LIST_NAME_FORBIDDEN")
 }
 
 function kindOf(kind: unknown): ListKind {
@@ -88,7 +98,7 @@ export class ListService {
     static async list(session: Session, input: { kind: unknown; companyId?: string | null }): Promise<ManagedName[]> {
         const kind = kindOf(input.kind)
         const companyId = companyOf(session, input.companyId)
-        allow(session, "lists.manage", companyId)
+        allowAny(session, companyId)
         const rows = await prisma.listEntry.findMany({
             where: { companyId, kind },
             select: { id: true, name: true, archivedAt: true, _count: { select: { tasks: true, costs: true } } },
@@ -151,7 +161,7 @@ export class ListService {
     static async rename(session: Session, input: { id: unknown; name: unknown }): Promise<ListName> {
         return prisma.$transaction(async tx => {
             const entry = await held(tx, session, input.id)
-            allow(session, "lists.manage", entry.companyId)
+            allow(session, "lists.rename", entry.companyId)
             const name = listName(entry.kind, input.name)
             if (name === entry.name) return { id: entry.id, name }
             await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`list:${entry.companyId}:${entry.kind}:${name.toLowerCase()}`}))::text`
@@ -176,7 +186,7 @@ export class ListService {
             const from = await held(tx, session, input.id)
             const into = await held(tx, session, input.into)
             if (from.companyId !== into.companyId || from.kind !== into.kind) throw new Error("LIST_NAME_NOT_FOUND")
-            allow(session, "lists.manage", from.companyId)
+            allow(session, "lists.merge", from.companyId)
             const tasks = await tx.task.updateMany({ where: { titleEntryId: from.id }, data: { titleEntryId: into.id } })
             const costs = await tx.taskCost.updateMany({ where: { nameEntryId: from.id }, data: { nameEntryId: into.id } })
             await tx.listEntry.delete({ where: { id: from.id } })
@@ -189,7 +199,7 @@ export class ListService {
     static async setArchived(session: Session, input: { id: unknown; archived: boolean }): Promise<ListName & { archived: boolean }> {
         return prisma.$transaction(async tx => {
             const entry = await held(tx, session, input.id)
-            allow(session, "lists.manage", entry.companyId)
+            allow(session, "lists.archive", entry.companyId)
             if ((entry.archivedAt !== null) === input.archived) return { id: entry.id, name: entry.name, archived: input.archived }
             await tx.listEntry.update({ where: { id: entry.id }, data: { archivedAt: input.archived ? new Date() : null } })
             await tx.auditLog.create({ data: { action: input.archived ? "ARCHIVE_LIST_NAME" : "RESTORE_LIST_NAME", entityType: "LIST_ENTRY", entityId: entry.id, ...audit(session), details: { name: entry.name } } })

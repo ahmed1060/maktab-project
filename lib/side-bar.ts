@@ -144,8 +144,9 @@ export function shows(key: SideBarItemKey, v: SideBarViewer): boolean {
         // Everyone's own, where the company uses cash advances (CLIENTS_PLAN.md §7.5).
         case 'myCashAdvance': return !v.superAdmin && v.cashAdvances
         case 'companySettings': return v.companySettings
-        // For whoever manages the lists (CLIENTS_PLAN.md §5.7), in a company with Tasks.
-        case 'savedLists': return v.can('lists.manage')
+        // For whoever renames, merges or archives names (CLIENTS_PLAN.md §5.7,
+        // PR 379), in a company with Tasks.
+        case 'savedLists': return v.can('lists.rename') || v.can('lists.merge') || v.can('lists.archive')
         // Its tabs: Employee costs, for whoever pays them, Charged to
         // clients, for whoever sees charges (CLIENTS_PLAN.md §6.4), and Cash
         // advances, for whoever sees them where they're used (§7.5).

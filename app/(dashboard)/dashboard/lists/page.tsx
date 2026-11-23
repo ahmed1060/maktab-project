@@ -11,7 +11,8 @@ import { useCan } from '@/lib/useCan'
 
 /**
  * The company's saved lists of cost names and task titles, to manage
- * (CLIENTS_PLAN.md §5.6), for whoever manages lists.
+ * (CLIENTS_PLAN.md §5.6), for whoever renames, merges or archives names
+ * (PR 379). Adding one is lists.add's, which none of those includes.
  */
 export default function SavedListsPage() {
     const { t } = useLanguage()
@@ -20,16 +21,16 @@ export default function SavedListsPage() {
     const [adding, setAdding] = useState(false)
 
     // Once the session is known: before it loads nobody holds anything.
-    if (session?.user && !can('lists.manage')) return <AccessDenied />
+    if (session?.user && !(can('lists.rename') || can('lists.merge') || can('lists.archive'))) return <AccessDenied />
 
     return (
         <Page>
             <PageHeader
                 title={t('saved_lists_title')}
                 subtitle={t('saved_lists_subtitle')}
-                action={<Button variant="primary" icon={PlusIcon} onClick={() => setAdding(true)}>{t('lists_add_name')}</Button>}
+                action={can('lists.add') && <Button variant="primary" icon={PlusIcon} onClick={() => setAdding(true)}>{t('lists_add_name')}</Button>}
             />
-            <SavedLists adding={adding} onAddingChange={setAdding} />
+            <SavedLists adding={adding && can('lists.add')} onAddingChange={setAdding} />
         </Page>
     )
 }

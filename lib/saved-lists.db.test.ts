@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "node:fs"
 import { Client } from "pg"
 import { withGrants } from "@/lib/permissions/test-actors"
 import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
+import { grantsFromRows } from "@/lib/permissions/grant-rules"
 
 /**
  * The saved lists of cost names and task titles (CLIENTS_PLAN.md §5), against
@@ -130,7 +131,8 @@ describe.skipIf(!ADMIN_URL)("saved lists, in Postgres", () => {
             const rows = await listGrants()
             for (const company of ["c1", "c2"]) {
                 for (const builtIn of ["ADMIN", "TEAM_LEADER", "EMPLOYEE"] as const) {
-                    const given = Object.fromEntries(rows.filter(r => r.companyId === company && r.builtIn === builtIn).map(r => [r.permission, r.scope]))
+                    // As the rows are read: lists.manage as its parts since PR 379, until the grant rewrites them.
+                    const given = grantsFromRows(rows.filter(r => r.companyId === company && r.builtIn === builtIn))
                     const theirs = Object.fromEntries(Object.entries(BUILT_IN_GRANTS[builtIn]).filter(([permission]) => permission.startsWith("lists.")))
                     expect(given, `${company} ${builtIn}`).toEqual(theirs)
                 }

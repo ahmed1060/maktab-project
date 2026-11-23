@@ -151,10 +151,13 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "locations.archive": "COMPANY",
         // The saved lists of cost names and task titles: everyone adds a
         // name; an Admin renames, merges and archives them (CLIENTS_PLAN.md
-        // §5.7). Given to the companies there already are by step 5's
-        // second PR, once this release's role editor is live.
+        // §5.7), split from lists.manage since PR 379. Given to the companies
+        // there already are by step 5's second PR, as lists.manage, read as
+        // these three until the grant for them.
         "lists.add": "COMPANY",
-        "lists.manage": "COMPANY",
+        "lists.rename": "COMPANY",
+        "lists.merge": "COMPANY",
+        "lists.archive": "COMPANY",
         // What a task's client owes for its costs: an Admin sees it, sets the
         // service fees, leaves a cost off the bill and marks charges
         // collected (CLIENTS_PLAN.md §6.6). Given to the companies there

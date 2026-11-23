@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { PERMISSIONS, RETIRED_CODES, ALL_PERMISSIONS } from "./catalogue"
+import { PERMISSIONS, RETIRED_CODES, ALL_PERMISSIONS, isSplit } from "./catalogue"
 import { encodeGrants, decodeGrants } from "./grants"
 import { BUILT_IN_GRANTS } from "./built-in"
 
@@ -24,7 +24,7 @@ describe("permission codes", () => {
         "payroll.mark_paid": 42, "settlements.manage": 43, "debts.view": 44, "debts.waive": 45,
         "settings.view": 46, "settings.edit": 47, "audit.view": 48,
         "locations.view": 55, "locations.add": 56, "locations.manage": 57, "locations.edit": 79, "locations.archive": 80, "locations.create": 81,
-        "lists.add": 58, "lists.manage": 59,
+        "lists.add": 58, "lists.manage": 59, "lists.rename": 82, "lists.merge": 83, "lists.archive": 84,
         "charges.view": 60, "charges.manage": 61, "charges.collect": 62,
         "cash_advances.view": 63, "cash_advances.give": 64,
         "dayoff.request": 65,
@@ -66,7 +66,8 @@ describe("grants in the token", () => {
     })
 
     it("are compact", () => {
-        const everything = Object.fromEntries(ALL_PERMISSIONS.map(p => [p, "COMPANY"]))
+        // Everything a session can hold: one being split never is, as it's read as its parts (PR 365).
+        const everything = Object.fromEntries(ALL_PERMISSIONS.filter(p => !isSplit(p)).map(p => [p, "COMPANY"]))
         expect(encodeGrants(everything as any).length).toBeLessThan(400)
         expect(encodeGrants({ "employees.view": "COMPANY", "tasks.view": "TEAM" })).toBe("1.3,15.2")
     })
