@@ -141,6 +141,26 @@ The owner asked to break up every "manage" permission in the roles system.
     - The catalogue's version goes up, so every session reloads once.
     - Its rows are rewritten with the grant for companies already there,
       and its code retired with the others.
+  - **Saved lists (#379):** adding a name stays `lists.add`, as the table
+    says. `lists.manage` splits into three:
+    - `lists.rename`: renaming a name;
+    - `lists.merge`: merging a name into another of its list;
+    - `lists.archive`: archiving a name, and restoring it.
+    - Each is for the company, as `lists.manage` was, and none is
+      high-risk. The Saved lists page opens for whoever holds any of the
+      three, and its menu offers each name only what's held.
+    - **None includes adding.** `lists.manage` did: adding a name isn't
+      needed to rename, merge or archive one, so a role given one part
+      isn't given adding with it. Nobody loses adding: every role saved
+      with `lists.manage` was saved with `lists.add` too, and the page
+      offers Add name to whoever holds it. Checked read-only on the live
+      database on 23 November: of its 3 roles, the one holding
+      `lists.manage` holds `lists.add`, and there are no templates.
+      Saving a role or template that still names `lists.manage` keeps
+      `lists.add` with its parts, as a split one's `implies` now come with
+      its parts.
+    - The built-in Admin holds all three; the Team Leader and Employee
+      add names, as before.
 
 ## 3. English and Arabic names (Decided)
 
@@ -684,3 +704,7 @@ permission bringing "See obligations". None found missing.
   split into one with the splits' own machinery: a role still holding
   `locations.add` holds `locations.create`, so nobody loses access, and
   the rows are rewritten with the grant for companies already there.
+- **2026-11-23:** #378 merged. Saved lists next, as #379: `lists.manage`
+  splits into `lists.rename`, `lists.merge` and `lists.archive`, and
+  adding stays `lists.add`. Unlike `lists.manage`, none of the three
+  includes adding, as none needs it.
