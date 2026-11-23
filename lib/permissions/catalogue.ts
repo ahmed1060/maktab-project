@@ -277,7 +277,14 @@ export const PERMISSIONS = {
     "payroll.approve":          { code: 40, module: "PAYROLL", scopes: COMPANY, implies: ["payroll.view"], highRisk: MOVES_MONEY },
     "payroll.issue_payslips":   { code: 41, module: "PAYROLL", scopes: COMPANY, implies: ["payroll.view"] },
     "payroll.mark_paid":        { code: 42, module: "PAYROLL", scopes: COMPANY, implies: ["payroll.view"], highRisk: MOVES_MONEY },
-    "settlements.manage":       { code: 43, module: "PAYROLL", scopes: COMPANY, implies: ["salary.view"], requires: ["employees.view"] },
+    // Someone's final settlements: seeing them, in their history and on the
+    // statement, and sending the statement by email, or again, split from
+    // settlements.manage by what is done (LATER_CHANGES_PLAN.md §2, PR 383).
+    // Sending is from the statement, so it includes seeing it. A statement
+    // moves no money, so neither asks for the step-up confirmation.
+    "settlements.manage":       { code: 43, module: "PAYROLL", scopes: COMPANY, implies: ["salary.view"], requires: ["employees.view"], splitInto: ["settlements.view", "settlements.resend"] },
+    "settlements.view":         { code: 91, module: "PAYROLL", scopes: COMPANY, implies: ["salary.view"], requires: ["employees.view"] },
+    "settlements.resend":       { code: 92, module: "PAYROLL", scopes: COMPANY, implies: ["settlements.view"], requires: ["employees.view"] },
     "debts.view":               { code: 44, module: "PAYROLL", scopes: COMPANY, requires: ["employees.view"] },
     "debts.waive":              { code: 45, module: "PAYROLL", scopes: COMPANY, implies: ["debts.view"], highRisk: MOVES_MONEY, requires: ["payroll.view"] },
 
@@ -389,8 +396,11 @@ export type Permission = keyof typeof PERMISSIONS
  *
  * 12: salary_adjustments.add and salary_adjustments.reverse (codes 89–90),
  * split from salary_adjustments.manage (PR 382).
+ *
+ * 13: settlements.view and settlements.resend (codes 91–92), split from
+ * settlements.manage (PR 383).
  */
-export const CATALOGUE_VERSION = 12
+export const CATALOGUE_VERSION = 13
 
 /** Codes of permissions that no longer exist. Never handed out again. */
 export const RETIRED_CODES: readonly number[] = []

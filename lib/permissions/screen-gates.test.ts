@@ -121,7 +121,7 @@ const GATES: Gate[] = [
     { what: "history: day off (flag: one's own page)", file: HISTORY, uses: "dayOff: has('DAY_OFF') && (own || can('dayoff.view'))", before: (r, own) => own || admins(r), now: (p, own) => own || p.can("dayoff.view") },
     { what: "history: costs (flag: one's own page)", file: HISTORY, uses: "costs: has('PAYROLL') && (own || can('costs.view'))", before: (r, own) => own || admins(r), now: (p, own) => own || p.can("costs.view") },
     { what: "history: bonuses and deductions list", file: HISTORY, uses: "adjustments: has('SALARY_ADJUSTMENTS') && can('salary.view')", before: admins, now: p => p.can("salary.view") },
-    { what: "history: settlements", file: HISTORY, uses: "settlements: has('PAYROLL') && can('settlements.manage')", before: admins, now: p => p.can("settlements.manage") },
+    { what: "history: settlements", file: HISTORY, uses: "settlements: has('PAYROLL') && can('settlements.view')", before: admins, now: p => p.can("settlements.view") },
     { what: "history: debts", file: HISTORY, uses: "debts: has('PAYROLL') && can('debts.view')", before: admins, now: p => p.can("debts.view") },
     { what: "history: asks by the parts, for the person (Codex on PR 370)", file: D + "employees/[id]/history/page.tsx", uses: "const parts = historyParts({ own, can: forPerson({ can, scope }, person, lookedUp), has: features.has })", before: () => true, now: () => true },
     { what: "history: salary label", file: D + "employees/[id]/history/page.tsx", uses: "const canSeeSalary = can('salary.view')", before: admins, now: p => p.can("salary.view") },

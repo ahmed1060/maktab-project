@@ -38,6 +38,7 @@ describe("permission codes", () => {
         "client_accounts.manage": 70,
         "client_accounts.view": 86, "client_accounts.invite": 87, "client_accounts.remove": 88,
         "salary_adjustments.add": 89, "salary_adjustments.reverse": 90,
+        "settlements.view": 91, "settlements.resend": 92,
         "client_messages.manage": 71,
         "clients.create": 72, "clients.edit": 73, "clients.delete": 74,
         "obligations.create": 75, "obligations.edit": 76, "obligations.approve": 77, "obligations.delete": 78,

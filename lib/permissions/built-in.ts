@@ -44,7 +44,9 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "payroll.approve": "COMPANY",
         "payroll.issue_payslips": "COMPANY",
         "payroll.mark_paid": "COMPANY",
-        "settlements.manage": "COMPANY",
+        // Final settlements: seeing them, and sending them (split, PR 383).
+        "settlements.view": "COMPANY",
+        "settlements.resend": "COMPANY",
         "debts.view": "COMPANY",
         "debts.waive": "COMPANY",
         // Implied by payroll.view. An Admin already sees every salary in their

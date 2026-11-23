@@ -289,7 +289,9 @@ them, as today.
 | | `payroll.approve` | Approve (freeze) the month | `payroll/[y]/[m]/approve` |
 | | `payroll.issue_payslips` | Email payslips to employees | `payroll/[y]/[m]/issue` |
 | | `payroll.mark_paid` | Mark the month paid | `payroll/[y]/[m]/paid` |
-| | `settlements.manage` | See and resend final settlements | `settlements/*`, `users/[id]/settlements` |
+| | `settlements.view` | See someone's final settlements, in their history, and open the statement; implies `salary.view`, needs `employees.view` (#383, split from `settlements.manage`, `LATER_CHANGES_PLAN.md` §2) | `GET users/[id]/settlements`, `GET settlements/[id]` |
+| | `settlements.resend` | Send the statement by email, or again, from its page; implies `settlements.view`, needs `employees.view` (#383) | `POST settlements/[id]/resend` |
+| | `settlements.manage` | Split into the two above (#383): nothing checks it, and it isn't offered; a role still holding it is read as holding both, until the grant for companies already there. Was: see and resend final settlements | — |
 | | `debts.view` | See debts | `users/[id]/debts` |
 | | `debts.waive` | Forgive a debt — separate because it gives money away | `debts/[id]/waive` |
 | **Settings** | `settings.view` / `settings.edit` | Within the tabs the Super Admin exposed (attendance plan §5.2) | company settings |
