@@ -663,7 +663,20 @@ other filled in when one is typed, if that's possible.
      - the obligations list: who each obligation is for;
      - an obligation's page: who it's for, who assigned it, and the note
        when someone it's for was deleted.
-   - **Then, by area,** one PR or more each: records and the documents,
+   - **8e. Records and a client's page (#416):**
+     - the records list, its table and its cards, and a record's details:
+       its client, and who added it and last edited it;
+     - Add record's client picker on the Records page: each client in the
+       page's language, in the page's order. The clients it lists at once
+       are the first in that order (an Arabic page's by their Arabic), and
+       its search finds the rest by either language;
+     - the records search finding a record by its client's Arabic name too;
+     - a client's own page: its name in the heading, whichever part of it
+       the person may see (its details, its records or its charges), and
+       its owner's name in its details.
+   - **8f. The documents,** next: the payslip and the settlement, and the
+     client's statement and tax statement.
+   - **Then, by area,** one PR or more each:
      attendance, requests, payroll with the costs and charges lists, the
      client's area, and last, names written from then on: notifications
      and messages, who last changed a status, a cost's or a location's
