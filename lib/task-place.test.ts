@@ -7,22 +7,22 @@ import { parseTaskLocation, placeLine } from "./task-place"
  */
 describe("where a task is done, in a list", () => {
     it("names a client's location with its client", () => {
-        expect(placeLine({ place: { name: "Maadi branch", client: { name: "Al Noor" } } })).toBe("Al Noor - Maadi branch")
+        expect(placeLine({ place: { name: "Maadi branch", client: { name: "Al Noor" } } }, "en")).toBe("Al Noor - Maadi branch")
     })
 
     it("names a shared location with the task's client, or alone", () => {
-        expect(placeLine({ client: { name: "Al Noor" }, place: { name: "Warehouse", client: null } })).toBe("Al Noor - Warehouse")
-        expect(placeLine({ place: { name: "Warehouse", client: null } })).toBe("Warehouse")
+        expect(placeLine({ client: { name: "Al Noor" }, place: { name: "Warehouse", client: null } }, "en")).toBe("Al Noor - Warehouse")
+        expect(placeLine({ place: { name: "Warehouse", client: null } }, "en")).toBe("Warehouse")
     })
 
     it("shows the text typed before locations, as JSON with its link or plain", () => {
-        expect(placeLine({ location: JSON.stringify({ name: "Nasr City", link: "https://maps.example/x" }) })).toBe("Nasr City")
-        expect(placeLine({ client: { name: "Al Noor" }, location: "Nasr City" })).toBe("Al Noor - Nasr City")
+        expect(placeLine({ location: JSON.stringify({ name: "Nasr City", link: "https://maps.example/x" }) }, "en")).toBe("Nasr City")
+        expect(placeLine({ client: { name: "Al Noor" }, location: "Nasr City" }, "en")).toBe("Al Noor - Nasr City")
     })
 
     it("is the client alone with no location, and empty with neither", () => {
-        expect(placeLine({ client: { name: "Al Noor" } })).toBe("Al Noor")
-        expect(placeLine({})).toBe("")
+        expect(placeLine({ client: { name: "Al Noor" } }, "en")).toBe("Al Noor")
+        expect(placeLine({}, "en")).toBe("")
     })
 
     it("reads a typed location's link", () => {

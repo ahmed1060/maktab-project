@@ -14,7 +14,8 @@ import TaskEditDetailsModal from '@/components/TaskEditDetailsModal'
 import TaskTransferModal from '@/components/TaskTransferModal'
 import TaskConfirmModals from '@/components/TaskConfirmModals'
 import type { Assignable } from '@/components/forms/AssigneeChecklist'
-import { peopleInOrder } from '@/lib/names'
+import { peopleInOrder, personName, type PersonNames } from '@/lib/names'
+import { clientName } from '@/lib/client-list'
 import { Button, Card, Details, Dialog, DueDate, EmptyState, FileChip, FileChips, Page, PageHeader, RowMenu, StatusBadge, taskStatusTone, type MenuItem, type PickedName } from '@/components/ui'
 import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/session-expired'
 import SectionBoundary from '@/components/SectionBoundary'
@@ -62,13 +63,14 @@ export function TaskNotFound() {
  * decision; what needs saying about it; its details, notes and files; then
  * its costs, location history and what its assignee hands in.
  */
-export default function TaskDetailClient({ task: initialTask, now, userRole, userId, creatorName, isRestricted, costNamesFromList = false }: {
+export default function TaskDetailClient({ task: initialTask, now, userRole, userId, creator, isRestricted, costNamesFromList = false }: {
     task: any
     /** When the server drew it, so its deadline reads the same on the server and here. */
     now: number
     userRole: string
     userId: string
-    creatorName: string | null
+    /** Who assigned it, their names in both languages (PR 413); none for a Super Admin. */
+    creator: PersonNames | null
     currentUserName: string
     isRestricted: boolean
     /** Its company names costs from the saved list only (CLIENTS_PLAN.md §6.9). */
@@ -105,10 +107,10 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
         locationId: src.locationId ?? '',
     })
     // Where it's done: its location as it is now, or, from before locations,
-    // the text it was given.
+    // the text it was given. Its client in the page's language (PR 413).
     const placeOf = (src: any): { name: string; link: string; ofClient: boolean } => src.place
         ? {
-            name: locationLabel(src.place.name, src.place.client?.name),
+            name: locationLabel(src.place.name, src.place.client ? clientName(src.place.client, locale) : undefined),
             link: src.place.latitude !== null && src.place.longitude !== null ? googleMapsLink(src.place.latitude, src.place.longitude) : '',
             ofClient: !!src.place.client,
         }
@@ -859,7 +861,9 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
     // Its costs, once it's done, are paid or waiting to be.
     const owesCosts = task.totalCost !== undefined && task.totalCost > 0 && (task.status === 'APPROVED' || task.status === 'COMPLETED')
     const deleted = (task.assignees ?? []).filter((a: any) => a.status === 'DELETED')
-    const names = (task.assignees ?? []).map((a: any) => `${a.firstName} ${a.lastName}`)
+    // Each in the page's language, or the one they have (PR 413).
+    const names = (task.assignees ?? []).map((a: any) => personName(a, locale))
+    const creatorName = creator && personName(creator, locale)
     const reviewing = !isRestricted && mayManage('tasks.review') && task.status === 'PENDING_CONFIRMATION'
     const editable = !isRestricted && ['PENDING', 'IN_PROGRESS'].includes(task.status) && mayManage('tasks.edit')
     const transferable = !isRestricted && canTransfer && ['IN_PROGRESS', 'PENDING'].includes(task.status)
@@ -910,7 +914,7 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
             {/* Someone it's for was deleted: whoever transfers tasks moves it on. */}
             {deleted.length > 0 && canTransfer && !DECIDED.includes(task.status) && (
                 <Card title={t('assignee_deleted_alert')}>
-                    <p>{t('task_assignee_deleted_msg').replace('{name}', deleted.map((a: any) => `${a.firstName} ${a.lastName}`).join(locale === 'ar' ? '، ' : ', '))}</p>
+                    <p>{t('task_assignee_deleted_msg').replace('{name}', deleted.map((a: any) => personName(a, locale)).join(locale === 'ar' ? '، ' : ', '))}</p>
                     {transferable && (
                         <div className="ui-form-actions">
                             <Button variant="primary" icon={UserSwitchIcon} onClick={openTransfer}>{t('transfer_to_another_employee')}</Button>
@@ -950,7 +954,7 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
                             : <bdi>{place.name}</bdi>,
                     }] : []),
                     // A client's location is named with its client already.
-                    ...(task.client?.name && !place?.ofClient ? [{ label: t('client_label'), value: <bdi>{task.client.name}</bdi> }] : []),
+                    ...(task.client?.name && !place?.ofClient ? [{ label: t('client_label'), value: <bdi>{clientName(task.client, locale)}</bdi> }] : []),
                     { label: t('assigned_by'), value: creatorName ? <bdi>{creatorName}</bdi> : t('role_super_admin') },
                     { label: t('deadline_label'), value: <DueDate overdue={isOverdue}><SafeDate date={task.deadline} locale={locale} /></DueDate> },
                     { label: t('points_label_plural'), value: countOf(t, locale, task.difficulty ?? 0, 'pts') },

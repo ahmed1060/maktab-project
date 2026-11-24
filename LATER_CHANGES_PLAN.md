@@ -27,8 +27,9 @@ clients' names in their form (#406) and on the Clients page (#407), and
 the company's name in two languages (#408) and shown in the page's
 language to its people and clients (#409), and to the Super Admin on its
 own screens for companies (#410) and in the company columns and selects
-of the other screens (#411). The other screens' names are next (step 8),
-starting with the pickers and filters they share (#412).
+of the other screens (#411). The other screens' names (step 8) started
+with the pickers and filters they share (#412); the tasks screens are
+next (#413).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -625,7 +626,7 @@ other filled in when one is typed, if that's possible.
    list of names to pick from is in the page's order: on an Arabic page,
    the ones with an Arabic name first, in Arabic order, then the rest as
    before, as the Clients page lists clients (#407).
-   - **8a. The shared pickers and filters (#412):** the building blocks
+   - **8a. The shared pickers and filters (Done, #412):** the building blocks
      the areas share, so that each area's PR has only its own screens:
      - the people a task or an obligation is for: the assignee checklist
        on New task, its bulk upload's rows and a task's Transfer, and on
@@ -639,12 +640,22 @@ other filled in when one is typed, if that's possible.
      - the client pickers: on New task and a task's Edit details, and on
        the places' filter, Add place and the charges' filter: each client
        in the page's language, in the page's order.
-   - **Then, by area,** one PR or more each: tasks (the list's people and
-     clients, a task's page and its dialogs), obligations, records and the
-     documents, attendance, requests, payroll, the client's area, and
-     last, names written from then on: notifications and messages, who
-     last changed a status, a cost's author, and one's own name in the
-     account menu.
+   - **8b. The tasks screens (#413):**
+     - the tasks list: each task's assignees, or who assigned it on one's
+       own list, and the client in the line under its title, with its
+       location's client;
+     - a task's page: its assignees, who assigned it, its client and its
+       location's client, and the note when someone it's for was deleted;
+     - its sections and dialogs: Edit details' assignees and location,
+       Transfer's lines on the money held for it, the costs' settlements,
+       and the penalty's person.
+   - **Then, by area,** one PR or more each: the bulk upload's template and
+     file (the people and clients it lists, and a file's client found by
+     either language), obligations, records and the documents,
+     attendance, requests, payroll with the costs and charges lists, the
+     client's area, and last, names written from then on: notifications
+     and messages, who last changed a status, a cost's or a location's
+     author, and one's own name in the account menu.
 
 ## 4. A development database (Done)
 
@@ -1424,3 +1435,11 @@ same day as drawn in the All users: status badges canvas
   access reviews and template offers, the selects in the page's order, and
   All users' search finding a company by either language. This finishes
   the company's name (step 7). The other screens' names next (step 8).
+- **2026-11-24:** #412 merged: the pickers and filters the screens share
+  name people and clients in the page's language (§3.1, step 8a): the
+  assignee checklist on New task, its bulk upload's rows, Transfer, New
+  obligation and an obligation's Edit; the employee filter of the tasks,
+  obligations, costs and requests lists; the client and place filters of
+  the tasks and costs lists; and the client pickers of New task, Edit
+  details, places and charges. Each list in the page's order, a person
+  found by either language. The tasks screens next.

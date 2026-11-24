@@ -26,15 +26,16 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
             // column (password hash, salary, plainPasswordEnc historically)
             // straight into the Server->Client RSC payload. Only pick what
             // this page's client component actually renders.
+            // Each name in Arabic too, for the page's language (PR 413).
             assignees: {
-                select: { id: true, firstName: true, lastName: true, status: true, role: true }
+                select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, status: true, role: true }
             },
             // In Arabic too, for Edit details' client picker (PR 412).
             client: { select: { name: true, nameAr: true } },
             // Where it's done (CLIENTS_PLAN.md §2.3): its name and pin as they
             // are now, a pin corrected since included. A task from before
             // locations has none, and shows its own text.
-            place: { select: { name: true, latitude: true, longitude: true, client: { select: { name: true } } } },
+            place: { select: { name: true, latitude: true, longitude: true, client: { select: { name: true, nameAr: true } } } },
             // Its costs, each with its description (CLIENTS_PLAN.md §4.4, §4.5).
             costs: { select: { id: true, amount: true, description: true, authorId: true, authorName: true, receiptUrl: true, fromAdvance: true, createdAt: true } },
             // Whether its company names costs from the saved list only
@@ -70,17 +71,14 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
     // only reason it's ever null, so `null` here unambiguously means
     // "created by a Super Admin," not "we don't know." The client component
     // renders that case as a localized "Super Admin" label instead of the
-    // literal name lookup below, which only runs for a real User id.
-    let creatorName: string | null = null
-    if (task.createdBy) {
-        const creator = await prisma.user.findUnique({
+    // literal name lookup below, which only runs for a real User id. Their
+    // names in both languages, for the page's (PR 413).
+    const creator = task.createdBy
+        ? await prisma.user.findUnique({
             where: { id: task.createdBy },
-            select: { firstName: true, lastName: true }
+            select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true }
         })
-        if (creator) {
-            creatorName = `${creator.firstName} ${creator.lastName}`
-        }
-    }
+        : null
 
     // Someone who does not see others' tasks, looking at one they are not on.
     const viewer = (session?.user ?? { role: null }) as any
@@ -110,7 +108,7 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
         now={now}
         userRole={userRole}
         userId={userId}
-        creatorName={creatorName}
+        creator={creator}
         currentUserName={(session?.user as any)?.name}
         isRestricted={isRestricted}
         costNamesFromList={!!task.company?.costNamesFromListOnly}
