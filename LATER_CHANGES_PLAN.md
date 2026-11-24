@@ -378,11 +378,13 @@ other filled in when one is typed, if that's possible.
      dots, and a name of two words, such as عبد الرحمن, with its space or
      without;
    - the article joined for a person (Elsayed) and spaced for a business
-     (El Nour), and El or Al read either way into Arabic;
+     (El Nour), and El or Al read either way into Arabic, before a name
+     of the list or one guessed;
    - business words, each in its place in either language: before the
      name in Arabic and after it in English (شركة Company), after it in
      both (للتجارة Trading), or last in both (وشركاه & Partners);
-   - the rules for a word in neither, marked as a guess;
+   - the rules for a word in neither, marked as a guess, a number kept in
+     the digits of the language it's written into (النور ٢, El Nour 2);
    - a full name looked up word by word, and nothing suggested for a name
      with any letter of the language asked for already.
 3. **What the company saves teaches it:**
