@@ -54,6 +54,10 @@ describe("a person's name, from Arabic to English", () => {
         expect(name.guesses).toEqual(["Elshnawy"])
     })
 
+    it("leaves out a word with nothing to write, such as a question mark", () => {
+        expect(toEn("محمد ؟")).toEqual({ text: "Mohamed", words: [{ text: "Mohamed", from: "list" }], guesses: [] })
+    })
+
     it("has nothing to suggest for an empty name, or one already in English", () => {
         expect(toEn("")).toBeNull()
         expect(toEn("   ")).toBeNull()
@@ -79,6 +83,13 @@ describe("a person's name, from English to Arabic", () => {
         for (const spelling of ["Elsayed", "El Sayed", "El-Sayed"]) {
             expect(toAr(spelling), spelling).toEqual({ text: "السيد", words: [{ text: "السيد", from: "list" }], guesses: [] })
         }
+    })
+
+    it("reads the article spaced or hyphened before a name it guesses, as it does joined", () => {
+        for (const spelling of ["Elshenawy", "El Shenawy", "El-Shenawy", "al shenawy"]) {
+            expect(toAr(spelling), spelling).toEqual({ text: "الشنوي", words: [{ text: "الشنوي", from: "rules" }], guesses: ["الشنوي"] })
+        }
+        expect(toAr("Ahmed El Shenawy")?.text).toBe("أحمد الشنوي")
     })
 
     it("guesses a word in neither list by the rules, and says which", () => {
@@ -122,6 +133,23 @@ describe("the rules, for a word in neither list", () => {
         expect(englishGuess("Shady")).toBe("شدي")
         expect(englishGuess("Khoury")).toBe("خوري")
         expect(englishGuess("Sameer")).toBe("سمير")
+    })
+})
+
+describe("a number in a name", () => {
+    it("is kept, in the digits of the language asked for, as a guess", () => {
+        const name = toAr("El Nour 2 Company", "business")!
+        expect(name.text).toBe("شركة النور ٢")
+        expect(name.guesses).toEqual(["٢"])
+        expect(toEn("شركة النور ٢", "business")?.text).toBe("El Nour 2 Company")
+        expect(toEn("النور 2", "business")?.text).toBe("El Nour 2")
+    })
+
+    it("is written by the rules in the other language's digits, inside a word too, doubled or not", () => {
+        expect(arabicGuess("صالة٣")).toBe("Sala3")
+        expect(arabicGuess("٢٠٢٦")).toBe("2026")
+        expect(englishGuess("Studio21")).toBe("ستوديو٢١")
+        expect(englishGuess("Gate11")).toBe("جت١١")
     })
 })
 

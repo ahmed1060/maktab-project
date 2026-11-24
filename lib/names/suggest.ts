@@ -106,8 +106,9 @@ function arabicName(tokens: string[], kind: SuggestFor["kind"]): SuggestedWord[]
             continue
         }
         const named = token.length > 3 && token.startsWith("ال") ? BY_ARABIC.get(arabicKey(token.slice(2))) : undefined
+        const guess = named ? "" : arabicGuess(token)
         if (named) words.push({ text: kind === "business" ? `El ${named.en}` : `El${named.en.toLowerCase()}`, from: "list" })
-        else words.push({ text: arabicGuess(token), from: "rules" })
+        else if (guess) words.push({ text: guess, from: "rules" })
         i++
     }
     return words
@@ -116,7 +117,8 @@ function arabicName(tokens: string[], kind: SuggestFor["kind"]): SuggestedWord[]
 /**
  * An English name's words in Arabic: a name of any of its spellings, of up
  * to three words written spaced or joined, the longest first; El or Al
- * before one, spaced or joined, as its article; and the rules for the rest.
+ * before one, spaced or joined, as its article; and the rules for the rest,
+ * El or Al spaced before a name they guess read as joined to it.
  */
 function englishName(tokens: string[]): SuggestedWord[] {
     const words: SuggestedWord[] = []
@@ -136,6 +138,12 @@ function englishName(tokens: string[]): SuggestedWord[] {
         if (found) {
             words.push({ text: found.ar, from: "list" })
             i += found.length
+            continue
+        }
+        // El spaced before a name of neither list: El Shenawy, as Elshenawy.
+        if (article(tokens[i]) && i + 1 < tokens.length) {
+            words.push({ text: `ال${englishGuess(tokens[i + 1])}`, from: "rules" })
+            i += 2
             continue
         }
         // El joined to a name: Elsayed.

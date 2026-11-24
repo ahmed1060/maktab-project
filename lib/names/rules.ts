@@ -5,7 +5,8 @@
  * Arabic is written without its short vowels, so a word comes out as its
  * consonants, محمد as "Mhmd", and English doesn't say which Arabic letter it
  * means, so Hassan comes out as هسن. A rare name corrected once is learned
- * by the company (§3.1, step 3).
+ * by the company (§3.1, step 3). A number is kept, in the digits of the
+ * language it's written into.
  */
 
 /** Each Arabic letter as Egyptian names are spelled in English: ج is g, ق is k. */
@@ -20,6 +21,9 @@ const LETTERS: Record<string, string> = {
 const LONG = "اأإآىةويءئؤ"
 const consonant = (letter: string | undefined) => letter !== undefined && !LONG.includes(letter)
 const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1)
+/** Arabic's digits, ٠ to ٩, each at its value. */
+const ARABIC_DIGITS = "٠١٢٣٤٥٦٧٨٩"
+const isDigit = (letter: string) => letter >= "0" && letter <= "9"
 
 /** An Arabic word in English letters, its article joined as El: الشناوي is Elshnawy. */
 export function arabicGuess(word: string): string {
@@ -32,7 +36,8 @@ export function arabicGuess(word: string): string {
         const next = letters[i + 1]
         if (letter === "و") out += i > 0 && consonant(prev) && (next === undefined || consonant(next)) ? "o" : "w"
         else if (letter === "ي") out += i > 0 && consonant(prev) && consonant(next) ? "i" : "y"
-        else out += LETTERS[letter] ?? ""
+        else if (ARABIC_DIGITS.includes(letter)) out += ARABIC_DIGITS.indexOf(letter)
+        else out += LETTERS[letter] ?? (isDigit(letter) ? letter : "")
     }
     return capital(article ? `el${out}` : out)
 }
@@ -53,7 +58,7 @@ function vowel(letter: string, first: boolean, last: boolean): string {
 
 /** An English word in Arabic letters, its article El or Al as ال: Elshenawy is الشنوي. */
 export function englishGuess(word: string): string {
-    let letters = word.toLowerCase().replace(/[^a-z]/g, "")
+    let letters = word.toLowerCase().replace(/[^a-z0-9]/g, "")
     const article = letters.length > 4 && /^(el|al)[^aeiou]/.test(letters)
     if (article) letters = letters.slice(2)
     let out = ""
@@ -65,7 +70,8 @@ export function englishGuess(word: string): string {
             continue
         }
         const letter = letters[i]
-        if ("aeiou".includes(letter)) out += vowel(letter, i === 0, i === letters.length - 1)
+        if (isDigit(letter)) out += ARABIC_DIGITS[Number(letter)]
+        else if ("aeiou".includes(letter)) out += vowel(letter, i === 0, i === letters.length - 1)
         // A doubled letter is written once.
         else if (letter !== letters[i - 1]) out += CONSONANTS[letter] ?? ""
         i++
