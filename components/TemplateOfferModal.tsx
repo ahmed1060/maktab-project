@@ -6,6 +6,7 @@ import { refusalOf } from '@/lib/api-error-text'
 import { Button, Dialog, DialogActions } from '@/components/ui'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyNameIn } from '@/lib/company-name'
 import { useToast } from '@/context/ToastContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import { countOf } from '@/lib/plural'
@@ -24,7 +25,7 @@ import type { TranslationKey } from '@/lib/translations'
  * was off without a word.
  */
 type Difference = { added: string[]; removed: string[]; rescoped: { permission: string; from: string; to: string }[] }
-type Offer = { id: string; name: string; companyName: string; holders: number; difference: Difference }
+type Offer = { id: string; name: string; companyName: string; companyNameAr?: string | null; holders: number; difference: Difference }
 
 /** What's wrong on Apply, said under the list; null when a role is picked. */
 export function pickError(picked: string[]): TranslationKey | null {
@@ -112,7 +113,7 @@ function OfferDialog({ template, onClose }: { template: { id: string; name: stri
                                             checked={picked.includes(r.id)}
                                             onChange={e => { setPicked(e.target.checked ? [...picked, r.id] : picked.filter(id => id !== r.id)); setWrong(null) }} />
                                         <span className="ui-choice-text">
-                                            <span><bdi>{r.companyName}</bdi>{t('list_separator')}<bdi>{r.name}</bdi>{t('list_separator')}{countOf(t, locale, r.holders, 'employees')}</span>
+                                            <span><bdi>{companyNameIn(locale, { name: r.companyName, nameAr: r.companyNameAr })}</bdi>{t('list_separator')}<bdi>{r.name}</bdi>{t('list_separator')}{countOf(t, locale, r.holders, 'employees')}</span>
                                             {same
                                                 ? <span className="ui-hint">{t('template_offer_same')}</span>
                                                 : changes(r.difference).map((line, i) => <span key={i} className="ui-hint">{line}</span>)}

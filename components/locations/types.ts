@@ -9,7 +9,7 @@ export type LocationItem = {
     archivedAt: string | null
     createdAt: string
     client: { id: string; name: string } | null
-    company: { name: string }
+    company: { name: string; nameAr?: string | null }
 }
 
 export type ClientOption = { id: string; name: string; company?: string; archived?: boolean }

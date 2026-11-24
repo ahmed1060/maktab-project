@@ -44,7 +44,7 @@ const likeText = (text: string) => text.replace(/[\\%_]/g, c => `\\${c}`)
 const ROW = {
     id: true, name: true, isHq: true, latitude: true, longitude: true, radiusMeters: true, archivedAt: true, createdAt: true,
     client: { select: { id: true, name: true } },
-    company: { select: { name: true } },
+    company: { select: { name: true, nameAr: true } },
 } satisfies Prisma.LocationSelect
 
 export type LocationRow = Prisma.LocationGetPayload<{ select: typeof ROW }>

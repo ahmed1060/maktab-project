@@ -65,7 +65,7 @@ const ROW = (withCompany: boolean) => ({
     section: {
         select: {
             id: true, title: true,
-            client: { select: { id: true, name: true, ...(withCompany ? { company: { select: { name: true, timezone: true } } } : {}) } },
+            client: { select: { id: true, name: true, ...(withCompany ? { company: { select: { name: true, nameAr: true, timezone: true } } } : {}) } },
         },
     },
 }) satisfies Prisma.ClientRecordSelect
@@ -106,7 +106,7 @@ function shape(r: Row, today: string): RecordRow {
         createdBySuperAdmin: r.createdBySuperAdmin,
         lastEditedBySuperAdmin: r.lastEditedBySuperAdmin,
         section: { id: r.section.id, title: r.section.title },
-        client: { id: client.id, name: client.name, ...("company" in client && client.company ? { company: (client.company as { name: string }).name } : {}) },
+        client: { id: client.id, name: client.name, ...("company" in client && client.company ? { company: (client.company as { name: string }).name, companyAr: (client.company as { nameAr: string | null }).nameAr } : {}) },
     }
 }
 
@@ -374,13 +374,13 @@ export class RecordService {
         const clients = await prisma.client.findMany({
             // An archived client isn't offered (CLIENTS_PLAN.md §4.3).
             where: { archivedAt: null, ...(company ? { companyId: company } : {}), ...(name ? { name: { contains: name, mode: "insensitive" as const } } : {}) },
-            select: { id: true, name: true, ...(company ? {} : { company: { select: { name: true } } }) },
+            select: { id: true, name: true, ...(company ? {} : { company: { select: { name: true, nameAr: true } } }) },
             orderBy: [{ name: "asc" }, { id: "asc" }],
             // One past what's listed, to say there are more to search for.
             take: CLIENTS_SHOWN + 1,
         })
         return {
-            clients: clients.slice(0, CLIENTS_SHOWN).map(v => ({ id: v.id, name: v.name, ...("company" in v && v.company ? { company: (v.company as { name: string }).name } : {}) })),
+            clients: clients.slice(0, CLIENTS_SHOWN).map(v => ({ id: v.id, name: v.name, ...("company" in v && v.company ? { company: (v.company as { name: string }).name, companyAr: (v.company as { nameAr: string | null }).nameAr } : {}) })),
             more: clients.length > CLIENTS_SHOWN,
         }
     }

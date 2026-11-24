@@ -14,6 +14,7 @@ import {
     type Column, type MenuItem,
 } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyNameIn, companyOptions } from '@/lib/company-name'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
 import { fetcher } from '@/lib/swr-fetcher'
@@ -45,7 +46,7 @@ interface Client {
     locationLink: string | null
     /** Its HQ, if it has one yet. */
     locations: { id: string; name: string; latitude: number | null; longitude: number | null; radiusMeters: number | null }[]
-    company?: { name: string }
+    company?: { name: string; nameAr?: string | null }
     createdBy: { firstName: string, lastName: string, firstNameAr?: string | null, lastNameAr?: string | null } | null
     archivedAt?: string | null
     /** It has tasks or records, so deleting it archives it instead (CLIENTS_PLAN.md §4.3), and it stays in the archive. */
@@ -260,7 +261,7 @@ export default function ClientsPage() {
     const columns: Column<Client>[] = [
         { key: 'client', header: t('clients_col_client'), cell: c => <ItemTitle title={<>{name(c)}{old(c)}</>} detail={<bdi>{ownerName(c, locale)}</bdi>} detailIcon={UserIcon} /> },
         ...(names === 'missing' ? [{ key: 'missing', header: t('names_missing_column'), cell: missing }] : []),
-        ...(everyCompany ? [{ key: 'company', header: t('clients_col_company'), cell: (c: Client) => <bdi>{c.company?.name}</bdi> }] : []),
+        ...(everyCompany ? [{ key: 'company', header: t('clients_col_company'), cell: (c: Client) => <bdi>{c.company && companyNameIn(locale, c.company)}</bdi> }] : []),
         { key: 'phone', header: t('clients_col_phone'), cell: phone },
         { key: 'location', header: t('clients_col_location'), cell: place },
         { key: 'added', header: t('clients_col_added'), cell: c => <span className="ui-item-detail">{addedBy(c)}</span> },
@@ -328,7 +329,7 @@ export default function ClientsPage() {
                                     { icon: UserIcon, text: <bdi>{ownerName(c, locale)}</bdi> },
                                     { icon: PhoneIcon, text: phone(c) },
                                     { icon: MapPinIcon, text: place(c) },
-                                    ...(everyCompany && c.company ? [{ icon: BuildingsIcon, text: <bdi>{c.company.name}</bdi> }] : []),
+                                    ...(everyCompany && c.company ? [{ icon: BuildingsIcon, text: <bdi>{companyNameIn(locale, c.company)}</bdi> }] : []),
                                     ...(names === 'missing' ? [{ icon: TranslateIcon, text: missing(c) }] : []),
                                 ]}
                                 foot={<><span className="ui-item-detail">{addedBy(c)}</span>{actions(c)}</>}
@@ -429,7 +430,7 @@ function ClientForm({ title, client, pickCompany = false, companyId, onClose, on
     const [chosenCompany, setChosenCompany] = useState('')
     const [saving, setSaving] = useState(false)
     const { data: companiesBody } = useSWR(pickCompany ? '/api/companies?limit=1000' : null, fetcher)
-    const companies: { id: string, name: string }[] = (() => {
+    const companies: { id: string, name: string, nameAr?: string | null }[] = (() => {
         const raw = companiesBody?.data?.data || companiesBody?.data || companiesBody
         return Array.isArray(raw) ? raw : []
     })()
@@ -513,7 +514,7 @@ function ClientForm({ title, client, pickCompany = false, companyId, onClose, on
                 {pickCompany && (
                     <Field label={t('select_company')}>{p => (
                         <Select {...p} icon={BuildingsIcon} value={chosenCompany} onChange={e => setChosenCompany(e.target.value)} disabled={saving}
-                            options={[{ value: '', label: t('select_company') }, ...companies.map(c => ({ value: c.id, label: c.name }))]} />
+                            options={[{ value: '', label: t('select_company') }, ...companyOptions(companies, locale)]} />
                     )}</Field>
                 )}
                 {/* Each name in English and in Arabic, each field in its own direction (DESIGN.md

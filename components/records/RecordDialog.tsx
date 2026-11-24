@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyLabel } from '@/lib/company-name'
 import { Button, Details, Dialog, ExpiryDate, FileChip, FileChips } from '@/components/ui'
 import { countOf } from '@/lib/plural'
 import { formatDay, formatMoment, personName, type RecordItem } from './types'
@@ -24,7 +25,7 @@ export default function RecordDialog({ record, onClose, showClient, onEdit, onDe
     const details = [
         ...(showClient ? [{ label: t('records_col_client'), value: <Link href={`/dashboard/clients/${record.client.id}`} prefetch={false}><bdi>{record.client.name}</bdi></Link> }] : []),
         // Its company, for a Super Admin, who sees every company's (Codex on #82).
-        ...(record.client.company ? [{ label: t('company_label'), value: <bdi>{record.client.company}</bdi> }] : []),
+        ...(record.client.company ? [{ label: t('company_label'), value: <bdi>{companyLabel(locale, record.client.company, record.client.companyAr)}</bdi> }] : []),
         { label: t('records_section'), value: <bdi>{record.section.title}</bdi> },
         {
             label: t('records_expiry_date'),

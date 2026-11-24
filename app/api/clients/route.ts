@@ -84,7 +84,7 @@ export const GET = withStandardHandler(async (req, session) => {
             // Company name is only needed to label rows in the Super
             // Admin's aggregate ("all companies") view — a non-Super-Admin
             // request is always scoped to their own single company already.
-            ...(userRole === 'SUPER_ADMIN' ? { company: { select: { name: true } } } : {})
+            ...(userRole === 'SUPER_ADMIN' ? { company: { select: { name: true, nameAr: true } } } : {})
         }
     })
 

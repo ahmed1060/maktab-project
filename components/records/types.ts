@@ -20,7 +20,7 @@ export type RecordItem = {
     lastEditedBySuperAdmin: boolean
     section: { id: string; title: string }
     /** The client it's kept for, and its company in a Super Admin's view of every company. */
-    client: { id: string; name: string; company?: string }
+    client: { id: string; name: string; company?: string; companyAr?: string | null }
 }
 
 /** One of a client's sections, with how many records it holds. */

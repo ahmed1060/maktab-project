@@ -8,6 +8,7 @@ import { useAssignableRoles } from '@/lib/useAssignableRoles'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import { Button, Card, Dialog, DialogActions, EmptyState, Field, Row, RowMenu, Select, StatusBadge, TextArea, type MenuItem, type StatusTone } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyNameIn } from '@/lib/company-name'
 import { useToast } from '@/context/ToastContext'
 import { roleLabel } from '@/lib/role-label'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
@@ -31,7 +32,7 @@ type ChangeRequest = {
     status: 'OPEN' | 'DONE' | 'DECLINED'
     response: string | null
     createdAt: string
-    company: { name: string }
+    company: { name: string; nameAr?: string | null }
     role: { id: string; name: string; builtIn?: string | null } | null
     requestedBy: { firstName: string; lastName: string }
     respondedBy: { firstName: string; lastName: string } | null
@@ -114,14 +115,14 @@ export default function RoleChangeRequests({ side, highlight }: { side: 'company
                         key={r.id}
                         tone={selected === r.id ? 'selected' : undefined}
                         title={<><bdi>{roleName(r)}</bdi>{' '}<StatusBadge tone={STATUS_TONE[r.status]}>{t(`role_change_${r.status}` as TranslationKey)}</StatusBadge></>}
-                        detail={facts([side === 'superAdmin' ? r.company.name : null, name(r.requestedBy), day(r.createdAt)])}
+                        detail={facts([side === 'superAdmin' ? companyNameIn(locale, r.company) : null, name(r.requestedBy), day(r.createdAt)])}
                         note={[
                             <bdi key="asked">{r.description}</bdi>,
                             r.response ? <Fragment key="response">{t('role_changes_response_line').split('{text}')[0]}<bdi>{r.response}</bdi>{t('role_changes_response_line').split('{text}')[1]}</Fragment> : null,
                         ]}
                         end={side === 'superAdmin' && r.status === 'OPEN' && (
                             // Named for the role and the company: two companies asking for "A new role" are told apart (audit on part 2a).
-                            <RowMenu label={t('ui_more_actions_for').replace('{name}', `${roleName(r)}${t('list_separator')}${r.company.name}`)} tooltip={t('ui_more_actions')} items={menu(r)} />
+                            <RowMenu label={t('ui_more_actions_for').replace('{name}', `${roleName(r)}${t('list_separator')}${companyNameIn(locale, r.company)}`)} tooltip={t('ui_more_actions')} items={menu(r)} />
                         )}
                     />
                 ))}

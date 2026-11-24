@@ -62,8 +62,8 @@ describe("a Team Leader sees their team and themselves", () => {
         // Search writes whereClause.OR. If the scope were written there too,
         // whichever ran last would win — and it must always be the scope.
         const where = clause(build(leader, "search=laila"))
-        // Each name in either language since PR 405.
-        expect(where.OR).toHaveLength(7)
+        // Each name in either language since PR 405, and the company's since PR 411.
+        expect(where.OR).toHaveLength(8)
         expect(where.AND).toContainEqual({ OR: [{ teamLeaderId: "tl-1" }, { id: "tl-1" }] })
     })
 

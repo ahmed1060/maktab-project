@@ -178,7 +178,7 @@ export const GET = withStandardHandler(async (req, session) => {
                 lastActivity: true, role: true, gender: true, username: true,
                 // Their newest tab that's here, for whether they're online (lib/presence.ts).
                 openTabs: { where: { here: true }, orderBy: { seenAt: "desc" }, take: 1, select: { seenAt: true } },
-                company: { select: { id: true, name: true } },
+                company: { select: { id: true, name: true, nameAr: true } },
                 totalDifficultyPoints: true,
                 teamLeaderId: true,
                 // select, not `teamLeader: true`. A leader is a User, and the

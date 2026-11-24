@@ -27,7 +27,7 @@ type Session = { user: { id: string; role: string; companyId?: string | null; gr
 
 const SHAPE = {
     id: true, companyId: true, status: true, createdAt: true, completedAt: true,
-    company: { select: { name: true } },
+    company: { select: { name: true, nameAr: true } },
     lines: {
         select: {
             id: true, userId: true, userName: true, permission: true, scope: true, roleName: true, decision: true, note: true, answeredAt: true,

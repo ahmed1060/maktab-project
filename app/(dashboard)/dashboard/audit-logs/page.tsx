@@ -12,6 +12,7 @@ import {
 } from '@/components/ui'
 import { useCompany } from '@/context/CompanyContext'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyNameIn } from '@/lib/company-name'
 import { AUDIT_ACTIONS, AUDIT_ACTION_GROUPS, AUDIT_ENTITY_TYPES } from '@/lib/audit-codes'
 import { changeArrow, describeDetails, type DetailLine } from '@/lib/audit-details'
 import { countOf } from '@/lib/plural'
@@ -43,7 +44,7 @@ type AuditLog = {
     superAdmin?: { firstName: string; lastName: string; email: string } | null
 }
 type Listed = { data: AuditLog[]; total: number; page: number; totalPages: number }
-type Named = { id: string; firstName: string; lastName: string; company?: { name: string } | null }
+type Named = { id: string; firstName: string; lastName: string; company?: { name: string; nameAr?: string | null } | null }
 const LIMIT = 20
 /** Shown before the rest of an entry's details, which wait behind Show more. */
 const SHOWN = 3
@@ -227,7 +228,7 @@ export default function AuditLogsPage() {
                         options={[{ value: '', label: t('audit_by_anyone') }]}
                         groups={[
                             { label: t('super_admins'), options: admins.map(a => ({ value: a.id, label: nameOf(a) })).sort(byName) },
-                            { label: t('audit_by_people'), options: users.map(u => ({ value: u.id, label: u.company ? `${nameOf(u)} (${u.company.name})` : nameOf(u) })).sort(byName) },
+                            { label: t('audit_by_people'), options: users.map(u => ({ value: u.id, label: u.company ? `${nameOf(u)} (${companyNameIn(locale, u.company)})` : nameOf(u) })).sort(byName) },
                         ]} />
                 )}</Field>
                 <Field label={t('audit_item')} hideLabel>{p => (

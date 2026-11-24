@@ -9,6 +9,7 @@ import {
     StarIcon, StorefrontIcon, TagIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyNameIn } from '@/lib/company-name'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
 import {
@@ -175,7 +176,7 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
             key: 'location', header: t('locations_col_location'),
             cell: l => onePage ? <ItemTitle title={title(l)} detail={owner(l)} detailIcon={l.client ? StorefrontIcon : TagIcon} /> : <ItemTitle title={title(l)} />,
         },
-        ...(everyCompany ? [{ key: 'company', header: t('clients_col_company'), cell: (l: LocationItem) => <bdi>{l.company.name}</bdi> }] : []),
+        ...(everyCompany ? [{ key: 'company', header: t('clients_col_company'), cell: (l: LocationItem) => <bdi>{companyNameIn(locale, l.company)}</bdi> }] : []),
         { key: 'pin', header: t('locations_col_pin'), cell: pin },
         { key: 'radius', header: t('locations_col_radius'), cell: radius },
         ...(changes ? [{ key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end' as const, cell: actions }] : []),
@@ -234,7 +235,7 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
                                 status={hq(l) || undefined}
                                 details={[
                                     ...(onePage ? [{ icon: l.client ? StorefrontIcon : TagIcon, text: owner(l) }] : []),
-                                    ...(everyCompany ? [{ icon: BuildingsIcon, text: <bdi>{l.company.name}</bdi> }] : []),
+                                    ...(everyCompany ? [{ icon: BuildingsIcon, text: <bdi>{companyNameIn(locale, l.company)}</bdi> }] : []),
                                     { icon: MapPinIcon, text: pin(l) },
                                     { icon: MapPinAreaIcon, text: radius(l) },
                                 ]}

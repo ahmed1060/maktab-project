@@ -98,3 +98,13 @@ export function companiesInOrder<C extends CompanyNames>(companies: readonly C[]
     const rest = companies.filter(c => !c.nameAr?.trim())
     return [...inArabic.sort((a, b) => a.nameAr!.trim().localeCompare(b.nameAr!.trim(), 'ar')), ...rest]
 }
+
+/** A company select's options: each in the page's language, in the page's order (PR 411). */
+export function companyOptions(companies: readonly (CompanyNames & { id: string })[], locale: Locale): { value: string; label: string }[] {
+    return companiesInOrder(companies, locale).map(c => ({ value: c.id, label: companyNameIn(locale, c) }))
+}
+
+/** A company's name sent as two fields, such as a record's client's, in the page's language; nothing where there's none (PR 411). */
+export function companyLabel(locale: Locale, name: string | null | undefined, nameAr?: string | null): string | undefined {
+    return name ? companyNameIn(locale, { name, nameAr }) : undefined
+}

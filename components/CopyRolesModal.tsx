@@ -6,6 +6,7 @@ import { refusalOf } from '@/lib/api-error-text'
 import { Button, Dialog, DialogActions, Field, Select } from '@/components/ui'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyOptions } from '@/lib/company-name'
 import { useToast } from '@/context/ToastContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import type { TranslationKey } from '@/lib/translations'
@@ -34,7 +35,7 @@ export default function CopyRolesModal({ companyId, isOpen, onClose, onCopied }:
 }
 
 function CopyRolesDialog({ companyId, onClose, onCopied }: { companyId: string; onClose: () => void; onCopied: () => void }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const formRef = useRef<HTMLFormElement>(null)
     const [source, setSource] = useState('')
@@ -42,7 +43,7 @@ function CopyRolesDialog({ companyId, onClose, onCopied }: { companyId: string; 
     const [includeBuiltIn, setIncludeBuiltIn] = useState(false)
     const [copying, setCopying] = useState(false)
     const { data, error, isValidating, mutate } = useSWR('/api/companies?limit=100', fetcher)
-    const companies: { id: string; name: string }[] = (data?.data?.data || data?.data || []).filter((c: { id: string }) => c.id !== companyId)
+    const companies: { id: string; name: string; nameAr?: string | null }[] = (data?.data?.data || data?.data || []).filter((c: { id: string }) => c.id !== companyId)
 
     const copy = async (e: FormEvent) => {
         e.preventDefault()
@@ -77,7 +78,7 @@ function CopyRolesDialog({ companyId, onClose, onCopied }: { companyId: string; 
                 <Field label={t('roles_copy_source')} hint={!data && !error ? t('loading') : undefined}
                     error={error ? t('roles_copy_companies_failed') : wrong ? t(wrong) : undefined}>{p => (
                     <Select {...p} name="source" value={source} onChange={e => { setSource(e.target.value); setWrong(null) }}
-                        options={[{ value: '', label: t('roles_copy_choose') }, ...companies.map(c => ({ value: c.id, label: c.name }))]} />
+                        options={[{ value: '', label: t('roles_copy_choose') }, ...companyOptions(companies, locale)]} />
                 )}</Field>
                 {error && <p><Button size="sm" busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button></p>}
                 <label className="ui-choice">
