@@ -22,8 +22,9 @@ languages are kept (#398), Nizmo's list of names and the rules are done
 (#399), and so are the company's spellings, learned (#400), and read for
 a name's suggestion (#401), and employees' names on Add employee (#402),
 on an employee's page and on one's own profile (#403), in a request to
-change one's own name (#404), and on the Employees page (#405). Clients'
-names are next: in their form (#406), then on the Clients page.
+change one's own name (#404), and on the Employees page (#405), and
+clients' names in their form (#406). Clients' names on the Clients page
+are next (#407).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -509,7 +510,7 @@ other filled in when one is typed, if that's possible.
    - the note is a building block (`ListNote`), for the Clients page in
      step 6.
 6. **Clients' names:**
-   - **6a. In the client's form (#406),** the dialog on the Clients page
+   - **6a. In the client's form (Done, #406),** the dialog on the Clients page
      that adds a client or edits one:
      - its name and its owner's, each in English and in Arabic, with the
        suggestion: a business's for its own name, with its business
@@ -530,7 +531,7 @@ other filled in when one is typed, if that's possible.
        were once each was typed; what's still missing is said under its
        field on saving, the first focused. The server asks each name as
        a name change's request does (`nameIn`, #404).
-   - **6b. On the Clients page:** the names in the page's language, with
+   - **6b. On the Clients page (#407):** the names in the page's language, with
      the ones still missing a language (the note and the Names select, as
      the Employees page has them), and its search finding either.
 7. **The company's name:** Company settings and the Super Admin's
@@ -1283,3 +1284,7 @@ same day as drawn in the All users: status badges canvas
   building block. The owner chose a client's names' limits: 100
   characters for its own, as before, and 60 for its owner's. Clients'
   names in their form next, as #406.
+- **2026-11-24:** #406 merged: a client's name and its owner's in English
+  and in Arabic in its form (§3.1, step 6a), up to 100 and 60 characters,
+  the note at the top naming which is in one language only. The Clients
+  page next, as #407.
