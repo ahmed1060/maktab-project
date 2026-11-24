@@ -456,9 +456,12 @@ other filled in when one is typed, if that's possible.
        so, and the form isn't saved until it's added. A name written in
        Arabic in its English column shows in the Arabic field, with the
        English empty;
-     - the server takes names sent back only with both languages, each
-       in its own letters. An edit that sends no name, such as a
-       status's, leaves them as they are;
+     - the server takes a name's English only in English letters and
+       with its Arabic, sent with it or kept, and its Arabic alone may be
+       added. An edit that sends no name, such as a status's, leaves them
+       as they are. A name sent in Arabic as its English, as a form that
+       asked for one name only once did (#398), is refused now that
+       every form that saves a name sends both;
      - one's own name on an employee's or a team leader's footing stays
        a request until 4c, which brings the two fields to it;
    - **4c, a request to change one's own name (#404):** the two fields
