@@ -7,6 +7,7 @@ import {
     ArticleIcon, BuildingOfficeIcon, BuildingsIcon, CalendarXIcon, EyeIcon, FileIcon, FolderIcon, HourglassIcon, PencilSimpleIcon, TrashIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyLabel } from '@/lib/company-name'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
 import {
@@ -161,7 +162,7 @@ export default function RecordsList({ clientId, sections = [], adding = false, o
     const client = (r: RecordItem) => (
         <ItemTitle
             title={<Link href={`/dashboard/clients/${r.client.id}`} prefetch={false} className="ui-item-link"><bdi>{r.client.name}</bdi></Link>}
-            detail={r.client.company}
+            detail={companyLabel(locale, r.client.company, r.client.companyAr)}
             detailIcon={r.client.company ? BuildingsIcon : undefined}
         />
     )
@@ -229,7 +230,7 @@ export default function RecordsList({ clientId, sections = [], adding = false, o
                                     ...(showClient ? [{ icon: BuildingsIcon, text: <Link href={`/dashboard/clients/${r.client.id}`} prefetch={false} className="ui-item-link"><bdi>{r.client.name}</bdi></Link> }] : []),
                                     // Its company, in a Super Admin's view of every company's, as in the table:
                                     // two may have clients of the same name (Codex on #82).
-                                    ...(showClient && r.client.company ? [{ icon: BuildingOfficeIcon, text: <bdi>{r.client.company}</bdi> }] : []),
+                                    ...(showClient && r.client.company ? [{ icon: BuildingOfficeIcon, text: <bdi>{companyLabel(locale, r.client.company, r.client.companyAr)}</bdi> }] : []),
                                     { icon: r.expiryDate ? CalendarXIcon : HourglassIcon, text: r.expiryDate ? formatDay(r.expiryDate, locale) : t('records_no_expiry') },
                                     ...(r.files.length ? [{ icon: FileIcon, text: countOf(t, locale, r.files.length, 'files') }] : []),
                                 ]}

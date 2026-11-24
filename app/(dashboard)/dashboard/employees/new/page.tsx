@@ -8,6 +8,7 @@ import AccessDenied from '@/components/AccessDenied'
 import { useAssignableRoles, type AssignableRole } from '@/lib/useAssignableRoles'
 import { Button, ButtonLink, Card, Field, NameFields, Page, PageHeader, PasswordInput, Select, TextInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyOptions } from '@/lib/company-name'
 import { apiErrorText } from '@/lib/api-error-text'
 import { firstError } from '@/lib/form-errors'
 import { NAME_MAX, PASSWORD_MAX, fieldsInFormOrder, mistakeText, newEmployeeErrors, refusedField, type NewEmployeeField } from '@/lib/new-employee-form'
@@ -17,7 +18,7 @@ import { useCan } from '@/lib/useCan'
 import { useFeatures } from '@/lib/features/useFeatures'
 import { useModules } from '@/lib/useModules'
 
-type Company = { id: string; name: string }
+type Company = { id: string; name: string; nameAr?: string | null }
 type Leader = { id: string; firstName: string; lastName: string }
 
 export const dynamic = 'force-dynamic'
@@ -208,7 +209,7 @@ export default function NewEmployeePage() {
                         <div>
                             <Field label={t('company_label')} error={fieldErrors.companyId ?? (companies.error ? t('emp_new_companies_failed') : undefined)}>{p => (
                                 <Select {...p} name="companyId" value={companyId} disabled={loading}
-                                    options={[{ value: '', label: t('select_company_placeholder') }, ...companyList.map(c => ({ value: c.id, label: c.name }))]}
+                                    options={[{ value: '', label: t('select_company_placeholder') }, ...companyOptions(companyList, locale)]}
                                     onChange={e => { setCompanyId(e.target.value); setRoleId(''); setRole('EMPLOYEE'); clear('companyId') }} />
                             )}</Field>
                             {companies.error && <Button size="sm" busy={companies.isValidating} onClick={() => { void companies.mutate() }}>{t('try_again')}</Button>}

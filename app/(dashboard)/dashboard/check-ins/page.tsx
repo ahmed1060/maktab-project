@@ -12,6 +12,7 @@ import {
     Button, DataList, EmptyState, ItemTitle, ListCard, Page, PageHeader, RowMenu, Section, StatusBadge, type Column,
 } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyNameIn } from '@/lib/company-name'
 import { useToast } from '@/context/ToastContext'
 import { googleMapsLink } from '@/lib/attendance/geo'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
@@ -42,7 +43,7 @@ import { RejectRequest, decideRequest, punchDay, punchTime } from '../requests/A
  */
 
 type Waiting = {
-    id: string; companyName: string; name: string; at: string; direction: string | null; flagReasons: string[]
+    id: string; companyName: string; companyNameAr?: string | null; name: string; at: string; direction: string | null; flagReasons: string[]
     checkIn: { latitude?: number; longitude?: number; distanceMeters?: number; accuracyMeters?: number; ip?: string | null; attestationReason?: string | null } | null
     workLocation: { name: string } | null; phone: { model: string | null; platform: string } | null
 }
@@ -140,7 +141,7 @@ export default function CheckInReviewPage() {
         </span>
     )
     const waitingColumns: Column<Waiting>[] = [
-        { key: 'company', header: t('chk_company'), cell: w => oneLine(company(w.companyName)) },
+        { key: 'company', header: t('chk_company'), cell: w => oneLine(company(companyNameIn(locale, { name: w.companyName, nameAr: w.companyNameAr }))) },
         { key: 'person', header: t('punch_person'), cell: w => <ItemTitle title={oneLine(w.name)} detail={phone(w)} /> },
         { key: 'when', header: t('punch_time'), cell: w => <ItemTitle title={when(w)} detail={place(w)} /> },
         { key: 'why', header: t('req_flagged_why'), cell: w => <ItemTitle title={why(w)} detail={where(w)} /> },
@@ -195,7 +196,7 @@ export default function CheckInReviewPage() {
                         <ListCard
                             title={w.name}
                             details={[
-                                { icon: BuildingsIcon, text: company(w.companyName) },
+                                { icon: BuildingsIcon, text: company(companyNameIn(locale, { name: w.companyName, nameAr: w.companyNameAr })) },
                                 { icon: ClockIcon, text: when(w) },
                                 ...(place(w) ? [{ icon: MapPinIcon, text: place(w) }] : []),
                                 ...(phone(w) ? [{ icon: DeviceMobileIcon, text: phone(w) }] : []),

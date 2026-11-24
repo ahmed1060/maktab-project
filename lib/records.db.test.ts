@@ -115,6 +115,8 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             if (m === "20260920000000_team_leader") await db.query(PEOPLE)
         }
         await db.query(`INSERT INTO "SuperAdmin"(id, email, password, "firstName", "lastName", username, "isProtected", "updatedAt") VALUES ('sa1', 'sa@x', 'p', 'Sam', 'Admin', 'sa1', true, now())`)
+        // The first company's name in Arabic too, the second's in English only (PR 411).
+        await db.query(`UPDATE "Company" SET "nameAr" = 'واحد' WHERE id = 'c1'`)
         await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES
             ('v1', 'c1', 'Acme', 'Mona', '0100', 'Cairo', now()),
             ('v2', 'c1', 'Beta', 'Omar', '0101', 'Giza', now()),
@@ -300,7 +302,8 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             // A Super Admin looking at every company sees which company each is in.
             const all = await Records.list(superAdmin, { page: 1, limit: 20 })
             expect(all.total).toBe(4)
-            expect(all.data.find(r => r.id === gamma)!.client).toEqual({ id: "v3", name: "Gamma", company: "Two" })
+            // Its name in both languages, shown in the page's (PR 411).
+            expect(all.data.find(r => r.id === gamma)!.client).toEqual({ id: "v3", name: "Gamma", company: "Two", companyAr: null })
         })
 
         it("finds a record by its text, its section's name or its client's name", async () => {
@@ -791,7 +794,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
 
         it("names a record's company to a Super Admin, who sees every company's, and to nobody else", async () => {
             const id = (await Records.create(admin, { content: "Named company", files: [], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).id
-            expect((await Records.get(superAdmin, id)).client).toEqual({ id: "v1", name: expect.any(String), company: "One" })
+            expect((await Records.get(superAdmin, id)).client).toEqual({ id: "v1", name: expect.any(String), company: "One", companyAr: "واحد" })
             expect((await Records.get(admin, id)).client).not.toHaveProperty("company")
         })
 

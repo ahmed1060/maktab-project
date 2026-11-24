@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { StorefrontIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyLabel } from '@/lib/company-name'
 import { useToast } from '@/context/ToastContext'
 import DatePickerSingle from '@/components/DatePickerSingle'
 import { Button, Dialog, EmptyState, Field, FileChip, FileChips, FilePicker, SearchInput, Select, TextArea, TextInput } from '@/components/ui'
@@ -232,7 +233,7 @@ function Form({ onClose, clientId, sections, record, onSaved }: {
                                         {...p}
                                         value={forClient}
                                         onChange={e => setChosen(e.target.value)}
-                                        options={clients.clients.map(c => ({ value: c.id, label: c.company ? `${c.name} · ${c.company}` : c.name }))}
+                                        options={clients.clients.map(c => ({ value: c.id, label: c.company ? `${c.name} · ${companyLabel(locale, c.company, c.companyAr)}` : c.name }))}
                                         disabled={saving}
                                     />
                                 )}</Field>

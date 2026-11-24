@@ -52,12 +52,12 @@ const SHOWN = {
     user: { select: { firstName: true, lastName: true, teamLeaderId: true } },
     workLocation: { select: { name: true, latitude: true, longitude: true, radiusMeters: true } },
     phone: { select: { model: true, platform: true } },
-    company: { select: { name: true } },
+    company: { select: { name: true, nameAr: true } },
 } as const
 
 const shown = (p: Prisma.AttendancePunchGetPayload<{ select: typeof SHOWN }>) => {
     const { user, punchAtLocal, company, ...rest } = p
-    return { ...rest, at: wallClockText(punchAtLocal), name: `${user!.firstName} ${user!.lastName}`.trim(), teamLeaderId: user!.teamLeaderId, companyName: company.name }
+    return { ...rest, at: wallClockText(punchAtLocal), name: `${user!.firstName} ${user!.lastName}`.trim(), teamLeaderId: user!.teamLeaderId, companyName: company.name, companyNameAr: company.nameAr }
 }
 
 export class AttendanceFlagService {

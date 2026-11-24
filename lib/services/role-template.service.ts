@@ -91,7 +91,7 @@ export class RoleTemplateService {
         const roles = await prisma.role.findMany({
             where: { copiedFromTemplateId: templateId },
             select: {
-                id: true, name: true, companyId: true, company: { select: { name: true } },
+                id: true, name: true, companyId: true, company: { select: { name: true, nameAr: true } },
                 grants: { select: { permission: true, scope: true } }, _count: { select: { users: true } },
             },
             orderBy: [{ company: { name: "asc" } }, { name: "asc" }],
@@ -99,7 +99,7 @@ export class RoleTemplateService {
         return {
             template,
             roles: roles.map(role => ({
-                id: role.id, name: role.name, companyId: role.companyId, companyName: role.company.name,
+                id: role.id, name: role.name, companyId: role.companyId, companyName: role.company.name, companyNameAr: role.company.nameAr,
                 holders: role._count.users,
                 difference: differenceOf(rowsHeld(role.grants), template.grants),
             })),

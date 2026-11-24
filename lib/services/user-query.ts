@@ -116,7 +116,9 @@ export function buildUserWhereClause(
             { lastName: { contains: searchParam, mode: 'insensitive' } },
             { lastNameAr: { contains: searchParam, mode: 'insensitive' } },
             { email: { contains: searchParam, mode: 'insensitive' } },
-            { company: { name: { contains: searchParam, mode: 'insensitive' } } }
+            { company: { name: { contains: searchParam, mode: 'insensitive' } } },
+            // A company by either language too (PR 411).
+            { company: { nameAr: { contains: searchParam, mode: 'insensitive' } } }
         ]
     }
 

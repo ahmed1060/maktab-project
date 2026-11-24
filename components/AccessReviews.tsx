@@ -8,6 +8,7 @@ import { refusalOf } from '@/lib/api-error-text'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
 import { Button, Card, Dialog, DialogActions, EmptyState, Field, Row, Select, StatusBadge, TextArea } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyNameIn } from '@/lib/company-name'
 import { useToast } from '@/context/ToastContext'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import type { Scope } from '@/lib/permissions/catalogue'
@@ -35,7 +36,7 @@ type Line = {
     decision: 'CONFIRMED' | 'CHANGE_REQUESTED' | null; note: string | null
     answeredBy: Person | null; answeredBySuperAdmin: Person | null
 }
-type Review = { id: string; status: 'OPEN' | 'COMPLETED'; createdAt: string; company: { name: string }; lines: Line[] }
+type Review = { id: string; status: 'OPEN' | 'COMPLETED'; createdAt: string; company: { name: string; nameAr?: string | null }; lines: Line[] }
 
 /** What's wrong with a change asked for; null when it says what. */
 export function reasonError(reason: string): TranslationKey | null {
@@ -98,7 +99,7 @@ export default function AccessReviews({ side, highlight }: { side: 'company' | '
         const date = day(review.createdAt)
         if (side !== 'superAdmin') return t('access_review_opened').replace('{date}', date)
         const [before, after] = t('access_review_company_opened').replace('{date}', date).split('{company}')
-        return <>{before}<bdi>{review.company.name}</bdi>{after}</>
+        return <>{before}<bdi>{companyNameIn(locale, review.company)}</bdi>{after}</>
     }
 
     /** What's at a line's end: how it was answered, Confirm and Request change, or that it's someone else's to answer. */

@@ -25,9 +25,9 @@ on an employee's page and on one's own profile (#403), in a request to
 change one's own name (#404), and on the Employees page (#405), and
 clients' names in their form (#406) and on the Clients page (#407), and
 the company's name in two languages (#408) and shown in the page's
-language to its people and clients (#409). The company's name shown in the
-page's language to the Super Admin is next: on its own screens for
-companies (#410), then in the other screens' company columns and selects.
+language to its people and clients (#409), and to the Super Admin on its
+own screens for companies (#410). The company columns and selects of the
+other screens are next (#411).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -589,7 +589,7 @@ other filled in when one is typed, if that's possible.
      come with the other screens (step 8).
    - **7c. Shown in the page's language, to the Super Admin,** in two
      parts:
-     - **7c-1. Its own screens for companies (#410):**
+     - **7c-1. Its own screens for companies (Done, #410):**
        - the company switcher: each company in the page's language, its
          tile's initials too, found by either language, and on an Arabic
          page the ones with an Arabic name first, in Arabic order, as the
@@ -606,10 +606,15 @@ other filled in when one is typed, if that's possible.
        - the preview note ("Previewing … at …").
        The address keeps naming the company in view by its English name,
        as now: it's how a link names it.
-     - **7c-2. The company columns and selects of the other screens:**
-       All users, the audit log, check-ins, clients, places, the client
-       picker's company beside each client, Add employee's company, Copy
-       roles, role change requests, access reviews and template offers.
+     - **7c-2. The company columns and selects of the other screens (#411):**
+       All users, the audit log, check-ins, clients, places, records, the
+       client pickers' company beside each client, Add employee's company,
+       Copy roles, role change requests, access reviews and template
+       offers:
+       - each company in the page's language, the company selects in the
+         page's order (as the switcher, #410);
+       - All users' search finds a company by either language, as the
+         Companies page's does.
 8. **The other screens show names in the page's language,** by area:
    tasks, obligations, records, attendance, requests, payroll, the
    client's area, and notifications and messages written from then on.
@@ -1378,3 +1383,11 @@ same day as drawn in the All users: status badges canvas
   check, and, from its Codex review, the side bar and the account menu
   read the live session, so a name Nizmo's team completes shows without
   signing in again. The Super Admin's screens next, as #410 (step 7c).
+- **2026-11-24:** #410 merged: the company's name in the page's language
+  on the Super Admin's own screens for companies (§3.1, step 7c-1): the
+  company switcher, found by either language and in the page's order, the
+  side bar's name while looking at one company, from the company the page
+  is drawn for, the Companies page, its search in either language and Sort
+  by name in the page's language, a company's settings and payments
+  headings, and the preview note. The company columns and selects of the
+  other screens next, as #411 (step 7c-2).

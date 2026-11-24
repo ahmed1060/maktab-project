@@ -5,7 +5,7 @@ import useSWR from 'swr'
 import { useCompany } from '@/context/CompanyContext'
 import { scopedKey, scopedFetcher, forScope, loadFailed } from '@/lib/swr-scoped'
 
-export type ClientOption = { id: string; name: string; company?: string }
+export type ClientOption = { id: string; name: string; company?: string; companyAr?: string | null }
 
 /**
  * The clients a record can be added to from the Records page (CLIENTS_PLAN.md

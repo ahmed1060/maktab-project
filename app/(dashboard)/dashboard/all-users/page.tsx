@@ -17,6 +17,7 @@ import {
     SearchInput, Select, StatusBadge, StatusCounts, TabLinks, pageInRange, type Column,
 } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyNameIn, companyOptions } from '@/lib/company-name'
 import { useToast } from '@/context/ToastContext'
 import { COUNTED_STATUSES, STATUS_TONE, STATUS_WORD, type CountedStatus } from '@/lib/person-status'
 import { countOf } from '@/lib/plural'
@@ -48,7 +49,7 @@ type Person = {
     role: string
     status: string
     totalDifficultyPoints: number
-    company?: { id: string; name: string } | null
+    company?: { id: string; name: string; nameAr?: string | null } | null
     // When they can sign in again, if they're locked out now (lib/sign-in-lock.ts).
     signInLockedUntil?: string | null
     ownPasswordPausedUntil?: string | null
@@ -97,7 +98,7 @@ export default function AllUsersPage() {
     const [busy, setBusy] = useState(false)
 
     const { data: companiesResult } = useSWR(isSuperAdmin ? '/api/companies?limit=1000&filter=all&sort=name' : null, fetcher)
-    const companies: { id: string; name: string }[] = companiesResult?.data?.data ?? []
+    const companies: { id: string; name: string; nameAr?: string | null }[] = companiesResult?.data?.data ?? []
 
     // The rows stay up while the next page or search loads, each answer
     // tagged with what it was asked for: one that failed says so, rather than
@@ -143,7 +144,8 @@ export default function AllUsersPage() {
 
     const nameOf = (p: Person) => `${p.firstName} ${p.lastName}`
     const roleWord = (r: string) => t(`role_${r.toLowerCase()}` as TranslationKey) || r
-    const companyOf = (p: Person) => p.company ? <bdi>{p.company.name}</bdi> : t('all_users_no_company')
+    // Each company in the page's language, or the one it has (PR 411).
+    const companyOf = (p: Person) => p.company ? <bdi>{companyNameIn(locale, p.company)}</bdi> : t('all_users_no_company')
     const statusBadge = (p: Person) => <StatusBadge tone={STATUS_TONE[p.status] ?? 'neutral'}>{STATUS_WORD[p.status] ? t(STATUS_WORD[p.status]) : p.status}</StatusBadge>
     // Locked out of signing in, with Unlock, under the status (decided 2026-11-03).
     const lock = (p: Person) => <SignInLock personId={p.id} name={nameOf(p)} until={p.signInLockedUntil} paused={p.ownPasswordPausedUntil} onUnlocked={() => { void mutate() }} />
@@ -265,7 +267,7 @@ export default function AllUsersPage() {
             >
                 <Field label={t('company_label')} hideLabel>{p => (
                     <Select {...p} icon={BuildingsIcon} name="companyId" value={companyId} onChange={e => setCompanyId(e.target.value)}
-                        options={[{ value: '', label: t('all_users_any_company') }, ...companies.map(c => ({ value: c.id, label: c.name }))]} />
+                        options={[{ value: '', label: t('all_users_any_company') }, ...companyOptions(companies, locale)]} />
                 )}</Field>
             </FilterBar>
             {list}

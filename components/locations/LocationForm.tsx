@@ -5,6 +5,7 @@ import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
 import { BuildingsIcon, StorefrontIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyOptions } from '@/lib/company-name'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
 import { Button, Choice, Dialog, Field, Select } from '@/components/ui'
@@ -55,7 +56,7 @@ function Form({ onClose, clientId, location, forTask, onSaved }: {
     forTask?: ForTask
     onSaved: (saved?: LocationItem) => void
 }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const { can } = useCan()
     const { data: session } = useSession()
@@ -79,7 +80,7 @@ function Form({ onClose, clientId, location, forTask, onSaved }: {
     const pickCompany = choosing && sharedChosen && superAdmin && !selectedCompanyId
     const [chosenCompany, setChosenCompany] = useState('')
     const { data: companiesBody } = useSWR(pickCompany ? '/api/companies?limit=1000' : null, fetcher)
-    const companies: { id: string; name: string }[] = (() => {
+    const companies: { id: string; name: string; nameAr?: string | null }[] = (() => {
         const raw = companiesBody?.data?.data || companiesBody?.data || companiesBody
         return Array.isArray(raw) ? raw : []
     })()
@@ -187,7 +188,7 @@ function Form({ onClose, clientId, location, forTask, onSaved }: {
                 {pickCompany && (
                     <Field label={t('select_company')}>{p => (
                         <Select {...p} icon={BuildingsIcon} value={chosenCompany} onChange={e => setChosenCompany(e.target.value)} disabled={saving}
-                            options={[{ value: '', label: t('select_company') }, ...companies.map(c => ({ value: c.id, label: c.name }))]} />
+                            options={[{ value: '', label: t('select_company') }, ...companyOptions(companies, locale)]} />
                     )}</Field>
                 )}
                 <PlaceFields draft={draft} onChange={d => { setDraft(d); if (tried) setErrors(readPlace(d).errors) }} errors={errors} disabled={saving} />
