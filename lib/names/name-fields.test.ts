@@ -101,11 +101,11 @@ describe("a new name's mistakes", () => {
     })
 
     it("ask for one longer than the limit to be shortened, as a suggestion used may be (Codex, PR 402)", () => {
-        // 36 characters in Arabic, 44 in English.
-        expect(newNameErrors(40, { en: "Mohamed Mostafa Abdelrahman Abdallah Mahmoud", ar: "محمد مصطفى عبد الرحمن عبد الله محمود" })).toEqual({ en: "too_long" })
-        expect(newNameErrors(30, { en: "Mohamed Mostafa", ar: "محمد مصطفى عبد الرحمن عبد الله محمود" })).toEqual({ ar: "too_long" })
+        // 30 characters in Arabic, 36 in English.
+        expect(newNameErrors(30, { en: "Mohamed Mostafa Abdelrahman Abdallah", ar: "محمد مصطفى عبد الرحمن عبد الله" })).toEqual({ en: "too_long" })
+        expect(newNameErrors(20, { en: "Mohamed Mostafa", ar: "محمد مصطفى عبد الرحمن عبد الله" })).toEqual({ ar: "too_long" })
         // The limit itself is fine, spaces around it aside.
-        expect(newNameErrors(40, { en: ` ${"a".repeat(40)} `, ar: "م".repeat(40) })).toEqual({})
+        expect(newNameErrors(30, { en: ` ${"a".repeat(30)} `, ar: "م".repeat(30) })).toEqual({})
         expect(mistakeKey("too_long", "en")).toBe("name_too_long")
         expect(mistakeKey("too_long", "ar")).toBe("name_too_long")
     })

@@ -9,9 +9,10 @@ import { mistakeKey, newNameErrors } from '@/lib/names/name-fields'
  */
 
 // A first or a last name, as the server takes them (lib/validations/user.schema.ts):
-// up to 40 characters (the owner's answer of 2026-11-23, PR 397; it was 15). A
-// name is usually longer in English than in Arabic, its vowels written out.
-export const NAME_MAX = 40
+// up to 30 characters (the owner's answer of 2026-11-24, PR 402; it was 15, then
+// 40 from PR 397). A first or last name is mostly one word, and at worst a
+// compound of two, which fits even spaced: Abd El Moneim Abd El Ghaffar is 28.
+export const NAME_MAX = 30
 // 8 to 72 characters wherever a password is set (the owner's answer of
 // 2026-11-20, PR 341; it was 12). bcrypt reads no more than 72 bytes.
 export const PASSWORD_MIN = 8

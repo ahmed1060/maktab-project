@@ -124,14 +124,14 @@ describe("what the server takes", () => {
         expect(accepts(updateUserSchema, { id: "u1", firstNameAr: "منى", lastNameAr: "علي" })).toBe(true)
     })
 
-    it("takes them in Arabic letters only, up to 40 characters, as the English", () => {
+    it("takes them in Arabic letters only, up to 30 characters, as the English", () => {
         expect(accepts(createUserSchema, { ...person, firstNameAr: "Mona" })).toBe(false)
         expect(accepts(createUserSchema, { ...person, lastNameAr: "Ali علي" })).toBe(false)
         expect(accepts(createUserSchema, { ...person, firstNameAr: "" })).toBe(false)
-        expect(accepts(createUserSchema, { ...person, firstNameAr: "م".repeat(40) })).toBe(true)
-        expect(accepts(createUserSchema, { ...person, firstNameAr: "م".repeat(41) })).toBe(false)
+        expect(accepts(createUserSchema, { ...person, firstNameAr: "م".repeat(30) })).toBe(true)
+        expect(accepts(createUserSchema, { ...person, firstNameAr: "م".repeat(31) })).toBe(false)
         expect(accepts(updateUserSchema, { id: "u1", lastNameAr: "Ali" })).toBe(false)
-        expect(accepts(updateUserSchema, { id: "u1", firstNameAr: "م".repeat(41) })).toBe(false)
+        expect(accepts(updateUserSchema, { id: "u1", firstNameAr: "م".repeat(31) })).toBe(false)
     })
 
     it("keeps an Arabic name trimmed", () => {

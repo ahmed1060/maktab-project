@@ -78,8 +78,8 @@ describe("Add employee", () => {
         const html = await render()
         for (const [legend, name] of [[en.first_name_label, "firstName"], [en.last_name_label, "lastName"]]) {
             expect(html).toContain(`<legend class="ui-name-fields-label">${legend}</legend>`)
-            expect(html).toMatch(input({ name, dir: "ltr", lang: "en", autoComplete: "off", maxLength: "40" }))
-            expect(html).toMatch(input({ name: `${name}Ar`, dir: "rtl", lang: "ar", autoComplete: "off", maxLength: "40" }))
+            expect(html).toMatch(input({ name, dir: "ltr", lang: "en", autoComplete: "off", maxLength: "30" }))
+            expect(html).toMatch(input({ name: `${name}Ar`, dir: "rtl", lang: "ar", autoComplete: "off", maxLength: "30" }))
         }
         expect(html).toMatch(label(en.name_in_english))
         expect(html).toMatch(label(en.name_in_arabic))
@@ -188,15 +188,15 @@ describe("its checks", () => {
         expect(mistakeText(k => en[k], "en", "firstNameAr", "name_required_ar")).toBe("Enter the first name in Arabic.")
         expect(mistakeText(k => ar[k], "ar", "lastName", "name_use_suggestion_en")).toBe("يُرجى إدخال اسم العائلة بالإنجليزية، أو استخدام الاقتراح.")
         // A name's limit in the reader's digits (Codex, PR 402).
-        expect(mistakeText(k => en[k], "en", "firstName", "name_too_long")).toBe("Shorten the first name to 40 characters.")
-        expect(mistakeText(k => ar[k], "ar", "lastNameAr", "name_too_long")).toBe("يُرجى اختصار اسم العائلة إلى ٤٠ حرفًا.")
+        expect(mistakeText(k => en[k], "en", "firstName", "name_too_long")).toBe("Shorten the first name to 30 characters.")
+        expect(mistakeText(k => ar[k], "ar", "lastNameAr", "name_too_long")).toBe("يُرجى اختصار اسم العائلة إلى ٣٠ حرفاً.")
         expect(mistakeText(k => en[k], "en", "email", "emp_new_email_invalid")).toBe(en.emp_new_email_invalid)
         expect(readFileSync(PAGE, "utf8").match(/mistakeText\(t, locale, /g)).toHaveLength(2)
         // A suggestion used may be longer than a name may be (Codex, PR 402).
-        expect(newEmployeeErrors({ firstName: "Mohamed Mostafa Abdelrahman Abdallah Mahmoud", firstNameAr: "محمد مصطفى عبد الرحمن عبد الله محمود", lastName: "Adel", lastNameAr: "عادل", email: "mona@example.co.uk", password: "a-long-enough-one", company: { needed: false, id: "" } })).toEqual({
+        expect(newEmployeeErrors({ firstName: "Mohamed Mostafa Abdelrahman Abdallah", firstNameAr: "محمد مصطفى عبد الرحمن عبد الله", lastName: "Adel", lastNameAr: "عادل", email: "mona@example.co.uk", password: "a-long-enough-one", company: { needed: false, id: "" } })).toEqual({
             firstName: "name_too_long",
         })
-        expect(newEmployeeErrors({ firstName: "Mona", firstNameAr: "منى", lastName: "Abdelmoneim Abdelghaffar Elshenawy Hassan", lastNameAr: "عبد المنعم عبد الغفار الشناوي حسن", email: "mona@example.co.uk", password: "a-long-enough-one", company: { needed: false, id: "" } })).toEqual({
+        expect(newEmployeeErrors({ firstName: "Mona", firstNameAr: "منى", lastName: "Abdelmoneim Abdelghaffar Elshenawy", lastNameAr: "عبد المنعم عبد الغفار", email: "mona@example.co.uk", password: "a-long-enough-one", company: { needed: false, id: "" } })).toEqual({
             lastName: "name_too_long",
         })
         const { fieldsInFormOrder } = await import("@/lib/new-employee-form")
@@ -223,8 +223,8 @@ describe("its checks", () => {
         expect(refusedField({ error: "Validation Error", details: { firstNameAr: { _errors: ["Written in Arabic letters"] } } })).toEqual({ field: "firstNameAr", key: "name_not_arabic" })
         expect(refusedField({ error: "Validation Error", details: { lastName: { _errors: ["Written in English letters"] } } })).toEqual({ field: "lastName", key: "name_not_english" })
         // Too long, as a suggestion used may be: said so, not as the wrong letters (Codex, PR 402).
-        expect(refusedField({ error: "Validation Error", details: { firstName: { _errors: ["Too big: expected string to have <=40 characters"] } } })).toEqual({ field: "firstName", key: "name_too_long" })
-        expect(refusedField({ error: "Validation Error", details: { lastNameAr: { _errors: ["Too big: expected string to have <=40 characters"] } } })).toEqual({ field: "lastNameAr", key: "name_too_long" })
+        expect(refusedField({ error: "Validation Error", details: { firstName: { _errors: ["Too big: expected string to have <=30 characters"] } } })).toEqual({ field: "firstName", key: "name_too_long" })
+        expect(refusedField({ error: "Validation Error", details: { lastNameAr: { _errors: ["Too big: expected string to have <=30 characters"] } } })).toEqual({ field: "lastNameAr", key: "name_too_long" })
         expect(refusedField({ error: "Something else" })).toBeNull()
     })
 
@@ -269,10 +269,10 @@ describe("Add employee, found in the browser", () => {
 })
 
 describe("Add employee, found in the web interface audit", () => {
-    it("says how much of a name it takes, as it stops at 40 characters", async () => {
+    it("says how much of a name it takes, as it stops at 30 characters", async () => {
         // Typing stopped at the 15th character with nothing to say why.
         const html = await render()
-        const count = esc(en.ui_characters_used.replace("{used}", "0").replace("{max}", "40"))
+        const count = esc(en.ui_characters_used.replace("{used}", "0").replace("{max}", "30"))
         // Each name in English and in Arabic (PR 402).
         expect(html.split(count).length - 1).toBe(4)
     })
