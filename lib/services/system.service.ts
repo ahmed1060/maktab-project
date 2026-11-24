@@ -45,7 +45,7 @@ export class SystemService {
             if (superAdmin) {
                 const companies = await prisma.company.findMany({
                     orderBy: { name: 'asc' },
-                    select: { id: true, name: true }
+                    select: { id: true, name: true, nameAr: true }
                 })
                 return {
                     user: { ...superAdmin, role: 'SUPER_ADMIN', language: 'en' },
@@ -63,7 +63,7 @@ export class SystemService {
             extraTasks.push(
                 prisma.company.findMany({
                     orderBy: { name: 'asc' },
-                    select: { id: true, name: true }
+                    select: { id: true, name: true, nameAr: true }
                 }).then(res => companies = res)
             )
         }

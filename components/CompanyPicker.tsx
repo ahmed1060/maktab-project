@@ -5,21 +5,25 @@ import { BuildingsIcon, CaretDownIcon, CheckIcon } from '@phosphor-icons/react/s
 import { useLanguage } from '@/context/LanguageContext'
 import { Icon, SearchInput, initials } from '@/components/ui'
 import { moveOption } from '@/lib/listbox-keys'
+import { companiesInOrder, companyMatches, companyNameIn } from '@/lib/company-name'
+import type { Locale } from '@/lib/translations'
 
-/** A company the Super Admin can put in view. */
-export type PickerCompany = { id: string; name: string }
+/** A company the Super Admin can put in view, its name in both languages (PR 410). */
+export type PickerCompany = { id: string; name: string; nameAr?: string | null }
 /** A row of the picker's list: a company, or All companies (no id). */
 export type PickerOption = { id: string | null; name: string }
 
 /**
  * What the list holds (DESIGN.md §5.1): with nothing typed, All companies and
  * then every company; with something typed, the companies whose names have it
- * in them, capitals or not, and All companies no longer.
+ * in them, in either language, capitals or not, and All companies no longer.
+ * Each in the page's language, in the page's order (PR 410).
  */
-export function pickerOptions(companies: PickerCompany[], query: string, allLabel: string): PickerOption[] {
-    const q = query.trim().toLocaleLowerCase()
-    if (!q) return [{ id: null, name: allLabel }, ...companies]
-    return companies.filter(c => c.name.toLocaleLowerCase().includes(q))
+export function pickerOptions(companies: PickerCompany[], query: string, allLabel: string, locale: Locale = 'en'): PickerOption[] {
+    const listed = companiesInOrder(companies, locale).map(c => ({ id: c.id, name: companyNameIn(locale, c) }))
+    if (!query.trim()) return [{ id: null, name: allLabel }, ...listed]
+    const found = new Set(companies.filter(c => companyMatches(c, query)).map(c => c.id))
+    return listed.filter(o => found.has(o.id))
 }
 
 /**
@@ -117,7 +121,7 @@ export default function CompanyPicker({ companies, inViewId, onPick }: {
     inViewId: string | null
     onPick: (id: string | null) => void
 }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const [open, setOpen] = useState(false)
     const [query, setQuery] = useState('')
     const [active, setActive] = useState(0)
@@ -129,8 +133,8 @@ export default function CompanyPicker({ companies, inViewId, onPick }: {
     const listId = useId()
     const inputId = useId()
 
-    const all = pickerOptions(companies, '', t('all_companies'))
-    const options = pickerOptions(companies, query, t('all_companies'))
+    const all = pickerOptions(companies, '', t('all_companies'), locale)
+    const options = pickerOptions(companies, query, t('all_companies'), locale)
     const inView = all.find(o => o.id === inViewId) ?? all[0]
 
     const openPanel = () => { setQuery(''); setActive(Math.max(0, all.findIndex(o => o.id === inViewId))); setOpen(true) }

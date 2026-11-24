@@ -14,7 +14,7 @@ import type { TranslationKey } from '@/lib/translations'
 import { codeError, normaliseCode } from '@/lib/username-code'
 import { savedName, type TwoNames } from '@/lib/names/name-fields'
 import {
-    COMPANY_NAME_MAX, COMPANY_NAME_MIN, companyMissingNote, companyMistakeText, companyNameErrors, companyRefusedField, type CompanyNameField,
+    COMPANY_NAME_MAX, COMPANY_NAME_MIN, companyMissingNote, companyMistakeText, companyNameErrors, companyNameIn, companyRefusedField, type CompanyNameField,
 } from '@/lib/company-name'
 
 /**
@@ -178,7 +178,8 @@ export function CompanyDialog({ company, onClose, onSaved, onChanged }: {
                 }
                 return
             }
-            onSaved(trimmed, !company)
+            // Said in the page's language, as the list names it (PR 410).
+            onSaved(companyNameIn(locale, { name: trimmed, nameAr: names.ar.trim() }), !company)
         } catch {
             showToast(t('error_generic'), 'error')
         } finally {
@@ -187,7 +188,7 @@ export function CompanyDialog({ company, onClose, onSaved, onChanged }: {
     }
 
     return (
-        <Dialog open onClose={() => { if (!busy) onClose() }} title={company ? t('companies_edit_title').replace('{name}', company.name) : t('companies_add')}>
+        <Dialog open onClose={() => { if (!busy) onClose() }} title={company ? t('companies_edit_title').replace('{name}', companyNameIn(locale, company)) : t('companies_add')}>
             <form ref={formRef} className="ui-form" noValidate onSubmit={save}>
                 {note && <FormNote>{t(note)}</FormNote>}
                 {/* In English and in Arabic, a business's name with its business words (DESIGN.md
@@ -237,13 +238,13 @@ export function BanCompanyDialog({ company, busy, onCancel, onConfirm }: {
     onCancel: () => void
     onConfirm: () => void
 }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const banning = !company.isBanned
     return (
         <Dialog
             open
             onClose={() => { if (!busy) onCancel() }}
-            title={t(banning ? 'companies_ban_title' : 'companies_unban_title').replace('{name}', company.name)}
+            title={t(banning ? 'companies_ban_title' : 'companies_unban_title').replace('{name}', companyNameIn(locale, company))}
             actions={<>
                 <Button onClick={onCancel} disabled={busy}>{t('cancel')}</Button>
                 <Button variant={banning ? 'danger' : 'primary'} busy={busy} onClick={onConfirm}>{t(banning ? 'companies_ban' : 'companies_unban')}</Button>

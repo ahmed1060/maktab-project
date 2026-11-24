@@ -27,6 +27,9 @@ export type CompanyBranding = {
     moduleLabels: unknown
     moduleIcons: unknown
     logoUrl: string | null
+    /** Its name in both languages, for the side bar beside its logo (PR 410). */
+    name?: string
+    nameAr?: string | null
 }
 
 /**

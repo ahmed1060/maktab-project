@@ -10,6 +10,7 @@ import DeleteTemplateDialog from '@/components/DeleteTemplateDialog'
 import { AddPaymentDialog, MarkPaidDialog, namedPayment, paymentDay, PERIOD_LABEL_KEY, type Payment } from '@/components/PaymentDialogs'
 import { Button, DataList, EmptyState, ItemTitle, ListCard, Page, PageHeader, RowMenu, StatusBadge, type Column } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyNameIn } from '@/lib/company-name'
 import { useToast } from '@/context/ToastContext'
 import { platformMoney } from '@/lib/subscription-display'
 import { fetcher, type SWRError } from '@/lib/swr-fetcher'
@@ -32,7 +33,8 @@ export default function CompanyPaymentsPage() {
     const { showToast } = useToast()
 
     const { data: companyResult } = useSWR(isSuperAdmin && companyId ? `/api/companies?id=${encodeURIComponent(companyId)}` : null, fetcher)
-    const companyName: string | undefined = companyResult?.data?.name
+    // Its name in the page's language (PR 410).
+    const companyName: string | undefined = companyResult?.data ? companyNameIn(locale, companyResult.data) : undefined
     const { data, error, isValidating, mutate } = useSWR(isSuperAdmin && companyId ? `/api/companies/${encodeURIComponent(companyId)}/payments` : null, fetcher)
     const payments: Payment[] | null = data?.data ?? null
 

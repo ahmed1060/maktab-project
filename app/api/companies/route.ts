@@ -59,9 +59,11 @@ export const GET = withStandardHandler(async (req, session) => {
     const sort = searchParams.get('sort') === 'date' ? 'date' : 'name'
     // Part of a name: only ever compared, never queried with.
     const search = (searchParams.get('search') ?? '').slice(0, 100)
+    // The page's language, which Sort by name follows (PR 410).
+    const locale = searchParams.get('lang') === 'ar' ? 'ar' : 'en'
 
     return ApiResponse.success(
-        await CompanyService.listWithSubscription({ page, limit, filter, sort, search })
+        await CompanyService.listWithSubscription({ page, limit, filter, sort, search, locale })
     )
 })
 

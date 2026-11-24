@@ -106,6 +106,8 @@ describe("the session keeps it in both languages", () => {
         const token = await jwt({ token: { sub: "sa", role: "SUPER_ADMIN", checkedAt: Date.now(), sessionVersion: 0 }, trigger: "update", session: { previewRoleId: "r1" } })
         expect(token.preview).toMatchObject({ companyName: COMPANY.name, companyNameAr: COMPANY.nameAr })
         expect((await session(token)).user).toMatchObject({ companyName: COMPANY.name, companyNameAr: COMPANY.nameAr })
+        // And the preview note, which names it too (PR 410).
+        expect((await session(token)).user.preview).toMatchObject({ companyName: COMPANY.name, companyNameAr: COMPANY.nameAr })
     })
 })
 
