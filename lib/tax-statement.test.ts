@@ -315,6 +315,13 @@ describe("the sheet", () => {
         expect(sheet(STATEMENT, "ar")).toContain(`<p class="ui-doc-kind">كشف الموقف الضريبي</p>`)
     })
 
+    it("the company's name in the page's language, or in the one it has while it has only one (PR 409)", () => {
+        const named = { ...STATEMENT, company: { ...COMPANY, nameAr: "حسابات النيل" } }
+        expect(sheet(named, "ar")).toContain(`<p class="ui-doc-company">حسابات النيل</p>`)
+        expect(sheet(named, "en")).toContain(`<p class="ui-doc-company">Nile Accounts</p>`)
+        expect(sheet(STATEMENT, "ar")).toContain(`<p class="ui-doc-company">Nile Accounts</p>`)
+    })
+
     it("its details: the client, the day the figures are from and where, the accountant, and the day it was printed", () => {
         // Four to a row, as the mockup has them, where details are three otherwise.
         expect(sheet()).toContain(`<dl class="ui-details ui-details-4">`)

@@ -19,6 +19,7 @@ import { fetcher } from '@/lib/swr-fetcher'
 import { WAITING_FOR_REVIEW_KEY } from '@/lib/requests/kinds'
 import DashboardHeader from './DashboardHeader'
 import { useLanguage } from '@/context/LanguageContext'
+import { sessionCompanyName } from '@/lib/company-name'
 import { permissionsOf } from '@/lib/useCan'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useLive } from '@/components/LiveUpdates'
@@ -59,7 +60,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     // side bar sits is CSS; this is only whether it's a dialog, and open.
     const isPhone = useSyncExternalStore(subscribePhone, isPhoneNow, () => false)
     const [drawerOpen, setDrawerOpen] = useState(false)
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     // The company's package, from the account the layout passed until the
     // session has loaded (useFeatures), so what it leaves out never shows.
     const features = useFeatures()
@@ -136,7 +137,8 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
 
     const displayName = user?.role === 'SUPER_ADMIN'
         ? (selectedCompanyName || t('app_name'))
-        : (user?.companyName || t('app_name'));
+        // The company's name in the page's language (PR 409).
+        : (sessionCompanyName(locale, user ?? {}) || t('app_name'));
 
     return (
         // The side bar beside the page on a computer, in its flow, and a

@@ -24,7 +24,7 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
             payrollRun: {
                 select: {
                     month: true, year: true, status: true, payrollDay: true, paidAt: true,
-                    company: { select: { id: true, name: true, logoUrl: true, payslipsVisible: true } },
+                    company: { select: { id: true, name: true, nameAr: true, logoUrl: true, payslipsVisible: true } },
                 },
             },
         },
@@ -50,7 +50,7 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
             name: `${payslip.user.firstName} ${payslip.user.lastName}`.trim(),
             email: payslip.user.email,
         },
-        company: { name: company.name, logoUrl: company.logoUrl },
+        company: { name: company.name, nameAr: company.nameAr, logoUrl: company.logoUrl },
         period: { month: payslip.payrollRun.month, year: payslip.payrollRun.year },
         status: payslip.payrollRun.status,
         paidAt: payslip.payrollRun.paidAt,

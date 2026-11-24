@@ -25,6 +25,8 @@ declare module "next-auth" {
             avatar?: string | null
             companyId?: string | null
             companyName?: string | null
+            // Its name in Arabic, for the page's language (PR 409).
+            companyNameAr?: string | null
             // One of a client's people's session (CLIENT_PORTAL_PLAN.md §5.3,
             // PR 332): the client they sign in for, and its name. Null for
             // the company's people and Super Admins.
@@ -102,6 +104,7 @@ declare module "next-auth" {
         avatar?: string | null
         companyId?: string | null
         companyName?: string | null
+        companyNameAr?: string | null
         clientId?: string | null
         clientName?: string | null
         image?: string | null
@@ -143,6 +146,7 @@ declare module "next-auth/jwt" {
         avatar?: string | null
         companyId?: string | null
         companyName?: string | null
+        companyNameAr?: string | null
         clientId?: string | null
         clientName?: string | null
         image?: string | null

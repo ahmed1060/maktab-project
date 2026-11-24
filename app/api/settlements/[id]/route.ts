@@ -17,7 +17,7 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
         where: { id: params.id },
         include: {
             user: { select: { firstName: true, lastName: true, email: true } },
-            company: { select: { id: true, name: true, logoUrl: true } },
+            company: { select: { id: true, name: true, nameAr: true, logoUrl: true } },
         },
     })
 
@@ -35,7 +35,7 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
             name: `${settlement.user.firstName} ${settlement.user.lastName}`.trim(),
             email: settlement.user.email,
         },
-        company: { name: settlement.company.name, logoUrl: settlement.company.logoUrl },
+        company: { name: settlement.company.name, nameAr: settlement.company.nameAr, logoUrl: settlement.company.logoUrl },
         lastWorkingDay: settlement.lastWorkingDay,
         earned: Number(settlement.earnedAmount),
         paid: Number(settlement.paidAmount),

@@ -11,7 +11,8 @@ import type { TaxClaimRow } from "./tax-claims"
 
 /** What a statement is drawn from. */
 export type TaxStatement = {
-    company: { name: string; logoUrl: string | null }
+    /** Its name in both languages, shown in the page's (PR 409). */
+    company: { name: string; nameAr?: string | null; logoUrl: string | null }
     client: string
     /** The responsible accountant's name, where the client's page names one. */
     accountant: string | null
@@ -24,7 +25,7 @@ export type TaxStatement = {
 /** What the company's people's statement reads of a client (taxStatementOf; PR 353). */
 export type StaffTaxStatement = {
     client: string
-    company: { name: string; logoUrl: string | null }
+    company: { name: string; nameAr: string | null; logoUrl: string | null }
     position: PortalTaxPosition
 }
 

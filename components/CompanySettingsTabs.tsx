@@ -19,6 +19,7 @@ import CompanyMessagesCard from '@/components/client-messages/CompanyMessagesCar
 import TaxEmailsCard from '@/components/client-messages/TaxEmailsCard'
 import { Button, Dialog, Tabs } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyNameIn } from '@/lib/company-name'
 import { COMPANY_SETTINGS_TABS, type CompanySettingsTabKey } from '@/lib/company-settings-tabs'
 import { UnsavedChangesProvider, useGuardLinks, useUnsavedState } from '@/lib/useUnsavedChanges'
 import type { ModuleOverrides } from '@/lib/modules'
@@ -42,6 +43,8 @@ import type { TranslationKey } from '@/lib/translations'
 export type CompanySettings = {
     id: string
     name: string
+    /** Its name in Arabic, for the page's language (PR 409). */
+    nameAr?: string | null
     autoVerifyLocation: boolean
     /** Cash advances' switches, and what's held (CLIENTS_PLAN.md §7.6). */
     cashAdvancesAllowed?: boolean
@@ -94,7 +97,7 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
     readOnly?: boolean
     superAdmin: boolean
 }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const router = useRouter()
     const pathname = usePathname()
     const searchParams = useSearchParams()
@@ -188,7 +191,7 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
                     <>
                         <CompanyLogoCard
                             companyId={companyId}
-                            companyName={company.name}
+                            companyName={companyNameIn(locale, company)}
                             logoUrl={company.logoUrl}
                             onChanged={(logoUrl: string | null) => onSaved({ logoUrl })}
                             readOnly={readOnly}

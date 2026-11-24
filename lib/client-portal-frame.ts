@@ -10,7 +10,8 @@ import { ownColour } from "@/lib/page-brand-colour"
  * drawn, as the dashboard reads its company's colour.
  */
 export type PortalFrame = {
-    company: { name: string; logoUrl: string | null }
+    /** Its name in both languages, shown in the page's (PR 409). */
+    company: { name: string; nameAr: string | null; logoUrl: string | null }
     /** The company's own colour, or null for the system's default the root layout draws (UI_PLAN.md §4.6). */
     brand: string | null
 }
@@ -22,11 +23,11 @@ export async function portalFrame(viewer: Viewer): Promise<PortalFrame | null> {
     if (!isClientAccount(viewer) || !viewer?.companyId) return null
     const company = await prisma.company.findUnique({
         where: { id: viewer.companyId },
-        select: { name: true, logoUrl: true, brandColour: true },
+        select: { name: true, nameAr: true, logoUrl: true, brandColour: true },
     })
     if (!company) return null
     return {
-        company: { name: company.name, logoUrl: company.logoUrl },
+        company: { name: company.name, nameAr: company.nameAr, logoUrl: company.logoUrl },
         brand: ownColour({ role: viewer.role as string, companyId: viewer.companyId }, company.brandColour),
     }
 }

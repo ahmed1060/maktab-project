@@ -27,7 +27,7 @@ INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayO
 `
 const OFFICES = `
 INSERT INTO "SuperAdmin"(id, email, password, "firstName", "lastName", username, "updatedAt") VALUES ('sa', 'sam@nizmo.co', 'p', 'Sam', 'Admin', 'sa', now());
-UPDATE "Company" SET timezone = 'Africa/Cairo', "logoUrl" = 'https://example.com/nile.png' WHERE id = 'c1';
+UPDATE "Company" SET timezone = 'Africa/Cairo', "logoUrl" = 'https://example.com/nile.png', "nameAr" = 'حسابات النيل' WHERE id = 'c1';
 INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt", "archivedAt") VALUES
  ('noor', 'c1', 'Al Noor Trading', 'Omar', '0100', 'Cairo', now(), NULL),
  ('old', 'c1', 'Old Client', 'Ola', '0101', 'Giza', now(), now()),
@@ -87,7 +87,8 @@ describe.skipIf(!ADMIN_URL)("the tax position statement for the company's people
     it("the client's name, its company's name and logo, and its claims as the client's area reads them", async () => {
         const statement = await tax.taxStatementOf(admin, "noor", NOW)
         expect(statement.client).toBe("Al Noor Trading")
-        expect(statement.company).toEqual({ name: "Nile Accounts", logoUrl: "https://example.com/nile.png" })
+        // Its name in both languages, shown in the page's (PR 409).
+        expect(statement.company).toEqual({ name: "Nile Accounts", nameAr: "حسابات النيل", logoUrl: "https://example.com/nile.png" })
         // The same figures the client's own statement draws.
         expect(statement.position).toEqual(await tax.portalTaxPosition({ companyId: "c1", clientId: "noor" }, NOW))
         expect(statement.position.today).toBe("2026-11-21")
@@ -114,7 +115,7 @@ describe.skipIf(!ADMIN_URL)("the tax position statement for the company's people
         await expect(tax.taxStatementOf(admin, "nobody", NOW)).rejects.toThrow("CLIENT_NOT_FOUND")
         await expect(tax.taxStatementOf(admin, "", NOW)).rejects.toThrow("TAX_CLIENT_REQUIRED")
         const theirs = await tax.taxStatementOf(superAdmin, "theirs", NOW)
-        expect(theirs.company).toEqual({ name: "Other Office", logoUrl: null })
+        expect(theirs.company).toEqual({ name: "Other Office", nameAr: null, logoUrl: null })
         expect(theirs.position.totals.open).toBe(1)
     })
 })

@@ -126,6 +126,13 @@ describe("a payslip", () => {
         expect(doc).toContain(en.doc_carried_note.replace("{amount}", amount(250)))
     })
 
+    it("names its company in the page's language, or in the one it has while it has only one (PR 409)", async () => {
+        const named = { data: { data: { ...PAYSLIP, company: { ...company, nameAr: "مواقع دلتا" } } } }
+        expect(sheet(await payslip({ shown: named, locale: "ar" }))).toContain('<p class="ui-doc-company">مواقع دلتا</p>')
+        expect(sheet(await payslip({ shown: named, locale: "en" }))).toContain('<p class="ui-doc-company">Delta Sites</p>')
+        expect(sheet(await payslip({ locale: "ar" }))).toContain('<p class="ui-doc-company">Delta Sites</p>')
+    })
+
     it("is in the page's language, digits too", async () => {
         const doc = sheet(await payslip({ locale: "ar" }))
         const october = new Date(2026, 9).toLocaleString("ar-EG", { month: "long", year: "numeric" })
@@ -150,6 +157,13 @@ describe("a payslip", () => {
 })
 
 describe("a settlement statement", () => {
+    it("names its company in the page's language, or in the one it has while it has only one (PR 409)", async () => {
+        const named = { data: { data: { ...SETTLEMENT, company: { ...company, nameAr: "مواقع دلتا" } } } }
+        expect(sheet(await settlement({ shown: named, locale: "ar" }))).toContain('<p class="ui-doc-company">مواقع دلتا</p>')
+        expect(sheet(await settlement({ shown: named, locale: "en" }))).toContain('<p class="ui-doc-company">Delta Sites</p>')
+        expect(sheet(await settlement({ locale: "ar" }))).toContain('<p class="ui-doc-company">Delta Sites</p>')
+    })
+
     it("has the page header with Send by email beside Print", async () => {
         const html = await settlement()
         expect(html).toContain(`<h1 class="ui-page-title">${en.doc_settlement}</h1>`)

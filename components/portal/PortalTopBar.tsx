@@ -9,6 +9,7 @@ import { Avatar, CompanyMark, Icon } from '@/components/ui'
 import { AccountButton, type AccountPerson } from '@/components/DashboardHeader'
 import LanguageToggleButton from '@/components/LanguageToggleButton'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyNameIn } from '@/lib/company-name'
 
 /** One of a client's people, as the top bar names them: their name, and their client's. */
 export type PortalPerson = { name: string; client: string }
@@ -54,10 +55,13 @@ export function PortalAccountMenu({ id, person, onClose, onSignOut, signingOut }
  * (components/ui/ui.css).
  */
 export function PortalTopBar({ company, person }: {
-    company: { name: string; logoUrl: string | null }
+    company: { name: string; nameAr?: string | null; logoUrl: string | null }
     person: PortalPerson
 }) {
     const router = useRouter()
+    // The company's name in the page's language (PR 409).
+    const { locale } = useLanguage()
+    const companyName = companyNameIn(locale, company)
     const [open, setOpen] = useState(false)
     const [leaving, setLeaving] = useState(false)
     const box = useRef<HTMLDivElement>(null)
@@ -84,8 +88,8 @@ export function PortalTopBar({ company, person }: {
     return (
         <header className="ui-topbar ui-portal-topbar">
             <span className="ui-portal-company">
-                <CompanyMark name={company.name} logoUrl={company.logoUrl} />
-                <span className="ui-portal-company-name"><bdi>{company.name}</bdi></span>
+                <CompanyMark name={companyName} logoUrl={company.logoUrl} />
+                <span className="ui-portal-company-name"><bdi>{companyName}</bdi></span>
             </span>
             <span className="ui-topbar-spacer" />
             <LanguageToggleButton />

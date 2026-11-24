@@ -6,6 +6,7 @@ import { FileXIcon, HourglassIcon, PrinterIcon, WarningCircleIcon } from '@phosp
 import { Button, Details, DocGroup, DocLine, DocNote, DocTotal, DocumentSheet, EmptyState, Page, PageHeader } from '@/components/ui'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyNameIn } from '@/lib/company-name'
 import { useToast } from '@/context/ToastContext'
 import { useCan } from '@/lib/useCan'
 
@@ -23,7 +24,7 @@ import { useCan } from '@/lib/useCan'
 
 type Doc = {
     person: { name: string; email: string }
-    company: { name: string; logoUrl?: string | null }
+    company: { name: string; nameAr?: string | null; logoUrl?: string | null }
     lastWorkingDay: string
     earned: number
     paid: number
@@ -111,7 +112,7 @@ export default function SettlementDocumentPage() {
     return (
         <Page>
             {header}
-            <DocumentSheet title={t('doc_settlement')} company={doc.company}>
+            <DocumentSheet title={t('doc_settlement')} company={{ name: companyNameIn(locale, doc.company), logoUrl: doc.company.logoUrl }}>
                 <Details items={[
                     { label: t('doc_issued_to'), value: doc.person.name },
                     { label: t('doc_last_working_day'), value: date(doc.lastWorkingDay) },

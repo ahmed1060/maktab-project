@@ -391,6 +391,8 @@ export const authOptions: NextAuthOptions = {
                         image: validatedUser.avatar || null, // Map to standard NextAuth field
                         companyId: validatedUser.companyId,
                         companyName: validatedUser.company?.name || null,
+                        // Its name in Arabic, for the page's language (PR 409).
+                        companyNameAr: validatedUser.company?.nameAr || null,
                         moduleLabels: parseModuleOverrides(validatedUser.company?.moduleLabels),
                         logoUrl: validatedUser.company?.logoUrl || null,
                         moduleIcons: parseModuleIcons(validatedUser.company?.moduleIcons),
@@ -450,6 +452,7 @@ export const authOptions: NextAuthOptions = {
                 session.user.picture = avatar
                 session.user.companyId = token.companyId as string | null
                 session.user.companyName = token.companyName as string | null
+                session.user.companyNameAr = token.companyNameAr ?? null
                 // One of a client's people's (CLIENT_PORTAL_PLAN.md §5.3): their client.
                 session.user.clientId = token.clientId ?? null
                 session.user.clientName = token.clientName ?? null
@@ -489,6 +492,7 @@ export const authOptions: NextAuthOptions = {
                     session.user.grants = preview.grants
                     session.user.companyId = preview.companyId
                     session.user.companyName = preview.companyName
+                    session.user.companyNameAr = preview.companyNameAr ?? null
                     session.user.featureAccess = preview.featureAccess as any
                     session.user.subscription = null as any
                 }
@@ -515,6 +519,7 @@ export const authOptions: NextAuthOptions = {
                 token.picture = avatarUrl
                 token.companyId = user.companyId
                 token.companyName = user.companyName
+                token.companyNameAr = user.companyNameAr ?? null
                 token.username = user.username
                 token.language = user.language || 'en'
                 // Seeded at sign-in only. The cookie is what the server reads
@@ -690,6 +695,10 @@ export const authOptions: NextAuthOptions = {
                                                 // waits for whenever that company next logs in.
                                                 moduleLabels: true, moduleIcons: true,
                                                 logoUrl: true,
+                                                // And its name, in both languages, so a name
+                                                // Nizmo's team completes or changes shows
+                                                // without signing in again (PR 409).
+                                                name: true, nameAr: true,
                                                 // Same reasoning: assigning or changing a package
                                                 // has to take effect promptly, not only after the
                                                 // customer next signs in.
@@ -732,12 +741,16 @@ export const authOptions: NextAuthOptions = {
                             token.maintenanceMode = settings?.maintenanceMode || false
                             token.maintenanceMessage = settings?.maintenanceMessage || null
                             // Clients feature: deliberately refreshed here rather than
-                            // only seeded at sign-in like companyName is — the whole
-                            // point of letting a Super Admin rename this tab is that it
-                            // takes effect promptly, not just after the next login.
+                            // only seeded at sign-in — the whole point of letting a
+                            // Super Admin rename this tab is that it takes effect
+                            // promptly, not just after the next login.
                             token.moduleLabels = parseModuleOverrides(u?.company?.moduleLabels)
                             token.moduleIcons = parseModuleIcons(u?.company?.moduleIcons)
                             token.logoUrl = u?.company?.logoUrl || null
+                            if (u?.company) {
+                                token.companyName = u.company.name
+                                token.companyNameAr = u.company.nameAr ?? null
+                            }
                             // Null package resolves to unrestricted — grandfathered.
                             token.featureAccess = serializeAccess(resolveBundles(u?.company?.package))
                             // Refreshed on the same throttle: a lockout that only

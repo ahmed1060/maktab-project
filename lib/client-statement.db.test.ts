@@ -28,9 +28,9 @@ const RECEIPTS = "https://p.supabase.co/storage/v1/object/public/app-assets/c1/r
 // the clocks go back on 29 October; Big's 201 errands; a task with no
 // client; and another company's.
 const DATA = `
-INSERT INTO "Company"(id, name, timezone, "logoUrl", "updatedAt") VALUES
- ('c1', 'Nile Works', 'Africa/Cairo', 'https://p.supabase.co/storage/v1/object/public/app-assets/c1/logo.png', now()),
- ('c2', 'Two', 'Africa/Cairo', NULL, now());
+INSERT INTO "Company"(id, name, "nameAr", timezone, "logoUrl", "updatedAt") VALUES
+ ('c1', 'Nile Works', 'أعمال النيل', 'Africa/Cairo', 'https://p.supabase.co/storage/v1/object/public/app-assets/c1/logo.png', now()),
+ ('c2', 'Two', NULL, 'Africa/Cairo', NULL, now());
 INSERT INTO "Client"(id, "companyId", name, "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES
  ('noor', 'c1', 'Al Noor Trading', 'Hassan Adel', '0100', 'Cairo', now()),
  ('delta', 'c1', 'Delta Foods', 'Dina', '0101', 'Giza', now()),
@@ -143,7 +143,8 @@ describe.skipIf(!ADMIN_URL)("a client statement, in Postgres", () => {
         expect(s.charges.map(c => c.collectedOn)).toEqual(["2026-10-20", "2026-10-20", "2026-10-20", null, null, null])
         // September's water pump seal is still due; its glass panel was collected in October.
         expect(s.totals).toEqual({ paid: 4400, fees: 380, charged: 4780, collected: 2380, due: 2400, dueCount: 3, dueBefore: 600, dueBeforeCount: 1, stillDue: 3000 })
-        expect(s.company).toEqual({ name: "Nile Works", logoUrl: "https://p.supabase.co/storage/v1/object/public/app-assets/c1/logo.png" })
+        // Its name in both languages, shown in the page's (PR 409).
+        expect(s.company).toEqual({ name: "Nile Works", nameAr: "أعمال النيل", logoUrl: "https://p.supabase.co/storage/v1/object/public/app-assets/c1/logo.png" })
         expect(s.client).toEqual({ id: "noor", name: "Al Noor Trading", ownerName: "Hassan Adel" })
         expect(s.period).toEqual(OCTOBER)
         expect(s.issuedOn).toBe(calendarDateStr(new Date(), "Africa/Cairo"))

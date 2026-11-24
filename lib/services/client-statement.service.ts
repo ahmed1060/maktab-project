@@ -29,7 +29,7 @@ export async function clientStatement(user: Actor & { id: string }, input: { cli
     if (!client || (user.role !== "SUPER_ADMIN" && client.companyId !== user.companyId)) throw new Error("CLIENT_NOT_FOUND")
 
     const [company, timeZone] = await Promise.all([
-        prisma.company.findUnique({ where: { id: client.companyId }, select: { name: true, logoUrl: true } }),
+        prisma.company.findUnique({ where: { id: client.companyId }, select: { name: true, nameAr: true, logoUrl: true } }),
         filterTimeZone(client.companyId),
     ])
     const issuedOn = calendarDateStr(now, timeZone)
@@ -84,7 +84,7 @@ export async function clientStatement(user: Actor & { id: string }, input: { cli
     const names = byCostName(lines.map((l, i) => ({ ...l, entryName: rows[i].nameEntry?.name ?? null })), savedNames)
     const charges = numberReceipts(lines)
     return {
-        company: { name: company?.name ?? "", logoUrl: company?.logoUrl ?? null },
+        company: { name: company?.name ?? "", nameAr: company?.nameAr ?? null, logoUrl: company?.logoUrl ?? null },
         client: { id: client.id, name: client.name, ownerName: client.ownerName },
         period,
         issuedOn,
