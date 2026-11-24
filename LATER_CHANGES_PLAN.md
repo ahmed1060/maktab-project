@@ -607,9 +607,14 @@ other filled in when one is typed, if that's possible.
        The address keeps naming the company in view by its English name,
        as now: it's how a link names it.
      - **7c-2. The company columns and selects of the other screens (#411):**
-       All users, the audit log, check-ins, clients, places, the client
-       picker's company beside each client, Add employee's company, Copy
-       roles, role change requests, access reviews and template offers.
+       All users, the audit log, check-ins, clients, places, records, the
+       client pickers' company beside each client, Add employee's company,
+       Copy roles, role change requests, access reviews and template
+       offers:
+       - each company in the page's language, the company selects in the
+         page's order (as the switcher, #410);
+       - All users' search finds a company by either language, as the
+         Companies page's does.
 8. **The other screens show names in the page's language,** by area:
    tasks, obligations, records, attendance, requests, payroll, the
    client's area, and notifications and messages written from then on.
