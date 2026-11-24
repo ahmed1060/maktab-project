@@ -580,7 +580,10 @@ other filled in when one is typed, if that's possible.
      - the session keeps the name in both languages, and catches it up
        on its minute's check as it does the company's logo, so a name
        Nizmo's team completes or changes shows without signing in again.
-       Until now it was read only at sign-in.
+       Until now it was read only at sign-in. The side bar and the account
+       menu read it from the live session, which the browser reads again
+       every 5 minutes, so it shows as the app moves between pages too
+       (from #409's Codex review).
      The person's own name beside it in the account menu, and a client's,
      come with the other screens (step 8).
    - **7c. Shown in the page's language, to the Super Admin:** the
