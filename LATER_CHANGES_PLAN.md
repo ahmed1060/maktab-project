@@ -691,8 +691,8 @@ other filled in when one is typed, if that's possible.
        session, which the client's area's step changes.
    - **8h. Attendance's days and punches (#419):** the people it lists
      (the person select its tabs share, in the page's order), the days
-     tab's rows, the punches tab's rows and its flagged punches, and Add
-     punch's people.
+     tab's rows, the punches tab's rows, and Add punch's people. Flagged
+     punches are the Requests page's, with requests.
    - **8i. Attendance's exceptions, requests and face tabs,** next: each
      row's person, the decided list, a missing-day's person, and the face
      tab's people.
