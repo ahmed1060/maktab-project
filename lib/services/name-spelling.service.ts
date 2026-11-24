@@ -1,7 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import type { Prisma } from '@prisma/client'
 import type { TwoLanguages } from '@/lib/names'
-import { spellingsOf, type Spelling } from '@/lib/names/spellings'
+import { spellingsOf, type Spelling, type SpellingSource } from '@/lib/names/spellings'
+import { arabicKey, englishKey, nameWords, suggestName, type SavedSpellings, type SuggestFor, type Suggestion } from '@/lib/names/suggest'
 
 /**
  * What the company saves teaches it (LATER_CHANGES_PLAN.md §3.1, step 3a,
@@ -11,8 +12,7 @@ import { spellingsOf, type Spelling } from '@/lib/names/spellings'
  * may see those names (step 3b).
  */
 
-export const SPELLING_SOURCES = ['employee', 'client', 'owner', 'company'] as const
-export type SpellingSource = typeof SPELLING_SOURCES[number]
+export type { SpellingSource }
 
 /** A source's names, by whoever holds them, and what kind of name they are. */
 async function namesOf(tx: Prisma.TransactionClient, companyId: string, source: SpellingSource): Promise<{ holders: TwoLanguages[][]; kind: 'person' | 'business' }> {
@@ -81,4 +81,48 @@ export async function learnSpellings(companyId: string | null | undefined, sourc
     } catch (error) {
         console.error('[names] the spellings couldn\'t be learned', { companyId, sources, error })
     }
+}
+
+/** The most words a spelling is looked up by, as Nizmo's list's names are. */
+const LONGEST = 3
+
+/**
+ * A name's other language, suggested, with the company's spellings first,
+ * from where the asker may learn (spellingSourcesFor; LATER_CHANGES_PLAN.md
+ * §3.1, step 3b, PR 401). Each word and each run of up to three is looked
+ * up, as a spelling learned whole may be several, a business's words left
+ * out first as they are when it's learned; one saved in two places is one,
+ * with the names of both. With no company, Nizmo's alone.
+ */
+export async function suggestWithSpellings(companyId: string | null, name: string, { to, kind }: Omit<SuggestFor, 'saved'>, sources: readonly SpellingSource[]): Promise<Suggestion | null> {
+    const tokens = nameWords(name.split(/[\s\-]+/).filter(Boolean), kind, to === 'en' ? 'ar' : 'en')
+    const keys = new Set<string>()
+    for (let i = 0; i < tokens.length; i++) {
+        for (let length = 1; length <= LONGEST && i + length <= tokens.length; length++) {
+            const these = tokens.slice(i, i + length)
+            keys.add(to === 'en' ? arabicKey(these.join('')) : these.map(englishKey).join(''))
+        }
+    }
+    if (!companyId) return suggestName(name, { to, kind })
+    const rows = await prisma.nameSpelling.findMany({
+        where: { companyId, source: { in: [...sources] }, ...(to === 'en' ? { arKey: { in: Array.from(keys) } } : { enKey: { in: Array.from(keys) } }) },
+        select: { ar: true, arKey: true, en: true, enKey: true, uses: true },
+    })
+    const found = new Map<string, Map<string, { text: string; uses: number; most: number }>>()
+    for (const row of rows) {
+        const key = to === 'en' ? row.arKey : row.enKey
+        const other = to === 'en' ? row.enKey : row.arKey
+        let spellings = found.get(key)
+        if (!spellings) found.set(key, spellings = new Map())
+        const spelling = spellings.get(other)
+        const text = to === 'en' ? row.en : row.ar
+        // Written as the place that uses it most writes it.
+        if (!spelling) spellings.set(other, { text, uses: row.uses, most: row.uses })
+        else {
+            if (row.uses > spelling.most) Object.assign(spelling, { text, most: row.uses })
+            spelling.uses += row.uses
+        }
+    }
+    const saved: SavedSpellings = new Map(Array.from(found, ([key, spellings]) => [key, Array.from(spellings.values(), ({ text, uses }) => ({ text, uses }))]))
+    return suggestName(name, { to, kind, saved })
 }

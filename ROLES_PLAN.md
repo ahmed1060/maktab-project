@@ -253,8 +253,8 @@ them, as today.
 | | `records.edit` | Rename a section | `PUT /records/sections` |
 | | `records.delete` | Delete a section or a record — **cannot be undone**, high-risk (§6.15) | `DELETE /records`, `DELETE /records/sections` |
 | **Clients** | `clients.view` | See clients (named `vendors.*` until 0b, and in the database until 0c, `CLIENTS_PLAN.md` §0.3) | `GET /clients` |
-| | `clients.create` | Add a client (#365, split from `clients.manage`, `LATER_CHANGES_PLAN.md` §2) | `POST /clients` |
-| | `clients.edit` | Change a client's details, and pick its responsible accountant (#365) | `PUT /clients`, `/clients/accountant` |
+| | `clients.create` | Add a client (#365, split from `clients.manage`, `LATER_CHANGES_PLAN.md` §2), and a name's suggestion learning from clients' names and their owners' (#401, `LATER_CHANGES_PLAN.md` §3.1, step 3b) | `POST /clients`, `GET /names/suggest` |
+| | `clients.edit` | Change a client's details, and pick its responsible accountant (#365), and a name's suggestion learning from clients' names and their owners' (#401) | `PUT /clients`, `/clients/accountant`, `GET /names/suggest` |
 | | `clients.delete` | Delete or archive a client, delete an archived one for good, and restore one from the archive, which undoes archiving (#365) | `DELETE /clients`, `PUT /clients` with `restore` |
 | | `clients.manage` | Retired (#386): split into the three above (#365), and the grant for companies already there (#385) wrote it as them in every role and template | — |
 | | `locations.view` | See the places tasks happen at: the Locations page, a client's locations, and the task form's pickers (`CLIENTS_PLAN.md` §2.9) | `GET /locations` |

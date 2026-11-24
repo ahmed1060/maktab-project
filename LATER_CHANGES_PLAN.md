@@ -17,9 +17,10 @@ Status: **the names (§3) next.** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their longer
-limit done (#397). Of their steps (§3.1), both languages are kept (#398)
-and Nizmo's list of names and the rules are done (#399), and the
-company's spellings, learned, are next (#400).
+limit done (#397). Of their steps (§3.1), both languages are kept (#398),
+Nizmo's list of names and the rules are done (#399), and so are the
+company's spellings, learned (#400). The forms reading them are next
+(#401).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -389,7 +390,7 @@ other filled in when one is typed, if that's possible.
    - a full name looked up word by word, and nothing suggested for a name
      with any letter of the language asked for already.
 3. **What the company saves teaches it,** in two parts:
-   - **3a, its spellings learned (#400):**
+   - **3a, its spellings learned (Done, #400):**
      - a table of the company's spellings, behind row-level security:
        each word of a name in Arabic beside its English, where it was
        saved (employees' names, clients' names, their owners' names, or
@@ -409,17 +410,23 @@ other filled in when one is typed, if that's possible.
        since, so there's nothing to clear.
    - **3b, read by the forms (#401):**
      - a name's suggestion with the company's spellings first, the most
-       used first, each with how many names use it;
-     - read by whoever may use a form that takes a name: employees'
-       names and the company's by anyone in the company, as one's own
-       profile takes a name; clients' names and their owners' by
-       whoever may add or edit a client. The screen test
-       (`lib/screen-asks.test.ts`) lists the new call.
+       used first, each with how many names use it, and under each word
+       its other spellings: the company's, then the usual one;
+     - a spelling the company learned whole, of several words, read as
+       one, as a name of Nizmo's list is;
+     - asked of the server (`GET /api/names/suggest`) by whoever may use
+       a form that takes a name: employees' names and the company's by
+       anyone in the company, as one's own profile takes a name;
+       clients' names and their owners' by whoever may add or edit a
+       client. The Super Admin's are the company in view's;
+     - no screen asks for it until step 4's forms, and the screen test
+       (`lib/screen-asks.test.ts`) lists the call with them.
 4. **Employees' names:**
    - the two fields on Add employee, an employee's page and one's own
      profile, and in a request to change one's own name;
    - needed for anyone new, and asked for on anyone else's next edit;
-   - the suggestion, the spellings and the guesses.
+   - the suggestion, the spellings and the guesses, asked of the server
+     (step 3b), the screen test listing the call.
 5. **Employees' names in the page's language** on the Employees page,
    with the ones still missing a language, and its search finding
    either.
@@ -1144,3 +1151,7 @@ same day as drawn in the All users: status badges canvas
   Codex review, El spaced before a guessed name is read as joined, and a
   number is kept. Step 3 split in two: the company's spellings learned
   (#400), then read by the forms (#401).
+- **2026-11-24:** #400 merged: the company's spellings, learned (§3.1,
+  step 3a), and a deleted employee's names in Arabic going with them.
+  Their reading next, as #401: the server asked, as no screen asks until
+  step 4, so the screen test lists the call with step 4's forms.
