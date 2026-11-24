@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { nameInArabic } from "@/lib/names"
 import { can, type Actor } from "@/lib/permissions/can"
 import { accountantReach, contractEnded, ENDED_STATUSES, portalAccountantOf, type AccountantCandidate, type ClientAccountant, type PortalAccountant } from "@/lib/client-accountant"
 
@@ -27,11 +28,11 @@ async function clientOf(user: Actor, clientId: unknown) {
 export async function accountantOf(clientId: string): Promise<ClientAccountant> {
     const client = await prisma.client.findUnique({
         where: { id: clientId },
-        select: { responsibleAccountant: { select: { id: true, firstName: true, lastName: true, role: true, whatsappNumber: true, status: true } } },
+        select: { responsibleAccountant: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, role: true, whatsappNumber: true, status: true } } },
     })
     const held = client?.responsibleAccountant
     const person = held
-        ? { id: held.id, name: nameOf(held), role: held.role, whatsappNumber: held.whatsappNumber, ended: contractEnded(held.status) }
+        ? { id: held.id, name: nameOf(held), nameAr: nameInArabic(held), role: held.role, whatsappNumber: held.whatsappNumber, ended: contractEnded(held.status) }
         : null
     return { person, reach: accountantReach(person) }
 }
@@ -50,10 +51,11 @@ export async function accountantCandidates(user: Actor, clientId: unknown): Prom
     const client = await clientOf(user, clientId)
     const people = await prisma.user.findMany({
         where: { companyId: client.companyId, role: { not: "SUPER_ADMIN" }, status: { notIn: [...ENDED_STATUSES] } },
-        select: { id: true, firstName: true, lastName: true },
+        select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
         orderBy: [{ firstName: "asc" }, { lastName: "asc" }, { id: "asc" }],
     })
-    return { people: people.map(p => ({ id: p.id, name: nameOf(p) })) }
+    // Each in Arabic too, listed in the page's language and order (PR 418).
+    return { people: people.map(p => ({ id: p.id, name: nameOf(p), nameAr: nameInArabic(p) })) }
 }
 
 /**

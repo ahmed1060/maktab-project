@@ -674,15 +674,21 @@ other filled in when one is typed, if that's possible.
      - a client's own page: its name in the heading, whichever part of it
        the person may see (its details, its records or its charges), and
        its owner's name in its details.
-   - **8f. The payslip, the settlement and the client's statement (#417):**
+   - **8f. The payslip, the settlement and the client's statement (Done, #417):**
      - the payslip and the settlement: whom each is issued to, and the
        settlement's page under its title;
      - the client's statement (the charges' one): the client and its
        owner on the sheet, the client in the line above the receipts,
        and the client in the page's heading and its back link.
-   - **8g. The tax statement,** next: the client and its responsible
-     accountant on the sheet and in the page's title, which names the
-     PDF, in both its copies, the client's page's and the client's area's.
+   - **8g. The responsible accountant and the tax statement (#418):**
+     - the responsible accountant, wherever it's named: a client's Tax
+       position on its page, with its picker's people in the page's
+       order; the client's area's home and its Contact on WhatsApp; and
+       the tax statement's sheet, in both its copies;
+     - the tax statement's client, on the sheet and in the page's title,
+       which names the PDF, in the client's page's copy. The client's
+       area's copy names the client as the area's frame does, from the
+       session, which the client's area's step changes.
    - **Then, by area,** one PR or more each:
      attendance, requests, payroll with the costs and charges lists, the
      client's area, and last, names written from then on: notifications
@@ -1497,3 +1503,8 @@ same day as drawn in the All users: status badges canvas
   (an Arabic page's first 50 by their Arabic), the records search by a
   client's Arabic name, and a client's own page, its heading and its
   owner. The documents next.
+- **2026-11-24:** #417 merged: the payslip, the settlement and the
+  client's statement name people and clients in the page's language
+  (§3.1, step 8f): whom a payslip or a settlement is issued to, and a
+  statement's client and its owner, on the sheet and in the page's
+  heading. The tax statement next, as 8g.

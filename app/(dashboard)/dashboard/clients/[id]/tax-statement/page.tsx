@@ -12,6 +12,7 @@ import { portalAccountant } from "@/lib/services/client-accountant.service"
 import { pageSystemSettings } from "@/lib/services/system-settings.service"
 import { resolveLocale } from "@/lib/locale"
 import { statementTitle, type StaffTaxStatement } from "@/lib/tax-statement"
+import { nameIn } from "@/lib/names"
 import { ar } from "@/lib/translations/ar"
 import { en } from "@/lib/translations/en"
 import { formatDay } from "@/components/records/types"
@@ -44,7 +45,9 @@ export default async function ClientTaxStatementPage({ params }: { params: Promi
             statement={{
                 company: statement.company,
                 client: statement.client,
+                clientAr: statement.clientAr,
                 accountant: accountant?.name ?? null,
+                accountantAr: accountant?.nameAr,
                 position: statement.position,
                 signature: { show: settings.showPoweredBy, name: settings.poweredByName },
             }}
@@ -66,7 +69,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     if (opened?.kind !== "statement" || !opened.statement.position.asOf) return {}
     const locale = resolveLocale((await cookies()).get('NEXT_LOCALE')?.value, (await headers()).get('accept-language'))
     const words = locale === 'ar' ? ar : en
-    return { title: statementTitle(words.tax_statement_file, opened.statement.client, formatDay(opened.statement.position.asOf, locale)) }
+    // The client in the page's language (PR 418).
+    const client = nameIn(locale, { en: opened.statement.client, ar: opened.statement.clientAr })
+    return { title: statementTitle(words.tax_statement_file, client, formatDay(opened.statement.position.asOf, locale)) }
 }
 
 type Opened = { kind: "ended" } | { kind: "refused" } | { kind: "missing" } | { kind: "statement"; statement: StaffTaxStatement }

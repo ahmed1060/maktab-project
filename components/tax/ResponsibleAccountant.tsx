@@ -7,6 +7,7 @@ import { useToast } from '@/context/ToastContext'
 import { Field, Select, type SelectOption } from '@/components/ui'
 import { fetcher } from '@/lib/swr-fetcher'
 import type { AccountantCandidate, ClientAccountant } from '@/lib/client-accountant'
+import { nameIn, namedInOrder } from '@/lib/names'
 
 type Picker = {
     /** Who may be picked, or null while they load. */
@@ -39,18 +40,21 @@ export function AccountantPanel({ accountant, picker, editsProfile }: {
     /** Whether the viewer may edit the accountant's profile, where their number is changed. */
     editsProfile: boolean
 }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const { person, reach } = accountant
     const profile = person && editsProfile ? `/dashboard/employees/${person.id}` : null
+    // Each name in the page's language, and the people to pick in the page's order (PR 418).
+    const shown = (p: { name: string; nameAr?: string | null }) => nameIn(locale, { en: p.name, ar: p.nameAr })
+    const name = person ? shown(person) : ''
 
     // One whose contract has ended stays shown, greyed, until another is picked.
     const kept: SelectOption[] = person && picker && !picker.people?.some(p => p.id === person.id)
-        ? [{ value: person.id, label: person.name, disabled: person.ended }]
+        ? [{ value: person.id, label: name, disabled: person.ended }]
         : []
     const options: SelectOption[] = [
         { value: '', label: t('client_accountant_no_one') },
         ...kept,
-        ...(picker?.people ?? []).map(p => ({ value: p.id, label: p.name })),
+        ...namedInOrder(picker?.people ?? [], locale).map(p => ({ value: p.id, label: shown(p) })),
     ]
 
     const note = (text: ReactNode, link?: ReactNode) => <p className="ui-accountant-note">{text}{link && <> {link}</>}</p>
@@ -73,7 +77,7 @@ export function AccountantPanel({ accountant, picker, editsProfile }: {
                 ) : (
                     <dl className="ui-accountant-fact">
                         <dt className="ui-label">{t('client_accountant_label')}</dt>
-                        <dd>{person ? <bdi>{person.name}</bdi> : t('client_accountant_no_one')}</dd>
+                        <dd>{person ? <bdi>{name}</bdi> : t('client_accountant_no_one')}</dd>
                     </dl>
                 )}
             </div>
@@ -81,7 +85,7 @@ export function AccountantPanel({ accountant, picker, editsProfile }: {
                 {reach === 'whatsapp' && person && (
                     <>
                         <dl className="ui-accountant-fact">
-                            <dt className="ui-label">{named(t('client_accountant_number'), person.name)}</dt>
+                            <dt className="ui-label">{named(t('client_accountant_number'), name)}</dt>
                             <dd><bdi dir="ltr" className="ui-num">{person.whatsappNumber}</bdi></dd>
                         </dl>
                         {profile && <a className="ui-text-link" href={profile}>{t('client_accountant_change_number')}</a>}
@@ -89,10 +93,10 @@ export function AccountantPanel({ accountant, picker, editsProfile }: {
                 )}
                 {reach === 'none' && note(t('client_accountant_none'))}
                 {reach === 'no_number' && person && note(
-                    named(t('client_accountant_no_number'), person.name),
+                    named(t('client_accountant_no_number'), name),
                     profile && <a className="ui-text-link" href={profile}>{t('client_accountant_add_number')}</a>,
                 )}
-                {reach === 'ended' && person && note(named(t('client_accountant_ended'), person.name))}
+                {reach === 'ended' && person && note(named(t('client_accountant_ended'), name))}
             </div>
         </div>
     )

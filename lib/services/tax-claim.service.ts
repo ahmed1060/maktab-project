@@ -128,9 +128,10 @@ export async function portalTaxPosition(account: { companyId: string; clientId: 
 export async function taxStatementOf(user: Actor, clientId: string | null | undefined, now: Date = new Date()): Promise<StaffTaxStatement> {
     if (!clientId) throw new Error("TAX_CLIENT_REQUIRED")
     if (!can(user, "tax.view")) throw new Error("TAX_VIEW_REQUIRED")
-    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, companyId: true, company: { select: { name: true, nameAr: true, logoUrl: true } } } })
+    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, nameAr: true, companyId: true, company: { select: { name: true, nameAr: true, logoUrl: true } } } })
     if (!client || (user.role !== "SUPER_ADMIN" && client.companyId !== user.companyId)) throw new Error("CLIENT_NOT_FOUND")
-    return { client: client.name, company: client.company, position: await positionOf(client, now) }
+    // Its name in Arabic too, shown in the page's language (PR 418).
+    return { client: client.name, clientAr: client.nameAr, company: client.company, position: await positionOf(client, now) }
 }
 
 /** A client's every claim, by item and by how late, late counted in its company's own days. */

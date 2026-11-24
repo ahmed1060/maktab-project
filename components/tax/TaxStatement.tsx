@@ -7,6 +7,7 @@ import { Button, Details, DocumentSheet, EmptyState, Page, PageHeader } from '@/
 import { formatDay } from '@/components/records/types'
 import { useLanguage } from '@/context/LanguageContext'
 import { companyNameIn } from '@/lib/company-name'
+import { nameIn } from '@/lib/names'
 import { DEFAULT_POWERED_BY_NAME } from '@/lib/branding-defaults'
 import { countOf } from '@/lib/plural'
 import { latestDueFirst, paidShare } from '@/lib/portal-tax'
@@ -36,7 +37,9 @@ const STATUS_WORDS = {
 export function TaxStatementPage({ statement, home }: { statement: TaxStatement; home: string }) {
     const { t, locale } = useLanguage()
     const router = useRouter()
-    const { client, position } = statement
+    // The client's name in the page's language (PR 418).
+    const client = nameIn(locale, { en: statement.client, ar: statement.clientAr })
+    const { position } = statement
     const { asOf } = position
     const title = asOf ? statementTitle(t('tax_statement_file'), client, formatDay(asOf, locale)) : null
     useEffect(() => {
@@ -75,7 +78,10 @@ export function TaxStatementPage({ statement, home }: { statement: TaxStatement;
  */
 export function TaxStatementSheet({ statement }: { statement: TaxStatement }) {
     const { t, locale } = useLanguage()
-    const { company, client, accountant, position, signature } = statement
+    const { company, position, signature } = statement
+    // The client's and the accountant's names in the page's language (PR 418).
+    const client = nameIn(locale, { en: statement.client, ar: statement.clientAr })
+    const accountant = statement.accountant && nameIn(locale, { en: statement.accountant, ar: statement.accountantAr })
     const { totals, items, today } = position
     const asOf = position.asOf ?? today
     const intl = locale === 'ar' ? 'ar-EG' : 'en-GB'

@@ -107,17 +107,17 @@ describe.skipIf(!ADMIN_URL)("the responsible accountant, in Postgres", () => {
         it("is the client's company's people whose contracts haven't ended, by name", async () => {
             expect(await accountants.accountantCandidates(admin, "noor")).toEqual({
                 people: [
-                    { id: "a1", name: "Amal One" },
-                    { id: "e1", name: "Eman One" },
+                    { id: "a1", name: "Amal One", nameAr: null },
+                    { id: "e1", name: "Eman One", nameAr: null },
                     // Suspended, still employed.
-                    { id: "s1", name: "Samy Away" },
-                    { id: "t1", name: "Tamer One" },
+                    { id: "s1", name: "Samy Away", nameAr: null },
+                    { id: "t1", name: "Tamer One", nameAr: null },
                 ],
             })
         })
 
         it("is the client's company's for the Super Admin too", async () => {
-            expect((await accountants.accountantCandidates(superAdmin, "theirs")).people).toEqual([{ id: "a2", name: "Adel Two" }])
+            expect((await accountants.accountantCandidates(superAdmin, "theirs")).people).toEqual([{ id: "a2", name: "Adel Two", nameAr: null }])
         })
 
         it("is asked only by whoever may edit clients, of their own company's client", async () => {
@@ -132,7 +132,7 @@ describe.skipIf(!ADMIN_URL)("the responsible accountant, in Postgres", () => {
     describe("picking one", () => {
         it("keeps them, says who the client's people can write to, and writes the audit log", async () => {
             expect(await set(admin, "noor", "t1")).toEqual({
-                person: { id: "t1", name: "Tamer One", role: "TEAM_LEADER", whatsappNumber: "+201001234567", ended: false },
+                person: { id: "t1", name: "Tamer One", nameAr: null, role: "TEAM_LEADER", whatsappNumber: "+201001234567", ended: false },
                 reach: "whatsapp",
             })
             expect(await kept("noor")).toBe("t1")
@@ -144,7 +144,7 @@ describe.skipIf(!ADMIN_URL)("the responsible accountant, in Postgres", () => {
 
         it("changes them, saying who it was", async () => {
             expect(await set(admin, "noor", "e1")).toEqual({
-                person: { id: "e1", name: "Eman One", role: "EMPLOYEE", whatsappNumber: null, ended: false },
+                person: { id: "e1", name: "Eman One", nameAr: null, role: "EMPLOYEE", whatsappNumber: null, ended: false },
                 reach: "no_number",
             })
             expect((await logged("noor")).slice(-1)[0].details).toEqual({ name: "Al Noor", accountant: { from: "Tamer One", to: "Eman One" } })
@@ -208,7 +208,7 @@ describe.skipIf(!ADMIN_URL)("the responsible accountant, in Postgres", () => {
             await db.query(`UPDATE "User" SET status = 'ARCHIVED' WHERE id = 't1'`)
             try {
                 expect(await accountants.accountantOf("delta")).toEqual({
-                    person: { id: "t1", name: "Tamer One", role: "TEAM_LEADER", whatsappNumber: "+201001234567", ended: true },
+                    person: { id: "t1", name: "Tamer One", nameAr: null, role: "TEAM_LEADER", whatsappNumber: "+201001234567", ended: true },
                     reach: "ended",
                 })
                 expect(await kept("delta")).toBe("t1")
@@ -224,7 +224,7 @@ describe.skipIf(!ADMIN_URL)("the responsible accountant, in Postgres", () => {
         it("comes with the client's tax position", async () => {
             const tax = await import("@/lib/services/tax-claim.service")
             expect((await tax.taxPositionOf(admin, "delta", FIVE)).accountant).toEqual({
-                person: { id: "t1", name: "Tamer One", role: "TEAM_LEADER", whatsappNumber: "+201001234567", ended: false },
+                person: { id: "t1", name: "Tamer One", nameAr: null, role: "TEAM_LEADER", whatsappNumber: "+201001234567", ended: false },
                 reach: "whatsapp",
             })
             expect((await tax.taxPositionOf(admin, "noor", FIVE)).accountant).toEqual({ person: null, reach: "none" })
@@ -234,9 +234,9 @@ describe.skipIf(!ADMIN_URL)("the responsible accountant, in Postgres", () => {
     describe("on the client's own page (PR 344)", () => {
         it("its people are told the accountant's name and number, and nothing where no one can be written to", async () => {
             await set(admin, "delta", "t1")
-            expect(await accountants.portalAccountant("delta")).toEqual({ name: "Tamer One", whatsappNumber: "+201001234567" })
+            expect(await accountants.portalAccountant("delta")).toEqual({ name: "Tamer One", nameAr: null, whatsappNumber: "+201001234567" })
             await set(admin, "delta", "e1")
-            expect(await accountants.portalAccountant("delta")).toEqual({ name: "Eman One", whatsappNumber: null })
+            expect(await accountants.portalAccountant("delta")).toEqual({ name: "Eman One", nameAr: null, whatsappNumber: null })
             await set(admin, "delta", null)
             expect(await accountants.portalAccountant("delta")).toBeNull()
             await set(admin, "delta", "t1")

@@ -55,6 +55,27 @@ export function personName(person: PersonNames, locale: Locale): string {
     return [first, last].filter(Boolean).join(" ")
 }
 
+/**
+ * A person's name in Arabic, each part in Arabic or as it has it, where
+ * either part has Arabic; none where neither has (PR 418). Kept beside a
+ * name kept whole, as a client's `nameAr` is beside its `name`.
+ */
+export function nameInArabic(person: PersonNames): string | null {
+    return person.firstNameAr?.trim() || person.lastNameAr?.trim() ? personName(person, "ar") : null
+}
+
+/**
+ * Names kept whole in each language, in the page's order (PR 418): on an
+ * Arabic page, those with an Arabic name first, in Arabic order, then the
+ * rest as they came. An English page keeps the order they came in.
+ */
+export function namedInOrder<T extends { name: string; nameAr?: string | null }>(items: readonly T[], locale: Locale): T[] {
+    if (locale !== "ar") return [...items]
+    const inArabic = items.filter(item => item.nameAr?.trim())
+    const rest = items.filter(item => !item.nameAr?.trim())
+    return [...inArabic.sort((a, b) => a.nameAr!.trim().localeCompare(b.nameAr!.trim(), "ar")), ...rest]
+}
+
 /** Found by their name in either language, any case (LATER_CHANGES_PLAN.md §3.1, step 8a, PR 412). */
 export function personMatches(person: PersonNames, search: string): boolean {
     const wanted = search.trim().toLocaleLowerCase()

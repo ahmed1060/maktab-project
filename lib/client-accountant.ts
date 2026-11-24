@@ -18,12 +18,13 @@ export type AccountantReach =
 
 export type ClientAccountant = {
     /** The one picked, or null where no one is. */
-    person: { id: string; name: string; role: string; whatsappNumber: string | null; ended: boolean } | null
+    /** Their name kept whole, and in Arabic where they have it, shown in the page's language (PR 418). */
+    person: { id: string; name: string; nameAr?: string | null; role: string; whatsappNumber: string | null; ended: boolean } | null
     reach: AccountantReach
 }
 
 /** One of the company's people who may be picked. */
-export type AccountantCandidate = { id: string; name: string }
+export type AccountantCandidate = { id: string; name: string; nameAr?: string | null }
 
 /**
  * A contract has ended once the person is archived (their contract's end)
@@ -52,9 +53,9 @@ export function accountantReach(person: { whatsappNumber: string | null; ended: 
  * their account or role. No one where none is picked or their contract has
  * ended: the page then says to contact the office.
  */
-export type PortalAccountant = { name: string; whatsappNumber: string | null } | null
+export type PortalAccountant = { name: string; nameAr?: string | null; whatsappNumber: string | null } | null
 
 export function portalAccountantOf({ person, reach }: ClientAccountant): PortalAccountant {
     if (!person || reach === "ended" || reach === "none") return null
-    return { name: person.name, whatsappNumber: reach === "whatsapp" ? person.whatsappNumber : null }
+    return { name: person.name, nameAr: person.nameAr ?? null, whatsappNumber: reach === "whatsapp" ? person.whatsappNumber : null }
 }
