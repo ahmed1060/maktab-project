@@ -674,7 +674,7 @@ other filled in when one is typed, if that's possible.
      - a client's own page: its name in the heading, whichever part of it
        the person may see (its details, its records or its charges), and
        its owner's name in its details.
-   - **8f. The payslip, the settlement and the client's statement (#417):**
+   - **8f. The payslip, the settlement and the client's statement (Done, #417):**
      - the payslip and the settlement: whom each is issued to, and the
        settlement's page under its title;
      - the client's statement (the charges' one): the client and its
@@ -1497,3 +1497,8 @@ same day as drawn in the All users: status badges canvas
   (an Arabic page's first 50 by their Arabic), the records search by a
   client's Arabic name, and a client's own page, its heading and its
   owner. The documents next.
+- **2026-11-24:** #417 merged: the payslip, the settlement and the
+  client's statement name people and clients in the page's language
+  (§3.1, step 8f): whom a payslip or a settlement is issued to, and a
+  statement's client and its owner, on the sheet and in the page's
+  heading. The tax statement next, as 8g.
