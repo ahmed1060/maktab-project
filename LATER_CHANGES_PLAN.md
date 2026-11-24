@@ -674,8 +674,15 @@ other filled in when one is typed, if that's possible.
      - a client's own page: its name in the heading, whichever part of it
        the person may see (its details, its records or its charges), and
        its owner's name in its details.
-   - **8f. The documents,** next: the payslip and the settlement, and the
-     client's statement and tax statement.
+   - **8f. The payslip, the settlement and the client's statement (#417):**
+     - the payslip and the settlement: whom each is issued to, and the
+       settlement's page under its title;
+     - the client's statement (the charges' one): the client and its
+       owner on the sheet, the client in the line above the receipts,
+       and the client in the page's heading and its back link.
+   - **8g. The tax statement,** next: the client and its responsible
+     accountant on the sheet and in the page's title, which names the
+     PDF, in both its copies, the client's page's and the client's area's.
    - **Then, by area,** one PR or more each:
      attendance, requests, payroll with the costs and charges lists, the
      client's area, and last, names written from then on: notifications
