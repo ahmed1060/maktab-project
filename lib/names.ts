@@ -18,6 +18,8 @@ import type { Locale } from "@/lib/translations"
  * their end, which isn't a letter. The migration reads the same ranges.
  */
 const ARABIC = /[\u0600-\u06FF\u0750-\u077F\u0870-\u08FF\uFB50-\uFDFF\uFE70-\uFEFC]/
+/** The same letters, for the database to read them (lib/names/missing.ts): Postgres reads its \u escapes as JavaScript does. */
+export const ARABIC_LETTERS = ARABIC.source
 const ENGLISH = /[A-Za-z]/
 
 /** Whether any of a name's letters is Arabic. */

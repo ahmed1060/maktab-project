@@ -10,7 +10,8 @@ import { lockedUntil } from "@/lib/sign-in-lock"
 import { ownPasswordPausedUntil } from "@/lib/own-password"
 import { UserService } from "@/lib/services/user.service"
 import { parsePaging } from "@/lib/pagination"
-import { buildUserWhereClause, buildUserOrderBy, countedParams } from "@/lib/services/user-query"
+import { buildUserWhereClause, buildUserOrderBy, countedParams, namesCountedParams } from "@/lib/services/user-query"
+import { missingNameIds } from "@/lib/names/missing"
 import type { CountedStatus } from "@/lib/person-status"
 import { onlineRunsOutIn, presenceStatus, presenceWhere } from "@/lib/presence"
 import { verifyResourceAccess } from "@/lib/security"
@@ -142,7 +143,15 @@ export const GET = withStandardHandler(async (req, session) => {
 
     // When "lately" is, for who's online: the list's and its counts' the same.
     const now = new Date()
-    const built = buildUserWhereClause(session as any, searchParams, filterCompanyId, VALID_ROLES, VALID_STATUSES, now)
+    // The names still missing a language, where they're listed or counted
+    // (LATER_CHANGES_PLAN.md §3.1, step 5, PR 405): the company's, as far as
+    // the rest of the list's question narrows them.
+    const asksMissing = searchParams.get('names') === 'missing'
+    const countsNames = searchParams.get('counts') === 'names'
+    const missingIds = asksMissing || countsNames
+        ? await missingNameIds(session.user.role === 'SUPER_ADMIN' ? filterCompanyId : session.user.companyId)
+        : undefined
+    const built = buildUserWhereClause(session as any, searchParams, filterCompanyId, VALID_ROLES, VALID_STATUSES, now, missingIds)
     if (built.empty) return ApiResponse.success({ data: [], total: 0, page: 1, totalPages: 0 })
     const whereClause = built.whereClause
 
@@ -164,6 +173,8 @@ export const GET = withStandardHandler(async (req, session) => {
             where: whereClause,
             select: {
                 id: true, firstName: true, lastName: true, email: true, status: true,
+                // Each name in Arabic too, for the page's language (PR 405).
+                firstNameAr: true, lastNameAr: true,
                 lastActivity: true, role: true, gender: true, username: true,
                 // Their newest tab that's here, for whether they're online (lib/presence.ts).
                 openTabs: { where: { here: true }, orderBy: { seenAt: "desc" }, take: 1, select: { seenAt: true } },
@@ -173,7 +184,7 @@ export const GET = withStandardHandler(async (req, session) => {
                 // select, not `teamLeader: true`. A leader is a User, and the
                 // relation would put a colleague's whole row — salary included
                 // — into every line of a list that wants to print a name.
-                teamLeader: { select: { id: true, firstName: true, lastName: true } }
+                teamLeader: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } }
             },
             orderBy: buildUserOrderBy(searchParams),
             skip,
@@ -212,6 +223,14 @@ export const GET = withStandardHandler(async (req, session) => {
         return { statusCounts, runsOut: onlineRunsOutIn(online.map(u => ({ status: u.status, lastSeen: u.openTabs[0]?.seenAt ?? null })), now) }
     })() : null
 
+    // How many have a name missing a language, for the Employees page's note
+    // (PR 405): over everyone the list is for, whatever it's searched or
+    // filtered by, or on.
+    const namesCounted = countsNames ? buildUserWhereClause(session as any, namesCountedParams(searchParams), filterCompanyId, VALID_ROLES, VALID_STATUSES, now) : null
+    const missingNames = namesCounted
+        ? namesCounted.empty ? 0 : await prisma.user.count({ where: { AND: [namesCounted.whereClause, { id: { in: missingIds ?? [] } }] } })
+        : undefined
+
     // Each one's newest tab stays here: it says nothing the badge doesn't.
     const usersWithStatus = users.map(({ openTabs, ...user }) => {
         // Online while a tab of theirs is open (lib/presence.ts).
@@ -232,6 +251,7 @@ export const GET = withStandardHandler(async (req, session) => {
     return ApiResponse.success({
         data: usersWithStatus, total, page, totalPages: Math.ceil(total / limit),
         ...(counts ? { statusCounts: counts.statusCounts } : {}),
+        ...(missingNames !== undefined ? { missingNames } : {}),
         onlineRunsOutInMs: runsOut.length ? Math.min(...runsOut) : null,
     })
 })

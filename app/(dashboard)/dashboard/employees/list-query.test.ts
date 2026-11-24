@@ -44,3 +44,21 @@ describe("the Employees page", () => {
         expect(page).not.toMatch(/\.sort\(\(a, b\)/)
     })
 })
+
+// Employees' names in the page's language (LATER_CHANGES_PLAN.md §3.1, step 5, PR 405).
+describe("the Employees list asks for names", () => {
+    it("missing a language, when that's what's shown", () => {
+        expect(params(employeesListUrl({ ...base, names: "missing" })).get("names")).toBe("missing")
+        expect(params(employeesListUrl(base)).has("names")).toBe(false)
+    })
+
+    it("counted, for whoever is told how many", () => {
+        expect(params(employeesListUrl({ ...base, countNames: true })).get("counts")).toBe("names")
+        expect(params(employeesListUrl(base)).has("counts")).toBe(false)
+    })
+
+    it("sorted in the page's language", () => {
+        expect(params(employeesListUrl({ ...base, sort: "name", order: "asc", lang: "ar" })).get("lang")).toBe("ar")
+        expect(params(employeesListUrl({ ...base, lang: "en" })).get("lang")).toBe("en")
+    })
+})

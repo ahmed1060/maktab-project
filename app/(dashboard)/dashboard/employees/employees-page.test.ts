@@ -54,3 +54,35 @@ describe("the Employees page", () => {
         expect(page).toContain("<StatusBadge tone=\"waiting\">{t('team_unassigned')}</StatusBadge>")
     })
 })
+
+// Employees' names in the page's language (LATER_CHANGES_PLAN.md §3.1, step 5, PR 405; DESIGN.md §5.3).
+describe("the Employees page's names", () => {
+    it("are each in the page's language, or the one they have", () => {
+        expect(page).toContain("const nameOf = (e: PersonNames) => personName(e, locale)")
+        expect(page).not.toContain("`${e.firstName} ${e.lastName}`")
+        // Its list is sorted so, and searched in either.
+        expect(page).toContain("lang: locale,")
+    })
+
+    it("still missing a language are counted above the filter bar, for whoever may edit people", () => {
+        expect(page).toContain("const editsNames = can('employees.edit')")
+        expect(page).toContain("countNames: editsNames,")
+        expect(page).toContain("{editsNames && missingNames > 0 && <ListNote icon={TranslateIcon} title={countOf(t, locale, missingNames, 'one_language')}>{t('names_missing_note_body')}</ListNote>}")
+        expect(page.indexOf("<ListNote")).toBeLessThan(page.indexOf("<FilterBar"))
+    })
+
+    it("are listed when they're missing a language, with what each is missing", () => {
+        expect(page).toContain("{ value: '', label: t('names_filter_all') }")
+        expect(page).toContain("{ value: 'missing', label: t('names_filter_missing') }")
+        expect(page).toContain("names: names || undefined,")
+        expect(page).toContain("...(names === 'missing' ? [{ key: 'missing', header: t('names_missing_column'), cell: missing }] : [])")
+        expect(page).toContain("missingLanguages([{ en: e.firstName, ar: e.firstNameAr }, { en: e.lastName, ar: e.lastNameAr }])")
+        expect(page).toContain("<StatusBadge key={language} tone=\"neutral\">{t(language === 'ar' ? 'name_missing_ar_badge' : 'name_missing_en_badge')}</StatusBadge>")
+        // Side by side, and on a phone's card as one piece that wraps together.
+        expect(page).toContain('<span className="ui-badge-row">')
+        expect(page).toContain("...(names === 'missing' ? [{ icon: TranslateIcon, text: missing(e) }] : []),")
+        // A filter like the rest: counted, and reset.
+        expect(page).toContain("const filtersOn = [status, role, team, names].filter(Boolean).length")
+        expect(page).toContain("setNames('');")
+    })
+})
