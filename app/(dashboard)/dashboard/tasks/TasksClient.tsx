@@ -8,6 +8,8 @@ import { useModules } from '@/lib/useModules'
 import { useCan } from '@/lib/useCan'
 import { countOf } from '@/lib/plural'
 import { placeLine } from '@/lib/task-place'
+import { personName, type PersonNames } from '@/lib/names'
+import type { ClientName } from '@/lib/client-list'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import type { TranslationKey } from '@/lib/translations'
 import { decidedByName } from '@/lib/decided-by'
@@ -27,7 +29,7 @@ import {
     SearchInput, Select, StatusBadge, TabLinks, taskStatusTone, visibleRow, type Column,
 } from '@/components/ui'
 
-type Named = { firstName: string; lastName: string }
+type Named = PersonNames
 
 /** A task as the list shows it (the page selects these). */
 type TaskRow = {
@@ -44,8 +46,8 @@ type TaskRow = {
     memberCosts?: Record<string, number> | string | null
     assignees: ({ id: string } & Named)[]
     creator?: Named | null
-    client?: { name: string } | null
-    place?: { name: string; client?: { name: string } | null } | null
+    client?: ClientName | null
+    place?: { name: string; client?: ClientName | null } | null
     location?: string | null
 }
 
@@ -79,7 +81,6 @@ const STATUSES = ['PENDING', 'IN_PROGRESS', 'PENDING_CONFIRMATION', 'APPROVED', 
 const OPEN = ['PENDING', 'IN_PROGRESS']
 
 const time = (d: string | Date) => new Date(d).getTime()
-const fullName = (p: Named) => `${p.firstName} ${p.lastName}`.trim()
 
 /**
  * The Tasks list (DESIGN.md §5.4): the tasks this person sees, a table on
@@ -175,6 +176,8 @@ export default function TasksClient({ tasks, total, page, totalPages, currentUse
     // Team Leader's first tab is their own; nobody else's list has a view.
     const ownList = ownTasksOnly || (reach === 'TEAM' && view === 'my')
     const whoHeader = ownList ? t('assigned_by') : t('assignees_label')
+    // In the page's language, or the one they have (PR 413).
+    const fullName = (p: Named) => personName(p, locale)
     const whoNames = (task: TaskRow) => ownList
         ? [task.creator ? fullName(task.creator) : t('role_super_admin')]
         : task.assignees.map(fullName)
@@ -196,7 +199,7 @@ export default function TasksClient({ tasks, total, page, totalPages, currentUse
     }
 
     const columns: Column<TaskRow>[] = [
-        { key: 'task', header: t('tasks_col_task'), cell: task => <ItemTitle title={title(task)} detail={placeLine(task) || undefined} detailIcon={MapPinIcon} /> },
+        { key: 'task', header: t('tasks_col_task'), cell: task => <ItemTitle title={title(task)} detail={placeLine(task, locale) || undefined} detailIcon={MapPinIcon} /> },
         {
             key: 'who', header: whoHeader, cell: task => (
                 <>
@@ -288,7 +291,7 @@ export default function TasksClient({ tasks, total, page, totalPages, currentUse
                         title={title(task)}
                         status={badge(task)}
                         details={[
-                            ...(placeLine(task) ? [{ icon: MapPinIcon, text: <bdi>{placeLine(task)}</bdi> }] : []),
+                            ...(placeLine(task, locale) ? [{ icon: MapPinIcon, text: <bdi>{placeLine(task, locale)}</bdi> }] : []),
                             { icon: UserIcon, text: <span>{whoHeader}: <bdi>{whoNames(task).join(locale === 'ar' ? '، ' : ', ')}</bdi></span> },
                             ...(myCost(task) > 0 ? [{ icon: CoinsIcon, text: <span>{t('tasks_my_cost')}: <span className="ui-num">{money(myCost(task))}</span></span> }] : []),
                             ...(decidedBy(task) ? [{ icon: UserCheckIcon, text: <bdi>{decidedBy(task)}</bdi> }] : []),

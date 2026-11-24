@@ -7,6 +7,8 @@ import { useNow } from '@/lib/useNow'
 import { earliestDeadline } from '@/lib/deadline'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { locationLabel } from '@/lib/locations'
+import { personName } from '@/lib/names'
+import { clientName } from '@/lib/client-list'
 import { Button, Dialog, DialogActions, Field, NamePicker, TextArea, TextInput } from '@/components/ui'
 import { useListNames } from '@/components/lists/useListNames'
 
@@ -43,7 +45,8 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
     const form = useRef<HTMLFormElement>(null)
     const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
     const used = (n: number, max: number) => t('ui_characters_used').replace('{used}', num(n)).replace('{max}', num(max))
-    const names = (task.assignees ?? []).map((a: any) => `${a.firstName} ${a.lastName}`)
+    // Each in the page's language, or the one they have (PR 413).
+    const names = (task.assignees ?? []).map((a: any) => personName(a, locale))
 
     return (
         <Dialog open={isOpen} onClose={onClose} title={t('edit_task_details_title')}>
@@ -76,7 +79,7 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
                     value={{ clientId: editForm.clientId, locationId: editForm.locationId }}
                     onChange={next => { setEditForm({ ...editForm, ...next }); setEditFieldErrors({ ...editFieldErrors, locationId: '' }) }}
                     companyId={task.companyId}
-                    current={task.place && task.locationId ? { id: task.locationId, label: locationLabel(task.place.name, task.place.client?.name) } : null}
+                    current={task.place && task.locationId ? { id: task.locationId, label: locationLabel(task.place.name, task.place.client ? clientName(task.place.client, locale) : undefined) } : null}
                     currentClient={task.client && task.clientId ? { id: task.clientId, name: task.client.name, nameAr: task.client.nameAr } : null}
                     error={editFieldErrors.locationId || undefined}
                 />

@@ -139,13 +139,14 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
             select: {
                 id: true, title: true, status: true, deadline: true, difficulty: true,
                 createdAt: true, updatedAt: true, lastStatusUpdateBy: true, memberCosts: true,
-                assignees: { select: { id: true, firstName: true, lastName: true } },
-                creator: { select: { firstName: true, lastName: true } },
+                // Each name in Arabic too, for the page's language (PR 413).
+                assignees: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
+                creator: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
                 // Where it's done, the line under its title (DESIGN.md §5.4):
                 // its location as it is now, or, from before locations, the
                 // text it was given.
-                client: { select: { name: true } },
-                place: { select: { name: true, client: { select: { name: true } } } },
+                client: { select: { name: true, nameAr: true } },
+                place: { select: { name: true, client: { select: { name: true, nameAr: true } } } },
                 location: true,
             },
             orderBy: { createdAt: 'desc' },

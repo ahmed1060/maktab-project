@@ -86,6 +86,11 @@ function nameOf(person: { firstName: string; lastName: string }) {
     return `${person.firstName} ${person.lastName}`.trim()
 }
 
+/** Someone's names in both languages, or empty ones for no one found. */
+function namesOf(person?: { firstName: string; lastName: string; firstNameAr?: string | null; lastNameAr?: string | null }) {
+    return { firstName: person?.firstName ?? "", lastName: person?.lastName ?? "", firstNameAr: person?.firstNameAr ?? null, lastNameAr: person?.lastNameAr ?? null }
+}
+
 function entryOf(entry: Prisma.CashAdvanceEntryGetPayload<{ select: typeof ENTRY }>) {
     const amount = Number(entry.amount)
     return {
@@ -804,14 +809,15 @@ export class CashAdvanceService {
         if (!held.length) return { copy: next.some(id => !current.includes(id)), held: false, moves: [], pickReceiver: false }
         const people = new Map((await prisma.user.findMany({
             // The task's company's only: anyone else named in the query is no one here.
-            where: { id: { in: [...new Set([...held.map(h => h.userId), ...next])] }, companyId }, select: { id: true, firstName: true, lastName: true, teamLeaderId: true, status: true },
+            where: { id: { in: [...new Set([...held.map(h => h.userId), ...next])] }, companyId }, select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, teamLeaderId: true, status: true },
         })).map(u => [u.id, u]))
         const target = (id: string) => ({ companyId, userId: id, teamLeaderId: people.get(id)?.teamLeaderId ?? null })
         const mayPass = (id: string) => people.has(id) && can(user, "cash_advances.give", target(id))
         const picked = task.picked && next.includes(task.picked) ? task.picked : null
         const mayReceive = (id: string) => atWork(people.get(id))
         const plan = transferPlan({ current, next, held, picked, mayPass, mayReceive })
-        const named = (id: string) => ({ id, name: people.has(id) ? nameOf(people.get(id)!) : "" })
+        // Each name in both languages, for the dialog to say in the page's (PR 413).
+        const named = (id: string) => ({ id, ...namesOf(people.get(id)) })
         const seen = (id: string) => id === user.id || can(user, "cash_advances.view", target(id))
         return {
             copy: plan.copy,

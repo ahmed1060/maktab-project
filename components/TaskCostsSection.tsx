@@ -8,6 +8,7 @@ import { useCan } from '@/lib/useCan'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { isReviewed } from '@/lib/task-reviewed'
 import { cents, costLines } from '@/lib/task-costs'
+import { personName } from '@/lib/names'
 import { Button, Card, FileChip, FileChips, StatusBadge, TotalTiles, type Tile } from '@/components/ui'
 
 // A task's costs (CLIENTS_PLAN.md §4.4, §4.5), as a card of the building
@@ -109,7 +110,7 @@ function TaskCostsSectionBody({
                                 <li key={uid}>
                                     <div className="ui-row">
                                         <span className="ui-row-main">
-                                            <span className="ui-item-title"><bdi>{assignee.firstName} {assignee.lastName}</bdi></span>
+                                            <span className="ui-item-title"><bdi>{personName(assignee, locale)}</bdi></span>
                                             <span className="ui-item-detail ui-num ui-nowrap">{money(amount)}</span>
                                         </span>
                                         <span className="ui-row-end">

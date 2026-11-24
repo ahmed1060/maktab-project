@@ -53,7 +53,7 @@ async function page(t: ReturnType<typeof task>, who: Who = "manager", isRestrict
     return renderToStaticMarkup(h(TaskDetailClient, {
         task: t, now: NOW, isRestricted,
         userRole: who === "superAdmin" ? "SUPER_ADMIN" : who === "assignee" ? "EMPLOYEE" : "ADMIN",
-        userId: who === "assignee" ? mona.id : "admin", creatorName: "Hana Saad", currentUserName: "Hana Saad",
+        userId: who === "assignee" ? mona.id : "admin", creator: { firstName: "Hana", lastName: "Saad" }, currentUserName: "Hana Saad",
     }))
 }
 const header = (html: string) => html.slice(html.indexOf('class="ui-page-header"'), html.indexOf("</header>"))

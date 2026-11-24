@@ -208,6 +208,10 @@ describe.skipIf(!ADMIN_URL)("what's held for a task follows it when it's transfe
     })
 
     it("says before it's sent what will happen, with the amounts only for whoever sees them", async () => {
+        // Each person's names in both languages, for the dialog to say in the page's (PR 413).
+        await db.query(`UPDATE "User" SET "firstNameAr" = 'إيهاب', "lastNameAr" = 'وان' WHERE id = 'e1'`)
+        const named = (id: string, firstName: string, ar: [string, string] | null = null) => ({ id, firstName, lastName: "One", firstNameAr: ar?.[0] ?? null, lastNameAr: ar?.[1] ?? null })
+        const EHAB = named("e1", "Ehab", ["إيهاب", "وان"]), EMAN = named("e2", "Eman"), ESSAM = named("e3", "Essam")
         await give("e1", 100, "pier")
         await give("e2", 50, "pier")
         const before = await held("e1")
@@ -216,21 +220,21 @@ describe.skipIf(!ADMIN_URL)("what's held for a task follows it when it's transfe
             copy: true,
             held: true,
             moves: [
-                { person: { id: "e1", name: "Ehab One" }, what: "PASSED", to: null, amount: 100 },
-                { person: { id: "e2", name: "Eman One" }, what: "KEPT", to: null, amount: 50 },
+                { person: EHAB, what: "PASSED", to: null, amount: 100 },
+                { person: EMAN, what: "KEPT", to: null, amount: 50 },
             ],
             pickReceiver: true,
         })
         expect((await Tasks.transferPreview("pier", admin, ["e2", "e3"], "e3")).moves[0]).toEqual(
-            { person: { id: "e1", name: "Ehab One" }, what: "PASSED", to: { id: "e3", name: "Essam One" }, amount: 100 })
+            { person: EHAB, what: "PASSED", to: ESSAM, amount: 100 })
         // Eman, transferring it themselves, may not give advances: Ehab's joins Ehab's own
         // running balance, and Eman sees only their own amount.
         expect(await Tasks.transferPreview("pier", eman, ["e2", "e3"], null)).toEqual({
             copy: true,
             held: true,
             moves: [
-                { person: { id: "e1", name: "Ehab One" }, what: "RUNNING", to: null, amount: null },
-                { person: { id: "e2", name: "Eman One" }, what: "KEPT", to: null, amount: 50 },
+                { person: EHAB, what: "RUNNING", to: null, amount: null },
+                { person: EMAN, what: "KEPT", to: null, amount: 50 },
             ],
             pickReceiver: false,
         })
@@ -240,7 +244,7 @@ describe.skipIf(!ADMIN_URL)("what's held for a task follows it when it's transfe
         expect(await Tasks.transferPreview("roof", admin, ["e5"], null)).toEqual({ copy: true, held: false, moves: [], pickReceiver: false })
         // Someone of another company, picked, isn't named, and nothing passes to them.
         expect((await Tasks.transferPreview("pier", admin, ["e2", "x1"], "x1")).moves[0]).toEqual(
-            { person: { id: "e1", name: "Ehab One" }, what: "RUNNING", to: null, amount: 100 })
+            { person: EHAB, what: "RUNNING", to: null, amount: 100 })
         // Someone not on the task, and not one who may transfer it, is refused.
         expect(await outcome(Tasks.transferPreview("pier", essam, ["e3"], null))).toBe("UNAUTHORIZED_TRANSFER")
         // Only said: nothing moved.
@@ -253,7 +257,7 @@ describe.skipIf(!ADMIN_URL)("what's held for a task follows it when it's transfe
         await db.query(`UPDATE "User" SET status = 'ARCHIVED' WHERE id = 'e6'`)
         await give("e1", 60, "cove")
         expect((await Tasks.transferPreview("cove", admin, ["e6"], null)).moves).toEqual([
-            { person: { id: "e1", name: "Ehab One" }, what: "RUNNING", to: null, amount: 60 },
+            { person: { id: "e1", firstName: "Ehab", lastName: "One", firstNameAr: "إيهاب", lastNameAr: "وان" }, what: "RUNNING", to: null, amount: 60 },
         ])
         expect(await outcome(Tasks.transfer("cove", admin, { newAssigneeIds: ["e6"] }))).toBe("done")
         expect(await held("e1")).not.toContainEqual(["cove", 60])

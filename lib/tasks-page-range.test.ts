@@ -50,8 +50,9 @@ describe("the Tasks list on a page that isn't there", () => {
 describe("what the Tasks list is sent", () => {
     it("has each task's client and location, and the time it's judged overdue by", async () => {
         expect(await open({}, 1)).toBe("shown")
-        expect(state.args.select.client).toEqual({ select: { name: true } })
-        expect(state.args.select.place).toEqual({ select: { name: true, client: { select: { name: true } } } })
+        // Each client's name in Arabic too, for the page's language (PR 413).
+        expect(state.args.select.client).toEqual({ select: { name: true, nameAr: true } })
+        expect(state.args.select.place).toEqual({ select: { name: true, client: { select: { name: true, nameAr: true } } } })
         expect(typeof state.props.now).toBe("number")
     })
 })

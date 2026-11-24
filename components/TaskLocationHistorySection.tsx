@@ -10,6 +10,7 @@ import SectionBoundary from './SectionBoundary'
 import { useCan } from '@/lib/useCan'
 import { Button, Card, Choice, Dialog, StatusBadge, type StatusTone } from '@/components/ui'
 import { extractAccuracy } from '@/lib/location'
+import { personName } from '@/lib/names'
 import type { TranslationKey } from '@/lib/translations'
 
 // Where whoever does a task checked in, as a card of the building blocks.
@@ -193,7 +194,7 @@ function TaskLocationHistorySectionBody({ task, setTask, userId, setLocationToDe
                     name="penalty-for"
                     value={penaltyFor}
                     onChange={setPenaltyFor}
-                    options={(task.assignees ?? []).map((a: any) => ({ value: a.id, label: `${a.firstName} ${a.lastName}` }))}
+                    options={(task.assignees ?? []).map((a: any) => ({ value: a.id, label: personName(a, locale) }))}
                 />
                 <Choice
                     legend={t('task_penalty_amount')}

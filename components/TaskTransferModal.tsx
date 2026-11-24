@@ -3,7 +3,7 @@
 import { useId, useState } from 'react'
 import useSWR from 'swr'
 import AssigneeChecklist, { type Assignable } from '@/components/forms/AssigneeChecklist'
-import { personName } from '@/lib/names'
+import { personName, type PersonNames } from '@/lib/names'
 import { Button, Dialog, Field, Select } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { fetcher } from '@/lib/swr-fetcher'
@@ -16,9 +16,10 @@ export type TransferPreview = {
     copy: boolean
     held: boolean
     moves: {
-        person: { id: string; name: string }
+        /** Their names in both languages, for the page's (PR 413). */
+        person: { id: string } & PersonNames
         what: 'KEPT' | 'PASSED' | 'RUNNING'
-        to: { id: string; name: string } | null
+        to: ({ id: string } & PersonNames) | null
         /** Only for whoever may see their cash advance, or it's their own. */
         amount: number | null
     }[]
@@ -86,9 +87,9 @@ export default function TaskTransferModal({ taskId, isOpen, onClose, people, onR
     const line = (m: TransferPreview['moves'][number]) => {
         const [withAmount, without] = LINE[m.what === 'PASSED' && !m.to ? 'PICK' : m.what]
         return fill(t(m.amount === null ? without : withAmount), {
-            name: <bdi>{m.person.name}</bdi>,
+            name: <bdi>{personName(m.person, locale)}</bdi>,
             amount: m.amount === null ? '' : <span className="ui-num">{money(m.amount)}</span>,
-            to: <bdi>{m.to?.name ?? ''}</bdi>,
+            to: <bdi>{m.to ? personName(m.to, locale) : ''}</bdi>,
         })
     }
 
