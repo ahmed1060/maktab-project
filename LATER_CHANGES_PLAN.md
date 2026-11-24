@@ -402,7 +402,11 @@ other filled in when one is typed, if that's possible.
      - worked out again from the names themselves whenever one is
        added, changed or deleted, so how many use each is always what's
        saved, and a save that couldn't be learned is caught up by the
-       next. Learning never stops a name from being saved.
+       next. Learning never stops a name from being saved;
+     - a deleted employee's name isn't counted, and deleting someone
+       takes their names in Arabic with them, as it does their English
+       ones. From #398 they stayed; production had no one deleted
+       since, so there's nothing to clear.
    - **3b, read by the forms (#401):**
      - a name's suggestion with the company's spellings first, the most
        used first, each with how many names use it;
