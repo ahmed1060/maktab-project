@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs"
 import { addDays, daysBetween, EXPIRES_SOON_DAYS, expiryDay, expiryRange, expiryState, parseExpiryDay } from "./record-expiry"
 import { ownFilePath, parseRecordFiles, storeRecordFiles } from "./record-files"
 import { createRecordSchema, discardUploadsSchema, updateRecordSchema, RECORD_TEXT_MAX } from "./validations/record.schema"
-import { personName } from "@/components/records/types"
+import { authorName } from "@/components/records/types"
 import { en } from "./translations/en"
 import { ar } from "./translations/ar"
 
@@ -211,9 +211,9 @@ describe("who added or edited a record", () => {
     const t = (key: "role_super_admin" | "records_deleted_user") => en[key]
 
     it("is their name, or a Super Admin, or a user since deleted, never mistaken for each other", () => {
-        expect(personName({ firstName: "Mona", lastName: "Fahmy" }, false, t)).toBe("Mona Fahmy")
-        expect(personName(null, true, t)).toBe("Super Admin")
-        expect(personName(null, false, t)).toBe("Deleted user")
+        expect(authorName({ firstName: "Mona", lastName: "Fahmy" }, false, t, "en")).toBe("Mona Fahmy")
+        expect(authorName(null, true, t, "en")).toBe("Super Admin")
+        expect(authorName(null, false, t, "en")).toBe("Deleted user")
         expect(ar.records_deleted_user).toBe("مستخدم محذوف")
     })
 })

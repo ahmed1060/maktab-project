@@ -16,6 +16,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 
 const state = { company: "c1", calls: [] as { key: any; fetcher: (key: any) => Promise<any> }[], kept: undefined as any, error: undefined as Error | undefined }
 vi.mock("@/context/CompanyContext", () => ({ useCompany: () => ({ selectedCompanyId: state.company }) }))
+vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en", t: (key: string) => key }) }))
 vi.mock("swr", () => ({
     default: (key: any, fetcher: any) => {
         state.calls.push({ key, fetcher })
@@ -51,7 +52,7 @@ describe("Add record's clients, after a Super Admin picks another company", () =
         await shown()
         const last = state.calls.at(-1)!
         // What another search, in the same company, listed; the one now asked for failed.
-        state.kept = await last.fetcher(["/api/records/clients?companyId=c1&search=ac", "c1"])
+        state.kept = await last.fetcher(["/api/records/clients?companyId=c1&search=ac&locale=en", "c1"])
         state.error = new Error("Request failed")
         const now = await shown()
         expect(now.failed).toBe(true)

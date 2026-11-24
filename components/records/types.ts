@@ -1,5 +1,8 @@
 import type { ExpiryState } from '@/lib/record-expiry'
 import type { RecordFile } from '@/lib/record-files'
+import { personName, type PersonNames } from '@/lib/names'
+import type { ClientName } from '@/lib/client-list'
+import type { Locale } from '@/lib/translations'
 
 /** A record as GET /api/records sends it (RecordService.list). */
 export type RecordItem = {
@@ -13,14 +16,14 @@ export type RecordItem = {
     reminderDays: number | null
     createdAt: string
     lastEditedAt: string | null
-    createdBy: { firstName: string; lastName: string } | null
-    lastEditedBy: { firstName: string; lastName: string } | null
+    createdBy: PersonNames | null
+    lastEditedBy: PersonNames | null
     /** Whoever's missing above was a Super Admin; otherwise a user since deleted. */
     createdBySuperAdmin: boolean
     lastEditedBySuperAdmin: boolean
     section: { id: string; title: string }
     /** The client it's kept for, and its company in a Super Admin's view of every company. */
-    client: { id: string; name: string; company?: string; companyAr?: string | null }
+    client: ClientName & { id: string; company?: string; companyAr?: string | null }
 }
 
 /** One of a client's sections, with how many records it holds. */
@@ -39,11 +42,13 @@ export function formatMoment(iso: string, locale: string): string {
 }
 
 /**
- * Who added or edited a record: their name, or, with none, a Super Admin
- * (who has no user row) or a user who has since been deleted.
+ * Who added or edited a record: their name in the page's language (PR 416),
+ * or, with none, a Super Admin (who has no user row) or a user who has since
+ * been deleted.
  */
-export const personName = (
-    p: { firstName: string; lastName: string } | null | undefined,
+export const authorName = (
+    p: PersonNames | null | undefined,
     bySuperAdmin: boolean,
     t: (key: 'role_super_admin' | 'records_deleted_user') => string,
-) => (p ? `${p.firstName} ${p.lastName}` : t(bySuperAdmin ? 'role_super_admin' : 'records_deleted_user'))
+    locale: Locale,
+) => (p ? personName(p, locale) : t(bySuperAdmin ? 'role_super_admin' : 'records_deleted_user'))

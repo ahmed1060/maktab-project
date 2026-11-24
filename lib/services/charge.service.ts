@@ -71,9 +71,10 @@ export async function chargesWhere(user: Actor & { id: string }, filters: Charge
  */
 export async function chargeClient(user: Actor, clientId: string) {
     if (!clientId || !can(user, "charges.view")) return null
-    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, companyId: true } })
+    const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, nameAr: true, companyId: true } })
     if (!client || (user.role !== "SUPER_ADMIN" && client.companyId !== user.companyId)) return null
-    return { id: client.id, name: client.name }
+    // In both languages, for its page's heading in the page's language (PR 416).
+    return { id: client.id, name: client.name, nameAr: client.nameAr }
 }
 
 /**

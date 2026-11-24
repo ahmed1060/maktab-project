@@ -22,7 +22,8 @@ import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import type { ExpiryState } from '@/lib/record-expiry'
 import RecordDialog from './RecordDialog'
 import RecordForm from './RecordForm'
-import { formatDay, formatMoment, personName, type RecordItem, type SectionItem } from './types'
+import { clientName } from '@/lib/client-list'
+import { authorName, formatDay, formatMoment, type RecordItem, type SectionItem } from './types'
 
 const LIMIT = 20
 
@@ -161,14 +162,14 @@ export default function RecordsList({ clientId, sections = [], adding = false, o
         : <span className="ui-item-detail">{t('records_no_expiry')}</span>
     const client = (r: RecordItem) => (
         <ItemTitle
-            title={<Link href={`/dashboard/clients/${r.client.id}`} prefetch={false} className="ui-item-link"><bdi>{r.client.name}</bdi></Link>}
+            title={<Link href={`/dashboard/clients/${r.client.id}`} prefetch={false} className="ui-item-link"><bdi>{clientName(r.client, locale)}</bdi></Link>}
             detail={companyLabel(locale, r.client.company, r.client.companyAr)}
             detailIcon={r.client.company ? BuildingsIcon : undefined}
         />
     )
     const files = (r: RecordItem) => r.files.length ? <span className="ui-chip">{countOf(t, locale, r.files.length, 'files')}</span> : null
     // A name and a date, each on one line, beside a record's longer text.
-    const added = (r: RecordItem) => <div className="ui-nowrap"><ItemTitle title={personName(r.createdBy, r.createdBySuperAdmin, t)} detail={formatMoment(r.createdAt, locale)} /></div>
+    const added = (r: RecordItem) => <div className="ui-nowrap"><ItemTitle title={authorName(r.createdBy, r.createdBySuperAdmin, t, locale)} detail={formatMoment(r.createdAt, locale)} /></div>
 
     const columns: Column<RecordItem>[] = [
         { key: 'record', header: t('records_col_record'), cell: r => <ItemTitle title={title(r)} detail={<bdi>{r.section.title}</bdi>} detailIcon={FolderIcon} /> },
@@ -227,14 +228,14 @@ export default function RecordsList({ clientId, sections = [], adding = false, o
                                 status={<ExpiryBadge state={r.expiry} />}
                                 details={[
                                     { icon: FolderIcon, text: <bdi>{r.section.title}</bdi> },
-                                    ...(showClient ? [{ icon: BuildingsIcon, text: <Link href={`/dashboard/clients/${r.client.id}`} prefetch={false} className="ui-item-link"><bdi>{r.client.name}</bdi></Link> }] : []),
+                                    ...(showClient ? [{ icon: BuildingsIcon, text: <Link href={`/dashboard/clients/${r.client.id}`} prefetch={false} className="ui-item-link"><bdi>{clientName(r.client, locale)}</bdi></Link> }] : []),
                                     // Its company, in a Super Admin's view of every company's, as in the table:
                                     // two may have clients of the same name (Codex on #82).
                                     ...(showClient && r.client.company ? [{ icon: BuildingOfficeIcon, text: <bdi>{companyLabel(locale, r.client.company, r.client.companyAr)}</bdi> }] : []),
                                     { icon: r.expiryDate ? CalendarXIcon : HourglassIcon, text: r.expiryDate ? formatDay(r.expiryDate, locale) : t('records_no_expiry') },
                                     ...(r.files.length ? [{ icon: FileIcon, text: countOf(t, locale, r.files.length, 'files') }] : []),
                                 ]}
-                                foot={<><span className="ui-item-detail">{personName(r.createdBy, r.createdBySuperAdmin, t)}</span>{actions(r)}</>}
+                                foot={<><span className="ui-item-detail">{authorName(r.createdBy, r.createdBySuperAdmin, t, locale)}</span>{actions(r)}</>}
                             />
                         )}
                         footer={<Pager page={page} pageCount={totalPages} onPage={setPage} summary={countOf(t, locale, total, 'records')} />}

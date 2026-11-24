@@ -21,11 +21,14 @@ import { useModules } from '@/lib/useModules'
 import { useCan, useViewer } from '@/lib/useCan'
 import { editsProfile } from '@/lib/profile-access'
 import { useFeatures } from '@/lib/features/useFeatures'
+import { clientName, ownerName, type ClientName } from '@/lib/client-list'
 
 type Client = {
     id: string
     name: string
+    nameAr?: string | null
     ownerName: string
+    ownerNameAr?: string | null
     mobileNumber: string
     locationName: string
     locationLink: string | null
@@ -44,7 +47,7 @@ type Client = {
  * only charges, its name and its charges, to mark them collected.
  */
 export default function ClientPage() {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const modules = useModules()
     const { id } = useParams<{ id: string }>()
     const params = useSearchParams()
@@ -68,12 +71,12 @@ export default function ClientPage() {
     const { mutate } = useSWRConfig()
 
     const { data: clientBody, error: clientError, isLoading: clientLoading, mutate: reloadClient } = useSWR<{ data: Client }>(seesClient ? `/api/clients?id=${encodeURIComponent(id)}` : null, fetcher)
-    const { data: sectionsBody, error: sectionsError, isLoading: sectionsLoading, mutate: reloadSections } = useSWR<{ data: { client: { id: string; name: string; archived?: boolean }; sections: SectionItem[] } }>(
+    const { data: sectionsBody, error: sectionsError, isLoading: sectionsLoading, mutate: reloadSections } = useSWR<{ data: { client: ClientName & { id: string; archived?: boolean }; sections: SectionItem[] } }>(
         seesRecords ? `/api/records/sections?clientId=${encodeURIComponent(id)}` : null, fetcher,
     )
     // Its name, for someone who sees its charges and nothing else of it.
     const chargesOnly = seesCharges && !seesClient && !seesRecords
-    const { data: chargesBody, isLoading: chargesLoading, mutate: reloadCharges } = useSWR<{ data: { client: { id: string; name: string } | null } }>(
+    const { data: chargesBody, isLoading: chargesLoading, mutate: reloadCharges } = useSWR<{ data: { client: (ClientName & { id: string }) | null } }>(
         chargesOnly ? `/api/charges?clientId=${encodeURIComponent(id)}&status=all&limit=1` : null, fetcher,
     )
 
@@ -93,7 +96,9 @@ export default function ClientPage() {
     if ((clientLoading && !clientBody) || (sectionsLoading && !sectionsBody) || (chargesLoading && !chargesBody)) return waiting
 
     const client = clientBody?.data
-    const name = client?.name ?? sectionsBody?.data.client.name ?? chargesBody?.data.client?.name
+    // In the page's language, from whichever part of it they may see (PR 416).
+    const named = client ?? sectionsBody?.data.client ?? chargesBody?.data.client
+    const name = named ? clientName(named, locale) : undefined
     const sections = sectionsBody?.data.sections ?? []
     // Its details didn't load, though its name came with its sections: said, not left out.
     const detailsFailed = seesClient && !clientBody
@@ -167,7 +172,7 @@ export default function ClientPage() {
                     actions={<SectionLink href={`/dashboard/tasks?clientId=${encodeURIComponent(id)}`}>{t('clients_view_tasks')}</SectionLink>}
                 >
                     <Details items={[
-                        { label: t('client_owner_name'), value: client.ownerName },
+                        { label: t('client_owner_name'), value: <bdi>{ownerName(client, locale)}</bdi> },
                         // A link in a line of text, so it's 44px under a finger on a phone (DESIGN.md §5.2, PR 327).
                         { label: t('client_mobile_number'), value: <a className="ui-text-link" href={`tel:${client.mobileNumber.replace(/[^0-9+]/g, '')}`}><bdi>{client.mobileNumber}</bdi></a> },
                         { label: t('client_hq'), value: hqOf(client) },
