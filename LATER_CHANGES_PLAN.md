@@ -437,8 +437,9 @@ other filled in when one is typed, if that's possible.
      - on Add employee, both needed for anyone new, each in its own
        letters, checked by the page and by the server
        (`POST /api/users`). One left empty beside a typed name asks for
-       it or the suggestion. An edit takes the names as before, until
-       step 4b;
+       it or the suggestion, and one longer than the limit, as a
+       suggestion used may be, asks for it shorter. An edit takes the
+       names as before, until step 4b;
      - the screen test follows a building block that asks the server
        itself, and lists the call on Add employee, open to anyone in
        the company;
