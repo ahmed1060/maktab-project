@@ -23,8 +23,8 @@ languages are kept (#398), Nizmo's list of names and the rules are done
 a name's suggestion (#401), and employees' names on Add employee (#402),
 on an employee's page and on one's own profile (#403), in a request to
 change one's own name (#404), and on the Employees page (#405), and
-clients' names in their form (#406). Clients' names on the Clients page
-are next (#407).
+clients' names in their form (#406) and on the Clients page (#407). The
+company's name is next (#408).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -509,7 +509,7 @@ other filled in when one is typed, if that's possible.
      reads, as a Prisma filter can't read letters;
    - the note is a building block (`ListNote`), for the Clients page in
      step 6.
-6. **Clients' names:**
+6. **Clients' names (Done, #406, #407):**
    - **6a. In the client's form (Done, #406),** the dialog on the Clients page
      that adds a client or edits one:
      - its name and its owner's, each in English and in Arabic, with the
@@ -531,7 +531,7 @@ other filled in when one is typed, if that's possible.
        were once each was typed; what's still missing is said under its
        field on saving, the first focused. The server asks each name as
        a name change's request does (`nameIn`, #404).
-   - **6b. On the Clients page (#407):** the names in the page's language, with
+   - **6b. On the Clients page (Done, #407):** the names in the page's language, with
      the ones still missing a language (the note and the Names select, as
      the Employees page has them), and its search finding either:
      - each client's name and its owner's in the page's language, or the
@@ -545,7 +545,7 @@ other filled in when one is typed, if that's possible.
        restored, so it isn't counted;
      - read from the list the page already has, as its search is: no new
        query.
-7. **The company's name:** Company settings and the Super Admin's
+7. **The company's name (#408):** Company settings and the Super Admin's
    company forms, the note above its fields, and the name in the page's
    language wherever it's shown.
 8. **The other screens show names in the page's language,** by area:
@@ -1299,3 +1299,7 @@ same day as drawn in the All users: status badges canvas
   and in Arabic in its form (§3.1, step 6a), up to 100 and 60 characters,
   the note at the top naming which is in one language only. The Clients
   page next, as #407.
+- **2026-11-24:** #407 merged: clients' names on the Clients page in the
+  page's language (§3.1, step 6b), with the ones still missing a language
+  and a search finding either, which finishes clients' names. The
+  company's name next, as #408.
