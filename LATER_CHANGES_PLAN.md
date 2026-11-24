@@ -339,11 +339,14 @@ other filled in when one is typed, if that's possible.
     learned.
   - **Weak spots:** rare names and brand names come from the rules and
     need correcting once.
-- **A name's length (Decided, 2026-11-23):** an employee's first and last
-  names take up to 40 characters, where they took 15. A name is usually
-  longer in English than in Arabic, as its vowels are written out:
-  محمد عبد الرحمن is 15 characters, and Mohamed Abdelrahman is 19. It's
-  raised first, in #397, as it helps the names typed today too.
+- **A name's length (Decided, 2026-11-23; lowered 2026-11-24):** an
+  employee's first and last names take up to 30 characters. They took 15,
+  then 40 from #397, which the owner found more than a name needs: a
+  first or last name is mostly one word, and at worst a compound of two,
+  which fits even spaced (Abd El Moneim Abd El Ghaffar is 28). A name is
+  usually longer in English than in Arabic, as its vowels are written
+  out: محمد عبد الرحمن is 15 characters, and Mohamed Abdelrahman is 19.
+  Lowered in #402, where production's longest was 11.
 - **The design (approved by the owner on 2026-11-23):** the name fields
   drawn on the English and Arabic names canvas, written into `DESIGN.md`
   §5.3: a name in English and in Arabic, and the names still missing a
