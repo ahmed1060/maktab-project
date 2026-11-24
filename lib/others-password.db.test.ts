@@ -117,7 +117,8 @@ describe.skipIf(!ADMIN_URL)("the saver's own password, for somebody else's passw
     })
 
     it("isn't asked for the rest of their profile, nor for their email sent as it is", async () => {
-        await Users.update({ id: "e3", firstName: "Essam", lastName: "Two", email: "e3@x", gender: "MALE" } as any, admin)
+        // The names as the profile's form sends them, in both languages (PR 403).
+        await Users.update({ id: "e3", firstName: "Essam", firstNameAr: "عصام", lastName: "Two", lastNameAr: "اثنان", email: "e3@x", gender: "MALE" } as any, admin)
         expect(await row("e3")).toMatchObject({ email: "e3@x", sessionVersion: 0 })
     })
 

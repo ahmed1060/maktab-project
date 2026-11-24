@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { fieldsInOrder, mistakeKey, newNameErrors, sourceOf, spellingOptions, toSuggest, suggestionPath } from "@/lib/names/name-fields"
+import { fieldsInOrder, inPageOrder, mistakeKey, newNameErrors, savedName, sourceOf, spellingOptions, toSuggest, suggestionPath } from "@/lib/names/name-fields"
 import type { Suggestion } from "@/lib/names/suggest"
 
 /**
@@ -20,6 +20,28 @@ describe("the two fields", () => {
     it("put the page's language first, on the start side", () => {
         expect(fieldsInOrder("en")).toEqual(["en", "ar"])
         expect(fieldsInOrder("ar")).toEqual(["ar", "en"])
+    })
+})
+
+describe("a saved name, to edit (PR 403)", () => {
+    it("is its English and its Arabic, as they're kept", () => {
+        expect(savedName("Mona", "منى")).toEqual({ en: "Mona", ar: "منى" })
+        expect(savedName("Mona", null)).toEqual({ en: "Mona", ar: "" })
+        expect(savedName("Mona", undefined)).toEqual({ en: "Mona", ar: "" })
+    })
+
+    it("is its Arabic, with its English to come, where its English column holds it in Arabic", () => {
+        expect(savedName("منى", "منى")).toEqual({ en: "", ar: "منى" })
+        expect(savedName("منى", null)).toEqual({ en: "", ar: "منى" })
+        expect(savedName("منى", "منى أحمد")).toEqual({ en: "", ar: "منى أحمد" })
+    })
+})
+
+describe("a form's fields in the order it shows them (PR 403)", () => {
+    it("puts each name's in the page's language first, and leaves the rest", () => {
+        const fields = ["firstName", "firstNameAr", "lastName", "lastNameAr", "email"] as const
+        expect(inPageOrder(fields, "en")).toEqual(fields)
+        expect(inPageOrder(fields, "ar")).toEqual(["firstNameAr", "firstName", "lastNameAr", "lastName", "email"])
     })
 })
 

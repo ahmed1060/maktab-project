@@ -1,5 +1,5 @@
 import type { TranslationKey } from '@/lib/translations'
-import { mistakeKey, newNameErrors } from '@/lib/names/name-fields'
+import { inPageOrder, mistakeKey, newNameErrors } from '@/lib/names/name-fields'
 
 /**
  * Add employee's checks (UI_PLAN.md §5 step 5), before anything is sent:
@@ -26,18 +26,17 @@ export type NewEmployeeField = (typeof FIELDS)[number]
 
 /** Its fields in the order the page shows them: each name's in the page's language first (PR 402). */
 export function fieldsInFormOrder(locale: string): readonly NewEmployeeField[] {
-    if (locale !== 'ar') return FIELDS
-    return FIELDS.map(field => ({ firstName: 'firstNameAr', firstNameAr: 'firstName', lastName: 'lastNameAr', lastNameAr: 'lastName' } as Partial<Record<NewEmployeeField, NewEmployeeField>>)[field] ?? field)
+    return inPageOrder(FIELDS, locale)
 }
 
 /** A name's field and which name it's of, for its words: "Enter the first name in Arabic." */
-export const NAME_OF: Partial<Record<NewEmployeeField, TranslationKey>> = {
+export const NAME_OF: Partial<Record<string, TranslationKey>> = {
     firstName: 'first_name_in_sentence', firstNameAr: 'first_name_in_sentence',
     lastName: 'last_name_in_sentence', lastNameAr: 'last_name_in_sentence',
 }
 
 /** What a mistake says under its field: a name's with which name it's of, and its limit in the reader's digits. */
-export function mistakeText(t: (key: TranslationKey) => string, locale: string, field: NewEmployeeField, key: TranslationKey): string {
+export function mistakeText(t: (key: TranslationKey) => string, locale: string, field: string, key: TranslationKey): string {
     const of = NAME_OF[field]
     return (of ? t(key).replace('{name}', t(of)) : t(key)).replace('{max}', NAME_MAX.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB'))
 }

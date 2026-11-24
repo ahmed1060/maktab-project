@@ -5703,6 +5703,31 @@ a.ui-donut-row:focus-visible {
 .ui-name-use bdi {
   overflow-wrap: anywhere;
 }
+/* A note at the top of a form (§5.3, PR 403): beside a round neutral icon, over a hairline. */
+.ui-form-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding-block-end: var(--space-5);
+  border-block-end: 1px solid var(--rule);
+}
+.ui-form-note-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  inline-size: 32px;
+  block-size: 32px;
+  border-radius: var(--radius-pill);
+  background: var(--status-neutral-bg);
+  color: var(--status-neutral-fg);
+}
+.ui-form-note-text {
+  margin: 0;
+  padding-block-start: 6px;
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  color: var(--ink);
+}
 /* A word Nizmo guessed, underlined with dots in the button, and said under it. */
 .ui-name-guessed {
   text-decoration: underline dotted;

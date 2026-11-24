@@ -197,7 +197,7 @@ describe("assignment goes through the rules, not the id it was handed", () => {
 
     it("leaves it untouched when the field is absent", async () => {
         db.target = person({ id: "u-1", teamLeaderId: "tl-1" })
-        const data = await written({ firstName: "Renamed" })
+        const data = await written({ firstName: "Renamed", firstNameAr: "مُعاد" })  // with its Arabic, as a name is now sent (PR 403)
         expect(data.teamLeaderId).toBeUndefined()
     })
 })

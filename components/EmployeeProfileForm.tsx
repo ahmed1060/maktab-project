@@ -26,7 +26,10 @@ import { WhatsAppCard } from '@/components/profile/WhatsAppCard'
 import { EndContractDialog } from './profile/EndContractDialog'
 import { TeamHandOffDialog } from './profile/TeamHandOffDialog'
 import { handoffRefusal } from '@/lib/end-contract'
-import { profileAccess } from '@/lib/profile-access'
+import { keepsBothNames, profileAccess } from '@/lib/profile-access'
+import { missingLanguages } from '@/lib/names'
+import { inPageOrder, savedName } from '@/lib/names/name-fields'
+import { mistakeText } from '@/lib/new-employee-form'
 import { dayAfter, PROFILE_FIELDS, profileErrors, refusedField, type ProfileField } from '@/lib/profile-form'
 import { ownPasswordRefusal, resetRefusal } from '@/lib/profile-password'
 import { fetcher, fetchRetrying } from '@/lib/swr-fetcher'
@@ -54,6 +57,12 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     const { t, locale } = useLanguage()
     const [firstName, setFirstName] = useState('')
     const [lastName, setLastName] = useState('')
+    // Each name in Arabic beside it, where the form keeps both, and what the
+    // name as saved has no language for, said at the top of the form until
+    // it's saved with both (LATER_CHANGES_PLAN.md §3.1, step 4b, PR 403).
+    const [firstNameAr, setFirstNameAr] = useState('')
+    const [lastNameAr, setLastNameAr] = useState('')
+    const [namesMissing, setNamesMissing] = useState<('en' | 'ar')[]>([])
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [role, setRole] = useState('')
@@ -187,8 +196,16 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 const employee = result.data
 
                 if (employee.firstName) {
-                    setFirstName(employee.firstName)
-                    setLastName(employee.lastName)
+                    // Where it keeps both, a name written in Arabic in its English
+                    // column is its Arabic, its English to come (PR 403).
+                    const both = keepsBothNames({ own: userId === sessionUserId, role: employee.role })
+                    const first = both ? savedName(employee.firstName, employee.firstNameAr) : { en: employee.firstName, ar: employee.firstNameAr ?? '' }
+                    const last = both ? savedName(employee.lastName, employee.lastNameAr) : { en: employee.lastName, ar: employee.lastNameAr ?? '' }
+                    setFirstName(first.en)
+                    setLastName(last.en)
+                    setFirstNameAr(first.ar)
+                    setLastNameAr(last.ar)
+                    setNamesMissing(both ? missingLanguages([{ en: employee.firstName, ar: employee.firstNameAr }, { en: employee.lastName, ar: employee.lastNameAr }]) : [])
                     setOriginalFirstName(employee.firstName)
                     setOriginalLastName(employee.lastName)
                 } else if (employee.name) {
@@ -369,7 +386,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // what's typed is kept here, and sent from here.
     const wrongAt = (errors: Partial<Record<ProfileField, string>>) => {
         setFieldErrors(errors)
-        const first = firstError(errors as Record<string, string>, PROFILE_FIELDS) as ProfileField | null
+        const first = firstError(errors as Record<string, string>, inPageOrder(PROFILE_FIELDS, locale)) as ProfileField | null
         if (first) setFocusOn(f => ({ field: first, n: (f?.n ?? 0) + 1 }))
     }
 
@@ -405,6 +422,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
         // sent; then one's own password (ConfirmPasswordDialog), then the save.
         const wrong = profileErrors({
             firstName, lastName,
+            names: access.bothNames ? { first: { en: firstName, ar: firstNameAr }, last: { en: lastName, ar: lastNameAr } } : undefined,
             password: access.changePassword ? password : '',
             email: access.changeEmail ? email : undefined,
             username: access.changeUsername ? changedUsername(username, savedUsername) : undefined,
@@ -415,7 +433,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
             unreadable,
         })
         if (Object.keys(wrong).length > 0) {
-            wrongAt(Object.fromEntries(Object.entries(wrong).map(([field, key]) => [field, t(key)])))
+            wrongAt(Object.fromEntries(Object.entries(wrong).map(([field, key]) => [field, mistakeText(t, locale, field, key)])))
             return
         }
         setFieldErrors({})
@@ -516,6 +534,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     // Each as the form may change it (lib/profile-access.ts).
                     firstName: access.nameByRequest ? undefined : firstName,
                     lastName: access.nameByRequest ? undefined : lastName,
+                    // Each in Arabic too, where it keeps both (PR 403).
+                    firstNameAr: access.bothNames ? firstNameAr : undefined,
+                    lastNameAr: access.bothNames ? lastNameAr : undefined,
                     email: access.changeEmail ? email : undefined,
                     password: access.changePassword && password ? password : undefined,
                     // The one it replaces, checked by the server (PR 229).
@@ -572,7 +593,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 // in the reader's language.
                 const refused = refusedField(answer)
                 if (ownRefused) setFormError(t(ownRefused))
-                else if (refused && (refused.field !== 'roleId' || roleGiven)) wrongAt({ [refused.field]: t(refused.key) })
+                else if (refused && (refused.field !== 'roleId' || roleGiven)) wrongAt({ [refused.field]: mistakeText(t, locale, refused.field, refused.key) })
                 else if (refused) setFormError(t(refused.key))
                 else setFormError(apiErrorText(text, t('error_generic')))
                 setSaving(false)
@@ -692,9 +713,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
         )
     }
 
-    const values: ProfileValues = { firstName, lastName, gender, email, username, salary, dayOffCredit: baseDayOffCredit, password, status, teamLeaderId }
+    const values: ProfileValues = { firstName, firstNameAr, lastName, lastNameAr, gender, email, username, salary, dayOffCredit: baseDayOffCredit, password, status, teamLeaderId }
     const setters: Record<keyof ProfileValues, (value: string) => void> = {
-        firstName: setFirstName, lastName: setLastName, gender: setGender, email: setEmail, username: setUsername,
+        firstName: setFirstName, firstNameAr: setFirstNameAr, lastName: setLastName, lastNameAr: setLastNameAr, gender: setGender, email: setEmail, username: setUsername,
         salary: setSalary, dayOffCredit: setBaseDayOffCredit, password: setPassword, status: setStatus, teamLeaderId: setTeamLeaderId,
     }
     // Typed again, a field's mistake is gone.
@@ -725,6 +746,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     errors={fieldErrors}
                     error={formError}
                     access={access}
+                    missing={namesMissing}
+                    companyId={viewer?.role === 'SUPER_ADMIN' ? companyId || null : null}
                     company={role === 'SUPER_ADMIN' ? 'SHSD' : companies.find(c => c.id === companyId)?.name ?? null}
                     ownTeamLeader={myLeader ? `${myLeader.firstName} ${myLeader.lastName}`.trim() : null}
                     leaders={leaders.filter(l => l.id !== userId).map(l => ({ id: l.id, name: `${l.firstName} ${l.lastName}`.trim() }))}

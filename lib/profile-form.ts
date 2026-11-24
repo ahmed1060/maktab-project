@@ -1,6 +1,7 @@
 import type { TranslationKey } from '@/lib/translations'
 import { calendarParts } from '@/lib/time'
 import { NAME_MAX, PASSWORD_MIN } from '@/lib/new-employee-form'
+import { mistakeKey, newNameErrors, type NameLanguage, type TwoNames } from '@/lib/names/name-fields'
 import { usernameError } from '@/lib/username-rules'
 
 /**
@@ -11,8 +12,12 @@ import { usernameError } from '@/lib/username-rules'
  * Its role, and the day an acting one ends, too (part 4, PR 194).
  */
 
-/** Its fields in the order they're in, for the first one wrong to take the focus. */
-export const PROFILE_FIELDS = ['firstName', 'lastName', 'email', 'username', 'salary', 'dayOffCredit', 'password', 'roleId', 'actingUntil'] as const
+/**
+ * Its fields in the order they're in, for the first one wrong to take the
+ * focus: each name's in Arabic beside it, where it keeps both (PR 403), put
+ * in the page's order by inPageOrder (lib/names/name-fields.ts).
+ */
+export const PROFILE_FIELDS = ['firstName', 'firstNameAr', 'lastName', 'lastNameAr', 'email', 'username', 'salary', 'dayOffCredit', 'password', 'roleId', 'actingUntil'] as const
 export type ProfileField = (typeof PROFILE_FIELDS)[number]
 
 /** Above it, a salary is taken for a slip of the finger. */
@@ -24,6 +29,13 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 export function profileErrors(typed: {
     firstName: string
     lastName: string
+    /**
+     * Each name in English and in Arabic, where it keeps both (LATER_CHANGES_PLAN.md
+     * §3.1, step 4b, PR 403): both needed, each in its own letters, in place
+     * of the names above. One saved before in one language is asked for the
+     * other here, as its note says.
+     */
+    names?: { first: TwoNames; last: TwoNames }
     /** Each of these is checked only where it may be changed: one that's off can't be put right. */
     email?: string
     /** Only a changed one is sent. */
@@ -47,8 +59,20 @@ export function profileErrors(typed: {
     const errors: Partial<Record<ProfileField, TranslationKey>> = {}
     // A name can be loaded longer than the route takes now, which its
     // field's limit can't stop: it's said too.
-    if (!named(typed.firstName)) errors.firstName = 'profile_first_name_invalid'
-    if (!named(typed.lastName)) errors.lastName = 'profile_last_name_invalid'
+    if (typed.names) {
+        const said = (field: 'firstName' | 'lastName', names: TwoNames) => {
+            const wrong = newNameErrors(NAME_MAX, names)
+            for (const language of ['en', 'ar'] as NameLanguage[]) {
+                const mistake = wrong[language]
+                if (mistake) errors[language === 'en' ? field : (`${field}Ar` as const)] = mistakeKey(mistake, language)
+            }
+        }
+        said('firstName', typed.names.first)
+        said('lastName', typed.names.last)
+    } else {
+        if (!named(typed.firstName)) errors.firstName = 'profile_first_name_invalid'
+        if (!named(typed.lastName)) errors.lastName = 'profile_last_name_invalid'
+    }
     if (typed.email !== undefined && !EMAIL.test(typed.email.trim())) errors.email = 'emp_new_email_invalid'
     if (typed.username !== undefined && usernameError(typed.username)) errors.username = 'username_invalid'
     if (typed.salary !== undefined) {
@@ -137,8 +161,16 @@ export function refusedField(body: { error?: string; code?: string; details?: Re
     if (body.error === USERNAME_RESERVED) return { field: 'username', key: 'username_reserved' }
     if (body.error === 'Email in use') return { field: 'email', key: 'emp_new_email_taken' }
     const details = body.details ?? {}
-    if (details.firstName) return { field: 'firstName', key: 'profile_first_name_invalid' }
-    if (details.lastName) return { field: 'lastName', key: 'profile_last_name_invalid' }
+    // A name, as the route says what's wrong with it: in the other language's
+    // letters, or missing where it keeps both (PR 403), or else too long.
+    const name = (field: 'firstName' | 'firstNameAr' | 'lastName' | 'lastNameAr', letters: TranslationKey, needed: TranslationKey, long: TranslationKey) => {
+        const why = JSON.stringify(details[field])
+        return { field, key: why.includes('letters') ? letters : why.includes('Needed') ? needed : long }
+    }
+    if (details.firstName) return name('firstName', 'name_not_english', 'name_required_en', 'profile_first_name_invalid')
+    if (details.firstNameAr) return name('firstNameAr', 'name_not_arabic', 'name_required_ar', 'name_too_long')
+    if (details.lastName) return name('lastName', 'name_not_english', 'name_required_en', 'profile_last_name_invalid')
+    if (details.lastNameAr) return name('lastNameAr', 'name_not_arabic', 'name_required_ar', 'name_too_long')
     if (details.email) return { field: 'email', key: 'emp_new_email_invalid' }
     if (details.username) return { field: 'username', key: 'username_invalid' }
     if (details.password) return { field: 'password', key: 'emp_new_password_short' }

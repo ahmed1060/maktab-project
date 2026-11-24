@@ -1,7 +1,7 @@
 'use client'
 import type { FormEvent, ReactNode } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
-import { Button, ButtonLink, Choice, Field, PasswordInput, Select, TextInput } from '@/components/ui'
+import { Button, ButtonLink, Choice, Field, FormNote, NameFields, PasswordInput, Select, TextInput } from '@/components/ui'
 import { NAME_MAX, PASSWORD_MAX } from '@/lib/new-employee-form'
 import { STATUS_WORD } from '@/lib/person-status'
 import type { ProfileAccess } from '@/lib/profile-access'
@@ -20,7 +20,10 @@ import type { ProfileField } from '@/lib/profile-form'
 
 export type ProfileValues = {
     firstName: string
+    /** Each name in Arabic beside it, where the form keeps both (PR 403). */
+    firstNameAr: string
     lastName: string
+    lastNameAr: string
     gender: string
     email: string
     username: string
@@ -34,7 +37,10 @@ export type ProfileValues = {
 /** The statuses an edit may set; ending a contract is its own (the view's End contract). */
 const SETTABLE = ['ACTIVE', 'SUSPENDED', 'OFFLINE'] as const
 
-export function ProfileForm({ values, set, errors, error, access, company, ownTeamLeader, leaders, busy, role, onSubmit, cancelHref }: {
+/** The note above a name saved before in one language, by what it lacks. */
+const MISSING_NOTE = { en: 'name_missing_en_note', ar: 'name_missing_ar_note', both: 'name_missing_both_note' } as const
+
+export function ProfileForm({ values, set, errors, error, access, company, ownTeamLeader, leaders, busy, role, onSubmit, cancelHref, missing = [], companyId = null }: {
     values: ProfileValues
     set: (field: keyof ProfileValues, value: string) => void
     errors: Partial<Record<ProfileField, string>>
@@ -52,6 +58,14 @@ export function ProfileForm({ values, set, errors, error, access, company, ownTe
     onSubmit: (e: FormEvent<HTMLFormElement>) => void
     /** Where Cancel goes, a link, as every page form's is: their details. */
     cancelHref: string
+    /**
+     * What their name, as saved, has no language for (lib/names.ts,
+     * missingLanguages): said at the top of the form, where it keeps both,
+     * until it's saved with both (DESIGN.md §5.3, PR 403).
+     */
+    missing?: readonly ('en' | 'ar')[]
+    /** The Super Admin's company in view, theirs, whose spellings come first. */
+    companyId?: string | null
 }) {
     const { t, locale } = useLanguage()
     const digits = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
@@ -64,14 +78,32 @@ export function ProfileForm({ values, set, errors, error, access, company, ownTe
     return (
         <form className="ui-form" noValidate onSubmit={onSubmit}>
             {access.nameByRequest && <p className="ui-hint">{t('profile_name_by_request')}</p>}
-            <Field label={t('first_name_label')} hint={used(values.firstName.length)} error={errors.firstName}>{p => (
-                <TextInput {...p} name="firstName" autoComplete={access.own ? 'given-name' : 'off'} dir="auto" maxLength={NAME_MAX} value={values.firstName} disabled={busy}
-                    onChange={e => set('firstName', e.target.value)} />
-            )}</Field>
-            <Field label={t('last_name_label')} hint={used(values.lastName.length)} error={errors.lastName}>{p => (
-                <TextInput {...p} name="lastName" autoComplete={access.own ? 'family-name' : 'off'} dir="auto" maxLength={NAME_MAX} value={values.lastName} disabled={busy}
-                    onChange={e => set('lastName', e.target.value)} />
-            )}</Field>
+            {access.bothNames ? (
+                // Each in English and in Arabic (LATER_CHANGES_PLAN.md §3.1, step 4b, PR 403).
+                <>
+                    {missing.length > 0 && <FormNote>{t(MISSING_NOTE[missing.length > 1 ? 'both' : missing[0]])}</FormNote>}
+                    {(['firstName', 'lastName'] as const).map(field => (
+                        <NameFields key={field} label={t(field === 'firstName' ? 'first_name_label' : 'last_name_label')} name={field} max={NAME_MAX} disabled={busy} companyId={companyId}
+                            value={{ en: values[field], ar: values[`${field}Ar`] }}
+                            errors={{ en: errors[field], ar: errors[`${field}Ar`] }}
+                            onChange={next => {
+                                if (next.en !== values[field]) set(field, next.en)
+                                if (next.ar !== values[`${field}Ar`]) set(`${field}Ar`, next.ar)
+                            }} />
+                    ))}
+                </>
+            ) : (
+                <>
+                    <Field label={t('first_name_label')} hint={used(values.firstName.length)} error={errors.firstName}>{p => (
+                        <TextInput {...p} name="firstName" autoComplete={access.own ? 'given-name' : 'off'} dir="auto" maxLength={NAME_MAX} value={values.firstName} disabled={busy}
+                            onChange={e => set('firstName', e.target.value)} />
+                    )}</Field>
+                    <Field label={t('last_name_label')} hint={used(values.lastName.length)} error={errors.lastName}>{p => (
+                        <TextInput {...p} name="lastName" autoComplete={access.own ? 'family-name' : 'off'} dir="auto" maxLength={NAME_MAX} value={values.lastName} disabled={busy}
+                            onChange={e => set('lastName', e.target.value)} />
+                    )}</Field>
+                </>
+            )}
             <Choice legend={t('gender_label')} name="gender" value={values.gender} onChange={v => set('gender', v)}
                 options={[{ value: 'MALE', label: t('male'), disabled: busy }, { value: 'FEMALE', label: t('female'), disabled: busy }]} />
 

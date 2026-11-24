@@ -108,8 +108,22 @@ describe("what's checked before anything is sent", () => {
 
     it("knows its fields' order, so the first one wrong is the one focused", async () => {
         const { PROFILE_FIELDS } = await import("@/lib/profile-form")
-        // The role and its date after them since part 4 (lib/profile-role.test.ts).
-        expect(PROFILE_FIELDS).toEqual(["firstName", "lastName", "email", "username", "salary", "dayOffCredit", "password", "roleId", "actingUntil"])
+        // The role and its date after them since part 4 (lib/profile-role.test.ts), and each name in Arabic beside it (PR 403).
+        expect(PROFILE_FIELDS).toEqual(["firstName", "firstNameAr", "lastName", "lastNameAr", "email", "username", "salary", "dayOffCredit", "password", "roleId", "actingUntil"])
+    })
+
+    it("asks for each name in English and in Arabic where it keeps both, each in its own letters (PR 403)", async () => {
+        const { profileErrors } = await import("@/lib/profile-form")
+        const both = { first: { en: "Mona", ar: "منى" }, last: { en: "Ali", ar: "علي" } }
+        expect(profileErrors({ firstName: "", lastName: "", password: "", names: both })).toEqual({})
+        // Saved before in one language: asked for the other, or the suggestion.
+        expect(profileErrors({ firstName: "", lastName: "", password: "", names: { ...both, first: { en: "Mona", ar: "" } } })).toEqual({ firstNameAr: "name_use_suggestion_ar" })
+        expect(profileErrors({ firstName: "", lastName: "", password: "", names: { ...both, last: { en: "", ar: "علي" } } })).toEqual({ lastName: "name_use_suggestion_en" })
+        expect(profileErrors({ firstName: "", lastName: "", password: "", names: { first: { en: "منى", ar: "Mona" }, last: { en: "Ali", ar: "علي" } } })).toEqual({ firstName: "name_not_english", firstNameAr: "name_not_arabic" })
+        expect(profileErrors({ firstName: "", lastName: "", password: "", names: { ...both, last: { en: "a".repeat(31), ar: "علي" } } })).toEqual({ lastName: "name_too_long" })
+        expect(profileErrors({ firstName: "", lastName: "", password: "", names: { first: { en: "", ar: "" }, last: { en: "", ar: "" } } })).toEqual({
+            firstName: "name_required_en", firstNameAr: "name_required_ar", lastName: "name_required_en", lastNameAr: "name_required_ar",
+        })
     })
 })
 
@@ -135,6 +149,16 @@ describe("what the server refuses, under the field it's about", () => {
         expect(refusedField(details("password"))).toEqual({ field: "password", key: "emp_new_password_short" })
         expect(refusedField(details("salary"))).toEqual({ field: "salary", key: "emp_new_salary_invalid" })
         expect(refusedField(details("baseDayOffCredit"))).toEqual({ field: "dayOffCredit", key: "emp_new_day_off_invalid" })
+    })
+
+    it("says a name the route found wrong, where it keeps both, as what's wrong with it (PR 403)", async () => {
+        const { refusedField } = await import("@/lib/profile-form")
+        const said = (field: string, why: string) => ({ error: "Validation Error", details: { [field]: { _errors: [why] } } })
+        expect(refusedField(said("firstName", "Written in English letters"))).toEqual({ field: "firstName", key: "name_not_english" })
+        expect(refusedField(said("lastName", "Needed in English"))).toEqual({ field: "lastName", key: "name_required_en" })
+        expect(refusedField(said("firstNameAr", "Needed in Arabic"))).toEqual({ field: "firstNameAr", key: "name_required_ar" })
+        expect(refusedField(said("lastNameAr", "Written in Arabic letters"))).toEqual({ field: "lastNameAr", key: "name_not_arabic" })
+        expect(refusedField(said("lastNameAr", "Too big: expected string to have <=30 characters"))).toEqual({ field: "lastNameAr", key: "name_too_long" })
     })
 
     it("leaves anything else to be said above the buttons", async () => {
@@ -167,6 +191,35 @@ describe("the form, on the building blocks", () => {
         expect(hint(first)).toBe("4 of 30 characters")
         state.locale = "ar"
         expect(hint(field(await form(), ar.first_name_label))).toBe("٤ من ٣٠ حرف")
+    })
+
+    it("takes each name in English and in Arabic where it keeps both, as Add employee does (PR 403)", async () => {
+        const html = await form({ access: { ...ACCESS, bothNames: true }, values: { ...VALUES, firstNameAr: "منى", lastNameAr: "" } })
+        const legends = [...html.matchAll(/<legend class="ui-name-fields-label">([^<]*)<\/legend>/g)].map(m => m[1])
+        expect(legends).toEqual([en.first_name_label, en.last_name_label])
+        const inputs = [...html.matchAll(/<input [^>]*name="((?:first|last)Name(?:Ar)?)"[^>]*>/g)].map(m => m[1])
+        expect(inputs).toEqual(["firstName", "firstNameAr", "lastName", "lastNameAr"])
+        expect(html).toMatch(/name="firstNameAr"[^>]*value="منى"/)
+        // The single fields are gone, and the Arabic page puts the Arabic first.
+        expect(html).not.toContain(`>${en.first_name_label}</label>`)
+        state.locale = "ar"
+        const arInputs = [...(await form({ access: { ...ACCESS, bothNames: true }, values: { ...VALUES, firstNameAr: "", lastNameAr: "" } })).matchAll(/<input [^>]*name="((?:first|last)Name(?:Ar)?)"[^>]*>/g)].map(m => m[1])
+        expect(arInputs).toEqual(["firstNameAr", "firstName", "lastNameAr", "lastName"])
+    })
+
+    it("says at its top that a name saved in one language needs the other, over a hairline, and not otherwise (PR 403)", async () => {
+        const both = { access: { ...ACCESS, bothNames: true }, values: { ...VALUES, firstNameAr: "", lastNameAr: "" } }
+        const note = (html: string) => html.match(/<div class="ui-form-note">.*?<p class="ui-form-note-text">(.*?)<\/p><\/div>/)?.[1] ?? null
+        expect(note(await form({ ...both, missing: ["ar"] }))).toBe(esc(en.name_missing_ar_note))
+        expect(note(await form({ ...both, missing: ["en"] }))).toBe(esc(en.name_missing_en_note))
+        expect(note(await form({ ...both, missing: ["en", "ar"] }))).toBe(esc(en.name_missing_both_note))
+        expect(note(await form({ ...both, missing: [] }))).toBeNull()
+        // Before the names, its icon round and neutral, read past by screen readers.
+        const html = await form({ ...both, missing: ["ar"] })
+        expect(html.indexOf("ui-form-note")).toBeLessThan(html.indexOf('name="firstName"'))
+        expect(html).toMatch(/<span class="ui-form-note-icon"><svg[^>]*aria-hidden="true"/)
+        expect(en.name_missing_ar_note).toBe("Names are now kept in English and in Arabic. This name has no Arabic yet: add it to save the changes.")
+        for (const key of ["name_missing_ar_note", "name_missing_en_note", "name_missing_both_note"]) expect(ar[key as keyof typeof ar], key).toBeTruthy()
     })
 
     it("asks for one's own name to be approved, where it is, before the names", async () => {
@@ -330,7 +383,11 @@ describe("the profile, wired to its form", () => {
         expect(submit).toContain("field instanceof HTMLInputElement && field.validity.badInput")
         expect(submit).toContain("unreadable,")
         expect(submit.indexOf("wrongAt(")).toBeLessThan(submit.indexOf("setConfirming('UPDATE')"))
-        expect(FORM).toContain("const first = firstError(errors as Record<string, string>, PROFILE_FIELDS) as ProfileField | null")
+        // In the order the page shows them, each name's in its language first (PR 403).
+        expect(FORM).toContain("const first = firstError(errors as Record<string, string>, inPageOrder(PROFILE_FIELDS, locale)) as ProfileField | null")
+        expect(submit).toContain("names: access.bothNames ? { first: { en: firstName, ar: firstNameAr }, last: { en: lastName, ar: lastNameAr } } : undefined,")
+        // Said with which name it's about, and its limit (PR 403).
+        expect(submit).toContain("wrongAt(Object.fromEntries(Object.entries(wrong).map(([field, key]) => [field, mistakeText(t, locale, field, key)])))")
         expect(FORM).toContain('document.querySelector<HTMLElement>(`[name="${focusOn.field}"]`)?.focus()')
     })
 
@@ -338,7 +395,7 @@ describe("the profile, wired to its form", () => {
         const save = FORM.slice(FORM.indexOf("const executeSubmit"), FORM.indexOf("// Their role, as the form may change it"))
         expect(save).toContain("const refused = refusedField(answer)")
         // About the role, only where the save changed it (part 4, lib/profile-role.test.ts).
-        expect(save).toContain("if (refused && (refused.field !== 'roleId' || roleGiven)) wrongAt({ [refused.field]: t(refused.key) })")
+        expect(save).toContain("if (refused && (refused.field !== 'roleId' || roleGiven)) wrongAt({ [refused.field]: mistakeText(t, locale, refused.field, refused.key) })")
         expect(save).not.toMatch(/showToast\([^)]*'error'\)/)
         // The ones it said, said under their fields now.
         for (const gone of ["email_format_error", "t('username_invalid')", "t('salary_limit_error')", "text.includes('\"Username in use\"')"]) expect(save, gone).not.toContain(gone)
@@ -349,6 +406,9 @@ describe("the profile, wired to its form", () => {
         for (const sent of [
             "firstName: access.nameByRequest ? undefined : firstName,",
             "lastName: access.nameByRequest ? undefined : lastName,",
+            // Each in Arabic too, where it keeps both (PR 403).
+            "firstNameAr: access.bothNames ? firstNameAr : undefined,",
+            "lastNameAr: access.bothNames ? lastNameAr : undefined,",
             // One's own is changed in Security settings: it's not sent.
             "email: access.changeEmail ? email : undefined,",
             "salary: access.changeSalary ? parseFloat(salary) || 0 : undefined,",
@@ -359,6 +419,9 @@ describe("the profile, wired to its form", () => {
             "password: access.changePassword && password ? password : undefined,",
         ]) expect(payload, sent).toContain(sent)
         expect(FORM).toContain("if (access.nameByRequest && isNameChanged) {")
+        // Their names in Arabic, read for the form (PR 403).
+        const read = readFileSync("app/api/users/route.ts", "utf8")
+        expect(read.slice(read.indexOf("const user = await prisma.user.findUnique({"), read.indexOf("const user = await prisma.user.findUnique({") + 400)).toContain("firstNameAr: true, lastNameAr: true,")
     })
 
     // Reached at its address by someone who may not edit them, as the notice

@@ -65,6 +65,8 @@ export const GET = withStandardHandler(async (req, session) => {
             where: { id: userId },
             select: {
                 id: true, firstName: true, lastName: true, email: true, status: true,
+                // Their names in Arabic, for the profile's form (PR 403).
+                firstNameAr: true, lastNameAr: true,
                 role: true, gender: true, salary: true, companyId: true,
                 totalDifficultyPoints: true, avatar: true, dayOffCredit: true,
                 baseDayOffCredit: true, username: true, teamLeaderId: true,
@@ -319,6 +321,8 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         if (error.message === 'CROSS_COMPANY_ACCESS_FORBIDDEN') return ApiResponse.forbidden("Access denied")
         if (error.message === 'COMPANY_CHANGE_FORBIDDEN') return ApiResponse.badRequest("A person stays in the company they were added to")
         if (error.message === 'NAME_CHANGE_REQUIRES_ADMIN') return ApiResponse.forbidden("Name changes require admin approval")
+        // Under the name's field, as a schema's refusal is (PR 403).
+        if (error.message === 'NAME_IN_BOTH_LANGUAGES') return ApiResponse.badRequest("Validation Error", { [error.field]: { _errors: [error.why] } })
         if (error.message === 'FORBIDDEN') return ApiResponse.forbidden()
         if (error.message === 'FORBIDDEN_PASSWORD_RESET') return ApiResponse.forbidden("Changing somebody else's password needs the reset-password permission")
         // With their codes, said in the reader's language (PR 229).
