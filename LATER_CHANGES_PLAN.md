@@ -522,7 +522,14 @@ other filled in when one is typed, if that's possible.
      - the server takes a new client only with both, each in its own
        letters, and an edited name's English only in English letters with
        its Arabic sent or kept, as an employee's (#403). What it refuses
-       is said under its field.
+       is said under its field;
+     - as built: the form's rules are in `lib/client-form.ts`, and its
+       mistakes name which name they're of ("Enter the owner name in
+       Arabic, or use the suggestion."). Create and Save are ready once
+       each name has one language and the phone number is typed, as they
+       were once each was typed; what's still missing is said under its
+       field on saving, the first focused. The server asks each name as
+       a name change's request does (`nameIn`, #404).
    - **6b. On the Clients page:** the names in the page's language, with
      the ones still missing a language (the note and the Names select, as
      the Employees page has them), and its search finding either.
