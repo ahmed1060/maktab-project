@@ -680,7 +680,7 @@ other filled in when one is typed, if that's possible.
      - the client's statement (the charges' one): the client and its
        owner on the sheet, the client in the line above the receipts,
        and the client in the page's heading and its back link.
-   - **8g. The responsible accountant and the tax statement (#418):**
+   - **8g. The responsible accountant and the tax statement (Done, #418):**
      - the responsible accountant, wherever it's named: a client's Tax
        position on its page, with its picker's people in the page's
        order; the client's area's home and its Contact on WhatsApp; and
@@ -1508,3 +1508,9 @@ same day as drawn in the All users: status badges canvas
   (§3.1, step 8f): whom a payslip or a settlement is issued to, and a
   statement's client and its owner, on the sheet and in the page's
   heading. The tax statement next, as 8g.
+- **2026-11-24:** #418 merged: the responsible accountant and the tax
+  statement name people and clients in the page's language (§3.1, step
+  8g): the accountant on a client's Tax position, its picker in the
+  page's order, the client's area's home and Contact on WhatsApp, and
+  the tax statement, whose client is named in the page's language on the
+  client's page's copy. Attendance next.
