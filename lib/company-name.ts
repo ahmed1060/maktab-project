@@ -1,5 +1,5 @@
-import type { TranslationKey } from '@/lib/translations'
-import { missingLanguages } from '@/lib/names'
+import type { Locale, TranslationKey } from '@/lib/translations'
+import { missingLanguages, nameIn } from '@/lib/names'
 import { mistakeKey, newNameErrors, type NameLanguage, type TwoNames } from '@/lib/names/name-fields'
 
 /**
@@ -62,4 +62,17 @@ export function companyMissingNote(company: { name: string; nameAr?: string | nu
     if (missing.length > 1) return 'name_missing_both_note'
     if (missing[0] === 'ar') return 'name_missing_ar_note'
     return missing[0] === 'en' ? 'name_missing_en_note' : null
+}
+
+/**
+ * The company's name in the page's language, or in the one it has while it
+ * has only one (DESIGN.md §5.3; LATER_CHANGES_PLAN.md §3.1, step 7b, PR 409).
+ */
+export function companyNameIn(locale: Locale, company: { name: string; nameAr?: string | null }): string {
+    return nameIn(locale, { en: company.name, ar: company.nameAr })
+}
+
+/** The session's company's name in the page's language, as above; nothing for a session with no company. */
+export function sessionCompanyName(locale: Locale, user: { companyName?: string | null; companyNameAr?: string | null }): string | null {
+    return user.companyName ? companyNameIn(locale, { name: user.companyName, nameAr: user.companyNameAr }) : null
 }

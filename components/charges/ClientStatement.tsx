@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyNameIn } from '@/lib/company-name'
 import { Details, DocGroup, DocLine, DocNote, DocTable, DocTotal, DocumentSheet, FileChip, type DocColumn } from '@/components/ui'
 import { fill } from '@/components/attendance-calendar/fill'
 import { calendarDay } from '@/lib/calendar-day'
@@ -118,7 +119,7 @@ export function StatementSheet({ statement, withReceipts, view = 'every' }: { st
     }
 
     return (
-        <DocumentSheet title={t(byName ? 'statement_kind_by_name' : 'statement_kind_every')} company={statement.company}>
+        <DocumentSheet title={t(byName ? 'statement_kind_by_name' : 'statement_kind_every')} company={{ name: companyNameIn(locale, statement.company), logoUrl: statement.company.logoUrl }}>
             <Details items={[
                 { label: t('statement_client'), value: <><bdi>{client.name}</bdi><span className="ui-detail-note"><bdi>{client.ownerName}</bdi></span></> },
                 { label: t('doc_period'), value: range },

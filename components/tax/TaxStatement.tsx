@@ -6,6 +6,7 @@ import { PrinterIcon, ReceiptIcon } from '@phosphor-icons/react/ssr'
 import { Button, Details, DocumentSheet, EmptyState, Page, PageHeader } from '@/components/ui'
 import { formatDay } from '@/components/records/types'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyNameIn } from '@/lib/company-name'
 import { DEFAULT_POWERED_BY_NAME } from '@/lib/branding-defaults'
 import { countOf } from '@/lib/plural'
 import { latestDueFirst, paidShare } from '@/lib/portal-tax'
@@ -109,7 +110,7 @@ export function TaxStatementSheet({ statement }: { statement: TaxStatement }) {
     ]
 
     return (
-        <DocumentSheet title={t('tax_statement_title')} company={company}>
+        <DocumentSheet title={t('tax_statement_title')} company={{ name: companyNameIn(locale, company), logoUrl: company.logoUrl }}>
             <Details items={details} columns={4} />
 
             <dl className="ui-doc-facts">

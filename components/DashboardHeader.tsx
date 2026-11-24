@@ -7,6 +7,7 @@ import { ClockCounterClockwiseIcon, ListIcon, ShieldCheckIcon, SignOutIcon, User
 import type { TranslationKey } from '@/lib/translations'
 import NotificationBell from './NotificationBell'
 import { addressWithCompanyInView, companyLinkToFollow } from '@/lib/company-link'
+import { sessionCompanyName } from '@/lib/company-name'
 import { useCompany } from '@/context/CompanyContext'
 import { useLanguage } from '@/context/LanguageContext'
 import LanguageToggleButton from './LanguageToggleButton'
@@ -32,6 +33,7 @@ interface DashboardHeaderProps {
         picture?: string | null
         gender: string
         companyName?: string | null
+        companyNameAr?: string | null
     }
     /** The company's name and logo, for its mark at the bar's start on a phone (DESIGN.md §5.1). */
     company: { name: string; logoUrl: string | null }
@@ -126,7 +128,7 @@ export default function DashboardHeader({ user, company, onMenuClick, menuOpen =
     const accountRef = useRef<HTMLButtonElement>(null)
     const accountBox = useRef<HTMLDivElement>(null)
     const accountMenuId = useId()
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     // Their own history is HR's: in the menu only where the package includes it.
     const features = useFeatures()
 
@@ -290,7 +292,9 @@ export default function DashboardHeader({ user, company, onMenuClick, menuOpen =
         id: currentUser.id,
         name: `${currentUser.firstName} ${currentUser.lastName}`.trim(),
         role: t(getRoleKey(currentUser.role)),
-        companyName: currentUser.role === 'SUPER_ADMIN' ? null : (user.companyName ?? null),
+        // The company's name in the page's language (PR 409), from the live
+        // session, as the side bar's.
+        companyName: currentUser.role === 'SUPER_ADMIN' ? null : sessionCompanyName(locale, currentUser),
         photo: headerAvatar,
     }
 

@@ -21,7 +21,7 @@ export const GET = withStandardHandler(async (req, session) => {
         const company = await prisma.company.findUnique({
             where: { id },
             select: {
-                id: true, name: true, isBanned: true, autoVerifyLocation: true, cashAdvancesAllowed: true, cashAdvancesOn: true, costNamesFromListOnly: true, confirmHighRisk: true,
+                id: true, name: true, nameAr: true, isBanned: true, autoVerifyLocation: true, cashAdvancesAllowed: true, cashAdvancesOn: true, costNamesFromListOnly: true, confirmHighRisk: true,
                 // The Attendance tab's two switches, the Super Admin's (ATTENDANCE_PLAN.md §17.10, §17.8).
                 terminalsSetupByCompany: true, terminalsDirectAllowed: true,
                 moduleLabels: true, moduleIcons: true, logoUrl: true, brandColour: true,

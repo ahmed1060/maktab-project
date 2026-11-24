@@ -19,6 +19,8 @@ import { fetcher } from '@/lib/swr-fetcher'
 import { WAITING_FOR_REVIEW_KEY } from '@/lib/requests/kinds'
 import DashboardHeader from './DashboardHeader'
 import { useLanguage } from '@/context/LanguageContext'
+import { useSession } from 'next-auth/react'
+import { sessionCompanyName } from '@/lib/company-name'
 import { permissionsOf } from '@/lib/useCan'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useLive } from '@/components/LiveUpdates'
@@ -59,7 +61,10 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     // side bar sits is CSS; this is only whether it's a dialog, and open.
     const isPhone = useSyncExternalStore(subscribePhone, isPhoneNow, () => false)
     const [drawerOpen, setDrawerOpen] = useState(false)
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
+    // The live session, for what its minute's check catches up, such as the
+    // company's name: the layout's copy stays as the app moves between pages.
+    const { data: session } = useSession()
     // The company's package, from the account the layout passed until the
     // session has loaded (useFeatures), so what it leaves out never shows.
     const features = useFeatures()
@@ -136,7 +141,9 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
 
     const displayName = user?.role === 'SUPER_ADMIN'
         ? (selectedCompanyName || t('app_name'))
-        : (user?.companyName || t('app_name'));
+        // The company's name in the page's language (PR 409), from the live
+        // session, the layout's until it has loaded.
+        : (sessionCompanyName(locale, session?.user ?? user ?? {}) || t('app_name'));
 
     return (
         // The side bar beside the page on a computer, in its flow, and a

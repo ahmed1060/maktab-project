@@ -5,6 +5,7 @@ import { FileXIcon, HourglassIcon, PrinterIcon, WarningCircleIcon } from '@phosp
 import { Button, Details, DocGroup, DocLine, DocNote, DocTotal, DocumentSheet, EmptyState, Page, PageHeader } from '@/components/ui'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyNameIn } from '@/lib/company-name'
 
 /**
  * One payslip, to read and to print.
@@ -19,7 +20,7 @@ import { useLanguage } from '@/context/LanguageContext'
 
 type Doc = {
     person: { name: string; email: string }
-    company: { name: string; logoUrl?: string | null }
+    company: { name: string; nameAr?: string | null; logoUrl?: string | null }
     period: { month: number; year: number }
     status: 'DRAFT' | 'APPROVED' | 'PAID'
     daysPaid: number
@@ -77,7 +78,7 @@ export default function PayslipDocumentPage() {
     return (
         <Page>
             {header}
-            <DocumentSheet title={t('doc_payslip')} company={doc.company}>
+            <DocumentSheet title={t('doc_payslip')} company={{ name: companyNameIn(locale, doc.company), logoUrl: doc.company.logoUrl }}>
                 {/* A draft says so on its face. A payslip that turns out to have been
                     provisional, without having said so, is worse than no payslip. */}
                 {doc.status === 'DRAFT' && <DocNote tone="waiting">{t('doc_draft_note')}</DocNote>}

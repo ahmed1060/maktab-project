@@ -137,6 +137,15 @@ describe("its charges, receipts and totals", () => {
 })
 
 describe("the sheet", () => {
+    it("names its company in the page's language, or in the one it has while it has only one (PR 409)", async () => {
+        const named = { company: { name: "Nile Works", nameAr: "أعمال النيل", logoUrl: null } }
+        state.locale = "ar"
+        expect(await sheet(named)).toContain(`<p class="ui-doc-company">أعمال النيل</p>`)
+        expect(await sheet()).toContain(`<p class="ui-doc-company">Nile Works</p>`)
+        state.locale = "en"
+        expect(await sheet(named)).toContain(`<p class="ui-doc-company">Nile Works</p>`)
+    })
+
     it("is the company's document, for the client, the period and the day it was issued", async () => {
         const html = await sheet()
         expect(html).toContain(`<p class="ui-doc-company">Nile Works</p><p class="ui-doc-kind">${en.statement_kind_every}</p>`)

@@ -17,7 +17,7 @@ import { stripComments } from "./strip-comments"
 
 const state = {
     session: null as any,
-    companies: {} as Record<string, { name: string; logoUrl: string | null; brandColour: string | null }>,
+    companies: {} as Record<string, { name: string; nameAr?: string | null; logoUrl: string | null; brandColour: string | null }>,
     companyReads: [] as any[],
     accounts: {} as Record<string, { language: string }>,
     locale: "en" as "en" | "ar",
@@ -69,19 +69,19 @@ const rule = (selector: string) => {
 
 beforeEach(() => {
     state.session = null
-    state.companies = { "co-1": { name: "Nile Works", logoUrl: null, brandColour: "#0d9488" } }
+    state.companies = { "co-1": { name: "Nile Works", nameAr: "أعمال النيل", logoUrl: null, brandColour: "#0d9488" } }
     state.companyReads = []
     state.accounts = { "acct-1": { language: "en" } }
     state.locale = "en"
 })
 
 describe("what the area's frame reads for its top bar", () => {
-    it("the session's company's name, logo and brand colour, in one read", async () => {
+    it("the session's company's name in both languages, logo and brand colour, in one read (PR 409)", async () => {
         const { portalFrame } = await import("./client-portal-frame")
         const frame = await portalFrame(CLIENT)
-        expect(frame).toEqual({ company: { name: "Nile Works", logoUrl: null }, brand: "#0d9488" })
+        expect(frame).toEqual({ company: { name: "Nile Works", nameAr: "أعمال النيل", logoUrl: null }, brand: "#0d9488" })
         expect(state.companyReads).toHaveLength(1)
-        expect(state.companyReads[0]).toEqual({ where: { id: "co-1" }, select: { name: true, logoUrl: true, brandColour: true } })
+        expect(state.companyReads[0]).toEqual({ where: { id: "co-1" }, select: { name: true, nameAr: true, logoUrl: true, brandColour: true } })
     })
 
     it("no colour of its own leaves the system's default, as for the company's people", async () => {
@@ -153,6 +153,13 @@ describe("the top bar", () => {
     it("has the company's mark and name at its start: its first letter where it has no logo", async () => {
         const html = await bar()
         expect(html).toContain('<span class="ui-portal-company"><span class="ui-company-mark" aria-hidden="true"><span class="ui-company-letter">N</span></span><span class="ui-portal-company-name"><bdi>Nile Works</bdi></span></span>')
+    })
+
+    it("its name in the page's language, or the one it has while it has only one (PR 409)", async () => {
+        const named = { ...company, nameAr: "أعمال النيل" }
+        expect(await bar({ company: named }, "ar")).toContain('<span class="ui-company-letter">أ</span></span><span class="ui-portal-company-name"><bdi>أعمال النيل</bdi></span>')
+        expect(await bar({ company: named }, "en")).toContain('<span class="ui-company-letter">N</span></span><span class="ui-portal-company-name"><bdi>Nile Works</bdi></span>')
+        expect(await bar({ company: { ...company, nameAr: null } }, "ar")).toContain('<span class="ui-portal-company-name"><bdi>Nile Works</bdi></span>')
     })
 
     it("and its logo where it has one", async () => {

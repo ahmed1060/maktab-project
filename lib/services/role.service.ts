@@ -42,6 +42,8 @@ export type RolePreview = {
     baseRole: UserRole
     companyId: string
     companyName: string
+    /** Its name in Arabic, for the page's language (PR 409). */
+    companyNameAr: string | null
     grants: string
     featureAccess: SerializedAccess
     startedAt: number
@@ -82,7 +84,7 @@ export class RoleService {
             where: { id: roleId },
             select: {
                 id: true, name: true, builtIn: true, baseRole: true, companyId: true,
-                company: { select: { name: true, package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true, hasClientPortal: true } } } },
+                company: { select: { name: true, nameAr: true, package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true, hasClientPortal: true } } } },
                 grants: { select: { permission: true, scope: true } },
             },
         })
@@ -90,7 +92,7 @@ export class RoleService {
         const grants = grantsFromRows(role.grants)
         return {
             roleId: role.id, roleName: role.name, roleBuiltIn: role.builtIn, baseRole: role.baseRole,
-            companyId: role.companyId, companyName: role.company.name,
+            companyId: role.companyId, companyName: role.company.name, companyNameAr: role.company.nameAr ?? null,
             grants: encodeGrants(grants),
             featureAccess: serializeAccess(resolveBundles(role.company.package)),
             startedAt: Date.now(),
