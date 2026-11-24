@@ -21,9 +21,9 @@ their screen test (§5, #369 to #395), and status counts on All users (§6,
 languages are kept (#398), Nizmo's list of names and the rules are done
 (#399), and so are the company's spellings, learned (#400), and read for
 a name's suggestion (#401), and employees' names on Add employee (#402),
-on an employee's page and on one's own profile (#403), and in a request
-to change one's own name (#404). Employees' names on the Employees page
-are next (#405).
+on an employee's page and on one's own profile (#403), in a request to
+change one's own name (#404), and on the Employees page (#405). Clients'
+names are next: in their form (#406), then on the Clients page.
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -350,6 +350,11 @@ other filled in when one is typed, if that's possible.
   usually longer in English than in Arabic, as its vowels are written
   out: محمد عبد الرحمن is 15 characters, and Mohamed Abdelrahman is 19.
   Lowered in #402, where production's longest was 11.
+- **A client's names' length (Decided, 2026-11-24):** a client's name
+  takes up to 100 characters, as before, as a business's name can be
+  long; its owner's name takes up to 60, lowered from 100, as it's a
+  person's whole name, a first and a last name of 30 each. Production's
+  one client's are 21 and 15.
 - **The design (approved by the owner on 2026-11-23):** the name fields
   drawn on the English and Arabic names canvas, written into `DESIGN.md`
   §5.3: a name in English and in Arabic, and the names still missing a
@@ -487,7 +492,7 @@ other filled in when one is typed, if that's possible.
        learns it. A request asked before is approved as #398 did;
      - on the Requests page, a name change's details show the names
        it's from and for in both languages, and its search finds either.
-5. **Employees' names in the page's language** on the Employees page (#405),
+5. **Employees' names in the page's language** on the Employees page (Done, #405),
    with the ones still missing a language, and its search finding
    either:
    - each name in the page's language, or the one it has, a team
@@ -504,10 +509,30 @@ other filled in when one is typed, if that's possible.
    - the note is a building block (`ListNote`), for the Clients page in
      step 6.
 6. **Clients' names:**
-   - the two fields for the name and the owner's name, on Add client and
-     a client's page, with business words;
-   - the Clients page in the page's language, with the ones still
-     missing a language, and its search finding either.
+   - **6a. In the client's form (#406),** the dialog on the Clients page
+     that adds a client or edits one:
+     - its name and its owner's, each in English and in Arabic, with the
+       suggestion: a business's for its own name, with its business
+       words, and a person's for its owner's;
+     - each up to its limit: 100 characters for its name, as before, and
+       60 for its owner's;
+     - both needed for a new client, and on an edit for a name saved
+       before in one language, which the note at the top of the form
+       names: the client's name, its owner's, or both;
+     - the server takes a new client only with both, each in its own
+       letters, and an edited name's English only in English letters with
+       its Arabic sent or kept, as an employee's (#403). What it refuses
+       is said under its field;
+     - as built: the form's rules are in `lib/client-form.ts`, and its
+       mistakes name which name they're of ("Enter the owner name in
+       Arabic, or use the suggestion."). Create and Save are ready once
+       each name has one language and the phone number is typed, as they
+       were once each was typed; what's still missing is said under its
+       field on saving, the first focused. The server asks each name as
+       a name change's request does (`nameIn`, #404).
+   - **6b. On the Clients page:** the names in the page's language, with
+     the ones still missing a language (the note and the Names select, as
+     the Employees page has them), and its search finding either.
 7. **The company's name:** Company settings and the Super Admin's
    company forms, the note above its fields, and the name in the page's
    language wherever it's shown.
@@ -1252,3 +1277,9 @@ same day as drawn in the All users: status badges canvas
   for. The flow found, and the PR fixed, a name saved before in Arabic
   only blocking every save of one's own profile. The Employees page next,
   as #405.
+- **2026-11-24:** #405 merged: employees' names on the Employees page in
+  the page's language (§3.1, step 5), with the ones still missing a
+  language and a search finding either, the note above the list a
+  building block. The owner chose a client's names' limits: 100
+  characters for its own, as before, and 60 for its owner's. Clients'
+  names in their form next, as #406.

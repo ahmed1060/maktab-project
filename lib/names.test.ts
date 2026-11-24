@@ -138,18 +138,20 @@ describe("what the server takes", () => {
         expect(createUserSchema.parse({ ...person, firstNameAr: "  منى  " }).firstNameAr).toBe("منى")
     })
 
-    it("takes a client's Arabic name and its owner's, up to 100 characters, as the English", () => {
+    it("takes a client's Arabic name and its owner's, each up to its English's limit (PR 406)", () => {
+        // Both needed for a new client since PR 406: its own up to 100 characters, its owner's up to 60.
         const client = { name: "El Nour Trading Company", ownerName: "Mahmoud Abdallah", mobileNumber: "01001234567", hq: { name: "HQ", latitude: 30.0444, longitude: 31.2357 } }
-        expect(accepts(createClientSchema, client)).toBe(true)
+        expect(accepts(createClientSchema, client)).toBe(false)
         expect(accepts(createClientSchema, { ...client, nameAr: "شركة النور للتجارة", ownerNameAr: "محمود عبد الله" })).toBe(true)
-        expect(accepts(createClientSchema, { ...client, nameAr: "El Nour" })).toBe(false)
-        expect(accepts(createClientSchema, { ...client, ownerNameAr: "Mahmoud" })).toBe(false)
+        expect(accepts(createClientSchema, { ...client, nameAr: "El Nour", ownerNameAr: "محمود عبد الله" })).toBe(false)
+        expect(accepts(createClientSchema, { ...client, nameAr: "شركة النور للتجارة", ownerNameAr: "Mahmoud" })).toBe(false)
         expect(accepts(updateClientSchema, { id: "k1", nameAr: "شركة النور للتجارة", ownerNameAr: "محمود عبد الله" })).toBe(true)
         expect(accepts(updateClientSchema, { id: "k1", nameAr: "El Nour" })).toBe(false)
         expect(accepts(updateClientSchema, { id: "k1", ownerNameAr: "Mahmoud" })).toBe(false)
         expect(accepts(updateClientSchema, { id: "k1", nameAr: "ن".repeat(100) })).toBe(true)
         expect(accepts(updateClientSchema, { id: "k1", nameAr: "ن".repeat(101) })).toBe(false)
-        expect(accepts(updateClientSchema, { id: "k1", ownerNameAr: "ن".repeat(101) })).toBe(false)
+        expect(accepts(updateClientSchema, { id: "k1", ownerNameAr: "ن".repeat(60) })).toBe(true)
+        expect(accepts(updateClientSchema, { id: "k1", ownerNameAr: "ن".repeat(61) })).toBe(false)
     })
 
     it("takes a company's Arabic name, up to 50 characters, as the English", () => {

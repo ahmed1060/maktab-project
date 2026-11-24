@@ -150,6 +150,8 @@ export const PUT = withStandardHandler(async (req, session, json) => {
     } catch (error: any) {
         if (error.message === 'CLIENT_NOT_FOUND') return ApiResponse.notFound("Client not found")
         if (error.message === 'FORBIDDEN') return ApiResponse.forbidden()
+        // Said under its field, as the schema's refusals are (PR 406).
+        if (error.message === 'NAME_IN_BOTH_LANGUAGES') return ApiResponse.badRequest("Validation Error", { [error.field]: { _errors: [error.why] } })
         if (error.code === 'P2002') return ApiResponse.badRequest("A client with this name already exists")
 
         throw error

@@ -10,7 +10,7 @@ import {
 import AccessDenied from '@/components/AccessDenied'
 import PlaceFields from '@/components/locations/PlaceFields'
 import {
-    Button, ConfirmDialog, DataList, Dialog, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange, RowMenu, SearchInput, Select, StatusBadge, TextInput,
+    Button, ConfirmDialog, DataList, Dialog, EmptyState, Field, FilterBar, FormNote, ItemTitle, ListCard, NameFields, Page, PageHeader, Pager, pageInRange, RowMenu, SearchInput, Select, StatusBadge, TextInput,
     type Column, type MenuItem,
 } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
@@ -24,11 +24,20 @@ import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { draftOf, pinOfLink, readPlace, emptyPlace, type PlaceDraft, type PlaceErrors } from '@/lib/place-draft'
 import { archivesInstead, deleteForGoodQuestion, deleteQuestionKey, deletedToastKey } from '@/lib/client-delete'
 import type { TranslationKey } from '@/lib/translations'
+import { savedName } from '@/lib/names/name-fields'
+import {
+    CLIENT_NAME_MAX, OWNER_NAME_MAX, clientMistakeText, clientNameErrors, clientRefusedField, missingNote, readyToSave,
+    type ClientNameField, type ClientNames,
+} from '@/lib/client-form'
 
 interface Client {
     id: string
+    companyId: string
     name: string
     ownerName: string
+    /** Its name and its owner's in Arabic (LATER_CHANGES_PLAN.md §3, PR 398). */
+    nameAr: string | null
+    ownerNameAr: string | null
     mobileNumber: string
     locationName: string
     locationLink: string | null
@@ -51,17 +60,11 @@ interface Client {
     taxDaysOld?: number
 }
 
-type ClientFormState = {
-    name: string
-    ownerName: string
-    mobileNumber: string
-}
+/** Its name and its owner's, each in English and in Arabic (PR 406), and its phone number. */
+type ClientFormState = ClientNames & { mobileNumber: string }
 
-const emptyForm: ClientFormState = { name: '', ownerName: '', mobileNumber: '' }
+const emptyForm: ClientFormState = { name: { en: '', ar: '' }, owner: { en: '', ar: '' }, mobileNumber: '' }
 const LIMIT = 20
-
-/** Whether a form has the details a client needs; its HQ is checked when it's saved. */
-const complete = (f: ClientFormState) => !!(f.name.trim() && f.ownerName.trim() && f.mobileNumber.trim())
 
 /**
  * A client's HQ in its form: the HQ it has, or, for one the release before
@@ -325,6 +328,7 @@ export default function ClientsPage() {
                 <ClientForm
                     title={say('clients_edit', 'تعديل {name}', 'Edit {name}')}
                     client={editing}
+                    companyId={superAdmin ? editing.companyId : undefined}
                     onClose={() => setEditing(null)}
                     onSaved={() => {
                         setEditing(null)
@@ -369,19 +373,24 @@ function ClientForm({ title, client, pickCompany = false, companyId, onClose, on
     client?: Client
     /** Ask which company it's for: a Super Admin who hasn't picked one. */
     pickCompany?: boolean
-    /** The company a Super Admin has picked, which it's added to. */
+    /** The company a Super Admin has picked, which it's added to, or the edited client's: whose spellings are suggested. */
     companyId?: string
     onClose: () => void
     onSaved: () => void
 }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const { can } = useCan()
     const formId = useId()
     const formRef = useRef<HTMLFormElement>(null)
+    // Its names as they're kept: one saved before in Arabic only is its Arabic, its English to come (PR 406).
     const [form, setForm] = useState<ClientFormState>(client
-        ? { name: client.name, ownerName: client.ownerName, mobileNumber: client.mobileNumber }
+        ? { name: savedName(client.name, client.nameAr), owner: savedName(client.ownerName, client.ownerNameAr), mobileNumber: client.mobileNumber }
         : emptyForm)
+    // Which name was saved in one language only, said at the top until it's saved in both (DESIGN.md §5.3).
+    const [note] = useState(() => (client ? missingNote(client) : null))
+    const [nameErrors, setNameErrors] = useState<Partial<Record<ClientNameField, TranslationKey>>>({})
+    const said = (field: ClientNameField) => { const key = nameErrors[field]; return key && clientMistakeText(t, locale, field, key) }
     const [opened] = useState<PlaceDraft>(() => (client ? hqDraft(client) : emptyPlace))
     const [hq, setHq] = useState<PlaceDraft>(opened)
     // Changing the HQ it has is changing a location (LocationService.saveHq).
@@ -395,7 +404,7 @@ function ClientForm({ title, client, pickCompany = false, companyId, onClose, on
         const raw = companiesBody?.data?.data || companiesBody?.data || companiesBody
         return Array.isArray(raw) ? raw : []
     })()
-    const ready = complete(form) && (!pickCompany || !!chosenCompany)
+    const ready = readyToSave(form) && (!pickCompany || !!chosenCompany)
 
     const save = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -405,14 +414,20 @@ function ClientForm({ title, client, pickCompany = false, companyId, onClose, on
         const { place, errors } = sendsHq ? readPlace(hq) : { place: null, errors: {} }
         setHqErrors(errors)
         setTried(true)
-        if (sendsHq && !place) {
+        // Each name in both languages, a new client's and an edited one's, as its note says (PR 406).
+        const wrong = clientNameErrors(form)
+        setNameErrors(wrong)
+        if ((sendsHq && !place) || Object.keys(wrong).length > 0) {
             // To the first field that needs fixing, once it's marked.
             requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
             return
         }
         setSaving(true)
         try {
-            const details = { ...form, ...(place ? { hq: place } : {}) }
+            const details = {
+                name: form.name.en, nameAr: form.name.ar, ownerName: form.owner.en, ownerNameAr: form.owner.ar,
+                mobileNumber: form.mobileNumber, ...(place ? { hq: place } : {}),
+            }
             const res = await fetch('/api/clients', {
                 method: client ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -422,6 +437,13 @@ function ClientForm({ title, client, pickCompany = false, companyId, onClose, on
             })
             if (!res.ok) {
                 const body = await res.json().catch(() => ({}))
+                // A name it refused is said under its field (PR 406); anything else, above.
+                const refused = clientRefusedField(body)
+                if (refused) {
+                    setNameErrors({ [refused.field]: refused.key })
+                    requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
+                    return
+                }
                 showToast(body.error || t('error_generic'), 'error')
                 return
             }
@@ -433,7 +455,19 @@ function ClientForm({ title, client, pickCompany = false, companyId, onClose, on
         }
     }
 
-    const set = (key: keyof ClientFormState) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, [key]: e.target.value }))
+    const setPhone = (e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, mobileNumber: e.target.value }))
+    /** A name changed: the mistakes said under the fields it changed go. */
+    const setName = (which: 'name' | 'owner', field: 'name' | 'ownerName') => (next: ClientNames['name']) => {
+        const before = form[which]
+        setForm(f => ({ ...f, [which]: next }))
+        setNameErrors(errors => ({
+            ...errors,
+            ...(next.en !== before.en ? { [field]: undefined } : {}),
+            ...(next.ar !== before.ar ? { [`${field}Ar`]: undefined } : {}),
+        }))
+    }
+    // The Super Admin's company, whose spellings come first; anyone else's own is the server's to know.
+    const spellingsOf = pickCompany ? chosenCompany || null : companyId ?? null
 
     return (
         <Dialog
@@ -446,19 +480,27 @@ function ClientForm({ title, client, pickCompany = false, companyId, onClose, on
             </>}
         >
             <form ref={formRef} id={formId} onSubmit={save} className="ui-dialog-body" noValidate>
+                {note && <FormNote>{t(note)}</FormNote>}
                 {pickCompany && (
                     <Field label={t('select_company')}>{p => (
                         <Select {...p} icon={BuildingsIcon} value={chosenCompany} onChange={e => setChosenCompany(e.target.value)} disabled={saving}
                             options={[{ value: '', label: t('select_company') }, ...companies.map(c => ({ value: c.id, label: c.name }))]} />
                     )}</Field>
                 )}
-                {/* Names keep their own direction, whichever language the page is in
-                    (DESIGN.md §7). None is filled in by the browser: it would offer the
-                    person's own name and phone, not the client's. */}
-                <Field label={t('client_name')}>{p => <TextInput {...p} name="name" autoComplete="off" dir="auto" value={form.name} onChange={set('name')} disabled={saving} />}</Field>
-                <Field label={t('client_owner_name')}>{p => <TextInput {...p} name="ownerName" autoComplete="off" dir="auto" value={form.ownerName} onChange={set('ownerName')} disabled={saving} />}</Field>
+                {/* Each name in English and in Arabic, each field in its own direction (DESIGN.md
+                    §5.3, §7; PR 406): the client's a business's, with its business words, and its
+                    owner's a person's. None is filled in by the browser: it would offer the person's
+                    own name and phone, not the client's. */}
+                <NameFields label={t('client_name')} name="name" kind="business" max={CLIENT_NAME_MAX} disabled={saving}
+                    companyId={spellingsOf}
+                    value={form.name} onChange={setName('name', 'name')}
+                    errors={{ en: said('name'), ar: said('nameAr') }} />
+                <NameFields label={t('client_owner_name')} name="ownerName" max={OWNER_NAME_MAX} disabled={saving}
+                    companyId={spellingsOf}
+                    value={form.owner} onChange={setName('owner', 'ownerName')}
+                    errors={{ en: said('ownerName'), ar: said('ownerNameAr') }} />
                 {/* A phone number reads left to right in either language (DESIGN.md §3.3). */}
-                <Field label={t('client_mobile_number')}>{p => <TextInput {...p} name="mobileNumber" type="tel" autoComplete="off" dir="ltr" value={form.mobileNumber} onChange={set('mobileNumber')} disabled={saving} />}</Field>
+                <Field label={t('client_mobile_number')}>{p => <TextInput {...p} name="mobileNumber" type="tel" autoComplete="off" dir="ltr" value={form.mobileNumber} onChange={setPhone} disabled={saving} />}</Field>
                 <PlaceFields
                     draft={hq}
                     onChange={d => { setHq(d); if (tried) setHqErrors(readPlace(d).errors) }}

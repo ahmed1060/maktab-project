@@ -58,7 +58,7 @@ const ON_RECORD: [string, (f: Fixture) => Promise<Response>][] = [
     ["edit a record",             async f => (await records()).PUT(withBody("PUT", "/api/records", { id: f.record, content: "Edited", filesBefore: [] }), P({}))],
     ["delete a record",           async f => (await records()).DELETE(DEL(`/api/records?id=${f.record}`), P({}))],
     ["view a client",             async f => (await clientsApi()).GET(new Request(url(`/api/clients?id=${f.client}`)), P({}))],
-    ["edit a client",             async f => (await clientsApi()).PUT(withBody("PUT", "/api/clients", { id: f.client, name: "Renamed" }), P({}))],
+    ["edit a client",             async f => (await clientsApi()).PUT(withBody("PUT", "/api/clients", { id: f.client, name: "Renamed", nameAr: "معدل" }), P({}))],
     ["delete a client",           async f => (await clientsApi()).DELETE(DEL(`/api/clients?id=${f.client}`), P({}))],
 ]
 
@@ -109,7 +109,7 @@ const OTHER: [string, () => Promise<Response>, Row][] = [
     // Every holder of records.contribute may discard what they uploaded; RecordService picks which files may go.
     ["discarding files uploaded for an unsaved record", async () => (await uploads()).DELETE(withBody("DELETE", "/api/records/uploads", { urls: ["https://abc.supabase.co/storage/v1/object/public/app-assets/c1/records/1-a.pdf"] }), P({})), [200, 200, 200, 200, 200]],
     ["listing clients",  async () => (await clientsApi()).GET(new Request(url("/api/clients")), P({})), [200, 200, 200, 200, 403]],
-    ["adding a client",  async () => (await clientsApi()).POST(withBody("POST", "/api/clients", { name: "V", ownerName: "O", mobileNumber: "0100000000", hq: { name: "Cairo", latitude: 30.0444, longitude: 31.2357 }, companyId: "c1" }), P({})), [201, 201, 201, 403, 403]],
+    ["adding a client",  async () => (await clientsApi()).POST(withBody("POST", "/api/clients", { name: "V", nameAr: "ف", ownerName: "O", ownerNameAr: "و", mobileNumber: "0100000000", hq: { name: "Cairo", latitude: 30.0444, longitude: 31.2357 }, companyId: "c1" }), P({})), [201, 201, 201, 403, 403]],
     // One's own cost history is always visible; a Team Leader does not see their team's.
     ["cost history of a team member",       costsOf("emp"),   [200, 200, 403, 403, 200]],
     ["cost history of a teamless employee", costsOf("loner"), [200, 200, 403, 403, 403]],

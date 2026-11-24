@@ -713,8 +713,10 @@ These are built once, in the building-blocks PR, and every page uses them
     The page's language comes first, on the start side; on phones they
     stack, the page's language on top. The Arabic field is right to left
     and the English one left to right, whatever the page's language;
-  - each takes up to the name's limit, 30 characters for a person's, and
-    says how many it has, as the name fields do today;
+  - each takes up to the name's limit, and says how many it has, as the
+    name fields do today: 30 characters for a person's first or last
+    name, 60 for a client's owner's whole name, and 100 for a client's
+    own;
   - when one is typed and the other is empty, the empty one offers what
     it may be: a secondary button under it, 30px tall (44px on phones),
     "Use “Mohamed”", with where it comes from beside it in `--muted`:
@@ -740,7 +742,8 @@ These are built once, in the building-blocks PR, and every page uses them
     time it's edited. A note at the top of the form says so, beside a
     round neutral icon and over a hairline: "Names are now kept in English
     and in Arabic. This name has no Arabic yet: add it to save the
-    changes.";
+    changes.". A form with more than one name says which: "The owner
+    name is in one language only: add the other to save the changes.";
   - a name is shown in the page's language everywhere, or in the one it
     has while it has only one, kept in its own direction (§7).
 - **The names still missing a language** are listed on the Employees and
