@@ -66,7 +66,8 @@ describe("the Clients list", () => {
         expect(page).toContain("archivesInstead(c)")
         expect(page).toContain("t(deleteQuestionKey(toDelete))")
         expect(page).toContain("t(deletedToastKey(toDelete, body?.data))")
-        expect(page).toContain("deleteForGoodQuestion(forGood, t, locale)")
+        // With its name in the page's language (PR 407).
+        expect(page).toContain("deleteForGoodQuestion({ ...forGood, name: clientName(forGood, locale) }, t, locale)")
     })
 
     it("asks before deleting for good, in the danger colour, with its own question", () => {

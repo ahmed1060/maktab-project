@@ -5,12 +5,12 @@ import Link from 'next/link'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
 import {
-    ArchiveIcon, ArrowCounterClockwiseIcon, BuildingsIcon, CheckSquareIcon, CircleDashedIcon, HourglassIcon, MapPinIcon, PencilSimpleIcon, PhoneIcon, PlusIcon, StorefrontIcon, TrashIcon, UserIcon, WarningCircleIcon,
+    ArchiveIcon, ArrowCounterClockwiseIcon, BuildingsIcon, CheckSquareIcon, CircleDashedIcon, HourglassIcon, MapPinIcon, PencilSimpleIcon, PhoneIcon, PlusIcon, StorefrontIcon, TranslateIcon, TrashIcon, UserIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
 import PlaceFields from '@/components/locations/PlaceFields'
 import {
-    Button, ConfirmDialog, DataList, Dialog, EmptyState, Field, FilterBar, FormNote, ItemTitle, ListCard, NameFields, Page, PageHeader, Pager, pageInRange, RowMenu, SearchInput, Select, StatusBadge, TextInput,
+    Button, ConfirmDialog, DataList, Dialog, EmptyState, Field, FilterBar, FormNote, ItemTitle, ListCard, ListNote, NameFields, Page, PageHeader, Pager, pageInRange, RowMenu, SearchInput, Select, StatusBadge, TextInput,
     type Column, type MenuItem,
 } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
@@ -25,6 +25,8 @@ import { draftOf, pinOfLink, readPlace, emptyPlace, type PlaceDraft, type PlaceE
 import { archivesInstead, deleteForGoodQuestion, deleteQuestionKey, deletedToastKey } from '@/lib/client-delete'
 import type { TranslationKey } from '@/lib/translations'
 import { savedName } from '@/lib/names/name-fields'
+import { personName } from '@/lib/names'
+import { clientMatches, clientMissing, clientName, clientsInOrder, missingCount, ownerName } from '@/lib/client-list'
 import {
     CLIENT_NAME_MAX, OWNER_NAME_MAX, clientMistakeText, clientNameErrors, clientRefusedField, missingNote, readyToSave,
     type ClientNameField, type ClientNames,
@@ -44,7 +46,7 @@ interface Client {
     /** Its HQ, if it has one yet. */
     locations: { id: string; name: string; latitude: number | null; longitude: number | null; radiusMeters: number | null }[]
     company?: { name: string }
-    createdBy: { firstName: string, lastName: string } | null
+    createdBy: { firstName: string, lastName: string, firstNameAr?: string | null, lastNameAr?: string | null } | null
     archivedAt?: string | null
     /** It has tasks or records, so deleting it archives it instead (CLIENTS_PLAN.md §4.3), and it stays in the archive. */
     inUse?: boolean
@@ -121,6 +123,10 @@ export default function ClientsPage() {
     const [forGood, setForGood] = useState<Client | null>(null)
     // The archived ones, instead of those in use (CLIENTS_PLAN.md §4.3).
     const [archived, setArchived] = useState(false)
+    // The names still missing a language, counted and listed for whoever may
+    // edit clients, as they're the ones asked to add them (PR 407).
+    const editsNames = mayEdit
+    const [names, setNames] = useState<'' | 'missing'>('')
 
     // A Super Admin who hasn't picked a company sees every company's clients,
     // each with its company named: names are only unique within a company.
@@ -133,11 +139,15 @@ export default function ClientsPage() {
     const failed = !result && !!error
     const all = result?.data ?? []
     const search = query.trim().toLowerCase()
-    const matching = search ? all.filter(c => c.name.toLowerCase().includes(search) || c.ownerName.toLowerCase().includes(search)) : all
+    // Each name in either language, an Arabic page's in Arabic order (DESIGN.md §5.3, PR 407).
+    const ordered = clientsInOrder(all, locale)
+    const matching = ordered.filter(c => (!search || clientMatches(c, search)) && (names !== 'missing' || clientMissing(c).length > 0))
+    // The clients in use only: an archived one can't be edited until it's restored.
+    const missingNames = editsNames && !archived ? missingCount(all) : 0
     const pageCount = Math.ceil(matching.length / LIMIT)
     const clients = matching.slice((page - 1) * LIMIT, page * LIMIT)
 
-    useAdjustOnChange([search], () => setPage(1))
+    useAdjustOnChange([search, names], () => setPage(1))
     useAdjustOnChange([pageCount], () => setPage(p => pageInRange(p, pageCount)))
     // Another company picked: what's open belongs to the last one, and Save
     // or Delete would still act on it.
@@ -187,7 +197,7 @@ export default function ClientsPage() {
     }
     // What goes with it is said before it goes: its tax position, with how many claims are open for
     // whoever may see those, and its people who can sign in, with how many for whoever may manage them.
-    const forGoodQuestion = !forGood ? '' : deleteForGoodQuestion(forGood, t, locale)
+    const forGoodQuestion = !forGood ? '' : deleteForGoodQuestion({ ...forGood, name: clientName(forGood, locale) }, t, locale)
 
     const restore = async (c: Client) => {
         try {
@@ -204,9 +214,15 @@ export default function ClientsPage() {
         }
     }
 
-    const addedBy = (c: Client) => c.createdBy ? `${c.createdBy.firstName} ${c.createdBy.lastName}` : t('role_super_admin')
-    // Its own page holds its records (CLIENTS_PLAN.md §0.2).
-    const name = (c: Client) => <Link href={`/dashboard/clients/${c.id}`} prefetch={false} className="ui-item-link"><bdi>{c.name}</bdi></Link>
+    const addedBy = (c: Client) => c.createdBy ? personName(c.createdBy, locale) : t('role_super_admin')
+    // Its own page holds its records (CLIENTS_PLAN.md §0.2). Its name in the page's language, or the one it has.
+    const name = (c: Client) => <Link href={`/dashboard/clients/${c.id}`} prefetch={false} className="ui-item-link"><bdi>{clientName(c, locale)}</bdi></Link>
+    // What each client listed as missing a language is missing, its own name's or its owner's (DESIGN.md §5.3).
+    const missing = (c: Client) => (
+        <span className="ui-badge-row">
+            {clientMissing(c).map(language => <StatusBadge key={language} tone="neutral">{t(language === 'ar' ? 'name_missing_ar_badge' : 'name_missing_en_badge')}</StatusBadge>)}
+        </span>
+    )
     // Whose file is due (CLIENT_PORTAL_PLAN.md §4.3, PR 321): the server counts the days, to today where the client's
     // company is. The badge is the one on the client's Tax position; here nothing around it says what wasn't
     // updated, so it names the tax position to screen readers.
@@ -237,12 +253,13 @@ export default function ClientsPage() {
     ]
     const actions = (c: Client) => (
         <span className="ui-row-actions">
-            <RowMenu label={t('ui_more_actions_for').replace('{name}', c.name)} tooltip={t('ui_more_actions')} items={menu(c)} />
+            <RowMenu label={t('ui_more_actions_for').replace('{name}', clientName(c, locale))} tooltip={t('ui_more_actions')} items={menu(c)} />
         </span>
     )
 
     const columns: Column<Client>[] = [
-        { key: 'client', header: t('clients_col_client'), cell: c => <ItemTitle title={<>{name(c)}{old(c)}</>} detail={<bdi>{c.ownerName}</bdi>} detailIcon={UserIcon} /> },
+        { key: 'client', header: t('clients_col_client'), cell: c => <ItemTitle title={<>{name(c)}{old(c)}</>} detail={<bdi>{ownerName(c, locale)}</bdi>} detailIcon={UserIcon} /> },
+        ...(names === 'missing' ? [{ key: 'missing', header: t('names_missing_column'), cell: missing }] : []),
         ...(everyCompany ? [{ key: 'company', header: t('clients_col_company'), cell: (c: Client) => <bdi>{c.company?.name}</bdi> }] : []),
         { key: 'phone', header: t('clients_col_phone'), cell: phone },
         { key: 'location', header: t('clients_col_location'), cell: place },
@@ -253,8 +270,8 @@ export default function ClientsPage() {
     const addLabel = say('clients_add', 'إضافة {name}', 'Add {name}')
     const empty = failed
         ? <EmptyState icon={WarningCircleIcon} title={t('clients_load_failed')} action={<Button busy={isValidating} onClick={() => { void mutate() }}>{t('try_again')}</Button>} />
-        : search
-            ? <EmptyState icon={StorefrontIcon} title={t('clients_none_found')} action={<Button variant="quiet" onClick={() => setQuery('')}>{t('ui_reset_filters')}</Button>} />
+        : search || names
+            ? <EmptyState icon={StorefrontIcon} title={t('clients_none_found')} action={<Button variant="quiet" onClick={() => { setQuery(''); setNames('') }}>{t('ui_reset_filters')}</Button>} />
             : archived
                 ? <EmptyState icon={ArchiveIcon} title={t('clients_none_archived')} action={<Button variant="quiet" onClick={() => setArchived(false)}>{t('ui_reset_filters')}</Button>} />
                 : <EmptyState icon={StorefrontIcon} title={t('clients_none')} action={mayAdd ? <Button variant="primary" icon={PlusIcon} onClick={() => setAdding(true)}>{addLabel}</Button> : undefined} />
@@ -271,15 +288,26 @@ export default function ClientsPage() {
                 action={mayAdd && <Button variant="primary" icon={PlusIcon} onClick={() => setAdding(true)}>{addLabel}</Button>}
             />
 
+            {/* How many names have only one language, above the filter bar (DESIGN.md §5.3, PR 407). */}
+            {missingNames > 0 && <ListNote icon={TranslateIcon} title={countOf(t, locale, missingNames, 'one_language')}>{t('names_missing_note_body')}</ListNote>}
+
             <FilterBar
                 search={<Field label={t('clients_search')} hideLabel>{p => <SearchInput {...p} autoComplete="off" placeholder={t('clients_search')} value={query} onChange={e => setQuery(e.target.value)} />}</Field>}
-                activeCount={archived ? 1 : 0}
-                onReset={query || archived ? () => { setQuery(''); setArchived(false) } : undefined}
+                activeCount={(archived ? 1 : 0) + (names ? 1 : 0)}
+                onReset={query || archived || names ? () => { setQuery(''); setArchived(false); setNames('') } : undefined}
             >
                 <Field label={t('clients_status')} hideLabel>{p => (
                     <Select {...p} icon={CircleDashedIcon} value={archived ? 'archived' : ''} onChange={e => { setArchived(e.target.value === 'archived'); setPage(1) }}
                         options={[{ value: '', label: t('clients_in_use') }, { value: 'archived', label: t('clients_archived_status') }]} />
                 )}</Field>
+                {editsNames && (
+                    <Field label={t('names_filter_label')} hideLabel>{p => (
+                        <Select {...p} icon={TranslateIcon} value={names} onChange={e => setNames(e.target.value as '' | 'missing')} options={[
+                            { value: '', label: t('names_filter_all') },
+                            { value: 'missing', label: t('names_filter_missing') },
+                        ]} />
+                    )}</Field>
+                )}
             </FilterBar>
 
             {/* Loading, too, until the session says who's looking: before it, nobody
@@ -297,10 +325,11 @@ export default function ClientsPage() {
                                 title={name(c)}
                                 status={old(c) || undefined}
                                 details={[
-                                    { icon: UserIcon, text: <bdi>{c.ownerName}</bdi> },
+                                    { icon: UserIcon, text: <bdi>{ownerName(c, locale)}</bdi> },
                                     { icon: PhoneIcon, text: phone(c) },
                                     { icon: MapPinIcon, text: place(c) },
                                     ...(everyCompany && c.company ? [{ icon: BuildingsIcon, text: <bdi>{c.company.name}</bdi> }] : []),
+                                    ...(names === 'missing' ? [{ icon: TranslateIcon, text: missing(c) }] : []),
                                 ]}
                                 foot={<><span className="ui-item-detail">{addedBy(c)}</span>{actions(c)}</>}
                             />
@@ -341,7 +370,7 @@ export default function ClientsPage() {
             <ConfirmDialog
                 open={!!toDelete}
                 title={toDelete && archivesInstead(toDelete) ? t('clients_archive') : say('clients_delete', 'حذف {name}', 'Delete {name}')}
-                body={toDelete ? t(deleteQuestionKey(toDelete)).replace('{name}', () => toDelete.name) : ''}
+                body={toDelete ? t(deleteQuestionKey(toDelete)).replace('{name}', () => clientName(toDelete, locale)) : ''}
                 confirmLabel={toDelete && archivesInstead(toDelete) ? t('clients_archive') : t('delete')}
                 danger={!(toDelete && archivesInstead(toDelete))}
                 onConfirm={confirmDelete}
