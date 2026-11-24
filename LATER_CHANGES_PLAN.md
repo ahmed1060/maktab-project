@@ -367,12 +367,24 @@ other filled in when one is typed, if that's possible.
      it has only one), and the language a name is missing;
    - the server takes the Arabic names where it takes the English ones,
      not yet asked for. No screen changes.
-2. **Nizmo's list of names, and the rules (#399),** in `lib/` alone:
-   - about 2,000 common Egyptian and Arabic given names, each with its
-     usual Egyptian English spelling, read both ways;
-   - business words, each in its place in either language;
+2. **Nizmo's list of names, and the rules (#399),** in `lib/names/`
+   alone:
+   - 698 common Egyptian and Arabic given names to start, where about
+     2,000 were planned, each with its usual Egyptian English spelling
+     first and the others people write (Mohamed, Mohammed, Muhammad),
+     read both ways. More can be added at any time, and what the company
+     saves fills in the rest (step 3);
+   - read as people type a name: without its marks, its hamza or its
+     dots, and a name of two words, such as عبد الرحمن, with its space or
+     without;
+   - the article joined for a person (Elsayed) and spaced for a business
+     (El Nour), and El or Al read either way into Arabic;
+   - business words, each in its place in either language: before the
+     name in Arabic and after it in English (شركة Company), after it in
+     both (للتجارة Trading), or last in both (وشركاه & Partners);
    - the rules for a word in neither, marked as a guess;
-   - a full name looked up word by word.
+   - a full name looked up word by word, and nothing suggested for a name
+     with any letter of the language asked for already.
 3. **What the company saves teaches it:**
    - a table of the company's spellings, word by word, with how many
      names use each, behind row-level security;
