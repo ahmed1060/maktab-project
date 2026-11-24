@@ -24,9 +24,9 @@ a name's suggestion (#401), and employees' names on Add employee (#402),
 on an employee's page and on one's own profile (#403), in a request to
 change one's own name (#404), and on the Employees page (#405), and
 clients' names in their form (#406) and on the Clients page (#407), and
-the company's name in two languages (#408). The company's name shown in
-the page's language to its people and clients is next (#409), then to the
-Super Admin.
+the company's name in two languages (#408) and shown in the page's
+language to its people and clients (#409). The company's name shown in the
+page's language to the Super Admin is next (#410).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -567,7 +567,7 @@ other filled in when one is typed, if that's possible.
      - an Admin's Company settings: a note above its tabs while the
        company's name is in one language only.
    - **7b. Shown in the page's language, to its people and its clients
-     (#409):** the company's name in the page's language, or in the one
+     (Done, #409):** the company's name in the page's language, or in the one
      it has while it has only one, wherever its own people and its
      clients see it:
      - the side bar, the phone's top bar and the account menu ("Admin at
@@ -586,7 +586,7 @@ other filled in when one is typed, if that's possible.
        (from #409's Codex review).
      The person's own name beside it in the account menu, and a client's,
      come with the other screens (step 8).
-   - **7c. Shown in the page's language, to the Super Admin:** the
+   - **7c. Shown in the page's language, to the Super Admin (#410):** the
      companies list, the company switcher and the side bar's name while
      looking at one company, a company's own pages, the preview note, and
      the company columns and company selects of the screens that list
@@ -1352,3 +1352,11 @@ same day as drawn in the All users: status badges canvas
   characters, and an Admin's Company settings saying while it's in one
   language only that Nizmo's team adds the other, as the owner chose. The
   company's name shown in the page's language next (step 7b).
+- **2026-11-24:** #409 merged: the company's name in the page's language
+  to its people and its clients (§3.1, step 7b): the side bar, the account
+  menu, Company settings' logo card, the client's area's top bar, and the
+  payslip, settlement, client statement and tax position statement. The
+  session keeps it in both languages and catches it up on its minute's
+  check, and, from its Codex review, the side bar and the account menu
+  read the live session, so a name Nizmo's team completes shows without
+  signing in again. The Super Admin's screens next, as #410 (step 7c).
