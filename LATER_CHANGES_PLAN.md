@@ -424,10 +424,24 @@ other filled in when one is typed, if that's possible.
 4. **Employees' names,** in three parts:
    - **4a, the name in two languages on Add employee (#402):**
      - the group of two fields, "In English" and "In Arabic", as a
-       building block (DESIGN.md §5.3), its suggestion, its spellings
-       and its guesses asked of the server (step 3b);
-     - on Add employee, both needed for anyone new. The screen test
-       lists the call;
+       building block (`NameFields`, DESIGN.md §5.3): the page's
+       language first, on the start side, and one under the other on a
+       phone;
+     - typed in one, the other offers its suggestion a moment after the
+       last key, asked of the server (step 3b): a button to use it, with
+       how many names here use it, or "The usual spelling", beside it,
+       and a guessed word underlined with dots and said under it.
+       Focused, the empty one opens its spellings, picked with the keys
+       or a click. Nothing goes in a field until it's used, picked or
+       typed;
+     - on Add employee, both needed for anyone new, each in its own
+       letters, checked by the page and by the server
+       (`POST /api/users`). One left empty beside a typed name asks for
+       it or the suggestion. An edit takes the names as before, until
+       step 4b;
+     - the screen test follows a building block that asks the server
+       itself, and lists the call on Add employee, open to anyone in
+       the company;
    - **4b, an employee's page and one's own profile (#403):** the two
      fields, a name missing a language asked for on its next edit, with
      the note at the top of the form;
