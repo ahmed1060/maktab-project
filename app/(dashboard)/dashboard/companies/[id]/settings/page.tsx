@@ -8,6 +8,7 @@ import { useViewer } from '@/lib/useCan'
 import AccessDenied from '@/components/AccessDenied'
 import { Button, EmptyState, Page, PageHeader } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
+import { companyNameIn } from '@/lib/company-name'
 import CompanySettingsTabs, { type CompanySettings } from '@/components/CompanySettingsTabs'
 import { existingSettingsTabs, type SettingsExposure } from '@/lib/company-settings-access'
 
@@ -25,7 +26,7 @@ export default function CompanySettingsPage() {
     // Who is looking comes from the layout on the first paint (useViewer), so a
     // Super Admin never sees "Access Restricted" while the session loads.
     const viewer = useViewer()
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
 
     const { data: companyResult, error, isLoading, isValidating, mutate } = useSWR(companyId ? `/api/companies?id=${companyId}` : null, fetcher)
     // With its package, which decides which tabs exist for it.
@@ -45,7 +46,8 @@ export default function CompanySettingsPage() {
     const header = (
         <PageHeader
             back={{ href: '/dashboard/companies', label: t('companies') }}
-            title={company?.name ? <bdi>{company.name}</bdi> : t('company_settings_title')}
+            // Its name in the page's language (PR 410).
+            title={company?.name ? <bdi>{companyNameIn(locale, company)}</bdi> : t('company_settings_title')}
             subtitle={company?.name ? t('company_settings_title') : undefined}
         />
     )

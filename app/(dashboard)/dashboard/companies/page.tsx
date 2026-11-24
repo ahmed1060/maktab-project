@@ -21,6 +21,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import type { SubscriptionState } from '@/lib/billing/state'
 import { countOf } from '@/lib/plural'
+import { companyNameIn } from '@/lib/company-name'
 import { bundleLabelKeys } from '@/lib/subscription-display'
 import { SWRError } from '@/lib/swr-fetcher'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
@@ -38,6 +39,7 @@ import { useViewer } from '@/lib/useCan'
 type Company = {
     id: string
     name: string
+    nameAr?: string | null
     usernameCode?: string | null
     usernameLocked?: boolean
     isBanned?: boolean
@@ -88,7 +90,7 @@ export default function CompaniesPage() {
     // answer tagged with what it was asked for: when one fails, the list says
     // so, rather than leave the last one's rows under the new search (Codex
     // on PR 171). A failed refresh of the rows on screen leaves them up.
-    const listUrl = isSuperAdmin ? `/api/companies?page=${page}&limit=${LIMIT}&filter=${all ? 'all' : 'needs-attention'}&sort=${sort}&search=${encodeURIComponent(search)}` : null
+    const listUrl = isSuperAdmin ? `/api/companies?page=${page}&limit=${LIMIT}&filter=${all ? 'all' : 'needs-attention'}&sort=${sort}&search=${encodeURIComponent(search)}&lang=${locale}` : null
     const { data, error, isValidating, mutate } = useSWR(scopedKey(listUrl, ''), scopedFetcher, { keepPreviousData: true })
     const failed = loadFailed(data, error, listUrl)
     const listed: Listed | null = failed ? null : forScope(data, '')?.data ?? null
@@ -103,6 +105,8 @@ export default function CompaniesPage() {
     const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
     const tab = (label: string, count: number | undefined) => <>{label}{count !== undefined && <>{' '}<span className="ui-tab-count">{num(count)}</span></>}</>
     const said = (key: Parameters<typeof t>[0], name: string) => t(key).replace('{name}', name)
+    // Each company's name in the page's language, or the one it has (PR 410).
+    const named = (c: Company) => companyNameIn(locale, c)
 
     const act = async (run: () => Promise<Response>, done: string, after?: () => void) => {
         setBusy(true)
@@ -120,14 +124,14 @@ export default function CompaniesPage() {
     }
     const ban = (c: Company) => act(
         () => fetch('/api/companies', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: c.id, isBanned: !c.isBanned }) }),
-        said(c.isBanned ? 'companies_unbanned_done' : 'companies_banned_done', c.name),
+        said(c.isBanned ? 'companies_unbanned_done' : 'companies_banned_done', named(c)),
         () => setBanning(null),
     )
     // The server asks for a recent authenticator code first (lib/step-up.ts),
     // and the code prompt asks for it and sends this again.
     const remove = (c: Company) => act(
         () => fetch(`/api/companies?id=${encodeURIComponent(c.id)}`, { method: 'DELETE' }),
-        said('companies_deleted', c.name),
+        said('companies_deleted', named(c)),
         () => {
             setRemoving(null)
             triggerRefresh()
@@ -144,7 +148,7 @@ export default function CompaniesPage() {
             { key: 'ban', label: t(c.isBanned ? 'companies_unban' : 'companies_ban'), icon: c.isBanned ? CheckCircleIcon : ProhibitIcon, danger: !c.isBanned || undefined, onSelect: () => setBanning(c) },
             { key: 'delete', label: t('delete'), icon: TrashIcon, danger: true, onSelect: () => setRemoving(c) },
         ]
-        return <RowMenu label={t('ui_more_actions_for').replace('{name}', c.name)} tooltip={t('ui_more_actions')} items={items} />
+        return <RowMenu label={t('ui_more_actions_for').replace('{name}', named(c))} tooltip={t('ui_more_actions')} items={items} />
     }
     const banned = (c: Company) => c.isBanned && <>{' '}<StatusBadge tone="problem">{t('companies_banned')}</StatusBadge></>
     // What its package grants, in words: who is on Company Management alone and could be sold HR.
@@ -157,7 +161,7 @@ export default function CompaniesPage() {
     const dated = (c: Company) => !!c.subscription && (!!c.subscription.date || c.subscription.state === 'LIFETIME')
 
     const columns: Column<Company>[] = [
-        { key: 'name', header: t('companies_name'), cell: c => <ItemTitle title={<><bdi>{c.name}</bdi>{banned(c)}</>} /> },
+        { key: 'name', header: t('companies_name'), cell: c => <ItemTitle title={<><bdi>{named(c)}</bdi>{banned(c)}</>} /> },
         {
             key: 'subscription', header: t('subscription_state'), cell: c => c.subscription && (
                 <>
@@ -203,7 +207,7 @@ export default function CompaniesPage() {
                     // what it grants one piece, so the line's gap doesn't fall
                     // before the comma (found in the browser).
                     <ListCard
-                        title={<><bdi>{c.name}</bdi>{banned(c)}</>}
+                        title={<><bdi>{named(c)}</bdi>{banned(c)}</>}
                         status={c.subscription && <SubscriptionBadge subscription={c.subscription} />}
                         details={[
                             ...(c.subscription && dated(c) ? [{ icon: CalendarBlankIcon, text: <SubscriptionDates subscription={c.subscription} /> }] : []),
@@ -258,7 +262,7 @@ export default function CompaniesPage() {
             {banning && <BanCompanyDialog company={banning} busy={busy} onCancel={() => setBanning(null)} onConfirm={() => { void ban(banning) }} />}
             {removing && (
                 <DeleteTemplateDialog
-                    name={removing.name}
+                    name={named(removing)}
                     body={t('companies_delete_body')}
                     busy={busy}
                     onCancel={() => setRemoving(null)}

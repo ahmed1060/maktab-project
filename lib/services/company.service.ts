@@ -11,6 +11,8 @@ import { assertRecentStepUp } from "@/lib/step-up"
 import { SystemSettingsService } from "./system-settings.service"
 import { CreateCompanyInput, UpdateCompanyInput } from "../validations/company.schema"
 import { arabicBeside, arabicMissing } from "@/lib/names"
+import { companiesInOrder, companyMatches } from "@/lib/company-name"
+import type { Locale } from "@/lib/translations"
 import { parseModuleIcons, parseModuleOverrides, planOverrideWrite, sameOverrides } from "@/lib/modules"
 import { bucketPathFor, logoExtension, validateLogo } from "@/lib/company-logo"
 import type { CompanyBranding } from "@/lib/company-scope"
@@ -485,13 +487,16 @@ export class CompanyService {
     static async getBranding(companyId: string): Promise<CompanyBranding | null> {
         const company = await prisma.company.findUnique({
             where: { id: companyId },
-            select: { moduleLabels: true, moduleIcons: true, logoUrl: true },
+            select: { moduleLabels: true, moduleIcons: true, logoUrl: true, name: true, nameAr: true },
         })
         if (!company) return null
         return {
             moduleLabels: company.moduleLabels,
             moduleIcons: company.moduleIcons,
             logoUrl: company.logoUrl,
+            // Its name in both languages, for the side bar beside its logo (PR 410).
+            name: company.name,
+            nameAr: company.nameAr,
         }
     }
 
@@ -659,11 +664,13 @@ export class CompanyService {
         limit?: number
         filter?: 'all' | 'needs-attention'
         sort?: 'name' | 'date'
-        /** Part of a name, any case (the Super Admin's pages part 3a). The counts stay the whole list's. */
+        /** Part of a name, in either language, any case (the Super Admin's pages part 3a; PR 410). The counts stay the whole list's. */
         search?: string
+        /** The page's language, which Sort by name follows (PR 410). */
+        locale?: Locale
         now?: Date
     } = {}) {
-        const { page = 1, limit = 10, filter = 'all', sort = 'name', search = '', now = new Date() } = options
+        const { page = 1, limit = 10, filter = 'all', sort = 'name', search = '', locale = 'en', now = new Date() } = options
 
         const companies = await prisma.company.findMany({
             orderBy: { name: 'asc' },
@@ -723,8 +730,7 @@ export class CompanyService {
             }
         })
 
-        const wanted = search.trim().toLocaleLowerCase()
-        const found = wanted ? rows.filter(r => r.name.toLocaleLowerCase().includes(wanted)) : rows
+        const found = search.trim() ? rows.filter(r => companyMatches(r, search)) : rows
         const filtered = filter === 'needs-attention' ? found.filter(r => r.needsAttention) : found
 
         const sorted = sort === 'date'
@@ -739,7 +745,7 @@ export class CompanyService {
                 if (bDate === undefined) return -1
                 return aDate - bDate
             })
-            : filtered
+            : companiesInOrder(filtered, locale)
 
         const total = sorted.length
         const skip = (page - 1) * limit

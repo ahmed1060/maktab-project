@@ -20,7 +20,7 @@ import { WAITING_FOR_REVIEW_KEY } from '@/lib/requests/kinds'
 import DashboardHeader from './DashboardHeader'
 import { useLanguage } from '@/context/LanguageContext'
 import { useSession } from 'next-auth/react'
-import { sessionCompanyName } from '@/lib/company-name'
+import { companyNameIn, sessionCompanyName } from '@/lib/company-name'
 import { permissionsOf } from '@/lib/useCan'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
 import { useLive } from '@/components/LiveUpdates'
@@ -139,8 +139,11 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     const searchParams = useSearchParams()
     const selectedCompanyName = searchParams.get('company')
 
+    // The Super Admin looking at one company: its name in the page's language
+    // from the company the page is drawn for, as its logo is (PR 410); the
+    // address names it in English.
     const displayName = user?.role === 'SUPER_ADMIN'
-        ? (selectedCompanyName || t('app_name'))
+        ? (scopedBranding?.name ? companyNameIn(locale, { name: scopedBranding.name, nameAr: scopedBranding.nameAr }) : (selectedCompanyName || t('app_name')))
         // The company's name in the page's language (PR 409), from the live
         // session, the layout's until it has loaded.
         : (sessionCompanyName(locale, session?.user ?? user ?? {}) || t('app_name'));

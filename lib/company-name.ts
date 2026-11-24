@@ -64,15 +64,37 @@ export function companyMissingNote(company: { name: string; nameAr?: string | nu
     return missing[0] === 'en' ? 'name_missing_en_note' : null
 }
 
+/** A company's name, as the Company table keeps it. */
+export type CompanyNames = { name: string; nameAr?: string | null }
+
 /**
  * The company's name in the page's language, or in the one it has while it
  * has only one (DESIGN.md §5.3; LATER_CHANGES_PLAN.md §3.1, step 7b, PR 409).
  */
-export function companyNameIn(locale: Locale, company: { name: string; nameAr?: string | null }): string {
+export function companyNameIn(locale: Locale, company: CompanyNames): string {
     return nameIn(locale, { en: company.name, ar: company.nameAr })
 }
 
 /** The session's company's name in the page's language, as above; nothing for a session with no company. */
 export function sessionCompanyName(locale: Locale, user: { companyName?: string | null; companyNameAr?: string | null }): string | null {
     return user.companyName ? companyNameIn(locale, { name: user.companyName, nameAr: user.companyNameAr }) : null
+}
+
+/** Found by its English or its Arabic, any case (PR 410). */
+export function companyMatches(company: CompanyNames, search: string): boolean {
+    const wanted = search.trim().toLocaleLowerCase()
+    return [company.name, company.nameAr].some(name => !!name && name.toLocaleLowerCase().includes(wanted))
+}
+
+/**
+ * The companies in the page's order (PR 410), as the Clients page orders
+ * clients (lib/client-list.ts): on an Arabic page, the ones with an Arabic
+ * name first, alphabetically in Arabic, then the rest as they came, by their
+ * English. An English page keeps the order they came in.
+ */
+export function companiesInOrder<C extends CompanyNames>(companies: readonly C[], locale: Locale): C[] {
+    if (locale !== 'ar') return [...companies]
+    const inArabic = companies.filter(c => c.nameAr?.trim())
+    const rest = companies.filter(c => !c.nameAr?.trim())
+    return [...inArabic.sort((a, b) => a.nameAr!.trim().localeCompare(b.nameAr!.trim(), 'ar')), ...rest]
 }

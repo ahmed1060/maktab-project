@@ -76,8 +76,9 @@ beforeAll(async () => {
     await Promise.all([import("@/app/(dashboard)/dashboard/companies/page"), import("@/components/CompanyDialogs")])
 }, 120000)
 
-const ATTENTION = "/api/companies?page=1&limit=10&filter=needs-attention&sort=date&search="
-const ALL = "/api/companies?page=1&limit=10&filter=all&sort=date&search="
+// Asked in the page's language, which Sort by name follows (PR 410).
+const ATTENTION = "/api/companies?page=1&limit=10&filter=needs-attention&sort=date&search=&lang=en"
+const ALL = "/api/companies?page=1&limit=10&filter=all&sort=date&search=&lang=en"
 const future = new Date(Date.now() + 14 * 86400000).toISOString()
 const company = (c: Record<string, unknown> = {}) => ({
     id: "c1", name: "Delta Sites", isBanned: false, hasUnpaidPayment: false, needsAttention: true,

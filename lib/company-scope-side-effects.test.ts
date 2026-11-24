@@ -48,6 +48,7 @@ describe("the settings page says whose settings these are", () => {
         // With the switcher no longer following you in, the page is the only
         // thing that answers this.
         // The page header's title, an h1 (company settings part 1).
-        expect(SETTINGS).toContain("title={company?.name ? <bdi>{company.name}</bdi>")
+        // In the page's language (PR 410).
+        expect(SETTINGS).toContain("title={company?.name ? <bdi>{companyNameIn(locale, company)}</bdi>")
     })
 })
