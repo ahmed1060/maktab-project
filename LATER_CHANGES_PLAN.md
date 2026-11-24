@@ -533,7 +533,18 @@ other filled in when one is typed, if that's possible.
        a name change's request does (`nameIn`, #404).
    - **6b. On the Clients page (#407):** the names in the page's language, with
      the ones still missing a language (the note and the Names select, as
-     the Employees page has them), and its search finding either.
+     the Employees page has them), and its search finding either:
+     - each client's name and its owner's in the page's language, or the
+       one it has, and who added it too; on an Arabic page, the clients
+       with an Arabic name first, alphabetically in Arabic, then the rest
+       as before;
+     - for whoever may edit clients: the note counting the clients in use
+       with a name in one language only, and the Names select listing
+       them with a Missing column of neutral badges (a line of each card
+       on a phone). An archived client can't be edited until it's
+       restored, so it isn't counted;
+     - read from the list the page already has, as its search is: no new
+       query.
 7. **The company's name:** Company settings and the Super Admin's
    company forms, the note above its fields, and the name in the page's
    language wherever it's shown.
