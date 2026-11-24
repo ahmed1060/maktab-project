@@ -28,8 +28,8 @@ the company's name in two languages (#408) and shown in the page's
 language to its people and clients (#409), and to the Super Admin on its
 own screens for companies (#410) and in the company columns and selects
 of the other screens (#411). The other screens' names (step 8) started
-with the pickers and filters they share (#412); the tasks screens are
-next (#413).
+with the pickers and filters they share (#412) and the tasks screens
+(#413); the bulk upload's template and file are next (#414).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -640,7 +640,7 @@ other filled in when one is typed, if that's possible.
      - the client pickers: on New task and a task's Edit details, and on
        the places' filter, Add place and the charges' filter: each client
        in the page's language, in the page's order.
-   - **8b. The tasks screens (#413):**
+   - **8b. The tasks screens (Done, #413):**
      - the tasks list: each task's assignees, or who assigned it on one's
        own list, and the client in the line under its title, with its
        location's client;
@@ -649,13 +649,20 @@ other filled in when one is typed, if that's possible.
      - its sections and dialogs: Edit details' assignees and location,
        Transfer's lines on the money held for it, the costs' settlements,
        and the penalty's person.
-   - **Then, by area,** one PR or more each: the bulk upload's template and
-     file (the people and clients it lists, and a file's client found by
-     either language), obligations, records and the documents,
-     attendance, requests, payroll with the costs and charges lists, the
-     client's area, and last, names written from then on: notifications
-     and messages, who last changed a status, a cost's or a location's
-     author, and one's own name in the account menu.
+   - **8c. The bulk upload's template and file (#414):**
+     - the template, in the language it's downloaded in: its people
+       ("Name (username)") and its clients, each in that language, or the
+       one they have, in that language's order, and each location's
+       client in that language;
+     - a file's client found by its English or its Arabic name, any case,
+       so a file filled in from either template reads the same. Its people
+       are found by username, and its locations by the template's own list,
+       as before.
+   - **Then, by area,** one PR or more each: obligations, records and the
+     documents, attendance, requests, payroll with the costs and charges
+     lists, the client's area, and last, names written from then on:
+     notifications and messages, who last changed a status, a cost's or a
+     location's author, and one's own name in the account menu.
 
 ## 4. A development database (Done)
 
@@ -1443,3 +1450,11 @@ same day as drawn in the All users: status badges canvas
   the tasks and costs lists; and the client pickers of New task, Edit
   details, places and charges. Each list in the page's order, a person
   found by either language. The tasks screens next.
+- **2026-11-24:** #413 merged: the tasks screens name people and clients
+  in the page's language (§3.1, step 8b): the tasks list's assignees, or
+  who assigned it on one's own list, and the client under each title; a
+  task's page, its assignees, who assigned it, its location's client, its
+  client and the note on someone deleted; Edit details, the costs'
+  settlements, the penalty's person, and Transfer's lines on the money
+  held for it, whose preview now gives each name in both languages. The
+  bulk upload's template and file next.

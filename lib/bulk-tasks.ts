@@ -136,7 +136,8 @@ export type SheetRow = { line: number; cells: unknown[] }
 export type ReadContext = {
     /** Who can be assigned, found by username. */
     people: { id: string; username?: string | null }[]
-    clients: { id: string; name: string }[]
+    /** The company's clients, each with its Arabic name too where it has one (PR 414). */
+    clients: { id: string; name: string; nameAr?: string | null }[]
     /** The template's Locations sheet (sheetLocations). */
     sheet: Map<string, string[]>
     places: BulkPlace[]
@@ -250,9 +251,11 @@ function readRow({ line, cells }: SheetRow, { people, clients, sheet, places }: 
         if (!person) unknownPeople.push(username)
         else if (!assigneeIds.includes(person.id)) assigneeIds.push(person.id)
     }
-    // A client's name is the company's alone, so it's found by name, case aside.
+    // A client's name is the company's alone, so it's found by name, case
+    // aside: in English or in Arabic, as either template lists it (PR 414).
     const clientName = text(clientCell)
-    const client = clientName ? clients.find(c => c.name.trim().toLowerCase() === clientName.toLowerCase()) : undefined
+    const named = (name: string | null | undefined) => !!name && name.trim().toLowerCase() === clientName.toLowerCase()
+    const client = clientName ? clients.find(c => named(c.name) || named(c.nameAr)) : undefined
     const clientId = client?.id ?? null
     const locationText = text(locationCell)
     const { deadline, unread } = readDeadline(date, time)

@@ -3,16 +3,17 @@ import { en } from "@/lib/translations/en"
 import { ar } from "@/lib/translations/ar"
 import type { Locale, TranslationKey } from "@/lib/translations"
 import { BULK_FIRST_ROW, BULK_MAX_ROWS } from "@/lib/bulk-tasks"
+import { peopleInOrder, personName, type PersonNames } from "@/lib/names"
+import { clientName, clientsInOrder, type ClientName } from "@/lib/client-list"
 
-type TemplateUser = {
-    firstName: string
-    lastName: string
+/** Someone who can be assigned: their names in both languages (PR 414), their username and role. */
+type TemplateUser = PersonNames & {
     username: string
     role: string
 }
 
-type TemplateClient = {
-    name: string
+/** A client: its name in both languages (PR 414), and its location as typed. */
+type TemplateClient = ClientName & {
     locationName: string
 }
 
@@ -66,9 +67,10 @@ export async function generateBulkTaskTemplate(baseBuffer: Buffer, locale: Local
         { header: isAr ? 'الدور' : 'Role', key: 'role', width: 18 },
         { header: isAr ? 'اسم المستخدم' : 'Username', key: 'username', width: 20 },
     ]
-    users.forEach(u => {
+    // Each in the language it's downloaded in, in that language's order (PR 414).
+    peopleInOrder(users, locale).forEach(u => {
         usersSheet.addRow({
-            display: `${u.firstName} ${u.lastName} (${u.username})`,
+            display: `${personName(u, locale)} (${u.username})`,
             role: t(`role_${u.role.toLowerCase()}` as TranslationKey) || u.role,
             username: u.username
         })
@@ -82,8 +84,10 @@ export async function generateBulkTaskTemplate(baseBuffer: Buffer, locale: Local
         { header: isAr ? 'الاسم' : 'Name', key: 'name', width: 30 },
         { header: isAr ? 'الموقع' : 'Location', key: 'location', width: 35 },
     ]
-    clients.forEach(v => {
-        clientsSheet.addRow({ name: v.name, location: v.locationName })
+    // Each in the language it's downloaded in, in that language's order
+    // (PR 414); the upload finds one by either language.
+    clientsInOrder(clients, locale).forEach(v => {
+        clientsSheet.addRow({ name: clientName(v, locale), location: v.locationName })
     })
 
     // "Locations" sheet (CLIENTS_PLAN.md §2.7): each name once, and in a
