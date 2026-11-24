@@ -23,9 +23,9 @@ languages are kept (#398), Nizmo's list of names and the rules are done
 a name's suggestion (#401), and employees' names on Add employee (#402),
 on an employee's page and on one's own profile (#403), in a request to
 change one's own name (#404), and on the Employees page (#405), and
-clients' names in their form (#406) and on the Clients page (#407). The
-company's name is next: in two languages (#408), then shown in the page's
-language.
+clients' names in their form (#406) and on the Clients page (#407), and
+the company's name in two languages (#408). The company's name shown in
+the page's language is next.
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -552,7 +552,7 @@ other filled in when one is typed, if that's possible.
    name, as today: the owner chose on 2026-11-24 that an Admin's Company
    settings says when the company's name is in one language only, and
    that Nizmo's team adds the other.
-   - **7a. Its name in two languages (#408):**
+   - **7a. Its name in two languages (Done, #408):**
      - the Super Admin's Add company and Edit company dialog: the name in
        English and in Arabic, a business's, with its business words, up
        to 50 characters; the username code still follows the English;
@@ -1323,3 +1323,8 @@ same day as drawn in the All users: status badges canvas
   page's language (§3.1, step 6b), with the ones still missing a language
   and a search finding either, which finishes clients' names. The
   company's name next, as #408.
+- **2026-11-24:** #408 merged: the company's name in English and in
+  Arabic (§3.1, step 7a), in the Super Admin's company dialog, 2 to 50
+  characters, and an Admin's Company settings saying while it's in one
+  language only that Nizmo's team adds the other, as the owner chose. The
+  company's name shown in the page's language next (step 7b).
