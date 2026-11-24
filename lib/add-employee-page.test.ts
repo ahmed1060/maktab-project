@@ -74,12 +74,24 @@ describe("Add employee", () => {
         expect(sa).toContain(`<h1 class="ui-page-title">${en.add_new_user_title}</h1>`)
     })
 
-    it("takes the name, email and password as the building blocks' fields, each with its label above it", async () => {
+    it("takes each name in English and in Arabic, as a group under its label, the page's language first (PR 402)", async () => {
         const html = await render()
-        expect(html).toMatch(label(en.first_name_label))
-        expect(html).toMatch(input({ name: "firstName", autoComplete: "off", maxLength: "40" }))
-        expect(html).toMatch(label(en.last_name_label))
-        expect(html).toMatch(input({ name: "lastName", autoComplete: "off", maxLength: "40" }))
+        for (const [legend, name] of [[en.first_name_label, "firstName"], [en.last_name_label, "lastName"]]) {
+            expect(html).toContain(`<legend class="ui-name-fields-label">${legend}</legend>`)
+            expect(html).toMatch(input({ name, dir: "ltr", lang: "en", autoComplete: "off", maxLength: "40" }))
+            expect(html).toMatch(input({ name: `${name}Ar`, dir: "rtl", lang: "ar", autoComplete: "off", maxLength: "40" }))
+        }
+        expect(html).toMatch(label(en.name_in_english))
+        expect(html).toMatch(label(en.name_in_arabic))
+        expect(html.indexOf('name="firstName"')).toBeLessThan(html.indexOf('name="firstNameAr"'))
+        const arabic = await render({ locale: "ar" })
+        expect(arabic.indexOf('name="firstNameAr"')).toBeLessThan(arabic.indexOf('name="firstName"'))
+        // Nothing asked of the server until a name is typed.
+        expect(state.keys.filter(key => key?.startsWith("/api/names/"))).toEqual([])
+    })
+
+    it("takes the email and password as the building blocks' fields, each with its label above it", async () => {
+        const html = await render()
         expect(html).toMatch(input({ name: "email", type: "email", autoComplete: "off", spellCheck: "false" }))
         // The building blocks' password field, its eye named for what it does, and how long it must be said under it.
         expect(html).toMatch(input({ name: "password", type: "password", autoComplete: "new-password", maxLength: "72" }))
@@ -148,20 +160,40 @@ describe("Add employee", () => {
 describe("its checks", () => {
     it("says what's wrong in the reader's language, under each field, the first one focused", async () => {
         const { newEmployeeErrors } = await import("@/lib/new-employee-form")
-        expect(newEmployeeErrors({ firstName: "", lastName: " ", email: "nope", password: "short", company: { needed: true, id: "" } })).toEqual({
-            firstName: "emp_new_first_name_required",
-            lastName: "emp_new_last_name_required",
+        expect(newEmployeeErrors({ firstName: "", firstNameAr: "", lastName: " ", lastNameAr: "", email: "nope", password: "short", company: { needed: true, id: "" } })).toEqual({
+            firstName: "name_required_en",
+            firstNameAr: "name_required_ar",
+            lastName: "name_required_en",
+            lastNameAr: "name_required_ar",
             email: "emp_new_email_invalid",
             password: "emp_new_password_short",
             companyId: "emp_new_company_required",
         })
-        expect(newEmployeeErrors({ firstName: "Mona", lastName: "Adel", email: "mona@example.co.uk", password: "a-long-enough-one", company: { needed: false, id: "" } })).toEqual({})
+        expect(newEmployeeErrors({ firstName: "Mona", firstNameAr: "منى", lastName: "Adel", lastNameAr: "عادل", email: "mona@example.co.uk", password: "a-long-enough-one", company: { needed: false, id: "" } })).toEqual({})
+        // Each name needed in both languages, each in its own letters (PR 402).
+        expect(newEmployeeErrors({ firstName: "Mona", firstNameAr: "", lastName: "عادل", lastNameAr: "Adel", email: "mona@example.co.uk", password: "a-long-enough-one", company: { needed: false, id: "" } })).toEqual({
+            firstNameAr: "name_use_suggestion_ar",
+            lastName: "name_not_english",
+            lastNameAr: "name_not_arabic",
+        })
+        expect(newEmployeeErrors({ firstName: " ", firstNameAr: "منى", lastName: "Adel", lastNameAr: "عادل", email: "mona@example.co.uk", password: "a-long-enough-one", company: { needed: false, id: "" } })).toEqual({
+            firstName: "name_use_suggestion_en",
+        })
+        // Each says which name it's about: "Enter the first name in Arabic."
+        const { NAME_OF } = await import("@/lib/new-employee-form")
+        expect(NAME_OF).toEqual({ firstName: "first_name_in_sentence", firstNameAr: "first_name_in_sentence", lastName: "last_name_in_sentence", lastNameAr: "last_name_in_sentence" })
+        expect(en.name_required_ar.replace("{name}", en.first_name_in_sentence)).toBe("Enter the first name in Arabic.")
+        expect(ar.name_required_ar.replace("{name}", ar.first_name_in_sentence)).toBe("يُرجى إدخال الاسم الأول بالعربية.")
+        expect(readFileSync(PAGE, "utf8")).toContain("return of ? t(key).replace('{name}', t(of)) : t(key)")
+        const { fieldsInFormOrder } = await import("@/lib/new-employee-form")
+        expect(fieldsInFormOrder("en").slice(0, 4)).toEqual(["firstName", "firstNameAr", "lastName", "lastNameAr"])
+        expect(fieldsInFormOrder("ar").slice(0, 4)).toEqual(["firstNameAr", "firstName", "lastNameAr", "lastName"])
         const src = readFileSync(PAGE, "utf8")
         expect(src).toContain("if (first) setFocusOn(f => ({ field: first, n: (f?.n ?? 0) + 1 }))")
         for (const english of ["Email must be in format", "First Name max", "Password must be 12-72", "Company is required", "An error occurred", "Failed to create user", "Username already in use"]) {
             expect(src, english).not.toContain(english)
         }
-        for (const key of ["emp_new_first_name_required", "emp_new_last_name_required", "emp_new_email_invalid", "emp_new_password_short", "emp_new_company_required", "emp_new_email_taken", "emp_new_password_hint", "emp_new_companies_failed", "emp_new_leaders_failed"] as const) {
+        for (const key of ["name_required_en", "name_required_ar", "name_use_suggestion_en", "name_use_suggestion_ar", "name_not_english", "name_not_arabic", "emp_new_email_invalid", "emp_new_password_short", "emp_new_company_required", "emp_new_email_taken", "emp_new_password_hint", "emp_new_companies_failed", "emp_new_leaders_failed"] as const) {
             expect(en[key], key).toBeTruthy()
             expect(ar[key], key).toBeTruthy()
         }
@@ -172,6 +204,10 @@ describe("its checks", () => {
         expect(refusedField({ error: "User already exists" })).toEqual({ field: "email", key: "emp_new_email_taken" })
         expect(refusedField({ error: "Validation Error", details: { email: { _errors: ["Invalid email"] } } })).toEqual({ field: "email", key: "emp_new_email_invalid" })
         expect(refusedField({ error: "Validation Error", details: { password: { _errors: ["Too short"] } } })).toEqual({ field: "password", key: "emp_new_password_short" })
+        expect(refusedField({ error: "Validation Error", details: { firstName: { _errors: ["Written in English letters"] } } })).toEqual({ field: "firstName", key: "name_not_english" })
+        expect(refusedField({ error: "Validation Error", details: { lastNameAr: { _errors: ["Written in Arabic letters"] } } })).toEqual({ field: "lastNameAr", key: "name_not_arabic" })
+        expect(refusedField({ error: "Validation Error", details: { firstNameAr: { _errors: ["Written in Arabic letters"] } } })).toEqual({ field: "firstNameAr", key: "name_not_arabic" })
+        expect(refusedField({ error: "Validation Error", details: { lastName: { _errors: ["Written in English letters"] } } })).toEqual({ field: "lastName", key: "name_not_english" })
         expect(refusedField({ error: "Something else" })).toBeNull()
     })
 
@@ -220,7 +256,8 @@ describe("Add employee, found in the web interface audit", () => {
         // Typing stopped at the 15th character with nothing to say why.
         const html = await render()
         const count = esc(en.ui_characters_used.replace("{used}", "0").replace("{max}", "40"))
-        expect(html.split(count).length - 1).toBe(2)
+        // Each name in English and in Arabic (PR 402).
+        expect(html.split(count).length - 1).toBe(4)
     })
 })
 
@@ -230,7 +267,7 @@ describe("Add employee, found by Codex", () => {
         // two weren't checked: -5 reached the server, which said only
         // "Validation Error".
         const { newEmployeeErrors, refusedField, FIELDS } = await import("@/lib/new-employee-form")
-        const ok = { firstName: "Mona", lastName: "Adel", email: "mona@example.com", password: "a-long-enough-one", company: { needed: false, id: "" } }
+        const ok = { firstName: "Mona", firstNameAr: "منى", lastName: "Adel", lastNameAr: "عادل", email: "mona@example.com", password: "a-long-enough-one", company: { needed: false, id: "" } }
         expect(newEmployeeErrors({ ...ok, salary: { shown: true, text: "-5" }, dayOffCredit: { shown: true, text: "-1" } }))
             .toEqual({ salary: "emp_new_salary_invalid", dayOffCredit: "emp_new_day_off_invalid" })
         expect(newEmployeeErrors({ ...ok, salary: { shown: true, text: "" }, dayOffCredit: { shown: true, text: "2.5" } })).toEqual({})
@@ -239,7 +276,7 @@ describe("Add employee, found by Codex", () => {
         // The server's refusal of either, under it too.
         expect(refusedField({ error: "Validation Error", details: { salary: { _errors: ["Too small"] } } })).toEqual({ field: "salary", key: "emp_new_salary_invalid" })
         expect(refusedField({ error: "Validation Error", details: { dayOffCredit: { _errors: ["Too small"] } } })).toEqual({ field: "dayOffCredit", key: "emp_new_day_off_invalid" })
-        expect(FIELDS).toEqual(["firstName", "lastName", "email", "password", "companyId", "salary", "dayOffCredit"])
+        expect(FIELDS).toEqual(["firstName", "firstNameAr", "lastName", "lastNameAr", "email", "password", "companyId", "salary", "dayOffCredit"])
         for (const key of ["emp_new_salary_invalid", "emp_new_day_off_invalid"] as const) {
             expect(en[key], key).toBeTruthy()
             expect(ar[key], key).toBeTruthy()
@@ -258,7 +295,7 @@ describe("Add employee, a number the browser can't read", () => {
     // In a number field, what the browser can't read ("1e", "-") reads as
     // empty, as though left empty: a pay typed as "1e" was saved as 0, and a
     // day off credit too. The profile form has asked its fields since PR 193.
-    const ok = { firstName: "Mona", lastName: "Adel", email: "mona@example.com", password: "a-long-enough-one", company: { needed: false, id: "" } }
+    const ok = { firstName: "Mona", firstNameAr: "منى", lastName: "Adel", lastNameAr: "عادل", email: "mona@example.com", password: "a-long-enough-one", company: { needed: false, id: "" } }
     const empty = { salary: { shown: true, text: "" }, dayOffCredit: { shown: true, text: "" } }
 
     it("says so under its field, before anything is sent", async () => {

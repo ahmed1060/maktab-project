@@ -3,12 +3,13 @@ import { partialWithoutDefaults } from "./partial-update"
 import { usernameSchema } from "./username.schema"
 import { NAME_MAX, PASSWORD_MAX, PASSWORD_MIN } from "@/lib/new-employee-form"
 import { arabicName } from "./arabic-name.schema"
+import { hasArabic } from "@/lib/names"
 
 export const createUserSchema = z.object({
     firstName: z.string().min(1).max(NAME_MAX, "First name too long"),
     lastName: z.string().min(1).max(NAME_MAX, "Last name too long"),
     // Their names in Arabic (LATER_CHANGES_PLAN.md §3, PR 398), beside the
-    // English ones above; not yet asked for.
+    // English ones above: needed for someone new (newUserSchema, PR 402).
     firstNameAr: arabicName(1, NAME_MAX).optional(),
     lastNameAr: arabicName(1, NAME_MAX).optional(),
     // F-15: was a regex requiring `user(20)@domain(10).com` — rejected
@@ -39,6 +40,21 @@ export const createUserSchema = z.object({
     // below would have turned an omitted field into a create-time default if
     // this had one — it deliberately does not.
     teamLeaderId: z.string().min(1).nullable().optional(),
+})
+
+/**
+ * Someone new (POST /api/users): each name in English and in Arabic, both
+ * needed, each in its own letters (LATER_CHANGES_PLAN.md §3.1, step 4a, PR
+ * 402; DESIGN.md §5.3). An edit takes the names as createUserSchema does,
+ * as one saved before in one language is asked for the other on its next
+ * edit, not refused (step 4b).
+ */
+const inEnglish = z.string().trim().min(1).max(NAME_MAX).refine(name => !hasArabic(name), "Written in English letters")
+export const newUserSchema = createUserSchema.extend({
+    firstName: inEnglish,
+    lastName: inEnglish,
+    firstNameAr: arabicName(1, NAME_MAX),
+    lastNameAr: arabicName(1, NAME_MAX),
 })
 
 export const updateUserSchema = partialWithoutDefaults(createUserSchema).extend({

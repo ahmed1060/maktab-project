@@ -5650,6 +5650,80 @@ a.ui-donut-row:focus-visible {
   }
 }
 
+/* ── A name in English and in Arabic (§5.3, PR 402): a group under the
+   name's label, a field for each language side by side, the page's
+   language on the start side; stacked on phones, the page's language on
+   top. ── */
+.ui-name-fields {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.ui-name-fields-label {
+  padding: 0;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  font-weight: 500;
+  color: var(--ink);
+}
+.ui-name-fields-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+@media (max-width: 767px) {
+  .ui-name-fields-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* What the empty field may be: the button to use it, and where it comes from. */
+.ui-name-offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+/* A long name wraps inside the button, which grows from its height (30px, 44px on phones). */
+.ui-name-use {
+  max-width: 100%;
+  height: auto;
+  min-height: 30px;
+  padding-block: var(--space-1);
+  white-space: normal;
+  line-height: var(--leading-sm);
+}
+@media (max-width: 767px) {
+  .ui-name-use {
+    min-height: 44px;
+  }
+}
+.ui-name-use bdi {
+  overflow-wrap: anywhere;
+}
+/* A word Nizmo guessed, underlined with dots in the button, and said under it. */
+.ui-name-guessed {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.ui-name-guess {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+/* A spelling and how many names here use it, on the end side. */
+.ui-spelling {
+  justify-content: space-between;
+}
+.ui-spelling-detail {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+
 /* What the "Powered by" signature will look like, before it's saved
    (System settings): the small line and the name, as the corner of every
    dashboard page shows them. */

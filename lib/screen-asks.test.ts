@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { readFileSync, existsSync, readdirSync, statSync } from "node:fs"
+import { readFileSync, existsSync, readdirSync, statSync, mkdtempSync, writeFileSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { join, dirname, resolve, relative } from "node:path"
 import { PERMISSIONS, requiresOf, type Permission } from "./permissions/catalogue"
 
@@ -719,6 +720,8 @@ const SCREENS: Record<string, Screen> = {
             "GET /api/roles/assignable": when(["employees.assign_role", "employees.request_role"], "const canAssignRole = can('employees.assign_role')",
                 "const canRequestRole = !canAssignRole && can('employees.request_role')", "{(canAssignRole || canRequestRole) && ("),
             "GET /api/companies": superAdmin("mayCreate && isSuperAdmin ? '/api/companies"),
+            // The name's other language, suggested as it's typed (PR 402): anyone's, as one's own profile takes a name.
+            "GET /api/names/suggest": ANYONE,
         },
     },
     "employees/[id]/bonus": {
@@ -794,16 +797,40 @@ function resolveImport(from: string, spec: string): string | null {
  */
 const GIVEN_SENDER = /\bpost: Post\b/
 
-/** A screen's own files: its page, and the components and hooks it uses, not the building blocks;
- * and a lib file that sends through a sender it's given (PR 393). */
+/**
+ * A building block that asks the server itself, as the name fields ask for
+ * a name's other language (components/ui/NameFields.tsx, PR 402).
+ */
+const ASKS_ITSELF = /from ['"]swr['"]|\bfetch\(/
+
+/** The files of the building blocks a file takes from their index, components/ui/index.ts (PR 402): all of them for `* as`. */
+function blocksTaken(src: string, file: string, index: string): string[] {
+    const names = takenFrom(src, file, index)
+    const out: string[] = []
+    for (const m of readFileSync(index, "utf8").matchAll(/export\s*\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/g)) {
+        const target = resolveImport(index, m[2])
+        if (target && (names.includes("*") || m[1].split(",").some(n => names.includes(n.trim())))) out.push(target)
+    }
+    return out
+}
+
+/** A screen's own files: its page, and the components and hooks it uses, not the building blocks
+ * unless one asks the server itself (PR 402); and a lib file that sends through a sender it's given (PR 393). */
 function screenFiles(file: string, seen = new Set<string>()): Set<string> {
     if (seen.has(file)) return seen
     seen.add(file)
-    for (const m of readFileSync(file, "utf8").matchAll(/(?:from|import\()\s*['"]([^'"]+)['"]/g)) {
+    const src = readFileSync(file, "utf8")
+    for (const m of src.matchAll(/(?:from|import\()\s*['"]([^'"]+)['"]/g)) {
         const found = resolveImport(file, m[1])
         if (!found) continue
         const r = relative(ROOT, found)
-        const follows = (r.startsWith("components/") && !r.startsWith("components/ui/")) || r.startsWith("app/(dashboard)/") || /^lib\/use[A-Z]/.test(r)
+        if (r.startsWith("components/ui/")) {
+            // A building block only where it asks the server itself, taken from their index or by its own path (PR 402).
+            const blocks = r === "components/ui/index.ts" ? blocksTaken(src, file, found) : [found]
+            for (const block of blocks) if (ASKS_ITSELF.test(readFileSync(block, "utf8"))) screenFiles(block, seen)
+            continue
+        }
+        const follows = r.startsWith("components/") || r.startsWith("app/(dashboard)/") || /^lib\/use[A-Z]/.test(r)
             // A lib file that sends through the sender a screen gives it, as lib/mobile does for check-in (PR 393).
             || (r.startsWith("lib/") && GIVEN_SENDER.test(readFileSync(found, "utf8")))
         if (follows) screenFiles(found, seen)
@@ -1320,6 +1347,24 @@ describe("the test itself", () => {
         const files = [...screenFiles(pageFile("check-in"))].map(f => relative(ROOT, f))
         expect(files).toEqual(expect.arrayContaining(["lib/mobile/check-in-flow.ts", "lib/mobile/face.ts", "lib/mobile/push.ts"]))
         expect(files.filter(f => f.startsWith("lib/") && !/^lib\/use[A-Z]/.test(f)).sort()).toEqual(["lib/mobile/check-in-flow.ts", "lib/mobile/face.ts", "lib/mobile/push.ts"])
+    })
+
+    it("follows a building block that asks the server itself, and no other building block (PR 402)", () => {
+        const blocks = (file: string) => [...screenFiles(file)].map(f => relative(ROOT, f)).filter(f => f.startsWith("components/ui/"))
+        expect(blocks(pageFile("employees/new"))).toEqual(["components/ui/NameFields.tsx"])
+        // By its own path, or all of their index at once.
+        const dir = mkdtempSync(join(tmpdir(), "screen-asks-"))
+        try {
+            writeFileSync(join(dir, "own.tsx"), "import { NameFields } from '@/components/ui/NameFields'\nimport { Button } from '@/components/ui/Button'\n")
+            writeFileSync(join(dir, "all.tsx"), "import * as ui from '@/components/ui'\n")
+            expect(blocks(join(dir, "own.tsx"))).toEqual(["components/ui/NameFields.tsx"])
+            expect(blocks(join(dir, "all.tsx"))).toEqual(["components/ui/NameFields.tsx"])
+        } finally {
+            rmSync(dir, { recursive: true, force: true })
+        }
+        expect(ASKS_ITSELF.test("const { data } = useSWR(path, fetcher)")).toBe(false)
+        expect(ASKS_ITSELF.test("import useSWR from 'swr'")).toBe(true)
+        expect(ASKS_ITSELF.test("const r = await fetch(url)")).toBe(true)
     })
 
     it("is right that the senders check-in gives lib/mobile send by POST (PR 393)", () => {

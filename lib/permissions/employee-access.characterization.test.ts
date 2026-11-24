@@ -175,11 +175,11 @@ const EDITS: Case[] = [
 ]
 
 const create = (role: string) => async () => (await users()).POST(withBody("POST", "/api/users", {
-    firstName: "New", lastName: "Person", email: `new-${role}@x.co`, password: "a-long-password-123",
+    firstName: "New", firstNameAr: "جديد", lastName: "Person", lastNameAr: "شخص", email: `new-${role}@x.co`, password: "a-long-password-123",
     role, gender: "MALE", companyId: "c1",
 }))
 const createOn = (roleId: string) => async () => (await users()).POST(withBody("POST", "/api/users", {
-    firstName: "New", lastName: "Person", email: `new-${roleId.replace(":", "-").toLowerCase()}@x.co`, password: "a-long-password-123",
+    firstName: "New", firstNameAr: "جديد", lastName: "Person", lastNameAr: "شخص", email: `new-${roleId.replace(":", "-").toLowerCase()}@x.co`, password: "a-long-password-123",
     roleId, gender: "MALE", companyId: "c1",
 }))
 const del = (id: string) => async () => (await users()).DELETE(new Request(url(`/api/users?id=${id}`), { method: "DELETE" }))
