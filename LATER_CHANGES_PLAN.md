@@ -19,8 +19,8 @@ their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their longer
 limit done (#397). Of their steps (§3.1), both languages are kept (#398),
 Nizmo's list of names and the rules are done (#399), and so are the
-company's spellings, learned (#400). The forms reading them are next
-(#401).
+company's spellings, learned (#400), and read for a name's suggestion
+(#401). Employees' names on Add employee are next (#402).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -408,7 +408,7 @@ other filled in when one is typed, if that's possible.
        takes their names in Arabic with them, as it does their English
        ones. From #398 they stayed; production had no one deleted
        since, so there's nothing to clear.
-   - **3b, read by the forms (#401):**
+   - **3b, read by the forms (Done, #401):**
      - a name's suggestion with the company's spellings first, the most
        used first, each with how many names use it, and under each word
        its other spellings: the company's, then the usual one;
@@ -421,12 +421,18 @@ other filled in when one is typed, if that's possible.
        client. The Super Admin's are the company in view's;
      - no screen asks for it until step 4's forms, and the screen test
        (`lib/screen-asks.test.ts`) lists the call with them.
-4. **Employees' names:**
-   - the two fields on Add employee, an employee's page and one's own
-     profile, and in a request to change one's own name;
-   - needed for anyone new, and asked for on anyone else's next edit;
-   - the suggestion, the spellings and the guesses, asked of the server
-     (step 3b), the screen test listing the call.
+4. **Employees' names,** in three parts:
+   - **4a, the name in two languages on Add employee (#402):**
+     - the group of two fields, "In English" and "In Arabic", as a
+       building block (DESIGN.md §5.3), its suggestion, its spellings
+       and its guesses asked of the server (step 3b);
+     - on Add employee, both needed for anyone new. The screen test
+       lists the call;
+   - **4b, an employee's page and one's own profile (#403):** the two
+     fields, a name missing a language asked for on its next edit, with
+     the note at the top of the form;
+   - **4c, a request to change one's own name (#404):** the two fields
+     in the request, and its approval keeping both.
 5. **Employees' names in the page's language** on the Employees page,
    with the ones still missing a language, and its search finding
    either.
@@ -1155,3 +1161,8 @@ same day as drawn in the All users: status badges canvas
   step 3a), and a deleted employee's names in Arabic going with them.
   Their reading next, as #401: the server asked, as no screen asks until
   step 4, so the screen test lists the call with step 4's forms.
+- **2026-11-24:** #401 merged: a name's suggestion, the company's
+  spellings first (§3.1, step 3b). From its Codex review, a business's
+  spellings are looked up without its business words. Step 4 split in
+  three: Add employee (#402), an employee's page and one's own profile
+  (#403), and a request to change one's own name (#404).
