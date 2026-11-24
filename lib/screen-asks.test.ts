@@ -652,6 +652,8 @@ const SCREENS: Record<string, Screen> = {
                 "const mayDelete = can('clients.delete')", "...(c.archivedAt ? (!mayDelete ? [] : ["),
             "DELETE /api/clients": when("clients.delete", "const mayDelete = can('clients.delete')", "...(!mayDelete ? [] : [archivesInstead(c)"),
             "GET /api/companies": superAdmin("const everyCompany = superAdmin && !selectedCompanyId", "pickCompany={everyCompany}"),
+            // A name's other language, suggested as it's typed, in the dialog that adds or edits one (PR 406).
+            "GET /api/names/suggest": ANYONE,
         },
     },
     "clients/[id]": {

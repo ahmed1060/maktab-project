@@ -43,8 +43,8 @@ const viewAnd = (...parts: Permission[]): Grants => Object.fromEntries([["client
 
 const clientsApi = () => import("@/app/api/clients/route")
 const P = { params: {} }
-const add = async () => (await clientsApi()).POST(withBody("POST", "/api/clients", { name: "V", ownerName: "O", mobileNumber: "0100000000", hq: { name: "Cairo", latitude: 30.0444, longitude: 31.2357 } }), P)
-const edit = async () => (await clientsApi()).PUT(withBody("PUT", "/api/clients", { id: "v-1", name: "Renamed" }), P)
+const add = async () => (await clientsApi()).POST(withBody("POST", "/api/clients", { name: "V", nameAr: "ف", ownerName: "O", ownerNameAr: "و", mobileNumber: "0100000000", hq: { name: "Cairo", latitude: 30.0444, longitude: 31.2357 } }), P)
+const edit = async () => (await clientsApi()).PUT(withBody("PUT", "/api/clients", { id: "v-1", name: "Renamed", nameAr: "معدل" }), P)
 const restore = async () => (await clientsApi()).PUT(withBody("PUT", "/api/clients", { id: "v-1", restore: true }), P)
 const remove = async () => (await clientsApi()).DELETE(new Request(url("/api/clients?id=v-1"), { method: "DELETE" }), P)
 

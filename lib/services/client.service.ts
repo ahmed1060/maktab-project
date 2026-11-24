@@ -3,7 +3,7 @@ import { CreateClientInput, UpdateClientInput } from "../validations/client.sche
 import { can } from "@/lib/permissions/can"
 import { googleMapsLink } from "@/lib/attendance/geo"
 import { LocationService } from "./location.service"
-import { arabicBeside } from "@/lib/names"
+import { arabicBeside, hasArabic } from "@/lib/names"
 import { learnSpellings } from "./name-spelling.service"
 
 export class ClientService {
@@ -75,6 +75,14 @@ export class ClientService {
         }
 
         const { hq, ...fields } = rest
+        // A name's English, sent, has its Arabic, sent with it or kept
+        // (LATER_CHANGES_PLAN.md §3.1, step 6a, PR 406), as the client's form
+        // sends both and an employee's is asked (PR 403); its Arabic alone may
+        // be added. One written in Arabic is its own Arabic (arabicBeside).
+        const names = [['name', fields.name, fields.nameAr, client.nameAr], ['ownerName', fields.ownerName, fields.ownerNameAr, client.ownerNameAr]] as const
+        for (const [field, en, ar, keptAr] of names) {
+            if (en && !hasArabic(en) && !(ar ?? keptAr)?.trim()) throw Object.assign(new Error('NAME_IN_BOTH_LANGUAGES'), { field: `${field}Ar`, why: 'Needed in Arabic' })
+        }
         // Restoring is ClientService.restore's, never a side effect of an edit.
         const details = {
             name: fields.name, ownerName: fields.ownerName, mobileNumber: fields.mobileNumber,

@@ -226,7 +226,7 @@ describe.skipIf(!ADMIN_URL)("locations, in Postgres", () => {
 
     describe("a client's HQ", () => {
         it("is made with the client, and its own location fields follow it", async () => {
-            const client = await Clients.create({ name: "Epsilon", ownerName: "Hana", mobileNumber: "0104", hq: { name: "Luxor office", ...PIN, radiusMeters: 120 } }, admin)
+            const client = await Clients.create({ name: "Epsilon", nameAr: "إبسيلون", ownerName: "Hana", ownerNameAr: "هناء", mobileNumber: "0104", hq: { name: "Luxor office", ...PIN, radiusMeters: 120 } }, admin)
             expect(await hqOf(client.id)).toEqual([{ name: "Luxor office", ...PIN }])
             expect(client).toMatchObject({ locationName: "Luxor office", locationLink: "https://www.google.com/maps/search/?api=1&query=30.0444,31.2357" })
         })
