@@ -1085,6 +1085,11 @@ model ProfileUpdateRequest {
   oldLastName  String
   newFirstName String
   newLastName  String
+  /// Each name in Arabic too (LATER_CHANGES_PLAN.md §3.1, step 4c, PR 404); empty for a request asked before.
+  oldFirstNameAr String?
+  oldLastNameAr  String?
+  newFirstNameAr String?
+  newLastNameAr  String?
   status       String   @default("PENDING")
   adminNote    String?
   createdAt    DateTime @default(now())

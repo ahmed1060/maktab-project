@@ -4921,6 +4921,7 @@ export const en = {
         audit_field_newFirstName: "New first name",
         audit_field_newLastName: "New last name",
         audit_field_newName: "New name",
+        audit_field_newNameAr: "New name in Arabic",
         audit_field_newPassword: "New password",
         audit_field_newStatus: "New status",
         audit_field_newYear: "New year",

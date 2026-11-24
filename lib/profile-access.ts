@@ -45,9 +45,9 @@ export type ProfileAccess = {
     nameByRequest: boolean
     /**
      * Their names in English and in Arabic (LATER_CHANGES_PLAN.md §3.1, step
-     * 4b, PR 403), wherever they're saved here: not one's own asked for,
-     * until step 4c brings both to the request, nor a Super Admin's, whose
-     * name is kept once.
+     * 4b, PR 403): wherever they're saved here, and one's own asked for,
+     * which the request carries (step 4c, PR 404). Not a Super Admin's,
+     * whose name is kept once.
      */
     bothNames: boolean
     /** A new password: one's own, or someone else's with the reset permission, as the route sets it. */
@@ -84,13 +84,18 @@ export function editsProfile({ can, viewer, person }: {
 }
 
 /** One's own name on an employee's or a team leader's footing is asked for, not changed, as the route refuses it otherwise (NAME_CHANGE_REQUIRES_ADMIN). */
-function nameAskedFor(own: boolean, role: string): boolean {
+export function nameAskedFor(own: boolean, role: string): boolean {
     return own && (role === 'EMPLOYEE' || role === 'TEAM_LEADER')
 }
 
-/** Whether a profile's form takes both their names (ProfileAccess.bothNames), as it's loaded too. */
-export function keepsBothNames({ own, role }: { own: boolean; role: string }): boolean {
-    return role !== '' && role !== 'SUPER_ADMIN' && !nameAskedFor(own, role)
+/**
+ * Whether a profile's form takes both their names (ProfileAccess.bothNames),
+ * as it's loaded too: everyone's once their role is known, one's own asked
+ * for too, which the request carries (PR 404), but a Super Admin's, kept
+ * once (PR 398).
+ */
+export function keepsBothNames(role: string): boolean {
+    return role !== '' && role !== 'SUPER_ADMIN'
 }
 
 export function profileAccess({ can, has, viewer, person }: {
@@ -127,7 +132,7 @@ export function profileAccess({ can, has, viewer, person }: {
         changeSalary: can('salary.edit') && !own && paid && payroll,
         changeDayOffCredit: can('dayoff.adjust_credit') && !own && paid && leave,
         nameByRequest: nameAskedFor(own, person.role),
-        bothNames: keepsBothNames({ own, role: person.role }),
+        bothNames: keepsBothNames(person.role),
         // The route refuses anyone else (FORBIDDEN_PASSWORD_RESET), and an Admin's but the Super Admin's.
         changePassword: own || (can('employees.reset_password') && actsOnThem),
         changeRole: own || !actsOnThem || person.role === 'SUPER_ADMIN' || person.role === '' ? null

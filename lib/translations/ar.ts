@@ -4902,6 +4902,7 @@ export const ar = {
         audit_field_newFirstName: "الاسم الأول الجديد",
         audit_field_newLastName: "اسم العائلة الجديد",
         audit_field_newName: "الاسم الجديد",
+        audit_field_newNameAr: "الاسم الجديد بالعربية",
         audit_field_newPassword: "كلمة المرور الجديدة",
         audit_field_newStatus: "الحالة الجديدة",
         audit_field_newYear: "السنة الجديدة",

@@ -13,6 +13,7 @@ import { countOf } from '@/lib/plural'
 import { spansDays, workDays } from '@/lib/day-off-range'
 import { DAY_OFF_TYPE_LABEL } from '@/lib/day-off-types'
 import { roleLabel } from '@/lib/role-label'
+import { bothLanguages, hasArabic } from '@/lib/names'
 import type { TranslationKey } from '@/lib/translations'
 import { REQUEST_KINDS, WAITING_FOR_REVIEW_KEY, type FeedRow, type RequestKind, type RequestsShow, type RequestsTab } from '@/lib/requests/kinds'
 import SafeDate from '@/components/SafeDate'
@@ -253,6 +254,9 @@ export default function RequestsClient({
                             : r.role ? roleLabel(r.role.to, t)
                                 // A name change by the name it's for, which is its what.
                                 : r.what
+    // A name change's names in both languages, the page's first, one under
+    // the other, each in its own direction and language (PR 404).
+    const inBoth = (en: string, ar: string | null) => <span className="ui-name-lines">{bothLanguages(locale, { en, ar }).map(name => <bdi key={name} lang={hasArabic(name) ? 'ar' : 'en'}>{name}</bdi>)}</span>
     const title = (r: FeedRow) => {
         const what = name(r)
         return <button type="button" className="ui-item-button" onClick={() => setViewing(r)}><bdi>{what}</bdi></button>
@@ -562,8 +566,8 @@ export default function RequestsClient({
                                 ...(viewing.status === 'PENDING' ? [{ label: t('requests_phone_held_label'), value: num(viewing.phone.held) }] : []),
                             ] : []),
                             ...(viewing.nameChange ? [
-                                { label: t('requests_name_change_from_label'), value: <bdi>{viewing.nameChange.from}</bdi> },
-                                { label: t('requests_name_change_to_label'), value: <bdi>{viewing.nameChange.to}</bdi> },
+                                { label: t('requests_name_change_from_label'), value: inBoth(viewing.nameChange.from, viewing.nameChange.fromAr) },
+                                { label: t('requests_name_change_to_label'), value: inBoth(viewing.nameChange.to, viewing.nameChange.toAr) },
                             ] : []),
                             ...(viewing.role ? [
                                 { label: t('requests_role_person_label'), value: <bdi>{viewing.role.person.name}</bdi> },

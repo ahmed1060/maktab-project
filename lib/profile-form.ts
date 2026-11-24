@@ -33,9 +33,11 @@ export function profileErrors(typed: {
      * Each name in English and in Arabic, where it keeps both (LATER_CHANGES_PLAN.md
      * §3.1, step 4b, PR 403): both needed, each in its own letters, in place
      * of the names above. One saved before in one language is asked for the
-     * other here, as its note says.
+     * other here, as its note says. Null where no name is sent: one's own
+     * asked for and left as it is (PR 404), whose English field may be empty
+     * as its English column held the Arabic.
      */
-    names?: { first: TwoNames; last: TwoNames }
+    names?: { first: TwoNames; last: TwoNames } | null
     /** Each of these is checked only where it may be changed: one that's off can't be put right. */
     email?: string
     /** Only a changed one is sent. */
@@ -69,7 +71,7 @@ export function profileErrors(typed: {
         }
         said('firstName', typed.names.first)
         said('lastName', typed.names.last)
-    } else {
+    } else if (typed.names !== null) {
         if (!named(typed.firstName)) errors.firstName = 'profile_first_name_invalid'
         if (!named(typed.lastName)) errors.lastName = 'profile_last_name_invalid'
     }
@@ -177,4 +179,16 @@ export function refusedField(body: { error?: string; code?: string; details?: Re
     if (details.salary) return { field: 'salary', key: 'emp_new_salary_invalid' }
     if (details.baseDayOffCredit) return { field: 'dayOffCredit', key: 'emp_new_day_off_invalid' }
     return null
+}
+
+/**
+ * A name change's refusal (app/api/profile-requests, LATER_CHANGES_PLAN.md
+ * §3.1, step 4c, PR 404), under the field the name is in, as the profile's
+ * own are: its fields are the names asked for. Anything else, such as one
+ * already waiting, is said above the buttons.
+ */
+export function askedNameRefused(body: { error?: string; details?: Record<string, unknown> } | null): { field: ProfileField; key: TranslationKey } | null {
+    const asked = body?.details
+    if (!asked) return null
+    return refusedField({ details: { firstName: asked.newFirstName, firstNameAr: asked.newFirstNameAr, lastName: asked.newLastName, lastNameAr: asked.newLastNameAr } })
 }

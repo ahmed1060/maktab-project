@@ -26,11 +26,11 @@ import { WhatsAppCard } from '@/components/profile/WhatsAppCard'
 import { EndContractDialog } from './profile/EndContractDialog'
 import { TeamHandOffDialog } from './profile/TeamHandOffDialog'
 import { handoffRefusal } from '@/lib/end-contract'
-import { keepsBothNames, profileAccess } from '@/lib/profile-access'
-import { missingLanguages } from '@/lib/names'
+import { keepsBothNames, nameAskedFor, profileAccess } from '@/lib/profile-access'
+import { missingLanguages, personName } from '@/lib/names'
 import { inPageOrder, savedName } from '@/lib/names/name-fields'
 import { mistakeText } from '@/lib/new-employee-form'
-import { dayAfter, PROFILE_FIELDS, profileErrors, refusedField, type ProfileField } from '@/lib/profile-form'
+import { askedNameRefused, dayAfter, PROFILE_FIELDS, profileErrors, refusedField, type ProfileField } from '@/lib/profile-form'
 import { ownPasswordRefusal, resetRefusal } from '@/lib/profile-password'
 import { fetcher, fetchRetrying } from '@/lib/swr-fetcher'
 import { calendarDateStr, DEFAULT_TIME_ZONE } from '@/lib/time'
@@ -63,6 +63,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     const [firstNameAr, setFirstNameAr] = useState('')
     const [lastNameAr, setLastNameAr] = useState('')
     const [namesMissing, setNamesMissing] = useState<('en' | 'ar')[]>([])
+    // The names as they were loaded into the fields, which one's own asked
+    // for is compared with: changed, it's asked for (PR 404).
+    const [savedNames, setSavedNames] = useState({ firstName: '', firstNameAr: '', lastName: '', lastNameAr: '' })
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [role, setRole] = useState('')
@@ -112,7 +115,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // The clients they're the responsible accountant for, which that card names (PR 343).
     const [accountantFor, setAccountantFor] = useState<string[]>([])
     // The id is the request's on the Requests page; one just asked for has none yet.
-    const [pendingRequest, setPendingRequest] = useState<{ id?: string, newFirstName: string, newLastName: string } | null>(null)
+    // Each name in Arabic too, where it was asked with them (PR 404).
+    const [pendingRequest, setPendingRequest] = useState<{ id?: string, newFirstName: string, newLastName: string, newFirstNameAr?: string | null, newLastNameAr?: string | null } | null>(null)
     const [originalFirstName, setOriginalFirstName] = useState('')
     const [originalLastName, setOriginalLastName] = useState('')
     const [showEndContract, setShowEndContract] = useState(false)
@@ -198,14 +202,19 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 if (employee.firstName) {
                     // Where it keeps both, a name written in Arabic in its English
                     // column is its Arabic, its English to come (PR 403).
-                    const both = keepsBothNames({ own: userId === sessionUserId, role: employee.role })
+                    const own = userId === sessionUserId
+                    const both = keepsBothNames(employee.role)
                     const first = both ? savedName(employee.firstName, employee.firstNameAr) : { en: employee.firstName, ar: employee.firstNameAr ?? '' }
                     const last = both ? savedName(employee.lastName, employee.lastNameAr) : { en: employee.lastName, ar: employee.lastNameAr ?? '' }
                     setFirstName(first.en)
                     setLastName(last.en)
                     setFirstNameAr(first.ar)
                     setLastNameAr(last.ar)
-                    setNamesMissing(both ? missingLanguages([{ en: employee.firstName, ar: employee.firstNameAr }, { en: employee.lastName, ar: employee.lastNameAr }]) : [])
+                    setSavedNames({ firstName: first.en, firstNameAr: first.ar, lastName: last.en, lastNameAr: last.ar })
+                    // One's own asked for is saved as before while a name misses a
+                    // language, with no note: it's asked for once the name is
+                    // changed (the owner's choice, 2026-11-24, PR 404).
+                    setNamesMissing(both && !nameAskedFor(own, employee.role) ? missingLanguages([{ en: employee.firstName, ar: employee.firstNameAr }, { en: employee.lastName, ar: employee.lastNameAr }]) : [])
                     setOriginalFirstName(employee.firstName)
                     setOriginalLastName(employee.lastName)
                 } else if (employee.name) {
@@ -214,6 +223,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     setLastName(parts.slice(1).join(' ') || '')
                     setOriginalFirstName(parts[0] || '')
                     setOriginalLastName(parts.slice(1).join(' ') || '')
+                    setSavedNames({ firstName: parts[0] || '', firstNameAr: '', lastName: parts.slice(1).join(' ') || '', lastNameAr: '' })
                 }
                 const cleanEmail = employee.email?.split('_DELETED_')[0] || employee.email
                 setEmail(cleanEmail)
@@ -347,6 +357,11 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // before the session hook has loaded.
     const own = userId === viewer?.id
     const name = `${originalFirstName} ${originalLastName}`.trim() || email
+    // One's own name changed, in either language, from the names as they were
+    // loaded: asked for where it's asked for (PR 404).
+    const nameChanged = firstName !== savedNames.firstName || firstNameAr !== savedNames.firstNameAr || lastName !== savedNames.lastName || lastNameAr !== savedNames.lastNameAr
+    // The name asked for, waiting, in the page's language.
+    const askedName = pendingRequest ? personName({ firstName: pendingRequest.newFirstName, lastName: pendingRequest.newLastName, firstNameAr: pendingRequest.newFirstNameAr, lastNameAr: pendingRequest.newLastNameAr }, locale) : ''
     // What they may see here and do, for the view and the form alike (PR 192).
     const access = profileAccess({ can, has: features.has, viewer, person: { id: userId, role } })
     // Seen, too, where its form would be refused: at the form's address,
@@ -422,7 +437,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
         // sent; then one's own password (ConfirmPasswordDialog), then the save.
         const wrong = profileErrors({
             firstName, lastName,
-            names: access.bothNames ? { first: { en: firstName, ar: firstNameAr }, last: { en: lastName, ar: lastNameAr } } : undefined,
+            // One's own asked for and left as it is isn't sent, so nothing is asked of it (PR 404).
+            names: !access.bothNames ? undefined : !access.nameByRequest || nameChanged ? { first: { en: firstName, ar: firstNameAr }, last: { en: lastName, ar: lastNameAr } } : null,
             password: access.changePassword ? password : '',
             email: access.changeEmail ? email : undefined,
             username: access.changeUsername ? changedUsername(username, savedUsername) : undefined,
@@ -505,26 +521,37 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 setActingDate('')
             }
 
-            const isNameChanged = firstName !== originalFirstName || lastName !== originalLastName
-
             // One's own name, on an employee's or a team leader's footing, is
-            // asked for (access.nameByRequest), and the rest saved as usual.
-            if (access.nameByRequest && isNameChanged) {
+            // asked for (access.nameByRequest), in both languages (PR 404), and
+            // the rest saved as usual.
+            if (access.nameByRequest && nameChanged) {
                 const reqRes = await fetch('/api/profile-requests', {
                     method: 'POST',
-                    body: JSON.stringify({ newFirstName: firstName, newLastName: lastName }),
+                    body: JSON.stringify({ newFirstName: firstName, newFirstNameAr: firstNameAr, newLastName: lastName, newLastNameAr: lastNameAr }),
                     headers: { 'Content-Type': 'application/json' }
                 })
 
                 if (!reqRes.ok) {
                     const text = await reqRes.text()
+                    let answer: { error?: string; details?: Record<string, unknown> } | null = null
+                    try { answer = JSON.parse(text) } catch { /* not JSON: said as it came */ }
+                    // A name refused is said under its field, and nothing is saved.
+                    const refusedName = askedNameRefused(answer)
+                    if (refusedName) {
+                        wrongAt({ [refusedName.field]: mistakeText(t, locale, refusedName.field, refusedName.key) })
+                        setSaving(false)
+                        return null
+                    }
                     throw new Error(apiErrorText(text, t('error_generic')))
                 }
 
                 showToast(t('name_change_submitted'), 'success')
-                setPendingRequest({ newFirstName: firstName, newLastName: lastName })
-                setFirstName(originalFirstName)
-                setLastName(originalLastName)
+                setPendingRequest({ newFirstName: firstName, newLastName: lastName, newFirstNameAr: firstNameAr, newLastNameAr: lastNameAr })
+                // Asked for, the fields are the names as they are until it's approved.
+                setFirstName(savedNames.firstName)
+                setFirstNameAr(savedNames.firstNameAr)
+                setLastName(savedNames.lastName)
+                setLastNameAr(savedNames.lastNameAr)
             }
 
             const res = await fetch('/api/users', {
@@ -534,9 +561,10 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     // Each as the form may change it (lib/profile-access.ts).
                     firstName: access.nameByRequest ? undefined : firstName,
                     lastName: access.nameByRequest ? undefined : lastName,
-                    // Each in Arabic too, where it keeps both (PR 403).
-                    firstNameAr: access.bothNames ? firstNameAr : undefined,
-                    lastNameAr: access.bothNames ? lastNameAr : undefined,
+                    // Each in Arabic too, where it keeps both (PR 403), but
+                    // one's own asked for, sent in its request above (PR 404).
+                    firstNameAr: access.bothNames && !access.nameByRequest ? firstNameAr : undefined,
+                    lastNameAr: access.bothNames && !access.nameByRequest ? lastNameAr : undefined,
                     email: access.changeEmail ? email : undefined,
                     password: access.changePassword && password ? password : undefined,
                     // The one it replaces, checked by the server (PR 229).
@@ -653,7 +681,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
             <Page>
                 <ProfileHeader own={own} editing={false} name={name}
                     action={access.edit ? <ButtonLink variant="primary" icon={PencilSimpleIcon} href={`/dashboard/employees/${userId}`} prefetch={false}>{t('edit')}</ButtonLink> : undefined} />
-                {pendingRequest && <NameChangeWaiting name={`${pendingRequest.newFirstName} ${pendingRequest.newLastName}`.trim()} requestId={pendingRequest.id} />}
+                {pendingRequest && <NameChangeWaiting name={askedName} requestId={pendingRequest.id} />}
                 <ProfileView
                     name={name}
                     photo={avatarUrl}
@@ -737,7 +765,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     return (
         <Page>
             <ProfileHeader own={own} editing name={name} />
-            {pendingRequest && <NameChangeWaiting name={`${pendingRequest.newFirstName} ${pendingRequest.newLastName}`.trim()} requestId={pendingRequest.id} />}
+            {pendingRequest && <NameChangeWaiting name={askedName} requestId={pendingRequest.id} />}
             <Card>
                 <ProfilePhoto userId={userId} name={name} photo={avatarUrl} canChange own={own} onChange={setAvatarUrl} />
                 <ProfileForm

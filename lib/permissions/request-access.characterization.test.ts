@@ -75,8 +75,8 @@ const OTHER: [string, () => Promise<Response>, Row][] = [
     ["listing requests",           async () => (await import("@/app/api/requests/route")).GET(new Request(url("/api/requests"))), [200, 200, 200, 200, 200]],
     ["raising a request",          async () => (await import("@/app/api/requests/route")).POST(withBody("POST", "/api/requests", { title: "Need a laptop", details: "Mine is broken again" })), [201, 201, 201, 201, 201]],
     ["listing name-change requests", async () => (await import("@/app/api/profile-requests/route")).GET(new Request(url("/api/profile-requests"))), [200, 200, 200, 200, 200]],
-    // A Super Admin has no employee record to rename.
-    ["asking to change your name", async () => (await import("@/app/api/profile-requests/route")).POST(withBody("POST", "/api/profile-requests", { newFirstName: "New", newLastName: "Name" })), [404, 201, 201, 201, 201]],
+    // A Super Admin has no employee record to rename. Asked in both languages, as the profile asks (PR 404).
+    ["asking to change your name", async () => (await import("@/app/api/profile-requests/route")).POST(withBody("POST", "/api/profile-requests", { newFirstName: "New", newFirstNameAr: "جديد", newLastName: "Name", newLastNameAr: "اسم" })), [404, 201, 201, 201, 201]],
     ["approving a name change in the company",       name("approve", "p-emp"),   [200, 200, 403, 403, 403]],
     ["rejecting a name change in the company",       name("reject", "p-emp"),    [200, 200, 403, 403, 403]],
     ["approving a name change in another company",   name("approve", "p-other"), [200, 403, 200, 403, 403]],

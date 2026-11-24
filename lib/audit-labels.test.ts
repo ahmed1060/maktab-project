@@ -152,8 +152,8 @@ describe("the audit log's labels", () => {
         // of the app reads as sentences; Arabic has no capitals, so the two
         // languages match only this way. The role names, the add-on's name
         // and the product's own keep theirs, as they do everywhere, and so do
-        // acronyms (ID, HQ, IPs).
-        const KEPT = ["Super Admin", "Team Leader", "Mobile App", "Nizmo"]
+        // acronyms (ID, HQ, IPs), and the languages' names (PR 404).
+        const KEPT = ["Super Admin", "Team Leader", "Mobile App", "Nizmo", "Arabic", "English"]
         const titled = Object.entries(en)
             .filter(([key]) => /^audit_(action|entity|field|value)_/.test(key))
             .filter(([, value]) => {

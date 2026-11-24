@@ -5703,6 +5703,18 @@ a.ui-donut-row:focus-visible {
 .ui-name-use bdi {
   overflow-wrap: anywhere;
 }
+/* A name shown in both languages, as a name change's details do (PR 404):
+   one under the other, the page's first, each in its own direction. */
+.ui-name-lines {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.ui-name-lines bdi {
+  overflow-wrap: anywhere;
+}
 /* A note at the top of a form (§5.3, PR 403): beside a round neutral icon, over a hairline. */
 .ui-form-note {
   display: flex;

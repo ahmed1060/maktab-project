@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { optional } from "@/lib/notice"
 import { can } from "@/lib/permissions/can"
 import { CreateProfileRequestInput } from "../validations/profile.schema"
-import { arabicBeside } from "@/lib/names"
+import { approvedNames } from "@/lib/names"
 import { learnSpellings } from "./name-spelling.service"
 
 export class ProfileService {
@@ -43,7 +43,10 @@ export class ProfileService {
         const user = await prisma.user.findUnique({ where: { id: userId } })
         if (!user) throw new Error("USER_NOT_FOUND")
 
-        if (user.firstName === input.newFirstName && user.lastName === input.newLastName) {
+        // Each name in both languages (LATER_CHANGES_PLAN.md §3.1, step 4c, PR
+        // 404): one that changes neither isn't a change.
+        if (user.firstName === input.newFirstName && user.lastName === input.newLastName
+            && (user.firstNameAr ?? '') === input.newFirstNameAr && (user.lastNameAr ?? '') === input.newLastNameAr) {
             throw new Error("NAME_IDENTICAL")
         }
 
@@ -52,8 +55,12 @@ export class ProfileService {
                 userId,
                 oldFirstName: user.firstName,
                 oldLastName: user.lastName,
+                oldFirstNameAr: user.firstNameAr,
+                oldLastNameAr: user.lastNameAr,
                 newFirstName: input.newFirstName,
                 newLastName: input.newLastName,
+                newFirstNameAr: input.newFirstNameAr,
+                newLastNameAr: input.newLastNameAr,
                 status: 'PENDING'
             }
         })
@@ -73,20 +80,14 @@ export class ProfileService {
         const person = await personTarget(request.userId)
         if (!person || !can(session.user, "profile_requests.review", person)) throw new Error("OWN_REQUEST")
 
-        // A name changed in Arabic is its Arabic too (LATER_CHANGES_PLAN.md
-        // §3, PR 398); one changed in English, or left as it is, leaves the
-        // Arabic as it is.
+        // Each name in both languages, as it was asked (LATER_CHANGES_PLAN.md
+        // §3.1, step 4c, PR 404). One asked before, with its English only,
+        // keeps an Arabic as PR 398 did.
         const now = await prisma.user.findUnique({ where: { id: request.userId }, select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } })
-        const firstNameAr = arabicBeside(request.newFirstName, undefined, now ? { en: now.firstName, ar: now.firstNameAr } : undefined)
-        const lastNameAr = arabicBeside(request.newLastName, undefined, now ? { en: now.lastName, ar: now.lastNameAr } : undefined)
         await prisma.$transaction(async (tx) => {
             await tx.user.update({
                 where: { id: request.userId },
-                data: {
-                    firstName: request.newFirstName, lastName: request.newLastName,
-                    ...(firstNameAr !== undefined && { firstNameAr }),
-                    ...(lastNameAr !== undefined && { lastNameAr }),
-                }
+                data: approvedNames(request, now),
             })
             await tx.profileUpdateRequest.update({
                 where: { id },
@@ -110,7 +111,12 @@ export class ProfileService {
                 tx,
                 userId: session.user.role !== 'SUPER_ADMIN' ? session.user.id : null,
                 superAdminId: session.user.role === 'SUPER_ADMIN' ? session.user.id : null,
-                details: { requestId: id, oldName: `${request.oldFirstName} ${request.oldLastName}`, newName: `${request.newFirstName} ${request.newLastName}`, adminNote }
+                details: {
+                    requestId: id, oldName: `${request.oldFirstName} ${request.oldLastName}`, newName: `${request.newFirstName} ${request.newLastName}`,
+                    // In Arabic too, where it was asked with it (PR 404).
+                    ...(request.newFirstNameAr && request.newLastNameAr && { newNameAr: `${request.newFirstNameAr} ${request.newLastNameAr}` }),
+                    adminNote,
+                }
             })
         })
         // What the company saves teaches it (LATER_CHANGES_PLAN.md §3.1, step 3a).

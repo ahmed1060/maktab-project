@@ -104,4 +104,25 @@ describe.skipIf(!ADMIN_URL)("name changes on the Requests page, in Postgres", ()
         // The request itself, which the bell opens on the Requests page (§2.3, part 5a).
         expect(notice).toEqual({ type: "PROFILE_UPDATE_REJECTED", relatedId: "n-wait" })
     })
+
+    // In both languages (LATER_CHANGES_PLAN.md §3.1, step 4c, PR 404).
+    it("asked in both languages, is found by either, and approved saves both, which the company learns", { timeout: 60_000 }, async () => {
+        const { ProfileService } = await import("@/lib/services/profile.service")
+        const { requestFeed } = await import("@/lib/requests/feed")
+        const eman = withGrants({ id: "e2", role: "EMPLOYEE", companyId: "c1" })
+        const made = await ProfileService.createRequest({ newFirstName: "Eman", newFirstNameAr: "إيمان", newLastName: "Mahmoud", newLastNameAr: "محمود" }, { user: eman })
+        const { rows: [kept] } = await db.query(`SELECT "oldFirstName", "oldFirstNameAr", "newFirstNameAr", "newLastNameAr" FROM "ProfileUpdateRequest" WHERE id = $1`, [made.id])
+        expect(kept).toEqual({ oldFirstName: "Eman", oldFirstNameAr: null, newFirstNameAr: "إيمان", newLastNameAr: "محمود" })
+        const found = await requestFeed(amal, query({ search: "محمود" }))
+        expect(found.rows.map(r => r.id)).toEqual([made.id])
+        expect(found.rows[0].nameChange).toMatchObject({ from: "Eman Two", fromAr: null, to: "Eman Mahmoud", toAr: "إيمان محمود" })
+
+        await ProfileService.approveRequest(made.id, "", { user: amal })
+        const { rows: [user] } = await db.query(`SELECT "firstName", "firstNameAr", "lastName", "lastNameAr" FROM "User" WHERE id = 'e2'`)
+        expect(user).toEqual({ firstName: "Eman", firstNameAr: "إيمان", lastName: "Mahmoud", lastNameAr: "محمود" })
+        const { rows: [audit] } = await db.query(`SELECT details FROM "AuditLog" WHERE action = 'APPROVE_PROFILE_UPDATE' AND "entityId" = 'e2'`)
+        expect(audit.details).toMatchObject({ newName: "Eman Mahmoud", newNameAr: "إيمان محمود" })
+        const { rows: learned } = await db.query(`SELECT ar, en FROM "NameSpelling" WHERE "companyId" = 'c1' ORDER BY en`)
+        expect(learned).toEqual([{ ar: "إيمان", en: "Eman" }, { ar: "محمود", en: "Mahmoud" }])
+    })
 })
