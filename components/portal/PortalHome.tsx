@@ -11,6 +11,7 @@ import type { PortalAccountant } from '@/lib/client-accountant'
 import type { ClientMessages } from '@/lib/client-message-template'
 import { claimMessage, contactMessage, type ClaimAsked, type PageAsking, type Words } from '@/lib/contact-message'
 import { countOf } from '@/lib/plural'
+import { nameIn } from '@/lib/names'
 import { paidShare, shortItemName, type PortalTaxPosition } from '@/lib/portal-tax'
 import type { TranslationKey } from '@/lib/translations'
 
@@ -73,10 +74,12 @@ export function PortalHome({ client, person, position, accountant, messages }: {
     const day = (d: string) => formatDay(d, locale).replace(/ /g, '\u00a0')
     const { asOf, totals } = position
 
-    const reachable = accountant?.whatsappNumber ? { name: accountant.name, whatsappNumber: accountant.whatsappNumber } : null
+    // Its name in the page's language (PR 418).
+    const accountantName = accountant ? nameIn(locale, { en: accountant.name, ar: accountant.nameAr }) : ''
+    const reachable = accountant?.whatsappNumber ? { name: accountantName, whatsappNumber: accountant.whatsappNumber } : null
     const from = asOf ? t('portal_tax_from').replace('{date}', day(asOf)) : null
     const [before, after = ''] = t('portal_tax_accountant').split('{name}')
-    const who = accountant && <>{before}<bdi>{accountant.name.replace(/ /g, '\u00a0')}</bdi>{after}</>
+    const who = accountant && <>{before}<bdi>{accountantName.replace(/ /g, '\u00a0')}</bdi>{after}</>
     const subtitle = from && who ? <>{from} {who}</> : from ?? who ?? undefined
     const header = (
         <PageHeader

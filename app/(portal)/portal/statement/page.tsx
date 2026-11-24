@@ -47,6 +47,9 @@ export default async function PortalStatementPage() {
                 company: frame?.company ?? { name: '', logoUrl: null },
                 client: session.user.clientName ?? '',
                 accountant: accountant?.name ?? null,
+                // In the page's language (PR 418). The client's name is the
+                // session's, as the area's frame has it.
+                accountantAr: accountant?.nameAr,
                 position,
                 signature: { show: settings.showPoweredBy, name: settings.poweredByName },
             }}

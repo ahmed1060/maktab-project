@@ -85,11 +85,11 @@ describe("who the client's page is told of", () => {
     const person = { id: "t1", name: "Tamer Saleh", role: "TEAM_LEADER", whatsappNumber: "+201001234567", ended: false }
 
     it("the accountant's name and number where they can be written to, and nothing else of them", () => {
-        expect(portalAccountantOf({ person, reach: "whatsapp" })).toEqual({ name: "Tamer Saleh", whatsappNumber: "+201001234567" })
+        expect(portalAccountantOf({ person, reach: "whatsapp" })).toEqual({ name: "Tamer Saleh", nameAr: null, whatsappNumber: "+201001234567" })
     })
 
     it("their name alone where their profile has no number", () => {
-        expect(portalAccountantOf({ person: { ...person, whatsappNumber: null }, reach: "no_number" })).toEqual({ name: "Tamer Saleh", whatsappNumber: null })
+        expect(portalAccountantOf({ person: { ...person, whatsappNumber: null }, reach: "no_number" })).toEqual({ name: "Tamer Saleh", nameAr: null, whatsappNumber: null })
     })
 
     it("no one where none is picked or their contract has ended, a number or not", () => {

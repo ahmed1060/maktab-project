@@ -14,8 +14,12 @@ export type TaxStatement = {
     /** Its name in both languages, shown in the page's (PR 409). */
     company: { name: string; nameAr?: string | null; logoUrl: string | null }
     client: string
+    /** The client's name in Arabic, where it has one, shown in the page's language (PR 418). */
+    clientAr?: string | null
     /** The responsible accountant's name, where the client's page names one. */
     accountant: string | null
+    /** Theirs in Arabic, where they have it (PR 418). */
+    accountantAr?: string | null
     /** As the client's page reads it, today being the company's own. */
     position: PortalTaxPosition
     /** "Powered by", as System settings has it. */
@@ -25,6 +29,7 @@ export type TaxStatement = {
 /** What the company's people's statement reads of a client (taxStatementOf; PR 353). */
 export type StaffTaxStatement = {
     client: string
+    clientAr: string | null
     company: { name: string; nameAr: string | null; logoUrl: string | null }
     position: PortalTaxPosition
 }
