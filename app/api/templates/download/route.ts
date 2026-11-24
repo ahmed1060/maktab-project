@@ -10,6 +10,7 @@ import { NextResponse } from "next/server"
 import { scopesToTeam, teamMemberWhere, and } from "@/lib/team-scope"
 import { locationLabel, numberedLabels } from "@/lib/locations"
 import { can } from "@/lib/permissions/can"
+import { clientName } from "@/lib/client-list"
 
 export const GET = withStandardHandler(async (req, session) => {
     const { searchParams } = new URL(req.url)
@@ -51,13 +52,14 @@ export const GET = withStandardHandler(async (req, session) => {
     const [users, clients, places] = await Promise.all([
         prisma.user.findMany({
             where: userWhere,
-            select: { firstName: true, lastName: true, username: true, role: true },
+            // Each name in Arabic too, for the template's language (PR 414).
+            select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, username: true, role: true },
             orderBy: { firstName: 'asc' }
         }),
         // In use only (CLIENTS_PLAN.md §4.3).
         prisma.client.findMany({
             where: { companyId: targetCompanyId!, archivedAt: null },
-            select: { name: true, locationName: true },
+            select: { name: true, nameAr: true, locationName: true },
             orderBy: { name: 'asc' }
         }),
         // The locations a task can be done at (CLIENTS_PLAN.md §2.7): in
@@ -67,12 +69,14 @@ export const GET = withStandardHandler(async (req, session) => {
         can(session.user as any, "locations.view", { companyId: targetCompanyId })
             ? prisma.location.findMany({
                 where: { companyId: targetCompanyId!, archivedAt: null, latitude: { not: null }, OR: [{ clientId: null }, { client: { archivedAt: null } }] },
-                select: { id: true, name: true, client: { select: { name: true } } },
+                select: { id: true, name: true, client: { select: { name: true, nameAr: true } } },
                 orderBy: [{ client: { name: 'asc' } }, { isHq: 'desc' }, { name: 'asc' }, { id: 'asc' }],
             })
             : [],
     ])
-    const locations = numberedLabels(places.map(l => ({ id: l.id, label: locationLabel(l.name, l.client?.name), client: l.client?.name ?? null })))
+    // Each location's client in the template's language (PR 414).
+    const clientIn = (client: { name: string; nameAr: string | null } | null) => (client ? clientName(client, locale) : null)
+    const locations = numberedLabels(places.map(l => ({ id: l.id, label: locationLabel(l.name, clientIn(l.client)), client: clientIn(l.client) })))
 
     try {
         const fileBuffer = await generateBulkTaskTemplate(baseBuffer, locale, users, clients, locations)

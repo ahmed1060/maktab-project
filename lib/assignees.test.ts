@@ -115,7 +115,7 @@ describe("what the list gives", () => {
         const { body } = await list(VIEWERS["the Admin"], "tasks.create")
         for (const p of body.data) expect(Object.keys(p).sort()).toEqual(["firstName", "id", "lastName", "role", "username"])
         const template = stripComments(readFileSync("app/api/templates/download/route.ts", "utf8"))
-        expect(template).toContain("select: { firstName: true, lastName: true, username: true, role: true }")
+        expect(template).toContain("select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, username: true, role: true }")
     })
 })
 
