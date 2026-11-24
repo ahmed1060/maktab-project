@@ -26,8 +26,8 @@ change one's own name (#404), and on the Employees page (#405), and
 clients' names in their form (#406) and on the Clients page (#407), and
 the company's name in two languages (#408) and shown in the page's
 language to its people and clients (#409), and to the Super Admin on its
-own screens for companies (#410). The company columns and selects of the
-other screens are next (#411).
+own screens for companies (#410) and in the company columns and selects
+of the other screens (#411). The other screens' names are next (step 8).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -606,7 +606,8 @@ other filled in when one is typed, if that's possible.
        - the preview note ("Previewing … at …").
        The address keeps naming the company in view by its English name,
        as now: it's how a link names it.
-     - **7c-2. The company columns and selects of the other screens (#411):**
+     - **7c-2. The company columns and selects of the other screens (Done,
+       #411):**
        All users, the audit log, check-ins, clients, places, records, the
        client pickers' company beside each client, Add employee's company,
        Copy roles, role change requests, access reviews and template
@@ -1391,3 +1392,10 @@ same day as drawn in the All users: status badges canvas
   by name in the page's language, a company's settings and payments
   headings, and the preview note. The company columns and selects of the
   other screens next, as #411 (step 7c-2).
+- **2026-11-24:** #411 merged: the company's name in the page's language
+  in the company columns and selects of the other screens (§3.1, step
+  7c-2): All users, the audit log, check-ins, clients, places, records,
+  the client pickers, Add employee, Copy roles, role change requests,
+  access reviews and template offers, the selects in the page's order, and
+  All users' search finding a company by either language. This finishes
+  the company's name (step 7). The other screens' names next (step 8).
