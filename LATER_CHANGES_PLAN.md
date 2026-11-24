@@ -17,8 +17,9 @@ Status: **the names (§3) next.** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their longer
-limit done (#397). Of their steps (§3.1), both languages are kept (#398),
-and Nizmo's list of names and the rules are next (#399).
+limit done (#397). Of their steps (§3.1), both languages are kept (#398)
+and Nizmo's list of names and the rules are done (#399), and the
+company's spellings, learned, are next (#400).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -367,8 +368,8 @@ other filled in when one is typed, if that's possible.
      it has only one), and the language a name is missing;
    - the server takes the Arabic names where it takes the English ones,
      not yet asked for. No screen changes.
-2. **Nizmo's list of names, and the rules (#399),** in `lib/names/`
-   alone:
+2. **Nizmo's list of names, and the rules (Done, #399),** in
+   `lib/names/` alone:
    - 698 common Egyptian and Arabic given names to start, where about
      2,000 were planned, each with its usual Egyptian English spelling
      first and the others people write (Mohamed, Mohammed, Muhammad),
@@ -387,12 +388,33 @@ other filled in when one is typed, if that's possible.
      the digits of the language it's written into (النور ٢, El Nour 2);
    - a full name looked up word by word, and nothing suggested for a name
      with any letter of the language asked for already.
-3. **What the company saves teaches it:**
-   - a table of the company's spellings, word by word, with how many
-     names use each, behind row-level security;
-   - learned whenever a name is saved in both languages;
-   - read by the forms that take a name, by whoever may use them. The
-     screen test (`lib/screen-asks.test.ts`) lists the new call.
+3. **What the company saves teaches it,** in two parts:
+   - **3a, its spellings learned (#400):**
+     - a table of the company's spellings, behind row-level security:
+       each word of a name in Arabic beside its English, where it was
+       saved (employees' names, clients' names, their owners' names, or
+       the company's), and how many names use it;
+     - a name is learned once it's saved in both languages, word by
+       word: each side split into the words of Nizmo's list, a
+       business's words for what it is and does left out, and the two
+       paired in order where they have as many. A name of up to three
+       words that doesn't pair word by word is learned whole;
+     - worked out again from the names themselves whenever one is
+       added, changed or deleted, so how many use each is always what's
+       saved, and a save that couldn't be learned is caught up by the
+       next. Learning never stops a name from being saved;
+     - a deleted employee's name isn't counted, and deleting someone
+       takes their names in Arabic with them, as it does their English
+       ones. From #398 they stayed; production had no one deleted
+       since, so there's nothing to clear.
+   - **3b, read by the forms (#401):**
+     - a name's suggestion with the company's spellings first, the most
+       used first, each with how many names use it;
+     - read by whoever may use a form that takes a name: employees'
+       names and the company's by anyone in the company, as one's own
+       profile takes a name; clients' names and their owners' by
+       whoever may add or edit a client. The screen test
+       (`lib/screen-asks.test.ts`) lists the new call.
 4. **Employees' names:**
    - the two fields on Add employee, an employee's page and one's own
      profile, and in a request to change one's own name;
@@ -1117,3 +1139,8 @@ same day as drawn in the All users: status badges canvas
   its Codex review, an unchanged name sent back with a form leaves a
   corrected Arabic as it is, and a company's Arabic name is in its audit
   log. Nizmo's list of names and the rules next, as #399.
+- **2026-11-24:** #399 merged: Nizmo's list of names and the rules
+  (§3.1, step 2), with 698 names where about 2,000 were planned. From its
+  Codex review, El spaced before a guessed name is read as joined, and a
+  number is kept. Step 3 split in two: the company's spellings learned
+  (#400), then read by the forms (#401).

@@ -16,6 +16,7 @@ import { bucketPathFor, logoExtension, validateLogo } from "@/lib/company-logo"
 import type { CompanyBranding } from "@/lib/company-scope"
 import { uploadToCloud } from "@/lib/storage"
 import { codeInUse, firstNumber, suggestCode } from "@/lib/username"
+import { learnSpellings } from "./name-spelling.service"
 
 // cost is a Prisma.Decimal (F-07); Decimal.toJSON() returns a string, which
 // would silently change this response field's type on the wire.
@@ -94,6 +95,8 @@ export class CompanyService {
                 usernameCode: company.usernameCode,
             },
         })
+        // What the company saves teaches it (LATER_CHANGES_PLAN.md §3.1, step 3a).
+        await learnSpellings(company.id, ['company'])
 
         return company
     }
@@ -433,6 +436,7 @@ export class CompanyService {
                 details: changes
             })
         }
+        if (changes.name || changes.nameAr) await learnSpellings(id, ['company'])
 
         return updated
     }

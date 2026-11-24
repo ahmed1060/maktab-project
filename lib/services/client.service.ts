@@ -4,6 +4,7 @@ import { can } from "@/lib/permissions/can"
 import { googleMapsLink } from "@/lib/attendance/geo"
 import { LocationService } from "./location.service"
 import { arabicBeside } from "@/lib/names"
+import { learnSpellings } from "./name-spelling.service"
 
 export class ClientService {
     static async create(input: CreateClientInput, session: any) {
@@ -26,7 +27,7 @@ export class ClientService {
         // already uses for the identical reason.
         const byUser = userRole === 'SUPER_ADMIN' ? null : userId
         const { AuditLogService } = await import("./audit-log.service")
-        return prisma.$transaction(async tx => {
+        const created = await prisma.$transaction(async tx => {
             const client = await tx.client.create({
                 data: {
                     name,
@@ -55,6 +56,9 @@ export class ClientService {
             })
             return client
         })
+        // What the company saves teaches it (LATER_CHANGES_PLAN.md §3.1, step 3a).
+        await learnSpellings(created.companyId, ['client', 'owner'])
+        return created
     }
 
     static async update(input: UpdateClientInput, session: any) {
@@ -79,7 +83,7 @@ export class ClientService {
             ownerNameAr: arabicBeside(fields.ownerName, fields.ownerNameAr, { en: client.ownerName, ar: client.ownerNameAr }),
         }
         const { AuditLogService } = await import("./audit-log.service")
-        return prisma.$transaction(async tx => {
+        const updated = await prisma.$transaction(async tx => {
             await tx.client.update({ where: { id }, data: details })
             // Its HQ's details, and its own location fields with them: a
             // change to the HQ it has needs locations.edit (PR 377).
@@ -93,6 +97,8 @@ export class ClientService {
             })
             return tx.client.findUniqueOrThrow({ where: { id } })
         })
+        await learnSpellings(updated.companyId, ['client', 'owner'])
+        return updated
     }
 
     /**
@@ -117,7 +123,7 @@ export class ClientService {
         }
 
         const { AuditLogService } = await import("./audit-log.service")
-        return prisma.$transaction(async tx => {
+        const result = await prisma.$transaction(async tx => {
             // One with tasks or records is archived instead (CLIENTS_PLAN.md
             // §4.3): its records would go with it, licences, contracts and
             // their files, and its tasks would lose it. Its row is held first,
@@ -187,6 +193,9 @@ export class ClientService {
 
             return { ...result, archived: false as const, forTax: false, forPeople: false }
         })
+        // A client deleted takes its names with it.
+        await learnSpellings(client.companyId, ['client', 'owner'])
+        return result
     }
 
     /** An archived client in use again (CLIENTS_PLAN.md §4.3): undoing archiving, so clients.delete's. */

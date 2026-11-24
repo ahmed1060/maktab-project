@@ -183,7 +183,8 @@ const createOn = (roleId: string) => async () => (await users()).POST(withBody("
     roleId, gender: "MALE", companyId: "c1",
 }))
 const del = (id: string) => async () => (await users()).DELETE(new Request(url(`/api/users?id=${id}`), { method: "DELETE" }))
-const SOFT_DELETE = "avatar,email,firstName,lastName,status,username"
+// Their names in Arabic go with their English ones (LATER_CHANGES_PLAN.md §3, PR 400).
+const SOFT_DELETE = "avatar,email,firstName,firstNameAr,lastName,lastNameAr,status,username"
 
 const OTHERS: Case[] = [
     {

@@ -3,6 +3,7 @@ import { optional } from "@/lib/notice"
 import { can } from "@/lib/permissions/can"
 import { CreateProfileRequestInput } from "../validations/profile.schema"
 import { arabicBeside } from "@/lib/names"
+import { learnSpellings } from "./name-spelling.service"
 
 export class ProfileService {
     static async getMany(where: any, skip: number, take: number) {
@@ -78,7 +79,7 @@ export class ProfileService {
         const now = await prisma.user.findUnique({ where: { id: request.userId }, select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } })
         const firstNameAr = arabicBeside(request.newFirstName, undefined, now ? { en: now.firstName, ar: now.firstNameAr } : undefined)
         const lastNameAr = arabicBeside(request.newLastName, undefined, now ? { en: now.lastName, ar: now.lastNameAr } : undefined)
-        return await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx) => {
             await tx.user.update({
                 where: { id: request.userId },
                 data: {
@@ -112,6 +113,8 @@ export class ProfileService {
                 details: { requestId: id, oldName: `${request.oldFirstName} ${request.oldLastName}`, newName: `${request.newFirstName} ${request.newLastName}`, adminNote }
             })
         })
+        // What the company saves teaches it (LATER_CHANGES_PLAN.md §3.1, step 3a).
+        await learnSpellings(person.companyId, ['employee'])
     }
 
     static async rejectRequest(id: string, adminNote: string, session: any) {

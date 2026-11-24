@@ -19,8 +19,8 @@ export type SuggestFor = { to: "en" | "ar"; kind: "person" | "business" }
 /** A name's marks, Quranic signs and stretching, which people may type or not. */
 const MARKS = /[\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g
 /** An Arabic word as it's looked up: its hamza on alef, final ى and ة as people often type them. */
-const arabicKey = (word: string) => word.replace(MARKS, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/\s/g, "")
-const englishKey = (word: string) => word.toLowerCase()
+export const arabicKey = (word: string) => word.replace(MARKS, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").replace(/\s/g, "")
+export const englishKey = (word: string) => word.toLowerCase()
 
 const BY_ARABIC = new Map<string, { ar: string; en: string }>()
 const BY_ENGLISH = new Map<string, string>()
@@ -53,27 +53,34 @@ export function suggestName(name: string, { to, kind }: SuggestFor): Suggestion 
 
 /** An Arabic name in English: its name's words, then business words where English puts them. */
 function toEnglish(tokens: string[], kind: SuggestFor["kind"]): SuggestedWord[] {
-    const { name, after, before, last } = kind === "business" ? businessParts(tokens, BUSINESS_BY_ARABIC, arabicKey) : { name: tokens, after: [], before: [], last: [] }
+    const { name, after, before, last } = kind === "business" ? businessParts(tokens, "ar") : { name: tokens, after: [], before: [], last: [] }
     const english = (word: BusinessWord): SuggestedWord => ({ text: word.en, from: "business" })
     return [...arabicName(name, kind), ...after.map(english), ...before.map(english), ...last.map(english)]
 }
 
 /** An English name in Arabic: business words where Arabic puts them, around its name's words. */
 function toArabic(tokens: string[], kind: SuggestFor["kind"]): SuggestedWord[] {
-    const { name, after, before, last } = kind === "business" ? businessParts(tokens, BUSINESS_BY_ENGLISH, englishKey) : { name: tokens, after: [], before: [], last: [] }
+    const { name, after, before, last } = kind === "business" ? businessParts(tokens, "en") : { name: tokens, after: [], before: [], last: [] }
     const arabic = (word: BusinessWord): SuggestedWord => ({ text: word.ar, from: "business" })
     return [...before.map(arabic), ...englishName(name), ...after.map(arabic), ...last.map(arabic)]
 }
 
+/** The business word a business's name has at a word, of up to three words, the longest first. */
+export function businessWordAt(tokens: string[], i: number, from: "ar" | "en"): { word: BusinessWord; length: number } | null {
+    const words = from === "ar" ? BUSINESS_BY_ARABIC : BUSINESS_BY_ENGLISH
+    const key = from === "ar" ? arabicKey : englishKey
+    for (let length = Math.min(LONGEST, tokens.length - i); length > 0; length--) {
+        const word = words.get(tokens.slice(i, i + length).map(key).join(" "))
+        if (word) return { word, length }
+    }
+    return null
+}
+
 /** A business's name split into its business words, by their places, and the words of its name. */
-function businessParts(tokens: string[], words: Map<string, BusinessWord>, key: (word: string) => string) {
+function businessParts(tokens: string[], from: "ar" | "en") {
     const parts = { name: [] as string[], after: [] as BusinessWord[], before: [] as BusinessWord[], last: [] as BusinessWord[] }
     for (let i = 0; i < tokens.length; ) {
-        let found: { word: BusinessWord; length: number } | null = null
-        for (let length = Math.min(LONGEST, tokens.length - i); length > 0 && !found; length--) {
-            const word = words.get(tokens.slice(i, i + length).map(key).join(" "))
-            if (word) found = { word, length }
-        }
+        const found = businessWordAt(tokens, i, from)
         if (found) {
             parts[found.word.place].push(found.word)
             i += found.length
@@ -85,76 +92,105 @@ function businessParts(tokens: string[], words: Map<string, BusinessWord>, key: 
     return parts
 }
 
+const article = (token: string) => /^(el|al)$/i.test(token)
+/** Whether some of an English name's words are a name of the list: its spellings, or El and one. */
+function listedInEnglish(tokens: string[]): string | undefined {
+    const ar = BY_ENGLISH.get(tokens.map(englishKey).join(""))
+    if (ar || tokens.length < 2 || !article(tokens[0])) return ar
+    const named = BY_ENGLISH.get(tokens.slice(1).map(englishKey).join(""))
+    return named && `ال${named}`
+}
+
 /**
- * An Arabic name's words in English: a name of the list, of up to three
- * words typed with their spaces or without, the longest first; a word of
- * the list after its article, as El and the name, joined for a person
- * (Elsayed) and spaced for a business (El Nour); and the rules for the rest.
+ * An Arabic name's words as they're read, by how many each is written in:
+ * a name of the list of up to three words, typed with its spaces or
+ * without, the longest first, as one, and every other word alone.
+ */
+export function arabicWords(tokens: string[]): number[] {
+    const lengths: number[] = []
+    for (let i = 0; i < tokens.length; ) {
+        let length = Math.min(LONGEST, tokens.length - i)
+        while (length > 1 && !BY_ARABIC.has(arabicKey(tokens.slice(i, i + length).join("")))) length--
+        lengths.push(length)
+        i += length
+    }
+    return lengths
+}
+
+/**
+ * An English name's words as they're read, by how many each is written in:
+ * a name of the list of up to three words, spaced or joined, or El and one,
+ * the longest first, as one; El or Al and the word after it as one; and
+ * every other word alone.
+ */
+export function englishWords(tokens: string[]): number[] {
+    const lengths: number[] = []
+    for (let i = 0; i < tokens.length; ) {
+        let length = Math.min(LONGEST, tokens.length - i)
+        while (length > 1 && !listedInEnglish(tokens.slice(i, i + length))) length--
+        if (length === 1 && article(tokens[i]) && i + 1 < tokens.length) length = 2
+        lengths.push(length)
+        i += length
+    }
+    return lengths
+}
+
+/**
+ * An Arabic name's words in English (arabicWords): a name of the list; a
+ * word of the list after its article, as El and the name, joined for a
+ * person (Elsayed) and spaced for a business (El Nour); and the rules for
+ * the rest.
  */
 function arabicName(tokens: string[], kind: SuggestFor["kind"]): SuggestedWord[] {
     const words: SuggestedWord[] = []
-    for (let i = 0; i < tokens.length; ) {
-        let found: { en: string; length: number } | null = null
-        for (let length = Math.min(LONGEST, tokens.length - i); length > 0 && !found; length--) {
-            const entry = BY_ARABIC.get(arabicKey(tokens.slice(i, i + length).join("")))
-            if (entry) found = { en: entry.en, length }
-        }
-        const token = tokens[i]
-        if (found) {
-            words.push({ text: found.en, from: "list" })
-            i += found.length
+    let i = 0
+    for (const length of arabicWords(tokens)) {
+        const these = tokens.slice(i, i + length)
+        i += length
+        const entry = BY_ARABIC.get(arabicKey(these.join("")))
+        if (entry) {
+            words.push({ text: entry.en, from: "list" })
             continue
         }
+        const token = these[0]
         const named = token.length > 3 && token.startsWith("ال") ? BY_ARABIC.get(arabicKey(token.slice(2))) : undefined
         const guess = named ? "" : arabicGuess(token)
         if (named) words.push({ text: kind === "business" ? `El ${named.en}` : `El${named.en.toLowerCase()}`, from: "list" })
         else if (guess) words.push({ text: guess, from: "rules" })
-        i++
     }
     return words
 }
 
 /**
- * An English name's words in Arabic: a name of any of its spellings, of up
- * to three words written spaced or joined, the longest first; El or Al
- * before one, spaced or joined, as its article; and the rules for the rest,
- * El or Al spaced before a name they guess read as joined to it.
+ * An English name's words in Arabic (englishWords): a name of the list, or
+ * El or Al and one; El or Al spaced before a name of neither list, guessed
+ * as joined to it; El joined to a name of the list; and the rules for the
+ * rest.
  */
 function englishName(tokens: string[]): SuggestedWord[] {
     const words: SuggestedWord[] = []
-    const article = (token: string) => /^(el|al)$/i.test(token)
-    for (let i = 0; i < tokens.length; ) {
-        let found: { ar: string; length: number } | null = null
-        for (let length = Math.min(LONGEST, tokens.length - i); length > 0 && !found; length--) {
-            const tokensHere = tokens.slice(i, i + length)
-            const ar = BY_ENGLISH.get(tokensHere.map(englishKey).join(""))
-            if (ar) found = { ar, length }
-            // El and the name after it.
-            else if (length > 1 && article(tokensHere[0])) {
-                const named = BY_ENGLISH.get(tokensHere.slice(1).map(englishKey).join(""))
-                if (named) found = { ar: `ال${named}`, length }
-            }
-        }
-        if (found) {
-            words.push({ text: found.ar, from: "list" })
-            i += found.length
+    let i = 0
+    for (const length of englishWords(tokens)) {
+        const these = tokens.slice(i, i + length)
+        i += length
+        const listed = listedInEnglish(these)
+        if (listed) {
+            words.push({ text: listed, from: "list" })
             continue
         }
         // El spaced before a name of neither list: El Shenawy, as Elshenawy.
-        if (article(tokens[i]) && i + 1 < tokens.length) {
-            words.push({ text: `ال${englishGuess(tokens[i + 1])}`, from: "rules" })
-            i += 2
+        if (length === 2) {
+            words.push({ text: `ال${englishGuess(these[1])}`, from: "rules" })
             continue
         }
         // El joined to a name: Elsayed.
-        const joined = englishKey(tokens[i]).match(/^(el|al)(.+)$/)
+        const joined = englishKey(these[0]).match(/^(el|al)(.+)$/)
         const named = joined ? BY_ENGLISH.get(joined[2]) : undefined
         if (named) words.push({ text: `ال${named}`, from: "list" })
         else {
-            const guess = englishGuess(tokens[i])
+            const guess = englishGuess(these[0])
             if (guess) words.push({ text: guess, from: "rules" })
         }
-        i++
     }
     return words
 }
