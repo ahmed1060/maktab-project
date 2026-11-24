@@ -292,8 +292,9 @@ export default function DashboardHeader({ user, company, onMenuClick, menuOpen =
         id: currentUser.id,
         name: `${currentUser.firstName} ${currentUser.lastName}`.trim(),
         role: t(getRoleKey(currentUser.role)),
-        // The company's name in the page's language (PR 409).
-        companyName: currentUser.role === 'SUPER_ADMIN' ? null : sessionCompanyName(locale, user),
+        // The company's name in the page's language (PR 409), from the live
+        // session, as the side bar's.
+        companyName: currentUser.role === 'SUPER_ADMIN' ? null : sessionCompanyName(locale, currentUser),
         photo: headerAvatar,
     }
 

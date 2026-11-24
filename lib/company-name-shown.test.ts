@@ -113,12 +113,17 @@ describe("the frame shows it in the page's language", () => {
     const shell = stripComments(readFileSync("components/DashboardShell.tsx", "utf8"))
     const header = stripComments(readFileSync("components/DashboardHeader.tsx", "utf8"))
 
+    // From the live session, the layout's until it has loaded: the layout
+    // stays as the app moves between pages, so a name caught up on the
+    // session's check shows when the session is next read (review on PR 409).
     it("in the side bar and the phone's top bar, for the company's people", () => {
-        expect(shell).toContain(": (sessionCompanyName(locale, user ?? {}) || t('app_name'));")
+        expect(shell).toContain("const { data: session } = useSession()")
+        expect(shell).toContain(": (sessionCompanyName(locale, session?.user ?? user ?? {}) || t('app_name'));")
     })
 
     it("in the account menu", () => {
-        expect(header).toContain("companyName: currentUser.role === 'SUPER_ADMIN' ? null : sessionCompanyName(locale, user),")
+        expect(header).toContain("const currentUser = session?.user || user")
+        expect(header).toContain("companyName: currentUser.role === 'SUPER_ADMIN' ? null : sessionCompanyName(locale, currentUser),")
     })
 
     it("in the side bar's look on Company settings, its logo card", () => {
