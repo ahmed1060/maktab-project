@@ -17,6 +17,12 @@ export type EmployeesQuery = {
     teamLeaderId?: string
     sort?: 'name' | 'role' | 'points'
     order?: 'asc' | 'desc'
+    /** Only the names still missing a language (LATER_CHANGES_PLAN.md §3.1, step 5, PR 405). */
+    names?: 'missing'
+    /** How many those are, over everyone the list is for, for whoever is told. */
+    countNames?: boolean
+    /** The page's language, which the names are sorted in. */
+    lang?: 'en' | 'ar'
 }
 
 export function employeesListUrl(q: EmployeesQuery): string {
@@ -37,5 +43,8 @@ export function employeesListUrl(q: EmployeesQuery): string {
         params.set('sort', q.sort)
         params.set('order', q.order ?? 'asc')
     }
+    if (q.names) params.set('names', q.names)
+    if (q.countNames) params.set('counts', 'names')
+    if (q.lang) params.set('lang', q.lang)
     return `/api/users?${params.toString()}`
 }

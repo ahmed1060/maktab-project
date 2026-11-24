@@ -6,7 +6,7 @@ import Link from 'next/link'
 import {
     ArrowCounterClockwiseIcon, ClockCounterClockwiseIcon, EnvelopeSimpleIcon, IdentificationBadgeIcon, MinusCircleIcon,
     LockIcon, PauseCircleIcon, PencilSimpleIcon, PlayCircleIcon, PlusCircleIcon, ShieldIcon, SortAscendingIcon, TrashIcon,
-    UserPlusIcon, UsersIcon, UsersThreeIcon, CircleHalfIcon, HourglassIcon, WarningCircleIcon,
+    UserPlusIcon, UsersIcon, UsersThreeIcon, CircleHalfIcon, HourglassIcon, WarningCircleIcon, TranslateIcon,
 } from '@phosphor-icons/react/ssr'
 import { useCompany } from '@/context/CompanyContext'
 import { useLanguage } from '@/context/LanguageContext'
@@ -14,7 +14,7 @@ import { useToast } from '@/context/ToastContext'
 import AccessDenied from '@/components/AccessDenied'
 import { SignInLock } from '@/components/SignInLock'
 import {
-    Avatar, Button, ButtonLink, ConfirmDialog, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, pageInRange,
+    Avatar, Button, ButtonLink, ConfirmDialog, DataList, EmptyState, Field, FilterBar, ItemTitle, ListCard, ListNote, Page, PageHeader, Pager, pageInRange,
     RowMenu, SearchInput, Select, SelectionBar, StatusBadge, type Column, type MenuItem,
 } from '@/components/ui'
 import { useModules } from '@/lib/useModules'
@@ -30,11 +30,15 @@ import { fetchRetrying } from '@/lib/swr-fetcher'
 import { useLiveOnline } from '@/components/LiveUpdates'
 import { onlineTopics } from '@/lib/live-updates'
 import { forPerson, historyParts } from '@/lib/history-parts'
+import { missingLanguages, personName, type PersonNames } from '@/lib/names'
 
 interface Employee {
     id: string
     firstName: string
     lastName: string
+    // Each name in Arabic too, for the page's language (PR 405).
+    firstNameAr?: string | null
+    lastNameAr?: string | null
     email: string
     role: string
     status: string
@@ -44,7 +48,7 @@ interface Employee {
     // Just the name. The API selects these three fields rather than the
     // relation, so a colleague's whole row does not ride along in a list that
     // only prints a name.
-    teamLeader?: { id: string; firstName: string; lastName: string } | null
+    teamLeader?: { id: string; firstName: string; lastName: string; firstNameAr?: string | null; lastNameAr?: string | null } | null
     // Its id: a Super Admin with no company in view hears who comes and goes
     // in each company on the page (part 6b).
     company?: { id: string; name: string } | null
@@ -53,7 +57,7 @@ interface Employee {
     ownPasswordPausedUntil?: string | null
 }
 
-type Leader = { id: string; firstName: string; lastName: string }
+type Leader = { id: string; firstName: string; lastName: string; firstNameAr?: string | null; lastNameAr?: string | null }
 
 /** The sort picked, as one choice: the field and its direction together. */
 const SORTS = {
@@ -95,6 +99,9 @@ export default function EmployeesPage() {
         || (features.has('SALARY_ADJUSTMENTS') && can('salary_adjustments.add'))
         || can('requests.reset_points') || can('employees.delete')
     const teamOnly = can('employees.view') && !companyWide('employees.view')
+    // The names still missing a language, counted and listed for whoever may
+    // edit people, who are asked for them (LATER_CHANGES_PLAN.md §3.1, step 5, PR 405).
+    const editsNames = can('employees.edit')
 
     const [page, setPage] = useState(1)
     const limit = 10
@@ -103,6 +110,7 @@ export default function EmployeesPage() {
     const [status, setStatus] = useState('')
     const [role, setRole] = useState('')
     const [team, setTeam] = useState('')
+    const [names, setNames] = useState<'' | 'missing'>('')
     const [sortKey, setSortKey] = useState<SortKey>('name_asc')
 
     // Bulk team assignment. A Set rather than an array because the only two
@@ -132,6 +140,9 @@ export default function EmployeesPage() {
         search, status, role,
         teamLeaderId: team,
         sort: sort.sort, order: sort.order,
+        names: names || undefined,
+        countNames: editsNames,
+        lang: locale,
     } : null
     // Only this company's rows, while the next page or filter loads. If they
     // didn't load, the list says so rather than that there's nobody.
@@ -142,6 +153,7 @@ export default function EmployeesPage() {
     const employees: Employee[] = failed ? [] : result?.data?.data || []
     const totalPages: number = result?.data?.totalPages || 0
     const total: number = result?.data?.total || 0
+    const missingNames: number = failed ? 0 : result?.data?.missingNames ?? 0
     // The badge as people come and go, in place, untinted (REALTIME_PLAN.md
     // part 6b, DESIGN.md §8): what's typed, the filters and the page stay.
     // Only for whoever may see the list: the channel lets nobody else in.
@@ -162,12 +174,13 @@ export default function EmployeesPage() {
     }, [canAssignTeams])
 
     const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
-    const nameOf = (e: { firstName: string; lastName: string }) => `${e.firstName} ${e.lastName}`
+    // In the page's language, or the one it has (PR 405).
+    const nameOf = (e: PersonNames) => personName(e, locale)
     const roleWord = (r: string) => t(`role_${r.toLowerCase()}` as TranslationKey) || r
-    const filtersOn = [status, role, team].filter(Boolean).length + (sortKey === 'name_asc' ? 0 : 1)
+    const filtersOn = [status, role, team, names].filter(Boolean).length + (sortKey === 'name_asc' ? 0 : 1)
 
     const resetFilters = () => {
-        setQuery(''); setSearch(''); setStatus(''); setRole(''); setTeam(''); setSortKey('name_asc'); setPage(1)
+        setQuery(''); setSearch(''); setStatus(''); setRole(''); setTeam(''); setNames(''); setSortKey('name_asc'); setPage(1)
     }
     const pick = <T,>(set: (v: T) => void) => (v: T) => { set(v); setPage(1) }
 
@@ -314,6 +327,13 @@ export default function EmployeesPage() {
         ? null
         : e.teamLeader ? nameOf(e.teamLeader) : <StatusBadge tone="waiting">{t('team_unassigned')}</StatusBadge>
     const points = (e: Employee) => e.role === 'ADMIN' ? null : <span className="ui-chip">{countOf(t, locale, e.totalDifficultyPoints || 0, 'pts')}</span>
+    // What each name listed as missing a language is missing (DESIGN.md §5.3).
+    const missing = (e: Employee) => (
+        <span className="ui-badge-row">
+            {missingLanguages([{ en: e.firstName, ar: e.firstNameAr }, { en: e.lastName, ar: e.lastNameAr }])
+                .map(language => <StatusBadge key={language} tone="neutral">{t(language === 'ar' ? 'name_missing_ar_badge' : 'name_missing_en_badge')}</StatusBadge>)}
+        </span>
+    )
     const statusBadge = (e: Employee) => <StatusBadge tone={STATUS_TONE[e.status] ?? 'neutral'}>{STATUS_WORD[e.status] ? t(STATUS_WORD[e.status]) : e.status}</StatusBadge>
     // Locked out of signing in, with Unlock, under the status (decided 2026-11-03).
     const lock = (e: Employee) => <SignInLock personId={e.id} name={nameOf(e)} until={e.signInLockedUntil} paused={e.ownPasswordPausedUntil} onUnlocked={() => { void mutate() }} />
@@ -329,6 +349,7 @@ export default function EmployeesPage() {
             ),
         },
         { key: 'role', header: t('role_label'), cell: e => roleWord(e.role) },
+        ...(names === 'missing' ? [{ key: 'missing', header: t('names_missing_column'), cell: missing }] : []),
         { key: 'team', header: t('team_column'), cell: teamOf },
         { key: 'points', header: t('points_label'), cell: points },
         { key: 'status', header: t('status_label'), cell: e => <>{statusBadge(e)}{lock(e)}</> },
@@ -356,6 +377,8 @@ export default function EmployeesPage() {
                 action={can('employees.create') && <ButtonLink href="/dashboard/employees/new" variant="primary" icon={UserPlusIcon}>{t('add_employee')}</ButtonLink>}
             />
 
+            {editsNames && missingNames > 0 && <ListNote icon={TranslateIcon} title={countOf(t, locale, missingNames, 'one_language')}>{t('names_missing_note_body')}</ListNote>}
+
             <FilterBar
                 search={<Field label={t('employees_search')} hideLabel>{p => <SearchInput {...p} autoComplete="off" placeholder={t('employees_search')} value={query} onChange={e => setQuery(e.target.value)} />}</Field>}
                 activeCount={filtersOn}
@@ -369,6 +392,14 @@ export default function EmployeesPage() {
                             { value: '', label: t('team_filter_all') },
                             { value: 'unassigned', label: t('team_unassigned') },
                             ...teamLeaders.map(l => ({ value: l.id, label: nameOf(l) })),
+                        ]} />
+                    )}</Field>
+                )}
+                {editsNames && (
+                    <Field label={t('names_filter_label')} hideLabel>{p => (
+                        <Select {...p} icon={TranslateIcon} value={names} onChange={e => pick(setNames)(e.target.value as '' | 'missing')} options={[
+                            { value: '', label: t('names_filter_all') },
+                            { value: 'missing', label: t('names_filter_missing') },
                         ]} />
                     )}</Field>
                 )}
@@ -408,6 +439,7 @@ export default function EmployeesPage() {
                                 details={[
                                     { icon: EnvelopeSimpleIcon, text: <bdi>{e.email}</bdi> },
                                     { icon: IdentificationBadgeIcon, text: roleWord(e.role) },
+                                    ...(names === 'missing' ? [{ icon: TranslateIcon, text: missing(e) }] : []),
                                     ...(e.role === 'EMPLOYEE' ? [{ icon: UsersThreeIcon, text: teamOf(e) }] : []),
                                     ...(e.signInLockedUntil || e.ownPasswordPausedUntil ? [{ icon: LockIcon, text: lock(e) }] : []),
                                 ]}

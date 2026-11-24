@@ -43,6 +43,9 @@ export function buildUserWhereClause(
     validStatuses: readonly string[],
     // When "lately" is, for the Online and Offline filters; the tests pin it.
     now: Date = new Date(),
+    // Who has a name missing a language, as the database finds them
+    // (lib/names/missing.ts), for names=missing (PR 405): none found, none listed.
+    missingNameIds?: readonly string[],
 ): UserWhereResult {
     const userRole = session.user.role
     const whereClause: any = { role: { not: 'SUPER_ADMIN' } }
@@ -107,12 +110,18 @@ export function buildUserWhereClause(
     if (searchParam) {
         whereClause.OR = [
             { id: { contains: searchParam, mode: 'insensitive' } },
+            // Each name in either language (LATER_CHANGES_PLAN.md §3.1, step 5, PR 405).
             { firstName: { contains: searchParam, mode: 'insensitive' } },
+            { firstNameAr: { contains: searchParam, mode: 'insensitive' } },
             { lastName: { contains: searchParam, mode: 'insensitive' } },
+            { lastNameAr: { contains: searchParam, mode: 'insensitive' } },
             { email: { contains: searchParam, mode: 'insensitive' } },
             { company: { name: { contains: searchParam, mode: 'insensitive' } } }
         ]
     }
+
+    // The names still missing a language (PR 405), added to the rest, never over it.
+    if (searchParams.get('names') === 'missing') and(whereClause, { id: { in: [...(missingNameIds ?? [])] } })
 
     const statusParam = searchParams.get('status')
     const includeDeleted = searchParams.get('includeDeleted') === 'true'
@@ -155,7 +164,12 @@ export type { UserRole, UserStatus }
  */
 export function buildUserOrderBy(searchParams: URLSearchParams): Record<string, any>[] {
     const order = searchParams.get('order') === 'desc' ? 'desc' : 'asc'
-    const byName = [{ firstName: order }, { lastName: order }, { id: 'asc' }]
+    // By the name shown, in the page's language (PR 405): on an Arabic page
+    // the names it has in Arabic first, then the rest in English.
+    const inArabic = searchParams.get('lang') === 'ar'
+        ? [{ firstNameAr: { sort: order, nulls: 'last' } }, { lastNameAr: { sort: order, nulls: 'last' } }]
+        : []
+    const byName = [...inArabic, { firstName: order }, { lastName: order }, { id: 'asc' }]
     switch (searchParams.get('sort')) {
         case 'name': return byName
         case 'role': return [{ role: order }, { firstName: 'asc' }, { lastName: 'asc' }, { id: 'asc' }]
@@ -172,5 +186,19 @@ export function buildUserOrderBy(searchParams: URLSearchParams): Record<string, 
 export function countedParams(searchParams: URLSearchParams): URLSearchParams {
     const counted = new URLSearchParams(searchParams)
     for (const key of ["search", "status", "includeDeleted", "page", "limit", "counts"]) counted.delete(key)
+    return counted
+}
+
+/**
+ * What the names missing a language are counted over (PR 405): everyone the
+ * list is for, in the company picked and as far as the viewer sees, whatever
+ * it's searched for, filtered by, sorted by or on.
+ */
+export function namesCountedParams(searchParams: URLSearchParams): URLSearchParams {
+    const counted = new URLSearchParams()
+    for (const key of ["companyId", "excludeRole", "excludeUserId"]) {
+        const value = searchParams.get(key)
+        if (value !== null) counted.set(key, value)
+    }
     return counted
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { buildUserWhereClause, buildUserOrderBy } from "./user-query"
+import { buildUserWhereClause, buildUserOrderBy, namesCountedParams } from "./user-query"
 import { withGrants } from "@/lib/permissions/test-actors"
 
 /**
@@ -62,7 +62,8 @@ describe("a Team Leader sees their team and themselves", () => {
         // Search writes whereClause.OR. If the scope were written there too,
         // whichever ran last would win — and it must always be the scope.
         const where = clause(build(leader, "search=laila"))
-        expect(where.OR).toHaveLength(5)
+        // Each name in either language since PR 405.
+        expect(where.OR).toHaveLength(7)
         expect(where.AND).toContainEqual({ OR: [{ teamLeaderId: "tl-1" }, { id: "tl-1" }] })
     })
 
@@ -144,5 +145,43 @@ describe("the list's order is the server's, so it holds across pages", () => {
         expect(order("")).toEqual(usual)
         expect(order("sort=salary")).toEqual(usual)
         expect(order("sort=points&order=sideways")[0]).toEqual({ totalDifficultyPoints: "asc" })
+    })
+})
+
+// Employees' names in the page's language (LATER_CHANGES_PLAN.md §3.1, step 5, PR 405).
+describe("names, in either language", () => {
+    const words = (text: string) => ({ contains: text, mode: "insensitive" })
+
+    it("are searched in English and in Arabic", () => {
+        const where = clause(build(admin, "search=كريم"))
+        expect(where.OR).toEqual(expect.arrayContaining([{ firstName: words("كريم") }, { firstNameAr: words("كريم") }, { lastName: words("كريم") }, { lastNameAr: words("كريم") }]))
+    })
+
+    it("missing a language are the ones found so, within everything else the list asks", () => {
+        const missing = (qs: string, ids?: string[]) => clause(buildUserWhereClause(admin, new URLSearchParams(qs), undefined, ROLES, STATUSES, new Date(), ids))
+        const where = missing("names=missing&excludeUserId=a-1&search=ka", ["e1", "e2"])
+        expect(where.AND).toContainEqual({ id: { in: ["e1", "e2"] } })
+        // Added, never over the viewer left out or the company.
+        expect(where).toMatchObject({ id: { not: "a-1" }, companyId: "co-1" })
+        // None found, none listed; and only when they're asked for.
+        expect(missing("names=missing", []).AND).toContainEqual({ id: { in: [] } })
+        expect(missing("names=missing").AND).toContainEqual({ id: { in: [] } })
+        expect(JSON.stringify(missing("", ["e1"]))).not.toContain('"in":["e1"]')
+    })
+
+    it("are sorted in Arabic on an Arabic page, the ones it has in Arabic first, then the rest in English", () => {
+        const order = (qs: string) => buildUserOrderBy(new URLSearchParams(qs))
+        for (const way of ["asc", "desc"] as const) {
+            expect(order(`sort=name&order=${way}&lang=ar`)).toEqual([
+                { firstNameAr: { sort: way, nulls: "last" } }, { lastNameAr: { sort: way, nulls: "last" } },
+                { firstName: way }, { lastName: way }, { id: "asc" },
+            ])
+        }
+        expect(order("sort=name&order=asc&lang=en")).toEqual([{ firstName: "asc" }, { lastName: "asc" }, { id: "asc" }])
+    })
+
+    it("missing a language are counted over everyone the list is for, whatever it shows", () => {
+        const kept = namesCountedParams(new URLSearchParams("search=x&status=ACTIVE&role=EMPLOYEE&teamLeaderId=t1&names=missing&sort=name&order=asc&lang=ar&page=2&limit=10&counts=names&excludeRole=SUPER_ADMIN&companyId=c1&excludeUserId=a-1"))
+        expect([...kept.keys()].sort()).toEqual(["companyId", "excludeRole", "excludeUserId"])
     })
 })

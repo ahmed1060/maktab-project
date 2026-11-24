@@ -5723,7 +5723,8 @@ a.ui-donut-row:focus-visible {
   padding-block-end: var(--space-5);
   border-block-end: 1px solid var(--rule);
 }
-.ui-form-note-icon {
+.ui-form-note-icon,
+.ui-list-note-icon {
   display: inline-grid;
   place-items: center;
   flex: none;
@@ -5739,6 +5740,39 @@ a.ui-donut-row:focus-visible {
   font-size: var(--text-md);
   line-height: var(--leading-md);
   color: var(--ink);
+}
+/* Badges side by side, as what a name is missing (§5.3, PR 405), wrapping together. */
+.ui-badge-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+/* A note above a list's filter bar (§5.3, PR 405): a panel with a round
+   neutral icon, a title and a line, as the names still missing a language. */
+.ui-list-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+.ui-list-note-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.ui-list-note-title {
+  margin: 0;
+  font-size: var(--text-card);
+  line-height: var(--leading-card);
+  font-weight: 600;
+  color: var(--ink);
+}
+.ui-list-note-text {
+  margin: 0;
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  color: var(--ink-2);
 }
 /* A word Nizmo guessed, underlined with dots in the button, and said under it. */
 .ui-name-guessed {
