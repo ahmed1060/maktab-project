@@ -7,6 +7,7 @@ import { Button, Details, DocGroup, DocLine, DocNote, DocTotal, DocumentSheet, E
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { companyNameIn } from '@/lib/company-name'
+import { personName, type PersonNames } from '@/lib/names'
 import { useToast } from '@/context/ToastContext'
 import { useCan } from '@/lib/useCan'
 
@@ -23,7 +24,8 @@ import { useCan } from '@/lib/useCan'
  */
 
 type Doc = {
-    person: { name: string; email: string }
+    /** Whom it's issued to, in both languages, named in the page's (PR 417). */
+    person: PersonNames & { email: string }
     company: { name: string; nameAr?: string | null; logoUrl?: string | null }
     lastWorkingDay: string
     earned: number
@@ -77,7 +79,7 @@ export default function SettlementDocumentPage() {
     const header = (
         <PageHeader
             title={t('doc_settlement')}
-            subtitle={doc?.person.name}
+            subtitle={doc && <bdi>{personName(doc.person, locale)}</bdi>}
             action={doc && <>
                 {canSend && <Button busy={sending} onClick={resend}>{doc.emailedAt ? t('doc_send_again') : t('doc_send')}</Button>}
                 <Button variant="primary" icon={PrinterIcon} onClick={() => window.print()}>{t('doc_print')}</Button>
@@ -114,7 +116,7 @@ export default function SettlementDocumentPage() {
             {header}
             <DocumentSheet title={t('doc_settlement')} company={{ name: companyNameIn(locale, doc.company), logoUrl: doc.company.logoUrl }}>
                 <Details items={[
-                    { label: t('doc_issued_to'), value: doc.person.name },
+                    { label: t('doc_issued_to'), value: <bdi>{personName(doc.person, locale)}</bdi> },
                     { label: t('doc_last_working_day'), value: date(doc.lastWorkingDay) },
                     { label: t('doc_due'), value: date(doc.dueDate) },
                 ]} />

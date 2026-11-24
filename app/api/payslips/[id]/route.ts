@@ -20,7 +20,7 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
         where: { id: params.id },
         include: {
             lines: { orderBy: { sortOrder: "asc" } },
-            user: { select: { id: true, firstName: true, lastName: true, email: true, companyId: true } },
+            user: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, email: true, companyId: true } },
             payrollRun: {
                 select: {
                     month: true, year: true, status: true, payrollDay: true, paidAt: true,
@@ -46,8 +46,12 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
 
     return ApiResponse.success({
         id: payslip.id,
+        // In both languages, named on the document in the page's (PR 417).
         person: {
-            name: `${payslip.user.firstName} ${payslip.user.lastName}`.trim(),
+            firstName: payslip.user.firstName,
+            lastName: payslip.user.lastName,
+            firstNameAr: payslip.user.firstNameAr,
+            lastNameAr: payslip.user.lastNameAr,
             email: payslip.user.email,
         },
         company: { name: company.name, nameAr: company.nameAr, logoUrl: company.logoUrl },

@@ -28,12 +28,12 @@ vi.mock("swr", () => ({
 
 const company = { name: "Delta Sites", logoUrl: "/logo.png" }
 const PAYSLIP = {
-    person: { name: "Youssef Adel", email: "y@x.test" }, company, period: { month: 10, year: 2026 }, status: "APPROVED",
+    person: { firstName: "Youssef", lastName: "Adel", email: "y@x.test" }, company, period: { month: 10, year: 2026 }, status: "APPROVED",
     daysPaid: 31, excluded: false, earnings: 12500, deductions: 750.5, net: 11749.5, carried: 0,
     lines: [{ kind: "EARNING", label: "Salary", amount: 12000 }, { kind: "EARNING", label: "Overtime", amount: 500 }, { kind: "DEDUCTION", label: "Lateness", amount: 750.5 }],
 }
 const SETTLEMENT = {
-    person: { name: "Rami Nabil", email: "r@x.test" }, company, lastWorkingDay: "2026-10-15", dueDate: "2026-10-22",
+    person: { firstName: "Rami", lastName: "Nabil", email: "r@x.test" }, company, lastWorkingDay: "2026-10-15", dueDate: "2026-10-22",
     earned: 6000, paid: 2000, net: 4000, debtRecovered: 500, payable: 3500, direction: "COMPANY_OWES", status: "ISSUED", reason: "Resigned", emailedAt: null,
 }
 const refused = (status: number) => ({ error: Object.assign(new Error("Request failed"), { status, info: { error: status === 500 ? "Database unavailable" : "Not found" } }) })
@@ -108,7 +108,7 @@ describe("a payslip", () => {
 
     it("gives its facts as details, its lines in groups with their totals, and the net last", async () => {
         const doc = sheet(await payslip())
-        expect(doc).toContain(`<dt>${en.doc_issued_to}</dt><dd>Youssef Adel</dd>`)
+        expect(doc).toContain(`<dt>${en.doc_issued_to}</dt><dd><bdi>Youssef Adel</bdi></dd>`)
         expect(doc).toContain(`<dt>${en.doc_period}</dt><dd>October 2026</dd>`)
         expect(doc).toContain(`<dt>${en.doc_days_paid}</dt><dd>31</dd>`)
         expect(doc).toContain(`<h2 class="ui-doc-group-title">${en.doc_earnings}</h2>`)
