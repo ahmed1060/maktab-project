@@ -489,7 +489,20 @@ other filled in when one is typed, if that's possible.
        it's from and for in both languages, and its search finds either.
 5. **Employees' names in the page's language** on the Employees page (#405),
    with the ones still missing a language, and its search finding
-   either.
+   either:
+   - each name in the page's language, or the one it has, a team
+     leader's too, and sorted so: on an Arabic page the names with Arabic
+     first, then the rest in English;
+   - for whoever may edit people, as they're the ones asked: the note
+     above the filter bar saying how many names have only one language,
+     over everyone the list is for, and the Names select listing them
+     with a Missing column of neutral badges, as the names canvas draws
+     them;
+   - which names are missing a language is read by the database
+     (`lib/names/missing.ts`), with the Arabic letters `lib/names.ts`
+     reads, as a Prisma filter can't read letters;
+   - the note is a building block (`ListNote`), for the Clients page in
+     step 6.
 6. **Clients' names:**
    - the two fields for the name and the owner's name, on Add client and
      a client's page, with business words;
