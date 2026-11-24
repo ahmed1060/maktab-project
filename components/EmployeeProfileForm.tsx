@@ -636,8 +636,12 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
             // Sync Logic
             if (userId === session?.user?.id) {
                 await update({
-                    firstName,
-                    lastName,
+                    // One's own asked for isn't changed by the save: the session
+                    // keeps it as it's kept, not the name asked for, nor an
+                    // English field empty as its column held the Arabic
+                    // (Codex review on PR 404).
+                    firstName: access.nameByRequest ? originalFirstName : firstName,
+                    lastName: access.nameByRequest ? originalLastName : lastName,
                     gender,
                     avatar: avatarUrl,
                     image: avatarUrl,

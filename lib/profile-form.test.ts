@@ -445,6 +445,11 @@ describe("the profile, wired to its form", () => {
         expect(ask).toContain("setLastNameAr(savedNames.lastNameAr)")
         // No note on one's own asked for, whose rest is saved as before (the owner's choice, 2026-11-24).
         expect(FORM).toContain("setNamesMissing(both && !nameAskedFor(own, employee.role) ? missingLanguages(")
+        // Their session keeps the name as it's kept, neither the one asked for
+        // nor an empty English field (Codex review on PR 404).
+        const session = FORM.slice(FORM.indexOf("await update({"), FORM.indexOf("showToast(t('profile_updated_success')"))
+        expect(session).toContain("firstName: access.nameByRequest ? originalFirstName : firstName,")
+        expect(session).toContain("lastName: access.nameByRequest ? originalLastName : lastName,")
         // The name asked for, in the page's language.
         expect(FORM).toContain("const askedName = pendingRequest ? personName({ firstName: pendingRequest.newFirstName, lastName: pendingRequest.newLastName, firstNameAr: pendingRequest.newFirstNameAr, lastNameAr: pendingRequest.newLastNameAr }, locale) : ''")
         expect(FORM.match(/<NameChangeWaiting name=\{askedName\}/g)).toHaveLength(2)
