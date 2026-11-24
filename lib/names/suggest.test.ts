@@ -188,6 +188,66 @@ describe("a business's name", () => {
     })
 })
 
+/** A company's spellings of some words, by how each is looked up, the most used first. */
+const saved = (entries: [string, [string, number][]][]) => new Map(entries.map(([key, spellings]) => [key, spellings.map(([text, uses]) => ({ text, uses }))]))
+
+describe("the company's spellings, first", () => {
+    it("come before Nizmo's, the most used first, each with how many names use it, then the usual spelling", () => {
+        const name = suggestName("محمد", { to: "en", kind: "person", saved: saved([["محمد", [["Muhammad", 1], ["Mohammed", 4]]]]) })
+        expect(name).toEqual({
+            text: "Mohammed",
+            words: [{ text: "Mohammed", from: "company", uses: 4, others: [{ text: "Muhammad", from: "company", uses: 1 }, { text: "Mohamed", from: "list" }] }],
+            guesses: [],
+        })
+    })
+
+    it("don't offer the usual spelling again where theirs is it, whatever its capitals", () => {
+        const name = suggestName("محمد", { to: "en", kind: "person", saved: saved([["محمد", [["MOHAMED", 2]]]]) })
+        expect(name?.words).toEqual([{ text: "MOHAMED", from: "company", uses: 2, others: [] }])
+    })
+
+    it("take a guess's place, and it isn't one any more", () => {
+        const name = suggestName("أحمد الشناوي", { to: "en", kind: "person", saved: saved([["الشناوي", [["El Shenawy", 3]]]]) })
+        expect(name).toEqual({
+            text: "Ahmed El Shenawy",
+            words: [{ text: "Ahmed", from: "list" }, { text: "El Shenawy", from: "company", uses: 3, others: [] }],
+            guesses: [],
+        })
+    })
+
+    it("read a spelling learned whole, of several words, as one", () => {
+        const name = suggestName("كرمو زيكا", { to: "en", kind: "person", saved: saved([["كرموزيكا", [["Karmozika", 1]]]]) })
+        expect(name?.words).toEqual([{ text: "Karmozika", from: "company", uses: 1, others: [] }])
+        const back = suggestName("Karmo Zika", { to: "ar", kind: "person", saved: saved([["karmozika", [["كرمو زيكا", 1]]]]) })
+        expect(back?.words).toEqual([{ text: "كرمو زيكا", from: "company", uses: 1, others: [] }])
+        // Its first word's usual spelling isn't the whole's.
+        expect(suggestName("السيد زيكا", { to: "en", kind: "person", saved: saved([["السيدزيكا", [["Elsayedzika", 1]]]]) })?.words).toEqual([{ text: "Elsayedzika", from: "company", uses: 1, others: [] }])
+        expect(suggestName("Elsayed Zika", { to: "ar", kind: "person", saved: saved([["elsayedzika", [["السيد زيكا", 1]]]]) })?.words).toEqual([{ text: "السيد زيكا", from: "company", uses: 1, others: [] }])
+    })
+
+    it("come first from English to Arabic too, El spaced or joined", () => {
+        const name = suggestName("Mohammed El Shenawy", { to: "ar", kind: "person", saved: saved([["mohammed", [["محمد", 2]]], ["elshenawy", [["الشناوي", 1]]]]) })
+        expect(name).toEqual({
+            text: "محمد الشناوي",
+            words: [{ text: "محمد", from: "company", uses: 2, others: [] }, { text: "الشناوي", from: "company", uses: 1, others: [] }],
+            guesses: [],
+        })
+        expect(suggestName("Elshenawy", { to: "ar", kind: "person", saved: saved([["elshenawy", [["الشناوى", 1]]]]) })?.text).toBe("الشناوى")
+        // The usual spelling is theirs, its hamza written or not.
+        expect(suggestName("Ahmed", { to: "ar", kind: "person", saved: saved([["ahmed", [["احمد", 3]]]]) })?.words).toEqual([{ text: "احمد", from: "company", uses: 3, others: [] }])
+    })
+
+    it("leave a business's words in their places", () => {
+        const name = suggestName("شركة النور للتجارة", { to: "en", kind: "business", saved: saved([["النور", [["Al Nour", 2]]]]) })
+        expect(name?.text).toBe("Al Nour Trading Company")
+        expect(name?.words[0]).toEqual({ text: "Al Nour", from: "company", uses: 2, others: [{ text: "El Nour", from: "list" }] })
+    })
+
+    it("leave a word the company has none for as Nizmo has it", () => {
+        expect(suggestName("محمد", { to: "en", kind: "person", saved: new Map() })).toEqual(suggestName("محمد", { to: "en", kind: "person" }))
+    })
+})
+
 describe("Nizmo's list of names", () => {
     it("holds the common Egyptian and Arabic given names", () => {
         // 698 as written (PR 399): more can be added at any time, and a company's own spellings fill the rest (step 3).

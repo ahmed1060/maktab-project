@@ -9,7 +9,23 @@
  */
 
 import { hasArabic, writtenInArabic, type TwoLanguages } from "@/lib/names"
+import { can } from "@/lib/permissions/can"
 import { arabicKey, arabicWords, businessWordAt, englishKey, englishWords } from "./suggest"
+
+/** Where a spelling was saved: an employee's name, a client's, a client's owner's, or the company's. */
+export const SPELLING_SOURCES = ["employee", "client", "owner", "company"] as const
+export type SpellingSource = typeof SPELLING_SOURCES[number]
+
+/**
+ * Where a name's suggestion may learn from, for whoever asks (step 3b, PR
+ * 401): employees' names and the company's for anyone in the company, as
+ * one's own profile takes a name; clients' names and their owners' for
+ * whoever may add or edit a client, as their forms take those.
+ */
+export function spellingSourcesFor(user: Parameters<typeof can>[0], kind: "person" | "business"): SpellingSource[] {
+    const clients = can(user, "clients.create") || can(user, "clients.edit")
+    return kind === "person" ? ["employee", ...(clients ? ["owner" as const] : [])] : ["company", ...(clients ? ["client" as const] : [])]
+}
 
 /** A word of a name in Arabic beside its English, each as written and as it's looked up. */
 export type SpellingPair = { ar: string; arKey: string; en: string; enKey: string }

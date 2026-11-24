@@ -7,7 +7,8 @@ import { UserService } from "@/lib/services/user.service"
 import { ClientService } from "@/lib/services/client.service"
 import { CompanyService } from "@/lib/services/company.service"
 import { ProfileService } from "@/lib/services/profile.service"
-import { relearnSpellings } from "@/lib/services/name-spelling.service"
+import { relearnSpellings, suggestWithSpellings } from "@/lib/services/name-spelling.service"
+import { suggestName } from "@/lib/names/suggest"
 
 /**
  * What the company saves teaches it (LATER_CHANGES_PLAN.md §3.1, step 3a,
@@ -228,6 +229,54 @@ describe.skipIf(!ADMIN_URL)("a company's spellings, in Postgres", () => {
             expect(await spellings("c1", "company")).toEqual([{ ar: "النيل", en: "El Nil", uses: 1 }])
             const made = await CompanyService.create({ name: "El Amal Office", nameAr: "مكتب الأمل" } as any, superAdmin)
             expect(await spellings(made.id, "company")).toEqual([{ ar: "الأمل", en: "El Amal", uses: 1 }])
+        })
+    })
+
+    describe("read for a name's suggestion (step 3b, PR 401)", () => {
+        beforeAll(async () => {
+            // With its built-in roles, as a company is made.
+            const made = await CompanyService.create({ name: "Read Office" } as any, superAdmin)
+            await db.query(`UPDATE "Company" SET id = 'c9' WHERE id = $1`, [made.id])
+            const person = (id: string, first: string, firstAr: string, last: string, lastAr: string | null) => db.query(
+                `INSERT INTO "User"(id, email, password, "firstName", "lastName", "firstNameAr", "lastNameAr", role, "lastDayOffResetYear", username, "companyId", "roleId")
+                 SELECT $1, $1 || '@x', 'p', $2, $4, $3, $5, 'EMPLOYEE', 2026, $1, 'c9', id FROM "Role" WHERE "companyId" = 'c9' AND "builtIn" = 'EMPLOYEE'`, [id, first, firstAr, last, lastAr])
+            await person("r1", "Mohammed", "محمد", "Karmozika", "كرمو زيكا")
+            await person("r2", "Mohammed", "محمد", "Samy", null)
+            await person("r3", "Mohamed", "محمد", "Samy", null)
+            await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "nameAr", "ownerNameAr", "mobileNumber", "locationName", "updatedAt") VALUES
+                ('r4', 'c9', 'Zaytouna Trading', 'MOHAMED', 'زيتونة للتجارة', 'محمد', '01001234577', 'HQ', now()),
+                ('r5', 'c9', 'Baraka', 'MOHAMED', NULL, 'محمد', '01001234578', 'HQ', now())`)
+            await relearnSpellings("c9", ["employee", "client", "owner", "company"])
+        })
+        const person = { to: "en", kind: "person" } as const
+
+        it("has the company's spellings first, the most used first, then the usual one where it isn't one of them", async () => {
+            const name = await suggestWithSpellings("c9", "محمد", person, ["employee"])
+            expect(name?.words).toEqual([{ text: "Mohammed", from: "company", uses: 2, others: [{ text: "Mohamed", from: "company", uses: 1 }] }])
+        })
+
+        it("counts a spelling saved in two places as one, written as the place that uses it most writes it", async () => {
+            const name = await suggestWithSpellings("c9", "محمد", person, ["employee", "owner"])
+            expect(name?.words).toEqual([{ text: "MOHAMED", from: "company", uses: 3, others: [{ text: "Mohammed", from: "company", uses: 2 }] }])
+        })
+
+        it("learns only from where the asker may", async () => {
+            const business = { to: "en", kind: "business" } as const
+            expect((await suggestWithSpellings("c9", "زيتونة", business, ["company"]))?.words).toEqual([{ text: "Zitona", from: "rules" }])
+            expect((await suggestWithSpellings("c9", "زيتونة", business, ["company", "client"]))?.words).toEqual([{ text: "Zaytouna", from: "company", uses: 1, others: [] }])
+        })
+
+        it("reads a spelling learned whole, of several words, and either way round", async () => {
+            expect((await suggestWithSpellings("c9", "محمد كرمو زيكا", person, ["employee"]))?.text).toBe("Mohammed Karmozika")
+            const back = await suggestWithSpellings("c9", "Mohammed Karmozika", { to: "ar", kind: "person" }, ["employee"])
+            expect(back?.words).toEqual([{ text: "محمد", from: "company", uses: 2, others: [] }, { text: "كرمو زيكا", from: "company", uses: 1, others: [] }])
+        })
+
+        it("is one company's, and is Nizmo's alone with no company or nowhere to learn from", async () => {
+            expect(await suggestWithSpellings("c1", "كرمو زيكا", person, ["employee"])).toEqual(suggestName("كرمو زيكا", person))
+            expect(await suggestWithSpellings(null, "محمد", person, ["employee"])).toEqual(suggestName("محمد", person))
+            expect(await suggestWithSpellings("c9", "محمد", person, [])).toEqual(suggestName("محمد", person))
+            expect(await suggestWithSpellings("c9", "Mohamed", person, ["employee"])).toBeNull()
         })
     })
 
