@@ -98,6 +98,14 @@ function businessParts(tokens: string[], from: "ar" | "en") {
     return parts
 }
 
+/**
+ * A name's own words, as they're looked up: a business's without its words
+ * for what it is and does, wherever they are (Codex review on PR 401).
+ */
+export function nameWords(tokens: string[], kind: SuggestFor["kind"], from: "ar" | "en"): string[] {
+    return kind === "business" ? businessParts(tokens, from).name : tokens
+}
+
 const article = (token: string) => /^(el|al)$/i.test(token)
 /** Whether some of an English name's words are a name of the list: its spellings, or El and one. */
 function listedInEnglish(tokens: string[]): string | undefined {

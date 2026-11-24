@@ -243,9 +243,12 @@ describe.skipIf(!ADMIN_URL)("a company's spellings, in Postgres", () => {
             await person("r1", "Mohammed", "محمد", "Karmozika", "كرمو زيكا")
             await person("r2", "Mohammed", "محمد", "Samy", null)
             await person("r3", "Mohamed", "محمد", "Samy", null)
+            // A person's name with a word a business's might have: مركز, Center.
+            await person("r7", "Nour", "نور", "Markaz", "مركز")
             await db.query(`INSERT INTO "Client"(id, "companyId", name, "ownerName", "nameAr", "ownerNameAr", "mobileNumber", "locationName", "updatedAt") VALUES
                 ('r4', 'c9', 'Zaytouna Trading', 'MOHAMED', 'زيتونة للتجارة', 'محمد', '01001234577', 'HQ', now()),
-                ('r5', 'c9', 'Baraka', 'MOHAMED', NULL, 'محمد', '01001234578', 'HQ', now())`)
+                ('r5', 'c9', 'Baraka', 'MOHAMED', NULL, 'محمد', '01001234578', 'HQ', now()),
+                ('r6', 'c9', 'Karmozika International', 'Samy', 'كرمو الدولية زيكا', NULL, '01001234579', 'HQ', now())`)
             await relearnSpellings("c9", ["employee", "client", "owner", "company"])
         })
         const person = { to: "en", kind: "person" } as const
@@ -264,6 +267,17 @@ describe.skipIf(!ADMIN_URL)("a company's spellings, in Postgres", () => {
             const business = { to: "en", kind: "business" } as const
             expect((await suggestWithSpellings("c9", "زيتونة", business, ["company"]))?.words).toEqual([{ text: "Zitona", from: "rules" }])
             expect((await suggestWithSpellings("c9", "زيتونة", business, ["company", "client"]))?.words).toEqual([{ text: "Zaytouna", from: "company", uses: 1, others: [] }])
+        })
+
+        it("reads a business's spelling with its business words left out, wherever they are (Codex review on PR 401)", async () => {
+            const name = await suggestWithSpellings("c9", "كرمو الدولية زيكا", { to: "en", kind: "business" }, ["company", "client"])
+            expect(name?.text).toBe("Karmozika International")
+            expect(name?.words[0]).toEqual({ text: "Karmozika", from: "company", uses: 1, others: [] })
+        })
+
+        it("leaves a person's words as they are, a business's word among them", async () => {
+            const name = await suggestWithSpellings("c9", "مركز", person, ["employee"])
+            expect(name?.words).toEqual([{ text: "Markaz", from: "company", uses: 1, others: [] }])
         })
 
         it("reads a spelling learned whole, of several words, and either way round", async () => {

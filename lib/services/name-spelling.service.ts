@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma'
 import type { Prisma } from '@prisma/client'
 import type { TwoLanguages } from '@/lib/names'
 import { spellingsOf, type Spelling, type SpellingSource } from '@/lib/names/spellings'
-import { arabicKey, englishKey, suggestName, type SavedSpellings, type SuggestFor, type Suggestion } from '@/lib/names/suggest'
+import { arabicKey, englishKey, nameWords, suggestName, type SavedSpellings, type SuggestFor, type Suggestion } from '@/lib/names/suggest'
 
 /**
  * What the company saves teaches it (LATER_CHANGES_PLAN.md §3.1, step 3a,
@@ -90,11 +90,12 @@ const LONGEST = 3
  * A name's other language, suggested, with the company's spellings first,
  * from where the asker may learn (spellingSourcesFor; LATER_CHANGES_PLAN.md
  * §3.1, step 3b, PR 401). Each word and each run of up to three is looked
- * up, as a spelling learned whole may be several; one saved in two places
- * is one, with the names of both. With no company, Nizmo's alone.
+ * up, as a spelling learned whole may be several, a business's words left
+ * out first as they are when it's learned; one saved in two places is one,
+ * with the names of both. With no company, Nizmo's alone.
  */
 export async function suggestWithSpellings(companyId: string | null, name: string, { to, kind }: Omit<SuggestFor, 'saved'>, sources: readonly SpellingSource[]): Promise<Suggestion | null> {
-    const tokens = name.split(/[\s\-]+/).filter(Boolean)
+    const tokens = nameWords(name.split(/[\s\-]+/).filter(Boolean), kind, to === 'en' ? 'ar' : 'en')
     const keys = new Set<string>()
     for (let i = 0; i < tokens.length; i++) {
         for (let length = 1; length <= LONGEST && i + length <= tokens.length; length++) {
