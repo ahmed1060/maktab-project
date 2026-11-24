@@ -181,13 +181,13 @@ describe("what the form may change", () => {
 
     // As the route does (NAME_CHANGE_REQUIRES_ADMIN): the form sends it as a
     // name change to be decided.
-    it("takes a name in English and in Arabic wherever it's saved here: not one's own asked for, nor a Super Admin's, kept once (PR 403)", () => {
+    it("takes a name in English and in Arabic, one's own asked for too (PR 404), but not a Super Admin's, kept once (PR 403)", () => {
         expect(access(ADMIN, { id: "admin", role: "ADMIN" }).bothNames).toBe(true)
         expect(access(ADMIN, someone("EMPLOYEE")).bothNames).toBe(true)
         expect(access(ADMIN, someone("TEAM_LEADER")).bothNames).toBe(true)
         expect(access(SUPER, someone("ADMIN")).bothNames).toBe(true)
-        expect(access(EMPLOYEE, { id: "emp", role: "EMPLOYEE" }).bothNames).toBe(false)
-        expect(access(LEADER, { id: "tl", role: "TEAM_LEADER" }).bothNames).toBe(false)
+        expect(access(EMPLOYEE, { id: "emp", role: "EMPLOYEE" }).bothNames).toBe(true)
+        expect(access(LEADER, { id: "tl", role: "TEAM_LEADER" }).bothNames).toBe(true)
         expect(access(SUPER, { id: "sa", role: "SUPER_ADMIN" }).bothNames).toBe(false)
         expect(access(SUPER, someone("SUPER_ADMIN")).bothNames).toBe(false)
         expect(access(ADMIN, someone("")).bothNames).toBe(false)

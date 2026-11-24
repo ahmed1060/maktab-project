@@ -519,7 +519,7 @@ describe("flagged check-ins on it (UI_PLAN.md §2.3, part 4c)", () => {
 describe("name changes on it (UI_PLAN.md §2.3, part 5a)", () => {
     const change = (fields: Partial<FeedRow> = {}): FeedRow => row({
         kind: "nameChange", id: "n1", what: "Mona Adel Fahmy", detail: null,
-        nameChange: { from: "Mona Adel", to: "Mona Adel Fahmy", note: null },
+        nameChange: { from: "Mona Adel", to: "Mona Adel Fahmy", fromAr: null, toAr: null, note: null },
         ...fields,
     })
     const client = readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")
@@ -531,6 +531,14 @@ describe("name changes on it (UI_PLAN.md §2.3, part 5a)", () => {
         expect(html).toContain("requests_kind_name_change")
         expect(html).toContain("requests_name_change_from")
         expect(html).toContain("Mona Adel")
+    })
+
+    it("shows the names it's from and for in both languages, the page's first, each in its own direction (PR 404)", () => {
+        expect(client).toContain("{ label: t('requests_name_change_from_label'), value: inBoth(viewing.nameChange.from, viewing.nameChange.fromAr) },")
+        expect(client).toContain("{ label: t('requests_name_change_to_label'), value: inBoth(viewing.nameChange.to, viewing.nameChange.toAr) },")
+        // Each in its own language, for a screen reader to say it as it's written.
+        expect(client).toContain('<span className="ui-name-lines">{bothLanguages(locale, { en, ar }).map(name => <bdi key={name} lang={hasArabic(name) ? \'ar\' : \'en\'}>{name}</bdi>)}</span>')
+        expect(readFileSync("components/ui/ui.css", "utf8")).toMatch(/\.ui-name-lines \{[^}]*flex-direction: column;/)
     })
 
     it("is approved or rejected, with a reason if there is one, by whoever may decide it", async () => {

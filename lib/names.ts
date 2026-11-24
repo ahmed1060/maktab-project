@@ -83,3 +83,36 @@ export function arabicBeside(name: string | undefined, given: string | undefined
     if (before && name === before.en && before.ar?.trim()) return undefined
     return name
 }
+
+/**
+ * A name in both languages, to show both, as a name change's details do
+ * (LATER_CHANGES_PLAN.md §3.1, step 4c, PR 404): the page's language first,
+ * each once, and only the ones it has.
+ */
+export function bothLanguages(locale: Locale, name: TwoLanguages): string[] {
+    const en = name.en.trim()
+    const ar = name.ar?.trim() ?? ""
+    const shown = locale === "ar" ? [ar, en] : [en, ar]
+    return shown.filter((one, at) => one && shown.indexOf(one) === at)
+}
+
+/** A request to change one's own name, as ProfileUpdateRequest keeps it. */
+export type AskedNames = { newFirstName: string; newLastName: string; newFirstNameAr?: string | null; newLastNameAr?: string | null }
+
+/**
+ * The names a name change saves once it's approved (LATER_CHANGES_PLAN.md
+ * §3.1, step 4c, PR 404): each in both languages, as it was asked. One asked
+ * before, with its English only, keeps an Arabic as PR 398 did
+ * (arabicBeside): the name itself where it's written in Arabic, or the one
+ * it had. `before` is the person's names as they are.
+ */
+export function approvedNames(asked: AskedNames, before?: PersonNames | null): { firstName: string; lastName: string; firstNameAr?: string; lastNameAr?: string } {
+    const firstNameAr = asked.newFirstNameAr ?? arabicBeside(asked.newFirstName, undefined, before ? { en: before.firstName, ar: before.firstNameAr } : undefined)
+    const lastNameAr = asked.newLastNameAr ?? arabicBeside(asked.newLastName, undefined, before ? { en: before.lastName, ar: before.lastNameAr } : undefined)
+    return {
+        firstName: asked.newFirstName,
+        lastName: asked.newLastName,
+        ...(firstNameAr !== undefined && { firstNameAr }),
+        ...(lastNameAr !== undefined && { lastNameAr }),
+    }
+}

@@ -671,12 +671,11 @@ describe("name changes", () => {
         expect(nameChangeWhere(leader, review)).toBeNull()
     })
 
-    it("are searched by the new name, and once decided by the note it was decided with", () => {
-        expect(nameChangeWhere(employee, { ...waiting, search: "sam" })).toMatchObject({
-            OR: [{ newFirstName: { contains: "sam", mode: "insensitive" } }, { newLastName: { contains: "sam", mode: "insensitive" } }],
-        })
+    it("are searched by the new name, in either language (PR 404), and once decided by the note it was decided with", () => {
+        const names = (search: string) => ["newFirstName", "newFirstNameAr", "newLastName", "newLastNameAr"].map(field => ({ [field]: { contains: search, mode: "insensitive" } }))
+        expect(nameChangeWhere(employee, { ...waiting, search: "sam" })).toMatchObject({ OR: names("sam") })
         expect(nameChangeWhere(employee, { ...waiting, show: "done", search: "id" })).toMatchObject({
-            OR: [{ newFirstName: { contains: "id", mode: "insensitive" } }, { newLastName: { contains: "id", mode: "insensitive" } }, { adminNote: { contains: "id", mode: "insensitive" } }],
+            OR: [...names("id"), { adminNote: { contains: "id", mode: "insensitive" } }],
         })
     })
 })
@@ -694,8 +693,15 @@ describe("a name change's row", () => {
         expect(nameChangeRow(admin, change())).toMatchObject({
             kind: "nameChange", id: "n1", who: { id: "e2", name: "Mona Adel" }, what: "Mona Adel Fahmy", detail: null, status: "PENDING",
             asked: asked.toISOString(), sortAt: asked.toISOString(), finished: null, mayDecide: true, mayDelete: false, mayWithdraw: false,
-            nameChange: { from: "Mona Adel", to: "Mona Adel Fahmy", note: null },
+            nameChange: { from: "Mona Adel", to: "Mona Adel Fahmy", fromAr: null, toAr: null, note: null },
         })
+    })
+
+    it("has the names in Arabic too, where it was asked with them (PR 404)", () => {
+        const both = change({ oldFirstNameAr: "منى", oldLastNameAr: "عادل", newFirstNameAr: "منى", newLastNameAr: "عادل فهمي" })
+        expect(nameChangeRow(admin, both).nameChange).toMatchObject({ from: "Mona Adel", fromAr: "منى عادل", to: "Mona Adel Fahmy", toAr: "منى عادل فهمي" })
+        // A name with only a part in Arabic has none whole.
+        expect(nameChangeRow(admin, change({ oldFirstNameAr: "منى", oldLastNameAr: null })).nameChange).toMatchObject({ fromAr: null })
     })
 
     it("may be decided by whoever decides name changes, never their own, and not once decided", () => {

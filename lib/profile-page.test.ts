@@ -326,7 +326,8 @@ describe("a name change waiting", () => {
     })
 
     it("is the form's, where it was a yellow box of its own making", () => {
-        expect(FORM).toContain("<NameChangeWaiting name={`${pendingRequest.newFirstName} ${pendingRequest.newLastName}`.trim()} requestId={pendingRequest.id} />")
+        // The name asked for, in the page's language (PR 404).
+        expect(FORM).toContain("<NameChangeWaiting name={askedName} requestId={pendingRequest.id} />")
         expect(FORM).not.toContain("--warn-bg-yellow-subtle")
         for (const key of ["name_change_request_pending", "requested_label"]) {
             expect(en, key).not.toHaveProperty(key)

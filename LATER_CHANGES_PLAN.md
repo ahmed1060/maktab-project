@@ -20,8 +20,9 @@ their screen test (§5, #369 to #395), and status counts on All users (§6,
 (#397, lowered to 30 characters in #402). Of their steps (§3.1), both
 languages are kept (#398), Nizmo's list of names and the rules are done
 (#399), and so are the company's spellings, learned (#400), and read for
-a name's suggestion (#401), and employees' names on Add employee (#402).
-An employee's page and one's own profile are next (#403).
+a name's suggestion (#401), and employees' names on Add employee (#402),
+on an employee's page and on one's own profile (#403). A request to change
+one's own name is next (#404).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -447,7 +448,7 @@ other filled in when one is typed, if that's possible.
      - the screen test follows a building block that asks the server
        itself, and lists the call on Add employee, open to anyone in
        the company;
-   - **4b, an employee's page and one's own profile (#403):**
+   - **4b, an employee's page and one's own profile (Done, #403):**
      - the two fields wherever a name is saved straight away: on an
        employee's page, for whoever may edit it, and on one's own
        profile where the name isn't asked for (an Admin's);
@@ -464,8 +465,27 @@ other filled in when one is typed, if that's possible.
        every form that saves a name sends both;
      - one's own name on an employee's or a team leader's footing stays
        a request until 4c, which brings the two fields to it;
-   - **4c, a request to change one's own name (#404):** the two fields
-     in the request, and its approval keeping both.
+   - **4c, a request to change one's own name (#404):**
+     - the two fields on one's own profile on an employee's or a team
+       leader's footing too, where a change to the name is asked for:
+       changed, both are needed, each in its own letters, and the
+       request carries both;
+     - the rest of their profile is saved as before while their name
+       misses a language, with no note: it's asked for when they change
+       their name, and whoever may edit their page may add it there
+       (4b). The owner chose this on 2026-11-24: every employee and team
+       leader in production had no Arabic yet, and each would otherwise
+       have had to ask for it before saving anything else;
+     - the request keeps each name in both languages, and the ones it's
+       from: four columns added, empty for a request asked before;
+     - the server takes a request only with both, each in its own
+       letters, from one character to a person's name's limit, as every
+       name field takes it (it asked for two at least before), and
+       refuses one that changes neither;
+     - approved, the name is saved in both languages, and the company
+       learns it. A request asked before is approved as #398 did;
+     - on the Requests page, a name change's details show the names
+       it's from and for in both languages, and its search finds either.
 5. **Employees' names in the page's language** on the Employees page,
    with the ones still missing a language, and its search finding
    either.
@@ -1205,3 +1225,8 @@ same day as drawn in the All users: status badges canvas
   review, a suggestion longer than a name may be is asked to be
   shortened, and a new list of spellings starts with nothing under the
   keys. An employee's page and one's own profile next, as #403.
+- **2026-11-24:** #403 merged: each name in English and in Arabic on an
+  employee's page and one's own profile (§3.1, step 4b), with the note
+  above a name missing a language as a building block. For a request to
+  change one's own name, next as #404, the owner chose that the rest of
+  one's own profile is saved as before while the name misses a language.

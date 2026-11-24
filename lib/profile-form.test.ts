@@ -125,6 +125,12 @@ describe("what's checked before anything is sent", () => {
             firstName: "name_required_en", firstNameAr: "name_required_ar", lastName: "name_required_en", lastNameAr: "name_required_ar",
         })
     })
+
+    it("asks nothing of a name that isn't sent, one's own asked for and left as it is, saved before in Arabic only (PR 404)", async () => {
+        const { profileErrors } = await import("@/lib/profile-form")
+        // Its English field is empty, as its English column held the Arabic.
+        expect(profileErrors({ firstName: "", lastName: "", password: "", names: null })).toEqual({})
+    })
 })
 
 describe("what the server refuses, under the field it's about", () => {
@@ -222,11 +228,12 @@ describe("the form, on the building blocks", () => {
         for (const key of ["name_missing_ar_note", "name_missing_en_note", "name_missing_both_note"]) expect(ar[key as keyof typeof ar], key).toBeTruthy()
     })
 
-    it("asks for one's own name to be approved, where it is, before the names", async () => {
-        const html = await form({ access: { ...ACCESS, own: true, nameByRequest: true } })
+    it("asks for one's own name to be approved, where it is, before the names, in both languages (PR 404)", async () => {
+        const html = await form({ access: { ...ACCESS, own: true, nameByRequest: true, bothNames: true }, values: { ...VALUES, firstNameAr: "", lastNameAr: "" } })
         const note = html.indexOf(`<p class="ui-hint">${esc(en.profile_name_by_request)}</p>`)
         expect(note).toBeGreaterThan(-1)
-        expect(note).toBeLessThan(html.indexOf(`>${en.first_name_label}</label>`))
+        expect(note).toBeLessThan(html.indexOf(`<legend class="ui-name-fields-label">${en.first_name_label}</legend>`))
+        expect(html).toContain('name="firstNameAr"')
         expect(await form()).not.toContain(esc(en.profile_name_by_request))
     })
 
@@ -385,7 +392,8 @@ describe("the profile, wired to its form", () => {
         expect(submit.indexOf("wrongAt(")).toBeLessThan(submit.indexOf("setConfirming('UPDATE')"))
         // In the order the page shows them, each name's in its language first (PR 403).
         expect(FORM).toContain("const first = firstError(errors as Record<string, string>, inPageOrder(PROFILE_FIELDS, locale)) as ProfileField | null")
-        expect(submit).toContain("names: access.bothNames ? { first: { en: firstName, ar: firstNameAr }, last: { en: lastName, ar: lastNameAr } } : undefined,")
+        // One's own asked for, only once changed: the rest is saved as before (PR 404).
+        expect(submit).toContain("names: !access.bothNames ? undefined : !access.nameByRequest || nameChanged ? { first: { en: firstName, ar: firstNameAr }, last: { en: lastName, ar: lastNameAr } } : null,")
         // Said with which name it's about, and its limit (PR 403).
         expect(submit).toContain("wrongAt(Object.fromEntries(Object.entries(wrong).map(([field, key]) => [field, mistakeText(t, locale, field, key)])))")
         expect(FORM).toContain('document.querySelector<HTMLElement>(`[name="${focusOn.field}"]`)?.focus()')
@@ -407,8 +415,8 @@ describe("the profile, wired to its form", () => {
             "firstName: access.nameByRequest ? undefined : firstName,",
             "lastName: access.nameByRequest ? undefined : lastName,",
             // Each in Arabic too, where it keeps both (PR 403).
-            "firstNameAr: access.bothNames ? firstNameAr : undefined,",
-            "lastNameAr: access.bothNames ? lastNameAr : undefined,",
+            "firstNameAr: access.bothNames && !access.nameByRequest ? firstNameAr : undefined,",
+            "lastNameAr: access.bothNames && !access.nameByRequest ? lastNameAr : undefined,",
             // One's own is changed in Security settings: it's not sent.
             "email: access.changeEmail ? email : undefined,",
             "salary: access.changeSalary ? parseFloat(salary) || 0 : undefined,",
@@ -418,10 +426,33 @@ describe("the profile, wired to its form", () => {
             "teamLeaderId: access.teamLeader ? (teamLeaderId || null) : undefined,",
             "password: access.changePassword && password ? password : undefined,",
         ]) expect(payload, sent).toContain(sent)
-        expect(FORM).toContain("if (access.nameByRequest && isNameChanged) {")
+        expect(FORM).toContain("if (access.nameByRequest && nameChanged) {")
         // Their names in Arabic, read for the form (PR 403).
         const read = readFileSync("app/api/users/route.ts", "utf8")
         expect(read.slice(read.indexOf("const user = await prisma.user.findUnique({"), read.indexOf("const user = await prisma.user.findUnique({") + 400)).toContain("firstNameAr: true, lastNameAr: true,")
+    })
+
+    it("asks for one's own name, changed, in both languages, and says a refusal under its field (PR 404)", () => {
+        // Changed in either language, from the names as they were loaded.
+        expect(FORM).toContain("const nameChanged = firstName !== savedNames.firstName || firstNameAr !== savedNames.firstNameAr || lastName !== savedNames.lastName || lastNameAr !== savedNames.lastNameAr")
+        const ask = FORM.slice(FORM.indexOf("if (access.nameByRequest && nameChanged) {"), FORM.indexOf("method: 'PUT'"))
+        expect(ask).toContain("body: JSON.stringify({ newFirstName: firstName, newFirstNameAr: firstNameAr, newLastName: lastName, newLastNameAr: lastNameAr }),")
+        expect(ask).toContain("const refusedName = askedNameRefused(answer)")
+        expect(ask).toContain("if (refusedName) {")
+        expect(ask).toContain("wrongAt({ [refusedName.field]: mistakeText(t, locale, refusedName.field, refusedName.key) })")
+        // Asked for, the fields are the names as they are until it's approved.
+        expect(ask).toContain("setFirstNameAr(savedNames.firstNameAr)")
+        expect(ask).toContain("setLastNameAr(savedNames.lastNameAr)")
+        // No note on one's own asked for, whose rest is saved as before (the owner's choice, 2026-11-24).
+        expect(FORM).toContain("setNamesMissing(both && !nameAskedFor(own, employee.role) ? missingLanguages(")
+        // Their session keeps the name as it's kept, neither the one asked for
+        // nor an empty English field (Codex review on PR 404).
+        const session = FORM.slice(FORM.indexOf("await update({"), FORM.indexOf("showToast(t('profile_updated_success')"))
+        expect(session).toContain("firstName: access.nameByRequest ? originalFirstName : firstName,")
+        expect(session).toContain("lastName: access.nameByRequest ? originalLastName : lastName,")
+        // The name asked for, in the page's language.
+        expect(FORM).toContain("const askedName = pendingRequest ? personName({ firstName: pendingRequest.newFirstName, lastName: pendingRequest.newLastName, firstNameAr: pendingRequest.newFirstNameAr, lastNameAr: pendingRequest.newLastNameAr }, locale) : ''")
+        expect(FORM.match(/<NameChangeWaiting name=\{askedName\}/g)).toHaveLength(2)
     })
 
     // Reached at its address by someone who may not edit them, as the notice

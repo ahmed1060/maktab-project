@@ -156,6 +156,9 @@ export type NameChangeFacts = {
     /** The name it was asked from, and the one it's for. */
     from: string
     to: string
+    /** Each in Arabic, where it was asked with both parts (PR 404). */
+    fromAr: string | null
+    toAr: string | null
     /** The note it was decided with, if any. */
     note: string | null
 }

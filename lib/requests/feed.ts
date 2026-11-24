@@ -1053,9 +1053,10 @@ export function nameChangeWhere(v: Viewer, q: Pick<FeedQuery, "tab" | "show" | "
     }
     where.status = q.show === "done" ? { in: DECIDED } : "PENDING"
     if (q.search) {
-        // The name it's for; once decided, the note it was decided with too.
+        // The name it's for, in either language (PR 404); once decided, the
+        // note it was decided with too.
         const words = { contains: q.search, mode: "insensitive" }
-        where.OR = [{ newFirstName: words }, { newLastName: words }, ...(q.show === "done" ? [{ adminNote: words }] : [])]
+        where.OR = [{ newFirstName: words }, { newFirstNameAr: words }, { newLastName: words }, { newLastNameAr: words }, ...(q.show === "done" ? [{ adminNote: words }] : [])]
     }
     return where
 }
@@ -1067,6 +1068,11 @@ type NameChangeRequest = {
     oldLastName: string
     newFirstName: string
     newLastName: string
+    /** Each in Arabic too, where it was asked with them (PR 404). */
+    oldFirstNameAr?: string | null
+    oldLastNameAr?: string | null
+    newFirstNameAr?: string | null
+    newLastNameAr?: string | null
     status: string
     adminNote: string | null
     createdAt: Date
@@ -1099,8 +1105,17 @@ export function nameChangeRow(v: Viewer, r: NameChangeRequest): FeedRow {
         mayDecide: waits && can(v, "profile_requests.review", target),
         mayDelete: false,
         mayWithdraw: false,
-        nameChange: { from: `${r.oldFirstName} ${r.oldLastName}`.trim(), to, note: r.adminNote },
+        nameChange: {
+            from: `${r.oldFirstName} ${r.oldLastName}`.trim(), fromAr: wholeName(r.oldFirstNameAr, r.oldLastNameAr),
+            to, toAr: wholeName(r.newFirstNameAr, r.newLastNameAr),
+            note: r.adminNote,
+        },
     }
+}
+
+/** A name in Arabic, first and last, where it has both: a part alone isn't the name. */
+function wholeName(first: string | null | undefined, last: string | null | undefined): string | null {
+    return first?.trim() && last?.trim() ? `${first.trim()} ${last.trim()}` : null
 }
 
 const nameChange: Source = {

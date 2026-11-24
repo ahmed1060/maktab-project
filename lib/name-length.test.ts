@@ -34,9 +34,11 @@ describe("a name, up to 30 characters", () => {
     })
 
     it("is what the server takes when someone asks for their own name to be changed", () => {
-        expect(createProfileRequestSchema.safeParse({ newFirstName: thirty, newLastName: thirty }).success).toBe(true)
-        expect(createProfileRequestSchema.safeParse({ newFirstName: thirtyOne, newLastName: "Ali" }).success).toBe(false)
-        expect(createProfileRequestSchema.safeParse({ newFirstName: "Mona", newLastName: thirtyOne }).success).toBe(false)
+        // Each in Arabic too (PR 404), as long as its English may be.
+        const inArabic = { newFirstNameAr: "منى", newLastNameAr: "علي" }
+        expect(createProfileRequestSchema.safeParse({ ...inArabic, newFirstName: thirty, newLastName: thirty }).success).toBe(true)
+        expect(createProfileRequestSchema.safeParse({ ...inArabic, newFirstName: thirtyOne, newLastName: "Ali" }).success).toBe(false)
+        expect(createProfileRequestSchema.safeParse({ ...inArabic, newFirstName: "Mona", newLastName: thirtyOne }).success).toBe(false)
     })
 
     it("is what a name too long is told, in both languages", () => {
