@@ -689,8 +689,19 @@ other filled in when one is typed, if that's possible.
        which names the PDF, in the client's page's copy. The client's
        area's copy names the client as the area's frame does, from the
        session, which the client's area's step changes.
+   - **8h. Attendance's days and punches (#419):** the people it lists
+     (the person select its tabs share, in the page's order), the days
+     tab's rows, the punches tab's rows and its flagged punches, and Add
+     punch's people.
+   - **8i. Attendance's exceptions, requests and face tabs,** next: each
+     row's person, the decided list, a missing-day's person, and the face
+     tab's people.
+   - **8j. Attendance's import and numbers tabs, and its settings:** the
+     terminal numbers' people and their picker, the people a policy change
+     would move, the work calendar's people, the registered phones, and
+     the people a work location is for.
    - **Then, by area,** one PR or more each:
-     attendance, requests, payroll with the costs and charges lists, the
+     requests, payroll with the costs and charges lists, the
      client's area, and last, names written from then on: notifications
      and messages, who last changed a status, a cost's or a location's
      author, and one's own name in the account menu.
