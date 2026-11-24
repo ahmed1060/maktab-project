@@ -77,7 +77,7 @@ export default function TaskEditDetailsModal({ isOpen, onClose, onSubmit, editFo
                     onChange={next => { setEditForm({ ...editForm, ...next }); setEditFieldErrors({ ...editFieldErrors, locationId: '' }) }}
                     companyId={task.companyId}
                     current={task.place && task.locationId ? { id: task.locationId, label: locationLabel(task.place.name, task.place.client?.name) } : null}
-                    currentClient={task.client && task.clientId ? { id: task.clientId, name: task.client.name } : null}
+                    currentClient={task.client && task.clientId ? { id: task.clientId, name: task.client.name, nameAr: task.client.nameAr } : null}
                     error={editFieldErrors.locationId || undefined}
                 />
                 {/* Who it's for changes with Transfer task, not here. */}

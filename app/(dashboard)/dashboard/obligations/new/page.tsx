@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { PlusIcon } from '@phosphor-icons/react/ssr'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -14,7 +14,7 @@ import AccessDenied from '@/components/AccessDenied'
 import { fetchRetrying } from '@/lib/swr-fetcher'
 import { useModules } from '@/lib/useModules'
 import { firstError } from '@/lib/form-errors'
-import AssigneeChecklist from '@/components/forms/AssigneeChecklist'
+import AssigneeChecklist, { assigneesByRole } from '@/components/forms/AssigneeChecklist'
 import { Button, ButtonLink, Card, Choice, Field, Page, PageHeader, TextArea, TextInput } from '@/components/ui'
 
 /** The longest an obligation's title and description may be, as this form takes them. */
@@ -37,6 +37,9 @@ export default function NewObligationPage() {
     const [difficulty, setDifficulty] = useState('')
     const [recurrence, setRecurrence] = useState<(typeof RECURRENCES)[number]>('ONE_TIME')
     const [users, setUsers] = useState<any[]>([])
+    // Employees, then team leaders, Admins and Super Admins, each by name, in
+    // the page's order (PR 412).
+    const ordered = useMemo(() => assigneesByRole(users, locale), [users, locale])
     // Whether the people have come: the list says it's loading until they
     // have, rather than that there's no one, and says so if they couldn't.
     const [people, setPeople] = useState<'loading' | 'loaded' | 'failed'>('loading')
@@ -64,25 +67,7 @@ export default function NewObligationPage() {
                 return res.json()
             })
             .then(result => {
-                const usersList = Array.isArray(result?.data) ? result.data : []
-                // Sort by role: EMPLOYEE -> TEAM_LEADER -> ADMIN -> SUPER_ADMIN
-                const sortedData = usersList.sort((a: any, b: any) => {
-                    const rolePriority: { [key: string]: number } = {
-                        'EMPLOYEE': 1,
-                        'TEAM_LEADER': 2,
-                        'ADMIN': 3,
-                        'SUPER_ADMIN': 4
-                    }
-                    const priorityA = rolePriority[a.role] || 99
-                    const priorityB = rolePriority[b.role] || 99
-
-                    if (priorityA !== priorityB) {
-                        return priorityA - priorityB
-                    }
-                    // Secondary sort by name if same role
-                    return a.firstName.localeCompare(b.firstName)
-                })
-                setUsers(sortedData)
+                setUsers(Array.isArray(result?.data) ? result.data : [])
                 setPeople('loaded')
             })
             .catch(() => setPeople('failed'))
@@ -200,7 +185,7 @@ export default function NewObligationPage() {
                     {/* Who it's for: as many as it needs, found by name (DESIGN.md §5.3). */}
                     <AssigneeChecklist
                         id="field-assigneeIds"
-                        people={people === 'loading' ? undefined : people === 'failed' ? null : users}
+                        people={people === 'loading' ? undefined : people === 'failed' ? null : ordered}
                         onRetry={() => { setRetrying(true); setTries(n => n + 1) }}
                         retrying={retrying}
                         value={assigneeIds}

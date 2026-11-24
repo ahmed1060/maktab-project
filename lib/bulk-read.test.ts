@@ -185,7 +185,7 @@ describe("Create task, reading the file", () => {
     // before its people and clients had loaded, and matched no one.
     it("waits for the people and clients the rows name before reading them", () => {
         const page = PAGE()
-        expect(page).toContain("const peopleNow = usersResult ? users : peopleIn(await retryUsers().catch(() => undefined))")
+        expect(page).toContain("const peopleNow = usersResult ? users : peopleIn(await retryUsers().catch(() => undefined), locale)")
         expect(page).toContain("const clientsNow = !clientsKey ? NO_CLIENTS : clientsIn(clientsResult ?? await retryClients().catch(() => undefined))")
         expect(page).toContain("if (!peopleNow) return showToast(t('bulk_people_load_failed'), 'error')")
         expect(page).toContain("if (!clientsNow) return showToast(t('bulk_clients_load_failed'), 'error')")

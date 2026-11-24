@@ -55,6 +55,39 @@ export function personName(person: PersonNames, locale: Locale): string {
     return [first, last].filter(Boolean).join(" ")
 }
 
+/** Found by their name in either language, any case (LATER_CHANGES_PLAN.md §3.1, step 8a, PR 412). */
+export function personMatches(person: PersonNames, search: string): boolean {
+    const wanted = search.trim().toLocaleLowerCase()
+    return [personName(person, "en"), personName(person, "ar")].some(name => name.toLocaleLowerCase().includes(wanted))
+}
+
+/** Their name in Arabic, or nothing while they have none. */
+const arabicName = (person: PersonNames) => (person.firstNameAr?.trim() ? personName(person, "ar") : "")
+
+/**
+ * Two people in the page's order (PR 412), for a list ordered by something
+ * else first: on an Arabic page, one with an Arabic name before one without,
+ * and two with one alphabetically in Arabic. Otherwise 0: as they came.
+ */
+export function byNameIn(locale: Locale): (a: PersonNames, b: PersonNames) => number {
+    return (a, b) => {
+        if (locale !== "ar") return 0
+        const [inArabicA, inArabicB] = [arabicName(a), arabicName(b)]
+        if (inArabicA && inArabicB) return inArabicA.localeCompare(inArabicB, "ar")
+        return inArabicA ? -1 : inArabicB ? 1 : 0
+    }
+}
+
+/**
+ * People in the page's order (PR 412), as the Clients page orders clients
+ * (lib/client-list.ts): on an Arabic page, the ones with an Arabic name
+ * first, alphabetically in Arabic, then the rest as they came, by their
+ * English. An English page keeps the order they came in.
+ */
+export function peopleInOrder<P extends PersonNames>(people: readonly P[], locale: Locale): P[] {
+    return [...people].sort(byNameIn(locale))
+}
+
 /**
  * The languages a record's names are missing, each once, English first: the
  * English where its column is empty or holds a name written in Arabic, and

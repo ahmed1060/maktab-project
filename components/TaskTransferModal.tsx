@@ -3,6 +3,7 @@
 import { useId, useState } from 'react'
 import useSWR from 'swr'
 import AssigneeChecklist, { type Assignable } from '@/components/forms/AssigneeChecklist'
+import { personName } from '@/lib/names'
 import { Button, Dialog, Field, Select } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { fetcher } from '@/lib/swr-fetcher'
@@ -77,9 +78,10 @@ export default function TaskTransferModal({ taskId, isOpen, onClose, people, onR
     const failed = !!error && !current
 
     const money = (n: number) => `${n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${t('egp')}`
+    // In the page's language, or the one they have (PR 412).
     const nameOf = (person: string) => {
         const p = people?.find(x => x.id === person)
-        return p ? `${p.firstName} ${p.lastName}`.trim() : ''
+        return p ? personName(p, locale) : ''
     }
     const line = (m: TransferPreview['moves'][number]) => {
         const [withAmount, without] = LINE[m.what === 'PASSED' && !m.to ? 'PICK' : m.what]

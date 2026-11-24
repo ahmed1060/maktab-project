@@ -5,6 +5,7 @@ import { useCompany } from '@/context/CompanyContext'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { useLanguage } from '@/context/LanguageContext'
 import { companyNameIn } from '@/lib/company-name'
+import { clientName, clientsInOrder, type ClientName } from '@/lib/client-list'
 import type { ClientOption } from './types'
 
 /**
@@ -12,7 +13,7 @@ import type { ClientOption } from './types'
  * location (CLIENTS_PLAN.md §2.4): a Super Admin's chosen company's, or every
  * company's, each with its company named. Not another company's once a
  * Super Admin picks another: a location could be added to the last one's
- * client.
+ * client. Each in the page's language, in the page's order (PR 412).
  */
 export function useClientOptions(on: boolean, withArchived = false) {
     const { selectedCompanyId } = useCompany()
@@ -24,9 +25,9 @@ export function useClientOptions(on: boolean, withArchived = false) {
     const url = `/api/clients${params.size ? `?${params}` : ''}`
     const { data: scoped, error, isLoading, isValidating, mutate } = useSWR(on ? scopedKey(url, selectedCompanyId) : null, scopedFetcher)
     const failed = loadFailed(scoped, error, on ? url : null)
-    const rows = failed ? undefined : forScope<{ data: { id: string; name: string; company?: { name: string; nameAr?: string | null }; archivedAt?: string | null }[] }>(scoped, selectedCompanyId)
-    // Each client's company in the page's language (PR 411).
-    const clients: ClientOption[] = (rows?.data ?? []).map(c => ({ id: c.id, name: c.name, company: c.company ? companyNameIn(locale, c.company) : undefined, archived: !!c.archivedAt }))
+    const rows = failed ? undefined : forScope<{ data: (ClientName & { id: string; company?: { name: string; nameAr?: string | null }; archivedAt?: string | null })[] }>(scoped, selectedCompanyId)
+    // Each client's company in the page's language (PR 411), and the client too (PR 412).
+    const clients: ClientOption[] = clientsInOrder(rows?.data ?? [], locale).map(c => ({ id: c.id, name: clientName(c, locale), company: c.company ? companyNameIn(locale, c.company) : undefined, archived: !!c.archivedAt }))
     return {
         clients,
         loading: on && isLoading && !rows,

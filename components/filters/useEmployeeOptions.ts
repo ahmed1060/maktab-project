@@ -7,8 +7,9 @@ import { useCompany } from '@/context/CompanyContext'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
 import type { SelectOption } from '@/components/ui'
+import { peopleInOrder, personName, type PersonNames } from '@/lib/names'
 
-type Person = { id: string; firstName: string; lastName: string; role: string }
+type Person = PersonNames & { id: string; role: string }
 
 /**
  * A list's employee filter: All employees, then the people whose items it
@@ -17,9 +18,10 @@ type Person = { id: string; firstName: string; lastName: string; role: string }
  * `on` is false, as for someone who sees only their own, nor for whoever may
  * not see employees, whom the list would refuse: then there are no options,
  * and the list shows no person filter (UI_PLAN.md, 2026-11-22; PR 368).
+ * Each in the page's language, in the page's order (PR 412).
  */
 export function useEmployeeOptions(on = true): SelectOption[] | null {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const { data: session } = useSession()
     const { selectedCompanyId } = useCompany()
     const { can } = useCan()
@@ -31,6 +33,6 @@ export function useEmployeeOptions(on = true): SelectOption[] | null {
     return [
         { value: '', label: t('all_employees') },
         // Admins are assigned no tasks and add no costs of their own.
-        ...people.filter(p => p.role !== 'ADMIN' && p.role !== 'SUPER_ADMIN').map(p => ({ value: p.id, label: `${p.firstName} ${p.lastName}`.trim() })),
+        ...peopleInOrder(people.filter(p => p.role !== 'ADMIN' && p.role !== 'SUPER_ADMIN'), locale).map(p => ({ value: p.id, label: personName(p, locale) })),
     ]
 }

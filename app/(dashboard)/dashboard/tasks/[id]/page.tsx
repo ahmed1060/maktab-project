@@ -29,7 +29,8 @@ export default async function TaskDetailPage(props: { params: Promise<{ id: stri
             assignees: {
                 select: { id: true, firstName: true, lastName: true, status: true, role: true }
             },
-            client: { select: { name: true } },
+            // In Arabic too, for Edit details' client picker (PR 412).
+            client: { select: { name: true, nameAr: true } },
             // Where it's done (CLIENTS_PLAN.md §2.3): its name and pin as they
             // are now, a pin corrected since included. A task from before
             // locations has none, and shows its own text.

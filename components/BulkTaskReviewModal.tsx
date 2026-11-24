@@ -6,6 +6,8 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import DateTimePicker from '@/components/DateTimePicker'
 import AssigneeChecklist, { type Assignable } from '@/components/forms/AssigneeChecklist'
+import { personName } from '@/lib/names'
+import { clientName, clientsInOrder } from '@/lib/client-list'
 import { Button, DataList, Dialog, Field, Icon, ListCard, Select, TextArea, TextInput, visibleRow, type Column, type SelectOption } from '@/components/ui'
 import { useNow } from '@/lib/useNow'
 import { useAdjustOnChange } from '@/lib/useAdjustOnChange'
@@ -21,7 +23,7 @@ import {
     TASK_DIFFICULTY_MAX, type BulkField, type BulkMistake, type BulkMistakes, type BulkRow, type RemovedRow,
 } from '@/lib/bulk-tasks'
 
-type Client = { id: string; name: string }
+type Client = { id: string; name: string; nameAr?: string | null }
 type Checked = { row: BulkRow; mistakes: BulkMistakes; wrong: boolean }
 
 /** What's wrong, then what the file had, kept apart from the sentence's direction. */
@@ -161,9 +163,14 @@ export default function BulkTaskReviewModal({ isOpen, onClose, rows, onRowsChang
         router.push('/dashboard/tasks')
     }
 
+    // Each person and client in the page's language, or the one they have (PR 412).
     const nameOf = (id: string) => {
         const person = people?.find(p => p.id === id)
-        return person ? [person.firstName, person.lastName].filter(Boolean).join(' ') : null
+        return person ? personName(person, locale) : null
+    }
+    const clientOf = (id: string | null) => {
+        const client = id ? clients.find(c => c.id === id) : undefined
+        return client && clientName(client, locale)
     }
     const names = (row: BulkRow) => {
         const known = row.assigneeIds.map(nameOf).filter((name): name is string => !!name)
@@ -172,7 +179,7 @@ export default function BulkTaskReviewModal({ isOpen, onClose, rows, onRowsChang
     const deadline = (row: BulkRow) => dateTimeText(row.deadline, locale) ?? <span className="ui-bulk-unset">{t('bulk_none_yet')}</span>
     const place = (row: BulkRow) => {
         const location = places.find(p => p.id === row.locationId)
-        const client = clients.find(c => c.id === row.clientId)?.name
+        const client = clientOf(row.clientId)
         const text = location ? locationLabel(location.name, client) : client
         return text ? <bdi>{text}</bdi> : <span className="ui-bulk-unset">{t('bulk_none_yet')}</span>
     }
@@ -305,16 +312,17 @@ export function BulkRowFields({ row, onChange, people, onRetryPeople, retryingPe
         label: [p.name, p.isHq && t('locations_hq'), p.needsPin && t('task_location_needs_pin')].filter(Boolean).join(' · '),
         disabled: p.needsPin,
     })
-    const clientName = clients.find(c => c.id === row.clientId)?.name ?? ''
+    // Each client in the page's language, in the page's order (PR 412).
+    const picked = clients.find(c => c.id === row.clientId)
     const groups = [
-        { label: t('task_location_client_group').replace('{name}', clientName), options: row.clientId ? places.filter(p => p.clientId === row.clientId).map(optionOf) : [] },
+        { label: t('task_location_client_group').replace('{name}', picked ? clientName(picked, locale) : ''), options: row.clientId ? places.filter(p => p.clientId === row.clientId).map(optionOf) : [] },
         { label: t('task_location_shared_group'), options: places.filter(p => !p.clientId).map(optionOf) },
     ]
     // A client the file named that isn't one stays shown, as not found, until one is picked.
     const clientOptions: SelectOption[] = [
         ...(row.unknownClient ? [{ value: '?', label: t('bulk_client_not_found').replace('{text}', `\u2068${row.unknownClient}\u2069`), disabled: true }] : []),
         { value: '', label: t('task_no_client') },
-        ...clients.map(c => ({ value: c.id, label: c.name })),
+        ...clientsInOrder(clients, locale).map(c => ({ value: c.id, label: clientName(c, locale) })),
     ]
 
     return (

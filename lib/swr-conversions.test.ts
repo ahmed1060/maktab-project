@@ -39,9 +39,11 @@ describe("lists read from SWR are sorted on a copy", () => {
     })
 
     it("the assignee list spreads into a new array before sorting", () => {
+        // Sorted by role and name in the checklist's own helper since PR 412.
         const src = code("app/(dashboard)/dashboard/tasks/new/page.tsx")
-        expect(src).toContain("[...list].sort(")
+        expect(src).toContain("return assigneesByRole(list, locale)")
         expect(src).not.toMatch(/\blist\s*\.sort\(/)
+        expect(code("components/forms/AssigneeChecklist.tsx")).toContain("return [...people].sort(")
     })
 })
 

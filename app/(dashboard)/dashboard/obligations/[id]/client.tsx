@@ -6,6 +6,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import SafeDate from '@/components/SafeDate'
 import AssigneeChecklist, { type Assignable } from '@/components/forms/AssigneeChecklist'
+import { peopleInOrder } from '@/lib/names'
 import { Button, Card, Details, Dialog, DueDate, EmptyState, FileChip, FileChips, FilePicker, Page, PageHeader, RowMenu, StatusBadge, taskStatusTone, type MenuItem } from '@/components/ui'
 import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/session-expired'
 import { RECURRENCE_STYLE } from '@/lib/recurrence'
@@ -284,7 +285,8 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
             .catch(() => setLoaded(null))
             .finally(() => setRetrying(false))
     }, [reassigning, tries, obligation.companyId])
-    const people = loaded
+    // In the page's order (PR 412).
+    const people = loaded && peopleInOrder(loaded, locale)
 
     const handleReassign = async () => {
         if (newAssigneeIds.length === 0) return

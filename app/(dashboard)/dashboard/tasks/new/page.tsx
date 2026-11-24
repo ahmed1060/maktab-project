@@ -12,7 +12,8 @@ import TaskPlacePicker, { type TaskPlace } from '@/components/locations/TaskPlac
 import { NamePicker } from '@/components/ui'
 import { TASK_TITLE_MAX, TASK_DESCRIPTION_MAX, TASK_FIELDS } from '@/lib/new-task'
 import { firstError } from '@/lib/form-errors'
-import AssigneeChecklist from '@/components/forms/AssigneeChecklist'
+import AssigneeChecklist, { assigneesByRole } from '@/components/forms/AssigneeChecklist'
+import type { Locale } from '@/lib/translations'
 import { pickIn, type CompanyPick } from '@/lib/saved-lists'
 import { useListNames } from '@/components/lists/useListNames'
 import { sheetLocations, type BulkPlace } from '@/lib/bulk-locations'
@@ -39,7 +40,8 @@ const NO_CLIENTS: any[] = []
 /**
  * Who can be assigned, from the names-only list's answer (PR 371), nothing
  * before it's come: employees, then team leaders, Admins and Super Admins,
- * each by name. On a copy, as the answer belongs to SWR's cache.
+ * each by name, in the page's order (PR 412). On a copy, as the answer
+ * belongs to SWR's cache.
  *
  * No filtering here. This used to hide Admins from a Team Leader's list,
  * which meant the request that fetched it had already returned them: every
@@ -49,20 +51,14 @@ const NO_CLIENTS: any[] = []
  * Filtering in the browser was never a restriction: it decided what a
  * picker showed, not what a request could contain.
  */
-function peopleIn(result: any): any[] | undefined {
+function peopleIn(result: any, locale: Locale): any[] | undefined {
     if (!result) return undefined
     const list = result?.data?.data || result?.data || []
     if (!Array.isArray(list)) {
         console.error('Invalid users data received:', result)
         return []
     }
-    const rolePriority: { [key: string]: number } = { EMPLOYEE: 1, TEAM_LEADER: 2, ADMIN: 3, SUPER_ADMIN: 4 }
-    return [...list].sort((a: any, b: any) => {
-        const priorityA = rolePriority[a.role] || 99
-        const priorityB = rolePriority[b.role] || 99
-        if (priorityA !== priorityB) return priorityA - priorityB
-        return a.firstName.localeCompare(b.firstName)
-    })
+    return assigneesByRole(list, locale)
 }
 
 /** The company's clients, from /api/clients's answer, nothing before it's come. */
@@ -109,7 +105,7 @@ export default function NewTaskPage() {
     // the previous company's people in the picker if that answer arrives last.
     const usersKey = session ? assigneesUrl('tasks.create', selectedCompanyId) : null
     const { data: usersResult, error: usersError, mutate: retryUsers, isValidating: retryingUsers } = useSWR(usersKey, fetcher)
-    const users: any[] = useMemo(() => peopleIn(usersResult) ?? [], [usersResult])
+    const users: any[] = useMemo(() => peopleIn(usersResult, locale) ?? [], [usersResult, locale])
 
     // Super Admin needs a company selected — same as the clients page itself,
     // no fetch at all until then rather than a 400.
@@ -210,7 +206,7 @@ export default function NewTaskPage() {
         // The people and clients the rows name, before they're read: a file
         // picked as the page opens was read before they had loaded, and its
         // rows matched no one (PR 212's browser flows).
-        const peopleNow = usersResult ? users : peopleIn(await retryUsers().catch(() => undefined))
+        const peopleNow = usersResult ? users : peopleIn(await retryUsers().catch(() => undefined), locale)
         if (!peopleNow) return showToast(t('bulk_people_load_failed'), 'error')
         const clientsNow = !clientsKey ? NO_CLIENTS : clientsIn(clientsResult ?? await retryClients().catch(() => undefined))
         if (!clientsNow) return showToast(t('bulk_clients_load_failed'), 'error')
