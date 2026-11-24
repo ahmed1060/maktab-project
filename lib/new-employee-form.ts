@@ -35,6 +35,12 @@ export const NAME_OF: Partial<Record<NewEmployeeField, TranslationKey>> = {
     lastName: 'last_name_in_sentence', lastNameAr: 'last_name_in_sentence',
 }
 
+/** What a mistake says under its field: a name's with which name it's of, and its limit in the reader's digits. */
+export function mistakeText(t: (key: TranslationKey) => string, locale: string, field: NewEmployeeField, key: TranslationKey): string {
+    const of = NAME_OF[field]
+    return (of ? t(key).replace('{name}', t(of)) : t(key)).replace('{max}', NAME_MAX.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB'))
+}
+
 export function newEmployeeErrors(typed: {
     /** Each name in English and in Arabic, both needed (PR 402). */
     firstName: string
@@ -60,8 +66,8 @@ export function newEmployeeErrors(typed: {
     unreadable?: readonly ('salary' | 'dayOffCredit')[]
 }): Partial<Record<NewEmployeeField, TranslationKey>> {
     const errors: Partial<Record<NewEmployeeField, TranslationKey>> = {}
-    const first = newNameErrors({ en: typed.firstName, ar: typed.firstNameAr })
-    const last = newNameErrors({ en: typed.lastName, ar: typed.lastNameAr })
+    const first = newNameErrors(NAME_MAX, { en: typed.firstName, ar: typed.firstNameAr })
+    const last = newNameErrors(NAME_MAX, { en: typed.lastName, ar: typed.lastNameAr })
     if (first.en) errors.firstName = mistakeKey(first.en, 'en')
     if (first.ar) errors.firstNameAr = mistakeKey(first.ar, 'ar')
     if (last.en) errors.lastName = mistakeKey(last.en, 'en')
@@ -94,11 +100,14 @@ export function refusedField(body: { error?: string; details?: Record<string, un
     const details = body.details ?? {}
     if (details.email) return { field: 'email', key: 'emp_new_email_invalid' }
     if (details.password) return { field: 'password', key: 'emp_new_password_short' }
-    // A name the form let through and the server didn't: in the other language's letters (PR 402).
-    if (details.firstName) return { field: 'firstName', key: 'name_not_english' }
-    if (details.firstNameAr) return { field: 'firstNameAr', key: 'name_not_arabic' }
-    if (details.lastName) return { field: 'lastName', key: 'name_not_english' }
-    if (details.lastNameAr) return { field: 'lastNameAr', key: 'name_not_arabic' }
+    // A name the form let through and the server didn't: in the other language's letters, or too
+    // long, as a suggestion used may be (PR 402).
+    const name = (field: 'firstName' | 'firstNameAr' | 'lastName' | 'lastNameAr', letters: TranslationKey) =>
+        ({ field, key: JSON.stringify(details[field]).includes('letters') ? letters : 'name_too_long' as TranslationKey })
+    if (details.firstName) return name('firstName', 'name_not_english')
+    if (details.firstNameAr) return name('firstNameAr', 'name_not_arabic')
+    if (details.lastName) return name('lastName', 'name_not_english')
+    if (details.lastNameAr) return name('lastNameAr', 'name_not_arabic')
     if (details.salary) return { field: 'salary', key: 'emp_new_salary_invalid' }
     if (details.dayOffCredit) return { field: 'dayOffCredit', key: 'emp_new_day_off_invalid' }
     return null

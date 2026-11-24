@@ -920,6 +920,7 @@ export const ar = {
         name_required_ar: "يُرجى إدخال {name} بالعربية.",
         name_use_suggestion_en: "يُرجى إدخال {name} بالإنجليزية، أو استخدام الاقتراح.",
         name_use_suggestion_ar: "يُرجى إدخال {name} بالعربية، أو استخدام الاقتراح.",
+        name_too_long: "يُرجى اختصار {name} إلى {max} حرفًا.",
         name_not_english: "يُرجى كتابة {name} بحروف إنجليزية.",
         name_not_arabic: "يُرجى كتابة {name} بحروف عربية.",
         gender_label: "الجنس",

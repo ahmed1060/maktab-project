@@ -68,27 +68,32 @@ export function spellingOptions(suggestion: Suggestion): SpellingOption[] {
 }
 
 /** What's wrong with a new name in one of its languages. */
-export type NameMistake = "required" | "use_suggestion" | "not_english" | "not_arabic"
+export type NameMistake = "required" | "use_suggestion" | "too_long" | "not_english" | "not_arabic"
 
-/** What a mistake says, `{name}` for the name in a sentence ("first name"). */
+/** What a mistake says, `{name}` for the name in a sentence ("first name"), and `{max}` for its limit. */
 export function mistakeKey(mistake: NameMistake, language: NameLanguage): TranslationKey {
     if (mistake === "required") return language === "en" ? "name_required_en" : "name_required_ar"
     if (mistake === "use_suggestion") return language === "en" ? "name_use_suggestion_en" : "name_use_suggestion_ar"
+    if (mistake === "too_long") return "name_too_long"
     return mistake === "not_english" ? "name_not_english" : "name_not_arabic"
 }
 
 /**
  * A new name's mistakes: each language needed (DESIGN.md §5.3), the
- * suggestion offered for one left empty where the other is typed, and each
- * in its own letters, as the server takes them.
+ * suggestion offered for one left empty where the other is typed, each no
+ * longer than `max`, as a suggestion used may be though a field takes no
+ * more typed (Codex, PR 402), and each in its own letters, as the server
+ * takes them.
  */
-export function newNameErrors(names: TwoNames): Partial<Record<NameLanguage, NameMistake>> {
+export function newNameErrors(max: number, names: TwoNames): Partial<Record<NameLanguage, NameMistake>> {
     const en = names.en.trim()
     const ar = names.ar.trim()
     const errors: Partial<Record<NameLanguage, NameMistake>> = {}
     if (!en) errors.en = ar ? "use_suggestion" : "required"
+    else if (en.length > max) errors.en = "too_long"
     else if (hasArabic(en)) errors.en = "not_english"
     if (!ar) errors.ar = en ? "use_suggestion" : "required"
+    else if (ar.length > max) errors.ar = "too_long"
     else if (!writtenInArabic(ar)) errors.ar = "not_arabic"
     return errors
 }

@@ -99,9 +99,14 @@ function OneLanguage({ id, language, name, text, onText, max, hint, error, sugge
 }) {
     const { t, locale } = useLanguage()
     const [open, setOpen] = useState(false)
-    const [under, setUnder] = useState(-1)
     const direction = language === 'ar' ? 'rtl' : 'ltr'
     const options: SpellingOption[] = suggestion ? spellingOptions(suggestion) : []
+    // What's under the keys, in the list it was moved in: another list, as
+    // the other field's name changes, starts with nothing under them (Codex, PR 402).
+    const list = options.map(option => option.text).join('\n')
+    const [held, setHeld] = useState({ list: '', at: -1 })
+    const under = held.list === list ? held.at : -1
+    const setUnder = (at: number) => setHeld({ list, at })
     const shown = open && options.length > 0
     const noteId = `${id}-note`
     const offerId = `${id}-offer`

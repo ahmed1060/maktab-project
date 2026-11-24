@@ -57,6 +57,18 @@ describe("someone new, named in both languages", () => {
         expect(created).toEqual([])
     })
 
+    it("isn't added with a name longer than the limit, and the page says so (Codex, PR 402)", async () => {
+        const { refusedField } = await import("@/lib/new-employee-form")
+        const english = await post({ ...both, firstName: "Mohamed Mostafa Abdelrahman Abdallah Mahmoud" })
+        expect(english.status).toBe(400)
+        expect(refusedField(await english.json())).toEqual({ field: "firstName", key: "name_too_long" })
+        const arabic = await post({ ...both, lastNameAr: "م".repeat(41) })
+        expect(refusedField(await arabic.json())).toEqual({ field: "lastNameAr", key: "name_too_long" })
+        const letters = await post({ ...both, firstName: "مصطفى" })
+        expect(refusedField(await letters.json())).toEqual({ field: "firstName", key: "name_not_english" })
+        expect(created).toEqual([])
+    })
+
     it("isn't added with a name in the other language's letters", async () => {
         const english = await post({ ...both, firstName: "مصطفى" })
         expect(english.status).toBe(400)

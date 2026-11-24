@@ -987,6 +987,7 @@ export const en = {
         name_required_ar: "Enter the {name} in Arabic.",
         name_use_suggestion_en: "Enter the {name} in English, or use the suggestion.",
         name_use_suggestion_ar: "Enter the {name} in Arabic, or use the suggestion.",
+        name_too_long: "Shorten the {name} to {max} characters.",
         name_not_english: "Write the {name} in English letters.",
         name_not_arabic: "Write the {name} in Arabic letters.",
         gender_label: "Gender",

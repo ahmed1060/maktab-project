@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { fieldsInOrder, newNameErrors, sourceOf, spellingOptions, toSuggest, suggestionPath } from "@/lib/names/name-fields"
+import { fieldsInOrder, mistakeKey, newNameErrors, sourceOf, spellingOptions, toSuggest, suggestionPath } from "@/lib/names/name-fields"
 import type { Suggestion } from "@/lib/names/suggest"
 
 /**
@@ -85,18 +85,28 @@ describe("the spellings offered when the empty field is focused", () => {
 
 describe("a new name's mistakes", () => {
     it("are none with both languages, each in its own letters", () => {
-        expect(newNameErrors({ en: "Mohamed", ar: "محمد" })).toEqual({})
+        expect(newNameErrors(40, { en: "Mohamed", ar: "محمد" })).toEqual({})
     })
 
     it("ask for each language left empty, or for the suggestion where the other is typed", () => {
-        expect(newNameErrors({ en: "", ar: "" })).toEqual({ en: "required", ar: "required" })
-        expect(newNameErrors({ en: "Mohamed", ar: "  " })).toEqual({ ar: "use_suggestion" })
-        expect(newNameErrors({ en: "", ar: "محمد" })).toEqual({ en: "use_suggestion" })
+        expect(newNameErrors(40, { en: "", ar: "" })).toEqual({ en: "required", ar: "required" })
+        expect(newNameErrors(40, { en: "Mohamed", ar: "  " })).toEqual({ ar: "use_suggestion" })
+        expect(newNameErrors(40, { en: "", ar: "محمد" })).toEqual({ en: "use_suggestion" })
     })
 
     it("ask for each in its own letters", () => {
-        expect(newNameErrors({ en: "محمد", ar: "محمد" })).toEqual({ en: "not_english" })
-        expect(newNameErrors({ en: "Mohamed", ar: "Mohamed" })).toEqual({ ar: "not_arabic" })
-        expect(newNameErrors({ en: "Mohamed", ar: "محمد Ali" })).toEqual({ ar: "not_arabic" })
+        expect(newNameErrors(40, { en: "محمد", ar: "محمد" })).toEqual({ en: "not_english" })
+        expect(newNameErrors(40, { en: "Mohamed", ar: "Mohamed" })).toEqual({ ar: "not_arabic" })
+        expect(newNameErrors(40, { en: "Mohamed", ar: "محمد Ali" })).toEqual({ ar: "not_arabic" })
+    })
+
+    it("ask for one longer than the limit to be shortened, as a suggestion used may be (Codex, PR 402)", () => {
+        // 36 characters in Arabic, 44 in English.
+        expect(newNameErrors(40, { en: "Mohamed Mostafa Abdelrahman Abdallah Mahmoud", ar: "محمد مصطفى عبد الرحمن عبد الله محمود" })).toEqual({ en: "too_long" })
+        expect(newNameErrors(30, { en: "Mohamed Mostafa", ar: "محمد مصطفى عبد الرحمن عبد الله محمود" })).toEqual({ ar: "too_long" })
+        // The limit itself is fine, spaces around it aside.
+        expect(newNameErrors(40, { en: ` ${"a".repeat(40)} `, ar: "م".repeat(40) })).toEqual({})
+        expect(mistakeKey("too_long", "en")).toBe("name_too_long")
+        expect(mistakeKey("too_long", "ar")).toBe("name_too_long")
     })
 })

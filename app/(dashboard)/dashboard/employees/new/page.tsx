@@ -10,7 +10,7 @@ import { Button, ButtonLink, Card, Field, NameFields, Page, PageHeader, Password
 import { useLanguage } from '@/context/LanguageContext'
 import { apiErrorText } from '@/lib/api-error-text'
 import { firstError } from '@/lib/form-errors'
-import { NAME_MAX, NAME_OF, PASSWORD_MAX, fieldsInFormOrder, newEmployeeErrors, refusedField, type NewEmployeeField } from '@/lib/new-employee-form'
+import { NAME_MAX, PASSWORD_MAX, fieldsInFormOrder, mistakeText, newEmployeeErrors, refusedField, type NewEmployeeField } from '@/lib/new-employee-form'
 import { roleLabel } from '@/lib/role-label'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
@@ -100,11 +100,6 @@ export default function NewEmployeePage() {
     if (!mayCreate) return <AccessDenied />
 
     const clear = (field: NewEmployeeField) => { if (fieldErrors[field]) setFieldErrors({ ...fieldErrors, [field]: undefined }) }
-    // What a mistake says, a name's with which name it's of.
-    const said = (field: NewEmployeeField, key: Parameters<typeof t>[0]) => {
-        const of = NAME_OF[field]
-        return of ? t(key).replace('{name}', t(of)) : t(key)
-    }
     const wrongAt = (errors: Partial<Record<NewEmployeeField, string>>) => {
         setFieldErrors(errors)
         const first = firstError(errors as Record<string, string>, fieldsInFormOrder(locale)) as NewEmployeeField | null
@@ -128,7 +123,7 @@ export default function NewEmployeePage() {
             salary: { shown: salaryShown, text: salary }, dayOffCredit: { shown: dayOffShown, text: dayOffCredit }, unreadable,
         })
         if (Object.keys(wrong).length > 0) {
-            wrongAt(Object.fromEntries(Object.entries(wrong).map(([field, key]) => [field, said(field as NewEmployeeField, key)])))
+            wrongAt(Object.fromEntries(Object.entries(wrong).map(([field, key]) => [field, mistakeText(t, locale, field as NewEmployeeField, key)])))
             return
         }
         setFieldErrors({})
@@ -161,7 +156,7 @@ export default function NewEmployeePage() {
                 try { answer = JSON.parse(text) } catch { /* not JSON: said as it came */ }
                 // Under the field it's about, where it can be; above the buttons otherwise.
                 const refused = refusedField(answer)
-                if (refused) wrongAt({ [refused.field]: said(refused.field, refused.key) })
+                if (refused) wrongAt({ [refused.field]: mistakeText(t, locale, refused.field, refused.key) })
                 else setError(apiErrorText(text, t('error_generic')))
                 setLoading(false)
                 return
