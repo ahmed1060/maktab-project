@@ -25,7 +25,8 @@ on an employee's page and on one's own profile (#403), in a request to
 change one's own name (#404), and on the Employees page (#405), and
 clients' names in their form (#406) and on the Clients page (#407), and
 the company's name in two languages (#408). The company's name shown in
-the page's language is next.
+the page's language to its people and clients is next (#409), then to the
+Super Admin.
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -565,9 +566,29 @@ other filled in when one is typed, if that's possible.
        code is suggested from;
      - an Admin's Company settings: a note above its tabs while the
        company's name is in one language only.
-   - **7b. Shown in the page's language:** wherever the company's name
-     is shown, such as the side bar, the account menu, the Super Admin's
-     companies and their switcher, and the client's area.
+   - **7b. Shown in the page's language, to its people and its clients
+     (#409):** the company's name in the page's language, or in the one
+     it has while it has only one, wherever its own people and its
+     clients see it:
+     - the side bar, the phone's top bar and the account menu ("Admin at
+       …"), for its people and for the Super Admin previewing one of its
+       roles;
+     - the side bar's look on its Company settings (its logo card);
+     - the client's area's top bar;
+     - the documents it issues: a payslip, a settlement, a client's
+       statement and a tax position statement, read and printed;
+     - the session keeps the name in both languages, and catches it up
+       on its minute's check as it does the company's logo, so a name
+       Nizmo's team completes or changes shows without signing in again.
+       Until now it was read only at sign-in.
+     The person's own name beside it in the account menu, and a client's,
+     come with the other screens (step 8).
+   - **7c. Shown in the page's language, to the Super Admin:** the
+     companies list, the company switcher and the side bar's name while
+     looking at one company, a company's own pages, the preview note, and
+     the company columns and company selects of the screens that list
+     every company's people, clients, places, check-ins, requests and
+     records.
 8. **The other screens show names in the page's language,** by area:
    tasks, obligations, records, attendance, requests, payroll, the
    client's area, and notifications and messages written from then on.
