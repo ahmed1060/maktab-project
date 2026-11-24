@@ -29,7 +29,8 @@ language to its people and clients (#409), and to the Super Admin on its
 own screens for companies (#410) and in the company columns and selects
 of the other screens (#411). The other screens' names (step 8) started
 with the pickers and filters they share (#412) and the tasks screens
-(#413); the bulk upload's template and file are next (#414).
+(#413) and the bulk upload's template and file (#414); obligations are
+next.
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -649,7 +650,7 @@ other filled in when one is typed, if that's possible.
      - its sections and dialogs: Edit details' assignees and location,
        Transfer's lines on the money held for it, the costs' settlements,
        and the penalty's person.
-   - **8c. The bulk upload's template and file (#414):**
+   - **8c. The bulk upload's template and file (Done, #414):**
      - the template, in the language it's downloaded in: its people
        ("Name (username)") and its clients, each in that language, or the
        one they have, in that language's order, and each location's
@@ -1458,3 +1459,7 @@ same day as drawn in the All users: status badges canvas
   settlements, the penalty's person, and Transfer's lines on the money
   held for it, whose preview now gives each name in both languages. The
   bulk upload's template and file next.
+- **2026-11-24:** #414 merged: the bulk upload's template lists its people
+  and clients in the language it's downloaded in, in that language's order,
+  and each location's client in it; a file's client is found by its
+  English or its Arabic name, any case (§3.1, step 8c). Obligations next.
