@@ -87,6 +87,16 @@ export function arabicBeside(name: string | undefined, given: string | undefined
 }
 
 /**
+ * Whether a name's English, sent, still needs its Arabic: none sent with it
+ * and none kept (LATER_CHANGES_PLAN.md §3.1, PR 403, 406, 408), as a form that
+ * keeps both sends them. One written in Arabic is its own Arabic
+ * (arabicBeside).
+ */
+export function arabicMissing(en: string | undefined, sent: string | undefined, kept: string | null | undefined): boolean {
+    return !!en && !hasArabic(en) && !(sent ?? kept)?.trim()
+}
+
+/**
  * A name in both languages, to show both, as a name change's details do
  * (LATER_CHANGES_PLAN.md §3.1, step 4c, PR 404): the page's language first,
  * each once, and only the ones it has.

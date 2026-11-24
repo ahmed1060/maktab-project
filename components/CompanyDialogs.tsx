@@ -4,7 +4,7 @@ import { Fragment, useEffect, useRef, useState, type FormEvent } from 'react'
 import useSWR from 'swr'
 import { refusalOf } from '@/lib/api-error-text'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
-import { Button, Dialog, DialogActions, Field, Select, TextInput } from '@/components/ui'
+import { Button, Dialog, DialogActions, Field, FormNote, NameFields, Select, TextInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { computeTrialEnd, DEFAULT_TRIAL_PRESET, TRIAL_PRESETS, type TrialPreset } from '@/lib/billing/state'
@@ -12,6 +12,10 @@ import { TRIAL_PRESET_LABEL_KEY } from '@/lib/subscription-display'
 import { fetcher } from '@/lib/swr-fetcher'
 import type { TranslationKey } from '@/lib/translations'
 import { codeError, normaliseCode } from '@/lib/username-code'
+import { savedName, type TwoNames } from '@/lib/names/name-fields'
+import {
+    COMPANY_NAME_MAX, COMPANY_NAME_MIN, companyMissingNote, companyMistakeText, companyNameErrors, companyRefusedField, type CompanyNameField,
+} from '@/lib/company-name'
 
 /**
  * Adding a company and changing one, and asking before a ban (the Super
@@ -23,6 +27,8 @@ import { codeError, normaliseCode } from '@/lib/username-code'
 export type ListedCompany = {
     id: string
     name: string
+    /** Its name in Arabic (LATER_CHANGES_PLAN.md §3, PR 398), edited beside its English (PR 408). */
+    nameAr?: string | null
     isBanned?: boolean
     package?: { id: string; name: string } | null
     /** The letters before the number in its people's usernames, and whether they're fixed: its first username has been given. */
@@ -30,15 +36,10 @@ export type ListedCompany = {
     usernameLocked?: boolean
 }
 
-/** What's wrong with a company's name on Save; null when it'll do. The server wants 2 to 50 characters. */
-export function companyNameError(name: string): TranslationKey | null {
-    return name.trim().length < 2 ? 'companies_name_short' : null
-}
-
-/** Where to ask for a username code for a name, once it's long enough to have one; the company being edited is named, since its own code is free for it. */
+/** Where to ask for a username code for a name in English, once it's long enough to have one; the company being edited is named, since its own code is free for it. */
 export function suggestionUrl(name: string, companyId: string | null): string | null {
     const trimmed = name.trim()
-    if (companyNameError(trimmed)) return null
+    if (trimmed.length < COMPANY_NAME_MIN) return null
     const query = new URLSearchParams({ name: trimmed })
     if (companyId) query.set('id', companyId)
     return `/api/companies/username-code?${query}`
@@ -61,7 +62,7 @@ export function refusedField(error: unknown): { field: 'name' | 'usernameCode'; 
  * step failed, with the server's answer: a package refused after the name
  * saved leaves the name saved (Codex on PR 171).
  */
-export async function saveCompany(company: ListedCompany | null, fields: { name: string; trial: TrialPreset; packageId: string; usernameCode: string }): Promise<
+export async function saveCompany(company: ListedCompany | null, fields: { name: string; nameAr: string; trial: TrialPreset; packageId: string; usernameCode: string }): Promise<
     { step: 'saved' } | { step: 'name' | 'package'; res: Response }
 > {
     const json = { 'Content-Type': 'application/json' }
@@ -73,8 +74,8 @@ export async function saveCompany(company: ListedCompany | null, fields: { name:
         method: company ? 'PUT' : 'POST',
         headers: json,
         body: JSON.stringify(company
-            ? { id: company.id, name: fields.name, usernameCode: changedCode }
-            : { name: fields.name, trialPreset: fields.trial, packageId: fields.packageId || null, usernameCode: code }),
+            ? { id: company.id, name: fields.name, nameAr: fields.nameAr, usernameCode: changedCode }
+            : { name: fields.name, nameAr: fields.nameAr, trialPreset: fields.trial, packageId: fields.packageId || null, usernameCode: code }),
     })
     if (!res.ok) return { step: 'name', res }
     if (company && fields.packageId !== (company.package?.id ?? '')) {
@@ -104,13 +105,17 @@ export function CompanyDialog({ company, onClose, onSaved, onChanged }: {
     const { data } = useSWR('/api/packages', fetcher)
     const packages: { id: string; name: string }[] = data?.data ?? []
     const formRef = useRef<HTMLFormElement>(null)
-    const [name, setName] = useState(company?.name ?? '')
+    // Its name in English and in Arabic (PR 408), as it's kept: one saved in Arabic only is its Arabic.
+    const [names, setNames] = useState<TwoNames>(() => (company ? savedName(company.name, company.nameAr) : { en: '', ar: '' }))
+    // While its name is in one language only, said at the top until it's saved in both (DESIGN.md §5.3).
+    const [note] = useState(() => (company ? companyMissingNote(company) : null))
+    const [nameErrors, setNameErrors] = useState<Partial<Record<CompanyNameField, TranslationKey>>>({})
+    const said = (field: CompanyNameField) => { const key = nameErrors[field]; return key && companyMistakeText(t, locale, key) }
     const [trial, setTrial] = useState<TrialPreset>(DEFAULT_TRIAL_PRESET)
     const [packageId, setPackageId] = useState(company?.package?.id ?? '')
     const locked = !!company?.usernameLocked
     const [code, setCode] = useState(company?.usernameCode ?? '')
     const [codeTyped, setCodeTyped] = useState(!!company?.usernameCode)
-    const [wrong, setWrong] = useState<TranslationKey | null>(null)
     const [codeWrong, setCodeWrong] = useState<TranslationKey | null>(null)
     const [busy, setBusy] = useState(false)
 
@@ -118,9 +123,10 @@ export function CompanyDialog({ company, onClose, onSaved, onChanged }: {
     const [askFor, setAskFor] = useState<string | null>(null)
     useEffect(() => {
         if (codeTyped) return
-        const wait = setTimeout(() => setAskFor(suggestionUrl(name, company?.id ?? null)), 300)
+        // From its English, as a code is English letters.
+        const wait = setTimeout(() => setAskFor(suggestionUrl(names.en, company?.id ?? null)), 300)
         return () => clearTimeout(wait)
-    }, [name, codeTyped, company?.id])
+    }, [names.en, codeTyped, company?.id])
     const { data: suggested } = useSWR(codeTyped ? null : askFor, fetcher, { keepPreviousData: true })
     const shownCode = codeTyped ? code : (suggested?.data?.code ?? code)
     const example = /^[a-z]+$/.test(shownCode) ? `${shownCode}0, ${shownCode}1…` : null
@@ -138,16 +144,17 @@ export function CompanyDialog({ company, onClose, onSaved, onChanged }: {
 
     const save = async (e: FormEvent) => {
         e.preventDefault()
-        const found = companyNameError(name)
+        // Both languages, each in its own letters, for a new company and an edited one (PR 408).
+        const found = companyNameErrors(names)
         // An empty code nobody typed is the server's to suggest.
         const foundInCode = locked || (!shownCode && !codeTyped) ? null : codeError(shownCode)
-        setWrong(found)
+        setNameErrors(found)
         setCodeWrong(foundInCode)
-        if (found || foundInCode) { focusFirstWrong(formRef.current); return }
+        if (Object.keys(found).length > 0 || foundInCode) { focusFirstWrong(formRef.current); return }
         setBusy(true)
         try {
-            const trimmed = name.trim()
-            const result = await saveCompany(company, { name: trimmed, trial, packageId, usernameCode: shownCode })
+            const trimmed = names.en.trim()
+            const result = await saveCompany(company, { name: trimmed, nameAr: names.ar.trim(), trial, packageId, usernameCode: shownCode })
             // The package's refusal is said, where it was dropped without a
             // word, and the list shows the name that did save (Codex on PR 171).
             if (result.step === 'package') {
@@ -157,10 +164,14 @@ export function CompanyDialog({ company, onClose, onSaved, onChanged }: {
             }
             if (result.step === 'name') {
                 const body = await result.res.clone().json().catch(() => ({}))
+                // A name refused, or taken in either language, under its field (PR 408).
+                const named = companyRefusedField(body)
                 const refused = refusedField(body?.error)
-                if (refused) {
-                    if (refused.field === 'name') setWrong(refused.key)
-                    else setCodeWrong(refused.key)
+                if (named) {
+                    setNameErrors({ [named.field]: named.key })
+                    focusFirstWrong(formRef.current)
+                } else if (refused) {
+                    setCodeWrong(refused.key)
                     focusFirstWrong(formRef.current)
                 } else {
                     showToast(await refusalOf(result.res, t('error_generic')), 'error')
@@ -178,9 +189,17 @@ export function CompanyDialog({ company, onClose, onSaved, onChanged }: {
     return (
         <Dialog open onClose={() => { if (!busy) onClose() }} title={company ? t('companies_edit_title').replace('{name}', company.name) : t('companies_add')}>
             <form ref={formRef} className="ui-form" noValidate onSubmit={save}>
-                <Field label={t('companies_name_label')} error={wrong && t(wrong)}>{p => (
-                    <TextInput {...p} name="name" autoComplete="off" maxLength={50} value={name} onChange={e => { setName(e.target.value); setWrong(null) }} />
-                )}</Field>
+                {note && <FormNote>{t(note)}</FormNote>}
+                {/* In English and in Arabic, a business's name with its business words (DESIGN.md
+                    §5.3, PR 408): this company's spellings come first. */}
+                <NameFields label={t('companies_name_label')} name="name" kind="business" max={COMPANY_NAME_MAX}
+                    companyId={company?.id ?? null}
+                    value={names}
+                    errors={{ en: said('name'), ar: said('nameAr') }}
+                    onChange={next => {
+                        setNameErrors(errors => ({ ...errors, ...(next.en !== names.en ? { name: undefined } : {}), ...(next.ar !== names.ar ? { nameAr: undefined } : {}) }))
+                        setNames(next)
+                    }} />
                 {/* English letters whatever the page's language, so written left to
                     right, and not a word for a browser to translate. */}
                 <Field label={t('companies_code_label')} hint={codeHint} error={codeWrong && t(codeWrong)}>{p => (

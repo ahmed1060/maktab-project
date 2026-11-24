@@ -2,13 +2,14 @@
 
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react'
-import { HourglassIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
+import { HourglassIcon, TranslateIcon, WarningCircleIcon } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
 import CompanySettingsTabs, { type CompanySettings } from '@/components/CompanySettingsTabs'
-import { Button, EmptyState, Page, PageHeader } from '@/components/ui'
+import { Button, EmptyState, ListNote, Page, PageHeader } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import type { CompanySettingsTabKey } from '@/lib/company-settings-tabs'
+import { missingLanguages } from '@/lib/names'
 
 /**
  * A company's own settings, for its people (ATTENDANCE_PLAN.md §5.2): the tabs
@@ -48,10 +49,15 @@ export default function CompanyOwnSettingsPage() {
         </Page>
     )
 
-    const { company, tabs, canEdit } = data.data as { company: CompanySettings; tabs: CompanySettingsTabKey[]; canEdit: boolean }
+    const { company, tabs, canEdit } = data.data as { company: CompanySettings & { nameAr?: string | null }; tabs: CompanySettingsTabKey[]; canEdit: boolean }
     return (
         <Page>
             {header}
+            {/* Its name in one language only (DESIGN.md §5.3, PR 408): only the Super Admin
+                changes a company's name, so it says Nizmo's team adds the other. */}
+            {missingLanguages([{ en: company.name, ar: company.nameAr }]).length > 0 && (
+                <ListNote icon={TranslateIcon} title={t('company_name_missing_title')}>{t('company_name_missing_body')}</ListNote>
+            )}
             <CompanySettingsTabs
                 company={company}
                 tabs={tabs}

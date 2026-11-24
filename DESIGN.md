@@ -715,8 +715,8 @@ These are built once, in the building-blocks PR, and every page uses them
     and the English one left to right, whatever the page's language;
   - each takes up to the name's limit, and says how many it has, as the
     name fields do today: 30 characters for a person's first or last
-    name, 60 for a client's owner's whole name, and 100 for a client's
-    own;
+    name, 60 for a client's owner's whole name, 100 for a client's own,
+    and 50 for the company's;
   - when one is typed and the other is empty, the empty one offers what
     it may be: a secondary button under it, 30px tall (44px on phones),
     "Use “Mohamed”", with where it comes from beside it in `--muted`:
@@ -754,7 +754,9 @@ These are built once, in the building-blocks PR, and every page uses them
   - the filter bar's Names select ("All names", "Missing a language")
     lists them, with a Missing column of neutral badges, "No Arabic" or
     "No English";
-  - Company settings says so of the company's own name, above its fields.
+  - an Admin's Company settings says so of the company's own name, above
+    its tabs, and that Nizmo's team adds its other language: only the
+    Super Admin changes a company's name, in its Edit company dialog.
 - **A pick of several from a long list,** such as a task's assignees, is
   a group under its visible label:
   - a search field, which narrows the list as it's typed;

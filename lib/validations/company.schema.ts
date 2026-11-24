@@ -5,7 +5,8 @@ import { checkTimeZone } from "@/lib/timezone"
 import { ELIGIBLE_SETTINGS_TABS } from "@/lib/company-settings-access"
 import { brandColourSchema } from "./brand-colour.schema"
 import { CODE_PATTERN } from "@/lib/username-code"
-import { arabicName } from "./arabic-name.schema"
+import { nameIn } from "./arabic-name.schema"
+import { COMPANY_NAME_MAX, COMPANY_NAME_MIN } from "@/lib/company-name"
 
 // A company's username code (lib/username-code.ts): 2 to 8 English letters,
 // kept in lower case however it was typed.
@@ -17,10 +18,11 @@ const usernameCodeSchema = z.string().trim().toLowerCase().regex(CODE_PATTERN, "
 export const trialPresetSchema = z.enum(['TWO_DAYS', 'SEVEN_DAYS', 'FOURTEEN_DAYS', 'ONE_MONTH', 'THREE_MONTHS'])
 
 export const createCompanySchema = z.object({
-    name: z.string().min(2, "Company name must be at least 2 characters").max(50),
-    // Its name in Arabic (LATER_CHANGES_PLAN.md §3, PR 398), beside the
-    // English one above; not yet asked for.
-    nameAr: arabicName(2, 50).optional(),
+    // Its name in English and in Arabic, both needed, each in its own letters,
+    // 2 to 50 characters as it has been (LATER_CHANGES_PLAN.md §3.1, step 7a,
+    // PR 408; lib/company-name.ts).
+    name: nameIn("English", COMPANY_NAME_MAX, COMPANY_NAME_MIN),
+    nameAr: nameIn("Arabic", COMPANY_NAME_MAX, COMPANY_NAME_MIN),
     // Optional so an existing client that does not send it still works; the
     // service supplies the default rather than leaving the company with no
     // trial at all.
@@ -34,8 +36,10 @@ export const createCompanySchema = z.object({
 
 export const updateCompanySchema = z.object({
     id: z.string().min(1, "Company ID is required"),
-    name: z.string().min(2).max(50).optional(),
-    nameAr: arabicName(2, 50).optional(),
+    // Each as a new company's: an English with its Arabic, sent or kept, is
+    // CompanyService.update's to ask (PR 408); its Arabic alone may be added.
+    name: nameIn("English", COMPANY_NAME_MAX, COMPANY_NAME_MIN).optional(),
+    nameAr: nameIn("Arabic", COMPANY_NAME_MAX, COMPANY_NAME_MIN).optional(),
     // Changes only until the company's first username is given.
     usernameCode: usernameCodeSchema.optional(),
     isBanned: z.boolean().optional(),
