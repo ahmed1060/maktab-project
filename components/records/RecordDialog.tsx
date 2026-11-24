@@ -5,7 +5,8 @@ import { useLanguage } from '@/context/LanguageContext'
 import { companyLabel } from '@/lib/company-name'
 import { Button, Details, Dialog, ExpiryDate, FileChip, FileChips } from '@/components/ui'
 import { countOf } from '@/lib/plural'
-import { formatDay, formatMoment, personName, type RecordItem } from './types'
+import { clientName } from '@/lib/client-list'
+import { authorName, formatDay, formatMoment, type RecordItem } from './types'
 
 /**
  * A record whole, opened from a list that cuts its text short (DESIGN.md
@@ -23,7 +24,7 @@ export default function RecordDialog({ record, onClose, showClient, onEdit, onDe
     const { t, locale } = useLanguage()
     if (!record) return null
     const details = [
-        ...(showClient ? [{ label: t('records_col_client'), value: <Link href={`/dashboard/clients/${record.client.id}`} prefetch={false}><bdi>{record.client.name}</bdi></Link> }] : []),
+        ...(showClient ? [{ label: t('records_col_client'), value: <Link href={`/dashboard/clients/${record.client.id}`} prefetch={false}><bdi>{clientName(record.client, locale)}</bdi></Link> }] : []),
         // Its company, for a Super Admin, who sees every company's (Codex on #82).
         ...(record.client.company ? [{ label: t('company_label'), value: <bdi>{companyLabel(locale, record.client.company, record.client.companyAr)}</bdi> }] : []),
         { label: t('records_section'), value: <bdi>{record.section.title}</bdi> },
@@ -35,10 +36,10 @@ export default function RecordDialog({ record, onClose, showClient, onEdit, onDe
             label: t('records_reminder_label'),
             value: record.reminderDays ? t('records_reminder_before').replace('{days}', countOf(t, locale, record.reminderDays, 'days')) : t('records_reminder_none'),
         }] : []),
-        { label: t('records_col_added'), value: <>{personName(record.createdBy, record.createdBySuperAdmin, t)}<div className="ui-item-detail">{formatMoment(record.createdAt, locale)}</div></> },
+        { label: t('records_col_added'), value: <>{authorName(record.createdBy, record.createdBySuperAdmin, t, locale)}<div className="ui-item-detail">{formatMoment(record.createdAt, locale)}</div></> },
         ...(record.lastEditedAt ? [{
             label: t('records_edited_by'),
-            value: <>{personName(record.lastEditedBy, record.lastEditedBySuperAdmin, t)}<div className="ui-item-detail">{formatMoment(record.lastEditedAt, locale)}</div></>,
+            value: <>{authorName(record.lastEditedBy, record.lastEditedBySuperAdmin, t, locale)}<div className="ui-item-detail">{formatMoment(record.lastEditedAt, locale)}</div></>,
         }] : []),
     ]
     return (

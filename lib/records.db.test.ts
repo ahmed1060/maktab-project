@@ -303,7 +303,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
             const all = await Records.list(superAdmin, { page: 1, limit: 20 })
             expect(all.total).toBe(4)
             // Its name in both languages, shown in the page's (PR 411).
-            expect(all.data.find(r => r.id === gamma)!.client).toEqual({ id: "v3", name: "Gamma", company: "Two", companyAr: null })
+            expect(all.data.find(r => r.id === gamma)!.client).toEqual({ id: "v3", name: "Gamma", nameAr: null, company: "Two", companyAr: null })
         })
 
         it("finds a record by its text, its section's name or its client's name", async () => {
@@ -794,7 +794,7 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
 
         it("names a record's company to a Super Admin, who sees every company's, and to nobody else", async () => {
             const id = (await Records.create(admin, { content: "Named company", files: [], expiryDate: null, reminderDays: null, clientId: "v1", sectionTitle: "Contracts" })).id
-            expect((await Records.get(superAdmin, id)).client).toEqual({ id: "v1", name: expect.any(String), company: "One", companyAr: "واحد" })
+            expect((await Records.get(superAdmin, id)).client).toEqual({ id: "v1", name: expect.any(String), nameAr: null, company: "One", companyAr: "واحد" })
             expect((await Records.get(admin, id)).client).not.toHaveProperty("company")
         })
 
@@ -934,14 +934,32 @@ describe.skipIf(!ADMIN_URL)("records on clients, in Postgres", () => {
                 expect(first.clients).toHaveLength(CLIENTS_SHOWN)
                 expect(first.more).toBe(true)
                 // The last of them, far past the first ones listed, by any part of its name.
-                expect(await Records.clients(superAdmin, "c4", " market 1100 ")).toEqual({ clients: [{ id: "m1100", name: "Market 1100" }], more: false })
-                expect(await Records.clients(employee, null, "CM")).toEqual({ clients: [{ id: "v1", name: "Acme" }], more: false })
+                expect(await Records.clients(superAdmin, "c4", " market 1100 ")).toEqual({ clients: [{ id: "m1100", name: "Market 1100", nameAr: null }], more: false })
+                expect(await Records.clients(employee, null, "CM")).toEqual({ clients: [{ id: "v1", name: "Acme", nameAr: null }], more: false })
                 // Never another company's, nor a name's letters taken as a pattern.
                 expect((await Records.clients(employee, null, "Gamma")).clients).toEqual([])
                 expect((await Records.clients(superAdmin, "c4", "%")).clients).toEqual([])
                 expect((await Records.clients(superAdmin, "c4", "Market_1100")).clients).toEqual([])
             } finally {
                 await db.query(`DELETE FROM "Company" WHERE id = 'c4'`)
+            }
+        })
+
+        it("finds a client by its Arabic too, and lists an Arabic page's first by their Arabic, those with none after (PR 416)", async () => {
+            await db.query(`INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c5', 'Five', now())`)
+            await db.query(`INSERT INTO "Client"(id, "companyId", name, "nameAr", "ownerName", "mobileNumber", "locationName", "updatedAt") VALUES
+                ('a1', 'c5', 'Al Noor Trading', 'النور للتجارة', 'Owner', '0100', 'Cairo', now()),
+                ('a2', 'c5', 'Zahra Foods', 'الزهراء للأغذية', 'Owner', '0100', 'Cairo', now()),
+                ('a3', 'c5', 'Beta Supplies', NULL, 'Owner', '0100', 'Cairo', now())`)
+            try {
+                const ids = async (locale: string | null, search?: string) => (await Records.clients(superAdmin, "c5", search, locale)).clients.map(c => c.id)
+                expect(await ids("ar")).toEqual(["a2", "a1", "a3"])
+                expect(await ids("en")).toEqual(["a1", "a3", "a2"])
+                expect(await ids(null)).toEqual(["a1", "a3", "a2"])
+                expect(await ids("ar", "النور")).toEqual(["a1"])
+                expect((await Records.clients(superAdmin, "c5", "الزهراء", "en")).clients).toEqual([{ id: "a2", name: "Zahra Foods", nameAr: "الزهراء للأغذية" }])
+            } finally {
+                await db.query(`DELETE FROM "Company" WHERE id = 'c5'`)
             }
         })
 

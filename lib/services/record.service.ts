@@ -9,6 +9,7 @@ import type { Permission } from "@/lib/permissions/catalogue"
 import { addDays, daysBetween, expiryDay, expiryRange, expiryState, parseExpiryDay, type ExpiryState } from "@/lib/record-expiry"
 import { ownFilePath, parseRecordFiles, storeRecordFiles, type RecordFile } from "@/lib/record-files"
 import type { CreateRecordInput, CreateSectionInput, RenameSectionInput, UpdateRecordInput } from "@/lib/validations/record.schema"
+import type { PersonNames } from "@/lib/names"
 
 /**
  * A client's records (CLIENTS_PLAN.md §0.2): sections of records, each with
@@ -56,7 +57,8 @@ function dayEndsAt(zones: readonly (string | null)[]) {
 /** How many clients the Add record picker lists at once; a search by name finds the rest. */
 export const CLIENTS_SHOWN = 50
 
-const PERSON = { select: { firstName: true, lastName: true } } as const
+// Each name in Arabic too, shown in the page's language (PR 416).
+const PERSON = { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } as const
 
 const ROW = (withCompany: boolean) => ({
     id: true, content: true, attachment: true, expiryDate: true, reminderDays: true,
@@ -65,7 +67,7 @@ const ROW = (withCompany: boolean) => ({
     section: {
         select: {
             id: true, title: true,
-            client: { select: { id: true, name: true, ...(withCompany ? { company: { select: { name: true, nameAr: true, timezone: true } } } : {}) } },
+            client: { select: { id: true, name: true, nameAr: true, ...(withCompany ? { company: { select: { name: true, nameAr: true, timezone: true } } } : {}) } },
         },
     },
 }) satisfies Prisma.ClientRecordSelect
@@ -81,13 +83,13 @@ export type RecordRow = {
     reminderDays: number | null
     createdAt: Date
     lastEditedAt: Date | null
-    createdBy: { firstName: string; lastName: string } | null
-    lastEditedBy: { firstName: string; lastName: string } | null
+    createdBy: PersonNames | null
+    lastEditedBy: PersonNames | null
     /** Whoever's missing above was a Super Admin; otherwise a user since deleted. */
     createdBySuperAdmin: boolean
     lastEditedBySuperAdmin: boolean
     section: { id: string; title: string }
-    client: { id: string; name: string; company?: string }
+    client: { id: string; name: string; nameAr: string | null; company?: string }
 }
 
 function shape(r: Row, today: string): RecordRow {
@@ -106,7 +108,7 @@ function shape(r: Row, today: string): RecordRow {
         createdBySuperAdmin: r.createdBySuperAdmin,
         lastEditedBySuperAdmin: r.lastEditedBySuperAdmin,
         section: { id: r.section.id, title: r.section.title },
-        client: { id: client.id, name: client.name, ...("company" in client && client.company ? { company: (client.company as { name: string }).name, companyAr: (client.company as { nameAr: string | null }).nameAr } : {}) },
+        client: { id: client.id, name: client.name, nameAr: client.nameAr, ...("company" in client && client.company ? { company: (client.company as { name: string }).name, companyAr: (client.company as { nameAr: string | null }).nameAr } : {}) },
     }
 }
 
@@ -295,7 +297,7 @@ export class RecordService {
     /**
      * Records across the company's clients, or one client's: newest first, or
      * soonest to expire when filtered by expiry. The search finds a record by
-     * its text, its section's name or its client's name.
+     * its text, its section's name or its client's name in either language.
      */
     static async list(session: Session, query: RecordListQuery) {
         const sa = isSuperAdmin(session)
@@ -324,6 +326,7 @@ export class RecordService {
                     { content: { contains: search, mode: "insensitive" } },
                     { section: { title: { contains: search, mode: "insensitive" } } },
                     { section: { client: { name: { contains: search, mode: "insensitive" } } } },
+                    { section: { client: { nameAr: { contains: search, mode: "insensitive" } } } },
                 ],
             } : {}),
         }
@@ -362,9 +365,11 @@ export class RecordService {
      * Records page: someone who may add records but not see the clients
      * list, as an ordinary employee, otherwise has no way to reach a client
      * without records yet. A Super Admin's chosen company's, or every
-     * company's, each named with its company.
+     * company's, each named with its company. Each with its Arabic, found
+     * by either language; the first an Arabic page lists are the first by
+     * their Arabic, those with none after, as it shows them (PR 416).
      */
-    static async clients(session: Session, companyId?: string | null, search?: string | null) {
+    static async clients(session: Session, companyId?: string | null, search?: string | null, locale?: string | null) {
         const sa = isSuperAdmin(session)
         const company = sa ? companyId || null : session.user.companyId
         if (!sa && !company) return { clients: [], more: false }
@@ -373,21 +378,25 @@ export class RecordService {
         const name = trimmed ? likeText(trimmed) : ""
         const clients = await prisma.client.findMany({
             // An archived client isn't offered (CLIENTS_PLAN.md §4.3).
-            where: { archivedAt: null, ...(company ? { companyId: company } : {}), ...(name ? { name: { contains: name, mode: "insensitive" as const } } : {}) },
-            select: { id: true, name: true, ...(company ? {} : { company: { select: { name: true, nameAr: true } } }) },
-            orderBy: [{ name: "asc" }, { id: "asc" }],
+            where: {
+                archivedAt: null,
+                ...(company ? { companyId: company } : {}),
+                ...(name ? { OR: [{ name: { contains: name, mode: "insensitive" as const } }, { nameAr: { contains: name, mode: "insensitive" as const } }] } : {}),
+            },
+            select: { id: true, name: true, nameAr: true, ...(company ? {} : { company: { select: { name: true, nameAr: true } } }) },
+            orderBy: locale === "ar" ? [{ nameAr: { sort: "asc", nulls: "last" } }, { name: "asc" }, { id: "asc" }] : [{ name: "asc" }, { id: "asc" }],
             // One past what's listed, to say there are more to search for.
             take: CLIENTS_SHOWN + 1,
         })
         return {
-            clients: clients.slice(0, CLIENTS_SHOWN).map(v => ({ id: v.id, name: v.name, ...("company" in v && v.company ? { company: (v.company as { name: string }).name, companyAr: (v.company as { nameAr: string | null }).nameAr } : {}) })),
+            clients: clients.slice(0, CLIENTS_SHOWN).map(v => ({ id: v.id, name: v.name, nameAr: v.nameAr, ...("company" in v && v.company ? { company: (v.company as { name: string }).name, companyAr: (v.company as { nameAr: string | null }).nameAr } : {}) })),
             more: clients.length > CLIENTS_SHOWN,
         }
     }
 
-    /** A client's sections, with how many records each holds, and the client's name for the page. */
+    /** A client's sections, with how many records each holds, and the client's name for the page, in both languages. */
     static async sectionsOf(session: Session, clientId: string) {
-        const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, companyId: true, archivedAt: true } })
+        const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, name: true, nameAr: true, companyId: true, archivedAt: true } })
         if (!client) throw new Error("CLIENT_NOT_FOUND")
         allow(session, "records.view", client.companyId, "CLIENT_NOT_FOUND")
         const sections = await prisma.recordSection.findMany({
@@ -398,7 +407,7 @@ export class RecordService {
         return {
             // Archived, it takes nothing new (CLIENTS_PLAN.md §4.3), as its
             // page says to whoever may add records but not see clients.
-            client: { id: client.id, name: client.name, archived: client.archivedAt !== null },
+            client: { id: client.id, name: client.name, nameAr: client.nameAr, archived: client.archivedAt !== null },
             sections: sections.map(s => ({ id: s.id, title: s.title, records: s._count.records })),
         }
     }

@@ -336,9 +336,9 @@ describe.skipIf(!ADMIN_URL)("client charges, in Postgres", () => {
 
     describe("the client a page's charges are for (6d)", () => {
         it("is named to whoever sees its company's charges, and to nobody else", async () => {
-            expect(await charges.chargeClient(admin.user, "noor")).toEqual({ id: "noor", name: "Al Noor" })
-            expect(await charges.chargeClient(leader.user, "noor")).toEqual({ id: "noor", name: "Al Noor" })
-            expect(await charges.chargeClient({ id: "sa1", role: "SUPER_ADMIN", companyId: null } as any, "theirs")).toEqual({ id: "theirs", name: "Their client" })
+            expect(await charges.chargeClient(admin.user, "noor")).toEqual({ id: "noor", name: "Al Noor", nameAr: null })
+            expect(await charges.chargeClient(leader.user, "noor")).toEqual({ id: "noor", name: "Al Noor", nameAr: null })
+            expect(await charges.chargeClient({ id: "sa1", role: "SUPER_ADMIN", companyId: null } as any, "theirs")).toEqual({ id: "theirs", name: "Their client", nameAr: null })
             // Another company's, one not there, and someone who sees no charges.
             expect(await charges.chargeClient(admin.user, "theirs")).toBeNull()
             expect(await charges.chargeClient(admin.user, "gone")).toBeNull()

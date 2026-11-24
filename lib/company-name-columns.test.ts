@@ -81,9 +81,9 @@ describe("what gives each company's Arabic", () => {
     it("records, and the clients a record is added for", () => {
         const records = read("lib/services/record.service.ts")
         expect(records).toContain("company: { select: { name: true, nameAr: true, timezone: true } }")
-        expect(records).toContain("client: { id: client.id, name: client.name, ...(\"company\" in client && client.company ? { company: (client.company as { name: string }).name, companyAr: (client.company as { nameAr: string | null }).nameAr } : {}) },")
-        expect(records).toContain("select: { id: true, name: true, ...(company ? {} : { company: { select: { name: true, nameAr: true } } }) },")
-        expect(records).toContain("clients: clients.slice(0, CLIENTS_SHOWN).map(v => ({ id: v.id, name: v.name, ...(\"company\" in v && v.company ? { company: (v.company as { name: string }).name, companyAr: (v.company as { nameAr: string | null }).nameAr } : {}) })),")
+        expect(records).toContain("client: { id: client.id, name: client.name, nameAr: client.nameAr, ...(\"company\" in client && client.company ? { company: (client.company as { name: string }).name, companyAr: (client.company as { nameAr: string | null }).nameAr } : {}) },")
+        expect(records).toContain("select: { id: true, name: true, nameAr: true, ...(company ? {} : { company: { select: { name: true, nameAr: true } } }) },")
+        expect(records).toContain("clients: clients.slice(0, CLIENTS_SHOWN).map(v => ({ id: v.id, name: v.name, nameAr: v.nameAr, ...(\"company\" in v && v.company ? { company: (v.company as { name: string }).name, companyAr: (v.company as { nameAr: string | null }).nameAr } : {}) })),")
     })
 })
 
