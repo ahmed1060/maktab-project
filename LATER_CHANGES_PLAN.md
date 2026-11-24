@@ -24,7 +24,8 @@ a name's suggestion (#401), and employees' names on Add employee (#402),
 on an employee's page and on one's own profile (#403), in a request to
 change one's own name (#404), and on the Employees page (#405), and
 clients' names in their form (#406) and on the Clients page (#407). The
-company's name is next (#408).
+company's name is next: in two languages (#408), then shown in the page's
+language.
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -545,9 +546,28 @@ other filled in when one is typed, if that's possible.
        restored, so it isn't counted;
      - read from the list the page already has, as its search is: no new
        query.
-7. **The company's name (#408):** Company settings and the Super Admin's
+7. **The company's name:** Company settings and the Super Admin's
    company forms, the note above its fields, and the name in the page's
-   language wherever it's shown.
+   language wherever it's shown. Only the Super Admin changes a company's
+   name, as today: the owner chose on 2026-11-24 that an Admin's Company
+   settings says when the company's name is in one language only, and
+   that Nizmo's team adds the other.
+   - **7a. Its name in two languages (#408):**
+     - the Super Admin's Add company and Edit company dialog: the name in
+       English and in Arabic, a business's, with its business words, up
+       to 50 characters; the username code still follows the English;
+     - both needed for a new company, and on an edit for a name saved
+       before in one language, with the note at the top of the dialog;
+     - the server takes a new company only with both, each in its own
+       letters, and an edited name's English only in English letters
+       with its Arabic sent or kept, as a client's (#406). Each takes 2
+       characters at least, as the name has until now, which its username
+       code is suggested from;
+     - an Admin's Company settings: a note above its tabs while the
+       company's name is in one language only.
+   - **7b. Shown in the page's language:** wherever the company's name
+     is shown, such as the side bar, the account menu, the Super Admin's
+     companies and their switcher, and the client's area.
 8. **The other screens show names in the page's language,** by area:
    tasks, obligations, records, attendance, requests, payroll, the
    client's area, and notifications and messages written from then on.
