@@ -78,7 +78,8 @@ export const GET = withStandardHandler(async (req, session) => {
             // createdBy is null for a Super-Admin-created client (the FK
             // only targets User) — the frontend shows a generic "Super
             // Admin" label in that case rather than nothing.
-            createdBy: { select: { firstName: true, lastName: true } },
+            // Each name in Arabic too, shown in the page's language (PR 407).
+            createdBy: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
             locations: HQ,
             // Company name is only needed to label rows in the Super
             // Admin's aggregate ("all companies") view — a non-Super-Admin
