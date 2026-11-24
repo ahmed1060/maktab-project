@@ -6,11 +6,11 @@ import useSWR from 'swr'
 import { UserPlusIcon } from '@phosphor-icons/react/ssr'
 import AccessDenied from '@/components/AccessDenied'
 import { useAssignableRoles, type AssignableRole } from '@/lib/useAssignableRoles'
-import { Button, ButtonLink, Card, Field, Page, PageHeader, PasswordInput, Select, TextInput } from '@/components/ui'
+import { Button, ButtonLink, Card, Field, NameFields, Page, PageHeader, PasswordInput, Select, TextInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { apiErrorText } from '@/lib/api-error-text'
 import { firstError } from '@/lib/form-errors'
-import { FIELDS, NAME_MAX, PASSWORD_MAX, newEmployeeErrors, refusedField, type NewEmployeeField } from '@/lib/new-employee-form'
+import { NAME_MAX, PASSWORD_MAX, fieldsInFormOrder, mistakeText, newEmployeeErrors, refusedField, type NewEmployeeField } from '@/lib/new-employee-form'
 import { roleLabel } from '@/lib/role-label'
 import { fetcher } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
@@ -33,10 +33,11 @@ export const dynamic = 'force-dynamic'
 export default function NewEmployeePage() {
     const { t, locale } = useLanguage()
     const modules = useModules()
-    // How much of a name it takes, as it stops at the server's limit (web interface audit, PR 180).
-    const used = (n: number) => t('ui_characters_used').replace('{used}', n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')).replace('{max}', NAME_MAX.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB'))
+    // Each name in English and in Arabic, both needed (LATER_CHANGES_PLAN.md §3.1, step 4a, PR 402).
     const [firstName, setFirstName] = useState('')
+    const [firstNameAr, setFirstNameAr] = useState('')
     const [lastName, setLastName] = useState('')
+    const [lastNameAr, setLastNameAr] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [role, setRole] = useState('EMPLOYEE')
@@ -82,7 +83,7 @@ export default function NewEmployeePage() {
 
     // Reloading or closing the tab with something typed asks first, as it
     // would lose it; not once it's being sent.
-    const started = !!(firstName || lastName || email || password || salary || dayOffCredit !== '0' || roleId || companyId || teamLeaderId)
+    const started = !!(firstName || firstNameAr || lastName || lastNameAr || email || password || salary || dayOffCredit !== '0' || roleId || companyId || teamLeaderId)
     useEffect(() => {
         if (!started || loading) return
         const warn = (e: BeforeUnloadEvent) => { e.preventDefault() }
@@ -101,7 +102,7 @@ export default function NewEmployeePage() {
     const clear = (field: NewEmployeeField) => { if (fieldErrors[field]) setFieldErrors({ ...fieldErrors, [field]: undefined }) }
     const wrongAt = (errors: Partial<Record<NewEmployeeField, string>>) => {
         setFieldErrors(errors)
-        const first = firstError(errors as Record<string, string>, FIELDS) as NewEmployeeField | null
+        const first = firstError(errors as Record<string, string>, fieldsInFormOrder(locale)) as NewEmployeeField | null
         if (first) setFocusOn(f => ({ field: first, n: (f?.n ?? 0) + 1 }))
     }
 
@@ -118,18 +119,18 @@ export default function NewEmployeePage() {
             return field instanceof HTMLInputElement && field.validity.badInput
         })
         const wrong = newEmployeeErrors({
-            firstName, lastName, email, password, company: { needed: isSuperAdmin, id: companyId },
+            firstName, firstNameAr, lastName, lastNameAr, email, password, company: { needed: isSuperAdmin, id: companyId },
             salary: { shown: salaryShown, text: salary }, dayOffCredit: { shown: dayOffShown, text: dayOffCredit }, unreadable,
         })
         if (Object.keys(wrong).length > 0) {
-            wrongAt(Object.fromEntries(Object.entries(wrong).map(([field, key]) => [field, t(key)])))
+            wrongAt(Object.fromEntries(Object.entries(wrong).map(([field, key]) => [field, mistakeText(t, locale, field as NewEmployeeField, key)])))
             return
         }
         setFieldErrors({})
         setLoading(true)
 
         try {
-            const body: Record<string, unknown> = { firstName: firstName.trim(), lastName: lastName.trim(), email: email.trim(), password, role: roleId ? role : 'EMPLOYEE', ...(roleId ? { roleId } : {}) }
+            const body: Record<string, unknown> = { firstName: firstName.trim(), firstNameAr: firstNameAr.trim(), lastName: lastName.trim(), lastNameAr: lastNameAr.trim(), email: email.trim(), password, role: roleId ? role : 'EMPLOYEE', ...(roleId ? { roleId } : {}) }
             if (isSuperAdmin && companyId) {
                 body.companyId = companyId
             }
@@ -155,7 +156,7 @@ export default function NewEmployeePage() {
                 try { answer = JSON.parse(text) } catch { /* not JSON: said as it came */ }
                 // Under the field it's about, where it can be; above the buttons otherwise.
                 const refused = refusedField(answer)
-                if (refused) wrongAt({ [refused.field]: t(refused.key) })
+                if (refused) wrongAt({ [refused.field]: mistakeText(t, locale, refused.field, refused.key) })
                 else setError(apiErrorText(text, t('error_generic')))
                 setLoading(false)
                 return
@@ -178,14 +179,22 @@ export default function NewEmployeePage() {
 
             <Card>
                 <form onSubmit={handleSubmit} noValidate className="ui-form">
-                    <Field label={t('first_name_label')} hint={used(firstName.length)} error={fieldErrors.firstName}>{p => (
-                        <TextInput {...p} name="firstName" autoComplete="off" dir="auto" maxLength={NAME_MAX} value={firstName} disabled={loading}
-                            onChange={e => { setFirstName(e.target.value); clear('firstName') }} />
-                    )}</Field>
-                    <Field label={t('last_name_label')} hint={used(lastName.length)} error={fieldErrors.lastName}>{p => (
-                        <TextInput {...p} name="lastName" autoComplete="off" dir="auto" maxLength={NAME_MAX} value={lastName} disabled={loading}
-                            onChange={e => { setLastName(e.target.value); clear('lastName') }} />
-                    )}</Field>
+                    <NameFields label={t('first_name_label')} name="firstName" max={NAME_MAX} disabled={loading}
+                        companyId={isSuperAdmin ? companyId || null : null}
+                        value={{ en: firstName, ar: firstNameAr }}
+                        errors={{ en: fieldErrors.firstName, ar: fieldErrors.firstNameAr }}
+                        onChange={next => {
+                            if (next.en !== firstName) { setFirstName(next.en); clear('firstName') }
+                            if (next.ar !== firstNameAr) { setFirstNameAr(next.ar); clear('firstNameAr') }
+                        }} />
+                    <NameFields label={t('last_name_label')} name="lastName" max={NAME_MAX} disabled={loading}
+                        companyId={isSuperAdmin ? companyId || null : null}
+                        value={{ en: lastName, ar: lastNameAr }}
+                        errors={{ en: fieldErrors.lastName, ar: fieldErrors.lastNameAr }}
+                        onChange={next => {
+                            if (next.en !== lastName) { setLastName(next.en); clear('lastName') }
+                            if (next.ar !== lastNameAr) { setLastNameAr(next.ar); clear('lastNameAr') }
+                        }} />
                     <Field label={t('email')} error={fieldErrors.email}>{p => (
                         <TextInput {...p} name="email" type="email" autoComplete="off" spellCheck={false} dir="ltr" value={email} disabled={loading}
                             onChange={e => { setEmail(e.target.value); clear('email') }} />

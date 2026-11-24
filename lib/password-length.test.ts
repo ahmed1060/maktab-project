@@ -31,7 +31,7 @@ describe("a password, 8 to 72 characters", () => {
     })
 
     it("on the screens, before anything is sent", () => {
-        const employee = (password: string) => newEmployeeErrors({ firstName: "Mona", lastName: "Adel", email: "mona@example.com", password, company: { needed: false, id: "" } }).password
+        const employee = (password: string) => newEmployeeErrors({ firstName: "Mona", firstNameAr: "منى", lastName: "Adel", lastNameAr: "عادل", email: "mona@example.com", password, company: { needed: false, id: "" } }).password
         expect(employee(seven)).toBe("emp_new_password_short")
         expect(employee(eight)).toBeUndefined()
         expect(newPasswordErrors({ newPassword: seven, confirmPassword: seven }).newPassword).toBe("change_password_short")

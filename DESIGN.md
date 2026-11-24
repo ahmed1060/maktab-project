@@ -713,7 +713,7 @@ These are built once, in the building-blocks PR, and every page uses them
     The page's language comes first, on the start side; on phones they
     stack, the page's language on top. The Arabic field is right to left
     and the English one left to right, whatever the page's language;
-  - each takes up to the name's limit, 40 characters for a person's, and
+  - each takes up to the name's limit, 30 characters for a person's, and
     says how many it has, as the name fields do today;
   - when one is typed and the other is empty, the empty one offers what
     it may be: a secondary button under it, 30px tall (44px on phones),

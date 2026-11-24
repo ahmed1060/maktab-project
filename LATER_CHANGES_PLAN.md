@@ -19,8 +19,8 @@ their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their longer
 limit done (#397). Of their steps (§3.1), both languages are kept (#398),
 Nizmo's list of names and the rules are done (#399), and so are the
-company's spellings, learned (#400). The forms reading them are next
-(#401).
+company's spellings, learned (#400), and read for a name's suggestion
+(#401). Employees' names on Add employee are next (#402).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -339,11 +339,14 @@ other filled in when one is typed, if that's possible.
     learned.
   - **Weak spots:** rare names and brand names come from the rules and
     need correcting once.
-- **A name's length (Decided, 2026-11-23):** an employee's first and last
-  names take up to 40 characters, where they took 15. A name is usually
-  longer in English than in Arabic, as its vowels are written out:
-  محمد عبد الرحمن is 15 characters, and Mohamed Abdelrahman is 19. It's
-  raised first, in #397, as it helps the names typed today too.
+- **A name's length (Decided, 2026-11-23; lowered 2026-11-24):** an
+  employee's first and last names take up to 30 characters. They took 15,
+  then 40 from #397, which the owner found more than a name needs: a
+  first or last name is mostly one word, and at worst a compound of two,
+  which fits even spaced (Abd El Moneim Abd El Ghaffar is 28). A name is
+  usually longer in English than in Arabic, as its vowels are written
+  out: محمد عبد الرحمن is 15 characters, and Mohamed Abdelrahman is 19.
+  Lowered in #402, where production's longest was 11.
 - **The design (approved by the owner on 2026-11-23):** the name fields
   drawn on the English and Arabic names canvas, written into `DESIGN.md`
   §5.3: a name in English and in Arabic, and the names still missing a
@@ -408,7 +411,7 @@ other filled in when one is typed, if that's possible.
        takes their names in Arabic with them, as it does their English
        ones. From #398 they stayed; production had no one deleted
        since, so there's nothing to clear.
-   - **3b, read by the forms (#401):**
+   - **3b, read by the forms (Done, #401):**
      - a name's suggestion with the company's spellings first, the most
        used first, each with how many names use it, and under each word
        its other spellings: the company's, then the usual one;
@@ -421,12 +424,33 @@ other filled in when one is typed, if that's possible.
        client. The Super Admin's are the company in view's;
      - no screen asks for it until step 4's forms, and the screen test
        (`lib/screen-asks.test.ts`) lists the call with them.
-4. **Employees' names:**
-   - the two fields on Add employee, an employee's page and one's own
-     profile, and in a request to change one's own name;
-   - needed for anyone new, and asked for on anyone else's next edit;
-   - the suggestion, the spellings and the guesses, asked of the server
-     (step 3b), the screen test listing the call.
+4. **Employees' names,** in three parts:
+   - **4a, the name in two languages on Add employee (#402):**
+     - the group of two fields, "In English" and "In Arabic", as a
+       building block (`NameFields`, DESIGN.md §5.3): the page's
+       language first, on the start side, and one under the other on a
+       phone;
+     - typed in one, the other offers its suggestion a moment after the
+       last key, asked of the server (step 3b): a button to use it, with
+       how many names here use it, or "The usual spelling", beside it,
+       and a guessed word underlined with dots and said under it.
+       Focused, the empty one opens its spellings, picked with the keys
+       or a click. Nothing goes in a field until it's used, picked or
+       typed;
+     - on Add employee, both needed for anyone new, each in its own
+       letters, checked by the page and by the server
+       (`POST /api/users`). One left empty beside a typed name asks for
+       it or the suggestion, and one longer than the limit, as a
+       suggestion used may be, asks for it shorter. An edit takes the
+       names as before, until step 4b;
+     - the screen test follows a building block that asks the server
+       itself, and lists the call on Add employee, open to anyone in
+       the company;
+   - **4b, an employee's page and one's own profile (#403):** the two
+     fields, a name missing a language asked for on its next edit, with
+     the note at the top of the form;
+   - **4c, a request to change one's own name (#404):** the two fields
+     in the request, and its approval keeping both.
 5. **Employees' names in the page's language** on the Employees page,
    with the ones still missing a language, and its search finding
    either.
@@ -1155,3 +1179,8 @@ same day as drawn in the All users: status badges canvas
   step 3a), and a deleted employee's names in Arabic going with them.
   Their reading next, as #401: the server asked, as no screen asks until
   step 4, so the screen test lists the call with step 4's forms.
+- **2026-11-24:** #401 merged: a name's suggestion, the company's
+  spellings first (§3.1, step 3b). From its Codex review, a business's
+  spellings are looked up without its business words. Step 4 split in
+  three: Add employee (#402), an employee's page and one's own profile
+  (#403), and a request to change one's own name (#404).

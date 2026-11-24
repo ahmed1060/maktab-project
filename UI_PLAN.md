@@ -4206,9 +4206,10 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   - A gender and a status are radio buttons, a status said as the badge
     says it: Online, where the form said ACTIVE. An ended contract's
     status stays as it is, and says where they're reinstated.
-  - A name takes up to 40 characters (15 until #397), as the server
-    does, and says how many it has. One's own, on an employee's or a team
-    leader's footing, says it's sent for approval first.
+  - A name takes up to 30 characters (15 until #397, 40 until #402), as
+    the server does, and says how many it has. One's own, on an
+    employee's or a team leader's footing, says it's sent for approval
+    first.
   - The new password is the building blocks' password field, which says
     how long it must be and that left empty the password stays as it is.
     Its eye was drawn by hand.

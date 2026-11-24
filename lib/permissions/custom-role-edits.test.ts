@@ -114,7 +114,7 @@ describe("a Super Admin's account", () => {
 })
 
 describe("creating an account", () => {
-    const body = { firstName: "N", lastName: "U", email: "new@c1.test", password: "a-long-password-123", salary: 9000, baseDayOffCredit: 40, teamLeaderId: "tl" }
+    const body = { firstName: "N", firstNameAr: "ن", lastName: "U", lastNameAr: "ع", email: "new@c1.test", password: "a-long-password-123", salary: 9000, baseDayOffCredit: 40, teamLeaderId: "tl" }
 
     it("writes only the fields the creator may set", async () => {
         onRole({ "employees.view": "COMPANY", "employees.create": "COMPANY" })

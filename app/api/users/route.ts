@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { UserRole, UserStatus } from "@prisma/client"
 import { ApiResponse } from "@/lib/api-response"
 import { teamRefusalResponse } from "@/lib/team-handoff-response"
-import { createUserSchema, updateUserSchema } from "@/lib/validations/user.schema"
+import { newUserSchema, updateUserSchema } from "@/lib/validations/user.schema"
 import { lockedUntil } from "@/lib/sign-in-lock"
 import { ownPasswordPausedUntil } from "@/lib/own-password"
 import { UserService } from "@/lib/services/user.service"
@@ -236,7 +236,8 @@ export const GET = withStandardHandler(async (req, session) => {
 
 export const POST = withStandardHandler(async (req, session, json) => {
     // 1. Validation
-    const validation = createUserSchema.safeParse(json)
+    // Each name in English and in Arabic (PR 402).
+    const validation = newUserSchema.safeParse(json)
     if (!validation.success) {
         return ApiResponse.badRequest("Validation Error", validation.error.format())
     }
