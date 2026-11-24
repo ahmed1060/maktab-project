@@ -11,12 +11,14 @@ export const arabicName = (min: number, max: number) =>
 
 /**
  * A name in one language, asked for (LATER_CHANGES_PLAN.md §3.1, PR 404,
- * 406): needed, trimmed, up to `max`, and in that language's letters. What's
- * wrong is said as a form reads it: "Needed", "letters", or else too long.
- * Its letters aren't asked of an empty one, which is only needed.
+ * 406): needed, trimmed, from `min` characters (a company's from 2, PR 408)
+ * up to `max`, and in that language's letters. What's wrong is said as a
+ * form reads it: "Needed", "letters", "Too short", or else too long. Its
+ * letters and length aren't asked of an empty one, which is only needed.
  */
-export const nameIn = (language: "English" | "Arabic", max: number) =>
+export const nameIn = (language: "English" | "Arabic", max: number, min = 1) =>
     z.string({ error: `Needed in ${language}` }).trim()
         .min(1, `Needed in ${language}`)
         .max(max, "Too long")
+        .refine(name => !name || name.length >= min, "Too short")
         .refine(name => !name || (language === "English" ? !hasArabic(name) : writtenInArabic(name)), `Written in ${language} letters`)

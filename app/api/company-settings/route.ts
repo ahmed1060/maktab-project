@@ -30,7 +30,7 @@ export const GET = withStandardHandler(async (req, session) => {
     const company = await prisma.company.findUnique({
         where: { id: companyId },
         select: {
-            id: true, name: true, adminSettingsEnabled: true, adminSettingsTabs: true,
+            id: true, name: true, nameAr: true, adminSettingsEnabled: true, adminSettingsTabs: true,
             package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true, hasClientPortal: true } },
             autoVerifyLocation: true, cashAdvancesAllowed: true, cashAdvancesOn: true, costNamesFromListOnly: true, confirmHighRisk: true, logoUrl: true, brandColour: true,
             payrollDay: true, payslipsVisible: true, timezone: true, debtRecoveryPercent: true,
@@ -44,7 +44,8 @@ export const GET = withStandardHandler(async (req, session) => {
     if (tabs.length === 0) return ApiResponse.forbidden()
 
     // Only what the shown tabs hold: a hidden tab's values stay hidden too.
-    const shown: Record<string, unknown> = { id: company.id, name: company.name }
+    // Its name in Arabic too, for the note above the tabs while it has none (PR 408).
+    const shown: Record<string, unknown> = { id: company.id, name: company.name, nameAr: company.nameAr }
     for (const key of tabs) for (const field of settingsTab(key)!.fields) shown[field] = (company as Record<string, unknown>)[field]
     // What its people hold, which keeps the cash advances' switches on (CLIENTS_PLAN.md §7.6).
     if (tabs.includes("general")) {

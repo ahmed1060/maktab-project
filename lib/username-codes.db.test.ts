@@ -171,8 +171,8 @@ describe.skipIf(!ADMIN_URL)("each company's username code, in Postgres", () => {
 
     it("lets a company's code change only until its first username is given", async () => {
         await expect(Companies.update({ id: "c3", usernameCode: "kv" } as any, superAdmin)).rejects.toThrow("COMPANY_CODE_LOCKED")
-        // The same one again is no change.
-        await Companies.update({ id: "c3", name: "Karavan", usernameCode: "k" } as any, superAdmin)
+        // The same one again is no change. The name with its Arabic, as the dialog sends both (PR 408).
+        await Companies.update({ id: "c3", name: "Karavan", nameAr: "كارافان", usernameCode: "k" } as any, superAdmin)
         expect(await codeOf("c3")).toEqual({ code: "k", next: 6 })
 
         const fresh = await Companies.create({ name: "Nile Tours", usernameCode: "nt" } as any, superAdmin)
@@ -184,7 +184,7 @@ describe.skipIf(!ADMIN_URL)("each company's username code, in Postgres", () => {
     it("leaves the code as it was when the rest of the save is refused (Codex on PR 184)", async () => {
         const tours = await Companies.create({ name: "Red Sea Tours", usernameCode: "rst" } as any, superAdmin)
         // Karavan's name is taken: the whole save is refused, the code with it.
-        await expect(Companies.update({ id: tours.id, name: "Karavan", usernameCode: "rsx" } as any, superAdmin)).rejects.toThrow()
+        await expect(Companies.update({ id: tours.id, name: "Karavan", nameAr: "كارافان الأحمر", usernameCode: "rsx" } as any, superAdmin)).rejects.toMatchObject({ code: "P2002" })
         expect(await codeOf(tours.id)).toEqual({ code: "rst", next: 0 })
     })
 

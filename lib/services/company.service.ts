@@ -10,7 +10,7 @@ import { resolveSubscriptionState, needsAttention, computeTrialEnd, DEFAULT_TRIA
 import { assertRecentStepUp } from "@/lib/step-up"
 import { SystemSettingsService } from "./system-settings.service"
 import { CreateCompanyInput, UpdateCompanyInput } from "../validations/company.schema"
-import { arabicBeside } from "@/lib/names"
+import { arabicBeside, arabicMissing } from "@/lib/names"
 import { parseModuleIcons, parseModuleOverrides, planOverrideWrite, sameOverrides } from "@/lib/modules"
 import { bucketPathFor, logoExtension, validateLogo } from "@/lib/company-logo"
 import type { CompanyBranding } from "@/lib/company-scope"
@@ -309,6 +309,10 @@ export class CompanyService {
             throw new Error("CANNOT_RENAME_SHSD")
         }
 
+        // A name's English, sent, has its Arabic, sent with it or kept
+        // (LATER_CHANGES_PLAN.md §3.1, step 7a, PR 408), as the Super Admin's
+        // dialog sends both; its Arabic alone may be added.
+        if (arabicMissing(name, nameAr, existing.nameAr)) throw Object.assign(new Error('NAME_IN_BOTH_LANGUAGES'), { field: 'nameAr', why: 'Needed in Arabic' })
         // Its name in Arabic, or the name itself changed in Arabic.
         const arabic = arabicBeside(name || undefined, nameAr, { en: existing.name, ar: existing.nameAr })
         const data: Prisma.CompanyUpdateInput = {
@@ -666,6 +670,7 @@ export class CompanyService {
             select: {
                 id: true,
                 name: true,
+                nameAr: true,
                 usernameCode: true,
                 usernameNext: true,
                 isBanned: true,
@@ -701,6 +706,8 @@ export class CompanyService {
             return {
                 id: company.id,
                 name: company.name,
+                // Its name in Arabic, for the Edit dialog and the page's language (PR 408).
+                nameAr: company.nameAr,
                 // For the Edit dialog: the code, and whether it's fixed now.
                 usernameCode: company.usernameCode,
                 usernameLocked: company.usernameNext > 0,

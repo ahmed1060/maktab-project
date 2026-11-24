@@ -8,6 +8,9 @@ import { SystemSettingsService } from "@/lib/services/system-settings.service"
 import { CashAdvanceService } from "@/lib/services/cash-advance.service"
 import { hasBundle, hasModule, resolveBundles } from "@/lib/features/bundles"
 
+/** A name another company has in Arabic, as it's unique across Nizmo too (PR 398): said as its Arabic's (PR 408). */
+const arabicTaken = (error: unknown) => JSON.stringify((error as { meta?: unknown })?.meta ?? {}).includes("nameAr")
+
 export const GET = withStandardHandler(async (req, session) => {
     if (session.user.role !== 'SUPER_ADMIN') return ApiResponse.forbidden()
 
@@ -77,7 +80,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
         return ApiResponse.success(result, 201)
     } catch (error: any) {
         if (error.message === 'COMPANY_CODE_TAKEN') return ApiResponse.badRequest("Username code taken")
-        if ((error as any).code === 'P2002') return ApiResponse.badRequest("Company already exists")
+        if ((error as any).code === 'P2002') return ApiResponse.badRequest(arabicTaken(error) ? "Company name in Arabic already exists" : "Company already exists")
         throw error
     }
 })
@@ -111,7 +114,9 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         if (error.message === 'CANNOT_RENAME_SHSD') return ApiResponse.forbidden("Cannot rename the system company (SHSD)")
         if (error.message === 'COMPANY_CODE_TAKEN') return ApiResponse.badRequest("Username code taken")
         if (error.message === 'COMPANY_CODE_LOCKED') return ApiResponse.badRequest("Username code fixed")
-        if ((error as any).code === 'P2002') return ApiResponse.badRequest("Company name already exists")
+        // Said under its field, as the schema's refusals are (PR 408).
+        if (error.message === 'NAME_IN_BOTH_LANGUAGES') return ApiResponse.badRequest("Validation Error", { [error.field]: { _errors: [error.why] } })
+        if ((error as any).code === 'P2002') return ApiResponse.badRequest(arabicTaken(error) ? "Company name in Arabic already exists" : "Company name already exists")
         throw error
     }
 })

@@ -235,7 +235,9 @@ describe("the company dialogs", () => {
         const { CompanyDialog } = await import("@/components/CompanyDialogs")
         const html = render(h(CompanyDialog, { company: null, onClose: () => {}, onSaved: () => {}, onChanged: () => {} }), packages)
         expect(html).toContain(`class="ui-dialog-title">${en.companies_add}</h2>`)
-        for (const name of [en.companies_name_label, en.trial_length, en.package_label]) expect(html, name).toMatch(new RegExp(`<label for="[^"]+" class="ui-label">${name}</label>`))
+        // The name in English and in Arabic, under its label (PR 408).
+        expect(html).toContain(`<legend class="ui-name-fields-label">${en.companies_name_label}</legend>`)
+        for (const name of [en.trial_length, en.package_label]) expect(html, name).toMatch(new RegExp(`<label for="[^"]+" class="ui-label">${name}</label>`))
         expect(html).toMatch(/<input[^>]*name="name"[^>]*maxLength="50"|<input[^>]*maxLength="50"[^>]*name="name"/)
         const ends = computeTrialEnd(new Date(), DEFAULT_TRIAL_PRESET, 0)!.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
         expect(html).toContain(esc(en.companies_trial_ends.replace("{date}", ends)))
@@ -254,10 +256,11 @@ describe("the company dialogs", () => {
     })
 
     it("says on Save what's wrong with the name, as the server would", async () => {
-        const { companyNameError } = await import("@/components/CompanyDialogs")
-        expect(companyNameError(" ")).toBe("companies_name_short")
-        expect(companyNameError("A")).toBe("companies_name_short")
-        expect(companyNameError("Delta Sites")).toBeNull()
+        // In each language since PR 408 (lib/company-name.test.ts).
+        const { companyNameErrors } = await import("@/lib/company-name")
+        expect(companyNameErrors({ en: " ", ar: " " })).toEqual({ name: "name_required_en", nameAr: "name_required_ar" })
+        expect(companyNameErrors({ en: "A", ar: "د" })).toEqual({ name: "companies_name_short", nameAr: "companies_name_short" })
+        expect(companyNameErrors({ en: "Delta Sites", ar: "دلتا سايتس" })).toEqual({})
     })
 
     it("says which step failed: a package refused after the name saved is the package's, and the list is told (Codex on PR 171)", async () => {
@@ -268,10 +271,10 @@ describe("the company dialogs", () => {
             return new Response(JSON.stringify(url.endsWith("/package") ? { error: "Package retired" } : { data: {} }), { status: url.endsWith("/package") ? 400 : 200 })
         })
         try {
-            const result = await saveCompany(company(), { name: "Delta Works", trial: "FOURTEEN_DAYS", packageId: "p2", usernameCode: "" })
+            const result = await saveCompany(company(), { name: "Delta Works", nameAr: "دلتا وركس", trial: "FOURTEEN_DAYS", packageId: "p2", usernameCode: "" })
             expect(result.step).toBe("package")
             expect(sent).toEqual(["PUT /api/companies", "PUT /api/companies/c1/package"])
-            expect((await saveCompany(company(), { name: "Delta Works", trial: "FOURTEEN_DAYS", packageId: "p1", usernameCode: "" })).step).toBe("saved")
+            expect((await saveCompany(company(), { name: "Delta Works", nameAr: "دلتا وركس", trial: "FOURTEEN_DAYS", packageId: "p1", usernameCode: "" })).step).toBe("saved")
         } finally {
             vi.unstubAllGlobals()
         }
@@ -319,10 +322,10 @@ describe("the company dialogs", () => {
             return new Response(JSON.stringify({ data: {} }), { status: 200 })
         })
         try {
-            await saveCompany(null, { name: "Delta Sites", trial: "FOURTEEN_DAYS", packageId: "", usernameCode: " DS " })
-            await saveCompany(company({ usernameCode: "ds", usernameLocked: false }), { name: "Delta Sites", trial: "FOURTEEN_DAYS", packageId: "p1", usernameCode: "dsi" })
-            await saveCompany(company({ usernameCode: "ds", usernameLocked: false }), { name: "Delta Sites", trial: "FOURTEEN_DAYS", packageId: "p1", usernameCode: "ds" })
-            await saveCompany(company({ usernameCode: "ds", usernameLocked: true }), { name: "Delta Sites", trial: "FOURTEEN_DAYS", packageId: "p1", usernameCode: "dsi" })
+            await saveCompany(null, { name: "Delta Sites", nameAr: "دلتا سايتس", trial: "FOURTEEN_DAYS", packageId: "", usernameCode: " DS " })
+            await saveCompany(company({ usernameCode: "ds", usernameLocked: false }), { name: "Delta Sites", nameAr: "دلتا سايتس", trial: "FOURTEEN_DAYS", packageId: "p1", usernameCode: "dsi" })
+            await saveCompany(company({ usernameCode: "ds", usernameLocked: false }), { name: "Delta Sites", nameAr: "دلتا سايتس", trial: "FOURTEEN_DAYS", packageId: "p1", usernameCode: "ds" })
+            await saveCompany(company({ usernameCode: "ds", usernameLocked: true }), { name: "Delta Sites", nameAr: "دلتا سايتس", trial: "FOURTEEN_DAYS", packageId: "p1", usernameCode: "dsi" })
         } finally {
             vi.unstubAllGlobals()
         }
