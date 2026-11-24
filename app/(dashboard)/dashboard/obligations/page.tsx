@@ -89,7 +89,8 @@ export default async function ObligationsPage(props: { searchParams: Promise<{ c
             select: {
                 id: true, title: true, status: true, deadline: true, difficulty: true, recurrence: true,
                 createdAt: true, updatedAt: true, lastStatusUpdateBy: true,
-                assignees: { select: { id: true, firstName: true, lastName: true } },
+                // Each name in Arabic too, for the page's language (PR 415).
+                assignees: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
             },
             orderBy: { deadline: 'asc' },
             skip,

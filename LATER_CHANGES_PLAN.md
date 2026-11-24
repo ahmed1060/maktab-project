@@ -29,7 +29,8 @@ language to its people and clients (#409), and to the Super Admin on its
 own screens for companies (#410) and in the company columns and selects
 of the other screens (#411). The other screens' names (step 8) started
 with the pickers and filters they share (#412) and the tasks screens
-(#413); the bulk upload's template and file are next (#414).
+(#413) and the bulk upload's template and file (#414); obligations are
+next (#415).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -649,7 +650,7 @@ other filled in when one is typed, if that's possible.
      - its sections and dialogs: Edit details' assignees and location,
        Transfer's lines on the money held for it, the costs' settlements,
        and the penalty's person.
-   - **8c. The bulk upload's template and file (#414):**
+   - **8c. The bulk upload's template and file (Done, #414):**
      - the template, in the language it's downloaded in: its people
        ("Name (username)") and its clients, each in that language, or the
        one they have, in that language's order, and each location's
@@ -658,11 +659,15 @@ other filled in when one is typed, if that's possible.
        so a file filled in from either template reads the same. Its people
        are found by username, and its locations by the template's own list,
        as before.
-   - **Then, by area,** one PR or more each: obligations, records and the
-     documents, attendance, requests, payroll with the costs and charges
-     lists, the client's area, and last, names written from then on:
-     notifications and messages, who last changed a status, a cost's or a
-     location's author, and one's own name in the account menu.
+   - **8d. Obligations (#415):**
+     - the obligations list: who each obligation is for;
+     - an obligation's page: who it's for, who assigned it, and the note
+       when someone it's for was deleted.
+   - **Then, by area,** one PR or more each: records and the documents,
+     attendance, requests, payroll with the costs and charges lists, the
+     client's area, and last, names written from then on: notifications
+     and messages, who last changed a status, a cost's or a location's
+     author, and one's own name in the account menu.
 
 ## 4. A development database (Done)
 
@@ -1458,3 +1463,7 @@ same day as drawn in the All users: status badges canvas
   settlements, the penalty's person, and Transfer's lines on the money
   held for it, whose preview now gives each name in both languages. The
   bulk upload's template and file next.
+- **2026-11-24:** #414 merged: the bulk upload's template lists its people
+  and clients in the language it's downloaded in, in that language's order,
+  and each location's client in it; a file's client is found by its
+  English or its Arabic name, any case (§3.1, step 8c). Obligations next.
