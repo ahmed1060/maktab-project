@@ -663,7 +663,7 @@ other filled in when one is typed, if that's possible.
      - the obligations list: who each obligation is for;
      - an obligation's page: who it's for, who assigned it, and the note
        when someone it's for was deleted.
-   - **8e. Records and a client's page (#416):**
+   - **8e. Records and a client's page (Done, #416):**
      - the records list, its table and its cards, and a record's details:
        its client, and who added it and last edited it;
      - Add record's client picker on the Records page: each client in the
@@ -1484,3 +1484,9 @@ same day as drawn in the All users: status badges canvas
   language (§3.1, step 8d): the obligations list's assignees, and an
   obligation's page, who it's for, who assigned it, and the note on
   someone deleted. Records and the documents next.
+- **2026-11-24:** #416 merged: records and a client's page name clients
+  and people in the page's language (§3.1, step 8e): the records list
+  and a record's details, Add record's client picker in the page's order
+  (an Arabic page's first 50 by their Arabic), the records search by a
+  client's Arabic name, and a client's own page, its heading and its
+  owner. The documents next.
