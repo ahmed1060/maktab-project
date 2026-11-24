@@ -479,7 +479,9 @@ other filled in when one is typed, if that's possible.
      - the request keeps each name in both languages, and the ones it's
        from: four columns added, empty for a request asked before;
      - the server takes a request only with both, each in its own
-       letters, and refuses one that changes neither;
+       letters, from one character to a person's name's limit, as every
+       name field takes it (it asked for two at least before), and
+       refuses one that changes neither;
      - approved, the name is saved in both languages, and the company
        learns it. A request asked before is approved as #398 did;
      - on the Requests page, a name change's details show the names
