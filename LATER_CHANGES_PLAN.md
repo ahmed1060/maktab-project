@@ -16,11 +16,12 @@ Each part is marked:
 Status: **the names (§3) next.** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
-#384). The names are decided, their design approved and their longer
-limit done (#397). Of their steps (§3.1), both languages are kept (#398),
-Nizmo's list of names and the rules are done (#399), and so are the
-company's spellings, learned (#400), and read for a name's suggestion
-(#401). Employees' names on Add employee are next (#402).
+#384). The names are decided, their design approved and their limit set
+(#397, lowered to 30 characters in #402). Of their steps (§3.1), both
+languages are kept (#398), Nizmo's list of names and the rules are done
+(#399), and so are the company's spellings, learned (#400), and read for
+a name's suggestion (#401), and employees' names on Add employee (#402).
+An employee's page and one's own profile are next (#403).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -425,7 +426,7 @@ other filled in when one is typed, if that's possible.
      - no screen asks for it until step 4's forms, and the screen test
        (`lib/screen-asks.test.ts`) lists the call with them.
 4. **Employees' names,** in three parts:
-   - **4a, the name in two languages on Add employee (#402):**
+   - **4a, the name in two languages on Add employee (Done, #402):**
      - the group of two fields, "In English" and "In Arabic", as a
        building block (`NameFields`, DESIGN.md §5.3): the page's
        language first, on the start side, and one under the other on a
@@ -446,9 +447,23 @@ other filled in when one is typed, if that's possible.
      - the screen test follows a building block that asks the server
        itself, and lists the call on Add employee, open to anyone in
        the company;
-   - **4b, an employee's page and one's own profile (#403):** the two
-     fields, a name missing a language asked for on its next edit, with
-     the note at the top of the form;
+   - **4b, an employee's page and one's own profile (#403):**
+     - the two fields wherever a name is saved straight away: on an
+       employee's page, for whoever may edit it, and on one's own
+       profile where the name isn't asked for (an Admin's);
+     - a name missing a language, as those saved before #402 may be, is
+       asked for on its next edit: the note at the top of the form says
+       so, and the form isn't saved until it's added. A name written in
+       Arabic in its English column shows in the Arabic field, with the
+       English empty;
+     - the server takes a name's English only in English letters and
+       with its Arabic, sent with it or kept, and its Arabic alone may be
+       added. An edit that sends no name, such as a status's, leaves them
+       as they are. A name sent in Arabic as its English, as a form that
+       asked for one name only once did (#398), is refused now that
+       every form that saves a name sends both;
+     - one's own name on an employee's or a team leader's footing stays
+       a request until 4c, which brings the two fields to it;
    - **4c, a request to change one's own name (#404):** the two fields
      in the request, and its approval keeping both.
 5. **Employees' names in the page's language** on the Employees page,
@@ -1184,3 +1199,9 @@ same day as drawn in the All users: status badges canvas
   spellings are looked up without its business words. Step 4 split in
   three: Add employee (#402), an employee's page and one's own profile
   (#403), and a request to change one's own name (#404).
+- **2026-11-24:** #402 merged: each name in English and in Arabic on Add
+  employee (§3.1, step 4a), the two fields a building block. In it, the
+  owner lowered a name's limit to 30 characters, from 40. From its Codex
+  review, a suggestion longer than a name may be is asked to be
+  shortened, and a new list of spellings starts with nothing under the
+  keys. An employee's page and one's own profile next, as #403.

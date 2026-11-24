@@ -17,6 +17,23 @@ export function fieldsInOrder(locale: string): NameLanguage[] {
     return locale === "ar" ? ["ar", "en"] : ["en", "ar"]
 }
 
+/** A form's fields in the order it shows them: each name's in the page's language first (PR 402, 403). */
+export function inPageOrder<F extends string>(fields: readonly F[], locale: string): readonly F[] {
+    if (locale !== "ar") return fields
+    const swapped: Record<string, string> = { firstName: "firstNameAr", firstNameAr: "firstName", lastName: "lastNameAr", lastNameAr: "lastName" }
+    return fields.map(field => (swapped[field] ?? field) as F)
+}
+
+/**
+ * A saved name, as the two fields edit it (LATER_CHANGES_PLAN.md §3.1, step
+ * 4b, PR 403): one written in Arabic in its English column, as a name saved
+ * in one language may be, is its Arabic, with its English still to come.
+ */
+export function savedName(en: string, ar: string | null | undefined): TwoNames {
+    if (!hasArabic(en)) return { en, ar: ar ?? "" }
+    return { en: "", ar: ar || en }
+}
+
 /** What to suggest: the name typed in one field, in the other's language, while it's empty. */
 export function toSuggest(names: TwoNames): { name: string; to: NameLanguage } | null {
     const en = names.en.trim()

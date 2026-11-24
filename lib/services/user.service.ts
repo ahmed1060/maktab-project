@@ -11,7 +11,7 @@ import { clientAccountHasEmail, isEmailClash } from "@/lib/account-email"
 import { generateTempPassword } from "@/lib/generate-password"
 
 import { CreateUserInput, UpdateUserInput } from "../validations/user.schema"
-import { arabicBeside } from "@/lib/names"
+import { arabicBeside, hasArabic } from "@/lib/names"
 import { calendarMonth, calendarYear, DEFAULT_TIME_ZONE } from "@/lib/time"
 import { effectiveFromChoice } from "@/lib/salary-history"
 import { checkTeamAssignment, clearsOwnLeader, stripsLeadership } from "@/lib/team-assignment"
@@ -330,10 +330,26 @@ export class UserService {
         // An Arabic taken from a name itself (below) is either a changed name's,
         // refused here already, or the very name, kept where it had none.
         const changes = (sent: string | undefined, kept: string | null) => sent !== undefined && sent !== kept
-        if (isSelf && regularUser && ['EMPLOYEE', 'TEAM_LEADER'].includes(regularUser.role)) {
+        // One's own name on an employee's or a team leader's footing is asked for, not changed.
+        const nameByRequest = isSelf && !!regularUser && ['EMPLOYEE', 'TEAM_LEADER'].includes(regularUser.role)
+        if (regularUser && nameByRequest) {
             if ((firstName && firstName !== regularUser.firstName) || (lastName && lastName !== regularUser.lastName)
                 || changes(firstNameAr, regularUser.firstNameAr) || changes(lastNameAr, regularUser.lastNameAr)) {
                 throw new Error("NAME_CHANGE_REQUIRES_ADMIN")
+            }
+        }
+
+        // A name's English, sent, is written in English letters and has its
+        // Arabic, sent with it or kept (LATER_CHANGES_PLAN.md §3.1, step 4b, PR
+        // 403), as the profile's form sends both; its Arabic alone may be added.
+        // Not one's own asked for, refused above where it changes, nor a Super
+        // Admin's, kept once.
+        if (regularUser && !nameByRequest) {
+            const names = [['firstName', firstName, firstNameAr, regularUser.firstNameAr], ['lastName', lastName, lastNameAr, regularUser.lastNameAr]] as const
+            for (const [field, en, ar, keptAr] of names) {
+                if (!en) continue
+                if (hasArabic(en)) throw Object.assign(new Error('NAME_IN_BOTH_LANGUAGES'), { field, why: 'Written in English letters' })
+                if (!(ar ?? keptAr)?.trim()) throw Object.assign(new Error('NAME_IN_BOTH_LANGUAGES'), { field: `${field}Ar`, why: 'Needed in Arabic' })
             }
         }
 

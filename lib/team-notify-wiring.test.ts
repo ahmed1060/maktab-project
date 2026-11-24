@@ -82,7 +82,7 @@ describe("a real change is reported", () => {
 
 describe("nothing is reported when nothing about the team changed", () => {
     it("saving an unrelated field", async () => {
-        await update({ firstName: "Renamed" })
+        await update({ firstName: "Renamed", firstNameAr: "مُعاد" })  // with its Arabic, as a name is now sent (PR 403)
         expect(db.sent).toBeNull()
     })
 

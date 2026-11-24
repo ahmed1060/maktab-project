@@ -317,6 +317,8 @@ const SCREENS: Record<string, Screen> = {
             // One's own name change, asked for and waiting.
             "GET /api/profile-requests": ANYONE,
             "POST /api/profile-requests": ANYONE,
+            // A name's other language, suggested as it's typed, where the form keeps both (PR 403).
+            "GET /api/names/suggest": ANYONE,
             "POST /api/users/[x]/reset-password": when("employees.reset_password", profile("resetPassword: can('employees.reset_password') && !own && actsOnThem,")),
             "GET /api/users/[x]/employment": when("employees.end_contract", profile("endContract: can('employees.end_contract') && !own && actsOnThem && person.role !== 'SUPER_ADMIN',")),
             "POST /api/users/[x]/employment": when("employees.end_contract", profile("endContract: can('employees.end_contract') && !own && actsOnThem && person.role !== 'SUPER_ADMIN',")),

@@ -95,7 +95,7 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     ["lib/services/user.service.ts", "if ((newUserRole === 'ADMIN' || newUserRole === 'SUPER_ADMIN') && userRole !== 'SUPER_ADMIN') {", ADMIN_ROLE],
     // an ordinary new account (the kind the form defaults to) starts on the company's default role
     ["lib/services/user.service.ts", "if (!roleId && newUserRole === 'EMPLOYEE') return RoleAssignmentService.defaultFor(prisma, targetCompanyId)", THE_ROLE],
-    ["lib/services/user.service.ts", "if (isSelf && regularUser && ['EMPLOYEE', 'TEAM_LEADER'].includes(regularUser.role)) {", THE_PERSON],
+    ["lib/services/user.service.ts", "const nameByRequest = isSelf && !!regularUser && ['EMPLOYEE', 'TEAM_LEADER'].includes(regularUser.role)", THE_PERSON],
     ["lib/services/user.service.ts", "if (['ADMIN', 'SUPER_ADMIN'].includes(targetRole) && !isSelf && userRole === 'SUPER_ADMIN') {", ADMIN_ROLE],
     ["lib/services/user.service.ts", "if ((role === 'ADMIN' || role === 'SUPER_ADMIN') && userRole !== 'SUPER_ADMIN') {", ADMIN_ROLE],
 
@@ -141,7 +141,7 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     ["lib/profile-access.ts", "ownTeamLeader: own && person.role === 'EMPLOYEE',", THE_PERSON],
     ["lib/profile-access.ts", "teamLeader: can('employees.assign_team') && !own && person.role === 'EMPLOYEE',", THE_PERSON],
     // One's own name is asked for, not changed, on an employee's or a team leader's footing (PR 193)
-    ["lib/profile-access.ts", "nameByRequest: own && (person.role === 'EMPLOYEE' || person.role === 'TEAM_LEADER'),", THE_PERSON],
+    ["lib/profile-access.ts", "return own && (role === 'EMPLOYEE' || role === 'TEAM_LEADER')", THE_PERSON],
 ]
 
 const ROLE_CHECK = /(===?|!==?)\s*['"](ADMIN|TEAM_LEADER|EMPLOYEE)['"]|['"](ADMIN|TEAM_LEADER|EMPLOYEE)['"]\s*(===?|!==?)|\[[^\]]*['"](ADMIN|TEAM_LEADER|EMPLOYEE)['"][^\]]*\]\s*\.includes|case\s+['"](ADMIN|TEAM_LEADER|EMPLOYEE)['"]/

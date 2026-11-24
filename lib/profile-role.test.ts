@@ -379,7 +379,7 @@ describe("the profile, wired to its role", () => {
 
     it("says a refusal about the role under it only when the save changed the role", () => {
         const save = FORM.slice(FORM.indexOf("const executeSubmit"), FORM.indexOf("// Their role, as the form may change it"))
-        expect(save).toContain("if (refused && (refused.field !== 'roleId' || roleGiven)) wrongAt({ [refused.field]: t(refused.key) })")
+        expect(save).toContain("if (refused && (refused.field !== 'roleId' || roleGiven)) wrongAt({ [refused.field]: mistakeText(t, locale, refused.field, refused.key) })")
         expect(save).toContain("else if (refused) setFormError(t(refused.key))")
     })
 

@@ -132,13 +132,15 @@ describe.skipIf(!ADMIN_URL)("English and Arabic names, in Postgres", () => {
             expect(logged.at(-1).details).toEqual({ firstNameAr: { old: null, new: "عمر" }, lastNameAr: { old: null, new: "عادل" } })
         })
 
-        it("follow a name changed in Arabic by a form that asks for one name only, and stay with one changed in English", async () => {
-            await UserService.update({ id: "e1", firstName: "هلا" } as any, as("a1", "ADMIN"))
-            expect(await person("e1")).toMatchObject({ firstName: "هلا", firstNameAr: "هلا" })
+        it("stay with a name changed in English, and aren't taken from one written in Arabic as its English (PR 403)", async () => {
+            // A form that asked for one name only once sent it in Arabic, and its
+            // Arabic followed (PR 398). Every form that saves a name sends both
+            // now, so a name's English is asked for in English letters.
+            expect(await refusal(UserService.update({ id: "e1", firstName: "هلا" } as any, as("a1", "ADMIN")))).toBe("NAME_IN_BOTH_LANGUAGES")
             await UserService.update({ id: "e1", firstName: "Hala" } as any, as("a1", "ADMIN"))
-            expect(await person("e1")).toMatchObject({ firstName: "Hala", firstNameAr: "هلا" })
-            await UserService.update({ id: "e1", lastName: "منصور علي" } as any, as("a1", "ADMIN"))
-            expect(await person("e1")).toMatchObject({ lastName: "منصور علي", lastNameAr: "منصور علي" })
+            expect(await person("e1")).toMatchObject({ firstName: "Hala", firstNameAr: "هالة" })
+            expect(await refusal(UserService.update({ id: "e1", lastName: "منصور علي" } as any, as("a1", "ADMIN")))).toBe("NAME_IN_BOTH_LANGUAGES")
+            expect(await person("e1")).toMatchObject({ lastName: "منصور", lastNameAr: "منصور" })
         })
 
         it("aren't changed by an employee on their own profile, as their names aren't", async () => {
@@ -214,8 +216,8 @@ describe.skipIf(!ADMIN_URL)("English and Arabic names, in Postgres", () => {
             await db.query(`INSERT INTO "Company"(id, name, "nameAr", "updatedAt") VALUES ('c3', 'مكتب مني', 'مكتب منى', now())`)
         })
 
-        it("keeps its Arabic when the name comes back unchanged with the rest of a profile", async () => {
-            await UserService.update({ id: "e4", firstName: "مني", lastName: "Adel", gender: "FEMALE" } as any, as("a1", "ADMIN"))
+        it("is asked for in English by whoever edits it, its Arabic left as it was (PR 403)", async () => {
+            expect(await refusal(UserService.update({ id: "e4", firstName: "مني", lastName: "Adel", gender: "FEMALE" } as any, as("a1", "ADMIN")))).toBe("NAME_IN_BOTH_LANGUAGES")
             expect(await person("e4")).toMatchObject({ firstName: "مني", firstNameAr: "منى" })
         })
 
@@ -236,8 +238,10 @@ describe.skipIf(!ADMIN_URL)("English and Arabic names, in Postgres", () => {
         })
 
         it("keeps a last name's too, from a profile and from an approved change", async () => {
+            // Its Arabic alone, added by whoever edits it (PR 403); then the
+            // names back unchanged from the person's own profile.
             await UserService.update({ id: "e4", lastNameAr: "عادلي" } as any, as("a1", "ADMIN"))
-            await UserService.update({ id: "e4", firstName: "مني", lastName: "عادل" } as any, as("a1", "ADMIN"))
+            await UserService.update({ id: "e4", firstName: "مني", lastName: "عادل" } as any, as("e4", "EMPLOYEE"))
             expect(await person("e4")).toEqual({ firstName: "مني", lastName: "عادل", firstNameAr: "منى", lastNameAr: "عادلي" })
             const request = await db.query(`INSERT INTO "ProfileUpdateRequest"(id, "userId", "oldFirstName", "oldLastName", "newFirstName", "newLastName", status, "updatedAt") VALUES ('p3', 'e4', 'مني', 'عادل', 'منى', 'عادل', 'PENDING', now()) RETURNING id`)
             await ProfileService.approveRequest(request.rows[0].id, "", as("a1", "ADMIN"))
