@@ -25,7 +25,7 @@ import { STATEMENT_MAX_CHARGES, byCostName, numberReceipts, statementPeriod, sta
 export async function clientStatement(user: Actor & { id: string }, input: { clientId?: string; from?: string; to?: string }, now: Date = new Date()): Promise<Statement> {
     if (!input.clientId) throw new Error("STATEMENT_CLIENT_REQUIRED")
     if (!canCompanyWide(user, "charges.view")) throw new Error("STATEMENT_COMPANY_WIDE")
-    const client = await prisma.client.findUnique({ where: { id: input.clientId }, select: { id: true, name: true, ownerName: true, companyId: true } })
+    const client = await prisma.client.findUnique({ where: { id: input.clientId }, select: { id: true, name: true, nameAr: true, ownerName: true, ownerNameAr: true, companyId: true } })
     if (!client || (user.role !== "SUPER_ADMIN" && client.companyId !== user.companyId)) throw new Error("CLIENT_NOT_FOUND")
 
     const [company, timeZone] = await Promise.all([
@@ -85,7 +85,8 @@ export async function clientStatement(user: Actor & { id: string }, input: { cli
     const charges = numberReceipts(lines)
     return {
         company: { name: company?.name ?? "", nameAr: company?.nameAr ?? null, logoUrl: company?.logoUrl ?? null },
-        client: { id: client.id, name: client.name, ownerName: client.ownerName },
+        // Its name and its owner's in both languages, shown in the page's (PR 417).
+        client: { id: client.id, name: client.name, nameAr: client.nameAr, ownerName: client.ownerName, ownerNameAr: client.ownerNameAr },
         period,
         issuedOn,
         charges,

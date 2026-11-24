@@ -16,7 +16,7 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
     const settlement = await prisma.finalSettlement.findUnique({
         where: { id: params.id },
         include: {
-            user: { select: { firstName: true, lastName: true, email: true } },
+            user: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, email: true } },
             company: { select: { id: true, name: true, nameAr: true, logoUrl: true } },
         },
     })
@@ -31,8 +31,12 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
 
     return ApiResponse.success({
         id: settlement.id,
+        // In both languages, named on the document in the page's (PR 417).
         person: {
-            name: `${settlement.user.firstName} ${settlement.user.lastName}`.trim(),
+            firstName: settlement.user.firstName,
+            lastName: settlement.user.lastName,
+            firstNameAr: settlement.user.firstNameAr,
+            lastNameAr: settlement.user.lastNameAr,
             email: settlement.user.email,
         },
         company: { name: settlement.company.name, nameAr: settlement.company.nameAr, logoUrl: settlement.company.logoUrl },

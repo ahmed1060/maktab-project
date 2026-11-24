@@ -145,7 +145,7 @@ describe.skipIf(!ADMIN_URL)("a client statement, in Postgres", () => {
         expect(s.totals).toEqual({ paid: 4400, fees: 380, charged: 4780, collected: 2380, due: 2400, dueCount: 3, dueBefore: 600, dueBeforeCount: 1, stillDue: 3000 })
         // Its name in both languages, shown in the page's (PR 409).
         expect(s.company).toEqual({ name: "Nile Works", nameAr: "أعمال النيل", logoUrl: "https://p.supabase.co/storage/v1/object/public/app-assets/c1/logo.png" })
-        expect(s.client).toEqual({ id: "noor", name: "Al Noor Trading", ownerName: "Hassan Adel" })
+        expect(s.client).toEqual({ id: "noor", name: "Al Noor Trading", nameAr: null, ownerName: "Hassan Adel", ownerNameAr: null })
         expect(s.period).toEqual(OCTOBER)
         expect(s.issuedOn).toBe(calendarDateStr(new Date(), "Africa/Cairo"))
     })

@@ -6,6 +6,7 @@ import { Button, Details, DocGroup, DocLine, DocNote, DocTotal, DocumentSheet, E
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { companyNameIn } from '@/lib/company-name'
+import { personName, type PersonNames } from '@/lib/names'
 
 /**
  * One payslip, to read and to print.
@@ -19,7 +20,8 @@ import { companyNameIn } from '@/lib/company-name'
  */
 
 type Doc = {
-    person: { name: string; email: string }
+    /** Whom it's issued to, in both languages, named in the page's (PR 417). */
+    person: PersonNames & { email: string }
     company: { name: string; nameAr?: string | null; logoUrl?: string | null }
     period: { month: number; year: number }
     status: 'DRAFT' | 'APPROVED' | 'PAID'
@@ -84,7 +86,7 @@ export default function PayslipDocumentPage() {
                 {doc.status === 'DRAFT' && <DocNote tone="waiting">{t('doc_draft_note')}</DocNote>}
 
                 <Details items={[
-                    { label: t('doc_issued_to'), value: doc.person.name },
+                    { label: t('doc_issued_to'), value: <bdi>{personName(doc.person, locale)}</bdi> },
                     { label: t('doc_period'), value: period },
                     { label: t('doc_days_paid'), value: doc.daysPaid.toLocaleString(digits) },
                 ]} />

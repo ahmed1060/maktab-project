@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { companyNameIn } from '@/lib/company-name'
+import { clientName, ownerName } from '@/lib/client-list'
 import { Details, DocGroup, DocLine, DocNote, DocTable, DocTotal, DocumentSheet, FileChip, type DocColumn } from '@/components/ui'
 import { fill } from '@/components/attendance-calendar/fill'
 import { calendarDay } from '@/lib/calendar-day'
@@ -121,7 +122,7 @@ export function StatementSheet({ statement, withReceipts, view = 'every' }: { st
     return (
         <DocumentSheet title={t(byName ? 'statement_kind_by_name' : 'statement_kind_every')} company={{ name: companyNameIn(locale, statement.company), logoUrl: statement.company.logoUrl }}>
             <Details items={[
-                { label: t('statement_client'), value: <><bdi>{client.name}</bdi><span className="ui-detail-note"><bdi>{client.ownerName}</bdi></span></> },
+                { label: t('statement_client'), value: <><bdi>{clientName(client, locale)}</bdi><span className="ui-detail-note"><bdi>{ownerName(client, locale)}</bdi></span></> },
                 { label: t('doc_period'), value: range },
                 { label: t('statement_issued_on'), value: longDay(statement.issuedOn) },
             ]} />
@@ -146,7 +147,7 @@ export function StatementSheet({ statement, withReceipts, view = 'every' }: { st
                 <section className="ui-doc-receipts">
                     <h2 className="ui-doc-group-title">{t('statement_receipts')}</h2>
                     {/* On paper, a page of them says whose they are. */}
-                    <p className="ui-doc-print-only ui-doc-receipts-for">{fill(t('statement_receipts_for'), { client: <bdi>{client.name}</bdi>, period: range })}</p>
+                    <p className="ui-doc-print-only ui-doc-receipts-for">{fill(t('statement_receipts_for'), { client: <bdi>{clientName(client, locale)}</bdi>, period: range })}</p>
                     {byName
                         // Under each name, in the table's order, numbered that way.
                         ? receiptsByName(statement.names, charges).map(group => (

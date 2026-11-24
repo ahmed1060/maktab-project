@@ -11,6 +11,7 @@ import { dayIso } from '@/lib/calendar-text'
 import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useModules } from '@/lib/useModules'
 import { STATEMENT_MAX_CHARGES, type Statement, type StatementView } from '@/lib/client-statement'
+import { clientName } from '@/lib/client-list'
 
 // A statement, with the address it was fetched for: SWR keeps the last one
 // while another loads, and only this address's is shown as its statement.
@@ -69,7 +70,8 @@ export default function ClientStatementPage() {
         if (start && end) { q.set('from', start); q.set('to', end) } else { q.delete('from'); q.delete('to') }
     })
 
-    const name = known?.client.name
+    // In the page's language (PR 417).
+    const name = known ? clientName(known.client, locale) : undefined
     const header = (
         <PageHeader
             title={t('statement_title')}

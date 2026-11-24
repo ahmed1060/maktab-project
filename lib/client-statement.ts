@@ -73,7 +73,8 @@ export type StatementName = {
 export type Statement = {
     /** Its name in both languages, shown in the page's (PR 409). */
     company: { name: string; nameAr?: string | null; logoUrl: string | null }
-    client: { id: string; name: string; ownerName: string }
+    /** Its name and its owner's, each in Arabic too once it has one, shown in the page's language (PR 417). */
+    client: { id: string; name: string; nameAr?: string | null; ownerName: string; ownerNameAr?: string | null }
     period: StatementPeriod
     /** The day it was issued, where the company is: each charge is as it is that day. */
     issuedOn: string
