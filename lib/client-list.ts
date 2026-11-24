@@ -12,8 +12,11 @@ import type { Locale } from '@/lib/translations'
 /** A client's names as GET /api/clients gives them: each in English, and in Arabic once it has one (PR 398). */
 export type ClientNames = { name: string; nameAr?: string | null; ownerName: string; ownerNameAr?: string | null }
 
+/** A client's own name, in English and in Arabic once it has one, as its pickers have it (PR 412). */
+export type ClientName = Pick<ClientNames, 'name' | 'nameAr'>
+
 /** Its name in the page's language, or the one it has. */
-export function clientName(c: ClientNames, locale: Locale): string {
+export function clientName(c: ClientName, locale: Locale): string {
     return nameIn(locale, { en: c.name, ar: c.nameAr })
 }
 
@@ -32,7 +35,7 @@ export function clientMatches(c: ClientNames, search: string): boolean {
  * Arabic name first, alphabetically in Arabic, then the rest as the server
  * gave them, by their English. An English page keeps the server's order.
  */
-export function clientsInOrder<C extends ClientNames>(clients: readonly C[], locale: Locale): C[] {
+export function clientsInOrder<C extends ClientName>(clients: readonly C[], locale: Locale): C[] {
     if (locale !== 'ar') return [...clients]
     const inArabic = clients.filter(c => c.nameAr?.trim())
     const rest = clients.filter(c => !c.nameAr?.trim())

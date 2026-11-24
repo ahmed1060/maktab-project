@@ -114,7 +114,7 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     ["components/SubscriptionNote.tsx", "if (viewer?.role !== 'ADMIN') return null", ADMIN_ROLE],
 
     // components/filters/useEmployeeOptions.ts
-    ["components/filters/useEmployeeOptions.ts", "...people.filter(p => p.role !== 'ADMIN' && p.role !== 'SUPER_ADMIN').map(p => ({ value: p.id, label: `${p.firstName} ${p.lastName}`.trim() })),", THE_PERSON],
+    ["components/filters/useEmployeeOptions.ts", "...peopleInOrder(people.filter(p => p.role !== 'ADMIN' && p.role !== 'SUPER_ADMIN'), locale).map(p => ({ value: p.id, label: personName(p, locale) })),", THE_PERSON],
 
     // components/DashboardHeader.tsx
     ["components/DashboardHeader.tsx", "case 'EMPLOYEE': return 'role_employee'", LABEL],

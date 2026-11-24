@@ -10,6 +10,7 @@ import { fetcher } from '@/lib/swr-fetcher'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { useCan } from '@/lib/useCan'
 import LocationForm from './LocationForm'
+import { clientName as clientNameIn, clientsInOrder } from '@/lib/client-list'
 
 /** A task's client, none for "No client", and its location. */
 export type TaskPlace = { clientId: string; locationId: string }
@@ -34,13 +35,13 @@ export default function TaskPlacePicker({ value, onChange, companyId, current, c
      * more (archived since), so an edit that leaves it alone can keep it.
      */
     current?: { id: string; label: string } | null
-    /** The edited task's client, offered though it may be archived since (CLIENTS_PLAN.md §4.3). */
-    currentClient?: { id: string; name: string } | null
+    /** The edited task's client, offered though it may be archived since (CLIENTS_PLAN.md §4.3), with its Arabic name (PR 412). */
+    currentClient?: { id: string; name: string; nameAr?: string | null } | null
     /** Shown once a save has been tried. */
     error?: string
     disabled?: boolean
 }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const { can } = useCan()
     const { data: session } = useSession()
     const superAdmin = (session?.user as { role?: string } | undefined)?.role === 'SUPER_ADMIN'
@@ -51,9 +52,11 @@ export default function TaskPlacePicker({ value, onChange, companyId, current, c
 
     const seesClients = can('clients.view')
     // Each with its HQ, to pick when the client is.
-    const { data: clientsBody } = useSWR<{ data: { id: string; name: string; locations?: { id: string; latitude: number | null }[] }[] }>(seesClients && !waitsForCompany ? `/api/clients${company ? `?${company}` : ''}` : null, fetcher)
-    const clients = clientsBody?.data ?? []
-    const clientName = clients.find(c => c.id === value.clientId)?.name
+    // Each in the page's language, in the page's order (PR 412).
+    const { data: clientsBody } = useSWR<{ data: { id: string; name: string; nameAr?: string | null; locations?: { id: string; latitude: number | null }[] }[] }>(seesClients && !waitsForCompany ? `/api/clients${company ? `?${company}` : ''}` : null, fetcher)
+    const clients = clientsInOrder(clientsBody?.data ?? [], locale)
+    const picked = clients.find(c => c.id === value.clientId)
+    const clientName = picked && clientNameIn(picked, locale)
 
     const seesLocations = can('locations.view')
     const params = new URLSearchParams({ pick: '1' })
@@ -108,8 +111,8 @@ export default function TaskPlacePicker({ value, onChange, companyId, current, c
                     <Select {...p} icon={StorefrontIcon} value={value.clientId} onChange={e => pickClient(e.target.value)} disabled={disabled}
                         options={[
                             { value: '', label: t('task_no_client') },
-                            ...clients.map(c => ({ value: c.id, label: c.name })),
-                            ...(currentClient && !clients.some(c => c.id === currentClient.id) ? [{ value: currentClient.id, label: `${currentClient.name} · ${t('clients_archived_mark')}` }] : []),
+                            ...clients.map(c => ({ value: c.id, label: clientNameIn(c, locale) })),
+                            ...(currentClient && !clients.some(c => c.id === currentClient.id) ? [{ value: currentClient.id, label: `${clientNameIn(currentClient, locale)} · ${t('clients_archived_mark')}` }] : []),
                         ]} />
                 )}</Field>
             )}

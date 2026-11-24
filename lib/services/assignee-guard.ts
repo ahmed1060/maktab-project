@@ -110,7 +110,8 @@ export function assignableWhere(session: any, permission: AssignPermission, comp
 export async function assignableChoices(session: any, permission: AssignPermission, companyId: string | null) {
     return prisma.user.findMany({
         where: assignableWhere(session, permission, companyId),
-        select: { id: true, firstName: true, lastName: true, role: true, ...(permission === "tasks.create" ? { username: true } : {}) },
+        // Each name in Arabic too, for the page's language (PR 412).
+        select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, role: true, ...(permission === "tasks.create" ? { username: true } : {}) },
         orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
     })
 }

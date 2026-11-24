@@ -8,6 +8,7 @@ import { fetcher } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
 import { locationLabel } from '@/lib/locations'
 import { NO_CLIENT, locationFilterChoices, type FilterPlace } from '@/lib/place-filters'
+import { clientName as clientNameIn, clientsInOrder, type ClientName } from '@/lib/client-list'
 
 type Option = { value: string; label: string }
 
@@ -33,10 +34,11 @@ export type ExtraFilter = {
  * location filter for whoever may see locations, offering the picked
  * client's and the shared ones, the archived ones last. A Super Admin
  * picks a company first. Either, set in the address for someone who can't
- * pick it, is hidden, so it can be cleared.
+ * pick it, is hidden, so it can be cleared. Each client in the page's
+ * language, in the page's order (PR 412).
  */
 export function usePlaceFilters(picked: { clientId: string; locationId: string }): ExtraFilter[] {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const { can } = useCan()
     const { data: session } = useSession()
     const { selectedCompanyId } = useCompany()
@@ -47,11 +49,14 @@ export function usePlaceFilters(picked: { clientId: string; locationId: string }
     const seesClients = can('clients.view') && !waits
     const seesLocations = can('locations.view') && !waits
     // Archived clients too: a filter keeps them (CLIENTS_PLAN.md §4.3).
-    const { data: clientsBody } = useSWR<{ data: { id: string; name: string; archivedAt?: string | null }[] }>(seesClients ? `/api/clients?archived=all${company ? `&${company}` : ''}` : null, fetcher)
+    const { data: clientsBody } = useSWR<{ data: (ClientName & { id: string; archivedAt?: string | null })[] }>(seesClients ? `/api/clients?archived=all${company ? `&${company}` : ''}` : null, fetcher)
     const { data: placesBody } = useSWR<{ data: { locations: FilterPlace[] } }>(seesLocations ? `/api/locations?pick=filters${company ? `&${company}` : ''}` : null, fetcher)
-    const clients = clientsBody?.data ?? []
+    const clients = clientsInOrder(clientsBody?.data ?? [], locale)
     const places = placesBody?.data.locations ?? []
-    const clientName = (id: string | null) => (id ? clients.find(c => c.id === id)?.name : undefined)
+    const clientName = (id: string | null) => {
+        const client = id ? clients.find(c => c.id === id) : undefined
+        return client && clientNameIn(client, locale)
+    }
 
     const filters: ExtraFilter[] = []
     if (seesClients) {
@@ -59,7 +64,7 @@ export function usePlaceFilters(picked: { clientId: string; locationId: string }
             key: 'clientId',
             label: t('location_client'),
             value: picked.clientId,
-            options: [{ value: '', label: t('filter_all_clients') }, { value: NO_CLIENT, label: t('task_no_client') }, ...clients.map(c => ({ value: c.id, label: c.archivedAt ? `${c.name} · ${t('clients_archived_mark')}` : c.name }))],
+            options: [{ value: '', label: t('filter_all_clients') }, { value: NO_CLIENT, label: t('task_no_client') }, ...clients.map(c => ({ value: c.id, label: c.archivedAt ? `${clientNameIn(c, locale)} · ${t('clients_archived_mark')}` : clientNameIn(c, locale) }))],
         })
     }
     if (!seesClients && picked.clientId) filters.push({ key: 'clientId', label: t('location_client'), value: picked.clientId, options: [], hidden: true })

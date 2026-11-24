@@ -14,6 +14,7 @@ import TaskEditDetailsModal from '@/components/TaskEditDetailsModal'
 import TaskTransferModal from '@/components/TaskTransferModal'
 import TaskConfirmModals from '@/components/TaskConfirmModals'
 import type { Assignable } from '@/components/forms/AssigneeChecklist'
+import { peopleInOrder } from '@/lib/names'
 import { Button, Card, Details, Dialog, DueDate, EmptyState, FileChip, FileChips, Page, PageHeader, RowMenu, StatusBadge, taskStatusTone, type MenuItem, type PickedName } from '@/components/ui'
 import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/session-expired'
 import SectionBoundary from '@/components/SectionBoundary'
@@ -1072,7 +1073,7 @@ export default function TaskDetailClient({ task: initialTask, now, userRole, use
                 taskId={task.id}
                 isOpen={isTransferModalOpen}
                 onClose={() => setIsTransferModalOpen(false)}
-                people={transferPeople}
+                people={transferPeople && peopleInOrder(transferPeople, locale)}
                 onRetry={() => { setRetryingPeople(true); setPeopleTries(n => n + 1) }}
                 retrying={retryingPeople}
                 transferAssigneeIds={transferAssigneeIds}
