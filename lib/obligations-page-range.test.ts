@@ -41,7 +41,8 @@ describe("the Obligations list on a page that isn't there", () => {
 describe("what the Obligations list is sent", () => {
     it("has each one's assignees with their ids, and the time it's judged overdue by", async () => {
         expect(await open({}, 1)).toBe("shown")
-        expect(state.args.select.assignees).toEqual({ select: { id: true, firstName: true, lastName: true } })
+        // Each name in Arabic too, for the page's language (PR 415).
+        expect(state.args.select.assignees).toEqual({ select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } })
         expect(state.args.select.recurrence).toBe(true)
         expect(typeof state.props.now).toBe("number")
         expect(state.props.currentUserId).toBe("admin")

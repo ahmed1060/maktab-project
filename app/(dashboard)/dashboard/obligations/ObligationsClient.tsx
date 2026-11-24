@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import Link from 'next/link'
 import { CircleHalfIcon, ListChecksIcon, PlusIcon, RepeatIcon, SortAscendingIcon, UserCheckIcon, UserIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
+import { personName, type PersonNames } from '@/lib/names'
 import { useModules } from '@/lib/useModules'
 import { useCan } from '@/lib/useCan'
 import { countOf } from '@/lib/plural'
@@ -32,7 +33,7 @@ type ObligationRow = {
     updatedAt: string | Date
     /** Who approved, completed or rejected it. */
     lastStatusUpdateBy?: string | null
-    assignees: { id: string; firstName: string; lastName: string }[]
+    assignees: ({ id: string } & PersonNames)[]
 }
 
 interface ObligationsClientProps {
@@ -118,7 +119,8 @@ export default function ObligationsClient({ obligations, total, page, totalPages
 
     const overdue = (o: ObligationRow) => !DECIDED.includes(o.status) && time(o.deadline) < now
     const mine = (o: ObligationRow) => o.assignees.some(a => a.id === currentUserId)
-    const names = (o: ObligationRow) => o.assignees.map(a => `${a.firstName} ${a.lastName}`.trim())
+    // In the page's language, or the one they have (PR 415).
+    const names = (o: ObligationRow) => o.assignees.map(a => personName(a, locale))
     const who = (o: ObligationRow) => <Person names={names(o)} moreLabel={n => `+${n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')}`} />
     // How often it comes round; one from before recurrence has none to say.
     const recurs = (o: ObligationRow) => {

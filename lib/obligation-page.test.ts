@@ -45,7 +45,7 @@ async function page(o: ReturnType<typeof obligation>, who: Who = "manager") {
         obligation: o, now: NOW,
         userRole: who === "superAdmin" ? "SUPER_ADMIN" : who === "assignee" ? "EMPLOYEE" : "ADMIN",
         userId: who === "assignee" ? mona.id : "admin", userName: "Hana Saad",
-        creatorName: "Hana Saad", creatorUnknown: false,
+        creator: { firstName: "Hana", lastName: "Saad" }, creatorUnknown: false,
     }))
 }
 const header = (html: string) => html.slice(html.indexOf('class="ui-page-header"'), html.indexOf("</header>"))

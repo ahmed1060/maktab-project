@@ -25,8 +25,9 @@ export default async function ObligationDetailPage(props: { params: Promise<{ id
             // column (password hash, salary) into the Server->Client RSC
             // payload. Salary is now a Prisma.Decimal (F-07), which also
             // can't be passed to a Client Component at all without this.
+            // Each name in Arabic too, for the page's language (PR 415).
             assignees: {
-                select: { id: true, firstName: true, lastName: true, status: true }
+                select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, status: true }
             }
         }
     })
@@ -47,14 +48,14 @@ export default async function ObligationDetailPage(props: { params: Promise<{ id
     // (also NULL, but for the same reason Task.createdBy/Client.createdById
     // are — the FK only targets User).
     const OBLIGATION_CREATED_BY_ROLLOUT = new Date('2026-09-08T00:00:00Z')
-    let creatorName: string | null = null
+    // Their names in both languages, for the page's (PR 415).
+    let creator: { firstName: string; lastName: string; firstNameAr: string | null; lastNameAr: string | null } | null = null
     let creatorUnknown = false
     if (obligation.createdById) {
-        const creator = await prisma.user.findUnique({
+        creator = await prisma.user.findUnique({
             where: { id: obligation.createdById },
-            select: { firstName: true, lastName: true }
+            select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true }
         })
-        if (creator) creatorName = `${creator.firstName} ${creator.lastName}`
     } else if (obligation.createdAt < OBLIGATION_CREATED_BY_ROLLOUT) {
         creatorUnknown = true
     }
@@ -77,7 +78,7 @@ export default async function ObligationDetailPage(props: { params: Promise<{ id
         userRole={(session?.user as any)?.role}
         userId={userId || ''}
         userName={(session?.user as any)?.name || ''}
-        creatorName={creatorName}
+        creator={creator}
         creatorUnknown={creatorUnknown}
     />
 }

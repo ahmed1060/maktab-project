@@ -6,7 +6,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import SafeDate from '@/components/SafeDate'
 import AssigneeChecklist, { type Assignable } from '@/components/forms/AssigneeChecklist'
-import { peopleInOrder } from '@/lib/names'
+import { peopleInOrder, personName, type PersonNames } from '@/lib/names'
 import { Button, Card, Details, Dialog, DueDate, EmptyState, FileChip, FileChips, FilePicker, Page, PageHeader, RowMenu, StatusBadge, taskStatusTone, type MenuItem } from '@/components/ui'
 import { SESSION_EXPIRED_MESSAGE, redirectAfterSessionExpiry } from '@/lib/session-expired'
 import { RECURRENCE_STYLE } from '@/lib/recurrence'
@@ -60,14 +60,15 @@ export function ObligationNotFound() {
  * An obligation's page (DESIGN.md §5.5): its header, with its status and a
  * manager's decision; its details; its files; and what its assignee hands in.
  */
-export default function ObligationDetailClient({ obligation, now, userRole, userId, userName, creatorName, creatorUnknown }: {
+export default function ObligationDetailClient({ obligation, now, userRole, userId, userName, creator, creatorUnknown }: {
     obligation: any
     /** When the server drew it, so its deadline reads the same on the server and here. */
     now: number
     userRole: string
     userId: string
     userName: string
-    creatorName: string | null
+    /** Who assigned it, their names in both languages (PR 415); none for a Super Admin or before it was kept. */
+    creator: PersonNames | null
     creatorUnknown: boolean
 }) {
     const { t, locale } = useLanguage()
@@ -340,7 +341,9 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
     const decidedBy = DECIDED.includes(obligation.status) && obligation.lastStatusUpdateBy
         ? t('list_status_by').replace('{name}', decidedByName(obligation.lastStatusUpdateBy))
         : undefined
-    const names = (obligation.assignees ?? []).map((a: any) => `${a.firstName} ${a.lastName}`)
+    // Each in the page's language, or the one they have (PR 415).
+    const names = (obligation.assignees ?? []).map((a: any) => personName(a, locale))
+    const creatorName = creator && personName(creator, locale)
     const deleted = (obligation.assignees ?? []).filter((a: any) => a.status === 'DELETED')
     const working = !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status)
 
@@ -376,7 +379,7 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
             {/* Someone it's for was deleted: a manager settles it. */}
             {deleted.length > 0 && canEdit && !DECIDED.includes(obligation.status) && (
                 <Card title={t('assignee_deleted_alert')}>
-                    <p>{t('obligation_assignee_deleted_msg').replace('{name}', deleted.map((a: any) => `${a.firstName} ${a.lastName}`).join(locale === 'ar' ? '، ' : ', '))}</p>
+                    <p>{t('obligation_assignee_deleted_msg').replace('{name}', deleted.map((a: any) => personName(a, locale)).join(locale === 'ar' ? '، ' : ', '))}</p>
                     <div className="ui-form-actions">
                         <Button variant="primary" icon={UserSwitchIcon} onClick={() => setReassigning(true)}>{t('reassign_button')}</Button>
                         <Button icon={CheckIcon} onClick={() => action.run('complete', handleForceComplete)} disabled={action.running} busy={action.is('complete')}>{t('mark_as_completed')}</Button>
