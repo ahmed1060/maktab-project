@@ -27,7 +27,8 @@ clients' names in their form (#406) and on the Clients page (#407), and
 the company's name in two languages (#408) and shown in the page's
 language to its people and clients (#409), and to the Super Admin on its
 own screens for companies (#410) and in the company columns and selects
-of the other screens (#411). The other screens' names are next (step 8).
+of the other screens (#411). The other screens' names are next (step 8),
+starting with the pickers and filters they share (#412).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -619,7 +620,31 @@ other filled in when one is typed, if that's possible.
 8. **The other screens show names in the page's language,** by area:
    tasks, obligations, records, attendance, requests, payroll, the
    client's area, and notifications and messages written from then on.
-   As many PRs as it takes, each listing its screens.
+   As many PRs as it takes, each listing its screens. Each name is in the
+   page's language, or in the one it has while it has only one, and a
+   list of names to pick from is in the page's order: on an Arabic page,
+   the ones with an Arabic name first, in Arabic order, then the rest as
+   before, as the Clients page lists clients (#407).
+   - **8a. The shared pickers and filters (#412):** the building blocks
+     the areas share, so that each area's PR has only its own screens:
+     - the people a task or an obligation is for: the assignee checklist
+       on New task, its bulk upload's rows and a task's Transfer, and on
+       New obligation and an obligation's Edit. Each person in the page's
+       language, found by either language, in the page's order; on New
+       task and New obligation still grouped by role first;
+     - the employee filter of the tasks, obligations, costs and requests
+       lists: each person in the page's language, in the page's order;
+     - the client filter of the tasks and costs lists, and the client
+       beside each place in their place filter;
+     - the client pickers: on New task and a task's Edit details, and on
+       the places' filter, Add place and the charges' filter: each client
+       in the page's language, in the page's order.
+   - **Then, by area,** one PR or more each: tasks (the list's people and
+     clients, a task's page and its dialogs), obligations, records and the
+     documents, attendance, requests, payroll, the client's area, and
+     last, names written from then on: notifications and messages, who
+     last changed a status, a cost's author, and one's own name in the
+     account menu.
 
 ## 4. A development database (Done)
 
