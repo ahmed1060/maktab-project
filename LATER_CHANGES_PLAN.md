@@ -29,7 +29,7 @@ language to its people and clients (#409), and to the Super Admin on its
 own screens for companies (#410) and in the company columns and selects
 of the other screens (#411). The other screens' names (step 8) started
 with the pickers and filters they share (#412); the tasks screens are
-next.
+next (#413).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -640,12 +640,22 @@ other filled in when one is typed, if that's possible.
      - the client pickers: on New task and a task's Edit details, and on
        the places' filter, Add place and the charges' filter: each client
        in the page's language, in the page's order.
-   - **Then, by area,** one PR or more each: tasks (the list's people and
-     clients, a task's page and its dialogs), obligations, records and the
-     documents, attendance, requests, payroll, the client's area, and
-     last, names written from then on: notifications and messages, who
-     last changed a status, a cost's author, and one's own name in the
-     account menu.
+   - **8b. The tasks screens (#413):**
+     - the tasks list: each task's assignees, or who assigned it on one's
+       own list, and the client in the line under its title, with its
+       location's client;
+     - a task's page: its assignees, who assigned it, its client and its
+       location's client, and the note when someone it's for was deleted;
+     - its sections and dialogs: Edit details' assignees and location,
+       Transfer's lines on the money held for it, the costs' settlements,
+       and the penalty's person.
+   - **Then, by area,** one PR or more each: the bulk upload's template and
+     file (the people and clients it lists, and a file's client found by
+     either language), obligations, records and the documents,
+     attendance, requests, payroll with the costs and charges lists, the
+     client's area, and last, names written from then on: notifications
+     and messages, who last changed a status, a cost's or a location's
+     author, and one's own name in the account menu.
 
 ## 4. A development database (Done)
 
