@@ -30,7 +30,7 @@ own screens for companies (#410) and in the company columns and selects
 of the other screens (#411). The other screens' names (step 8) started
 with the pickers and filters they share (#412) and the tasks screens
 (#413) and the bulk upload's template and file (#414); obligations are
-next.
+next (#415).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -659,11 +659,15 @@ other filled in when one is typed, if that's possible.
        so a file filled in from either template reads the same. Its people
        are found by username, and its locations by the template's own list,
        as before.
-   - **Then, by area,** one PR or more each: obligations, records and the
-     documents, attendance, requests, payroll with the costs and charges
-     lists, the client's area, and last, names written from then on:
-     notifications and messages, who last changed a status, a cost's or a
-     location's author, and one's own name in the account menu.
+   - **8d. Obligations (#415):**
+     - the obligations list: who each obligation is for;
+     - an obligation's page: who it's for, who assigned it, and the note
+       when someone it's for was deleted.
+   - **Then, by area,** one PR or more each: records and the documents,
+     attendance, requests, payroll with the costs and charges lists, the
+     client's area, and last, names written from then on: notifications
+     and messages, who last changed a status, a cost's or a location's
+     author, and one's own name in the account menu.
 
 ## 4. A development database (Done)
 
