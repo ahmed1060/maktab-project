@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { learnSpellings } from "./name-spelling.service"
 import { can } from "@/lib/permissions/can"
 import { Prisma, UserStatus } from "@prisma/client"
 import { supabase } from "@/lib/storage"
@@ -254,6 +255,8 @@ export class UserService {
             superAdminId: userRole === 'SUPER_ADMIN' ? session.user.id : null,
             details: { email: email, role: assignment.role, roleId: assignment.roleId, companyId: targetCompanyId }
         })
+        // What the company saves teaches it (LATER_CHANGES_PLAN.md §3.1, step 3a).
+        await learnSpellings(targetCompanyId, ['employee'])
 
         if (requestRoleId && requestRoleId !== assignment.roleId) {
             const { RoleRequestService } = await import("./role-request.service")
@@ -714,6 +717,11 @@ export class UserService {
                     details: diffs
                 })
             }
+            // A name changed changes what the company's names teach it
+            // (LATER_CHANGES_PLAN.md §3.1, step 3a).
+            if (['firstName', 'lastName', 'firstNameAr', 'lastNameAr'].some(key => key in diffs)) {
+                await learnSpellings(regularUser.companyId, ['employee'])
+            }
 
             return serializedUpdated
         }
@@ -1148,6 +1156,9 @@ export class UserService {
                     email: `${user.email}_DELETED_${Date.now()}`,
                     firstName: 'Ghost',
                     lastName: 'User',
+                    // Their names in Arabic go too (LATER_CHANGES_PLAN.md §3, PR 400).
+                    firstNameAr: null,
+                    lastNameAr: null,
                     username: `deleted_${Date.now()}`,
                     avatar: null
                 }
@@ -1161,6 +1172,8 @@ export class UserService {
             superAdminId: requesterRole === 'SUPER_ADMIN' ? currentUserId : null,
             details: { isPermanent }
         })
+        // A deleted employee's name is no longer the company's (LATER_CHANGES_PLAN.md §3.1, step 3a).
+        await learnSpellings(user.companyId, ['employee'])
 
         return result
     }

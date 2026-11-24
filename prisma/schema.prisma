@@ -340,6 +340,8 @@ model Company {
   clientAccounts ClientAccount[]
   /// Its copy of the client portal's WhatsApp messages (CLIENT_PORTAL_PLAN.md §7.1).
   clientMessageTemplates ClientMessageTemplate[]
+  /// The spellings in its names, learned (LATER_CHANGES_PLAN.md §3.1, step 3a).
+  nameSpellings        NameSpelling[]
   locations            Location[]
   listEntries          ListEntry[]
   roles                Role[]                    @relation("CompanyRoles")
@@ -3244,4 +3246,33 @@ model ClientMessageTemplate {
   updatedAt     DateTime @updatedAt
   company       Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
   updatedBy     User?    @relation("ClientMessageUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
+/// A company's spelling of a word of its names (LATER_CHANGES_PLAN.md §3.1,
+/// step 3a, PR 400): the word in Arabic beside its English, each as written
+/// and as it's looked up (lib/names/spellings.ts), where it was saved, and
+/// how many names use it. Its `source` is an employee's name ("employee"), a
+/// client's ("client"), a client's owner's ("owner") or the company's
+/// ("company"), so each is read by whoever may see those names.
+///
+/// Worked out again from the names themselves whenever one is saved
+/// (lib/services/name-spelling.service.ts): nothing else writes it. The
+/// database also holds what the schema can't say: the sources it may have,
+/// and that a spelling is used (20270120000000_name_spellings).
+model NameSpelling {
+  id        String   @id @default(uuid())
+  companyId String
+  source    String
+  ar        String
+  arKey     String
+  en        String
+  enKey     String
+  uses      Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, source, arKey, enKey])
+  @@index([companyId, arKey])
+  @@index([companyId, enKey])
 }
