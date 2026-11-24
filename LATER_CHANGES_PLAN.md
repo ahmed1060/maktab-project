@@ -21,8 +21,9 @@ their screen test (§5, #369 to #395), and status counts on All users (§6,
 languages are kept (#398), Nizmo's list of names and the rules are done
 (#399), and so are the company's spellings, learned (#400), and read for
 a name's suggestion (#401), and employees' names on Add employee (#402),
-on an employee's page and on one's own profile (#403). A request to change
-one's own name is next (#404).
+on an employee's page and on one's own profile (#403), and in a request
+to change one's own name (#404). Employees' names on the Employees page
+are next (#405).
 
 The first plan is done (#358 to #362). The owner answered on 2026-11-22:
 - the development database (§4) is decided, and comes first;
@@ -465,7 +466,7 @@ other filled in when one is typed, if that's possible.
        every form that saves a name sends both;
      - one's own name on an employee's or a team leader's footing stays
        a request until 4c, which brings the two fields to it;
-   - **4c, a request to change one's own name (#404):**
+   - **4c, a request to change one's own name (Done, #404):**
      - the two fields on one's own profile on an employee's or a team
        leader's footing too, where a change to the name is asked for:
        changed, both are needed, each in its own letters, and the
@@ -486,7 +487,7 @@ other filled in when one is typed, if that's possible.
        learns it. A request asked before is approved as #398 did;
      - on the Requests page, a name change's details show the names
        it's from and for in both languages, and its search finds either.
-5. **Employees' names in the page's language** on the Employees page,
+5. **Employees' names in the page's language** on the Employees page (#405),
    with the ones still missing a language, and its search finding
    either.
 6. **Clients' names:**
@@ -1230,3 +1231,11 @@ same day as drawn in the All users: status badges canvas
   above a name missing a language as a building block. For a request to
   change one's own name, next as #404, the owner chose that the rest of
   one's own profile is saved as before while the name misses a language.
+- **2026-11-24:** #404 merged: a request to change one's own name in
+  English and in Arabic (§3.1, step 4c), which finishes employees' names
+  in the forms. Its approval saves both, the Requests page shows both,
+  and the rest of one's own profile is saved as before. From its Codex
+  review, one's session keeps their name as it's stored where it's asked
+  for. The flow found, and the PR fixed, a name saved before in Arabic
+  only blocking every save of one's own profile. The Employees page next,
+  as #405.
