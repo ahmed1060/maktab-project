@@ -1351,7 +1351,8 @@ In three PRs, each whole on its own:
     taken off, and a month already paid is never worked out as owed. One
     migration adds it, with Row Level Security on, and the permission
     `employees.set_owner`, Set owners, for the company, never one's own,
-    an Admin's by the Super Admin alone, affecting pay; the built-in Admin
+    an Admin's by the Super Admin alone (from 3b2, only an Admin is an
+    owner, set by an Admin or the Super Admin), affecting pay; the built-in Admin
     role gets it, and each company's Admin role there is already.
   - On an employee's page, Owner among their details: since which month,
     or No, with Add to owners, or Remove from owners, for whoever may set
