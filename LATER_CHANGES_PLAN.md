@@ -1398,7 +1398,10 @@ In three PRs, each whole on its own:
       Marking someone an owner is refused while one of theirs, finished,
       is still to make its next one, named with the open work; the
       next one is made in the overnight run, and moved then (decided on
-      26 November).
+      26 November). The overnight run itself, making a next one, leaves
+      out whoever is an owner then, held as other new work is, so a next
+      one deleted and made again doesn't go back to them; with only
+      owners on it, none is made.
     - Reassign is in an open obligation's ⋯ menu for whoever edits
       obligations, not only where someone on it was deleted, so open
       work can be moved (decided on 26 November). A finished one isn't
@@ -1991,3 +1994,5 @@ A step may take more than one PR.
   Super Admin, and an owner's role stays Admin; added to 3b2.
 - **2026-11-26:** Codex's two findings on #428: any owner can still be
   taken off, and the work's people are read under its hold.
+- **2026-11-26:** Codex's third finding on #428: the overnight run gives
+  an owner no next one either.
