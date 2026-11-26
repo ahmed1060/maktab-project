@@ -8,6 +8,7 @@ import { AttendancePolicyService } from "./attendance-policy.service"
 import { AttendanceCalendarService } from "./attendance-calendar.service"
 import { recomputeAfter } from "./attendance-recompute"
 import { lockMonths, lockedMonths, punchMonths } from "./attendance-lock"
+import { refuseOwnerMonths } from "./owner.service"
 import { insertManualPunch, type Visibility } from "./attendance-punch.service"
 import { NotificationService } from "./notification.service"
 import { optional, type NoticeParam } from "@/lib/notice"
@@ -188,6 +189,7 @@ export class AttendanceRequestService {
             const endMinutes = nextMorning ? askedEnd + 1440 : askedEnd
             // And the next month's, whose carried minutes this one can spend.
             await lockMonths(tx, companyId, [monthOf(input.date), monthOf(next)])
+            await refuseOwnerMonths(tx, userId, input.date)
             await openMonth(tx, companyId, monthOf(input.date))
             const balance = await balanceIn(tx, companyId, userId, input.date)
             if (!balance.enabled) fail("PERMISSION_HOURS_OFF")
@@ -326,6 +328,7 @@ export class AttendanceRequestService {
             if (localToInstant(local, company.timezone).getTime() > Date.now()) fail("PUNCH_IN_FUTURE")
             // Its own month, and the month before when it is a night's check-out (review on #14).
             await openMonths(tx, companyId, await punchMonths(tx, companyId, userId, local))
+            await refuseOwnerMonths(tx, userId, date)
             const same = await tx.missingPunchRequest.findFirst({ where: { userId, claimedAt: wallClock(local), status: { in: ["PENDING", "APPROVED"] } }, select: { id: true } })
             if (same) fail("MISSING_PUNCH_ALREADY_REPORTED")
             const created = await tx.missingPunchRequest.create({

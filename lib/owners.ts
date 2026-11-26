@@ -74,6 +74,13 @@ export function monthsReached(month: string, lastRun: string | null): string[] {
     return months
 }
 
+/** The months, 'YYYY-MM', that the days from `from` to `to`, 'YYYY-MM-DD', fall in. */
+export function monthsSpanned(from: string, to: string): string[] {
+    const months = [from.slice(0, 7)]
+    while (months[months.length - 1] < to.slice(0, 7)) months.push(nextMonth(months[months.length - 1]))
+    return months
+}
+
 export type OwnerPlan =
     | { ok: true; action: "create" }
     | { ok: true; action: "reopen" | "close" | "delete"; id: string }

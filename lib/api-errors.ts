@@ -13,6 +13,8 @@
  */
 export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; message: string }> = {
     DATE_IN_PAST: { status: 400, message: "You can't ask for leave on a day that has passed." },
+    // Owners have no attendance (LATER_CHANGES_PLAN.md §7.3, step 3b1).
+    OWNER_NO_ATTENDANCE: { status: 409, message: "Owners have no attendance, so there's nothing to ask for on those days." },
     OVERLAPPING_REQUEST: { status: 409, message: "You already have a leave request for that day." },
     ATTACHMENT_LIMIT_EXCEEDED: { status: 400, message: "A task or obligation can have at most 20 attachments." },
     COST_LIMIT_EXCEEDED: { status: 400, message: "Costs added at once can total at most 10,000." },

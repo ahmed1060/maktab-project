@@ -13,8 +13,10 @@ Each part is marked:
 - **Open**: a question that needs answering before that part is built.
 - **Moved**: carried to another plan.
 
-Status: **the owner's points of 26 November (§7) decided, the contract
-start date first; the names (§3) paused after step 8l (#424).** Done: the development database (§4),
+Status: **the owner's points of 26 November (§7) decided; the contract
+start date and Recalculate on the Payroll page done (#425), and owners'
+mark, permission and pay (#426, step 3a), with 3b next; the names (§3)
+paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their limit set
@@ -1374,10 +1376,20 @@ In three PRs, each whole on its own:
     taken off, worked out again from then; the months they were an owner
     stay so. Taken off in the month it was put on, it's as if it never
     was.
-- **3b, what they're not asked for:** no day off, permission, mission or
-  missing punch to ask for, and no day-off balance; the task and
-  obligation pickers leave them out, and assigning to one is refused;
-  attendance reports and the head count leave them out.
+- **3b, what they're not asked for**, in two PRs:
+  - **3b1, requests:** an owner this month is offered no day off,
+    permission, mission or missing punch on the Requests page, and sees
+    no day-off balance or permission allowance there, nor a day-off
+    balance on their details. Asked for anyway, for a day in a month
+    they're an owner, it's refused (OWNER_NO_ATTENDANCE), checked under
+    the lock that marking an owner takes, so the two can't cross.
+  - **3b2, the pickers:** the task and obligation pickers leave them
+    out, and assigning work to one is refused; work they already have
+    stays theirs until it's moved. Attendance's person picker leaves
+    them out, they get no check-in reminders, and My attendance leaves
+    an owner's side menu, as there's nothing there for them. Attendance's reports
+    read days, which an owner has none of from 3a; there's no head count
+    screen yet, so nothing more there.
 - **3c, the Owners list:** beside Employees in the side menu, in its look,
   for whoever may see employees; owners leave the Employees list. Their
   rows have Edit and the Owner switch, nothing about pay or points.
@@ -1933,3 +1945,10 @@ A step may take more than one PR.
 - **2026-11-26:** 3a, after Codex's third review of #426: adding or
   removing an owner is refused once their contract has ended with a final
   settlement for this month or a later one.
+- **2026-11-26:** #426 merged: owners' mark, its permission and pay
+  (§7.3, step 3a), after five of Codex's findings were fixed. 3b is next:
+  what owners aren't asked for, and the pickers.
+- **2026-11-26:** 3b split in two: 3b1 the requests and the day-off
+  balance, 3b2 the pickers, attendance's person picker and reminders.
+- **2026-11-26:** 3b1 built (#427). My attendance, still in an owner's
+  side menu, added to 3b2.

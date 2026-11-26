@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { ownerIn, ownerSince, planOwner, ownerRefusal, notOwnerIn, monthOf, monthsReached } from "./owners"
+import { ownerIn, ownerSince, planOwner, ownerRefusal, notOwnerIn, monthOf, monthsReached, monthsSpanned } from "./owners"
 import { previewSettlement } from "./employment"
 import { toMinor } from "./payroll"
 
@@ -122,6 +122,14 @@ describe("the months a change reaches", () => {
         expect(further[0]).toBe("2026-11")
         expect(further[further.length - 1]).toBe("2029-03")
         expect(further).toHaveLength(29)
+    })
+})
+
+describe("the months some days fall in", () => {
+    it("is each month from the first day's to the last's, over a year's end too", () => {
+        expect(monthsSpanned("2026-11-26", "2026-11-26")).toEqual(["2026-11"])
+        expect(monthsSpanned("2026-11-30", "2026-12-01")).toEqual(["2026-11", "2026-12"])
+        expect(monthsSpanned("2026-12-30", "2027-02-02")).toEqual(["2026-12", "2027-01", "2027-02"])
     })
 })
 

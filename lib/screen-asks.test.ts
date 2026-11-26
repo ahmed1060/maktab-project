@@ -273,7 +273,7 @@ const SCREENS: Record<string, Screen> = {
             "DELETE /api/attendance/missions/[x]": ANYONE,
             "POST /api/attendance/missing-punches": ANYONE,
             "DELETE /api/attendance/missing-punches/[x]": ANYONE,
-            "POST /api/day-off-requests": when("dayoff.request", "const mayAskDayOff = sessionHasModule({ user: viewer }, 'DAY_OFF') && can(viewer, 'dayoff.request')"),
+            "POST /api/day-off-requests": when("dayoff.request", "const mayAskDayOff = !owner && sessionHasModule({ user: viewer }, 'DAY_OFF') && can(viewer, 'dayoff.request')"),
             // A role asked for, withdrawn by whoever asked, decided by whoever gives roles.
             "PUT /api/role-requests/[x]": { when: ["employees.assign_role", "employees.request_role"], routeChecks: "lib/services/role-request.service.ts",
                 gates: [feed('mayDecide: waits && r.requestedById !== v.id && can(v, "employees.assign_role", target),'), feed('if (v.role === "SUPER_ADMIN" || !can(v, "employees.request_role")) return null')] },
