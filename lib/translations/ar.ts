@@ -1006,7 +1006,7 @@ export const ar = {
         contract_start_same: "يبدأ العقد في هذا التاريخ بالفعل.",
         contract_start_after_change: "تغيّر الراتب، أو سُجّل أمر آخر عن الوظيفة، في هذا التاريخ أو قبله. يلزم تاريخ أقدم.",
         contract_start_payroll_locked: "اعتُمدت رواتب شهر بين التاريخين، فلا يمكن تغييره.",
-        contract_start_month_locked: "رواتب هذا الشهر معتمدة، فلا يمكن أن يبدأ أحد فيه.",
+        contract_start_month_locked: "اعتُمدت رواتب شهر من ذلك التاريخ حتى اليوم، فلا يمكن أن يبدأ العقد فيه.",
         contract_start_none: "لا يوجد تاريخ بداية عقد مسجّل.",
         account_made_label: "تاريخ إنشاء الحساب",
         profile_reset_password: "إعادة تعيين كلمة المرور",

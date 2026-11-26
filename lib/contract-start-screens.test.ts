@@ -117,9 +117,19 @@ describe("the routes and the forms", () => {
     it("takes the date on Add employee, today unless changed, and sends it", () => {
         const page = source("app/(dashboard)/dashboard/employees/new/page.tsx")
         expect(page).toContain(`<DatePickerSingle name="contractStart" label={t('contract_start_label')} hint={t('contract_start_hint')}`)
-        expect(page).toContain("const [contractStart, setContractStart] = useState(today)")
-        expect(page).toContain("if (startShown) body.contractStart = contractStart")
+        expect(page).toContain("const [chosenStart, setChosenStart] = useState<string | null>(null)")
+        expect(page).toContain("const contractStart = chosenStart ?? today")
+        expect(page).toContain("onChange={day => { setChosenStart(day); setStartError(null) }}")
         expect(page).toContain("contractStartRefusal(answer?.code, { creating: true })")
+    })
+
+    it("has today in the company's calendar, the one chosen for the Super Admin, and sends the date only once it's changed (review on PR 425)", () => {
+        const page = source("app/(dashboard)/dashboard/employees/new/page.tsx")
+        expect(page).toContain("useSWR<{ data: { today: string } }>(mayCreate && startShown && (!isSuperAdmin || companyId) ? `/api/time${isSuperAdmin ? `?companyId=${encodeURIComponent(companyId)}` : ''}` : null, fetcher)")
+        expect(page).toContain("const today = clock.data?.data.today ?? cairoToday")
+        expect(page).toContain("value={contractStart} minDate={contractStartRange(today).min} maxDate={contractStartRange(today).max}")
+        expect(page).toContain("if (startShown && chosenStart !== null) body.contractStart = chosenStart")
+        expect(page).not.toContain("if (startShown) body.contractStart = contractStart")
     })
 
     it("answers the date's refusals with their codes when someone new is added", () => {

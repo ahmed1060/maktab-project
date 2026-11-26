@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { contractStartRange, inContractStartRange, planContractStart } from "./contract-start"
+import { contractStartRange, inContractStartRange, planContractStart, startMovedBetween } from "./contract-start"
 
 /**
  * The contract start date (LATER_CHANGES_PLAN.md §7.2, step 1): the days it
@@ -102,5 +102,14 @@ describe("changing a contract's start", () => {
     it("moves no salary for someone with none on record", () => {
         expect(planContractStart({ to: at("2026-10-31T22:00:00Z"), events: [HIRED], salaries: [] }))
             .toEqual({ ok: true, hireId: "h1", from: HIRED.effectiveFrom, moveSalaryIds: [] })
+    })
+})
+
+describe("the dates a change to someone's start was between", () => {
+    it("reads both from its log line, and nothing that isn't a date (review on PR 425)", () => {
+        expect(startMovedBetween({ from: "2026-11-20", to: "2026-11-01", salaryMoved: true })).toEqual(["2026-11-20", "2026-11-01"])
+        expect(startMovedBetween({ from: "2026-11-20", to: 5 })).toEqual(["2026-11-20"])
+        expect(startMovedBetween({ from: "soon" })).toEqual([])
+        expect(startMovedBetween(null)).toEqual([])
     })
 })

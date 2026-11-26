@@ -12,6 +12,17 @@ import type { TranslationKey } from "@/lib/translations"
  * the service only checks the months it touches and writes what this says.
  */
 
+/**
+ * The dates a change to someone's start was between, from its log line's
+ * details: the nightly run rebuilds from the earlier, as the change moves
+ * their rows where they are, and their createdAt says nothing of it
+ * (review on PR 425).
+ */
+export function startMovedBetween(details: unknown): string[] {
+    const { from, to } = (details ?? {}) as { from?: unknown; to?: unknown }
+    return [from, to].filter((date): date is string => isDateString(date))
+}
+
 /** The same date a year away, the 29th of February falling on the 28th. */
 function yearAway(date: string, years: number): string {
     const year = Number(date.slice(0, 4)) + years

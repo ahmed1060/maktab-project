@@ -191,7 +191,7 @@ export class UserService {
         // module is about a company's own people.
         const isCompanyEmployee = Boolean(targetCompanyId) && assignment.role !== 'SUPER_ADMIN'
         let hiredAt = new Date()
-        let startMonth: string | null = null
+        let startMonths: string[] = []
         let startedBefore = false
         if (isCompanyEmployee) {
             const company = await prisma.company.findUnique({ where: { id: targetCompanyId }, select: { timezone: true } })
@@ -200,16 +200,19 @@ export class UserService {
             const start = input.contractStart ?? today
             if (!inContractStartRange(start, today)) throw new Error("CONTRACT_START_OUT_OF_RANGE")
             hiredAt = startOfDate(start, zone)
-            startMonth = start.slice(0, 7)
+            // Each month they're paid in, from the start to this one: a payroll
+            // approved in any was paid without them (review on PR 425).
+            const { monthsBetween } = await import("./attendance-engine.service")
+            startMonths = monthsBetween(start, start < today ? today : start)
             startedBefore = start < today
         }
 
         const write = (name: string) => prisma.$transaction(async (tx) => {
-            // Never into a month whose payroll is approved: it was paid
+            // Never from before a month whose payroll is approved: it was paid
             // without them, and nothing works it out again.
-            if (startMonth && targetCompanyId) {
-                await lockMonths(tx, targetCompanyId, [startMonth])
-                if ((await lockedMonths(tx, targetCompanyId, [startMonth])).size > 0) throw new Error("PAYROLL_MONTH_LOCKED")
+            if (startMonths.length > 0 && targetCompanyId) {
+                await lockMonths(tx, targetCompanyId, startMonths)
+                if ((await lockedMonths(tx, targetCompanyId, startMonths)).size > 0) throw new Error("PAYROLL_MONTH_LOCKED")
             }
             // role and roleId together, from the one place that writes them.
             const created = await tx.user.create({

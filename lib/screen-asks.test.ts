@@ -728,6 +728,8 @@ const SCREENS: Record<string, Screen> = {
             "GET /api/companies": superAdmin("mayCreate && isSuperAdmin ? '/api/companies"),
             // The name's other language, suggested as it's typed (PR 402): anyone's, as one's own profile takes a name.
             "GET /api/names/suggest": ANYONE,
+            // Today in the company's calendar, for the contract start date (review on PR 425): anyone's to ask.
+            "GET /api/time": ANYONE,
         },
     },
     "employees/[id]/bonus": {

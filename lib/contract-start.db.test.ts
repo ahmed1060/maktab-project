@@ -180,9 +180,52 @@ describe.skipIf(!ADMIN_URL)("the contract start date, in Postgres", () => {
             expect(await hiringOf("new3@x.example")).toEqual([])
             expect(await hiringOf("new4@x.example")).toEqual([])
         })
+
+        it("refuses a start in an open month where a later one's payroll is approved, as they'd be paid in it too (review on PR 425)", async () => {
+            const { UserService } = await import("@/lib/services/user.service")
+            const later = day(-40).slice(0, 7)
+            await db.query(`INSERT INTO "PayrollRun"(id, "companyId", month, year, status, "payrollDay", "updatedAt") VALUES ('run3', 'c1', $1, $2, 'APPROVED', 25, now())`, [Number(later.slice(5, 7)), Number(later.slice(0, 4))])
+            try {
+                expect(await refusal(UserService.create(person(5, day(-75)) as never, session))).toBe("PAYROLL_MONTH_LOCKED")
+            } finally {
+                await db.query(`DELETE FROM "PayrollRun" WHERE id = 'run3'`)
+            }
+            expect(await hiringOf("new5@x.example")).toEqual([])
+        })
     })
 
     it("refuses someone with no hiring on record, such as a company's Admin made before hirings were", async () => {
         expect(await refusal(Starts.change("a1", day(-40), by))).toBe("NO_CONTRACT_START")
+    })
+
+    // Last: it ages what the others made.
+    it("has the nightly run rebuild from the earlier of a moved start's two dates, as the rows it moves keep when they were made (review on PR 425)", async () => {
+        const { AttendanceEngineService, monthsBetween } = await import("@/lib/services/attendance-engine.service")
+        const age = async () => {
+            await db.query(`UPDATE "EmploymentEvent" SET "createdAt" = now() - interval '30 days'`)
+            await db.query(`UPDATE "SalaryChange" SET "createdAt" = now() - interval '30 days'`)
+            await db.query(`UPDATE "AuditLog" SET "createdAt" = now() - interval '30 days' WHERE action = 'CONTRACT_START_CHANGED'`)
+        }
+        const rebuilt = async () => {
+            const run = await AttendanceEngineService.reconcileAll(["c1"])
+            return run.months + run.failed.length
+        }
+        // A move the last run had already, long before.
+        await db.query(`INSERT INTO "AuditLog"(id, action, "entityType", "entityId", details) VALUES ('long-ago', 'CONTRACT_START_CHANGED', 'USER', 'e4', $1)`, [JSON.stringify({ from: day(-200), to: day(-190), salaryMoved: true })])
+        await age()
+        await db.query(`INSERT INTO "JobHeartbeat"(job, "lastRunAt", "lastSuccessAt", "updatedAt") VALUES ('attendance', now(), now(), now())`)
+        // Nothing new: this month and last.
+        expect(await rebuilt()).toBe(2)
+        // Earlier: from the new date.
+        await Starts.change("e4", day(-100), by)
+        expect(await rebuilt()).toBe(monthsBetween(day(-100), today).length)
+        // Its own company's: another's, this month and last.
+        await db.query(`INSERT INTO "Company"(id, name, "updatedAt", timezone) VALUES ('c2', 'Made Up Too', now(), '${ZONE}')`)
+        const other = await AttendanceEngineService.reconcileAll(["c2"])
+        expect(other.months + other.failed.length).toBe(2)
+        // Later: from the old one.
+        await age()
+        await Starts.change("e4", day(-60), by)
+        expect(await rebuilt()).toBe(monthsBetween(day(-100), today).length)
     })
 })

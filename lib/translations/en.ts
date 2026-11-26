@@ -1073,7 +1073,7 @@ export const en = {
         contract_start_same: "Their contract already starts on that date.",
         contract_start_after_change: "Their salary changed, or something else was recorded about their job, on or before that date. Choose an earlier one.",
         contract_start_payroll_locked: "A month between the two dates has its payroll approved, so it can't change.",
-        contract_start_month_locked: "That month's payroll is approved, so no one can start in it.",
+        contract_start_month_locked: "A month from that date to today has its payroll approved, so the contract can't start then.",
         contract_start_none: "There's no contract start on record for them.",
         account_made_label: "Account made",
         profile_reset_password: "Reset password",
