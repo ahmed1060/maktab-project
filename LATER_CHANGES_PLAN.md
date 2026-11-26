@@ -1431,6 +1431,19 @@ In three PRs, each whole on its own:
 - **3c, the Owners list:** beside Employees in the side menu, in its look,
   for whoever may see employees; owners leave the Employees list. Their
   rows have Edit and the Owner switch, nothing about pay or points.
+  - After Employees under People, its icon `Crown` (decided on 26
+    November), for whoever sees the whole company's people: someone who
+    sees only a team has no Admins in it, and only an Admin is an owner.
+  - Each row: their name and email, Owner since and their status. Edit
+    is for whoever edits an Admin, and Remove from owners for whoever may
+    take them off, which opens the dialog their details have; never on
+    one's own row.
+  - No button to add one: an Admin is added to the owners from their
+    details, where the dialog checks for work still open (decided on 26
+    November).
+  - The Employees list leaves owners out, and so does its count of names
+    still missing a language. All users, the Super Admin's list of
+    everyone, keeps them.
 
 ### 7.4 Limits on requests (Decided)
 
@@ -2003,3 +2016,5 @@ A step may take more than one PR.
 - **2026-11-26:** Codex's fourth finding on #428: a transfer checks
   everyone its copy goes to, not only those added.
 - **2026-11-26:** #428 merged (3b2). 3c next.
+- **2026-11-26:** 3c decided further: the Owners list's icon is Crown,
+  and an Admin is added to the owners from their details alone.
