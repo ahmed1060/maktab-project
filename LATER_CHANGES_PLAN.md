@@ -1350,9 +1350,12 @@ In three PRs, each whole on its own:
     `employees.set_owner`, Set owners, for the company, never one's own,
     an Admin's by the Super Admin alone, affecting pay; the built-in Admin
     role gets it, and each company's Admin role there is already.
-  - On an employee's page, Owner among their details, with Mark as owner,
-    or No longer an owner, for whoever may set it. A dialog says what
-    changes, then it's confirmed with a code and logged. It's refused
+  - On an employee's page, Owner among their details: since which month,
+    or No, with Add to owners, or Remove from owners, for whoever may set
+    it. The button is named by the words it shows, so asking for it by
+    those words finds it; the dialog's title names the person. The dialog
+    says what changes from the start of this month, then it's confirmed
+    with a code and logged. It's refused
     while they have a task or an obligation still open, naming each, and
     in a month whose payroll is approved.
   - The payroll register leaves an owner out from the month they're
@@ -1910,3 +1913,5 @@ A step may take more than one PR.
 - **2026-11-26:** Owners (§7.3, How it's built) planned in three PRs:
   3a the mark, its permission and pay; 3b what owners aren't asked for,
   and the pickers; 3c the Owners list.
+- **2026-11-26:** 3a built (#426): the buttons say Add to owners and
+  Remove from owners, and the row says since which month, or No.
