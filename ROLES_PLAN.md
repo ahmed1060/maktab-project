@@ -215,7 +215,7 @@ them, as today.
 
 | Module | Permission | What it allows | Routes today |
 |---|---|---|---|
-| **Employees** | `employees.view` | See employee profiles and lists | `GET /users` |
+| **Employees** | `employees.view` | See employee profiles and lists; held for the whole company, the Owners list too, which owners leave Employees for (`LATER_CHANGES_PLAN.md` §7.3, PR 429) | `GET /users` |
 | | `employees.create` | Add an employee | `POST /users` |
 | | `employees.edit` | Edit profile fields (not role, not salary) | `PUT /users` |
 | | `employees.change_status` | Activate / suspend an account | `users/[id]/status` |

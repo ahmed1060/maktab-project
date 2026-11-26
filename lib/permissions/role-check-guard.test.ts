@@ -47,6 +47,9 @@ const ALLOWED: [file: string, line: string, why: string][] = [
     ["app/api/users/[id]/owner/route.ts", 'if (session.user.role !== "SUPER_ADMIN" && session.user.role !== "ADMIN") return ApiResponse.forbidden("Only an Admin or the Super Admin sets owners")', ADMIN_ROLE],
     ["lib/profile-access.ts", "setOwner: can('employees.set_owner') && !own && (superAdmin || viewer?.role === 'ADMIN') && person.role !== 'SUPER_ADMIN' && person.role !== '',", ADMIN_ROLE],
     ["lib/profile-access.ts", "addOwner: can('employees.set_owner') && !own && (superAdmin || viewer?.role === 'ADMIN') && person.role === 'ADMIN',", ADMIN_ROLE],
+    // The Owners list's Remove from owners, as a profile's (LATER_CHANGES_PLAN.md §7.3, step 3c, PR 429).
+    ["app/(dashboard)/dashboard/owners/page.tsx", "const canRemove = (e: Owner) => !own(e) && can('employees.set_owner') && (isSuperAdmin || userRole === 'ADMIN')", ADMIN_ROLE],
+    ["app/(dashboard)/dashboard/owners/page.tsx", "const actsOnOwners = isSuperAdmin || can('employees.edit') || (can('employees.set_owner') && userRole === 'ADMIN')", ADMIN_ROLE],
     ["lib/services/owner.service.ts", 'if (owner && (them?.role !== "ADMIN" || them.actingUntil !== null)) throw new OwnerRefused("OWNER_NOT_ADMIN")', THE_PERSON],
     ["lib/services/user.service.ts", "const leavesAdmin = regularUser.role === 'ADMIN' && updateData.role !== undefined && updateData.role !== 'ADMIN'", THE_PERSON],
 

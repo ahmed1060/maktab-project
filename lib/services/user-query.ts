@@ -1,5 +1,6 @@
 import { scopesToTeam, teamMemberWhere, and } from "@/lib/team-scope"
 import { presenceWhere } from "@/lib/presence"
+import { notOwnerNow } from "@/lib/owners"
 import type { UserRole, UserStatus } from "@prisma/client"
 
 /**
@@ -125,6 +126,13 @@ export function buildUserWhereClause(
     // The names still missing a language (PR 405), added to the rest, never over it.
     if (searchParams.get('names') === 'missing') and(whereClause, { id: { in: [...(missingNameIds ?? [])] } })
 
+    // The owners now, for the Owners list, or everyone but them, for the
+    // Employees list, which they leave (LATER_CHANGES_PLAN.md §7.3, step 3c,
+    // PR 429). Added, never over: it narrows.
+    const owners = searchParams.get('owners')
+    if (owners === 'only') and(whereClause, { ownerPeriods: { some: { endsAt: null } } })
+    else if (owners === 'leave') and(whereClause, notOwnerNow())
+
     const statusParam = searchParams.get('status')
     const includeDeleted = searchParams.get('includeDeleted') === 'true'
     if (statusParam) {
@@ -198,7 +206,8 @@ export function countedParams(searchParams: URLSearchParams): URLSearchParams {
  */
 export function namesCountedParams(searchParams: URLSearchParams): URLSearchParams {
     const counted = new URLSearchParams()
-    for (const key of ["companyId", "excludeRole", "excludeUserId"]) {
+    // And whether owners are who it's for, or left out of it (PR 429).
+    for (const key of ["companyId", "excludeRole", "excludeUserId", "owners"]) {
         const value = searchParams.get(key)
         if (value !== null) counted.set(key, value)
     }

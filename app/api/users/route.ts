@@ -212,6 +212,9 @@ export const GET = withStandardHandler(async (req, session) => {
     const locks = can(session.user, "employees.reset_password") ? await lockedUntil(users.map(u => u.id)) : null
     // And whose password tries are paused, which Unlock lifts too (lib/own-password.ts).
     const paused = can(session.user, "employees.reset_password") ? await ownPasswordPausedUntil(users.map(u => u.id)) : null
+    // Since when each is an owner, and their company's month now, for the
+    // Owners list (LATER_CHANGES_PLAN.md §7.3, step 3c, PR 429).
+    const owners = searchParams.get('owners') === 'only' ? await OwnerService.sinceFor(users.map(u => u.id)) : null
 
     // How many at work have each status, for the Super Admin's All users when
     // it asks (LATER_CHANGES_PLAN.md §6, PR 384): over the company picked, on
@@ -253,6 +256,7 @@ export const GET = withStandardHandler(async (req, session) => {
             ...user, status: effectiveStatus,
             ...(locks ? { signInLockedUntil: locks?.get(user.id)?.toISOString() ?? null } : {}),
             ...(paused ? { ownPasswordPausedUntil: paused?.get(user.id)?.toISOString() ?? null } : {}),
+            ...(owners ? { ownerSince: owners.get(user.id)?.since ?? null, thisMonth: owners.get(user.id)?.month ?? null } : {}),
         }
     })
 

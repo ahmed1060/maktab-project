@@ -143,6 +143,8 @@ export default function EmployeesPage() {
         names: names || undefined,
         countNames: editsNames,
         lang: locale,
+        // Owners are on a list of their own (LATER_CHANGES_PLAN.md §7.3, step 3c, PR 429).
+        owners: 'leave',
     } : null
     // Only this company's rows, while the next page or filter loads. If they
     // didn't load, the list says so rather than that there's nobody.

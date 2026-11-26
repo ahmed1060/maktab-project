@@ -1232,6 +1232,30 @@ These are built once, in the building-blocks PR, and every page uses them
     as a link-styled button;
   - between the tabs and the filter bar, wrapping onto more lines on a
     phone, never scrolling sideways.
+- **The Owners list:** the company's owners (`LATER_CHANGES_PLAN.md`
+  §7.3), on a page of its own under People in the side bar, after
+  Employees, in the Employees list's look (§5.4). Its people leave the
+  Employees list.
+  - It's for whoever sees the whole company's people. Someone who sees
+    only a team doesn't have it: a team has no Admins, and only an Admin
+    is an owner.
+  - The page header says "Owners", with "The company's owners: no
+    payslip, no attendance days and no new work." under it. It has no
+    button: an Admin is added to the owners from their details, where the
+    dialog checks for work still open.
+  - A search is its only filter, as there are few owners.
+  - Each row: their avatar and name, with their email under it; Owner
+    since, the month, such as "November 2026"; and their status, with a
+    sign-in lock under it as on Employees. Nothing about pay or points: an
+    owner has neither.
+  - At the row's end: Edit, for whoever may edit an Admin (the Super
+    Admin), and Remove from owners, a button for whoever may take them
+    off, which opens the same dialog as on their details. One's own row
+    has neither.
+  - On a phone, a card: their name and status, then their email and
+    Owner since, each with its icon, and the buttons last.
+  - Empty, it says "No owners yet", with "An Admin is added to the owners
+    from their details." under it, as an empty list is usual here.
 - **Donut chart:** a ring for how a whole splits into a few parts, such as
   tasks by status or day off credit used and left.
   - The ring is 160px across and thin, a tenth of that. Its parts have
@@ -2488,11 +2512,11 @@ These are built once, in the building-blocks PR, and every page uses them
 - **The side bar's icons** (§5.1), as the approved mock-up has them:
   - a company's: Dashboard `SquaresFour`, Check in `MapPin`, Tasks
     `CheckSquare`, Obligations `PushPin`, Clients `Handshake`, Locations
-    `MapTrifold`, Records `Folders`, Employees `Users`, Attendance and My
-    attendance `Clock`, Requests `Tray`, Costs `Coins`, Payroll `Receipt`,
-    My payslips `FileText`, My cash advance `Wallet`, Roles and access
-    `IdentificationBadge`, Saved lists `ListChecks`, Company settings
-    `GearSix`;
+    `MapTrifold`, Records `Folders`, Employees `Users`, Owners `Crown`,
+    Attendance and My attendance `Clock`, Requests `Tray`, Costs `Coins`,
+    Payroll `Receipt`, My payslips `FileText`, My cash advance `Wallet`,
+    Roles and access `IdentificationBadge`, Saved lists `ListChecks`,
+    Company settings `GearSix`;
   - the Super Admin's: Companies `Buildings`, Packages `Package`, All users
     `UsersThree`, Role templates `Stack`, Policy templates `Clock`, Public
     holidays `CalendarBlank`, Terminal brands `Fingerprint`, Client
@@ -3450,3 +3474,9 @@ changed:
   (§5.5, Rows), as a section's link or button does under its heading, so
   a word in the title or detail no longer breaks for want of room, as
   "Office" did beside a planned move on a phone (`UI_PLAN.md`).
+- **2026-11-26:** The Owners list (§5.5), as the owner decided: a page
+  after Employees in the Employees list's look, for whoever sees the
+  whole company's people, with Owner since and the status, Edit and
+  Remove from owners, nothing about pay or points, and no button to add
+  one, which stays on an Admin's details. Its side bar icon is `Crown`
+  (§6) (`LATER_CHANGES_PLAN.md` §7.3).

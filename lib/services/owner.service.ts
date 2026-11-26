@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { calendarDateStr } from "@/lib/time"
 import { startOfDate } from "@/lib/contract-start"
-import { monthsReached, monthsSpanned, ownerIn, ownerSince, planOwner } from "@/lib/owners"
+import { monthOf, monthsReached, monthsSpanned, ownerIn, ownerSince, planOwner } from "@/lib/owners"
 import type { Prisma } from "@prisma/client"
 import { lockMonths, lockPersonDates, lockedMonths } from "./attendance-lock"
 
@@ -84,6 +84,24 @@ export class OwnerService {
         if (!person?.company) return null
         const since = ownerSince(person.ownerPeriods)
         return since ? { since } : null
+    }
+
+    /**
+     * Since which month each of these people is an owner now, and their
+     * company's month now, both 'YYYY-MM' in its calendar, for the Owners
+     * list (LATER_CHANGES_PLAN.md §7.3, step 3c, PR 429): the month, for the
+     * dialog that takes them off. Nobody who isn't one is in it.
+     */
+    static async sinceFor(userIds: readonly string[], now: Date = new Date()): Promise<Map<string, { since: string; month: string }>> {
+        if (userIds.length === 0) return new Map()
+        const open = await prisma.ownerPeriod.findMany({
+            where: { userId: { in: [...userIds] }, endsAt: null },
+            select: { userId: true, startsAt: true, user: { select: { company: { select: { timezone: true } } } } },
+        })
+        return new Map(open.map(p => [p.userId, {
+            since: monthOf(p.startsAt),
+            month: calendarDateStr(now, p.user.company?.timezone ?? "UTC").slice(0, 7),
+        }]))
     }
 
     /**
