@@ -11,8 +11,12 @@ import { lockMonths, lockPersonDates, lockedMonths } from "./attendance-lock"
  * in their company's calendar, as lib/owners.ts works it out.
  */
 
-/** Work still open that marking someone an owner waits on, to be moved first. */
-export type OpenWork = { kind: "task" | "obligation"; id: string; title: string }
+/**
+ * Work still open that marking someone an owner waits on, to be moved first;
+ * a repeating obligation of theirs, finished, still to make its next one
+ * (PR 428), which is moved once it's made.
+ */
+export type OpenWork = { kind: "task" | "obligation" | "repeating"; id: string; title: string }
 
 /** A refusal, with its code as the message, and the work it names where it's open work. */
 export class OwnerRefused extends Error {
@@ -37,6 +41,39 @@ export async function refuseOwnerMonths(tx: Prisma.TransactionClient, userId: st
     if (monthsSpanned(from, to).some(month => ownerIn(periods, month))) throw new Error("OWNER_NO_ATTENDANCE")
 }
 
+const ownerKey = (userId: string) => `owner:${userId}`
+
+/** Marking them an owner, or taking it off: alone, after work being given them meanwhile. */
+async function lockOwner(tx: Prisma.TransactionClient, userId: string) {
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${ownerKey(userId)}))::text`
+}
+
+/**
+ * Work being given these people (LATER_CHANGES_PLAN.md §7.3, step 3b2, PR
+ * 428): holds each of them until it's written, sharing the key marking an
+ * owner takes alone, so the two can't cross. Whichever comes second sees
+ * the first: the work, refused as open, or the owner, refused work.
+ * Answers which of them are owners now, for the caller to refuse.
+ */
+export async function holdAssignees(tx: Prisma.TransactionClient, userIds: readonly string[]): Promise<Set<string>> {
+    const ids = [...new Set(userIds)].sort()
+    if (ids.length === 0) return new Set()
+    for (const id of ids) await tx.$queryRaw`SELECT pg_advisory_xact_lock_shared(hashtext(${ownerKey(id)}))::text`
+    const open = await tx.ownerPeriod.findMany({ where: { userId: { in: ids }, endsAt: null }, select: { userId: true } })
+    return new Set(open.map(p => p.userId))
+}
+
+/**
+ * An owner's role stays Admin (LATER_CHANGES_PLAN.md §7.3, step 3b2, PR
+ * 428): changing it away from Admin is refused (OWNER_STAYS_ADMIN) while
+ * they're one now, to take them off the owners first. Under the key marking
+ * takes alone, so the two can't cross.
+ */
+export async function keepsOwnerAnAdmin(tx: Prisma.TransactionClient, userId: string) {
+    await lockOwner(tx, userId)
+    if (await tx.ownerPeriod.findFirst({ where: { userId, endsAt: null }, select: { id: true } })) throw new Error("OWNER_STAYS_ADMIN")
+}
+
 export class OwnerService {
     /** Since which month they're an owner now, in their company's calendar; null for none. */
     static async of(userId: string): Promise<{ since: string } | null> {
@@ -52,7 +89,7 @@ export class OwnerService {
     /**
      * Marks someone an owner, or takes it off, from the start of this month.
      * Refused, with its code as the error's message: someone not in a company
-     * (NO_COMPANY); the payroll of this month or a later one approved or
+     * (NO_COMPANY); marking anyone but an Admin (OWNER_NOT_ADMIN); the payroll of this month or a later one approved or
      * paid (PAYROLL_MONTH_LOCKED); a final settlement for this month or a
      * later one (OWNER_SETTLED);
      * what they are already (ALREADY_OWNER, NOT_OWNER); work still open,
@@ -74,6 +111,11 @@ export class OwnerService {
             // from this one on, so it waits on each of those months' payroll
             // approval, and an approved or paid one refuses it.
             await lockPersonDates(tx, userId)
+            await lockOwner(tx, userId)
+            // Only an Admin is an owner, not someone acting as one for a
+            // while, whose acting role ends on its own (§7.3, step 3b2, PR 428).
+            const them = await tx.user.findUnique({ where: { id: userId }, select: { role: true, actingUntil: true } })
+            if (owner && (them?.role !== "ADMIN" || them.actingUntil !== null)) throw new OwnerRefused("OWNER_NOT_ADMIN")
             const last = await tx.payrollRun.findFirst({ where: { companyId }, orderBy: [{ year: "desc" }, { month: "desc" }], select: { year: true, month: true } })
             const months = monthsReached(month, last ? `${last.year}-${String(last.month).padStart(2, "0")}` : null)
             await lockMonths(tx, companyId, months)
@@ -90,9 +132,13 @@ export class OwnerService {
                 // An owner is given no work: theirs still open is moved first; finished, it stays in their history.
                 const tasks = await tx.task.findMany({ where: { status: { in: [...OPEN_TASK] }, assignees: { some: { id: userId } } }, select: { id: true, title: true }, orderBy: { createdAt: "asc" } })
                 const obligations = await tx.obligation.findMany({ where: { status: { in: OPEN_OBLIGATION }, assignees: { some: { id: userId } } }, select: { id: true, title: true }, orderBy: { createdAt: "asc" } })
+                // A repeating one, finished, makes its next one for them overnight (PR 428).
+                const { stillToRecur } = await import("./obligation.service")
+                const repeating = await stillToRecur(tx, { assignees: { some: { id: userId } } })
                 const work: OpenWork[] = [
                     ...tasks.map(t => ({ kind: "task" as const, id: t.id, title: t.title })),
                     ...obligations.map(o => ({ kind: "obligation" as const, id: o.id, title: o.title })),
+                    ...repeating.map(({ obl }) => ({ kind: "repeating" as const, id: obl.id, title: obl.title })),
                 ]
                 if (work.length > 0) throw new OwnerRefused("OWNER_OPEN_WORK", work)
             }

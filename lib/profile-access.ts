@@ -145,7 +145,8 @@ export function profileAccess({ can, has, viewer, person }: {
         contractStart: person.role !== 'SUPER_ADMIN' && person.role !== '',
         changeContractStart: can('employees.edit_contract_start') && !own && actsOnThem && person.role !== 'SUPER_ADMIN' && person.role !== '',
         owner: person.role !== 'SUPER_ADMIN' && person.role !== '',
-        setOwner: can('employees.set_owner') && !own && actsOnThem && person.role !== 'SUPER_ADMIN' && person.role !== '',
+        // Only an Admin is an owner, set by an Admin or the Super Admin (LATER_CHANGES_PLAN.md §7.3, PR 428).
+        setOwner: can('employees.set_owner') && !own && person.role === 'ADMIN' && (superAdmin || viewer?.role === 'ADMIN'),
         changeEmail: !own,
         changeUsername: superAdmin,
         changeSalary: can('salary.edit') && !own && paid && payroll,

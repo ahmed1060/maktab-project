@@ -32,7 +32,8 @@ export const POST = withStandardHandler(async (req, session, json) => {
 
     const assigneeUsers = await prisma.user.findMany({
         where: { id: { in: allAssigneeIds } },
-        select: { id: true, companyId: true, role: true, teamLeaderId: true }
+        // Whether they're an owner now too: given no work (LATER_CHANGES_PLAN.md §7.3, step 3b2, PR 428).
+        select: { id: true, companyId: true, role: true, teamLeaderId: true, ownerPeriods: { where: { endsAt: null }, select: { id: true } } }
     })
 
     const userMap = new Map(assigneeUsers.map(u => [u.id, u]))
@@ -69,6 +70,7 @@ export const POST = withStandardHandler(async (req, session, json) => {
         for (const aid of assigneeIds) {
             const user = userMap.get(aid)
             if (!user) { isTaskValid = false; break }
+            if (user.ownerPeriods.length > 0) { isTaskValid = false; break }
 
             if (userRole !== 'SUPER_ADMIN') {
                 if (user.companyId !== creatorCompanyId) { isTaskValid = false; break }

@@ -100,6 +100,8 @@ export type SideBarViewer = {
     companySettings: boolean
     /** Their company uses cash advances (CLIENTS_PLAN.md §7.6). */
     cashAdvances: boolean
+    /** An owner now, with no attendance of their own (LATER_CHANGES_PLAN.md §7.3, PR 428). */
+    owner?: boolean
 }
 
 /**
@@ -134,7 +136,8 @@ export function shows(key: SideBarItemKey, v: SideBarViewer): boolean {
     switch (key) {
         case 'checkIn': return !v.superAdmin && v.checkIn
         case 'attendance': return attendance && seesOthersAttendance
-        case 'myAttendance': return attendance && !seesOthersAttendance
+        // Not for an owner now: there's nothing there for them (PR 428).
+        case 'myAttendance': return attendance && !seesOthersAttendance && !v.owner
         // For whoever gives roles, as its two tabs were; the Super Admin answers both from their own pages.
         case 'rolesAndAccess': return !v.superAdmin && v.can('employees.assign_role')
         // A Team Leader manages people, not pay.

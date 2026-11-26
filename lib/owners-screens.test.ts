@@ -40,16 +40,18 @@ describe("who sees the mark, and who sets it", () => {
         expect(access(admin, { id: "e2", role: "" }).owner).toBe(false)
     })
 
-    it("lets whoever holds the permission set it, never on one's own, and an Admin's the Super Admin alone", () => {
-        expect(access(admin, { id: "e2", role: "EMPLOYEE" }).setOwner).toBe(true)
-        expect(access(admin, { id: "a1", role: "ADMIN" }).setOwner).toBe(false)
-        expect(access(admin, { id: "a2", role: "ADMIN" }).setOwner).toBe(false)
+    it("lets an Admin or the Super Admin set it, only on an Admin's, never on one's own (PR 428)", () => {
+        expect(access(admin, { id: "a2", role: "ADMIN" }).setOwner).toBe(true)
         expect(access(superAdmin, { id: "a2", role: "ADMIN" }).setOwner).toBe(true)
+        expect(access(admin, { id: "a1", role: "ADMIN" }).setOwner).toBe(false)
+        expect(access(admin, { id: "e2", role: "EMPLOYEE" }).setOwner).toBe(false)
+        expect(access(superAdmin, { id: "e2", role: "EMPLOYEE" }).setOwner).toBe(false)
         expect(access(superAdmin, { id: "s2", role: "SUPER_ADMIN" }).setOwner).toBe(false)
-        expect(access(employee, { id: "e2", role: "EMPLOYEE" }).setOwner).toBe(false)
+        expect(access(employee, { id: "a2", role: "ADMIN" }).setOwner).toBe(false)
+        // A role below an Admin's, holding the permission, acts on no Admin.
         const holder = { id: "h2", role: "EMPLOYEE", companyId: "c1", grants: encodeGrants({ "employees.view": "COMPANY", "employees.set_owner": "COMPANY" }) }
-        expect(access(holder, { id: "e2", role: "EMPLOYEE" }).setOwner).toBe(true)
-        expect(access(holder, { id: "h2", role: "EMPLOYEE" }).setOwner).toBe(false)
+        expect(access(holder, { id: "a2", role: "ADMIN" }).setOwner).toBe(false)
+        expect(access(holder, { id: "e2", role: "EMPLOYEE" }).setOwner).toBe(false)
         // Seeing them, or changing their contract start, isn't setting it.
         const other = { id: "h3", role: "EMPLOYEE", companyId: "c1", grants: encodeGrants({ "employees.view": "COMPANY", "employees.edit_contract_start": "COMPANY" }) }
         expect(access(other, { id: "e2", role: "EMPLOYEE" }).changeContractStart).toBe(true)
@@ -125,13 +127,14 @@ describe("the dialog, the route and the form", () => {
         expect(dialog).toContain("setWork(body?.work ?? [])")
     })
 
-    it("sets it with its own permission, never one's own, an Admin's by the Super Admin, confirmed with a code", () => {
+    it("sets it with its own permission, never one's own, by an Admin or the Super Admin, confirmed with a code", () => {
         const route = source("app/api/users/[id]/owner/route.ts")
         expect(route).toContain(`if (!can(session.user, "employees.set_owner")) return ApiResponse.forbidden`)
         expect(route).toContain(`if (userId === session.user.id) return ApiResponse.forbidden`)
         expect(route).toContain(`!can(session.user, "employees.set_owner", person)`)
         expect(route).toContain(`if (!(await verifyResourceAccess(session, userId, "USER"))) return ApiResponse.forbidden`)
-        expect(route).toContain("RoleAssignmentService.onlySuperAdminActsOnAdmins(session.user, target)")
+        // Only an Admin is an owner, set by an Admin or the Super Admin (PR 428).
+        expect(route).toContain(`if (session.user.role !== "SUPER_ADMIN" && session.user.role !== "ADMIN") return ApiResponse.forbidden("Only an Admin or the Super Admin sets owners")`)
         expect(route).toContain(`await assertStepUp(session, "employees.set_owner")`)
         expect(route).toContain(`if (typeof json?.owner !== "boolean") return ApiResponse.badRequest`)
         expect(route).toContain("return ApiResponse.refused(refusal[0], refusal[1], error.message, error.work.length > 0 ? { work: error.work } : undefined)")

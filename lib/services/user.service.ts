@@ -26,6 +26,7 @@ import { keepAfterChange } from "@/lib/session-kept"
 import { confirmOwnPassword, ownPasswordMatches } from "@/lib/own-password"
 import { ONLINE_WINDOW_MS } from "@/lib/presence"
 import { SEQ_MAX, type TabReport, type TabState } from "@/lib/tab-presence"
+import { keepsOwnerAnAdmin } from "./owner.service"
 
 /**
  * The account statuses a status write may set. ARCHIVED and DELETED come only
@@ -657,8 +658,11 @@ export class UserService {
 
             const writeSelect = { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true, avatar: true, dayOffCredit: true, baseDayOffCredit: true, username: true }
             const handOff = rehome
-            const updated = await (handOff || keepFrom
+            // An owner's role stays Admin (LATER_CHANGES_PLAN.md §7.3, step 3b2, PR 428).
+            const leavesAdmin = regularUser.role === 'ADMIN' && updateData.role !== undefined && updateData.role !== 'ADMIN'
+            const updated = await (handOff || keepFrom || leavesAdmin
                 ? prisma.$transaction(async (tx) => {
+                    if (leavesAdmin) await keepsOwnerAnAdmin(tx, id)
                     if (handOff) await TeamHandOff.apply(tx, id, handOff, { id: session.user.id, role: userRole })
                     const kept = keepFrom ? await keepAsWritten(tx, 'User', id, keepFrom) : null
                     return tx.user.update({ where: { id }, data: kept ? { ...updateData, keptSession: kept } : updateData, select: writeSelect })

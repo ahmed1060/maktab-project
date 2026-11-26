@@ -24,6 +24,8 @@ const FILE_TYPES = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.
 const FILE_MAX_BYTES = 4 * 1024 * 1024
 /** Done with: nothing more is handed in, and an assignee who was deleted no longer matters. */
 const DECIDED = ['APPROVED', 'COMPLETED', 'REJECTED']
+/** Still being worked on, or handed in: open, so it can be moved to someone else. */
+const OPEN = ['PENDING', 'IN_PROGRESS', 'PENDING_CONFIRMATION']
 
 type Attachment = { name?: string; url: string; uploadedById?: string }
 
@@ -348,6 +350,13 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
     const working = !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status)
 
     const menu: MenuItem[] = [
+        // Moved to someone else while it's open, for whoever edits obligations,
+        // so an owner's can be moved first (LATER_CHANGES_PLAN.md §7.3, step
+        // 3b2, PR 428). A finished one isn't: it would rewrite who did it, and
+        // move the points it earned.
+        ...(canEdit && OPEN.includes(obligation.status)
+            ? [{ key: 'reassign', icon: UserSwitchIcon, label: t('reassign_button'), onSelect: () => setReassigning(true) }]
+            : []),
         ...(userRole === 'SUPER_ADMIN' && ['APPROVED', 'COMPLETED', 'REJECTED', 'PENDING_CONFIRMATION'].includes(obligation.status)
             ? [{ key: 'revert', icon: ArrowCounterClockwiseIcon, label: t('return_to_in_progress'), onSelect: () => setReverting(true) }]
             : []),

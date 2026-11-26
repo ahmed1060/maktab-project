@@ -6,6 +6,7 @@ import { roleKindParam } from "@/lib/notice"
 import { can, canCompanyWide } from "@/lib/permissions/can"
 import { scopesToTeam, assignedToTeamWhere, and } from "@/lib/team-scope"
 import { checkAssignees } from "./assignee-guard"
+import { holdAssignees } from "./owner.service"
 import { CreateTaskInput, UpdateTaskInput } from "../validations/task.schema"
 import { extractCoords, extractAccuracy, locationVerdict } from "@/lib/location"
 import { supabase } from "@/lib/storage"
@@ -72,6 +73,7 @@ const CREATE_CODES = {
     CROSS_COMPANY: "CROSS_COMPANY_ASSIGNMENT_FORBIDDEN",
     ADMIN_TARGET: "TL_CANNOT_ASSIGN_TO_ADMIN",
     OUTSIDE_TEAM: "TL_CANNOT_ASSIGN_OUTSIDE_TEAM",
+    OWNER: "ASSIGNEE_IS_OWNER",
 } as const
 
 /** Why a transfer's new people were refused, as its route says it (PR 371). */
@@ -80,6 +82,7 @@ const TRANSFER_CODES = {
     CROSS_COMPANY: "CROSS_COMPANY_TRANSFER_FORBIDDEN",
     ADMIN_TARGET: "TRANSFER_TO_ADMIN_FORBIDDEN",
     OUTSIDE_TEAM: "TRANSFER_OUTSIDE_TEAM_FORBIDDEN",
+    OWNER: "ASSIGNEE_IS_OWNER",
 } as const
 
 export class TaskService {
@@ -136,8 +139,10 @@ export class TaskService {
             resolvedClientId = client.id
         }
 
-        // 3. Database Transaction
+        // 3. Database Transaction: for no owner, the Super Admin's too,
+        // held so none is marked one meanwhile (§7.3, step 3b2, PR 428).
         return await prisma.$transaction(async (tx) => {
+            if ((await holdAssignees(tx, assigneeIds)).size > 0) throw new Error("ASSIGNEE_IS_OWNER")
             if (resolvedClientId) await holdClientInUse(tx, resolvedClientId)
             const place = await LocationService.forTask(tx, locationId, { companyId: targetCompanyId, clientId: resolvedClientId })
             // Its title as typed, and the name it was picked as (CLIENTS_PLAN.md §5.5).
@@ -315,6 +320,8 @@ export class TaskService {
         }
 
         return await prisma.$transaction(async (tx) => {
+            // Nobody new on it is an owner, held so none is marked one meanwhile (PR 428).
+            if (assigneeIds && (await holdAssignees(tx, assigneeIds.filter((uid: string) => !existingTask.assignees.some(a => a.id === uid)))).size > 0) throw new Error("ASSIGNEE_IS_OWNER")
             if (clientChanges && newClientId) await holdClientInUse(tx, newClientId)
             // Its charges go to its client, and move with it, but not once
             // one is collected: that one was the first client's (CLIENTS_PLAN.md
@@ -753,6 +760,8 @@ export class TaskService {
             // held for a team, the team, no Admins; never another company's,
             // or a deleted account (PR 371, the owner's decision: held for a
             // team, it went to anyone but the company's Admins).
+            // And no owner, held so none is marked one meanwhile (§7.3, step 3b2, PR 428).
+            if ((await holdAssignees(tx, addedIds)).size > 0) throw new Error("ASSIGNEE_IS_OWNER")
             const verdict = await checkAssignees(addedIds, session, "tasks.transfer", { client: tx as any })
             if (!verdict.ok) throw new Error(TRANSFER_CODES[verdict.reason])
 
@@ -1286,6 +1295,8 @@ export class TaskService {
         return await prisma.$transaction(async (tx) => {
             const results = []
             const notificationsData: any[] = []
+            // No task for an owner, held so none is marked one meanwhile (§7.3, step 3b2, PR 428).
+            const owners = await holdAssignees(tx, tasks.flatMap(t => t.assigneeIds || []))
 
             // Pre-fetch company mappings for Super Admin path to avoid N+1
             const assigneeToCompanyMap = new Map<string, string>()
@@ -1336,6 +1347,7 @@ export class TaskService {
                 const { assigneeIds, deadline, clientId, locationId, ...rest } = task
                 delete rest.titleEntryId
                 if (!locationId) throw new Error(`TASK_LOCATION_REQUIRED: ${task.title}`)
+                if ((assigneeIds as string[]).some(id => owners.has(id))) throw new Error(`ASSIGNEE_IS_OWNER: ${task.title}`)
                 const deadlineDate = new Date(deadline)
                 const minDeadline = earliestDeadline()
                 if (deadlineDate < minDeadline) throw new Error(`DEADLINE_TOO_SOON: ${task.title}`)

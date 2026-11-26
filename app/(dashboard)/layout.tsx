@@ -14,6 +14,7 @@ import { cookies } from "next/headers"
 import { brandStyleSheet } from "@/lib/brand-colour"
 import { ownColour } from "@/lib/page-brand-colour"
 import { cashAdvancesInUse } from "@/lib/cash-advances"
+import { OwnerService } from "@/lib/services/owner.service"
 
 import { Suspense } from "react"
 import DashboardErrorBoundary from "@/components/DashboardErrorBoundary"
@@ -81,6 +82,8 @@ export default async function DashboardLayout({
     const ownBrand = ownColour(user, exposure?.brandColour)
     // Whether the company uses cash advances, for My cash advance (CLIENTS_PLAN.md §7.5), from the same row.
     const cashAdvances = cashAdvancesInUse(exposure)
+    // Whether they're an owner now, for My attendance (LATER_CHANGES_PLAN.md §7.3, PR 428).
+    const owner = user.role !== 'SUPER_ADMIN' && !!user.companyId && !!(await OwnerService.of(user.id))
 
     return (
         <>
@@ -96,7 +99,7 @@ export default async function DashboardLayout({
             bell's top bar included (REALTIME_PLAN.md). For the company in
             view, so the Super Admin's follows the picker. */}
         <LiveUpdates scope={scopeId}>
-        <DashboardShell user={user} showPoweredBy={showPoweredBy} poweredByName={poweredByName} showCompanySettings={showCompanySettings} cashAdvances={cashAdvances}>
+        <DashboardShell user={user} showPoweredBy={showPoweredBy} poweredByName={poweredByName} showCompanySettings={showCompanySettings} cashAdvances={cashAdvances} owner={owner}>
             <UserHeartbeat />
             <DashboardErrorBoundary>
                 {/* While the frame waits, the page says it's loading as every

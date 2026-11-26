@@ -9,6 +9,7 @@ import { localToInstant, parseRows, detectColumns, type Cell, type ColumnMap, ty
 import { MAX_ROWS } from "@/lib/attendance/punch-file"
 import { addDays } from "@/lib/attendance/calendar"
 import { nameInArabic } from "@/lib/names"
+import { notOwnerNow } from "@/lib/owners"
 
 /**
  * Punches (ATTENDANCE_PLAN.md §8.6): what arrives from a spreadsheet or is
@@ -292,7 +293,8 @@ export class AttendancePunchService {
     static async people(companyId: string, visible: Visibility) {
         const users = await prisma.user.findMany({
             where: {
-                companyId, status: { not: "DELETED" },
+                // Not an owner now: no attendance of theirs to look at (LATER_CHANGES_PLAN.md §7.3, step 3b2, PR 428).
+                companyId, status: { not: "DELETED" }, ...notOwnerNow(),
                 ...(visible.kind === "TEAM" ? { OR: [{ teamLeaderId: visible.leaderId }, { id: visible.leaderId }] } : visible.kind === "OWN" ? { id: visible.userId } : {}),
             },
             select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, teamLeaderId: true },

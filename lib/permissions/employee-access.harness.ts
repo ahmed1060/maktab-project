@@ -67,7 +67,8 @@ const models: Record<string, any> = {
         findFirst: async () => null,
         findMany: async ({ where }: any) => {
             const ids: string[] | undefined = where?.id?.in
-            return ids ? ids.map(id => PEOPLE[id]).filter(Boolean) : []
+            // Nobody here is an owner now: no period open (PR 428).
+            return ids ? ids.map(id => PEOPLE[id]).filter(Boolean).map(p => ({ ...p, ownerPeriods: [] })) : []
         },
         update: async ({ where, data }: any) => { state.written.push({ ...data }); return { ...PEOPLE[where.id], ...data } },
         updateMany: async ({ data }: any) => { state.written.push({ ...data }); return { count: 1 } },

@@ -28,7 +28,8 @@ const client = {
         // test below pass for the wrong reason — and would have hidden the
         // fact that comparing against the raw list length is the bug.
         findMany: async ({ where }: any) =>
-            [...new Set<string>(where.id.in)].map(id => rows[id]).filter(Boolean),
+            // Nobody here is an owner now: no period open (PR 428).
+            [...new Set<string>(where.id.in)].map(id => rows[id]).filter(Boolean).map(row => ({ ...row, ownerPeriods: [] })),
     },
 }
 

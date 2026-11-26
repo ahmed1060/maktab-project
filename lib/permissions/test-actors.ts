@@ -12,13 +12,14 @@ export function withGrants<T extends { role?: string | null }>(user: T): T & { g
     return isBuiltInRole(user.role) ? { ...user, grants: builtInGrantsToken(user.role) } : user
 }
 
-type Person = { id: string; role: string; companyId: string | null; teamLeaderId?: string | null; status?: string }
+type Person = { id: string; role: string; companyId: string | null; teamLeaderId?: string | null; status?: string; ownerPeriods?: { id: string }[] }
 
 /**
  * Whether a person matches a Prisma `where` on User — enough of Prisma's
  * language for "who should be told": fields, OR and AND, `in`, `notIn` and
  * `not` a value (who a picker offers, PR 371), and a role's grants
- * (holdersOf). The person holds their built-in role's grants, as
+ * (holdersOf); NOT, and whether they're an owner now, by an open period
+ * (PR 428), their `ownerPeriods` being those. The person holds their built-in role's grants, as
  * the roles migration gave them. Anything else throws rather than guessing, so a
  * query this cannot read fails its test instead of passing it.
  */
@@ -26,6 +27,12 @@ export function matchesUserWhere(person: Person, where: Record<string, any>): bo
     for (const [key, value] of Object.entries(where)) {
         if (key === "OR") { if (!value.some((w: any) => matchesUserWhere(person, w))) return false; continue }
         if (key === "AND") { if (!value.every((w: any) => matchesUserWhere(person, w))) return false; continue }
+        if (key === "NOT") { if (matchesUserWhere(person, value)) return false; continue }
+        if (key === "ownerPeriods") {
+            if (!(value?.some?.endsAt === null && Object.keys(value.some).length === 1)) throw new Error(`unsupported ownerPeriods condition: ${JSON.stringify(value)}`)
+            if ((person.ownerPeriods ?? []).length === 0) return false
+            continue
+        }
         if (key === "assignedRole") {
             const wanted = value?.grants?.some
             if (!wanted) throw new Error(`unsupported assignedRole condition: ${JSON.stringify(value)}`)

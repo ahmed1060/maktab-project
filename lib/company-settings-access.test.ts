@@ -416,22 +416,22 @@ describe("the menu entry", () => {
 
     it("is offered by the same rule, asked afresh", async () => {
         as("admin")
-        expect((await visible()).data).toEqual({ visible: true, cashAdvances: false })
+        expect((await visible()).data).toEqual({ visible: true, cashAdvances: false, owner: false })
         company.adminSettingsEnabled = false
-        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false })
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false, owner: false })
         company.adminSettingsEnabled = true
         as("employee")
-        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false })
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false, owner: false })
         as("superAdmin")
-        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false })
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false, owner: false })
     })
 
     it("says, with it, whether the company uses cash advances, for My cash advance (CLIENTS_PLAN.md §7.5)", async () => {
         as("employee")
         company.cashAdvancesAllowed = true
-        expect((await visible()).data).toEqual({ visible: false, cashAdvances: true })
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: true, owner: false })
         company.cashAdvancesOn = false
-        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false })
+        expect((await visible()).data).toEqual({ visible: false, cashAdvances: false, owner: false })
     })
 
     it("is asked again as the person moves around, since the layout does not re-render", () => {

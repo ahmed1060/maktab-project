@@ -5,6 +5,7 @@ import { useToast } from '@/context/ToastContext'
 import { Button, Dialog, DialogActions } from '@/components/ui'
 import { apiErrorText } from '@/lib/api-error-text'
 import { monthLabel, ownerRefusal } from '@/lib/owners'
+import type { TranslationKey } from '@/lib/translations'
 
 /** A text with {name} in it, the name kept whole in either direction. */
 function Named({ text, name }: { text: string; name: string }) {
@@ -12,7 +13,14 @@ function Named({ text, name }: { text: string; name: string }) {
     return <>{before}<bdi>{name}</bdi>{after}</>
 }
 
-type OpenWork = { kind: 'task' | 'obligation'; id: string; title: string }
+type OpenWork = { kind: 'task' | 'obligation' | 'repeating'; id: string; title: string }
+
+/** Each kind of open work, as the dialog names it; a repeating obligation still to make its next one too (PR 428). */
+const WORK_WORDS: Record<OpenWork['kind'], TranslationKey> = {
+    task: 'owner_work_task',
+    obligation: 'owner_work_obligation',
+    repeating: 'owner_work_repeating',
+}
 
 /**
  * Adding someone to the owners, or removing them (LATER_CHANGES_PLAN.md
@@ -82,7 +90,7 @@ export function OwnerDialog({ userId, name, owner, month, onClose, onDone }: {
                             <ul>
                                 {work.map(w => {
                                     // The title as it was typed, whole in either direction, where the words put it.
-                                    const [before, after] = t(w.kind === 'task' ? 'owner_work_task' : 'owner_work_obligation').split('{title}')
+                                    const [before, after] = t(WORK_WORDS[w.kind]).split('{title}')
                                     return <li key={`${w.kind}:${w.id}`}>{before}<bdi dir="auto">{w.title}</bdi>{after}</li>
                                 })}
                             </ul>

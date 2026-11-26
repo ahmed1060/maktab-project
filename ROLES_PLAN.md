@@ -226,7 +226,7 @@ them, as today.
 | | `employees.assign_role` | Assign a role directly (§4.2) | new |
 | | `employees.request_role` | Request a role assignment for Admin approval (§6.12) | new |
 | | `employees.edit_contract_start` | Change when someone's contract started, which their hiring and starting salary follow, so their pay does (LATER_CHANGES_PLAN.md §7.2, PR 425) | `users/[id]/contract-start` |
-| | `employees.set_owner` | Mark someone as an owner, or take it off: from the month marked, no payslip and no attendance days; never one's own, an Admin's by the Super Admin alone (LATER_CHANGES_PLAN.md §7.3, PR 426) | `users/[id]/owner` |
+| | `employees.set_owner` | Mark an Admin of the company as an owner, or take it off: from the month marked, no payslip and no attendance days; only an Admin is one, set by an Admin or the Super Admin, never one's own (LATER_CHANGES_PLAN.md §7.3, PR 426, PR 428) | `users/[id]/owner` |
 | **Profile requests** | `profile_requests.review` | Approve / reject name-change requests | `profile-requests/[id]/approve\|reject` |
 | **Requests** | `requests.view` | See internal requests | `GET /requests` |
 | | `requests.review` | Decide requests and award performance points | `PATCH /requests/[id]` |
