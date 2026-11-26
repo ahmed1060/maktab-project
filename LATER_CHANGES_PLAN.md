@@ -1466,6 +1466,28 @@ In three PRs, each whole on its own:
   days: 7 unless changed. Today it's a year.
 - **Missing punches:** no new limit for now, at the owner's word. How far
   back and how many a month can be added later.
+- **In three PRs**, day off first:
+  - **4a, day off:**
+    - "Today" is the company's date, in its time zone, on the server and
+      in the form.
+    - The first day it may be asked for is the 1st of this month, or of
+      last month while last month's payroll isn't approved or paid.
+    - The last is today plus the policy's months ahead: the same date
+      that many months on, or that month's last day where it has fewer
+      (decided on 26 November: on 26 November, one month ahead is 26
+      December).
+    - The number is in the attendance policy, 1 to 12, 1 unless changed
+      (decided on 26 November). A version saved before it reads as 1, so
+      nothing is migrated. A company with Day off but without Attendance
+      keeps 1.
+    - Outside those days it's refused, saying which days may be asked
+      for, and the form's date picker offers only them.
+    - The balance shows while asking. Asking for more days than it holds
+      warns, and doesn't refuse.
+  - **4b, permission hours:** the policy's choice of when they may be
+    asked for, as above, "around the day" as today unless changed.
+  - **4c, missions:** the policy's days back, 7 unless changed, which
+    every version reads as 7 from then on.
 
 ### 7.5 Salary advances (Decided)
 
@@ -2021,3 +2043,6 @@ A step may take more than one PR.
   and an Admin is added to the owners from their details alone.
 - **2026-11-26:** #429 merged (3c). Owners (§7.3) done; the limits on
   requests (§7.4) next.
+- **2026-11-26:** §7.4 split into 4a, 4b and 4c. Day off's months ahead is
+  in the attendance policy, and one month ahead of 26 November is 26
+  December (decided).
