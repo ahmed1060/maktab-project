@@ -898,6 +898,11 @@ These are built once, in the building-blocks PR, and every page uses them
   - Rows are split by hairlines. Each row is a link, with the title (and an
     optional detail line in `--muted`) on the start side, and its status,
     date or count on the end side.
+  - The title and detail keep at least 128px beside the end side. Where
+    the end side doesn't fit beside them, as a planned move and its
+    Withdraw button on a narrow phone, it goes on its own line under them,
+    at the start, and on a phone it may be as wide as the row there. A
+    long title beside a short status still wraps beside it, as before.
   - A row may carry a note under its detail line, such as what a template
     is for, in the detail's size and colour, or a note a line, such as a
     request and its response.
@@ -3440,3 +3445,8 @@ changed:
   name saved before asked for the other on its next edit, and the ones
   still missing listed on the Employees and Clients pages
   (`LATER_CHANGES_PLAN.md` §3).
+- **2026-11-26:** A row's end side goes on its own line under its title
+  and detail where it doesn't fit beside them with 128px left for them
+  (§5.5, Rows), as a section's link or button does under its heading, so
+  a word in the title or detail no longer breaks for want of room, as
+  "Office" did beside a planned move on a phone (`UI_PLAN.md`).
