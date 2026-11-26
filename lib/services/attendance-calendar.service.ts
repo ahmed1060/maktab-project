@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client"
 import { calendarDateStr } from "@/lib/time"
 import { AuditLogService } from "./audit-log.service"
 import { recomputeAfter } from "./attendance-recompute"
+import { nameInArabic } from "@/lib/names"
 import {
     addDays, dayHoursProblem, defaultOn, formatMinutes, hoursProblem, isDateString, overridesOverlap, publicHolidaysApplyOn, spanOf, toDateString, workWeekProblem,
     type DayHours,
@@ -157,7 +158,7 @@ export class AttendanceCalendarService {
             }),
             prisma.user.findMany({
                 where: { companyId, status: { notIn: ["ARCHIVED", "DELETED"] } },
-                select: { id: true, firstName: true, lastName: true, role: true },
+                select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, role: true },
                 orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
             }),
             prisma.publicHoliday.findMany({ where: { country: "EG", date: { gte: from, lte: to } }, orderBy: { date: "asc" } }),
@@ -182,7 +183,8 @@ export class AttendanceCalendarService {
             schedules: schedules.map(serializeSchedule),
             defaults: defaults.map(d => ({ id: d.id, scheduleId: d.scheduleId, effectiveFrom: toDateString(d.effectiveFrom) })),
             assignments: assignments.map(a => ({ ...a, effectiveFrom: toDateString(a.effectiveFrom) })),
-            people: users.map(u => ({ id: u.id, name: `${u.firstName} ${u.lastName}`.trim(), role: u.role })),
+            // Each in Arabic too where they have it, for the screen's language and order (LATER_CHANGES_PLAN.md §3.1, step 8k, PR 422).
+            people: users.map(u => ({ id: u.id, name: `${u.firstName} ${u.lastName}`.trim(), nameAr: nameInArabic(u), role: u.role })),
             holidays: {
                 year,
                 // Whether it applies on its date: not while the company has

@@ -170,6 +170,11 @@ describe.skipIf(!ADMIN_URL)("the attendance engine, a month in Postgres", () => 
         const ehab = (r: typeof same) => r.people.find(p => p.userId === "e1")!
         expect(ehab(same).current).toEqual(ehab(same).draft)
         expect(ehab(same).current.deductionMinor).toBe(before.minor)
+        // Named in both languages, for the page's (LATER_CHANGES_PLAN.md §3.1, step 8k, PR 422).
+        expect([ehab(same).name, ehab(same).nameAr]).toEqual(["Ehab One", null])
+        await db.query(`UPDATE "User" SET "firstNameAr" = 'إيهاب', "lastNameAr" = 'واحد' WHERE id = 'e1'`)
+        expect(ehab(await Engine.simulate("c1", "2026-09", STANDARD_OFFICE)).nameAr).toBe("إيهاب واحد")
+        await db.query(`UPDATE "User" SET "firstNameAr" = NULL, "lastNameAr" = NULL WHERE id = 'e1'`)
         // Absence at two days each: Ehab's two absences cost one more day each,
         // at that day's salary — 310.00 on the 8th, 400.00 on the 16th.
         const strict = await Engine.simulate("c1", "2026-09", { ...STANDARD_OFFICE, absence: { multiplier: 2 } })

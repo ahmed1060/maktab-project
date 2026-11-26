@@ -19,7 +19,8 @@ export type Calendar = {
     /** The company's default schedule, by date (review on #10). */
     defaults: { id: string; scheduleId: string; effectiveFrom: string }[]
     assignments: { id: string; userId: string; scheduleId: string; effectiveFrom: string }[]
-    people: { id: string; name: string; role: string }[]
+    /** Each in English, and in Arabic where they have it (LATER_CHANGES_PLAN.md §3.1, step 8k, PR 422). */
+    people: { id: string; name: string; nameAr?: string | null; role: string }[]
     holidays: {
         year: number
         /** `applies`: not while the company has public holidays off on its date (PR 362). */
