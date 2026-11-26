@@ -13,8 +13,8 @@ Each part is marked:
 - **Open**: a question that needs answering before that part is built.
 - **Moved**: carried to another plan.
 
-Status: **the owner's points of 26 November (§7) in review; the names
-(§3) paused after step 8l (#424).** Done: the development database (§4),
+Status: **the owner's points of 26 November (§7) decided, the contract
+start date first; the names (§3) paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their limit set
@@ -1196,12 +1196,12 @@ same day as drawn in the All users: status badges canvas
     both languages.
 - **Then** the grant for companies already there (§2), as #385.
 
-## 7. The owner's points of 26 November (Proposed)
+## 7. The owner's points of 26 November (Decided)
 
 The owner sent seven points on 2026-11-26, asked for them to be talked
-through first, and answered the first round the same day. This part holds
-those answers, for a second review. What still needs an answer is in
-§7.9. The names (§3.1) are paused after step 8l (#424) until these are
+through first, and answered two rounds the same day. This part holds
+those answers. One question waits for the owner's own review, later
+(§7.9). The names (§3.1) are paused after step 8l (#424) until these are
 done; payroll, with the costs and charges lists, is next there.
 
 The rating's look is drawn on the Task rating flow canvas
@@ -1241,8 +1241,9 @@ Checked read-only on the live database on 26 November:
   1 December has no attendance and no pay before it.
 - **What it sets:** the job's start (the hired event's date) and the
   starting salary's.
-- **Changed later**, on the employee's page, with the permission that
-  edits salaries, and logged. Their days are worked out again from the
+- **Changed later**, on the employee's page, with a permission of its
+  own, change the contract start date (`employees.edit_contract_start`),
+  and logged. Their days are worked out again from the
   earlier of the old and new dates, and a draft payroll follows. A date
   in a month whose payroll is approved is refused until that month is
   opened again.
@@ -1253,7 +1254,8 @@ Checked read-only on the live database on 26 November:
 
 ### 7.3 Owners (Decided)
 
-- **An Owner switch** on an employee's page, logged.
+- **An Owner switch** on an employee's page, set by the Super Admin or
+  the company's Admin, and logged.
 - **An owner has:**
   - no attendance: their punches are ignored, and there are no days,
     lateness, absences, reminders or missing-punch alerts;
@@ -1270,21 +1272,22 @@ Checked read-only on the live database on 26 November:
 
 - **Day off:**
   - "Today" is the company's, in its time zone, not UTC's.
-  - It may be asked for from the 1st of the month whose payroll isn't
-    approved yet, up to one month ahead of today.
+  - It may be asked for from the 1st of this month, or of last month
+    while last month's payroll isn't approved yet, up to a number of
+    months ahead set in the policy: 1 unless changed.
   - It may not overlap a mission or another day off, as today.
   - The balance shows while asking, with a warning when it's short.
 - **Permission hours:** the policy gets a choice of when they may be
   asked for:
   - before, or within the policy's hours after, as today; or
-  - any day from the 1st of the month whose payroll isn't approved yet,
-    up to one month ahead of today.
+  - any day from the 1st of this month, or of last month while last
+    month's payroll isn't approved yet, up to one month ahead of today.
   The allowance, the lengths, the number a month and the approval stay as
   they are.
 - **Missions:** the policy gets how far back they may be asked for, in
-  days. Today it's a year.
-- **Missing punches:** the policy gets how many days back one may be
-  reported (3 unless changed), and how many a month (3 unless changed).
+  days: 7 unless changed. Today it's a year.
+- **Missing punches:** no new limit for now, at the owner's word. How far
+  back and how many a month can be added later.
 
 ### 7.5 Salary advances (Decided)
 
@@ -1348,15 +1351,16 @@ Checked read-only on the live database on 26 November:
   whether clients see their obligations, wait for the client's area
   (`CLIENT_PORTAL_PLAN.md` §13).
 
-### 7.8 Order (Proposed)
+### 7.8 Order (Decided)
 
 1. The contract start date (§7.2), which also fixes §7.1's days.
 2. Recalculate on the Payroll page (§7.1).
 3. Owners (§7.3).
-4. Limits on requests (§7.4): day off first, then permission hours,
-   missions and missing punches.
+4. Limits on requests (§7.4): day off first, then permission hours and
+   missions.
 5. Obligations with a client (§7.7).
-6. Salary advances (§7.5), Custody's new name first.
+6. Salary advances (§7.5), Custody's new name first, once the owner has
+   reviewed §7.9.
 7. Rating finished work (§7.6): DESIGN.md first, then tasks, then
    obligations.
 
@@ -1364,25 +1368,13 @@ A step may take more than one PR.
 
 ### 7.9 Open
 
-1. **Missing punches over the limit:** either the report is refused and
-   the day waits, as an incomplete day does today, to be marked absent or
-   accepted on the exceptions screen; or it's sent, with a deduction the
-   policy sets. Recommended: refused.
-2. **The law's limit on installments:** Labour Law 14 of 2025 lets an
+1. **The law's limit on installments:** Labour Law 14 of 2025 lets an
    employer take at most 10% of the wage a month to repay a loan, with no
-   interest, and the same for wages paid ahead. Nizmo could stop an
-   installment over it, warn, or take the most from the policy (10%
-   unless changed).
-3. **The month whose payroll isn't approved:** in the first days of a
-   month, while last month's payroll is still a draft, may last month's
-   days still be asked for? Recommended: yes, until it's approved.
-4. **One month ahead for a day off:** a holiday booked further ahead
-   would be refused. Recommended: a policy number, 1 month unless
-   changed.
-5. **How far back for a mission,** unless changed: recommended 7 days.
-6. **The points:** 1 to 10, or 0 to 10.
-7. **Who may set Owner:** recommended the Super Admin and the company's
-   Admin.
+   interest, and the same for wages paid ahead (article 113); all debts
+   together, at most 25% of the wage after income tax (article 114).
+   Nizmo could stop an installment over it, warn, or take the most from
+   the policy (10% unless changed). The owner reviews this later, before
+   salary advances are built; nothing about it changes until then.
 
 ## Not here
 
@@ -1788,3 +1780,10 @@ A step may take more than one PR.
   the Payroll page; the contract start date; owners; limits on requests;
   salary advances; rating finished work; obligations with a client. Seven
   questions left in §7.9, with the order proposed in §7.8.
+- **2026-11-26:** The owner's second answers, and §7 decided: the
+  contract start date gets a permission of its own; owners are set by the
+  Super Admin or the company's Admin; points are 1 to 10; last month's
+  days may be asked for while its payroll is a draft; how far ahead for a
+  day off (1 month) and how far back for a mission (7 days) are policy
+  numbers; no limit on missing punches for now. The law's limit on
+  installments waits for the owner's review (§7.9).
