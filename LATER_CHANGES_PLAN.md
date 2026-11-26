@@ -1341,12 +1341,15 @@ too.
 In three PRs, each whole on its own:
 
 - **3a, the mark, and pay:**
-  - `User.ownerFrom`, the start of the month they're marked in the
-    company's calendar; empty for everyone else. One migration adds it,
-    and the permission `employees.set_owner`, Set owners, for the company,
-    never one's own, an Admin's by the Super Admin alone, affecting pay;
-    the built-in Admin role gets it, and each company's Admin role there
-    is already.
+  - An `OwnerPeriod` table: each time someone is an owner, from the
+    start of the month they're marked, in the company's calendar, to the
+    start of the month they're no longer one. Kept as periods, not one
+    date, so a month they were an owner in stays so when the mark is
+    taken off, and a month already paid is never worked out as owed. One
+    migration adds it, with Row Level Security on, and the permission
+    `employees.set_owner`, Set owners, for the company, never one's own,
+    an Admin's by the Super Admin alone, affecting pay; the built-in Admin
+    role gets it, and each company's Admin role there is already.
   - On an employee's page, Owner among their details, with Mark as owner,
     or No longer an owner, for whoever may set it. A dialog says what
     changes, then it's confirmed with a code and logged. It's refused
@@ -1356,8 +1359,10 @@ In three PRs, each whole on its own:
     marked; approved months stay as they were paid. Attendance works out
     no days for them from then, and their days in those months go, so
     their punches are kept but count for nothing.
-  - No longer an owner: they're an employee again in every month not
-    approved, worked out again from then.
+  - No longer an owner: they're an employee again from the month it's
+    taken off, worked out again from then; the months they were an owner
+    stay so. Taken off in the month it was put on, it's as if it never
+    was.
 - **3b, what they're not asked for:** no day off, permission, mission or
   missing punch to ask for, and no day-off balance; the task and
   obligation pickers leave them out, and assigning to one is refused;
