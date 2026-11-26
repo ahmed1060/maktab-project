@@ -322,6 +322,8 @@ const SCREENS: Record<string, Screen> = {
             "POST /api/users/[x]/reset-password": when("employees.reset_password", profile("resetPassword: can('employees.reset_password') && !own && actsOnThem,")),
             "GET /api/users/[x]/employment": when("employees.end_contract", profile("endContract: can('employees.end_contract') && !own && actsOnThem && person.role !== 'SUPER_ADMIN',")),
             "POST /api/users/[x]/employment": when("employees.end_contract", profile("endContract: can('employees.end_contract') && !own && actsOnThem && person.role !== 'SUPER_ADMIN',")),
+            // When their contract started, changed with its own permission (LATER_CHANGES_PLAN.md §7.2, PR 425).
+            "POST /api/users/[x]/contract-start": when("employees.edit_contract_start", profile("changeContractStart: can('employees.edit_contract_start') && !own && actsOnThem && person.role !== 'SUPER_ADMIN' && person.role !== '',")),
             // Their role: given by whoever gives roles, asked for by whoever may only ask.
             "GET /api/roles/assignable": when(["employees.assign_role", "employees.request_role"], "const picksRole = !!access.changeRole && (!seeing || access.changeRole === 'ask')",
                 profile(": can('employees.assign_role') ? 'assign'"), ASKS_ROLE),
@@ -726,6 +728,8 @@ const SCREENS: Record<string, Screen> = {
             "GET /api/companies": superAdmin("mayCreate && isSuperAdmin ? '/api/companies"),
             // The name's other language, suggested as it's typed (PR 402): anyone's, as one's own profile takes a name.
             "GET /api/names/suggest": ANYONE,
+            // Today in the company's calendar, for the contract start date (review on PR 425): anyone's to ask.
+            "GET /api/time": ANYONE,
         },
     },
     "employees/[id]/bonus": {
@@ -750,6 +754,8 @@ const SCREENS: Record<string, Screen> = {
             "GET /api/payroll/[x]/[x]/export": needs("payroll.view"),
             "GET /api/attendance/discrepancies": needs("payroll.view"),
             "POST /api/payroll/[x]/[x]": when("payroll.prepare", "const canPrepare = can('payroll.prepare')", "{canPrepare && (\n                            <Button onClick={() => action.run('save', save)}"),
+            // A draft's days worked out again (PR 425): the draft's to prepare, where the company has attendance.
+            "POST /api/payroll/[x]/[x]/recalculate": when("payroll.prepare", "const canPrepare = can('payroll.prepare')", "const canRecalculate = isDraft && canPrepare && features.has('ATTENDANCE')", "{canRecalculate && (\n                            <Button onClick={() => action.run('recalculate', recalculate)}"),
             "POST /api/payroll/[x]/[x]/approve": when("payroll.approve", "const canApprove = can('payroll.approve')", "{canApprove && (\n                            <Button variant=\"primary\" onClick={openApprove}"),
             "POST /api/payroll/[x]/[x]/issue": when("payroll.issue_payslips", "const canIssue = can('payroll.issue_payslips')", ") : canIssue && ("),
             "POST /api/payroll/[x]/[x]/paid": when("payroll.mark_paid", "const canMarkPaid = can('payroll.mark_paid')", ") : canMarkPaid ? ("),

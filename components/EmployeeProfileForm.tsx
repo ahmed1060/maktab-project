@@ -24,6 +24,7 @@ import { RoleFields, type WaitingRole } from '@/components/profile/RoleFields'
 import { RoleRequestDialog, type AskRefusal } from '@/components/profile/RoleRequestDialog'
 import { WhatsAppCard } from '@/components/profile/WhatsAppCard'
 import { EndContractDialog } from './profile/EndContractDialog'
+import { ContractStartDialog } from './profile/ContractStartDialog'
 import { TeamHandOffDialog } from './profile/TeamHandOffDialog'
 import { handoffRefusal } from '@/lib/end-contract'
 import { keepsBothNames, nameAskedFor, profileAccess } from '@/lib/profile-access'
@@ -120,6 +121,11 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     const [originalFirstName, setOriginalFirstName] = useState('')
     const [originalLastName, setOriginalLastName] = useState('')
     const [showEndContract, setShowEndContract] = useState(false)
+    // When their contract started, and when their account was made, for the
+    // Super Admin's eye alone, as loaded (LATER_CHANGES_PLAN.md §7.2, PR 425).
+    const [contractStart, setContractStart] = useState<string | null>(null)
+    const [accountMadeAt, setAccountMadeAt] = useState<string | null>(null)
+    const [changingStart, setChangingStart] = useState(false)
     // Asking for another role, from their details (RoleRequestDialog).
     const [asking, setAsking] = useState(false)
     // Told by the server a change already waits for them, though it isn't in
@@ -244,6 +250,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 setMyLeader(employee.teamLeader || null)
                 setAvatarUrl(employee.avatar || null)
                 setWhatsappNumber(employee.whatsappNumber ?? null)
+                setContractStart(employee.contractStart ?? null)
+                setAccountMadeAt(employee.accountMadeAt ?? null)
                 setAccountantFor(employee.accountantFor ?? [])
 
                 // Their own name change waiting, asked for by whose it is: the
@@ -701,6 +709,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                         status,
                         salary,
                         dayOffCredit: baseDayOffCredit,
+                        contractStart,
+                        accountMade: accountMadeAt ? calendarDateStr(new Date(accountMadeAt), companyZone ?? DEFAULT_TIME_ZONE) : null,
                     }}
                     onResetPassword={() => setConfirming('RESET_PASSWORD')}
                     // Ending a contract, or reinstating one, saves through its own
@@ -708,6 +718,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     // never the form's, beside whose Update it read as though
                     // Update would apply it.
                     onEndContract={() => setShowEndContract(true)}
+                    // Its own dialog too, as it moves their pay.
+                    onChangeContractStart={() => setChangingStart(true)}
                     // Whoever may only ask for a role asks from here too, beside
                     // it (ROLES_PLAN.md §6.12): the form isn't everyone's who
                     // may ask.
@@ -737,6 +749,16 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                         today={today}
                         onClose={() => setShowEndContract(false)}
                         onDone={() => { setReloadKey(k => k + 1); router.refresh() }}
+                    />
+                )}
+                {changingStart && contractStart && (
+                    <ContractStartDialog
+                        userId={userId}
+                        name={name}
+                        current={contractStart}
+                        today={today}
+                        onClose={() => setChangingStart(false)}
+                        onDone={date => { setContractStart(date); setChangingStart(false) }}
                     />
                 )}
                 <ConfirmPasswordDialog open={confirming === 'RESET_PASSWORD'} onCancel={() => setConfirming(null)} onConfirm={resetPassword} />

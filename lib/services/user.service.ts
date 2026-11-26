@@ -12,7 +12,9 @@ import { generateTempPassword } from "@/lib/generate-password"
 
 import { CreateUserInput, UpdateUserInput } from "../validations/user.schema"
 import { arabicBeside, hasArabic } from "@/lib/names"
-import { calendarMonth, calendarYear, DEFAULT_TIME_ZONE } from "@/lib/time"
+import { calendarDateStr, calendarMonth, calendarYear, DEFAULT_TIME_ZONE } from "@/lib/time"
+import { inContractStartRange, startOfDate } from "@/lib/contract-start"
+import { lockMonths, lockedMonths } from "./attendance-lock"
 import { effectiveFromChoice } from "@/lib/salary-history"
 import { checkTeamAssignment, clearsOwnLeader, stripsLeadership } from "@/lib/team-assignment"
 import { notifyTeamMoves } from "./team-notify.service"
@@ -178,18 +180,40 @@ export class UserService {
         // reads. A user row carrying 3000 with no SalaryChange resolves to "No
         // salary in effect" for every month there is.
         //
-        // Dated at the moment of creation rather than the start of the month:
-        // the employed span and the rate then begin at the same instant, and
-        // nobody is paid for days before they existed. An employee who really
-        // started earlier needs a back-dated salary change, which the history
-        // screen already does.
-        const hiredAt = new Date()
-
+        // Both dated when their contract starts (LATER_CHANGES_PLAN.md §7.2,
+        // PR 425): the start of that day in the company's calendar, today
+        // unless given, from a year back to a year ahead. The employed span
+        // and the rate begin at the same instant. They were dated at the
+        // moment the account was made, so someone who started earlier had no
+        // days, and no pay, before it.
+        //
         // A Super Admin has no company and draws no salary — the payroll
         // module is about a company's own people.
         const isCompanyEmployee = Boolean(targetCompanyId) && assignment.role !== 'SUPER_ADMIN'
+        let hiredAt = new Date()
+        let startMonths: string[] = []
+        let startedBefore = false
+        if (isCompanyEmployee) {
+            const company = await prisma.company.findUnique({ where: { id: targetCompanyId }, select: { timezone: true } })
+            const zone = company?.timezone ?? DEFAULT_TIME_ZONE
+            const today = calendarDateStr(new Date(), zone)
+            const start = input.contractStart ?? today
+            if (!inContractStartRange(start, today)) throw new Error("CONTRACT_START_OUT_OF_RANGE")
+            hiredAt = startOfDate(start, zone)
+            // Each month they're paid in, from the start to this one: a payroll
+            // approved in any was paid without them (review on PR 425).
+            const { monthsBetween } = await import("./attendance-engine.service")
+            startMonths = monthsBetween(start, start < today ? today : start)
+            startedBefore = start < today
+        }
 
         const write = (name: string) => prisma.$transaction(async (tx) => {
+            // Never from before a month whose payroll is approved: it was paid
+            // without them, and nothing works it out again.
+            if (startMonths.length > 0 && targetCompanyId) {
+                await lockMonths(tx, targetCompanyId, startMonths)
+                if ((await lockedMonths(tx, targetCompanyId, startMonths)).size > 0) throw new Error("PAYROLL_MONTH_LOCKED")
+            }
             // role and roleId together, from the one place that writes them.
             const created = await tx.user.create({
                 data: {
@@ -245,6 +269,18 @@ export class UserService {
                 if (!isUsernameClash(error)) throw error
                 if (typedUsername || attempt >= 2) throw new Error("USERNAME_IN_USE")
                 finalUsername = await madeUp()
+            }
+        }
+
+        // A contract that started before today: their days from it, once
+        // it's written, as after any change to their job. Never failing what
+        // was made: the nightly run catches up.
+        if (startedBefore) {
+            try {
+                const { recomputeForPersonFrom } = await import("./attendance-recompute")
+                await recomputeForPersonFrom(user.id, hiredAt)
+            } catch (error) {
+                console.error("[contract start] recompute after an account was made failed", user.id, error)
             }
         }
 

@@ -3,6 +3,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { Button, Card, Details, StatusBadge } from '@/components/ui'
 import { countOf } from '@/lib/plural'
 import { STATUS_TONE, STATUS_WORD } from '@/lib/person-status'
+import { dayLabel } from '@/lib/end-contract'
 import type { ProfileAccess } from '@/lib/profile-access'
 import { PhotoRow } from './ProfilePhoto'
 import { RoleWaiting, type WaitingRole } from './RoleFields'
@@ -31,17 +32,22 @@ export type ProfileFacts = {
     /** As loaded: '' for none. */
     salary: string
     dayOffCredit: string
+    /** When their contract started, a date; null for none on record (LATER_CHANGES_PLAN.md §7.2, PR 425). */
+    contractStart: string | null
+    /** When their account was made, a date, for the Super Admin's eye alone: null otherwise. */
+    accountMade: string | null
 }
 
 const noop = () => {}
 
-export function ProfileView({ name, photo, access, facts, onResetPassword, onEndContract, roleAsk }: {
+export function ProfileView({ name, photo, access, facts, onResetPassword, onEndContract, onChangeContractStart = noop, roleAsk }: {
     name: string
     photo: string | null
     access: ProfileAccess
     facts: ProfileFacts
     onResetPassword: () => void
     onEndContract: () => void
+    onChangeContractStart?: () => void
     /**
      * Asking for another role, beside the role, for whoever may only ask
      * (ROLES_PLAN.md §6.12), or the change asked for, under it, while it
@@ -83,6 +89,18 @@ export function ProfileView({ name, photo, access, facts, onResetPassword, onEnd
                 </span>
             ),
         }] : []),
+        ...(access.contractStart && facts.contractStart ? [{
+            label: t('contract_start_label'),
+            value: access.changeContractStart
+                ? (
+                    <span className="ui-detail-act">
+                        {dayLabel(facts.contractStart, locale)}
+                        <Button size="sm" onClick={onChangeContractStart} aria-label={t('contract_start_title').replace('{name}', name)}>{t('contract_start_change')}</Button>
+                    </span>
+                )
+                : dayLabel(facts.contractStart, locale),
+        }] : []),
+        ...(facts.accountMade ? [{ label: t('account_made_label'), value: dayLabel(facts.accountMade, locale) }] : []),
         ...(access.company ? [{ label: t('company_label'), value: facts.company ?? t('profile_none') }] : []),
         { label: t('gender_label'), value: t(facts.gender === 'FEMALE' ? 'female' : 'male') },
         ...(access.salary ? [{ label: t('monthly_base_salary_label'), value: facts.salary ? <span className="ui-num">{money(parseFloat(facts.salary) || 0)}</span> : t('no_data_available') }] : []),

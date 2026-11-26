@@ -16,6 +16,7 @@ import { NotificationService } from "./notification.service"
 import { ATTENDANCE_PAGE } from "@/lib/attendance-notice-target"
 import type { NoticeKey } from "@/lib/notice"
 import { nameInArabic } from "@/lib/names"
+import { startMovedBetween } from "@/lib/contract-start"
 
 /**
  * Rebuilding attendance days (ATTENDANCE_PLAN.md §11). Pure and idempotent:
@@ -612,7 +613,9 @@ export class AttendanceEngineService {
      * can reach months ago (review on #13). Counted from the last success, not
      * from now: a run missed or failed leaves its changes to the next, however
      * late (review on #13). One company failing is recorded and the rest go on
-     * (review on #13).
+     * (review on #13). A contract's start moved moves its rows where they are,
+     * so it's found by its log line instead, from the earlier of its two dates
+     * (review on PR 425).
      */
     static async reconcileAll(companyIds: readonly string[]) {
         let months = 0
@@ -622,6 +625,9 @@ export class AttendanceEngineService {
         // reaches (a year below). Two days from each failed try left out what the first ones missed (review on #49).
         const since = last && !last.lastSuccessAt ? null : new Date(Math.min(Date.now(), last?.lastSuccessAt?.getTime() ?? Date.now()) - 2 * 86_400_000)
         const recent = since ? { createdAt: { gte: since } } : {}
+        const moves = await prisma.auditLog.findMany({ where: { ...recent, action: "CONTRACT_START_CHANGED", entityType: "USER" }, select: { entityId: true, details: true } })
+        const moved = moves.length === 0 ? [] : await prisma.user.findMany({ where: { id: { in: [...new Set(moves.map(m => m.entityId))] } }, select: { id: true, companyId: true } })
+        const companyOf = new Map(moved.map(person => [person.id, person.companyId]))
         for (const companyId of companyIds) {
             try {
                 const company = await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } })
@@ -631,7 +637,10 @@ export class AttendanceEngineService {
                     prisma.salaryChange.findFirst({ where: { ...recent, user: { companyId } }, orderBy: { effectiveFrom: "asc" }, select: { effectiveFrom: true } }),
                     prisma.employmentEvent.findFirst({ where: { ...recent, user: { companyId } }, orderBy: { effectiveFrom: "asc" }, select: { effectiveFrom: true } }),
                 ])
-                const changed = [salary, employment].flatMap(c => (c ? [calendarDateStr(c.effectiveFrom, company.timezone)] : [])).sort()[0]
+                const changed = [
+                    ...[salary, employment].flatMap(c => (c ? [calendarDateStr(c.effectiveFrom, company.timezone)] : [])),
+                    ...moves.filter(m => companyOf.get(m.entityId) === companyId).flatMap(m => startMovedBetween(m.details)),
+                ].sort()[0]
                 const lastMonth = addDays(`${today.slice(0, 7)}-01`, -1)
                 const yearAgo = `${Number(today.slice(0, 4)) - 1}${today.slice(4, 7)}-01`
                 const from = [lastMonth, changed && changed > yearAgo ? changed : changed ? yearAgo : lastMonth].sort()[0]

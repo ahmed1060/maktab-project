@@ -24,6 +24,8 @@ const state = {
     search: "",
     /** The company in view, from the top bar's switcher; null is All companies. */
     company: null as string | null,
+    /** The modules the company's package has (PR 425): none unless asked. */
+    modules: new Set<string>(),
 }
 vi.mock("next-auth/react", () => ({ useSession: () => ({ data: { user: { id: "u1", role: state.role } }, status: "authenticated" }) }))
 vi.mock("@/context/LanguageContext", () => ({
@@ -31,6 +33,7 @@ vi.mock("@/context/LanguageContext", () => ({
 }))
 vi.mock("@/context/ToastContext", () => ({ useToast: () => ({ showToast: () => {} }) }))
 vi.mock("@/lib/useCan", () => ({ useCan: () => ({ can: (p: string) => state.grants.has(p) }) }))
+vi.mock("@/lib/features/useFeatures", () => ({ useFeatures: () => ({ has: (m: string) => state.modules.has(m) }) }))
 vi.mock("swr", () => ({
     default: (key: string | null) => {
         state.keys.push(key)
@@ -56,8 +59,9 @@ const view = (fields: View = {}, register: View = {}): View => ({
 })
 const delivery = (fields: View = {}) => ({ paidAt: null, batchSize: 25, sent: 3, sendable: 12, unsent: 9, ...fields })
 
-async function page({ shows, role = "ADMIN", grants = [], locale = "en", discrepancies, search = "", company = null }: { shows?: View | "loading" | "failed"; role?: string; grants?: string[]; locale?: "en" | "ar"; discrepancies?: unknown[]; search?: string; company?: string | null } = {}) {
+async function page({ shows, role = "ADMIN", grants = [], locale = "en", discrepancies, search = "", company = null, modules = [] }: { shows?: View | "loading" | "failed"; role?: string; grants?: string[]; locale?: "en" | "ar"; discrepancies?: unknown[]; search?: string; company?: string | null; modules?: string[] } = {}) {
     state.discrepancies = discrepancies
+    state.modules = new Set(modules)
     state.search = search
     state.company = company
     state.role = role
@@ -122,6 +126,16 @@ describe("Payroll's page header", () => {
         expect(header(await page({ shows: view() }))).not.toContain("ui-page-actions")
         // Approved, the figures are fixed: nothing to save or approve.
         expect(header(await page({ shows: view({ status: "APPROVED" }), grants: ["payroll.prepare", "payroll.approve"] }))).not.toContain("ui-page-actions")
+    })
+
+    it("offers Recalculate this month before Save draft, on a draft, to whoever may save it, where the company has attendance (PR 425)", async () => {
+        const all = { grants: ["payroll.prepare", "payroll.approve"], modules: ["ATTENDANCE"] }
+        expect(header(await page({ shows: view(), ...all }))).toMatch(/<div class="ui-page-actions"><button type="button" class="ui-btn ui-btn-secondary">Recalculate this month<\/button><button type="button" class="ui-btn ui-btn-secondary">Save draft<\/button><button type="button" class="ui-btn ui-btn-primary">Approve<\/button><\/div>/)
+        expect(header(await page({ shows: view(), ...all, locale: "ar" }))).toContain(">إعادة احتساب هذا الشهر<")
+        // Not without attendance, nor to whoever may only approve, nor once approved.
+        expect(header(await page({ shows: view(), grants: all.grants }))).not.toContain("Recalculate")
+        expect(header(await page({ shows: view(), grants: ["payroll.approve"], modules: all.modules }))).not.toContain("Recalculate")
+        expect(header(await page({ shows: view({ status: "APPROVED" }), ...all }))).not.toContain("Recalculate")
     })
 
     it("doesn't offer to approve a month with nobody in it", async () => {

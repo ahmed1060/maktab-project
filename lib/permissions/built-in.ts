@@ -76,6 +76,10 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         "employees.reset_password": "COMPANY",
         "employees.assign_team": "COMPANY",
         "employees.assign_role": "COMPANY",
+        // When someone's contract started, which their pay follows
+        // (LATER_CHANGES_PLAN.md §7.2, PR 425). Given to the companies there
+        // already are by its own migration.
+        "employees.edit_contract_start": "COMPANY",
         "salary.edit": "COMPANY",
 
         // Tasks: an Admin creates, edits, transfers, reviews, deletes, pays

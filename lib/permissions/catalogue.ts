@@ -116,6 +116,10 @@ export const PERMISSIONS = {
     // Nobody changes, or asks for, their own role (§4.2, rules 1 and 6).
     "employees.assign_role":    { code: 9, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"], notOnOwn: true },
     "employees.request_role":   { code: 10, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"], notOnOwn: true },
+    // Changing when someone's contract started (LATER_CHANGES_PLAN.md §7.2,
+    // PR 425): their hiring and starting salary move with it, so their pay
+    // does. Never one's own, as one's own pay isn't.
+    "employees.edit_contract_start": { code: 93, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"], notOnOwn: true, highRisk: "Affects pay" },
 
     // --- Profile requests and internal requests ---------------------------
     "profile_requests.review":  { code: 11, module: "PROFILE_REQUESTS", scopes: COMPANY, notOnOwn: true },
@@ -383,8 +387,12 @@ export type Permission = keyof typeof PERMISSIONS
  *
  * Not raised for retiring the nine split permissions (PR 386): every token
  * issued since each split's own raise holds their parts, never them.
+ *
+ * 14: employees.edit_contract_start (code 93, LATER_CHANGES_PLAN.md §7.2,
+ * PR 425), which its own migration gives each company's Admin role: a
+ * token the release before refreshed after it ran reloads once to hold it.
  */
-export const CATALOGUE_VERSION = 13
+export const CATALOGUE_VERSION = 14
 
 /**
  * Permissions that no longer exist, by name, with the code each had: never

@@ -1746,6 +1746,11 @@ width:
 - **The button's copy in its file:** the export button would write which
   copy it is into its file, so the upload could say when a file comes
   from an old one, with the link to drag the new one.
+- **A client's obligations** (from `LATER_CHANGES_PLAN.md` §7.7, the
+  owner's choice of 2026-11-26): whether picking a client for an
+  obligation fills in their responsible accountant, and whether clients
+  see their obligations, such as tax deadlines, in their own area. Asked
+  when the client's other pages are worked on.
 
 ---
 
@@ -2445,3 +2450,5 @@ with a tax position is archived, and deleted for good from the archive
   same statement in a tab of its own at
   `/dashboard/clients/<id>/tax-statement`, for whoever may see the
   client's tax position. With it, the client portal's plan is built.
+- **2026-11-26:** A client's obligations added to §13, to be decided with
+  the client's other pages (`LATER_CHANGES_PLAN.md` §7.7).

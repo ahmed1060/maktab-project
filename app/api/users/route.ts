@@ -6,6 +6,7 @@ import { UserRole, UserStatus } from "@prisma/client"
 import { ApiResponse } from "@/lib/api-response"
 import { teamRefusalResponse } from "@/lib/team-handoff-response"
 import { newUserSchema, updateUserSchema } from "@/lib/validations/user.schema"
+import { ContractStartService } from "@/lib/services/contract-start.service"
 import { lockedUntil } from "@/lib/sign-in-lock"
 import { ownPasswordPausedUntil } from "@/lib/own-password"
 import { UserService } from "@/lib/services/user.service"
@@ -100,7 +101,16 @@ export const GET = withStandardHandler(async (req, session) => {
             // Contacting clients card names (CLIENT_PORTAL_PLAN.md §7, PR 343):
             // for whoever sees that card, as lib/profile-access.ts has it.
             const answers = (userId === session.user.id || can(session.user, "employees.edit")) && sessionHasModule(session, "TAX_POSITION")
-            return ApiResponse.success({ ...shapeUser(session.user, user), ...(answers ? { accountantFor: await clientsAnsweredFor(user.id) } : {}) })
+            // When their contract started, for whoever sees their profile,
+            // and when their account was made, for the Super Admin alone
+            // (LATER_CHANGES_PLAN.md §7.2, PR 425).
+            const start = await ContractStartService.of(user.id)
+            return ApiResponse.success({
+                ...shapeUser(session.user, user),
+                ...(answers ? { accountantFor: await clientsAnsweredFor(user.id) } : {}),
+                contractStart: start?.date ?? null,
+                ...(session.user.role === 'SUPER_ADMIN' ? { accountMadeAt: start?.recordedAt.toISOString() ?? null } : {}),
+            })
         }
 
         const superAdmin = await prisma.superAdmin.findUnique({
@@ -283,6 +293,9 @@ export const POST = withStandardHandler(async (req, session, json) => {
         if (error.message === 'ONLY_EMPLOYEES_HAVE_LEADERS') return ApiResponse.badRequest("Only employees are assigned to a team leader")
         if (error.message === 'DIFFERENT_COMPANY') return ApiResponse.badRequest("A team leader and their team must be in the same company")
         if (error.message === 'LEADER_UNAVAILABLE') return ApiResponse.badRequest("That team leader's account is archived or deleted")
+        // The contract start date, under its field (LATER_CHANGES_PLAN.md §7.2, PR 425).
+        if (error.message === 'CONTRACT_START_OUT_OF_RANGE') return ApiResponse.refused(400, "The contract start date must be a date within a year of today.", "CONTRACT_START_OUT_OF_RANGE")
+        if (error.message === 'PAYROLL_MONTH_LOCKED') return ApiResponse.refused(409, "That month's payroll is approved.", "PAYROLL_MONTH_LOCKED")
 
         throw error
     }

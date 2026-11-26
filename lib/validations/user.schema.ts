@@ -55,6 +55,10 @@ export const newUserSchema = createUserSchema.extend({
     lastName: inEnglish,
     firstNameAr: arabicName(1, NAME_MAX),
     lastNameAr: arabicName(1, NAME_MAX),
+    // When their contract starts, a date in the company's calendar, today
+    // unless given (LATER_CHANGES_PLAN.md §7.2, PR 425). Changed later on its
+    // own route, never by an edit, so only someone new takes it.
+    contractStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A date, YYYY-MM-DD").optional(),
 })
 
 export const updateUserSchema = partialWithoutDefaults(createUserSchema).extend({
@@ -90,5 +94,5 @@ export const updateUserSchema = partialWithoutDefaults(createUserSchema).extend(
     whatsappNumber: z.string().max(40).nullable().optional(),
 })
 
-export type CreateUserInput = z.infer<typeof createUserSchema>
+export type CreateUserInput = z.infer<typeof createUserSchema> & { contractStart?: string }
 export type UpdateUserInput = z.infer<typeof updateUserSchema>

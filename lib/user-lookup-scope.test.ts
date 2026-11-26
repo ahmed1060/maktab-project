@@ -30,6 +30,8 @@ vi.mock("@/lib/prisma", () => ({
         },
         superAdmin: { findUnique: async () => null },
         company: { findUnique: async () => null },
+        // When their contract started, which a lookup gives too (PR 425): none on record here.
+        employmentEvent: { findFirst: async () => null },
     },
 }))
 
