@@ -1336,6 +1336,36 @@ too.
 - Everything else is as their role gives: they still approve, review
   and rate what their role lets them.
 
+#### How it's built (step 3)
+
+In three PRs, each whole on its own:
+
+- **3a, the mark, and pay:**
+  - `User.ownerFrom`, the start of the month they're marked in the
+    company's calendar; empty for everyone else. One migration adds it,
+    and the permission `employees.set_owner`, Set owners, for the company,
+    never one's own, an Admin's by the Super Admin alone, affecting pay;
+    the built-in Admin role gets it, and each company's Admin role there
+    is already.
+  - On an employee's page, Owner among their details, with Mark as owner,
+    or No longer an owner, for whoever may set it. A dialog says what
+    changes, then it's confirmed with a code and logged. It's refused
+    while they have a task or an obligation still open, naming each, and
+    in a month whose payroll is approved.
+  - The payroll register leaves an owner out from the month they're
+    marked; approved months stay as they were paid. Attendance works out
+    no days for them from then, and their days in those months go, so
+    their punches are kept but count for nothing.
+  - No longer an owner: they're an employee again in every month not
+    approved, worked out again from then.
+- **3b, what they're not asked for:** no day off, permission, mission or
+  missing punch to ask for, and no day-off balance; the task and
+  obligation pickers leave them out, and assigning to one is refused;
+  attendance reports and the head count leave them out.
+- **3c, the Owners list:** beside Employees in the side menu, in its look,
+  for whoever may see employees; owners leave the Employees list. Their
+  rows have Edit and the Owner switch, nothing about pay or points.
+
 ### 7.4 Limits on requests (Decided)
 
 - **Day off:**
@@ -1872,3 +1902,6 @@ A step may take more than one PR.
   owner's word. Owners (§7.3) are next, in their own PRs: the owner's
   answers added there, a permission of its own to set them, and from the
   month they're marked.
+- **2026-11-26:** Owners (§7.3, How it's built) planned in three PRs:
+  3a the mark, its permission and pay; 3b what owners aren't asked for,
+  and the pickers; 3c the Owners list.
