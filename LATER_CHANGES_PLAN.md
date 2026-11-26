@@ -724,12 +724,13 @@ other filled in when one is typed, if that's possible.
      people, in the page's order; and the people a policy change would
      move, in the policy preview. The calendar and the preview give each
      name in Arabic too.
-   - **8l. Requests,** next: whose each request is on the Requests page
-     and its history, every kind's (the registered check-in phones and
-     flagged punches among them), in its table, its cards and the
-     request's details, and in the questions, dialogs and buttons that
-     name them; and the person a role request is for. The feed gives
-     each name in Arabic too. Who decided a request is a name written at
+   - **8l. Requests (Done, #424):** whose each request is on the Requests
+     page, on Waiting and Done (where the old history link lands), every
+     kind's, the registered check-in phones and flagged punches among
+     them: in its table, its cards and the request's details, in the
+     buttons that decide it, and in the questions and dialogs that name
+     them; and the person a role request is for. The feed gives each
+     name in Arabic too. Who decided a role request is a name written at
      the time, with the last step.
    - **Then, by area,** one PR or more each:
      payroll with the costs and charges lists, the
@@ -1589,3 +1590,7 @@ same day as drawn in the All users: status badges canvas
 - **2026-11-26:** Step 8l written: the Requests page and its history name
   whose each request is, and the person a role request is for, in the
   page's language; who decided one waits for the last step.
+- **2026-11-26:** #424 merged: the Requests page names whose each
+  request is in the page's language (§3.1, step 8l). The names plan is
+  paused here, at the owner's request, for new points that start now.
+  Payroll, with the costs and charges lists, is next when it resumes.
