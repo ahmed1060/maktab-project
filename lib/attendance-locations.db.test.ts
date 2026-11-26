@@ -185,6 +185,6 @@ describe.skipIf(!ADMIN_URL)("work locations, in Postgres", () => {
         const { people } = await Locations.list("c1")
         expect(people.map(p => p.id)).toEqual(expect.arrayContaining(["a1", "e1", "e2"]))
         expect(people.map(p => p.id)).not.toContain("x2")
-        expect(people.find(p => p.id === "e1")).toEqual({ id: "e1", name: "Ehab One" })
+        expect(people.find(p => p.id === "e1")).toEqual({ id: "e1", name: "Ehab One", nameAr: null })
     })
 })

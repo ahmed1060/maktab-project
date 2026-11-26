@@ -701,15 +701,27 @@ other filled in when one is typed, if that's possible.
        Arabic too. A shared `Person` type and `personChoices`, in the
        attendance folder's `people.ts`, are for the other tabs.
      Flagged punches are the Requests page's, with requests.
-   - **8i. Attendance's exceptions, requests and face tabs,** next: each
-     row's person, the decided list, a missing-day's person, and the face
-     tab's people.
-   - **8j. Attendance's import and numbers tabs, and its settings:** the
-     terminal numbers' people and their picker, the people a policy change
-     would move, the work calendar's people, the registered phones, and
-     the people a work location is for.
+   - **8i. Attendance's exceptions, requests and face tabs (Done, #420):**
+     - Exceptions: whose each exception and decision is, in every kind's
+       table and cards and in the dialogs that ask why, and a day's late
+       arrivals and early leaves in the page's order;
+     - Requests: Approve overtime ahead's people, in the page's order;
+     - Face: the photos waiting and the review dialog's title, whom it's
+       asked of (in the page's order, each box named), the Re-verify
+       question, and the overdue re-verifications.
+     Add punch from a missing scan already named its people (8h). The
+     notice telling reviewers a new photo waits is a name written at the
+     time, with the last step.
+   - **8j. Attendance's numbers and work locations (#421):** whose each
+     terminal number is on the Numbers tab, its person picker in the
+     page's order, and the dialog that removes one; and the people a work
+     location is for, in its row and in its people picker. The Import tab
+     names no one: its report lists the numbers nobody has.
+   - **8k. The work calendar and the policy preview:** the work calendar's
+     people and their picker, and the people a policy change would move.
    - **Then, by area,** one PR or more each:
-     requests, payroll with the costs and charges lists, the
+     requests (with the registered check-in phones, which the Requests
+     page lists), payroll with the costs and charges lists, the
      client's area, and last, names written from then on: notifications
      and messages, who last changed a status, a cost's or a location's
      author, and one's own name in the account menu.
@@ -1538,3 +1550,13 @@ same day as drawn in the All users: status badges canvas
   Punches share, in the page's order; whose each day and punch is; and
   Add punch's people. Attendance's exceptions, requests and face tabs
   next, as 8i.
+- **2026-11-26:** #420 merged: attendance's exceptions, requests and face
+  tabs name people in the page's language (§3.1, step 8i): every kind of
+  exception and the decided list, a day's late arrivals in the page's
+  order, the dialogs that ask why, Approve overtime ahead's people, and
+  the Face tab's photos, people and overdue re-verifications. The import
+  and numbers tabs and attendance's settings next, as 8j.
+- **2026-11-26:** Step 8j split in two: the Numbers tab and work
+  locations as 8j, the work calendar and the policy preview as 8k. The
+  registered phones are listed on the Requests page, so they go with
+  requests.
