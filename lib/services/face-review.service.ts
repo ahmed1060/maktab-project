@@ -13,6 +13,7 @@ import { AuditLogService } from "./audit-log.service"
 import { NotificationService } from "./notification.service"
 import { AttendanceChallengeService } from "./attendance-challenge.service"
 import { FaceVerificationService } from "./face-verification.service"
+import { nameInArabic } from "@/lib/names"
 
 /**
  * The verification photo and its review (ATTENDANCE_PLAN.md §9.5).
@@ -143,7 +144,7 @@ export class FaceReviewService {
             orderBy: { createdAt: "asc" },
             select: {
                 id: true, userId: true, purpose: true, createdAt: true, attested: true, modelVersion: true,
-                user: { select: { firstName: true, lastName: true } },
+                user: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
             },
         })
         const withReference = await prisma.faceReview.findMany({
@@ -152,7 +153,8 @@ export class FaceReviewService {
         })
         const has = new Set(withReference.map(r => r.userId))
         return rows.map(r => ({
-            id: r.id, userId: r.userId, name: `${r.user.firstName} ${r.user.lastName}`.trim(), purpose: r.purpose,
+            // Whose, in Arabic too where they have it (LATER_CHANGES_PLAN.md §3.1, step 8i, PR 420).
+            id: r.id, userId: r.userId, name: `${r.user.firstName} ${r.user.lastName}`.trim(), nameAr: nameInArabic(r.user), purpose: r.purpose,
             createdAt: r.createdAt, attested: r.attested, hasReference: has.has(r.userId), prototype: isPrototypeModel(r.modelVersion),
         }))
     }

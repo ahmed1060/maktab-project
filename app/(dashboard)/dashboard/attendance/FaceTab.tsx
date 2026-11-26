@@ -13,6 +13,7 @@ import type { TranslationKey } from '@/lib/translations'
 import { FacePhoto as Photo, useWatermark } from '@/components/FacePhoto'
 import { send, json } from './send'
 import { useFigures } from './period'
+import { nameIn, namedInOrder } from '@/lib/names'
 
 /**
  * Face verification for whoever holds attendance.approve_face
@@ -29,12 +30,16 @@ import { useFigures } from './period'
  * waits on someone (§5.5); and deciding, rejecting and asking to re-verify
  * in the building blocks' dialog.
  */
-type Review = { id: string; userId: string; name: string; purpose: 'ENROLMENT' | 'REVERIFY'; createdAt: string; attested: boolean; hasReference: boolean; prototype?: boolean }
-type Person = { id: string; name: string; required: boolean; consentedAt: string | null }
-type People = { company: { allowed: boolean; reason: string | null }; people: Person[]; overdue: { userId: string; name: string; since: string }[] }
+type Review = { id: string; userId: string; name: string; nameAr?: string | null; purpose: 'ENROLMENT' | 'REVERIFY'; createdAt: string; attested: boolean; hasReference: boolean; prototype?: boolean }
+type Person = { id: string; name: string; nameAr?: string | null; required: boolean; consentedAt: string | null }
+type People = { company: { allowed: boolean; reason: string | null }; people: Person[]; overdue: { userId: string; name: string; nameAr?: string | null; since: string }[] }
+
+/** Their name in the page's language, or the one they have (LATER_CHANGES_PLAN.md §3.1, step 8i, PR 420). */
+const shownName = (locale: 'en' | 'ar', x: { name: string; nameAr?: string | null }) => nameIn(locale, { en: x.name, ar: x.nameAr })
 
 export default function FaceTab({ q }: { q: string }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
+    const nameOf = (x: { name: string; nameAr?: string | null }) => shownName(locale, x)
     const { digits, date } = useFigures()
     const { showToast } = useToast()
     const params = useSearchParams()
@@ -57,7 +62,9 @@ export default function FaceTab({ q }: { q: string }) {
     if (!reviewsList.data || !peopleList.data) return <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
 
     const reviews: Review[] = reviewsList.data.data
-    const { company, people, overdue }: People = peopleList.data.data
+    const { company, people: listed, overdue }: People = peopleList.data.data
+    // Whom it's asked of, in the page's order: on an Arabic page, Arabic names first, in Arabic order (PR 420).
+    const people = namedInOrder(listed, locale)
     const open = reviews.find(r => r.id === openId) ?? null
 
     const setRequired = (person: Person, required: boolean) => action.run(`required-${person.id}`, async () => {
@@ -92,7 +99,7 @@ export default function FaceTab({ q }: { q: string }) {
     ].filter((n): n is string => !!n)
     const reviewButton = (r: Review) => <Button variant="primary" size="sm" onClick={() => setOpenId(r.id)}>{t('face_review_open')}</Button>
     const queueColumns: Column<Review>[] = [
-        { key: 'person', header: t('punch_person'), cell: r => <><ItemTitle title={r.name} />{notes(r).map(n => <div key={n} className="ui-item-detail">{n}</div>)}</> },
+        { key: 'person', header: t('punch_person'), cell: r => <><ItemTitle title={nameOf(r)} />{notes(r).map(n => <div key={n} className="ui-item-detail">{n}</div>)}</> },
         { key: 'purpose', header: t('face_purpose'), cell: purpose },
         { key: 'sent', header: t('face_sent'), cell: sent },
         { key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end', cell: reviewButton },
@@ -103,7 +110,7 @@ export default function FaceTab({ q }: { q: string }) {
         : t('face_consent_none')
     // Not asked of anyone new while the company can't offer it; whoever is asked can still be let off.
     const box = (x: Person, named: boolean) => (
-        <input type="checkbox" className="ui-check" aria-label={named ? t('face_ask_of').replace('{name}', x.name) : undefined} checked={saving[x.id] ?? x.required}
+        <input type="checkbox" className="ui-check" aria-label={named ? t('face_ask_of').replace('{name}', nameOf(x)) : undefined} checked={saving[x.id] ?? x.required}
             disabled={action.running || (!company.allowed && !x.required)} onChange={e => { void setRequired(x, e.target.checked) }} />
     )
     // In the table, under its column, named for the person.
@@ -115,7 +122,7 @@ export default function FaceTab({ q }: { q: string }) {
         ? <Button size="sm" disabled={action.running} onClick={() => setAskingReverify(x)}>{t('face_reverify')}</Button>
         : null
     const peopleColumns: Column<Person>[] = [
-        { key: 'person', header: t('punch_person'), cell: x => x.name },
+        { key: 'person', header: t('punch_person'), cell: x => nameOf(x) },
         { key: 'asked', header: t('face_asked'), cell: asked },
         { key: 'consent', header: t('face_consent'), cell: consented },
         { key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end', cell: reverifyButton },
@@ -128,7 +135,7 @@ export default function FaceTab({ q }: { q: string }) {
             <Section title={t('face_queue')}>
                 <p className="ui-hint">{t('face_queue_hint')}</p>
                 <DataList caption={t('face_queue')} columns={queueColumns} rows={reviews} rowKey={r => r.id}
-                    card={r => <ListCard title={r.name} details={[
+                    card={r => <ListCard title={nameOf(r)} details={[
                         { icon: IdentificationBadgeIcon, text: purpose(r) },
                         { icon: ClockIcon, text: sent(r) },
                         ...notes(r).map(n => ({ icon: InfoIcon, text: n })),
@@ -140,7 +147,7 @@ export default function FaceTab({ q }: { q: string }) {
                 <Card tone="waiting" title={t('face_overdue')}>
                     <p className="ui-card-note">{t('face_overdue_hint')}</p>
                     <ul className="ui-rows" aria-label={t('face_overdue')}>
-                        {overdue.map(o => <Row key={o.userId} title={o.name} detail={t('face_overdue_since').replace('{date}', date(o.since))} />)}
+                        {overdue.map(o => <Row key={o.userId} title={nameOf(o)} detail={t('face_overdue_since').replace('{date}', date(o.since))} />)}
                     </ul>
                 </Card>
             )}
@@ -148,7 +155,7 @@ export default function FaceTab({ q }: { q: string }) {
             <Section title={t('face_people')}>
                 <p className="ui-hint">{t('face_people_hint')}</p>
                 <DataList caption={t('face_people')} columns={peopleColumns} rows={people} rowKey={x => x.id}
-                    card={x => <ListCard title={x.name} details={[{ icon: CalendarCheckIcon, text: `${t('face_consent')}: ${consented(x)}` }]}
+                    card={x => <ListCard title={nameOf(x)} details={[{ icon: CalendarCheckIcon, text: `${t('face_consent')}: ${consented(x)}` }]}
                         foot={<>{askedOnCard(x)}{x.required && x.consentedAt && <span className="ui-row-actions">{reverifyButton(x)}</span>}</>} />}
                     empty={<EmptyState icon={UsersIcon} title={t('face_people_none')} />} />
             </Section>
@@ -165,7 +172,7 @@ export default function FaceTab({ q }: { q: string }) {
                     <Button variant="primary" onClick={() => { void reverify() }} disabled={action.running} busy={action.is('reverify')}>{t('face_reverify')}</Button>
                 </>}
             >
-                <p>{t('face_reverify_confirm').replace('{name}', askingReverify?.name ?? '')}</p>
+                <p>{t('face_reverify_confirm').replace('{name}', askingReverify ? nameOf(askingReverify) : '')}</p>
             </Dialog>
         </>
     )
@@ -177,7 +184,7 @@ export default function FaceTab({ q }: { q: string }) {
  * again, they'd be fetched, and recorded, again.
  */
 function ReviewDialog({ review, onClose, onDecided }: { review: Review; onClose: () => void; onDecided: () => void }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const action = useBusyAction()
     const [rejecting, setRejecting] = useState(false)
@@ -203,7 +210,7 @@ function ReviewDialog({ review, onClose, onDecided }: { review: Review; onClose:
         <Dialog
             open
             onClose={close}
-            title={rejecting ? t('face_reject_title') : t('face_review_title').replace('{name}', review.name)}
+            title={rejecting ? t('face_reject_title') : t('face_review_title').replace('{name}', shownName(locale, review))}
             // Close, to look and come back later: on a phone there's no Escape key (found by Codex on PR 153).
             actions={rejecting ? undefined : <>
                 <Button onClick={close} disabled={action.running}>{t('close')}</Button>

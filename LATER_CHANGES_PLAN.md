@@ -689,10 +689,18 @@ other filled in when one is typed, if that's possible.
        which names the PDF, in the client's page's copy. The client's
        area's copy names the client as the area's frame does, from the
        session, which the client's area's step changes.
-   - **8h. Attendance's days and punches (#419):** the people it lists
-     (the person select its tabs share, in the page's order), the days
-     tab's rows, the punches tab's rows, and Add punch's people. Flagged
-     punches are the Requests page's, with requests.
+   - **8h. Attendance's days and punches (Done, #419):**
+     - the Person select that Days and Punches share, in the page's
+       order;
+     - whose each day and each punch is, in their tables, their cards
+       and the Withdraw dialog. A punch with a number nobody has still
+       says its number;
+     - Add punch's people, from Punches or from a missing punch on
+       Exceptions;
+     - the people list, the days and the punches give each name in
+       Arabic too. A shared `Person` type and `personChoices`, in the
+       attendance folder's `people.ts`, are for the other tabs.
+     Flagged punches are the Requests page's, with requests.
    - **8i. Attendance's exceptions, requests and face tabs,** next: each
      row's person, the decided list, a missing-day's person, and the face
      tab's people.
@@ -1525,3 +1533,8 @@ same day as drawn in the All users: status badges canvas
   page's order, the client's area's home and Contact on WhatsApp, and
   the tax statement, whose client is named in the page's language on the
   client's page's copy. Attendance next.
+- **2026-11-26:** #419 merged: attendance's days and punches name people
+  in the page's language (§3.1, step 8h): the Person select Days and
+  Punches share, in the page's order; whose each day and punch is; and
+  Add punch's people. Attendance's exceptions, requests and face tabs
+  next, as 8i.
