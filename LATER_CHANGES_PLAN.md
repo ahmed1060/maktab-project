@@ -1262,17 +1262,19 @@ Checked read-only on the live database on 26 November:
   - no day-off balance, and no day off, permission, mission or missing
     punch to ask for;
   - no payslip at all;
-  - no points and no rating: on a task or an obligation with others,
-    only the others are rated, and one only owners worked on is completed
-    once it's approved (and paid, for a task with a cost);
+  - no tasks or obligations (the owner's answer, 2026-11-26): the people
+    pickers leave them out, so they have no points and no rating. The
+    Owner switch is refused while someone has a task or an obligation
+    still open, and names them, to be moved first; finished ones stay in
+    their history;
   - no place in attendance reports or the head count.
 - **An Owners list** (the owner's ask, 2026-11-26): beside Employees in
   the side menu, in the Employees page's look, for whoever may see
   employees. Owners leave the Employees list and are listed there, with
   their row's actions that still apply: edit, and the Owner switch;
   nothing about pay or points.
-- Everything else is as their role gives: they can still be given tasks
-  and obligations, and approve what their role lets them.
+- Everything else is as their role gives: they still approve, review
+  and rate what their role lets them.
 
 ### 7.4 Limits on requests (Decided)
 
@@ -1796,3 +1798,5 @@ A step may take more than one PR.
 - **2026-11-26:** An Owners list added to §7.3, at the owner's ask:
   beside Employees in the side menu, in its look; owners leave the
   Employees list.
+- **2026-11-26:** Owners can't be given tasks or obligations (§7.3), at
+  the owner's word; the Owner switch waits until theirs are moved.
