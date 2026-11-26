@@ -180,5 +180,15 @@ describe.skipIf(!ADMIN_URL)("the work an owner isn't given, in Postgres", () => 
         expect(await workOf()).toEqual([["obligation", "Made-up monthly filing"]])
         await ObligationService.update(next.id, { assigneeIds: ["e2"] }, admin)
         expect(await workOf()).toBe("changed")
+
+        // The overnight run gives an owner no next one either: one deleted
+        // is made again for the others on it, and with only owners, not at all.
+        await db.query(`DELETE FROM "Obligation" WHERE id = $1`, [next.id])
+        await done("Made-up shared filing", "WEEKLY")
+        await db.query(`INSERT INTO "_ObligationAssignees"("A", "B") VALUES ('Made-up shared filing', 'e1'), ('Made-up shared filing', 'e2')`)
+        await ObligationService.processRecurrentObligations()
+        const made = (await db.query(
+            `SELECT o.title, array_agg(a."B" ORDER BY a."B") AS people FROM "Obligation" o JOIN "_ObligationAssignees" a ON a."A" = o.id WHERE o.status = 'PENDING' GROUP BY o.id, o.title ORDER BY o.title`)).rows
+        expect(made).toEqual([{ title: "Made-up shared filing", people: ["e2"] }])
     })
 })

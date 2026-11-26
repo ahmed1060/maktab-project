@@ -433,32 +433,42 @@ export class ObligationService {
         const creationResults = []
 
         for (const { obl, nextDeadline } of checkPayloads) {
-            const newObl = await prisma.obligation.create({
-                data: {
-                    title: obl.title,
-                    description: obl.description,
-                    companyId: obl.companyId,
-                    deadline: nextDeadline,
-                    recurrence: obl.recurrence,
-                    difficulty: obl.difficulty,
-                    status: 'PENDING',
-                    attachments: null,
-                    assignees: {
-                        connect: obl.assignees.map(a => ({ id: a.id }))
+            // Never for an owner, held so none is marked one meanwhile
+            // (LATER_CHANGES_PLAN.md §7.3, step 3b2, PR 428): the others on
+            // it get it, and with only owners on it, none is made.
+            const made = await prisma.$transaction(async (tx) => {
+                const owners = await holdAssignees(tx, obl.assignees.map(a => a.id))
+                const people = obl.assignees.map(a => a.id).filter(id => !owners.has(id))
+                if (people.length === 0 && owners.size > 0) return null
+                const created = await tx.obligation.create({
+                    data: {
+                        title: obl.title,
+                        description: obl.description,
+                        companyId: obl.companyId,
+                        deadline: nextDeadline,
+                        recurrence: obl.recurrence,
+                        difficulty: obl.difficulty,
+                        status: 'PENDING',
+                        attachments: null,
+                        assignees: {
+                            connect: people.map(id => ({ id }))
+                        }
                     }
-                }
+                })
+                return { id: created.id, people }
             })
+            if (!made) continue
 
             // Create notifications
             const { NotificationService } = await import("./notification.service")
             await NotificationService.notifyMany(
-                obl.assignees.map(a => a.id),
+                made.people,
                 'OBLIGATION_ASSIGNED',
                 { key: 'notice_obligation_recurred', params: { title: obl.title } },
-                newObl.id
+                made.id
             )
 
-            creationResults.push({ originalId: obl.id, nextId: newObl.id })
+            creationResults.push({ originalId: obl.id, nextId: made.id })
         }
 
         return creationResults

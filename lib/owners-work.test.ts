@@ -120,6 +120,12 @@ describe("a repeating obligation", () => {
     it("is found as the overnight run finds it", () => {
         expect(source("lib/services/obligation.service.ts")).toContain("const checkPayloads = await stillToRecur(prisma, {})")
     })
+
+    it("is made by the overnight run for no owner, held as other new work is", () => {
+        const obligations = source("lib/services/obligation.service.ts")
+        expect(obligations).toContain("const owners = await holdAssignees(tx, obl.assignees.map(a => a.id))\n                const people = obl.assignees.map(a => a.id).filter(id => !owners.has(id))\n                if (people.length === 0 && owners.size > 0) return null")
+        expect(obligations).toContain("connect: people.map(id => ({ id }))")
+    })
 })
 
 describe("Reassign on an obligation", () => {
