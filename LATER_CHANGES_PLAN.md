@@ -1357,8 +1357,9 @@ In three PRs, each whole on its own:
     says what changes from the start of this month, then it's confirmed
     with a code and logged. It's refused
     while they have a task or an obligation still open, or done and
-    awaiting review, naming each, and in a month whose payroll is
-    approved.
+    awaiting review, naming each, and while the payroll of this month or
+    a later one is approved, as the change reaches every month from this
+    one on.
   - The payroll register leaves an owner out from the month they're
     marked; approved months stay as they were paid. Attendance works out
     no days for them from then, and their days in those months go, so
@@ -1925,3 +1926,6 @@ A step may take more than one PR.
   review is open work too; months are told apart by their calendar month,
   whatever the company's time zone becomes; and a settlement in a month
   they're an owner counts nothing earned or paid.
+- **2026-11-26:** 3a, after Codex's second review of #426: adding or
+  removing an owner is refused while the payroll of this month or a later
+  one is approved, not this month's alone.
