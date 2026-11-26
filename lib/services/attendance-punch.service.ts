@@ -362,7 +362,7 @@ export class AttendancePunchService {
         const [mapped, unmatched] = await Promise.all([
             prisma.attendanceCode.findMany({
                 where: { companyId }, orderBy: { code: "asc" },
-                select: { id: true, code: true, userId: true, user: { select: { firstName: true, lastName: true } } },
+                select: { id: true, code: true, userId: true, user: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } },
             }),
             prisma.attendancePunch.groupBy({
                 by: ["hardwareUserId"],
@@ -371,7 +371,8 @@ export class AttendancePunchService {
             }),
         ])
         return {
-            mapped: mapped.map(m => ({ id: m.id, code: m.code, userId: m.userId, name: `${m.user.firstName} ${m.user.lastName}`.trim() })),
+            // Whose, in Arabic too where they have it (LATER_CHANGES_PLAN.md §3.1, step 8j, PR 421).
+            mapped: mapped.map(m => ({ id: m.id, code: m.code, userId: m.userId, name: `${m.user.firstName} ${m.user.lastName}`.trim(), nameAr: nameInArabic(m.user) })),
             unmatched: unmatched
                 .map(u => ({ code: u.hardwareUserId!, punches: u._count._all, from: wallClockText(u._min.punchAtLocal!).slice(0, 10), to: wallClockText(u._max.punchAtLocal!).slice(0, 10) }))
                 .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true })),

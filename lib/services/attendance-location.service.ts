@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@prisma/client"
 import { AuditLogService } from "./audit-log.service"
 import { MAX_IP_RANGES, normaliseIpRange } from "@/lib/attendance/ip-ranges"
+import { nameInArabic } from "@/lib/names"
 
 /**
  * Where people check in with the app (ATTENDANCE_PLAN.md §8.5, §9.4): a
@@ -74,11 +75,12 @@ export class AttendanceLocationService {
             prisma.workLocation.findMany({ where: { companyId }, orderBy: [{ archivedAt: { sort: "desc", nulls: "first" } }, { name: "asc" }], select: SHOWN }),
             prisma.user.findMany({
                 where: { companyId, status: { in: [...AT_WORK] } },
-                select: { id: true, firstName: true, lastName: true },
+                select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
                 orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
             }),
         ])
-        return { locations: locations.map(shown), people: people.map(p => ({ id: p.id, name: `${p.firstName} ${p.lastName}`.trim() })) }
+        // Each in Arabic too where they have it, for the screen's language and order (LATER_CHANGES_PLAN.md §3.1, step 8j, PR 421).
+        return { locations: locations.map(shown), people: people.map(p => ({ id: p.id, name: `${p.firstName} ${p.lastName}`.trim(), nameAr: nameInArabic(p) })) }
     }
 
     static async locationOf(id: string) {

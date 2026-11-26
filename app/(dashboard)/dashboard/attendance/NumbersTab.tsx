@@ -12,6 +12,8 @@ import { useBusyAction } from '@/lib/useBusyAction'
 import { send, json } from './send'
 import { useFigures } from './period'
 import { choicesForWaiting, pickedFor } from '@/lib/attendance/number-choices'
+import { nameIn } from '@/lib/names'
+import { personChoices, type Person } from './people'
 
 /**
  * Employee numbers (ATTENDANCE_PLAN.md Phase 0): each terminal knows people
@@ -30,13 +32,14 @@ import { choicesForWaiting, pickedFor } from '@/lib/attendance/number-choices'
  * (ATTENDANCE_PLAN.md §14, §17.13; PR 366).
  */
 
-type Codes = { mapped: { id: string; code: string; userId: string; name: string }[]; unmatched: { code: string; punches: number; from: string; to: string }[] }
+type Codes = { mapped: { id: string; code: string; userId: string; name: string; nameAr?: string | null }[]; unmatched: { code: string; punches: number; from: string; to: string }[] }
 type Waiting = Codes['unmatched'][number]
 type Mapped = Codes['mapped'][number]
-type Person = { id: string; name: string; teamLeaderId: string | null }
 
 export default function NumbersTab({ q, companyId }: { q: string; companyId: string | null }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
+    // Whose, in the page's language, or the one they have (LATER_CHANGES_PLAN.md §3.1, step 8j, PR 421).
+    const named = (m: Mapped) => nameIn(locale, { en: m.name, ar: m.nameAr })
     const { num, date } = useFigures()
     const { showToast } = useToast()
     const { data: session } = useSession()
@@ -78,7 +81,8 @@ export default function NumbersTab({ q, companyId }: { q: string; companyId: str
     )
     if (!codes) return <div className="ui-panel" role="status"><EmptyState icon={HourglassIcon} title={t('loading')} /></div>
 
-    const optionsOf = (list: Person[]) => [{ value: '', label: t('punch_choose_person') }, ...list.map(x => ({ value: x.id, label: x.name }))]
+    // In the page's language and order (PR 421).
+    const optionsOf = (list: Person[]) => [{ value: '', label: t('punch_choose_person') }, ...personChoices(list, locale)]
     // The form's: everyone, for a second number on purpose.
     const personOptions = optionsOf(people)
     const waitingCodes = codes.unmatched.map(u => u.code)
@@ -130,7 +134,7 @@ export default function NumbersTab({ q, companyId }: { q: string; companyId: str
                     // Straight in the card, as on Public holidays: a panel in it was a box in a box (found in the interface audit, PR 152).
                     <ul className="ui-rows" aria-label={t('punch_numbers_mapped')}>
                         {codes.mapped.map(m => (
-                            <Row key={m.id} title={<bdi>{m.code}</bdi>} detail={m.name}
+                            <Row key={m.id} title={<bdi>{m.code}</bdi>} detail={named(m)}
                                 end={m.userId !== me ? <Button size="sm" disabled={action.running} onClick={() => setRemoving(m)}>{t('punch_number_remove')}</Button> : undefined} />
                         ))}
                     </ul>
@@ -149,7 +153,7 @@ export default function NumbersTab({ q, companyId }: { q: string; companyId: str
                     </Button>
                 </>}
             >
-                {removing && <Details items={[{ label: t('punch_column_code'), value: <bdi>{removing.code}</bdi> }, { label: t('punch_person'), value: removing.name }]} />}
+                {removing && <Details items={[{ label: t('punch_column_code'), value: <bdi>{removing.code}</bdi> }, { label: t('punch_person'), value: named(removing) }]} />}
                 <p>{t('punch_number_remove_hint')}</p>
             </Dialog>
         </>

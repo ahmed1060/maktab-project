@@ -11,6 +11,7 @@ import AssigneeChecklist from '@/components/forms/AssigneeChecklist'
 import { apiErrorText } from '@/lib/api-error-text'
 import { googleMapsLink, parsePoint } from '@/lib/attendance/geo'
 import { countOf } from '@/lib/plural'
+import { nameIn, namedInOrder } from '@/lib/names'
 import type { TranslationKey } from '@/lib/translations'
 import { Button, Card, Dialog, DialogActions, EmptyState, Field, Row, RowMenu, StatusBadge, TextArea, TextInput, type MenuItem } from '@/components/ui'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
@@ -29,7 +30,8 @@ type Location = {
     id: string; name: string; latitude: number; longitude: number; radiusMeters: number
     officeIpRanges: string[]; everyone: boolean; archivedAt: string | null; userIds: string[]
 }
-type Person = { id: string; name: string }
+/** Somebody a place could be for: their name in English, and in Arabic where they have one (PR 421). */
+type Person = { id: string; name: string; nameAr?: string | null }
 export type Draft = { id: string | null; name: string; point: string; radius: string; ips: string; everyone: boolean }
 type PlaceErrors = Partial<Record<'name' | 'point' | 'radius', TranslationKey>>
 
@@ -70,7 +72,8 @@ export default function AttendanceLocationsPanel({ companyId, readOnly }: { comp
     if (!body?.data) return null
     const locations: Location[] = body.data.locations
     const people: Person[] = body.data.people
-    const nameOf = new Map(people.map(p => [p.id, p.name]))
+    // Each in the page's language, or the one they have (LATER_CHANGES_PLAN.md §3.1, step 8j, PR 421).
+    const nameOf = new Map(people.map(p => [p.id, nameIn(locale, { en: p.name, ar: p.nameAr })]))
     const number = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
 
     /** Sends one change, then reloads; the server's refusal is shown as it said it. */
@@ -241,14 +244,14 @@ export function PlaceDialog({ draft: start, busy, onClose, onSubmit }: {
 }
 
 /** Who may check in at a place, picked from a list that can be searched, as a task's assignees are. */
-function PeopleDialog({ location, people, busy, onClose, onSubmit }: {
+export function PeopleDialog({ location, people, busy, onClose, onSubmit }: {
     location: Location
     people: Person[]
     busy: boolean
     onClose: () => void
     onSubmit: (userIds: string[]) => Promise<void>
 }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const [chosen, setChosen] = useState<string[]>(location.userIds)
     return (
         <Dialog
@@ -262,7 +265,8 @@ function PeopleDialog({ location, people, busy, onClose, onSubmit }: {
         >
             <AssigneeChecklist
                 legend={t('att_loc_people')}
-                people={people.map(p => ({ id: p.id, firstName: p.name, lastName: '' }))}
+                // In the page's language and order: on an Arabic page, Arabic names first, in Arabic order (PR 421).
+                people={namedInOrder(people, locale).map(p => ({ id: p.id, firstName: p.name, lastName: '', firstNameAr: p.nameAr ?? null, lastNameAr: null }))}
                 value={chosen}
                 onChange={setChosen}
                 onRetry={() => {}}
