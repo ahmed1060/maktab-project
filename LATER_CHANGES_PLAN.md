@@ -1393,7 +1393,10 @@ In three PRs, each whole on its own:
       Work they already have stays theirs until it's moved.
     - New work holds each person it goes to, and marking an owner holds
       them alone, so the two can't cross: whichever comes second sees
-      the first.
+      the first. A transfer's copy goes to everyone it's transferred to,
+      those already on the task too, so each of them is held and
+      checked, not only those added; one who's an owner is left off it
+      to transfer it.
     - A repeating obligation makes its next one for the same people.
       Marking someone an owner is refused while one of theirs, finished,
       is still to make its next one, named with the open work; the
@@ -1996,3 +1999,5 @@ A step may take more than one PR.
   taken off, and the work's people are read under its hold.
 - **2026-11-26:** Codex's third finding on #428: the overnight run gives
   an owner no next one either.
+- **2026-11-26:** Codex's fourth finding on #428: a transfer checks
+  everyone its copy goes to, not only those added.
