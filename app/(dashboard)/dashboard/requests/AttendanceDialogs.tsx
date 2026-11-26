@@ -94,6 +94,7 @@ const REFUSED: Record<string, TranslationKey> = {
     ROLE_NOT_IN_COMPANY: 'requests_role_gone',
     LEADER_HAS_REPORTS: 'requests_role_leads_team',
     LAST_ADMIN: 'requests_role_last_admin',
+    OWNER_STAYS_ADMIN: 'requests_role_owner',
     ADMIN_IS_SUPER_ADMINS: 'requests_role_admin_super',
     ACTING_END_IN_PAST: 'requests_role_acting_ended',
 }

@@ -42,6 +42,9 @@ interface DashboardShellProps {
     // Whether their company uses cash advances, for My cash advance and the
     // Costs page's tab (CLIENTS_PLAN.md §7.5): resolved there too.
     cashAdvances?: boolean
+    // Whether they're an owner now, for My attendance (LATER_CHANGES_PLAN.md
+    // §7.3, PR 428): resolved there too.
+    owner?: boolean
 }
 
 const subscribeNever = () => () => {}
@@ -56,7 +59,7 @@ const subscribePhone = (onChange: () => void) => {
 }
 const isPhoneNow = () => phoneQuery().matches
 
-export default function DashboardShell({ children, user, showPoweredBy = true, poweredByName, showCompanySettings: settingsOnFirstPaint = false, cashAdvances: advancesOnFirstPaint = false }: DashboardShellProps) {
+export default function DashboardShell({ children, user, showPoweredBy = true, poweredByName, showCompanySettings: settingsOnFirstPaint = false, cashAdvances: advancesOnFirstPaint = false, owner: ownerOnFirstPaint = false }: DashboardShellProps) {
     // The side bar's drawer, on a phone or a tablet (DESIGN.md §5.1). Where the
     // side bar sits is CSS; this is only whether it's a dialog, and open.
     const isPhone = useSyncExternalStore(subscribePhone, isPhoneNow, () => false)
@@ -83,7 +86,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     const { data: settingsEntry, mutate: recheckSettings } = useSWR(
         user?.role && user.role !== 'SUPER_ADMIN' ? '/api/company-settings/visible' : null,
         fetcher,
-        { fallbackData: { data: { visible: settingsOnFirstPaint, cashAdvances: advancesOnFirstPaint } }, revalidateOnMount: false, revalidateOnFocus: true },
+        { fallbackData: { data: { visible: settingsOnFirstPaint, cashAdvances: advancesOnFirstPaint, owner: ownerOnFirstPaint } }, revalidateOnMount: false, revalidateOnFocus: true },
     )
     useEffect(() => { recheckSettings() }, [pathname, recheckSettings])
     const showCompanySettings = !!settingsEntry?.data?.visible
@@ -97,6 +100,7 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
         checkIn: inApp && hasBundle(features.access, 'ATTENDANCE_MOBILE'),
         companySettings: showCompanySettings,
         cashAdvances: !!settingsEntry?.data?.cashAdvances,
+        owner: !!settingsEntry?.data?.owner,
     })
     // How many wait on this person under the Requests page's To review tab,
     // on Requests in the side bar (DESIGN.md §5.1): asked once Requests is

@@ -29,15 +29,16 @@ const lastMonth = addDays(`${thisMonth}-01`, -1).slice(0, 7)
 const startOf = (month: string) => startOfDate(`${month}-01`, ZONE)
 const hiredAt = startOfDate(addDays(`${lastMonth}-01`, -20), ZONE).toISOString()
 
-// Made-up people, each hired before last month with a salary dated the same.
+// Made-up people, each hired before last month with a salary dated the same;
+// the ones marked owners are Admins, as only an Admin is one (PR 428).
 const PEOPLE = `
 INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'Made Up', now());
 INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId") VALUES
  ('a1', 'a1@x', 'p', 'Amal', 'One', 'ADMIN', 2026, 'a1', 'c1'),
- ('e1', 'e1@x', 'p', 'Ehab', 'One', 'EMPLOYEE', 2026, 'e1', 'c1'),
- ('e2', 'e2@x', 'p', 'Eman', 'One', 'EMPLOYEE', 2026, 'e2', 'c1'),
- ('e3', 'e3@x', 'p', 'Essam', 'One', 'EMPLOYEE', 2026, 'e3', 'c1'),
- ('e4', 'e4@x', 'p', 'Eid', 'One', 'EMPLOYEE', 2026, 'e4', 'c1'),
+ ('e1', 'e1@x', 'p', 'Ehab', 'One', 'ADMIN', 2026, 'e1', 'c1'),
+ ('e2', 'e2@x', 'p', 'Eman', 'One', 'ADMIN', 2026, 'e2', 'c1'),
+ ('e3', 'e3@x', 'p', 'Essam', 'One', 'ADMIN', 2026, 'e3', 'c1'),
+ ('e4', 'e4@x', 'p', 'Eid', 'One', 'ADMIN', 2026, 'e4', 'c1'),
  ('n1', 'n1@x', 'p', 'Nour', 'One', 'EMPLOYEE', 2026, 'n1', NULL);
 `
 const RECORDS = `

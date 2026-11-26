@@ -43,6 +43,13 @@ const ADMIN_ROLE = "the locked Admin role"
 const THE_ROLE = "about the role being managed"
 
 const ALLOWED: [file: string, line: string, why: string][] = [
+    // Only an Admin is an owner, set by an Admin or the Super Admin, and an owner's role stays Admin (LATER_CHANGES_PLAN.md §7.3, PR 428).
+    ["app/api/users/[id]/owner/route.ts", 'if (session.user.role !== "SUPER_ADMIN" && session.user.role !== "ADMIN") return ApiResponse.forbidden("Only an Admin or the Super Admin sets owners")', ADMIN_ROLE],
+    ["lib/profile-access.ts", "setOwner: can('employees.set_owner') && !own && (superAdmin || viewer?.role === 'ADMIN') && person.role !== 'SUPER_ADMIN' && person.role !== '',", ADMIN_ROLE],
+    ["lib/profile-access.ts", "addOwner: can('employees.set_owner') && !own && (superAdmin || viewer?.role === 'ADMIN') && person.role === 'ADMIN',", ADMIN_ROLE],
+    ["lib/services/owner.service.ts", 'if (owner && (them?.role !== "ADMIN" || them.actingUntil !== null)) throw new OwnerRefused("OWNER_NOT_ADMIN")', THE_PERSON],
+    ["lib/services/user.service.ts", "const leavesAdmin = regularUser.role === 'ADMIN' && updateData.role !== undefined && updateData.role !== 'ADMIN'", THE_PERSON],
+
     // app/api/tasks/bulk/route.ts
     ["app/api/tasks/bulk/route.ts", "if (['ADMIN', 'SUPER_ADMIN'].includes(user.role)) { isTaskValid = false; break }", THE_PERSON],
 

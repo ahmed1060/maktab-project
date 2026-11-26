@@ -71,6 +71,8 @@ export function adminRefusal(error: any) {
     switch (error?.message) {
         case "ADMIN_IS_SUPER_ADMINS": return refused(403, "Only the Super Admin acts on an Admin", "ADMIN_IS_SUPER_ADMINS")
         case "LAST_ADMIN": return refused(400, "A company must keep at least one Admin at work. Give its Admin role to someone else first.", "LAST_ADMIN")
+        // An owner is an Admin (LATER_CHANGES_PLAN.md §7.3, step 3b2, PR 428).
+        case "OWNER_STAYS_ADMIN": return refused(400, "They're among the owners, so their role stays Admin. Remove them from owners first.", "OWNER_STAYS_ADMIN")
     }
     return null
 }

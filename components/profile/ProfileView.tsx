@@ -105,13 +105,13 @@ export function ProfileView({ name, photo, access, facts, onResetPassword, onEnd
                 : dayLabel(facts.contractStart, locale),
         }] : []),
         ...(facts.accountMade ? [{ label: t('account_made_label'), value: dayLabel(facts.accountMade, locale) }] : []),
-        // Among the owners since a month, to whoever sees them; whether they are, to whoever may say (PR 426).
-        ...(access.owner && (facts.ownerSince || access.setOwner) ? [{
+        // Among the owners since a month, to whoever sees them; whether they are, to whoever may add them (PR 426, PR 428).
+        ...(access.owner && (facts.ownerSince || access.addOwner) ? [{
             label: t('owner_label'),
             value: (
                 <span className="ui-detail-act">
                     {facts.ownerSince ? t('owner_since').replace('{month}', monthLabel(facts.ownerSince, locale)) : t('owner_none')}
-                    {access.setOwner && (
+                    {(facts.ownerSince ? access.setOwner : access.addOwner) && (
                         <Button size="sm" onClick={onSetOwner}>
                             {t(facts.ownerSince ? 'owner_remove' : 'owner_add')}
                         </Button>

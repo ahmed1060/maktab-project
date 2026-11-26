@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { and, scopesToTeam, teamMemberWhere } from "@/lib/team-scope"
+import { notOwnerNow } from "@/lib/owners"
 
 /**
  * Whether these people may be given this work by this person.
@@ -30,7 +31,7 @@ import { and, scopesToTeam, teamMemberWhere } from "@/lib/team-scope"
 
 export type AssigneeVerdict =
     | { ok: true }
-    | { ok: false; reason: "NOT_FOUND" | "CROSS_COMPANY" | "ADMIN_TARGET" | "OUTSIDE_TEAM" }
+    | { ok: false; reason: "NOT_FOUND" | "CROSS_COMPANY" | "ADMIN_TARGET" | "OUTSIDE_TEAM" | "OWNER" }
 
 /**
  * What is being handed out: its permission's scope decides whether the
@@ -46,7 +47,8 @@ export async function checkAssignees(
     session: any,
     permission: AssignPermission,
     // `kept`: who the work already has. Someone deleted among them stays,
-    // until it's reassigned; nobody deleted is added (PR 371).
+    // until it's reassigned; nobody deleted is added (PR 371). So with an
+    // owner now: nobody new is one (PR 428).
     { client = prisma as any, kept = [] }: { client?: Client; kept?: readonly string[] } = {},
 ): Promise<AssigneeVerdict> {
     if (!assigneeIds || assigneeIds.length === 0) return { ok: true }
@@ -57,7 +59,7 @@ export async function checkAssignees(
 
     const assignees = await client.user.findMany({
         where: { id: { in: assigneeIds } },
-        select: { id: true, companyId: true, role: true, teamLeaderId: true, status: true },
+        select: { id: true, companyId: true, role: true, teamLeaderId: true, status: true, ownerPeriods: { where: { endsAt: null }, select: { id: true } } },
     })
 
     // Length rather than a per-id check: a duplicate id would otherwise let a
@@ -65,6 +67,8 @@ export async function checkAssignees(
     if (assignees.length !== new Set(assigneeIds).size) return { ok: false, reason: "NOT_FOUND" }
     // A deleted account is gone, for whoever is assigning, a Super Admin too.
     if (assignees.some(a => a.status === "DELETED" && !kept.includes(a.id))) return { ok: false, reason: "NOT_FOUND" }
+    // An owner is given no work, by anyone (LATER_CHANGES_PLAN.md §7.3, step 3b2, PR 428).
+    if (assignees.some(a => a.ownerPeriods.length > 0 && !kept.includes(a.id))) return { ok: false, reason: "OWNER" }
 
     // A Super Admin belongs to no company and may assign anywhere.
     if (userRole === "SUPER_ADMIN") return { ok: true }
@@ -90,11 +94,13 @@ export async function checkAssignees(
  * Who this person may hand this work to in a company, as a query on User:
  * the rule checkAssignees applies, for a picker to offer (LATER_CHANGES_PLAN.md
  * §5.1 rule 5, PR 371). Held for a team, oneself and the people one leads,
- * no Admins; for the company, everyone in it; never a deleted account. A
- * Super Admin, who may assign anywhere, with no company picked: everyone's.
+ * no Admins; for the company, everyone in it; never a deleted account, or
+ * an owner now (PR 428). A Super Admin, who may assign anywhere, with no
+ * company picked: everyone's.
  */
 export function assignableWhere(session: any, permission: AssignPermission, companyId: string | null) {
     const where: Record<string, any> = { ...(companyId ? { companyId } : {}), status: { not: "DELETED" } }
+    and(where, notOwnerNow())
     if (session?.user?.role !== "SUPER_ADMIN" && scopesToTeam(session.user, permission)) {
         where.role = { notIn: ["ADMIN", "SUPER_ADMIN"] }
         and(where, teamMemberWhere(session.user.id))

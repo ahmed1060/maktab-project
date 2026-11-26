@@ -46,6 +46,16 @@ export function notOwnerIn(month: string) {
     return { NOT: { ownerPeriods: { some: { startsAt: { lte: at }, OR: [{ endsAt: null }, { endsAt: { gt: at } }] } } } }
 }
 
+/**
+ * The people who aren't owners now, as a filter on User: no period still
+ * open (LATER_CHANGES_PLAN.md §7.3, step 3b2, PR 428). A period is opened
+ * from the start of this month, so an open one is this month's, in any
+ * company's calendar.
+ */
+export function notOwnerNow() {
+    return { NOT: { ownerPeriods: { some: { endsAt: null } } } }
+}
+
 /** Since which month, 'YYYY-MM', they're an owner now: their open period's; null for none. */
 export function ownerSince(periods: readonly OwnerPeriodRow[]): string | null {
     const open = periods.find(p => p.endsAt === null)
@@ -117,6 +127,7 @@ const REFUSALS: Record<string, TranslationKey> = {
     NOT_OWNER: "owner_not",
     NO_COMPANY: "owner_no_company",
     OWNER_SETTLED: "owner_settled",
+    OWNER_NOT_ADMIN: "owner_not_admin",
 }
 
 /** A refusal's code, as the words the dialog says it in; null for none of its own. */

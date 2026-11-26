@@ -352,6 +352,8 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     MESSAGE_CHANGED_SINCE: { status: 409, message: "Someone else changed this message since this page opened. It's shown as it is now; your changes are kept to save again." },
     // A company's own copy of them, where its package has the client portal (§7.1, PR 348).
     CLIENT_PORTAL_NOT_IN_PACKAGE: { status: 403, message: "This company's package doesn't include the client portal." },
+    // Owners are given no work (LATER_CHANGES_PLAN.md §7.3, step 3b2, PR 428).
+    ASSIGNEE_IS_OWNER: { status: 409, message: "Owners aren't given work. Pick someone who isn't an owner." },
 }
 
 export function knownRefusal(error: unknown) {

@@ -4,6 +4,8 @@ import { can, canCompanyWide } from "@/lib/permissions/can"
 import { scopesToTeam } from "@/lib/team-scope"
 import { isTeamWork } from "@/lib/security"
 import { checkAssignees } from "./assignee-guard"
+import { holdAssignees } from "./owner.service"
+import type { Prisma } from "@prisma/client"
 import { nextOccurrence } from "@/lib/recurrence"
 import { CreateObligationInput } from "../validations/obligation.schema"
 import { supabase } from "@/lib/storage"
@@ -15,6 +17,7 @@ const CREATE_CODES = {
     CROSS_COMPANY: "CROSS_COMPANY_ASSIGNMENT_FORBIDDEN",
     ADMIN_TARGET: "TEAM_LEADER_CANNOT_ASSIGN_TO_ADMIN",
     OUTSIDE_TEAM: "TEAM_LEADER_CANNOT_ASSIGN_OUTSIDE_TEAM",
+    OWNER: "ASSIGNEE_IS_OWNER",
 } as const
 
 const REASSIGN_CODES = {
@@ -22,12 +25,42 @@ const REASSIGN_CODES = {
     CROSS_COMPANY: "CROSS_COMPANY_ASSIGNMENT_FORBIDDEN",
     ADMIN_TARGET: "TL_CANNOT_REASSIGN_TO_ADMIN",
     OUTSIDE_TEAM: "TL_CANNOT_REASSIGN_OUTSIDE_TEAM",
+    OWNER: "ASSIGNEE_IS_OWNER",
 } as const
 
 /** Every status an obligation can be in (the column is free text). */
 const OBLIGATION_STATUSES = ['PENDING', 'IN_PROGRESS', 'PENDING_CONFIRMATION', 'COMPLETED', 'APPROVED', 'REJECTED', 'ARCHIVED']
 /** The ones an assignee moves their own obligation to, as the screens offer. */
 const ASSIGNEE_STATUSES = ['IN_PROGRESS', 'PENDING_CONFIRMATION', 'COMPLETED']
+
+/**
+ * Repeating obligations, finished, whose next one isn't made yet, each with
+ * the deadline it takes, as the overnight run makes them; `where` narrows
+ * which. Marking someone an owner waits on theirs too (LATER_CHANGES_PLAN.md
+ * §7.3, step 3b2, PR 428). nextOccurrence clamps months and years instead
+ * of overflowing: the previous `setMonth` turned a 31 January monthly
+ * obligation into 3 March, so February never got an instance and every
+ * later one drifted to the 3rd. A recurrence with no next instance yields
+ * null and is dropped rather than silently repeating its own deadline.
+ */
+export async function stillToRecur(db: Prisma.TransactionClient, where: Prisma.ObligationWhereInput) {
+    const finished = await db.obligation.findMany({
+        where: { ...where, recurrence: { not: 'ONE_TIME' }, status: { in: ['COMPLETED', 'APPROVED'] } },
+        include: { assignees: { select: { id: true } } },
+        orderBy: { createdAt: 'asc' },
+    })
+    const due = finished.flatMap(obl => {
+        const nextDeadline = nextOccurrence(new Date(obl.deadline), obl.recurrence)
+        return nextDeadline ? [{ obl, nextDeadline }] : []
+    })
+    if (due.length === 0) return []
+    const made = await db.obligation.findMany({
+        where: { OR: due.map(p => ({ title: p.obl.title, companyId: p.obl.companyId, deadline: p.nextDeadline })) },
+        select: { title: true, companyId: true, deadline: true },
+    })
+    return due.filter(({ obl, nextDeadline }) => !made.some(inst =>
+        inst.title === obl.title && inst.companyId === obl.companyId && inst.deadline.getTime() === nextDeadline.getTime()))
+}
 
 export class ObligationService {
     static async create(input: CreateObligationInput, session: any) {
@@ -65,25 +98,28 @@ export class ObligationService {
             if (firstAssignee) targetCompanyId = firstAssignee.companyId
         }
 
-        // 3. Create
-        return await prisma.obligation.create({
-            data: {
-                title,
-                description,
-                companyId: targetCompanyId,
-                assignees: {
-                    connect: assigneeIds.map(id => ({ id }))
-                },
-                deadline: deadlineDate,
-                recurrence: recurrence || 'ONE_TIME',
-                difficulty: difficulty || 0,
-                attachments: attachments ? JSON.stringify(attachments) : null,
-                status: 'PENDING',
-                // Obligation.createdById's FK targets User only — a Super
-                // Admin's id lives in a separate table. Same guard
-                // Task.create()/Client.create() use for the identical reason.
-                createdById: userRole === 'SUPER_ADMIN' ? null : session.user.id
-            }
+        // 3. Create, for no owner, held so none is marked one meanwhile (§7.3, step 3b2, PR 428).
+        return await prisma.$transaction(async (tx) => {
+            if ((await holdAssignees(tx, assigneeIds)).size > 0) throw new Error("ASSIGNEE_IS_OWNER")
+            return tx.obligation.create({
+                data: {
+                    title,
+                    description,
+                    companyId: targetCompanyId,
+                    assignees: {
+                        connect: assigneeIds.map(id => ({ id }))
+                    },
+                    deadline: deadlineDate,
+                    recurrence: recurrence || 'ONE_TIME',
+                    difficulty: difficulty || 0,
+                    attachments: attachments ? JSON.stringify(attachments) : null,
+                    status: 'PENDING',
+                    // Obligation.createdById's FK targets User only — a Super
+                    // Admin's id lives in a separate table. Same guard
+                    // Task.create()/Client.create() use for the identical reason.
+                    createdById: userRole === 'SUPER_ADMIN' ? null : session.user.id
+                }
+            })
         })
     }
 
@@ -96,6 +132,8 @@ export class ObligationService {
         const userName = session.user.name
 
         return await prisma.$transaction(async (tx) => {
+            // Held first, so who it has is read as it is, not as another change left it a moment ago (PR 428).
+            await tx.$queryRaw`SELECT id FROM "Obligation" WHERE id = ${id} FOR UPDATE`
             const current = await tx.obligation.findUnique({
                 where: { id },
                 include: { assignees: true }
@@ -182,7 +220,10 @@ export class ObligationService {
                 // the same rule — handing work to another team, or another
                 // company, is not made safe by the obligation already
                 // existing. Validated inside the transaction it writes to.
-                // Someone deleted who is already on it stays (PR 371).
+                // Someone deleted who is already on it stays (PR 371), and so
+                // does an owner; nobody new is one, held so none is marked
+                // one meanwhile (§7.3, step 3b2, PR 428).
+                if ((await holdAssignees(tx, assigneeIds.filter((uid: string) => !current.assignees.some(a => a.id === uid)))).size > 0) throw new Error("ASSIGNEE_IS_OWNER")
                 const verdict = await checkAssignees(assigneeIds, session, "obligations.edit", { client: tx as any, kept: current.assignees.map(a => a.id) })
                 if (!verdict.ok) throw new Error(REASSIGN_CODES[verdict.reason])
                 updateData.assignees = { set: assigneeIds.map((uid: string) => ({ id: uid })) }
@@ -386,50 +427,20 @@ export class ObligationService {
      * This is intended to be called by a cron job.
      */
     static async processRecurrentObligations() {
-        const finalizedStatuses = ['COMPLETED', 'APPROVED']
-
-        // 1. Find all finalized obligations that are recurrent
-        const recurrentObligations = await prisma.obligation.findMany({
-            where: {
-                recurrence: { not: 'ONE_TIME' },
-                status: { in: finalizedStatuses }
-            },
-            include: { assignees: { select: { id: true } } }
-        })
-
-        // 2. Optimization: Batch check for existing instances.
-        //    nextOccurrence clamps months and years instead of overflowing: the
-        //    previous `setMonth` turned a 31 January monthly obligation into
-        //    3 March, so February never got an instance and every later one
-        //    drifted to the 3rd. A recurrence with no next instance yields null
-        //    and is dropped rather than silently repeating its own deadline.
-        const checkPayloads = recurrentObligations.flatMap(obl => {
-            const nextDeadline = nextOccurrence(new Date(obl.deadline), obl.recurrence)
-            return nextDeadline ? [{ obl, nextDeadline }] : []
-        })
-
-        const existingInstances = await prisma.obligation.findMany({
-            where: {
-                OR: checkPayloads.map(p => ({
-                    title: p.obl.title,
-                    companyId: p.obl.companyId,
-                    deadline: p.nextDeadline
-                }))
-            },
-            select: { title: true, companyId: true, deadline: true }
-        })
+        // Every finished repeating one whose next isn't made yet, checked in a batch.
+        const checkPayloads = await stillToRecur(prisma, {})
 
         const creationResults = []
 
         for (const { obl, nextDeadline } of checkPayloads) {
-            const exists = existingInstances.some(inst =>
-                inst.title === obl.title &&
-                inst.companyId === obl.companyId &&
-                inst.deadline.getTime() === nextDeadline.getTime()
-            )
-
-            if (!exists) {
-                const newObl = await prisma.obligation.create({
+            // Never for an owner, held so none is marked one meanwhile
+            // (LATER_CHANGES_PLAN.md §7.3, step 3b2, PR 428): the others on
+            // it get it, and with only owners on it, none is made.
+            const made = await prisma.$transaction(async (tx) => {
+                const owners = await holdAssignees(tx, obl.assignees.map(a => a.id))
+                const people = obl.assignees.map(a => a.id).filter(id => !owners.has(id))
+                if (people.length === 0 && owners.size > 0) return null
+                const created = await tx.obligation.create({
                     data: {
                         title: obl.title,
                         description: obl.description,
@@ -440,22 +451,24 @@ export class ObligationService {
                         status: 'PENDING',
                         attachments: null,
                         assignees: {
-                            connect: obl.assignees.map(a => ({ id: a.id }))
+                            connect: people.map(id => ({ id }))
                         }
                     }
                 })
+                return { id: created.id, people }
+            })
+            if (!made) continue
 
-                // Create notifications
-                const { NotificationService } = await import("./notification.service")
-                await NotificationService.notifyMany(
-                    obl.assignees.map(a => a.id),
-                    'OBLIGATION_ASSIGNED',
-                    { key: 'notice_obligation_recurred', params: { title: obl.title } },
-                    newObl.id
-                )
+            // Create notifications
+            const { NotificationService } = await import("./notification.service")
+            await NotificationService.notifyMany(
+                made.people,
+                'OBLIGATION_ASSIGNED',
+                { key: 'notice_obligation_recurred', params: { title: obl.title } },
+                made.id
+            )
 
-                creationResults.push({ originalId: obl.id, nextId: newObl.id })
-            }
+            creationResults.push({ originalId: obl.id, nextId: made.id })
         }
 
         return creationResults

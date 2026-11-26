@@ -8,6 +8,7 @@ import { AttendanceEngineService } from "./attendance-engine.service"
 import { AttendanceCheckInService } from "./attendance-check-in.service"
 import { NotificationService } from "./notification.service"
 import { PushService } from "./push.service"
+import { ownerIn } from "@/lib/owners"
 
 /**
  * "You haven't checked in" (ATTENDANCE_PLAN.md §13.4): N minutes after a
@@ -20,7 +21,7 @@ import { PushService } from "./push.service"
  * day or holiday, not on leave, when suspended, when lateness that day is
  * already excused or asked for, or on a mission by days or from the start
  * of the day, approved or asked for (§6.10, PR 281): the same days the late
- * notice keeps quiet on. And not more than an hour after it was due: if the job was down,
+ * notice keeps quiet on. Nor in a month they're an owner (PR 428). And not more than an hour after it was due: if the job was down,
  * a reminder at noon about 09:00 helps nobody.
  */
 
@@ -57,6 +58,8 @@ export class CheckInReminderService {
         const dates = [addDays(today, -1), today]
         const { plans, policyOn } = await AttendanceEngineService.plansFor(companyId, userIds, dates)
         const minutesInto = (date: string) => (Date.parse(`${local}Z`) - Date.parse(`${date}T00:00:00Z`)) / 60_000
+        // An owner has no attendance in a month they're one in, so nothing to be reminded of (§7.3, step 3b2, PR 428).
+        const owners = await prisma.ownerPeriod.findMany({ where: { userId: { in: userIds } }, select: { id: true, userId: true, startsAt: true, endsAt: true } })
 
         // Who is due, from the plans alone; then what rules them out, a
         // handful of queries for the whole company (review on #25).
@@ -65,7 +68,7 @@ export class CheckInReminderService {
             for (const date of dates) {
                 const expected = plans.get(userId)?.get(date)
                 const after = policyOn(date)?.noCheckInReminderMinutes
-                if (expected?.kind !== "WORK" || !after) continue
+                if (expected?.kind !== "WORK" || !after || ownerIn(owners.filter(p => p.userId === userId), date.slice(0, 7))) continue
                 const start = expected.hours.startMinutes
                 const since = minutesInto(date) - start
                 if (since < after || since > after + LATE_WINDOW_MINUTES) continue

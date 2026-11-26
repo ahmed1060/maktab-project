@@ -26,9 +26,9 @@ vi.setConfig({ testTimeout: 120_000 })
  * someone deleted who is already on the work stays.
  */
 
-type Person = { id: string; companyId: string; role: string; teamLeaderId: string | null; status: string; firstName: string; lastName: string; username: string; email: string; phone: string }
-const person = (id: string, companyId: string, role: string, teamLeaderId: string | null, status = "ACTIVE"): Person =>
-    ({ id, companyId, role, teamLeaderId, status, firstName: id.toUpperCase(), lastName: "Made-up", username: `${id}-user`, email: `${id}@made-up.example`, phone: "0100" })
+type Person = { id: string; companyId: string; role: string; teamLeaderId: string | null; status: string; firstName: string; lastName: string; username: string; email: string; phone: string; ownerPeriods: { id: string }[] }
+const person = (id: string, companyId: string, role: string, teamLeaderId: string | null, status = "ACTIVE", owner = false): Person =>
+    ({ id, companyId, role, teamLeaderId, status, firstName: id.toUpperCase(), lastName: "Made-up", username: `${id}-user`, email: `${id}@made-up.example`, phone: "0100", ownerPeriods: owner ? [{ id: `${id}-period` }] : [] })
 const PEOPLE: Person[] = [
     person("admin", "c1", "ADMIN", null),
     // An Admin someone put on a team: still never given work by its leader.
@@ -37,6 +37,8 @@ const PEOPLE: Person[] = [
     person("emp", "c1", "EMPLOYEE", "tl"),
     person("loner", "c1", "EMPLOYEE", null),
     person("gone", "c1", "EMPLOYEE", "tl", "DELETED"),
+    // An owner now, on the team: given no work by anyone (PR 428).
+    person("partner", "c1", "EMPLOYEE", "tl", "ACTIVE", true),
     person("other", "c2", "EMPLOYEE", null),
 ]
 
@@ -144,7 +146,7 @@ describe("who may ask it", () => {
         const sa = { id: "sa", role: "SUPER_ADMIN", companyId: null }
         const everyone = await list(sa, "tasks.create")
         expect((everyone.body.data as { id: string }[]).map(p => p.id).sort()).toEqual(["admin", "boss", "emp", "loner", "other", "tl"])
-        for (const p of PEOPLE) expect((await check(sa, [p.id], "tasks.create")).ok).toBe(p.status !== "DELETED")
+        for (const p of PEOPLE) expect((await check(sa, [p.id], "tasks.create")).ok, p.id).toBe(p.status !== "DELETED" && p.ownerPeriods.length === 0)
         const { body } = await list(VIEWERS["the Admin"], "tasks.create", "&companyId=c2")
         expect((body.data as { id: string }[]).map(p => p.id)).not.toContain("other")
     })

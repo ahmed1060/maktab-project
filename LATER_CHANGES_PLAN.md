@@ -15,7 +15,8 @@ Each part is marked:
 
 Status: **the owner's points of 26 November (§7) decided; the contract
 start date and Recalculate on the Payroll page done (#425), and owners'
-mark, permission and pay (#426, step 3a), with 3b next; the names (§3)
+mark, permission and pay (#426, step 3a), and what they're not asked
+for (#427, step 3b1), with 3b2 next; the names (§3)
 paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
@@ -1350,7 +1351,8 @@ In three PRs, each whole on its own:
     taken off, and a month already paid is never worked out as owed. One
     migration adds it, with Row Level Security on, and the permission
     `employees.set_owner`, Set owners, for the company, never one's own,
-    an Admin's by the Super Admin alone, affecting pay; the built-in Admin
+    an Admin's by the Super Admin alone (from 3b2, only an Admin is an
+    owner, set by an Admin or the Super Admin), affecting pay; the built-in Admin
     role gets it, and each company's Admin role there is already.
   - On an employee's page, Owner among their details: since which month,
     or No, with Add to owners, or Remove from owners, for whoever may set
@@ -1383,13 +1385,48 @@ In three PRs, each whole on its own:
     balance on their details. Asked for anyway, for a day in a month
     they're an owner, it's refused (OWNER_NO_ATTENDANCE), checked under
     the lock that marking an owner takes, so the two can't cross.
-  - **3b2, the pickers:** the task and obligation pickers leave them
-    out, and assigning work to one is refused; work they already have
-    stays theirs until it's moved. Attendance's person picker leaves
-    them out, they get no check-in reminders, and My attendance leaves
-    an owner's side menu, as there's nothing there for them. Attendance's reports
-    read days, which an owner has none of from 3a; there's no head count
-    screen yet, so nothing more there.
+  - **3b2, the pickers and the work:**
+    - The task and obligation pickers leave out whoever is an owner
+      now, and giving one work is refused (ASSIGNEE_IS_OWNER), for the
+      Super Admin too: creating, editing, transferring or reassigning a
+      task, the bulk upload, and adding or reassigning an obligation.
+      Work they already have stays theirs until it's moved.
+    - New work holds each person it goes to, and marking an owner holds
+      them alone, so the two can't cross: whichever comes second sees
+      the first. A transfer's copy goes to everyone it's transferred to,
+      those already on the task too, so each of them is held and
+      checked, not only those added; one who's an owner is left off it
+      to transfer it.
+    - A repeating obligation makes its next one for the same people.
+      Marking someone an owner is refused while one of theirs, finished,
+      is still to make its next one, named with the open work; the
+      next one is made in the overnight run, and moved then (decided on
+      26 November). The overnight run itself, making a next one, leaves
+      out whoever is an owner then, held as other new work is, so a next
+      one deleted and made again doesn't go back to them; with only
+      owners on it, none is made.
+    - Reassign is in an open obligation's ⋯ menu for whoever edits
+      obligations, not only where someone on it was deleted, so open
+      work can be moved (decided on 26 November). A finished one isn't
+      reassigned: it would rewrite who did it, and move the points it
+      earned.
+    - Only an Admin can be among the owners, not someone acting as one
+      for a while, whose acting role would end on its own. An Admin with
+      Set owners marks another Admin of the company, never themselves, as
+      the Super Admin does; on anyone else's details there's no Add to
+      owners. An owner's role isn't changed away from Admin while they're
+      one: it's refused (OWNER_STAYS_ADMIN), to remove them from owners
+      first (decided on 26 November). Someone made an owner before this,
+      of any role, can still be taken off, by the same people.
+    - Reassigning a task or an obligation, or transferring a task, holds
+      the work first and reads who it has under that hold, so whoever
+      was taken off it meanwhile and marked an owner isn't put back
+      unchecked.
+    - Attendance's person picker leaves them out, they get no check-in
+      reminder for a day in a month they're an owner, and My attendance
+      leaves an owner's side menu, as there's nothing there for them.
+      Attendance's reports read days, which an owner has none of from
+      3a; there's no head count screen yet, so nothing more there.
 - **3c, the Owners list:** beside Employees in the side menu, in its look,
   for whoever may see employees; owners leave the Employees list. Their
   rows have Edit and the Owner switch, nothing about pay or points.
@@ -1952,3 +1989,15 @@ A step may take more than one PR.
   balance, 3b2 the pickers, attendance's person picker and reminders.
 - **2026-11-26:** 3b1 built (#427). My attendance, still in an owner's
   side menu, added to 3b2.
+- **2026-11-26:** #427 merged (3b1). 3b2 next.
+- **2026-11-26:** 3b2 decided further: a repeating obligation still to
+  make its next one refuses marking its person an owner, and Reassign
+  is offered on any open obligation.
+- **2026-11-26:** only Admins can be owners, marked by an Admin or the
+  Super Admin, and an owner's role stays Admin; added to 3b2.
+- **2026-11-26:** Codex's two findings on #428: any owner can still be
+  taken off, and the work's people are read under its hold.
+- **2026-11-26:** Codex's third finding on #428: the overnight run gives
+  an owner no next one either.
+- **2026-11-26:** Codex's fourth finding on #428: a transfer checks
+  everyone its copy goes to, not only those added.

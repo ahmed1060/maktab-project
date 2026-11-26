@@ -149,6 +149,7 @@ const ROLE_REFUSED: Record<string, { field: ProfileField; key: TranslationKey }>
     SAME_ROLE: { field: 'roleId', key: 'profile_role_same' },
     ALREADY_PENDING: { field: 'roleId', key: 'profile_role_already_asked' },
     LAST_ADMIN: { field: 'roleId', key: 'profile_role_last_admin' },
+    OWNER_STAYS_ADMIN: { field: 'roleId', key: 'profile_role_owner' },
     ACTING_END_IN_PAST: { field: 'actingUntil', key: 'profile_acting_past' },
 }
 
