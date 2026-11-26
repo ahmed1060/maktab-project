@@ -1356,12 +1356,18 @@ In three PRs, each whole on its own:
     those words finds it; the dialog's title names the person. The dialog
     says what changes from the start of this month, then it's confirmed
     with a code and logged. It's refused
-    while they have a task or an obligation still open, naming each, and
-    in a month whose payroll is approved.
+    while they have a task or an obligation still open, or done and
+    awaiting review, naming each, and in a month whose payroll is
+    approved.
   - The payroll register leaves an owner out from the month they're
     marked; approved months stay as they were paid. Attendance works out
     no days for them from then, and their days in those months go, so
     their punches are kept but count for nothing.
+  - A month is told apart by its calendar month, not by the moment it
+    starts, so changing the company's time zone moves no one in or out of
+    one.
+  - A contract ended in a month they're an owner settles that month at
+    nothing earned and nothing paid, and the End contract dialog says why.
   - No longer an owner: they're an employee again from the month it's
     taken off, worked out again from then; the months they were an owner
     stay so. Taken off in the month it was put on, it's as if it never
@@ -1915,3 +1921,7 @@ A step may take more than one PR.
   and the pickers; 3c the Owners list.
 - **2026-11-26:** 3a built (#426): the buttons say Add to owners and
   Remove from owners, and the row says since which month, or No.
+- **2026-11-26:** 3a, after Codex's review of #426: an obligation awaiting
+  review is open work too; months are told apart by their calendar month,
+  whatever the company's time zone becomes; and a settlement in a month
+  they're an owner counts nothing earned or paid.
