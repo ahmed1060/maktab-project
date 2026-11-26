@@ -137,6 +137,12 @@ describe("the dialog, the route and the form", () => {
         expect(route).toContain("return ApiResponse.refused(refusal[0], refusal[1], error.message, error.work.length > 0 ? { work: error.work } : undefined)")
     })
 
+    it("says why an owner's month settles at nothing, in either language", () => {
+        expect(source("components/profile/EndContractDialog.tsx")).toContain("settlement.paidSource === 'OWNER'")
+        expect(en.settlement_owner_month).toBeTruthy()
+        expect(ar.settlement_owner_month).toBeTruthy()
+    })
+
     it("gives the month with a person, and opens the dialog from their details", () => {
         expect(source("app/api/users/route.ts")).toContain("ownerSince: owner?.since ?? null,")
         const form = source("components/EmployeeProfileForm.tsx")

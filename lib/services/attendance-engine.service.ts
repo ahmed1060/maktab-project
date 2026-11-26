@@ -115,7 +115,7 @@ async function deriveMonth(
         tx.scheduleDefault.findMany({ where: { companyId }, select: { scheduleId: true, effectiveFrom: true } }),
         tx.user.findMany({
             // No days for an owner that month, their punches counting for nothing (LATER_CHANGES_PLAN.md §7.3, PR 426).
-            where: { companyId, status: { not: "DELETED" }, ...notOwnerIn(localToInstant(`${month}-01T00:00:00`, tz)), ...(userIds ? { id: { in: [...userIds] } } : {}) },
+            where: { companyId, status: { not: "DELETED" }, ...notOwnerIn(month), ...(userIds ? { id: { in: [...userIds] } } : {}) },
             select: {
                 id: true,
                 EmploymentEvent: { select: { type: true, effectiveFrom: true, deductSuspension: true, createdAt: true } },

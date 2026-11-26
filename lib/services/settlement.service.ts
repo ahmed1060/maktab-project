@@ -12,6 +12,7 @@ import { notifyTeamMoves } from "./team-notify.service"
 import { CASH_ADVANCE_DEBT, CashAdvanceService } from "./cash-advance.service"
 import { PACKAGE_FACTS } from "./company-package"
 import { hasModule, resolveBundles } from "@/lib/features/bundles"
+import { ownerIn } from "@/lib/owners"
 
 /**
  * Producing the statement that ends an employment.
@@ -148,14 +149,19 @@ export class SettlementService {
         const lastDayInstant = new Date(endsAt.getTime() - 1)
         const paidDays = daysAlreadyPaid(lastDayInstant, payrollDay, timeZone)
 
-        const paid = await this.paidForMonth(userId, year, month)
+        // An owner that month has no payslip for it, and no salary to settle
+        // (LATER_CHANGES_PLAN.md §7.3, PR 426): nothing earned, and nothing
+        // paid to guess at.
+        const periods = await prisma.ownerPeriod.findMany({ where: { userId }, select: { id: true, startsAt: true, endsAt: true } })
+        const owner = ownerIn(periods, `${year}-${String(month).padStart(2, "0")}`)
+        const paid = owner ? { source: "OWNER" as const } : await this.paidForMonth(userId, year, month)
         // The inference, kept for the two cases where nothing can be read.
         const assumedMinor = paidDays === 0
             ? 0
             : valueDaysIn(year, month, paidDays, rates[rates.length - 1].monthlyMinor)
         const paidMinor = paid.source === "PAYSLIP" ? paid.minor : assumedMinor
 
-        const preview = previewSettlement({ events, rates, endsAt, paidMinor, timeZone })
+        const preview = previewSettlement({ events, rates, endsAt, paidMinor, timeZone, owner })
 
         // I1: the settlement is the last moment either side can be made whole,
         // and it was the one moment the system did not look. A leaver owing
@@ -192,7 +198,8 @@ export class SettlementService {
             // thing rather than one blanket caveat: read from the payslip that
             // was paid, inferred because no run exists, or inferred while a run
             // for that month sits unpaid — the last being the one somebody
-            // should resolve before signing anything.
+            // should resolve before signing anything. Or none of them: an
+            // owner's month, with no salary to settle.
             paidSource: paid.source,
             dueDate,
             /** What they still hold of a cash advance, which becomes a debt; in debtsOutstandingMinor too. */

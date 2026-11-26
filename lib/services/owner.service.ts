@@ -20,20 +20,20 @@ export class OwnerRefused extends Error {
     }
 }
 
-// Not yet finished: a task done but not reviewed is still theirs to answer for.
+// Not yet finished: work done but not reviewed is still theirs to answer for.
 const OPEN_TASK = ["PENDING", "IN_PROGRESS", "PENDING_CONFIRMATION"] as const
-const OPEN_OBLIGATION = ["PENDING", "IN_PROGRESS"]
+const OPEN_OBLIGATION = ["PENDING", "IN_PROGRESS", "PENDING_CONFIRMATION"]
 
 export class OwnerService {
     /** Since which month they're an owner now, in their company's calendar; null for none. */
     static async of(userId: string): Promise<{ since: string } | null> {
         const person = await prisma.user.findUnique({
             where: { id: userId },
-            select: { company: { select: { timezone: true } }, ownerPeriods: { select: { id: true, startsAt: true, endsAt: true } } },
+            select: { company: { select: { id: true } }, ownerPeriods: { select: { id: true, startsAt: true, endsAt: true } } },
         })
         if (!person?.company) return null
         const since = ownerSince(person.ownerPeriods)
-        return since ? { since: calendarDateStr(since, person.company.timezone).slice(0, 7) } : null
+        return since ? { since } : null
     }
 
     /**
@@ -60,7 +60,7 @@ export class OwnerService {
             await lockMonths(tx, companyId, [month])
             if ((await lockedMonths(tx, companyId, [month])).size > 0) throw new OwnerRefused("PAYROLL_MONTH_LOCKED")
             const periods = await tx.ownerPeriod.findMany({ where: { userId }, select: { id: true, startsAt: true, endsAt: true } })
-            const plan = planOwner(periods, monthStart, owner)
+            const plan = planOwner(periods, month, owner)
             if (!plan.ok) throw new OwnerRefused(plan.refusal)
 
             if (owner) {

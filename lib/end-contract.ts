@@ -15,7 +15,8 @@ export type Settlement = {
     paid: number
     net: number
     direction: 'COMPANY_OWES' | 'PERSON_OWES' | 'SETTLED'
-    paidSource: 'PAYSLIP' | 'RUN_NOT_PAID' | 'NO_RUN'
+    /** OWNER: a month they're among the owners, with no salary to settle (LATER_CHANGES_PLAN.md §7.3). */
+    paidSource: 'PAYSLIP' | 'RUN_NOT_PAID' | 'NO_RUN' | 'OWNER'
     debtsOutstanding: number
     debtRecovered: number
     /** What they still hold of a cash advance, which becomes a debt; in debtsOutstanding too. */

@@ -174,15 +174,20 @@ describe.skipIf(!ADMIN_URL)("owners, in Postgres", () => {
         await db.query(`INSERT INTO "_MultipleAssignees"("A", "B") VALUES ('t1', 'e3'), ('t2', 'e3'), ('t3', 'e3'), ('t4', 'e4')`)
         await db.query(`INSERT INTO "Obligation"(id, title, description, deadline, status, "updatedAt", "companyId") VALUES
             ('o1', 'Quarterly VAT', '', now(), 'PENDING', now(), 'c1'),
-            ('o2', 'Someone else''s', '', now(), 'IN_PROGRESS', now(), 'c1')`)
-        await db.query(`INSERT INTO "_ObligationAssignees"("A", "B") VALUES ('o1', 'e3'), ('o2', 'e4')`)
+            ('o2', 'Someone else''s', '', now(), 'IN_PROGRESS', now(), 'c1'),
+            ('o3', 'Submitted for review', '', now(), 'PENDING_CONFIRMATION', now(), 'c1'),
+            ('o4', 'Approved already', '', now(), 'APPROVED', now(), 'c1')`)
+        await db.query(`UPDATE "Obligation" SET "createdAt" = now() - interval '2 minutes' WHERE id = 'o1'`)
+        await db.query(`UPDATE "Obligation" SET "createdAt" = now() - interval '1 minute' WHERE id = 'o3'`)
+        await db.query(`INSERT INTO "_ObligationAssignees"("A", "B") VALUES ('o1', 'e3'), ('o2', 'e4'), ('o3', 'e3'), ('o4', 'e3')`)
         const refused = await Owners.set("e3", true, by).then(() => null, (e: Error & { work?: unknown }) => e)
         expect(refused?.message).toBe("OWNER_OPEN_WORK")
-        // A task awaiting review is still theirs; a finished one stays in their history; someone else's isn't theirs.
+        // Work awaiting review is still theirs; finished, it stays in their history; someone else's isn't theirs.
         expect(refused?.work).toEqual([
             { kind: "task", id: "t1", title: "File the October return" },
             { kind: "task", id: "t3", title: "Awaiting review" },
             { kind: "obligation", id: "o1", title: "Quarterly VAT" },
+            { kind: "obligation", id: "o3", title: "Submitted for review" },
         ])
         expect(await periodsOf("e3")).toEqual([])
     })
@@ -195,6 +200,31 @@ describe.skipIf(!ADMIN_URL)("owners, in Postgres", () => {
         } finally {
             await db.query(`DELETE FROM "PayrollRun" WHERE id = 'run'`)
         }
+    })
+
+    it("keeps a month theirs whatever the company's time zone becomes", async () => {
+        await Owners.set("e1", true, by)
+        try {
+            // Dubai's months start two hours before Cairo's, where the period was written.
+            await db.query(`UPDATE "Company" SET timezone = 'Asia/Dubai'`)
+            expect(await onRegister(thisMonth)).not.toContain("e1")
+            expect(await onRegister(lastMonth)).toContain("e1")
+            expect(await Owners.of("e1")).toEqual({ since: thisMonth })
+            await db.query(`UPDATE "Company" SET timezone = 'Pacific/Kiritimati'`)
+            expect(await onRegister(thisMonth)).not.toContain("e1")
+            expect(await onRegister(lastMonth)).toContain("e1")
+        } finally {
+            await db.query(`UPDATE "Company" SET timezone = '${ZONE}'`)
+        }
+    })
+
+    it("settles a month they're an owner in at nothing earned or paid, and says why", async () => {
+        const { SettlementService } = await import("@/lib/services/settlement.service")
+        const owner = await SettlementService.preview("e1", `${thisMonth}-10`)
+        expect(owner).toMatchObject({ settles: true, daysWorked: 10, earnedMinor: 0, paidMinor: 0, netMinor: 0, direction: "SETTLED", paidSource: "OWNER" })
+        const employee = await SettlementService.preview("e4", `${thisMonth}-10`)
+        expect(employee).toMatchObject({ settles: true, daysWorked: 10, paidSource: "NO_RUN" })
+        expect(employee.settles && employee.earnedMinor).toBeGreaterThan(0)
     })
 
     it("refuses what they are already, and someone not in a company", async () => {

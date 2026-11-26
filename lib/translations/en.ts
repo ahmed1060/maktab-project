@@ -1516,6 +1516,7 @@ export const en = {
         settlement_payable: "To be paid",
         settlement_debt_remains: "{amount} of debt is more than this settlement covers. It stays outstanding — collect it or write it off.",
         settlement_advance_to_debt: "The {amount} of cash advance they still hold becomes a debt. This settlement takes it, as far as it goes, as it takes other debts.",
+        settlement_owner_month: "They're among the owners this month, so there's no salary to settle for it: nothing earned, nothing paid.",
         settlement_provisional: "No paid payroll run exists for this month, so this assumes the whole month went out if payday had passed. Run and mark the month paid for an exact figure.",
         end_contract_confirm: "End contract",
         end_contract_effective_now: "Access ends immediately.",

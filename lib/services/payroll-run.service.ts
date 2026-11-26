@@ -9,7 +9,6 @@ import { ratesForMonth } from "@/lib/salary-history"
 import { toMajor, toMinor } from "@/lib/payroll"
 import { paydayIn } from "@/lib/payday"
 import { calendarDateStr, startOfMonthIn } from "@/lib/time"
-import { localToInstant } from "@/lib/attendance/punch-import"
 import { notOwnerIn } from "@/lib/owners"
 import { resolveTimeZone } from "@/lib/timezone"
 import { checkApproval, settleRefusal, type ApprovalRefusal } from "@/lib/approval"
@@ -67,14 +66,14 @@ export class PayrollRunService {
      * failure mode a register exists to prevent, arriving as an absence rather
      * than as a wrong number.
      */
-    private static async peopleFor(companyId: string, monthStart: Date) {
+    private static async peopleFor(companyId: string, month: string) {
         return prisma.user.findMany({
             where: {
                 companyId,
                 status: { not: "DELETED" },
                 role: { in: ["EMPLOYEE", "TEAM_LEADER", "ADMIN"] },
                 // An owner that month has no payslip at all (LATER_CHANGES_PLAN.md §7.3, PR 426).
-                ...notOwnerIn(monthStart),
+                ...notOwnerIn(month),
             },
             select: { id: true, firstName: true, lastName: true },
             orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
@@ -94,7 +93,7 @@ export class PayrollRunService {
         reaches?: boolean,
     ) {
         const { timeZone, payrollDay, debtRecoveryPercent, attendancePayrollFrom } = await this.policy(companyId, db)
-        const people = await this.peopleFor(companyId, localToInstant(`${year}-${String(month).padStart(2, "0")}-01T00:00:00`, timeZone))
+        const people = await this.peopleFor(companyId, `${year}-${String(month).padStart(2, "0")}`)
         // Attendance as money (ATTENDANCE_PLAN.md §12.2), read through the
         // caller's transaction: approval's, after its own final recompute.
         // Before the company's chosen month it is shown, never deducted.
