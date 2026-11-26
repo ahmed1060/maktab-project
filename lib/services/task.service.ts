@@ -768,8 +768,10 @@ export class TaskService {
             // held for a team, the team, no Admins; never another company's,
             // or a deleted account (PR 371, the owner's decision: held for a
             // team, it went to anyone but the company's Admins).
-            // And no owner, held so none is marked one meanwhile (§7.3, step 3b2, PR 428).
-            if ((await holdAssignees(tx, addedIds)).size > 0) throw new Error("ASSIGNEE_IS_OWNER")
+            // And no owner, held so none is marked one meanwhile (§7.3, step
+            // 3b2, PR 428): everyone it goes to, those kept too, as its copy
+            // is made for them all.
+            if ((await holdAssignees(tx, newAssigneeIds)).size > 0) throw new Error("ASSIGNEE_IS_OWNER")
             const verdict = await checkAssignees(addedIds, session, "tasks.transfer", { client: tx as any })
             if (!verdict.ok) throw new Error(TRANSFER_CODES[verdict.reason])
 

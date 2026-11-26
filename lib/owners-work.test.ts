@@ -82,7 +82,8 @@ describe("every path that hands out work", () => {
         // Who it has now, read under its hold, not as it was before: someone taken off meanwhile is new again.
         expect(tasks).toContain("if (assigneeIds) {\n                await tx.$queryRaw`SELECT id FROM \"Task\" WHERE id = ${id} FOR UPDATE`\n                const has = ((await tx.task.findUnique({ where: { id }, select: { assignees: { select: { id: true } } } }))?.assignees ?? []).map(a => a.id)\n                if ((await holdAssignees(tx, assigneeIds.filter((uid: string) => !has.includes(uid)))).size > 0) throw new Error(\"ASSIGNEE_IS_OWNER\")\n            }")
         expect(tasks).toContain("await tx.$queryRaw`SELECT id FROM \"Task\" WHERE id = ${id} FOR UPDATE`\n            \n            const originalTask = await (tx.task as any).findUnique({")
-        expect(tasks).toContain("if ((await holdAssignees(tx, addedIds)).size > 0) throw new Error(\"ASSIGNEE_IS_OWNER\")\n            const verdict = await checkAssignees(addedIds, session, \"tasks.transfer\", { client: tx as any })")
+        // A transfer's copy is made for everyone it goes to, those kept too.
+        expect(tasks).toContain("if ((await holdAssignees(tx, newAssigneeIds)).size > 0) throw new Error(\"ASSIGNEE_IS_OWNER\")\n            const verdict = await checkAssignees(addedIds, session, \"tasks.transfer\", { client: tx as any })")
         expect(tasks).toContain("const owners = await holdAssignees(tx, tasks.flatMap(t => t.assigneeIds || []))")
         expect(tasks).toContain("if ((assigneeIds as string[]).some(id => owners.has(id))) throw new Error(`ASSIGNEE_IS_OWNER: ${task.title}`)")
         // Adding an obligation and reassigning one.

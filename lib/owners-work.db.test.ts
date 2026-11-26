@@ -105,6 +105,24 @@ describe.skipIf(!ADMIN_URL)("the work an owner isn't given, in Postgres", () => 
         await db.query(`DELETE FROM "Obligation" WHERE id = $1`, [mine.id])
     })
 
+    it("refuses a transfer to an owner kept on the task, and makes its copy for the others once they're left off", async () => {
+        const { TaskService } = await import("@/lib/services/task.service")
+        // Finished before they were marked: in their history, so marking didn't wait on it.
+        const done = await prisma.task.create({
+            data: { title: "Made-up audit", description: "Finished before marking", companyId: "c1", deadline: new Date(inDays(3)), status: "COMPLETED", assignees: { connect: [{ id: "e1" }, { id: "e3" }] } },
+        })
+        expect(await refusal(TaskService.transfer(done.id, admin, { newAssigneeIds: ["e3", "e4"] }))).toBe("ASSIGNEE_IS_OWNER")
+        expect(await refusal(TaskService.transfer(done.id, admin, { newAssigneeIds: ["e1", "e3"] }))).toBe("ASSIGNEE_IS_OWNER")
+        expect((await db.query(`SELECT status FROM "Task" WHERE id = $1`, [done.id])).rows[0].status).toBe("COMPLETED")
+        expect(Number((await db.query(`SELECT count(*) FROM "Task" WHERE title LIKE 'Made-up audit%'`)).rows[0].count)).toBe(1)
+
+        expect(await refusal(TaskService.transfer(done.id, admin, { newAssigneeIds: ["e1", "e4"] }))).toBe("changed")
+        const copy = (await db.query(`SELECT id FROM "Task" WHERE title = 'Made-up audit (Transfer Copy)'`)).rows
+        expect(copy).toHaveLength(1)
+        expect((await db.query(`SELECT "B" FROM "_MultipleAssignees" WHERE "A" = $1 ORDER BY "B"`, [copy[0].id])).rows.map(r => r.B)).toEqual(["e1", "e4"])
+        await db.query(`DELETE FROM "Task" WHERE title LIKE 'Made-up audit%'`)
+    })
+
     it("makes marking someone wait on work being given them, and then see it", async () => {
         const { holdAssignees } = await import("@/lib/services/owner.service")
         let release!: () => void
