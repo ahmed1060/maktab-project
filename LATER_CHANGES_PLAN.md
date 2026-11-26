@@ -1234,6 +1234,22 @@ Checked read-only on the live database on 26 November:
   payroll. It's off once the month is approved. The button on
   Attendance's Days tab stays.
 
+#### How it's built (step 2)
+
+- **Where:** a draft month's header on the Payroll page has Recalculate
+  this month, before Save draft, for whoever may save the draft
+  (`payroll.prepare`), where the company has attendance.
+- **What it does:** works out the month's attendance days again, from
+  their punches, schedules, requests and the policy, as the Days tab's
+  button does. Then the page reads the register again, which works out
+  the draft payroll from those days. A saved draft stays as it was
+  saved: what moved since shows under its own heading, and Save draft
+  keeps the new figures.
+- **When it's refused:** once the month's payroll is approved or paid,
+  the button is gone, and the server refuses before working anything
+  out, as the month's days stay as they were paid. A company without
+  attendance is refused too. Each is said in a message.
+
 ### 7.2 The contract start date (Decided)
 
 - **On Add employee:** the contract start date, today unless changed. It
@@ -1842,3 +1858,7 @@ A step may take more than one PR.
 - **2026-11-26:** Step 1 written (§7.2, How it's built): the permission
   and its grant, the date on Add employee, changing it, what moves with
   it, and where it shows.
+- **2026-11-26:** Step 2 written (§7.1, How it's built): Recalculate this
+  month on a draft month of the Payroll page, for whoever may save the
+  draft; it reworks the month's days, then the register. The owner chose
+  to add it to #425, merged with step 1 tonight.
