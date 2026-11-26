@@ -8,7 +8,17 @@ import { localToInstant } from "@/lib/attendance/punch-import"
 import { PLATFORM_REASON } from "@/lib/services/attendance-flag.service"
 import { calendarDateStr } from "@/lib/time"
 import { missionKey, missionScans, type MissionDayScans } from "@/lib/attendance/missions"
+import { nameInArabic, type PersonNames } from "@/lib/names"
 import { REQUEST_KINDS, type FeedRow, type RequestKind, type RequestsShow, type RequestsTab } from "./kinds"
+
+/**
+ * A person as a row names them: in English and, where they have it, in
+ * Arabic, for the page's language (LATER_CHANGES_PLAN.md §3.1, step 8l,
+ * PR 424). Nobody, as a check-in with no person, is no name.
+ */
+export function personOf(id: string, person: PersonNames | null | undefined): { id: string; name: string; nameAr: string | null } {
+    return { id, name: person ? `${person.firstName} ${person.lastName}`.trim() : "", nameAr: person ? nameInArabic(person) : null }
+}
 
 /**
  * The one Requests page's feed (UI_PLAN.md §2.3): every kind of request,
@@ -118,7 +128,7 @@ export function internalRow(v: Viewer, r: InternalRequest): FeedRow {
     return {
         kind: "internal",
         id: r.id,
-        who: { id: r.userId, name: `${r.user.firstName} ${r.user.lastName}`.trim() },
+        who: personOf(r.userId, r.user),
         what: r.title,
         detail: r.details || null,
         asked,
@@ -155,7 +165,7 @@ const internal: Source = {
                 where,
                 orderBy: feedOrder(q.show),
                 take,
-                include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true } } },
+                include: { user: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, teamLeaderId: true } } },
             }),
             prisma.request.count({ where }),
         ]).then(([rows, total]) => ({ rows: rows.map(r => internalRow(v, r)), total }))
@@ -229,7 +239,7 @@ export function dayOffRow(v: Viewer, r: DayOffRequest): FeedRow {
     return {
         kind: "dayOff",
         id: r.id,
-        who: { id: r.userId, name: `${r.user.firstName} ${r.user.lastName}`.trim() },
+        who: personOf(r.userId, r.user),
         what: r.type,
         detail: r.reason || null,
         asked,
@@ -259,7 +269,7 @@ const dayOff: Source = {
                 where,
                 orderBy: feedOrder(q.show),
                 take,
-                include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true, companyId: true, dayOffCredit: true } } },
+                include: { user: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, teamLeaderId: true, companyId: true, dayOffCredit: true } } },
             }),
             prisma.dayOffRequest.count({ where }),
         ]).then(([rows, total]) => ({ rows: rows.map(r => dayOffRow(v, r)), total }))
@@ -340,7 +350,7 @@ export function permissionRow(v: Viewer, r: PermissionRequest, now: Date): FeedR
     return {
         kind: "permission",
         id: r.id,
-        who: { id: r.userId, name: `${r.user.firstName} ${r.user.lastName}`.trim() },
+        who: personOf(r.userId, r.user),
         what: r.type,
         detail: r.reason || null,
         asked,
@@ -364,7 +374,7 @@ const permission: Source = {
                 where,
                 orderBy: feedOrder(q.show),
                 take,
-                include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true } }, company: { select: { timezone: true } } },
+                include: { user: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, teamLeaderId: true } }, company: { select: { timezone: true } } },
             }),
             prisma.permissionRequest.count({ where }),
         ]).then(([rows, total]) => {
@@ -446,7 +456,7 @@ export function missionRow(v: Viewer, r: MissionRequest, scans: MissionDayScans[
     return {
         kind: "mission",
         id: r.id,
-        who: { id: r.userId, name: `${r.user.firstName} ${r.user.lastName}`.trim() },
+        who: personOf(r.userId, r.user),
         what: kind,
         detail: r.reason || null,
         asked,
@@ -476,7 +486,7 @@ const mission: Source = {
                 where,
                 orderBy: feedOrder(q.show),
                 take,
-                include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true } } },
+                include: { user: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, teamLeaderId: true } } },
             }),
             prisma.missionRequest.count({ where }),
         ])
@@ -572,7 +582,7 @@ export function missingPunchRow(v: Viewer, r: MissingPunchRequest): FeedRow {
     return {
         kind: "missingPunch",
         id: r.id,
-        who: { id: r.userId, name: `${r.user.firstName} ${r.user.lastName}`.trim() },
+        who: personOf(r.userId, r.user),
         what: direction ?? "",
         detail: r.reason || null,
         asked,
@@ -597,7 +607,7 @@ const missingPunch: Source = {
                 where,
                 orderBy: feedOrder(q.show),
                 take,
-                include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true } } },
+                include: { user: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, teamLeaderId: true } } },
             }),
             prisma.missingPunchRequest.count({ where }),
         ]).then(([rows, total]) => ({ rows: rows.map(r => missingPunchRow(v, r)), total }))
@@ -681,7 +691,7 @@ export function overtimeDayRow(v: Viewer, d: OvertimeDay): FeedRow {
     return {
         kind: "overtime",
         id: d.id,
-        who: { id: d.userId, name: `${d.user.firstName} ${d.user.lastName}`.trim() },
+        who: personOf(d.userId, d.user),
         what: "",
         detail: null,
         asked: day,
@@ -710,7 +720,7 @@ export function overtimeDecisionRow(v: Viewer, a: OvertimeDecision): FeedRow {
     return {
         kind: "overtime",
         id: a.id,
-        who: { id: a.userId, name: `${a.user.firstName} ${a.user.lastName}`.trim() },
+        who: personOf(a.userId, a.user),
         what: "",
         detail: null,
         asked: a.date.toISOString(),
@@ -728,7 +738,7 @@ export function overtimeDecisionRow(v: Viewer, a: OvertimeDecision): FeedRow {
     }
 }
 
-const OVERTIME_PERSON = { user: { select: { firstName: true, lastName: true, teamLeaderId: true } } } as const
+const OVERTIME_PERSON = { user: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, teamLeaderId: true } } } as const
 
 const overtime: Source = {
     kind: "overtime",
@@ -826,7 +836,7 @@ export function phoneRow(v: Viewer, p: CheckInPhone): FeedRow {
     return {
         kind: "phone",
         id: p.id,
-        who: { id: p.userId, name: `${p.user.firstName} ${p.user.lastName}`.trim() },
+        who: personOf(p.userId, p.user),
         what: p.model ?? "",
         detail: null,
         asked,
@@ -859,7 +869,7 @@ const phone: Source = {
                 select: {
                     id: true, companyId: true, userId: true, platform: true, model: true, appVersion: true, attested: true,
                     status: true, requestedAt: true, decidedAt: true, reason: true,
-                    user: { select: { firstName: true, lastName: true, teamLeaderId: true } },
+                    user: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, teamLeaderId: true } },
                     _count: { select: { punches: { where: { status: "PENDING_DEVICE" } } } },
                 },
             }),
@@ -950,7 +960,7 @@ export function flaggedRow(v: Viewer, p: FlaggedPunch): FeedRow {
     return {
         kind: "flagged",
         id: p.id,
-        who: { id: p.userId ?? "", name: p.user ? `${p.user.firstName} ${p.user.lastName}`.trim() : "" },
+        who: personOf(p.userId ?? "", p.user),
         what: direction ?? "",
         detail: null,
         asked,
@@ -1014,7 +1024,7 @@ const flagged: Source = {
                     id: true, companyId: true, userId: true, status: true, direction: true, punchAtLocal: true, receivedAt: true,
                     reviewedAt: true, reviewReason: true, flagReasons: true, checkIn: true,
                     workLocation: { select: { name: true } }, phone: { select: { model: true, platform: true } },
-                    user: { select: { firstName: true, lastName: true, teamLeaderId: true } },
+                    user: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, teamLeaderId: true } },
                 },
             }),
             prisma.attendancePunch.count({ where: shown }),
@@ -1094,7 +1104,7 @@ export function nameChangeRow(v: Viewer, r: NameChangeRequest): FeedRow {
     return {
         kind: "nameChange",
         id: r.id,
-        who: { id: r.userId, name: `${r.user.firstName} ${r.user.lastName}`.trim() },
+        who: personOf(r.userId, r.user),
         what: to,
         detail: null,
         asked,
@@ -1127,7 +1137,7 @@ const nameChange: Source = {
                 where,
                 orderBy: feedOrder(q.show),
                 take,
-                include: { user: { select: { firstName: true, lastName: true, companyId: true, teamLeaderId: true } } },
+                include: { user: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, companyId: true, teamLeaderId: true } } },
             }),
             prisma.profileUpdateRequest.count({ where }),
         ]).then(([rows, total]) => ({ rows: rows.map(r => nameChangeRow(v, r)), total }))
@@ -1220,7 +1230,7 @@ export function roleRow(v: Viewer, r: RoleRequest): FeedRow {
     return {
         kind: "role",
         id: r.id,
-        who: { id: r.requestedById, name: fullName(r.requestedBy) },
+        who: personOf(r.requestedById, r.requestedBy),
         what: r.role.name,
         detail: r.note,
         asked,
@@ -1238,14 +1248,14 @@ export function roleRow(v: Viewer, r: RoleRequest): FeedRow {
             // The company's own day, as it was asked for: it's kept as that day's start there,
             // the day before in UTC east of it (found by Codex on PR 138).
             actingUntil: r.actingUntil ? calendarDateStr(r.actingUntil, r.company.timezone) : null,
-            person: { id: r.userId, name: fullName(r.user) },
+            person: personOf(r.userId, r.user),
             decidedBy: r.decidedBy ? fullName(r.decidedBy) : null,
             note: r.decisionNote,
         },
     }
 }
 
-const NAMES = { select: { firstName: true, lastName: true } } as const
+const NAMES = { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } as const
 
 const role: Source = {
     kind: "role",
@@ -1259,7 +1269,7 @@ const role: Source = {
                 select: {
                     id: true, companyId: true, userId: true, requestedById: true, status: true, note: true, decisionNote: true,
                     actingUntil: true, createdAt: true, decidedAt: true,
-                    user: { select: { firstName: true, lastName: true, teamLeaderId: true, assignedRole: { select: { name: true, builtIn: true } } } },
+                    user: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, teamLeaderId: true, assignedRole: { select: { name: true, builtIn: true } } } },
                     role: { select: { name: true, builtIn: true } },
                     requestedBy: NAMES,
                     decidedBy: NAMES,
