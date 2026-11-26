@@ -4184,8 +4184,13 @@ tbody + tbody .ui-doc-group-row th {
 .ui-rows > li[data-tone="selected"] {
   background: var(--brand-tint);
 }
+/* Where its end side doesn't fit beside its title and detail with 128px
+   left for them, the end side goes on its own line under them, at the
+   start, as a section's action does under its heading (DESIGN.md §5.5,
+   Rows; PR 423). */
 .ui-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
@@ -4204,21 +4209,29 @@ a.ui-row:focus-visible {
   outline: 2px solid var(--brand-text);
   outline-offset: -2px;
 }
+/* The title and detail take the room the end side leaves, with no width of
+   their own, so the line breaks only where 128px and the end side don't fit
+   together: a long title still wraps beside a short status. They break
+   anywhere, so 128px, rather than their longest word, is what they keep. */
 .ui-row-main {
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  flex: 1 1 0;
+  min-width: min(128px, 100%);
 }
 .ui-row-main .ui-item-title {
   overflow-wrap: anywhere;
 }
+/* As wide as it needs beside the title, up to 60% of the row; on a line of
+   its own, it shrinks to the row and its parts wrap. */
 .ui-row-end {
   display: inline-flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
   gap: var(--space-2);
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
   max-width: 60%;
   font-variant-numeric: tabular-nums;
 }
@@ -5379,6 +5392,14 @@ a.ui-donut-row:focus-visible {
   }
   .ui-row {
     padding: var(--space-3);
+  }
+  /* Under its title on a phone, a row's end side may be as wide as the row,
+     its parts from the start. Beside the title it's never squeezed, the
+     title keeping its 128px, so its parts don't wrap there and where they
+     start doesn't show (DESIGN.md §5.5, Rows; PR 423). */
+  .ui-row-end {
+    max-width: none;
+    justify-content: flex-start;
   }
   .ui-menu-button {
     width: 44px;
