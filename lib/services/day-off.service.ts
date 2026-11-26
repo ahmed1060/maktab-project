@@ -46,7 +46,9 @@ export class DayOffService {
             // asked at once takes too.
             const { lockPersonDates } = await import("./attendance-lock")
             const { missionOver } = await import("./mission-request.service")
+            const { refuseOwnerMonths } = await import("./owner.service")
             await lockPersonDates(tx, userId)
+            await refuseOwnerMonths(tx, userId, requestDateStr, finalEndDateStr)
             if (await tx.missionRequest.findFirst({ where: missionOver(userId, requestDateStr, finalEndDateStr), select: { id: true } })) {
                 throw new Error("DAY_OFF_OVERLAPS_MISSION")
             }

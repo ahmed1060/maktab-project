@@ -75,6 +75,7 @@ const REFUSED: Record<string, TranslationKey> = {
     // Cancelling one that someone else cancelled first, or that isn't approved any more (PR 285).
     MISSION_NOT_APPROVED: 'requests_mission_not_approved',
     PAYROLL_MONTH_LOCKED: 'requests_month_locked',
+    OWNER_NO_ATTENDANCE: 'requests_owner_no_attendance',
     REQUEST_ALREADY_DECIDED: 'requests_already_decided',
     REQUEST_ALREADY_STARTED: 'requests_permission_started',
     PUNCH_IN_FUTURE: 'requests_missing_future',

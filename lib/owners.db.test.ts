@@ -270,6 +270,31 @@ describe.skipIf(!ADMIN_URL)("owners, in Postgres", () => {
         }
     })
 
+    it("refuses what an owner would ask for, a day off, a permission, a mission or a missing punch, in a month they're one", async () => {
+        const { DayOffService } = await import("@/lib/services/day-off.service")
+        const { AttendanceRequestService: Requests } = await import("@/lib/services/attendance-request.service")
+        const { MissionRequestService: Missions } = await import("@/lib/services/mission-request.service")
+        // e2 has been one since last month, and still is.
+        const eman = { user: { id: "e2", companyId: "c1", name: "Eman One" } }
+        await expect(DayOffService.create({ date: addDays(today, 2), type: "CASUAL" } as any, eman)).rejects.toThrow("OWNER_NO_ATTENDANCE")
+        await expect(Requests.requestPermission("c1", "e2", { date: today, type: "EARLY_LEAVE", start: "16:00", end: "17:00", reason: "Errand" })).rejects.toThrow("OWNER_NO_ATTENDANCE")
+        await expect(Missions.ask("c1", "e2", { kind: "DAYS", startDate: today, endDate: today, reason: "Client visit" })).rejects.toThrow("OWNER_NO_ATTENDANCE")
+        await expect(Requests.reportMissingPunch("c1", "e2", { at: `${addDays(today, -1)}T08:00`, direction: "IN", reason: "Forgot" })).rejects.toThrow("OWNER_NO_ATTENDANCE")
+        expect(Number((await db.query(`SELECT (SELECT count(*) FROM "DayOffRequest" WHERE "userId" = 'e2') + (SELECT count(*) FROM "PermissionRequest" WHERE "userId" = 'e2') + (SELECT count(*) FROM "MissionRequest" WHERE "userId" = 'e2') + (SELECT count(*) FROM "MissingPunchRequest" WHERE "userId" = 'e2') AS n`)).rows[0].n)).toBe(0)
+        // Days running into a month they're an owner in: refused for that month, the first not being one.
+        const nextMonth = addDays(`${thisMonth}-28`, 7).slice(0, 7)
+        await db.query(`INSERT INTO "OwnerPeriod"(id, "userId", "startsAt") VALUES ('soon', 'e4', $1)`, [startOf(nextMonth).toISOString()])
+        try {
+            const eid = { user: { id: "e4", companyId: "c1", name: "Eid One" } }
+            await expect(DayOffService.create({ date: addDays(today, 1), endDate: `${nextMonth}-02`, type: "REGULAR" } as any, eid)).rejects.toThrow("OWNER_NO_ATTENDANCE")
+        } finally {
+            await db.query(`DELETE FROM "OwnerPeriod" WHERE id = 'soon'`)
+        }
+        // e1, an owner from this month: a day last month is still theirs to ask about.
+        await Requests.reportMissingPunch("c1", "e1", { at: `${lastMonth}-10T08:00`, direction: "IN", reason: "Forgot" })
+        await expect(Requests.reportMissingPunch("c1", "e1", { at: `${thisMonth}-01T08:00`, direction: "IN", reason: "Forgot" })).rejects.toThrow("OWNER_NO_ATTENDANCE")
+    })
+
     it("refuses what they are already, and someone not in a company", async () => {
         expect(await refusal(Owners.set("e2", true, by))).toBe("ALREADY_OWNER")
         expect(await refusal(Owners.set("e4", false, by))).toBe("NOT_OWNER")

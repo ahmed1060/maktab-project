@@ -10,6 +10,7 @@ import { sessionHasModule } from "@/lib/features/require"
 import { usedDayOffCredit } from "@/lib/day-off-credit"
 import { AttendanceRequestService } from "@/lib/services/attendance-request.service"
 import { MissionRequestService } from "@/lib/services/mission-request.service"
+import { OwnerService } from "@/lib/services/owner.service"
 import AccessDenied from "@/components/AccessDenied"
 import { REQUEST_KINDS, requestFeed, tabsFor, type RequestKind, type RequestsShow, type RequestsTab, type Viewer } from "@/lib/requests/feed"
 import RequestsClient from "./RequestsClient"
@@ -77,9 +78,13 @@ export default async function RequestsPage(props: { searchParams: Promise<Record
     const elsewhere = pageRedirect("/dashboard/requests", searchParams, asked, feed.totalPages)
     if (elsewhere) redirect(elsewhere)
 
+    // An owner now has no attendance, so nothing below to ask for, nor the
+    // balances that go with it (LATER_CHANGES_PLAN.md §7.3, step 3b1, PR 427).
+    const owner = !superAdmin && viewer.companyId ? await OwnerService.of(viewer.id) : null
+
     // Asking for a day off, for whoever's role may, in a company with Day off
     // (§2.3, part 2c); their balance shows on Mine, above the list.
-    const mayAskDayOff = sessionHasModule({ user: viewer }, 'DAY_OFF') && can(viewer, 'dayoff.request')
+    const mayAskDayOff = !owner && sessionHasModule({ user: viewer }, 'DAY_OFF') && can(viewer, 'dayoff.request')
     let credit: { remaining: number; used: number } | null = null
     if (mayAskDayOff && tab === "mine") {
         const balance = await prisma.user.findUnique({ where: { id: viewer.id }, select: { dayOffCredit: true, baseDayOffCredit: true } })
@@ -90,7 +95,7 @@ export default async function RequestsPage(props: { searchParams: Promise<Record
     // has attendance of their own, as the attendance API's rule
     // (asksForSelf); on Mine, what's left of this month's permission hours,
     // while the policy allows them (§2.3, part 3).
-    const mayAskAttendance = sessionHasModule({ user: viewer }, 'ATTENDANCE') && !superAdmin && !!viewer.companyId
+    const mayAskAttendance = !owner && sessionHasModule({ user: viewer }, 'ATTENDANCE') && !superAdmin && !!viewer.companyId
     // The company's own day, which the attendance API reads times in: what a
     // missing punch can't be after, and the day both forms start on. The
     // browser's can be a day behind it (found by Codex on PR 131).

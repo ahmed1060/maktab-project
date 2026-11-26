@@ -10,6 +10,7 @@ import { AttendanceCalendarService } from "./attendance-calendar.service"
 import { NotificationService } from "./notification.service"
 import { recomputeAfter } from "./attendance-recompute"
 import { lockMonths, lockPersonDates } from "./attendance-lock"
+import { refuseOwnerMonths } from "./owner.service"
 
 /**
  * Missions asked for and decided (ATTENDANCE_PLAN.md §6.10, round 10,
@@ -106,6 +107,7 @@ export class MissionRequestService {
         return prisma.$transaction(async tx => {
             await lockPersonDates(tx, userId)
             await lockMonths(tx, companyId, dates.map(d => d.slice(0, 7)))
+            await refuseOwnerMonths(tx, userId, span.startDate, span.endDate)
             const policies = await AttendancePolicyService.versions(companyId, tx)
             if (dates.some(d => policyOn(policies, d)?.body.missions.enabled === false)) fail("MISSIONS_OFF")
             if (await tx.missionRequest.findFirst({ where: missionOver(userId, span.startDate, span.endDate), select: { id: true } })) fail("MISSION_OVERLAPS")

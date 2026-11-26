@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma"
 import { calendarDateStr } from "@/lib/time"
 import { startOfDate } from "@/lib/contract-start"
-import { monthsReached, ownerSince, planOwner } from "@/lib/owners"
+import { monthsReached, monthsSpanned, ownerIn, ownerSince, planOwner } from "@/lib/owners"
+import type { Prisma } from "@prisma/client"
 import { lockMonths, lockPersonDates, lockedMonths } from "./attendance-lock"
 
 /**
@@ -23,6 +24,18 @@ export class OwnerRefused extends Error {
 // Not yet finished: work done but not reviewed is still theirs to answer for.
 const OPEN_TASK = ["PENDING", "IN_PROGRESS", "PENDING_CONFIRMATION"] as const
 const OPEN_OBLIGATION = ["PENDING", "IN_PROGRESS", "PENDING_CONFIRMATION"]
+
+/**
+ * Refuses what's asked for days in a month they're an owner in
+ * (LATER_CHANGES_PLAN.md §7.3, step 3b1, PR 427): a day off, a permission,
+ * a mission or a missing punch. An owner has no attendance, so nothing to
+ * ask for. Read under the request's own lock, on the person's dates or the
+ * months, which marking an owner takes too, so the two can't cross.
+ */
+export async function refuseOwnerMonths(tx: Prisma.TransactionClient, userId: string, from: string, to: string = from) {
+    const periods = await tx.ownerPeriod.findMany({ where: { userId }, select: { id: true, startsAt: true, endsAt: true } })
+    if (monthsSpanned(from, to).some(month => ownerIn(periods, month))) throw new Error("OWNER_NO_ATTENDANCE")
+}
 
 export class OwnerService {
     /** Since which month they're an owner now, in their company's calendar; null for none. */

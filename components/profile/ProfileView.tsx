@@ -122,7 +122,8 @@ export function ProfileView({ name, photo, access, facts, onResetPassword, onEnd
         ...(access.company ? [{ label: t('company_label'), value: facts.company ?? t('profile_none') }] : []),
         { label: t('gender_label'), value: t(facts.gender === 'FEMALE' ? 'female' : 'male') },
         ...(access.salary ? [{ label: t('monthly_base_salary_label'), value: facts.salary ? <span className="ui-num">{money(parseFloat(facts.salary) || 0)}</span> : t('no_data_available') }] : []),
-        ...(access.dayOffCredit ? [{ label: t('day_off_credit_assigned'), value: countOf(t, locale, parseFloat(facts.dayOffCredit) || 0, 'days') }] : []),
+        // An owner has no day-off balance (LATER_CHANGES_PLAN.md §7.3, PR 427).
+        ...(access.dayOffCredit && !facts.ownerSince ? [{ label: t('day_off_credit_assigned'), value: countOf(t, locale, parseFloat(facts.dayOffCredit) || 0, 'days') }] : []),
         ...(access.resetPassword ? [{ label: t('password'), value: <Button size="sm" onClick={onResetPassword}>{t('profile_reset_password')}</Button> }] : []),
     ]
     return (

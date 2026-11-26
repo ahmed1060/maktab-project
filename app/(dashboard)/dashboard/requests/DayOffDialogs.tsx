@@ -25,6 +25,7 @@ const REJECTION_MAX = 300
 const REFUSED: Record<string, TranslationKey> = {
     DATE_IN_PAST: 'requests_day_off_passed',
     OVERLAPPING_REQUEST: 'requests_day_off_overlap',
+    OWNER_NO_ATTENDANCE: 'requests_owner_no_attendance',
 }
 
 const digits = (locale: string) => (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
