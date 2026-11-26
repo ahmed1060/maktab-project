@@ -1386,7 +1386,8 @@ In three PRs, each whole on its own:
   - **3b2, the pickers:** the task and obligation pickers leave them
     out, and assigning work to one is refused; work they already have
     stays theirs until it's moved. Attendance's person picker leaves
-    them out, and they get no check-in reminders. Attendance's reports
+    them out, they get no check-in reminders, and My attendance leaves
+    an owner's side menu, as there's nothing there for them. Attendance's reports
     read days, which an owner has none of from 3a; there's no head count
     screen yet, so nothing more there.
 - **3c, the Owners list:** beside Employees in the side menu, in its look,
@@ -1949,3 +1950,5 @@ A step may take more than one PR.
   what owners aren't asked for, and the pickers.
 - **2026-11-26:** 3b split in two: 3b1 the requests and the day-off
   balance, 3b2 the pickers, attendance's person picker and reminders.
+- **2026-11-26:** 3b1 built (#427). My attendance, still in an owner's
+  side menu, added to 3b2.
