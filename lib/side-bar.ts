@@ -16,7 +16,7 @@ import type { TranslationKey } from './translations'
 
 /** One of the app's own pages, which a company can't rename, unlike its modules (lib/modules.ts). */
 type PageKey =
-    | 'checkIn' | 'attendance' | 'myAttendance' | 'rolesAndAccess' | 'payroll' | 'myPayslips' | 'myCashAdvance' | 'companySettings' | 'savedLists'
+    | 'checkIn' | 'owners' | 'attendance' | 'myAttendance' | 'rolesAndAccess' | 'payroll' | 'myPayslips' | 'myCashAdvance' | 'companySettings' | 'savedLists'
     | 'companies' | 'packages' | 'allUsers'
     | 'roleTemplates' | 'policyTemplates' | 'publicHolidays' | 'terminalBrands' | 'clientMessages'
     | 'superAdmins' | 'roleChanges' | 'accessReviews' | 'whoCan'
@@ -27,6 +27,8 @@ export type SideBarItemKey = ModuleKey | PageKey
 /** The app's own pages: where each goes, and its name. Its icon is lib/side-bar-icons.ts's, as every item's is. */
 export const PAGES: Record<PageKey, { href: string; labelKey: TranslationKey }> = {
     checkIn: { href: '/dashboard/check-in', labelKey: 'ci_title' },
+    // The company's owners, beside Employees, whose list they leave (LATER_CHANGES_PLAN.md §7.3, step 3c, PR 429).
+    owners: { href: '/dashboard/owners', labelKey: 'owners_title' },
     attendance: { href: '/dashboard/attendance', labelKey: 'attendance_title' },
     // The same page, for someone who sees only their own punches on it.
     myAttendance: { href: '/dashboard/attendance', labelKey: 'my_attendance' },
@@ -73,7 +75,7 @@ export const COMPANY_GROUPS: readonly SideBarGroup[] = [
     { key: 'work', labelKey: 'nav_group_work', items: ['tasks', 'obligations'] },
     { key: 'clients', labelKey: 'nav_group_clients', items: ['clients', 'locations', 'records'] },
     // One Requests item: day off, name changes and role requests are kinds on its page (§2.3, part 5c).
-    { key: 'people', labelKey: 'nav_group_people', items: ['employees', 'attendance', 'requests'] },
+    { key: 'people', labelKey: 'nav_group_people', items: ['employees', 'owners', 'attendance', 'requests'] },
     { key: 'money', labelKey: 'nav_group_money', items: ['costs', 'payroll'] },
     { key: 'me', labelKey: 'nav_group_me', items: ['myAttendance', 'myPayslips', 'myCashAdvance'] },
     // Roles and access beside the company's settings: how the company is set up, not daily work (decided on 2026-10-31).
@@ -92,6 +94,8 @@ export const SUPER_ADMIN_GROUPS: readonly SideBarGroup[] = [
 export type SideBarViewer = {
     superAdmin: boolean
     can: (permission: Permission) => boolean
+    /** They hold it for the whole company, not only a team (PR 429). */
+    companyWide?: (permission: Permission) => boolean
     /** The company's package includes the module: always, for the Super Admin. */
     has: (module: Module) => boolean
     /** Inside the Nizmo app, for a company with the Mobile App add-on: where a phone can check in. */
@@ -135,6 +139,9 @@ export function shows(key: SideBarItemKey, v: SideBarViewer): boolean {
     const seesOthersAttendance = v.can('attendance.view_team') || v.can('attendance.correct')
     switch (key) {
         case 'checkIn': return !v.superAdmin && v.checkIn
+        // For whoever sees the whole company's people: a team has no Admins,
+        // and only an Admin is an owner (PR 429).
+        case 'owners': return !!v.companyWide?.('employees.view')
         case 'attendance': return attendance && seesOthersAttendance
         // Not for an owner now: there's nothing there for them (PR 428).
         case 'myAttendance': return attendance && !seesOthersAttendance && !v.owner

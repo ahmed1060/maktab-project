@@ -718,6 +718,19 @@ const SCREENS: Record<string, Screen> = {
             "GET /api/realtime/token": ANYONE,
         },
     },
+    // The company's owners (LATER_CHANGES_PLAN.md §7.3, step 3c, PR 429), for whoever sees the whole company's people.
+    "owners": {
+        opens: ["employees.view"],
+        asks: {
+            "GET /api/users": needs("employees.view"),
+            // Taking one off, as on their details: by an Admin or the Super Admin (PR 428).
+            "POST /api/users/[x]/owner": when("employees.set_owner", "const canRemove = (e: Owner) => !own(e) && can('employees.set_owner') && (isSuperAdmin || userRole === 'ADMIN')"),
+            // Who is locked out, as on Employees (components/SignInLock.tsx).
+            "POST /api/users/[x]/unlock-sign-in": when("employees.reset_password",
+                { in: "app/api/users/route.ts", code: 'const locks = can(session.user, "employees.reset_password") ? await lockedUntil(' }),
+            "GET /api/realtime/token": ANYONE,
+        },
+    },
     "employees/new": {
         opens: ["employees.create"],
         asks: {

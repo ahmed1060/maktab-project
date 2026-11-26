@@ -93,6 +93,8 @@ export default function DashboardShell({ children, user, showPoweredBy = true, p
     const groups = sideBarFor({
         superAdmin: user?.role === 'SUPER_ADMIN',
         can: permission => permissions.can(permission),
+        // The Owners list is for whoever sees the whole company's people (PR 429).
+        companyWide: permission => permissions.companyWide(permission),
         // What the package doesn't include isn't there (DESIGN.md §5.1).
         has: gated => features.has(gated),
         // Checking in (ATTENDANCE_PLAN.md §9): only inside the Nizmo app,

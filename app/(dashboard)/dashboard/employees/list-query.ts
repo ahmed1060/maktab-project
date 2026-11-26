@@ -23,6 +23,11 @@ export type EmployeesQuery = {
     countNames?: boolean
     /** The page's language, which the names are sorted in. */
     lang?: 'en' | 'ar'
+    /**
+     * Only the owners now, for the Owners list, or everyone but them, for
+     * the Employees list (LATER_CHANGES_PLAN.md §7.3, step 3c, PR 429).
+     */
+    owners?: 'only' | 'leave'
 }
 
 export function employeesListUrl(q: EmployeesQuery): string {
@@ -46,5 +51,6 @@ export function employeesListUrl(q: EmployeesQuery): string {
     if (q.names) params.set('names', q.names)
     if (q.countNames) params.set('counts', 'names')
     if (q.lang) params.set('lang', q.lang)
+    if (q.owners) params.set('owners', q.owners)
     return `/api/users?${params.toString()}`
 }
