@@ -15,7 +15,7 @@ import { DAY_OFF_TYPE_LABEL } from '@/lib/day-off-types'
 import { roleLabel } from '@/lib/role-label'
 import { bothLanguages, hasArabic } from '@/lib/names'
 import type { TranslationKey } from '@/lib/translations'
-import { REQUEST_KINDS, WAITING_FOR_REVIEW_KEY, type FeedRow, type RequestKind, type RequestsShow, type RequestsTab } from '@/lib/requests/kinds'
+import { REQUEST_KINDS, WAITING_FOR_REVIEW_KEY, named, type FeedRow, type RequestKind, type RequestsShow, type RequestsTab } from '@/lib/requests/kinds'
 import SafeDate from '@/components/SafeDate'
 import DateRangePicker from '@/components/DateRangePicker'
 import { DayOffCreditDonut } from '@/components/DayOffCreditDonut'
@@ -324,7 +324,7 @@ export default function RequestsClient({
     }
     // A role request: whose it would be, since that isn't who asked; and an acting one, until when (§2.3, part 5b).
     const roleWhen = (r: FeedRow) => [
-        t('requests_role_for').replace('{name}', isolated(r.role!.person.name)!),
+        t('requests_role_for').replace('{name}', isolated(named(locale, r.role!.person))!),
         r.role!.actingUntil ? `${t('requests_role_acting_label')} ${day(r.role!.actingUntil)}` : null,
     ].filter(Boolean).join(sep)
     const direction = (r: FeedRow) => t(r.missingPunch?.direction === 'IN' ? 'punch_in' : r.missingPunch?.direction === 'OUT' ? 'punch_out' : 'punch_direction_unknown')
@@ -361,12 +361,12 @@ export default function RequestsClient({
             : <SafeDate date={r.asked} locale={locale} format="short" />}</span>
     const next = (r: FeedRow) => {
         if (r.kind === 'dayOff') return r.mayDecide && <>
-            <Button size="sm" icon={CheckIcon} onClick={() => { setViewing(null); setDeciding({ row: r, decision: 'APPROVED' }) }} aria-label={`${t('approve_button')}: ${name(r)}, ${r.who.name}`}>{t('approve_button')}</Button>
-            <Button size="sm" icon={XIcon} onClick={() => { setViewing(null); setDeciding({ row: r, decision: 'REJECTED' }) }} aria-label={`${t('reject_button')}: ${name(r)}, ${r.who.name}`}>{t('reject_button')}</Button>
+            <Button size="sm" icon={CheckIcon} onClick={() => { setViewing(null); setDeciding({ row: r, decision: 'APPROVED' }) }} aria-label={`${t('approve_button')}: ${name(r)}, ${named(locale, r.who)}`}>{t('approve_button')}</Button>
+            <Button size="sm" icon={XIcon} onClick={() => { setViewing(null); setDeciding({ row: r, decision: 'REJECTED' }) }} aria-label={`${t('reject_button')}: ${name(r)}, ${named(locale, r.who)}`}>{t('reject_button')}</Button>
         </>
         if (r.kind === 'permission' || r.kind === 'mission' || r.kind === 'missingPunch' || r.kind === 'overtime' || r.kind === 'phone' || r.kind === 'flagged' || r.kind === 'nameChange' || r.kind === 'role') return r.mayDecide && <>
-            <Button size="sm" icon={CheckIcon} onClick={() => { void approveAttendance(r) }} disabled={action.running} busy={action.is(r.id)} aria-label={`${t('approve_button')}: ${name(r)}, ${r.who.name}`}>{t('approve_button')}</Button>
-            <Button size="sm" icon={XIcon} onClick={() => { setViewing(null); setRejecting(r) }} aria-label={`${t('reject_button')}: ${name(r)}, ${r.who.name}`}>{t('reject_button')}</Button>
+            <Button size="sm" icon={CheckIcon} onClick={() => { void approveAttendance(r) }} disabled={action.running} busy={action.is(r.id)} aria-label={`${t('approve_button')}: ${name(r)}, ${named(locale, r.who)}`}>{t('approve_button')}</Button>
+            <Button size="sm" icon={XIcon} onClick={() => { setViewing(null); setRejecting(r) }} aria-label={`${t('reject_button')}: ${name(r)}, ${named(locale, r.who)}`}>{t('reject_button')}</Button>
         </>
         const step = r.mayDecide ? NEXT[r.status] : undefined
         if (!step) return null
@@ -393,14 +393,14 @@ export default function RequestsClient({
     const actions = (r: FeedRow) => <span className="ui-row-actions">{next(r)}{menu(r)}</span>
     // What rejecting refuses: whose permission hours on which day, whose missing punch when, whose new phone, or whose check-in.
     const rejectQuestion = (r: FeedRow) => {
-        if (r.role) return t('requests_role_reject_question').replace('{name}', r.role.person.name).replace('{role}', name(r))
-        if (r.nameChange) return t('requests_name_change_reject_question').replace('{name}', r.who.name).replace('{to}', r.nameChange.to)
-        if (r.flagged) return t('requests_flagged_reject_question').replace('{name}', r.who.name).replace('{time}', punchTime(r.flagged.at, locale)).replace('{date}', punchDay(r.flagged.at, locale))
-        if (r.phone) return t('requests_phone_reject_question').replace('{name}', r.who.name).replace('{phone}', name(r))
-        if (r.missingPunch) return t('requests_missing_reject_question').replace('{name}', r.who.name).replace('{time}', punchTime(r.missingPunch.at, locale)).replace('{date}', punchDay(r.missingPunch.at, locale))
-        if (r.mission) return t('requests_mission_reject_question').replace('{name}', r.who.name).replace('{dates}', missionDates(r))
-        if (r.overtime) return t('requests_overtime_reject_question').replace('{name}', r.who.name).replace('{date}', permissionDay(r.overtime.date, locale))
-        return t('requests_permission_reject_question').replace('{name}', r.who.name).replace('{date}', permissionDay(r.permission!.date, locale))
+        if (r.role) return t('requests_role_reject_question').replace('{name}', named(locale, r.role.person)).replace('{role}', name(r))
+        if (r.nameChange) return t('requests_name_change_reject_question').replace('{name}', named(locale, r.who)).replace('{to}', r.nameChange.to)
+        if (r.flagged) return t('requests_flagged_reject_question').replace('{name}', named(locale, r.who)).replace('{time}', punchTime(r.flagged.at, locale)).replace('{date}', punchDay(r.flagged.at, locale))
+        if (r.phone) return t('requests_phone_reject_question').replace('{name}', named(locale, r.who)).replace('{phone}', name(r))
+        if (r.missingPunch) return t('requests_missing_reject_question').replace('{name}', named(locale, r.who)).replace('{time}', punchTime(r.missingPunch.at, locale)).replace('{date}', punchDay(r.missingPunch.at, locale))
+        if (r.mission) return t('requests_mission_reject_question').replace('{name}', named(locale, r.who)).replace('{dates}', missionDates(r))
+        if (r.overtime) return t('requests_overtime_reject_question').replace('{name}', named(locale, r.who)).replace('{date}', permissionDay(r.overtime.date, locale))
+        return t('requests_permission_reject_question').replace('{name}', named(locale, r.who)).replace('{date}', permissionDay(r.permission!.date, locale))
     }
     // When it ended: done, decided, withdrawn by whoever asked, a mission cancelled, or a phone revoked or replaced.
     const finishedLabel = (r: FeedRow): TranslationKey => r.kind === 'internal' ? 'finished_at'
@@ -411,7 +411,7 @@ export default function RequestsClient({
 
     const columns: Column<FeedRow>[] = [
         { key: 'request', header: t('requests_col_request'), cell: r => <ItemTitle title={title(r)} detail={detail(r)} /> },
-        ...(review ? [{ key: 'who', header: t('requests_col_who'), cell: (r: FeedRow) => <Person names={[r.who.name]} /> }] : []),
+        ...(review ? [{ key: 'who', header: t('requests_col_who'), cell: (r: FeedRow) => <Person names={[named(locale, r.who)]} /> }] : []),
         { key: 'asked', header: t('requests_col_asked'), cell: asked },
         { key: 'status', header: t('status_label'), cell: badge },
         { key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end', cell: actions },
@@ -511,7 +511,7 @@ export default function RequestsClient({
                             ...(r.flagged && flaggedWhen(r) ? [{ icon: MapPinIcon, text: <span>{flaggedWhen(r)}</span> }] : []),
                             ...(r.nameChange ? [{ icon: IdentificationCardIcon, text: <bdi>{t('requests_name_change_from').replace('{name}', r.nameChange.from)}</bdi> }] : []),
                             ...(r.role ? [{ icon: ShieldCheckIcon, text: <span>{roleWhen(r)}</span> }] : []),
-                            ...(review ? [{ icon: UserIcon, text: <bdi>{r.who.name}</bdi> }] : []),
+                            ...(review ? [{ icon: UserIcon, text: <bdi>{named(locale, r.who)}</bdi> }] : []),
                             { icon: CalendarIcon, text: asked(r) },
                         ]}
                         foot={actions(r)}
@@ -534,7 +534,7 @@ export default function RequestsClient({
                     <>
                         {viewing.detail && <p className="ui-prose" dir="auto">{viewing.detail}</p>}
                         <Details items={[
-                            { label: t('requests_col_who'), value: <bdi>{viewing.who.name}</bdi> },
+                            { label: t('requests_col_who'), value: <bdi>{named(locale, viewing.who)}</bdi> },
                             ...(viewing.dayOff ? [
                                 { label: t('dates_label'), value: leaveDates(viewing) },
                                 { label: t('requests_day_off_work_days'), value: leaveDays(viewing) },
@@ -570,7 +570,7 @@ export default function RequestsClient({
                                 { label: t('requests_name_change_to_label'), value: inBoth(viewing.nameChange.to, viewing.nameChange.toAr) },
                             ] : []),
                             ...(viewing.role ? [
-                                { label: t('requests_role_person_label'), value: <bdi>{viewing.role.person.name}</bdi> },
+                                { label: t('requests_role_person_label'), value: <bdi>{named(locale, viewing.role.person)}</bdi> },
                                 { label: t('requests_role_to_label'), value: <bdi>{name(viewing)}</bdi> },
                                 ...(viewing.role.now ? [{ label: t('requests_role_now_label'), value: <bdi>{roleLabel(viewing.role.now, t)}</bdi> }] : []),
                                 ...(viewing.role.actingUntil ? [{ label: t('requests_role_acting_label'), value: day(viewing.role.actingUntil) }] : []),
@@ -633,14 +633,14 @@ export default function RequestsClient({
                         onClose={() => setWithdrawing(null)} onWithdrawn={() => { setWithdrawing(null); setViewing(null); refreshed() }} />
                 )}
 
-                {faceOf && <FlaggedFaceDialog punchId={faceOf.id} name={faceOf.who.name} onClose={() => setFaceOf(null)} />}
+                {faceOf && <FlaggedFaceDialog punchId={faceOf.id} name={named(locale, faceOf.who)} onClose={() => setFaceOf(null)} />}
                 {revoking && (
                     <RevokePhone key={revoking.id} request={revoking}
                         onClose={() => setRevoking(null)} onRevoked={() => { setRevoking(null); setViewing(null); refreshed() }} />
                 )}
                 {cancelling && (
                     <CancelMission key={cancelling.id} request={cancelling}
-                        question={t('requests_mission_cancel_question').replace('{name}', cancelling.who.name).replace('{dates}', missionDates(cancelling))}
+                        question={t('requests_mission_cancel_question').replace('{name}', named(locale, cancelling.who)).replace('{dates}', missionDates(cancelling))}
                         onClose={() => setCancelling(null)} onCancelled={() => { setCancelling(null); setViewing(null); refreshed() }} />
                 )}
 

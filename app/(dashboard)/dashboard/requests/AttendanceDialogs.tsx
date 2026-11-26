@@ -6,7 +6,7 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useBusyAction } from '@/lib/useBusyAction'
 import type { TranslationKey } from '@/lib/translations'
-import type { FeedRow, RequestKind } from '@/lib/requests/kinds'
+import { named, type FeedRow, type RequestKind } from '@/lib/requests/kinds'
 import DatePickerSingle from '@/components/DatePickerSingle'
 import DateRangePicker from '@/components/DateRangePicker'
 import { MISSION_MAX_DAYS, type MissionKey } from '@/lib/attendance/missions'
@@ -323,7 +323,7 @@ export function RevokePhone({ request, onClose, onRevoked }: {
                 <Button variant="danger" onClick={revoke} disabled={action.running} busy={action.is('revoke')}>{t('req_phone_revoke')}</Button>
             </>}
         >
-            <p>{t('req_phone_revoke_confirm').replace('{name}', request.who.name)}</p>
+            <p>{t('req_phone_revoke_confirm').replace('{name}', named(locale, request.who))}</p>
             <Field label={t('requests_phone_revoke_reason')} hint={t('ui_characters_used').replace('{used}', num(reason.length)).replace('{max}', num(REASON_MAX))}>{p => (
                 <TextArea {...p} name="revoke-reason" dir="auto" placeholder={t('requests_phone_revoke_placeholder')} value={reason} onChange={e => setReason(e.target.value)} maxLength={500} />
             )}</Field>

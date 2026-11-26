@@ -578,7 +578,7 @@ describe("role requests on it (UI_PLAN.md §2.3, part 5b)", () => {
         expect(html).toContain("requests_kind_role")
         expect(html).toContain("requests_role_for")
         expect(html).toContain("Hoda Samir")
-        expect(client).toContain("{ label: t('requests_role_person_label'), value: <bdi>{viewing.role.person.name}</bdi> }")
+        expect(client).toContain("{ label: t('requests_role_person_label'), value: <bdi>{named(locale, viewing.role.person)}</bdi> }")
     })
 
     it("on Mine too, says whose it would be, since it isn't one's own", async () => {
@@ -620,7 +620,7 @@ describe("role requests on it (UI_PLAN.md §2.3, part 5b)", () => {
 
     it("once decided, says so, who decided, and why it was rejected", async () => {
         expect(await page({ rows: [request({ status: "REJECTED", role: { ...facts, now: null, decidedBy: "Amal One", note: "Wait" } })], show: "done" })).toMatch(/ui-badge ui-badge-problem[^>]*>status_rejected/)
-        expect(client).toContain("t('requests_role_reject_question').replace('{name}', r.role.person.name)")
+        expect(client).toContain("t('requests_role_reject_question').replace('{name}', named(locale, r.role.person))")
         expect(client).toContain("?? r.role?.note")
         expect(client).toContain("t('requests_role_decided_by_label')")
     })

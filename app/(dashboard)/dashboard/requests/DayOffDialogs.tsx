@@ -7,7 +7,7 @@ import { countOf } from '@/lib/plural'
 import { workDays } from '@/lib/day-off-range'
 import { ASKED_DAY_OFF_TYPES, DAY_OFF_TYPE_LABEL, type AskedDayOffType } from '@/lib/day-off-types'
 import type { TranslationKey } from '@/lib/translations'
-import type { FeedRow } from '@/lib/requests/kinds'
+import { named, type FeedRow } from '@/lib/requests/kinds'
 import DateRangePicker from '@/components/DateRangePicker'
 import DatePickerSingle from '@/components/DatePickerSingle'
 import { Button, Choice, Dialog, DialogActions, Field, Select, TextArea, TextInput } from '@/components/ui'
@@ -98,7 +98,7 @@ export function DecideDayOff({ request, decision, onClose, onDecided }: {
         >
             {approving ? (
                 <>
-                    <p>{t('approve_dayoff_balance').replace('{name}', request.who.name).replace('{days}', countOf(t, locale, credit, 'days'))}</p>
+                    <p>{t('approve_dayoff_balance').replace('{name}', named(locale, request.who)).replace('{days}', countOf(t, locale, credit, 'days'))}</p>
                     <Field label={t('days_to_deduct_label')} error={daysError}>{p => (
                         <TextInput {...p} type="number" autoComplete="off" inputMode="decimal" min="0" step="0.5" value={days}
                             onChange={e => { setDays(e.target.value); setDaysError(undefined) }} />
@@ -117,7 +117,7 @@ export function DecideDayOff({ request, decision, onClose, onDecided }: {
                 </>
             ) : (
                 <>
-                    <p>{t('reject_dayoff_question').replace('{name}', request.who.name)}</p>
+                    <p>{t('reject_dayoff_question').replace('{name}', named(locale, request.who))}</p>
                     <Field label={t('rejection_reason_label')} hint={t('ui_characters_used').replace('{used}', num(reason.length)).replace('{max}', num(REJECTION_MAX))}>{p => (
                         <TextArea {...p} dir="auto" placeholder={t('rejection_reason_placeholder')} value={reason} onChange={e => setReason(e.target.value)} maxLength={300} />
                     )}</Field>

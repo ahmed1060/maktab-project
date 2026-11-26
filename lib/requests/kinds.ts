@@ -4,11 +4,22 @@
  * so the page in the browser takes these alone (lib/client-bundle.test.ts).
  */
 
+import { nameIn } from "@/lib/names"
+import type { Locale } from "@/lib/translations"
+
 /**
  * Where the side bar asks how many wait on this person under To review
  * (DESIGN.md §5.1), and what the page asks again after a decision.
  */
 export const WAITING_FOR_REVIEW_KEY = '/api/requests/waiting'
+
+/**
+ * A row's person in the page's language, or in the one they have while they
+ * have only one (LATER_CHANGES_PLAN.md §3.1, step 8l, PR 424).
+ */
+export function named(locale: Locale, person: { name: string; nameAr?: string | null }): string {
+    return nameIn(locale, { en: person.name, ar: person.nameAr })
+}
 
 /** The kinds the page lists, in the order its filter offers them. */
 export const REQUEST_KINDS = ["internal", "dayOff", "permission", "mission", "missingPunch", "overtime", "phone", "flagged", "nameChange", "role"] as const
@@ -20,7 +31,8 @@ export type RequestsShow = "waiting" | "done"
 export type FeedRow = {
     kind: RequestKind
     id: string
-    who: { id: string; name: string }
+    /** In Arabic too, where they have it (LATER_CHANGES_PLAN.md §3.1, step 8l, PR 424). */
+    who: { id: string; name: string; nameAr?: string | null }
     /** What it's for: its title. */
     what: string
     detail: string | null
@@ -173,7 +185,7 @@ export type RoleFacts = {
     /** Asked for as an acting role, until this day of the company's calendar, "2026-11-05" (ROLES_PLAN.md §6.13). */
     actingUntil: string | null
     /** Whose role it would be (found in the browser: they aren't who asked). */
-    person: { id: string; name: string }
+    person: { id: string; name: string; nameAr?: string | null }
     /** Who decided: nobody named for the Super Admin. */
     decidedBy: string | null
     /** The note it was decided with, if any. */
