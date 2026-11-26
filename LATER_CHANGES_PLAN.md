@@ -724,9 +724,15 @@ other filled in when one is typed, if that's possible.
      people, in the page's order; and the people a policy change would
      move, in the policy preview. The calendar and the preview give each
      name in Arabic too.
+   - **8l. Requests,** next: whose each request is on the Requests page
+     and its history, every kind's (the registered check-in phones and
+     flagged punches among them), in its table, its cards and the
+     request's details, and in the questions, dialogs and buttons that
+     name them; and the person a role request is for. The feed gives
+     each name in Arabic too. Who decided a request is a name written at
+     the time, with the last step.
    - **Then, by area,** one PR or more each:
-     requests (with the registered check-in phones, which the Requests
-     page lists), payroll with the costs and charges lists, the
+     payroll with the costs and charges lists, the
      client's area, and last, names written from then on: notifications
      and messages, who last changed a status, a cost's or a location's
      author, and one's own name in the account menu.
@@ -1580,3 +1586,6 @@ same day as drawn in the All users: status badges canvas
   where it doesn't fit beside it, so a row's words stay whole on a phone
   (`UI_PLAN.md`; `DESIGN.md` §5.5, Rows). Requests next (§3.1, step 8),
   with flagged punches and the registered check-in phones.
+- **2026-11-26:** Step 8l written: the Requests page and its history name
+  whose each request is, and the person a role request is for, in the
+  page's language; who decided one waits for the last step.
