@@ -13,8 +13,10 @@ Each part is marked:
 - **Open**: a question that needs answering before that part is built.
 - **Moved**: carried to another plan.
 
-Status: **the owner's points of 26 November (§7) decided, the contract
-start date first; the names (§3) paused after step 8l (#424).** Done: the development database (§4),
+Status: **the owner's points of 26 November (§7) decided; the contract
+start date and Recalculate on the Payroll page done (#425), and owners'
+mark, permission and pay (#426, step 3a), with 3b next; the names (§3)
+paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their limit set
@@ -1933,3 +1935,6 @@ A step may take more than one PR.
 - **2026-11-26:** 3a, after Codex's third review of #426: adding or
   removing an owner is refused once their contract has ended with a final
   settlement for this month or a later one.
+- **2026-11-26:** #426 merged: owners' mark, its permission and pay
+  (§7.3, step 3a), after five of Codex's findings were fixed. 3b is next:
+  what owners aren't asked for, and the pickers.
