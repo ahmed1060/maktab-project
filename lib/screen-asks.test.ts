@@ -754,6 +754,8 @@ const SCREENS: Record<string, Screen> = {
             "GET /api/payroll/[x]/[x]/export": needs("payroll.view"),
             "GET /api/attendance/discrepancies": needs("payroll.view"),
             "POST /api/payroll/[x]/[x]": when("payroll.prepare", "const canPrepare = can('payroll.prepare')", "{canPrepare && (\n                            <Button onClick={() => action.run('save', save)}"),
+            // A draft's days worked out again (PR 425): the draft's to prepare, where the company has attendance.
+            "POST /api/payroll/[x]/[x]/recalculate": when("payroll.prepare", "const canPrepare = can('payroll.prepare')", "const canRecalculate = isDraft && canPrepare && features.has('ATTENDANCE')", "{canRecalculate && (\n                            <Button onClick={() => action.run('recalculate', recalculate)}"),
             "POST /api/payroll/[x]/[x]/approve": when("payroll.approve", "const canApprove = can('payroll.approve')", "{canApprove && (\n                            <Button variant=\"primary\" onClick={openApprove}"),
             "POST /api/payroll/[x]/[x]/issue": when("payroll.issue_payslips", "const canIssue = can('payroll.issue_payslips')", ") : canIssue && ("),
             "POST /api/payroll/[x]/[x]/paid": when("payroll.mark_paid", "const canMarkPaid = can('payroll.mark_paid')", ") : canMarkPaid ? ("),

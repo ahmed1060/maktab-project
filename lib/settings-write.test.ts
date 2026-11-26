@@ -151,10 +151,11 @@ describe("G3: a Super Admin can reach a register", () => {
 
     it("carries the company on every call, not just the read", () => {
         // The register, the draft save, the approve, the issue, the mark-paid
-        // and the export. One of them left out is one that acts on the wrong
-        // company while the screen shows the right one.
+        // and the export; and Recalculate this month (PR 425). One of them
+        // left out is one that acts on the wrong company while the screen
+        // shows the right one.
         const calls = REGISTER.match(/companyId: companyId \|\| undefined/g) ?? []
-        expect(calls.length).toBe(4)
+        expect(calls.length).toBe(5)
         // Read by URL: the register and the export; attendance changed after
         // payroll (ATTENDANCE_PLAN.md §12.3) builds its paged URL with the
         // company too, and its resolve acts on one record by id.

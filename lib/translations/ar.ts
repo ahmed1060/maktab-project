@@ -1359,6 +1359,11 @@ export const ar = {
         payroll_cannot_compute: "تعذّر حساب هؤلاء، لذا هم خارج هذا الكشف. يُرجى إضافة سجل راتب لهم ثم إعادة المحاولة.",
         payroll_saved: "تم حفظ المسودة",
         payroll_save_failed: "تعذّر حفظ المسودة",
+        // Recalculate this month, on a draft month (PR 425).
+        payroll_recalculate: "إعادة احتساب هذا الشهر",
+        payroll_recalculated: "أُعيد احتساب حضور هذا الشهر ورواتبه.",
+        payroll_recalculate_no_attendance: "لا يوجد حضور لهذه الشركة لإعادة احتسابه.",
+        payroll_recalculate_failed: "تعذّرت إعادة احتساب هذا الشهر.",
         payroll_variance: "التغيّر عن الشهر الماضي",
         payroll_no_previous: "لا يوجد شهر سابق للمقارنة.",
         payroll_variance_NEW: "جديد",

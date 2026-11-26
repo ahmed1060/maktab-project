@@ -286,7 +286,7 @@ them, as today.
 | | `salary_adjustments.reverse` | Undo one: reverse it, as right when it was made, or roll it back, as a mistake — never one's own pay; **moves money**, high-risk (§6.15); implies `salary.view`, needs `employees.view` (#382) | `POST users/[id]/adjustments/[adjId]/reverse`, `…/rollback` |
 | | `salary_adjustments.manage` | Retired (#386): split into the two above (#382), and the grant for companies already there (#385) wrote it as them in every role and template. Was: bonus / deduction, reverse, roll back | — |
 | **Payroll** | `payroll.view` | See the monthly run, payslips, export — implies `salary.view` | `payroll/[y]/[m]` GET, `export`, `payslips/*` |
-| | `payroll.prepare` | Save the draft run | `payroll/[y]/[m]` POST |
+| | `payroll.prepare` | Save the draft run; recalculate a draft month's attendance, where the company has it (#425, `LATER_CHANGES_PLAN.md` §7.1) | `payroll/[y]/[m]` POST, `payroll/[y]/[m]/recalculate` |
 | | `payroll.approve` | Approve (freeze) the month | `payroll/[y]/[m]/approve` |
 | | `payroll.issue_payslips` | Email payslips to employees | `payroll/[y]/[m]/issue` |
 | | `payroll.mark_paid` | Mark the month paid | `payroll/[y]/[m]/paid` |

@@ -1418,6 +1418,11 @@ export const en = {
         payroll_cannot_compute: "These people cannot be calculated, so they are not on this register. Give them a salary history and try again.",
         payroll_saved: "Draft saved",
         payroll_save_failed: "Could not save the draft",
+        // Recalculate this month, on a draft month (PR 425).
+        payroll_recalculate: "Recalculate this month",
+        payroll_recalculated: "This month's attendance and payroll are recalculated.",
+        payroll_recalculate_no_attendance: "This company has no attendance to recalculate.",
+        payroll_recalculate_failed: "Couldn't recalculate this month.",
         payroll_variance: "Change since last month",
         payroll_no_previous: "No previous month to compare against.",
         payroll_variance_NEW: "New",

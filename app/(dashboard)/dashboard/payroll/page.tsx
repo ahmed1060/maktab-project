@@ -13,6 +13,7 @@ import { useCompany } from '@/context/CompanyContext'
 import DatePickerSingle from '@/components/DatePickerSingle'
 import { Button, Card, Details, Dialog, DisclosureRow, EmptyState, Field, Page, PageHeader, PeriodBar, Row, Section, SectionLink, Select, StatusBadge, TextArea, TotalTiles, type StatusTone, type Tile } from '@/components/ui'
 import { useCan } from '@/lib/useCan'
+import { useFeatures } from '@/lib/features/useFeatures'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { dayLabel } from '@/lib/cash-advances'
 import { addressWithPeriod, periodFromAddress, yearsAround } from '@/lib/period-address'
@@ -156,6 +157,7 @@ export default function PayrollRegisterPage() {
         setRefused(null)
     }
     const { can } = useCan()
+    const features = useFeatures()
 
     const money = useCallback((minor: number) =>
         new Intl.NumberFormat(isRtl ? 'ar-EG' : 'en-EG', {
@@ -240,6 +242,28 @@ export default function PayrollRegisterPage() {
             if (res.ok) load()
         } catch {
             showToast(t('payroll_save_failed'), 'error')
+        }
+    }
+
+    // Recalculate this month (LATER_CHANGES_PLAN.md §7.1, step 2, PR 425):
+    // its days worked out again, then the register read again, which works
+    // out the draft payroll from them. Approved meanwhile, the register read
+    // again shows it so.
+    const recalculate = async () => {
+        try {
+            const res = await fetch(`/api/payroll/${year}/${month}/recalculate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ companyId: companyId || undefined }),
+            })
+            const body = await res.json().catch(() => null)
+            showToast(res.ok ? t('payroll_recalculated')
+                : body?.code === 'PAYROLL_MONTH_LOCKED' ? t('day_recompute_locked')
+                : body?.code === 'NO_ATTENDANCE' ? t('payroll_recalculate_no_attendance')
+                : t('payroll_recalculate_failed'), res.ok ? 'success' : body?.code === 'PAYROLL_MONTH_LOCKED' ? 'info' : 'error')
+            if (res.ok || body?.code === 'PAYROLL_MONTH_LOCKED') load()
+        } catch {
+            showToast(t('payroll_recalculate_failed'), 'error')
         }
     }
 
@@ -374,6 +398,8 @@ export default function PayrollRegisterPage() {
     const register = view?.register
     const isDraft = view?.status === 'DRAFT'
     const canPrepare = can('payroll.prepare')
+    // A draft's days, worked out again, where the company has attendance (PR 425).
+    const canRecalculate = isDraft && canPrepare && features.has('ATTENDANCE')
     const canApprove = can('payroll.approve')
     const canIssue = can('payroll.issue_payslips')
     const canMarkPaid = can('payroll.mark_paid')
@@ -416,6 +442,11 @@ export default function PayrollRegisterPage() {
                 // A draft's: saving it, and approving it, which asks first.
                 action={isDraft && (canPrepare || canApprove) && (
                     <>
+                        {canRecalculate && (
+                            <Button onClick={() => action.run('recalculate', recalculate)} disabled={action.running} busy={action.is('recalculate')}>
+                                {t('payroll_recalculate')}
+                            </Button>
+                        )}
                         {canPrepare && (
                             <Button onClick={() => action.run('save', save)} disabled={action.running} busy={action.is('save')}>
                                 {t('payroll_save_draft')}
