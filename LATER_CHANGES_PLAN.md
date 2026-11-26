@@ -15,7 +15,8 @@ Each part is marked:
 
 Status: **the owner's points of 26 November (§7) decided; the contract
 start date and Recalculate on the Payroll page done (#425), and owners'
-mark, permission and pay (#426, step 3a), with 3b next; the names (§3)
+mark, permission and pay (#426, step 3a), and what they're not asked
+for (#427, step 3b1), with 3b2 next; the names (§3)
 paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
@@ -1952,3 +1953,4 @@ A step may take more than one PR.
   balance, 3b2 the pickers, attendance's person picker and reminders.
 - **2026-11-26:** 3b1 built (#427). My attendance, still in an owner's
   side menu, added to 3b2.
+- **2026-11-26:** #427 merged (3b1). 3b2 next.
