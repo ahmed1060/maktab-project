@@ -320,8 +320,14 @@ export class TaskService {
         }
 
         return await prisma.$transaction(async (tx) => {
-            // Nobody new on it is an owner, held so none is marked one meanwhile (PR 428).
-            if (assigneeIds && (await holdAssignees(tx, assigneeIds.filter((uid: string) => !existingTask.assignees.some(a => a.id === uid)))).size > 0) throw new Error("ASSIGNEE_IS_OWNER")
+            // Nobody new on it is an owner, held so none is marked one
+            // meanwhile (PR 428). New against who it has now, read under its
+            // hold: someone taken off it since it was read above is new again.
+            if (assigneeIds) {
+                await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ${id} FOR UPDATE`
+                const has = ((await tx.task.findUnique({ where: { id }, select: { assignees: { select: { id: true } } } }))?.assignees ?? []).map(a => a.id)
+                if ((await holdAssignees(tx, assigneeIds.filter((uid: string) => !has.includes(uid)))).size > 0) throw new Error("ASSIGNEE_IS_OWNER")
+            }
             if (clientChanges && newClientId) await holdClientInUse(tx, newClientId)
             // Its charges go to its client, and move with it, but not once
             // one is collected: that one was the first client's (CLIENTS_PLAN.md
@@ -736,6 +742,8 @@ export class TaskService {
         const picked = typeof heldGoesTo === "string" ? heldGoesTo : null
 
         return await prisma.$transaction(async (tx) => {
+            // Held first, so who it has is read as it is, not as another change left it a moment ago (PR 428).
+            await tx.$queryRaw`SELECT id FROM "Task" WHERE id = ${id} FOR UPDATE`
             // 1. Fetch original task with assignees
             const originalTask = await (tx.task as any).findUnique({
                 where: { id },

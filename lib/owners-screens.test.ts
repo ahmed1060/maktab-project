@@ -40,18 +40,24 @@ describe("who sees the mark, and who sets it", () => {
         expect(access(admin, { id: "e2", role: "" }).owner).toBe(false)
     })
 
-    it("lets an Admin or the Super Admin set it, only on an Admin's, never on one's own (PR 428)", () => {
+    it("lets an Admin or the Super Admin add only an Admin, and take off anyone who is one, never on one's own (PR 428)", () => {
+        expect(access(admin, { id: "a2", role: "ADMIN" }).addOwner).toBe(true)
+        expect(access(superAdmin, { id: "a2", role: "ADMIN" }).addOwner).toBe(true)
+        expect(access(admin, { id: "e2", role: "EMPLOYEE" }).addOwner).toBe(false)
+        expect(access(superAdmin, { id: "e2", role: "EMPLOYEE" }).addOwner).toBe(false)
+        // Taking off: anyone's, an owner made before only Admins were included.
         expect(access(admin, { id: "a2", role: "ADMIN" }).setOwner).toBe(true)
-        expect(access(superAdmin, { id: "a2", role: "ADMIN" }).setOwner).toBe(true)
-        expect(access(admin, { id: "a1", role: "ADMIN" }).setOwner).toBe(false)
-        expect(access(admin, { id: "e2", role: "EMPLOYEE" }).setOwner).toBe(false)
-        expect(access(superAdmin, { id: "e2", role: "EMPLOYEE" }).setOwner).toBe(false)
+        expect(access(admin, { id: "e2", role: "EMPLOYEE" }).setOwner).toBe(true)
+        expect(access(superAdmin, { id: "e2", role: "EMPLOYEE" }).setOwner).toBe(true)
+        const own = access(admin, { id: "a1", role: "ADMIN" })
+        expect([own.setOwner, own.addOwner]).toEqual([false, false])
         expect(access(superAdmin, { id: "s2", role: "SUPER_ADMIN" }).setOwner).toBe(false)
         expect(access(employee, { id: "a2", role: "ADMIN" }).setOwner).toBe(false)
-        // A role below an Admin's, holding the permission, acts on no Admin.
+        // A role below an Admin's, holding the permission, acts on no owner.
         const holder = { id: "h2", role: "EMPLOYEE", companyId: "c1", grants: encodeGrants({ "employees.view": "COMPANY", "employees.set_owner": "COMPANY" }) }
-        expect(access(holder, { id: "a2", role: "ADMIN" }).setOwner).toBe(false)
-        expect(access(holder, { id: "e2", role: "EMPLOYEE" }).setOwner).toBe(false)
+        for (const person of [{ id: "a2", role: "ADMIN" }, { id: "e2", role: "EMPLOYEE" }]) {
+            expect([access(holder, person).setOwner, access(holder, person).addOwner]).toEqual([false, false])
+        }
         // Seeing them, or changing their contract start, isn't setting it.
         const other = { id: "h3", role: "EMPLOYEE", companyId: "c1", grants: encodeGrants({ "employees.view": "COMPANY", "employees.edit_contract_start": "COMPANY" }) }
         expect(access(other, { id: "e2", role: "EMPLOYEE" }).changeContractStart).toBe(true)
@@ -94,11 +100,18 @@ describe("a person's details", () => {
         // Named by what it says, so asking for it by those words finds it: on one person's details, it can't be anyone else's.
         const on = await view("en", { setOwner: true }, "2026-11")
         expect(on).toMatch(/<button[^>]*>Remove from owners<\/button>/)
-        const not = await view("en", { setOwner: true }, null)
+        const not = await view("en", { setOwner: true, addOwner: true }, null)
         expect(not).toContain(">No<")
         expect(not).toMatch(/<button[^>]*>Add to owners<\/button>/)
         expect(on + not).not.toContain("aria-label=\"Add")
         expect(on + not).not.toContain("aria-label=\"Remove")
+    })
+
+    it("offers to take off someone of another role made an owner before, and never to add them (PR 428)", async () => {
+        expect(await view("en", { setOwner: true, addOwner: false }, "2026-11")).toMatch(/<button[^>]*>Remove from owners<\/button>/)
+        const never = await view("en", { setOwner: true, addOwner: false }, null)
+        expect(never).not.toContain("Owner")
+        expect(never).not.toContain("Add to owners")
     })
 
     it("says nothing of it to anyone else about someone who isn't one", async () => {

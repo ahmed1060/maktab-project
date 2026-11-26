@@ -79,13 +79,16 @@ describe("every path that hands out work", () => {
     it("holds the people it's for and refuses an owner, in the transaction it writes in", () => {
         // Creating and editing a task, transferring one, and the bulk upload.
         expect(tasks).toContain("return await prisma.$transaction(async (tx) => {\n            if ((await holdAssignees(tx, assigneeIds)).size > 0) throw new Error(\"ASSIGNEE_IS_OWNER\")\n            if (resolvedClientId)")
-        expect(tasks).toContain("if (assigneeIds && (await holdAssignees(tx, assigneeIds.filter((uid: string) => !existingTask.assignees.some(a => a.id === uid)))).size > 0) throw new Error(\"ASSIGNEE_IS_OWNER\")\n            if (clientChanges && newClientId) await holdClientInUse(tx, newClientId)")
+        // Who it has now, read under its hold, not as it was before: someone taken off meanwhile is new again.
+        expect(tasks).toContain("if (assigneeIds) {\n                await tx.$queryRaw`SELECT id FROM \"Task\" WHERE id = ${id} FOR UPDATE`\n                const has = ((await tx.task.findUnique({ where: { id }, select: { assignees: { select: { id: true } } } }))?.assignees ?? []).map(a => a.id)\n                if ((await holdAssignees(tx, assigneeIds.filter((uid: string) => !has.includes(uid)))).size > 0) throw new Error(\"ASSIGNEE_IS_OWNER\")\n            }")
+        expect(tasks).toContain("await tx.$queryRaw`SELECT id FROM \"Task\" WHERE id = ${id} FOR UPDATE`\n            \n            const originalTask = await (tx.task as any).findUnique({")
         expect(tasks).toContain("if ((await holdAssignees(tx, addedIds)).size > 0) throw new Error(\"ASSIGNEE_IS_OWNER\")\n            const verdict = await checkAssignees(addedIds, session, \"tasks.transfer\", { client: tx as any })")
         expect(tasks).toContain("const owners = await holdAssignees(tx, tasks.flatMap(t => t.assigneeIds || []))")
         expect(tasks).toContain("if ((assigneeIds as string[]).some(id => owners.has(id))) throw new Error(`ASSIGNEE_IS_OWNER: ${task.title}`)")
         // Adding an obligation and reassigning one.
         expect(obligations).toContain("return await prisma.$transaction(async (tx) => {\n            if ((await holdAssignees(tx, assigneeIds)).size > 0) throw new Error(\"ASSIGNEE_IS_OWNER\")\n            return tx.obligation.create({")
         expect(obligations).toContain("if ((await holdAssignees(tx, assigneeIds.filter((uid: string) => !current.assignees.some(a => a.id === uid)))).size > 0) throw new Error(\"ASSIGNEE_IS_OWNER\")\n                const verdict = await checkAssignees(assigneeIds, session, \"obligations.edit\"")
+        expect(obligations).toContain("await tx.$queryRaw`SELECT id FROM \"Obligation\" WHERE id = ${id} FOR UPDATE`\n            const current = await tx.obligation.findUnique({")
     })
 
     it("leaves an owner out of the bulk upload's checks too, before it writes", () => {
@@ -165,7 +168,12 @@ describe("only an Admin is an owner", () => {
         expect(route).toContain(`if (session.user.role !== "SUPER_ADMIN" && session.user.role !== "ADMIN") return ApiResponse.forbidden("Only an Admin or the Super Admin sets owners")`)
         expect(route).toContain(`OWNER_NOT_ADMIN: [409, "Only an Admin can be among the owners, not someone acting as one for a while."],`)
         expect(ownerRefusal("OWNER_NOT_ADMIN")).toBe("owner_not_admin")
-        expect(source("lib/profile-access.ts")).toContain("setOwner: can('employees.set_owner') && !own && person.role === 'ADMIN' && (superAdmin || viewer?.role === 'ADMIN'),")
+        const profile = source("lib/profile-access.ts")
+        expect(profile).toContain("setOwner: can('employees.set_owner') && !own && (superAdmin || viewer?.role === 'ADMIN') && person.role !== 'SUPER_ADMIN' && person.role !== '',")
+        expect(profile).toContain("addOwner: can('employees.set_owner') && !own && (superAdmin || viewer?.role === 'ADMIN') && person.role === 'ADMIN',")
+        const view = source("components/profile/ProfileView.tsx")
+        expect(view).toContain("...(access.owner && (facts.ownerSince || access.addOwner) ? [{")
+        expect(view).toContain("{(facts.ownerSince ? access.setOwner : access.addOwner) && (")
     })
 
     it("is refused for anyone else, under the lock marking takes", () => {

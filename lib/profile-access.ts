@@ -48,8 +48,10 @@ export type ProfileAccess = {
      * everyone's with a company where they are one; never a Super Admin's.
      */
     owner: boolean
-    /** Beside it: adding them to the owners, or removing them, as changing their contract start. */
+    /** Beside it: removing them from the owners, by an Admin or the Super Admin, never one's own. */
     setOwner: boolean
+    /** And adding them, only an Admin (LATER_CHANGES_PLAN.md §7.3, PR 428). */
+    addOwner: boolean
     /** Someone else's: one's own is changed in Security settings, with a code. */
     changeEmail: boolean
     /** The Super Admin's alone, as the route takes it. */
@@ -145,8 +147,11 @@ export function profileAccess({ can, has, viewer, person }: {
         contractStart: person.role !== 'SUPER_ADMIN' && person.role !== '',
         changeContractStart: can('employees.edit_contract_start') && !own && actsOnThem && person.role !== 'SUPER_ADMIN' && person.role !== '',
         owner: person.role !== 'SUPER_ADMIN' && person.role !== '',
-        // Only an Admin is an owner, set by an Admin or the Super Admin (LATER_CHANGES_PLAN.md §7.3, PR 428).
-        setOwner: can('employees.set_owner') && !own && person.role === 'ADMIN' && (superAdmin || viewer?.role === 'ADMIN'),
+        // Only an Admin is an owner, set by an Admin or the Super Admin
+        // (LATER_CHANGES_PLAN.md §7.3, PR 428): added only on an Admin's,
+        // and taken off anyone who is one, made one before that.
+        setOwner: can('employees.set_owner') && !own && (superAdmin || viewer?.role === 'ADMIN') && person.role !== 'SUPER_ADMIN' && person.role !== '',
+        addOwner: can('employees.set_owner') && !own && (superAdmin || viewer?.role === 'ADMIN') && person.role === 'ADMIN',
         changeEmail: !own,
         changeUsername: superAdmin,
         changeSalary: can('salary.edit') && !own && paid && payroll,

@@ -132,6 +132,8 @@ export class ObligationService {
         const userName = session.user.name
 
         return await prisma.$transaction(async (tx) => {
+            // Held first, so who it has is read as it is, not as another change left it a moment ago (PR 428).
+            await tx.$queryRaw`SELECT id FROM "Obligation" WHERE id = ${id} FOR UPDATE`
             const current = await tx.obligation.findUnique({
                 where: { id },
                 include: { assignees: true }
