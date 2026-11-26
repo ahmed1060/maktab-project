@@ -1384,13 +1384,30 @@ In three PRs, each whole on its own:
     balance on their details. Asked for anyway, for a day in a month
     they're an owner, it's refused (OWNER_NO_ATTENDANCE), checked under
     the lock that marking an owner takes, so the two can't cross.
-  - **3b2, the pickers:** the task and obligation pickers leave them
-    out, and assigning work to one is refused; work they already have
-    stays theirs until it's moved. Attendance's person picker leaves
-    them out, they get no check-in reminders, and My attendance leaves
-    an owner's side menu, as there's nothing there for them. Attendance's reports
-    read days, which an owner has none of from 3a; there's no head count
-    screen yet, so nothing more there.
+  - **3b2, the pickers and the work:**
+    - The task and obligation pickers leave out whoever is an owner
+      now, and giving one work is refused (ASSIGNEE_IS_OWNER), for the
+      Super Admin too: creating, editing, transferring or reassigning a
+      task, the bulk upload, and adding or reassigning an obligation.
+      Work they already have stays theirs until it's moved.
+    - New work holds each person it goes to, and marking an owner holds
+      them alone, so the two can't cross: whichever comes second sees
+      the first.
+    - A repeating obligation makes its next one for the same people.
+      Marking someone an owner is refused while one of theirs, finished,
+      is still to make its next one, named with the open work; the
+      next one is made in the overnight run, and moved then (decided on
+      26 November).
+    - Reassign is in an open obligation's ⋯ menu for whoever edits
+      obligations, not only where someone on it was deleted, so open
+      work can be moved (decided on 26 November). A finished one isn't
+      reassigned: it would rewrite who did it, and move the points it
+      earned.
+    - Attendance's person picker leaves them out, they get no check-in
+      reminder for a day in a month they're an owner, and My attendance
+      leaves an owner's side menu, as there's nothing there for them.
+      Attendance's reports read days, which an owner has none of from
+      3a; there's no head count screen yet, so nothing more there.
 - **3c, the Owners list:** beside Employees in the side menu, in its look,
   for whoever may see employees; owners leave the Employees list. Their
   rows have Edit and the Owner switch, nothing about pay or points.
@@ -1954,3 +1971,6 @@ A step may take more than one PR.
 - **2026-11-26:** 3b1 built (#427). My attendance, still in an owner's
   side menu, added to 3b2.
 - **2026-11-26:** #427 merged (3b1). 3b2 next.
+- **2026-11-26:** 3b2 decided further: a repeating obligation still to
+  make its next one refuses marking its person an owner, and Reassign
+  is offered on any open obligation.
