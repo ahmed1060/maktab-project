@@ -1576,3 +1576,7 @@ same day as drawn in the All users: status badges canvas
   move, and the people a policy change would move. Requests next, with
   flagged punches and the registered check-in phones, after #423, which
   keeps a row's words whole on a phone (`UI_PLAN.md`).
+- **2026-11-26:** #423 merged: a row's end side goes under its title
+  where it doesn't fit beside it, so a row's words stay whole on a phone
+  (`UI_PLAN.md`; `DESIGN.md` §5.5, Rows). Requests next (§3.1, step 8),
+  with flagged punches and the registered check-in phones.
