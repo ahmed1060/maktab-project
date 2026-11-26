@@ -16,8 +16,9 @@ Each part is marked:
 Status: **the owner's points of 26 November (§7) decided; the contract
 start date and Recalculate on the Payroll page done (#425), and owners'
 mark, permission and pay (#426, step 3a), what they're not asked for
-(#427, step 3b1), and only Admins as owners, given no new work (#428,
-step 3b2), with 3c next; the names (§3)
+(#427, step 3b1), only Admins as owners, given no new work (#428, step
+3b2), and the Owners list (#429, step 3c), so owners are done; the
+limits on requests (§7.4) next; the names (§3)
 paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
@@ -2018,3 +2019,5 @@ A step may take more than one PR.
 - **2026-11-26:** #428 merged (3b2). 3c next.
 - **2026-11-26:** 3c decided further: the Owners list's icon is Crown,
   and an Admin is added to the owners from their details alone.
+- **2026-11-26:** #429 merged (3c). Owners (§7.3) done; the limits on
+  requests (§7.4) next.
