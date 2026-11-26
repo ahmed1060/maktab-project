@@ -45,6 +45,8 @@ const LATER = [
     "prisma/migrations/20270109000000_client_accounts_granted/migration.sql",
     // The built-in Admin role's employees.edit_contract_start (LATER_CHANGES_PLAN.md §7.2, PR 425).
     "prisma/migrations/20270122000000_contract_start_permission/migration.sql",
+    // The built-in Admin role's employees.set_owner, with the owners' periods (LATER_CHANGES_PLAN.md §7.3, PR 426).
+    "prisma/migrations/20270123000000_owner_periods/migration.sql",
 ].map(path => readFileSync(path, "utf8"))
 
 // A later one that renames permissions: clients.* became records.*, for the

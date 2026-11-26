@@ -588,6 +588,8 @@ model User {
   createdObligations         Obligation[]            @relation("ObligationCreatedBy")
   SalaryChange               SalaryChange[]
   EmploymentEvent            EmploymentEvent[]
+  /// Each time they're an owner (LATER_CHANGES_PLAN.md §7.3, PR 426).
+  ownerPeriods               OwnerPeriod[]
   payslips                   Payslip[]
   finalSettlements           FinalSettlement[]
   debts                      Debt[]
@@ -1516,6 +1518,25 @@ model EmploymentEvent {
   user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, effectiveFrom])
+}
+
+/// Each time someone is an owner (LATER_CHANGES_PLAN.md §7.3, step 3a,
+/// PR 426): from the start of the month they were marked, in their company's
+/// calendar, to the start of the month they were no longer one; open while
+/// they still are. An owner in a month has no payslip for it, and attendance
+/// counts no days. Periods rather than one date, so a month paid without them
+/// stays so once the mark is taken off. One open period each, which the
+/// migration holds (a partial unique index the schema can't say).
+model OwnerPeriod {
+  id          String    @id @default(uuid())
+  userId      String
+  startsAt    DateTime
+  endsAt      DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 enum EmploymentEventType {

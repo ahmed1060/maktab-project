@@ -356,7 +356,7 @@ export function SettlementPreview({ settlement, undecided = 0, stale = false, fa
                 is the one to act on, so it isn't a quiet line as the other two. */}
             {settlement.paidSource === 'RUN_NOT_PAID'
                 ? <DocNote tone="waiting">{t('settlement_run_not_paid')}</DocNote>
-                : <p className="ui-hint">{t(settlement.paidSource === 'PAYSLIP' ? 'settlement_paid_from_payslip' : 'settlement_provisional')}</p>}
+                : <p className="ui-hint">{t(settlement.paidSource === 'OWNER' ? 'settlement_owner_month' : settlement.paidSource === 'PAYSLIP' ? 'settlement_paid_from_payslip' : 'settlement_provisional')}</p>}
             {undecided > 0 && <DocNote tone="waiting">{t('end_contract_undecided').replace('{days}', countOf(t, locale, undecided, 'days'))}</DocNote>}
         </>
     }

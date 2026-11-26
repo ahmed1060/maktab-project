@@ -7,6 +7,7 @@ import { ApiResponse } from "@/lib/api-response"
 import { teamRefusalResponse } from "@/lib/team-handoff-response"
 import { newUserSchema, updateUserSchema } from "@/lib/validations/user.schema"
 import { ContractStartService } from "@/lib/services/contract-start.service"
+import { OwnerService } from "@/lib/services/owner.service"
 import { lockedUntil } from "@/lib/sign-in-lock"
 import { ownPasswordPausedUntil } from "@/lib/own-password"
 import { UserService } from "@/lib/services/user.service"
@@ -105,10 +106,13 @@ export const GET = withStandardHandler(async (req, session) => {
             // and when their account was made, for the Super Admin alone
             // (LATER_CHANGES_PLAN.md §7.2, PR 425).
             const start = await ContractStartService.of(user.id)
+            // And since when they're an owner (LATER_CHANGES_PLAN.md §7.3, PR 426).
+            const owner = await OwnerService.of(user.id)
             return ApiResponse.success({
                 ...shapeUser(session.user, user),
                 ...(answers ? { accountantFor: await clientsAnsweredFor(user.id) } : {}),
                 contractStart: start?.date ?? null,
+                ownerSince: owner?.since ?? null,
                 ...(session.user.role === 'SUPER_ADMIN' ? { accountMadeAt: start?.recordedAt.toISOString() ?? null } : {}),
             })
         }

@@ -54,6 +54,8 @@ describe.skipIf(!ADMIN_URL)("the contract start date, in Postgres", () => {
     let Starts: typeof import("@/lib/services/contract-start.service").ContractStartService
     let prisma: typeof import("@/lib/prisma").prisma
     let versionsBefore: { id: string; builtIn: string | null; version: number }[] = []
+    // Just after it: a later migration raising them again is its own.
+    let versionsAfter: { id: string; version: number }[] = []
 
     const startOf = async (userId: string) => (await db.query(`SELECT "effectiveFrom" AS at FROM "EmploymentEvent" WHERE "userId" = $1 AND type = 'HIRED'`, [userId])).rows[0].at.toISOString()
     const salariesOf = async (userId: string) => (await db.query(`SELECT id, "effectiveFrom" AS at FROM "SalaryChange" WHERE "userId" = $1 ORDER BY id`, [userId])).rows.map(r => [r.id, r.at.toISOString()])
@@ -72,6 +74,7 @@ describe.skipIf(!ADMIN_URL)("the contract start date, in Postgres", () => {
             // The roles' versions before the migration that gives the Admin's the permission.
             if (m === "20270122000000_contract_start_permission") versionsBefore = (await db.query(`SELECT id, "builtIn", version FROM "Role" ORDER BY id`)).rows
             await db.query(sql(m))
+            if (m === "20270122000000_contract_start_permission") versionsAfter = (await db.query(`SELECT id, version FROM "Role" ORDER BY id`)).rows
             if (m === "20260920000000_team_leader") await db.query(PEOPLE)
         }
         await db.query(RECORDS)
@@ -95,8 +98,7 @@ describe.skipIf(!ADMIN_URL)("the contract start date, in Postgres", () => {
         expect(admins.length).toBe(1)
         const grants = (await db.query(`SELECT "roleId", scope FROM "RoleGrant" WHERE permission = 'employees.edit_contract_start' ORDER BY "roleId"`)).rows
         expect(grants).toEqual(admins.map(r => ({ roleId: r.id, scope: "COMPANY" })))
-        const versions = (await db.query(`SELECT id, version FROM "Role" ORDER BY id`)).rows
-        expect(versions).toEqual(versionsBefore.map(r => ({ id: r.id, version: r.builtIn === "ADMIN" ? r.version + 1 : r.version })))
+        expect(versionsAfter).toEqual(versionsBefore.map(r => ({ id: r.id, version: r.builtIn === "ADMIN" ? r.version + 1 : r.version })))
     })
 
     it("reads when someone's contract started, in the company's calendar", async () => {

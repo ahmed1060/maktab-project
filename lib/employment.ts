@@ -403,6 +403,12 @@ export function previewSettlement(input: {
     /** Already paid for the final month. Zero when payday has not come round. */
     paidMinor?: Minor
     timeZone?: string
+    /**
+     * Whether they're an owner in the final month (LATER_CHANGES_PLAN.md
+     * §7.3, PR 426): there's no salary for it, so nothing is earned and
+     * nothing was paid, whatever their salary still says.
+     */
+    owner?: boolean
 }): SettlementPreview {
     const timeZone = input.timeZone ?? DEFAULT_TIME_ZONE
     const { year, month } = calendarParts(input.endsAt, timeZone)
@@ -421,13 +427,15 @@ export function previewSettlement(input: {
     let earnedMinor = 0
     let daysWorked = 0
     for (const window of windows) {
-        for (const segment of splitMonth(year, month, input.rates, window)) {
-            earnedMinor += valueSegment(segment)
+        if (!input.owner) {
+            for (const segment of splitMonth(year, month, input.rates, window)) {
+                earnedMinor += valueSegment(segment)
+            }
         }
         daysWorked += window.toDay - window.fromDay + 1
     }
 
-    const paidMinor = input.paidMinor ?? 0
+    const paidMinor = input.owner ? 0 : input.paidMinor ?? 0
     const netMinor = earnedMinor - paidMinor
 
     return {

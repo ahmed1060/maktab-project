@@ -1310,7 +1310,12 @@ too.
 ### 7.3 Owners (Decided)
 
 - **An Owner switch** on an employee's page, set by the Super Admin or
-  the company's Admin, and logged.
+  the company's Admin, and logged. Its own permission, Set owners, that
+  the built-in Admin role has and other roles may be given (the owner's
+  answer, 2026-11-26), confirmed with a code as other changes to pay are.
+- **From when:** the month they're marked (the owner's answer,
+  2026-11-26). That month's draft payroll and attendance leave them out;
+  approved months stay as they were paid.
 - **An owner has:**
   - no attendance: their punches are ignored, and there are no days,
     lateness, absences, reminders or missing-punch alerts;
@@ -1330,6 +1335,52 @@ too.
   nothing about pay or points.
 - Everything else is as their role gives: they still approve, review
   and rate what their role lets them.
+
+#### How it's built (step 3)
+
+In three PRs, each whole on its own:
+
+- **3a, the mark, and pay:**
+  - An `OwnerPeriod` table: each time someone is an owner, from the
+    start of the month they're marked, in the company's calendar, to the
+    start of the month they're no longer one. Kept as periods, not one
+    date, so a month they were an owner in stays so when the mark is
+    taken off, and a month already paid is never worked out as owed. One
+    migration adds it, with Row Level Security on, and the permission
+    `employees.set_owner`, Set owners, for the company, never one's own,
+    an Admin's by the Super Admin alone, affecting pay; the built-in Admin
+    role gets it, and each company's Admin role there is already.
+  - On an employee's page, Owner among their details: since which month,
+    or No, with Add to owners, or Remove from owners, for whoever may set
+    it. The button is named by the words it shows, so asking for it by
+    those words finds it; the dialog's title names the person. The dialog
+    says what changes from the start of this month, then it's confirmed
+    with a code and logged. It's refused
+    while they have a task or an obligation still open, or done and
+    awaiting review, naming each; while the payroll of this month or a
+    later one is approved, as the change reaches every month from this
+    one on; and once their contract has ended with a final settlement for
+    this month or a later one, settled as they were then.
+  - The payroll register leaves an owner out from the month they're
+    marked; approved months stay as they were paid. Attendance works out
+    no days for them from then, and their days in those months go, so
+    their punches are kept but count for nothing.
+  - A month is told apart by its calendar month, not by the moment it
+    starts, so changing the company's time zone moves no one in or out of
+    one.
+  - A contract ended in a month they're an owner settles that month at
+    nothing earned and nothing paid, and the End contract dialog says why.
+  - No longer an owner: they're an employee again from the month it's
+    taken off, worked out again from then; the months they were an owner
+    stay so. Taken off in the month it was put on, it's as if it never
+    was.
+- **3b, what they're not asked for:** no day off, permission, mission or
+  missing punch to ask for, and no day-off balance; the task and
+  obligation pickers leave them out, and assigning to one is refused;
+  attendance reports and the head count leave them out.
+- **3c, the Owners list:** beside Employees in the side menu, in its look,
+  for whoever may see employees; owners leave the Employees list. Their
+  rows have Edit and the Owner switch, nothing about pay or points.
 
 ### 7.4 Limits on requests (Decided)
 
@@ -1862,3 +1913,23 @@ A step may take more than one PR.
   month on a draft month of the Payroll page, for whoever may save the
   draft; it reworks the month's days, then the register. The owner chose
   to add it to #425, merged with step 1 tonight.
+- **2026-11-26:** #425 merged: the contract start date (§7.2, step 1)
+  and Recalculate on the Payroll page (§7.1, step 2), together, at the
+  owner's word. Owners (§7.3) are next, in their own PRs: the owner's
+  answers added there, a permission of its own to set them, and from the
+  month they're marked.
+- **2026-11-26:** Owners (§7.3, How it's built) planned in three PRs:
+  3a the mark, its permission and pay; 3b what owners aren't asked for,
+  and the pickers; 3c the Owners list.
+- **2026-11-26:** 3a built (#426): the buttons say Add to owners and
+  Remove from owners, and the row says since which month, or No.
+- **2026-11-26:** 3a, after Codex's review of #426: an obligation awaiting
+  review is open work too; months are told apart by their calendar month,
+  whatever the company's time zone becomes; and a settlement in a month
+  they're an owner counts nothing earned or paid.
+- **2026-11-26:** 3a, after Codex's second review of #426: adding or
+  removing an owner is refused while the payroll of this month or a later
+  one is approved, not this month's alone.
+- **2026-11-26:** 3a, after Codex's third review of #426: adding or
+  removing an owner is refused once their contract has ended with a final
+  settlement for this month or a later one.

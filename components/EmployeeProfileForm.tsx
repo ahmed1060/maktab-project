@@ -25,6 +25,7 @@ import { RoleRequestDialog, type AskRefusal } from '@/components/profile/RoleReq
 import { WhatsAppCard } from '@/components/profile/WhatsAppCard'
 import { EndContractDialog } from './profile/EndContractDialog'
 import { ContractStartDialog } from './profile/ContractStartDialog'
+import { OwnerDialog } from './profile/OwnerDialog'
 import { TeamHandOffDialog } from './profile/TeamHandOffDialog'
 import { handoffRefusal } from '@/lib/end-contract'
 import { keepsBothNames, nameAskedFor, profileAccess } from '@/lib/profile-access'
@@ -126,6 +127,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     const [contractStart, setContractStart] = useState<string | null>(null)
     const [accountMadeAt, setAccountMadeAt] = useState<string | null>(null)
     const [changingStart, setChangingStart] = useState(false)
+    // Since when they're an owner, 'YYYY-MM', and the dialog that changes it (LATER_CHANGES_PLAN.md §7.3, PR 426).
+    const [ownerSince, setOwnerSince] = useState<string | null>(null)
+    const [settingOwner, setSettingOwner] = useState(false)
     // Asking for another role, from their details (RoleRequestDialog).
     const [asking, setAsking] = useState(false)
     // Told by the server a change already waits for them, though it isn't in
@@ -252,6 +256,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 setWhatsappNumber(employee.whatsappNumber ?? null)
                 setContractStart(employee.contractStart ?? null)
                 setAccountMadeAt(employee.accountMadeAt ?? null)
+                setOwnerSince(employee.ownerSince ?? null)
                 setAccountantFor(employee.accountantFor ?? [])
 
                 // Their own name change waiting, asked for by whose it is: the
@@ -711,6 +716,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                         dayOffCredit: baseDayOffCredit,
                         contractStart,
                         accountMade: accountMadeAt ? calendarDateStr(new Date(accountMadeAt), companyZone ?? DEFAULT_TIME_ZONE) : null,
+                        ownerSince,
                     }}
                     onResetPassword={() => setConfirming('RESET_PASSWORD')}
                     // Ending a contract, or reinstating one, saves through its own
@@ -720,6 +726,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     onEndContract={() => setShowEndContract(true)}
                     // Its own dialog too, as it moves their pay.
                     onChangeContractStart={() => setChangingStart(true)}
+                    onSetOwner={() => setSettingOwner(true)}
                     // Whoever may only ask for a role asks from here too, beside
                     // it (ROLES_PLAN.md §6.12): the form isn't everyone's who
                     // may ask.
@@ -759,6 +766,16 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                         today={today}
                         onClose={() => setChangingStart(false)}
                         onDone={date => { setContractStart(date); setChangingStart(false) }}
+                    />
+                )}
+                {settingOwner && (
+                    <OwnerDialog
+                        userId={userId}
+                        name={name}
+                        owner={ownerSince !== null}
+                        month={today.slice(0, 7)}
+                        onClose={() => setSettingOwner(false)}
+                        onDone={owner => { setOwnerSince(owner ? today.slice(0, 7) : null); setSettingOwner(false) }}
                     />
                 )}
                 <ConfirmPasswordDialog open={confirming === 'RESET_PASSWORD'} onCancel={() => setConfirming(null)} onConfirm={resetPassword} />
