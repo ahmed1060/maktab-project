@@ -26,7 +26,8 @@ describe("the roles plan", () => {
         // 16 since PR 381: client_accounts.invite, and client_accounts.manage, split into it, still marked.
         // 18 since PR 382: salary_adjustments.add and .reverse, beside salary_adjustments.manage.
         // 16 since PR 386: client_accounts.manage and salary_adjustments.manage retired.
-        expect(highRisk.length).toBe(16)
+        // 17 since PR 425: employees.edit_contract_start.
+        expect(highRisk.length).toBe(17)
         for (const p of highRisk) expect(stepUp, p).toContain(`\`${p}\``)
     })
 

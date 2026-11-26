@@ -17,6 +17,9 @@ import { fetcher } from '@/lib/swr-fetcher'
 import { useCan } from '@/lib/useCan'
 import { useFeatures } from '@/lib/features/useFeatures'
 import { useModules } from '@/lib/useModules'
+import DatePickerSingle from '@/components/DatePickerSingle'
+import { contractStartRange, contractStartRefusal, inContractStartRange } from '@/lib/contract-start'
+import { calendarDateStr, DEFAULT_TIME_ZONE } from '@/lib/time'
 
 type Company = { id: string; name: string; nameAr?: string | null }
 type Leader = { id: string; firstName: string; lastName: string }
@@ -49,12 +52,20 @@ export default function NewEmployeePage() {
     const [salary, setSalary] = useState('')
     const [dayOffCredit, setDayOffCredit] = useState('0')
     const [teamLeaderId, setTeamLeaderId] = useState('')
+    // When their contract starts (LATER_CHANGES_PLAN.md §7.2, PR 425):
+    // today unless changed, from a year back to a year ahead, the company's
+    // calendar the server's to read; what's wrong with it under it.
+    const [today] = useState(() => calendarDateStr(new Date(), DEFAULT_TIME_ZONE))
+    const [contractStart, setContractStart] = useState(today)
+    const [startError, setStartError] = useState<string | null>(null)
     // Which the role picked has: pay for anyone but an Admin, a day off
     // balance for an employee or a team leader. Checked and sent only then,
     // and only where the company's package includes them: pay is Payroll's,
     // a day off balance Day off's (DESIGN.md §5.5, Page layout).
     const features = useFeatures()
     const salaryShown = features.has('PAYROLL') && !['ADMIN', 'SUPER_ADMIN'].includes(role) && role !== ''
+    // Everyone's with a company has a contract; a Super Admin's account has none.
+    const startShown = role !== 'SUPER_ADMIN'
     const dayOffShown = features.has('DAY_OFF') && (role === 'EMPLOYEE' || role === 'TEAM_LEADER')
     const [error, setError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<Partial<Record<NewEmployeeField, string>>>({})
@@ -84,7 +95,7 @@ export default function NewEmployeePage() {
 
     // Reloading or closing the tab with something typed asks first, as it
     // would lose it; not once it's being sent.
-    const started = !!(firstName || firstNameAr || lastName || lastNameAr || email || password || salary || dayOffCredit !== '0' || roleId || companyId || teamLeaderId)
+    const started = !!(firstName || firstNameAr || lastName || lastNameAr || email || password || salary || dayOffCredit !== '0' || roleId || companyId || teamLeaderId || contractStart !== today)
     useEffect(() => {
         if (!started || loading) return
         const warn = (e: BeforeUnloadEvent) => { e.preventDefault() }
@@ -123,8 +134,22 @@ export default function NewEmployeePage() {
             firstName, firstNameAr, lastName, lastNameAr, email, password, company: { needed: isSuperAdmin, id: companyId },
             salary: { shown: salaryShown, text: salary }, dayOffCredit: { shown: dayOffShown, text: dayOffCredit }, unreadable,
         })
+        const startWrong = !startShown ? null
+            : !contractStart ? t('contract_start_needed')
+            : !inContractStartRange(contractStart, today) ? t('contract_start_out_of_range')
+            : null
+        setStartError(startWrong)
+        if (startWrong && Object.keys(wrong).length === 0) {
+            document.querySelector<HTMLElement>('[name="contractStart"]')?.focus()
+            return
+        }
         if (Object.keys(wrong).length > 0) {
-            wrongAt(Object.fromEntries(Object.entries(wrong).map(([field, key]) => [field, mistakeText(t, locale, field as NewEmployeeField, key)])))
+            const texts = Object.fromEntries(Object.entries(wrong).map(([field, key]) => [field, mistakeText(t, locale, field as NewEmployeeField, key)]))
+            // The date comes before pay in the form: wrong too, it takes the focus from them.
+            if (startWrong && Object.keys(wrong).every(field => field === 'salary' || field === 'dayOffCredit')) {
+                setFieldErrors(texts)
+                document.querySelector<HTMLElement>('[name="contractStart"]')?.focus()
+            } else wrongAt(texts)
             return
         }
         setFieldErrors({})
@@ -138,6 +163,7 @@ export default function NewEmployeePage() {
             if (salaryShown && salary) {
                 body.salary = parseFloat(salary)
             }
+            if (startShown) body.contractStart = contractStart
             // Only an employee has one. Sending it for any other role would be
             // refused by the server, which is correct but a pointless round
             // trip and a confusing message for something the form allowed.
@@ -153,11 +179,16 @@ export default function NewEmployeePage() {
 
             if (!res.ok) {
                 const text = await res.text()
-                let answer: { error?: string; details?: Record<string, unknown> } | null = null
+                let answer: { error?: string; code?: string; details?: Record<string, unknown> } | null = null
                 try { answer = JSON.parse(text) } catch { /* not JSON: said as it came */ }
                 // Under the field it's about, where it can be; above the buttons otherwise.
                 const refused = refusedField(answer)
-                if (refused) wrongAt({ [refused.field]: mistakeText(t, locale, refused.field, refused.key) })
+                const startRefused = contractStartRefusal(answer?.code, { creating: true })
+                if (startRefused) {
+                    setStartError(t(startRefused))
+                    document.querySelector<HTMLElement>('[name="contractStart"]')?.focus()
+                }
+                else if (refused) wrongAt({ [refused.field]: mistakeText(t, locale, refused.field, refused.key) })
                 else setError(apiErrorText(text, t('error_generic')))
                 setLoading(false)
                 return
@@ -219,6 +250,12 @@ export default function NewEmployeePage() {
                     {(canAssignRole || canRequestRole) && (
                         <RoleField companyId={companyId} value={roleId} disabled={loading} requestOnly={canRequestRole}
                             onChange={(id, chosen) => { setRoleId(id); setRole(chosen?.baseRole ?? 'EMPLOYEE') }} />
+                    )}
+
+                    {startShown && (
+                        <DatePickerSingle name="contractStart" label={t('contract_start_label')} hint={t('contract_start_hint')} error={startError ?? undefined}
+                            value={contractStart} minDate={contractStartRange(today).min} maxDate={contractStartRange(today).max} disabled={loading}
+                            onChange={day => { setContractStart(day); setStartError(null) }} />
                     )}
 
                     {salaryShown && (

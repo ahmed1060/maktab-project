@@ -322,6 +322,8 @@ const SCREENS: Record<string, Screen> = {
             "POST /api/users/[x]/reset-password": when("employees.reset_password", profile("resetPassword: can('employees.reset_password') && !own && actsOnThem,")),
             "GET /api/users/[x]/employment": when("employees.end_contract", profile("endContract: can('employees.end_contract') && !own && actsOnThem && person.role !== 'SUPER_ADMIN',")),
             "POST /api/users/[x]/employment": when("employees.end_contract", profile("endContract: can('employees.end_contract') && !own && actsOnThem && person.role !== 'SUPER_ADMIN',")),
+            // When their contract started, changed with its own permission (LATER_CHANGES_PLAN.md §7.2, PR 425).
+            "POST /api/users/[x]/contract-start": when("employees.edit_contract_start", profile("changeContractStart: can('employees.edit_contract_start') && !own && actsOnThem && person.role !== 'SUPER_ADMIN' && person.role !== '',")),
             // Their role: given by whoever gives roles, asked for by whoever may only ask.
             "GET /api/roles/assignable": when(["employees.assign_role", "employees.request_role"], "const picksRole = !!access.changeRole && (!seeing || access.changeRole === 'ask')",
                 profile(": can('employees.assign_role') ? 'assign'"), ASKS_ROLE),

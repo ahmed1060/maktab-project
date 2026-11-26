@@ -225,6 +225,7 @@ them, as today.
 | | `employees.assign_team` | Put people on a team / move teams | `users/team` |
 | | `employees.assign_role` | Assign a role directly (§4.2) | new |
 | | `employees.request_role` | Request a role assignment for Admin approval (§6.12) | new |
+| | `employees.edit_contract_start` | Change when someone's contract started, which their hiring and starting salary follow, so their pay does (LATER_CHANGES_PLAN.md §7.2, PR 425) | `users/[id]/contract-start` |
 | **Profile requests** | `profile_requests.review` | Approve / reject name-change requests | `profile-requests/[id]/approve\|reject` |
 | **Requests** | `requests.view` | See internal requests | `GET /requests` |
 | | `requests.review` | Decide requests and award performance points | `PATCH /requests/[id]` |
@@ -838,7 +839,7 @@ A few permissions move money, give it away, or cannot be undone: `tasks.pay`,
 `salary_adjustments.add` and `salary_adjustments.reverse`, adding and
 undoing bonuses and deductions (one permission, `salary_adjustments.manage`,
 until #382, retired in #386), `payroll.approve`, `payroll.mark_paid`,
-`debts.waive`, `employees.delete`, `employees.end_contract`,
+`debts.waive`, `employees.delete`, `employees.edit_contract_start`, `employees.end_contract`,
 `charges.collect`, marking a client's charges collected (`CLIENTS_PLAN.md`
 §6.6), `cash_advances.give`, giving and settling employees' cash
 advances (`CLIENTS_PLAN.md` §7.7), and `attendance.manage_terminals`,

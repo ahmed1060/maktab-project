@@ -35,6 +35,14 @@ export type ProfileAccess = {
     status: boolean
     /** Beside their status: ending their contract, or reinstating them. */
     endContract: boolean
+    /**
+     * When their contract started (LATER_CHANGES_PLAN.md §7.2, PR 425):
+     * everyone's with a company, one's own too; never a Super Admin's, who
+     * has no contract.
+     */
+    contractStart: boolean
+    /** Beside it: changing it, with its own permission, never one's own, an Admin's by the Super Admin alone. */
+    changeContractStart: boolean
     /** Someone else's: one's own is changed in Security settings, with a code. */
     changeEmail: boolean
     /** The Super Admin's alone, as the route takes it. */
@@ -127,6 +135,8 @@ export function profileAccess({ can, has, viewer, person }: {
         // Super Admin's, who has none, nor a company to settle with (a
         // person's profile, part 5, PR 195).
         endContract: can('employees.end_contract') && !own && actsOnThem && person.role !== 'SUPER_ADMIN',
+        contractStart: person.role !== 'SUPER_ADMIN' && person.role !== '',
+        changeContractStart: can('employees.edit_contract_start') && !own && actsOnThem && person.role !== 'SUPER_ADMIN' && person.role !== '',
         changeEmail: !own,
         changeUsername: superAdmin,
         changeSalary: can('salary.edit') && !own && paid && payroll,

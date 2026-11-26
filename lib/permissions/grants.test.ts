@@ -13,6 +13,8 @@ describe("permission codes", () => {
         "employees.view": 1, "employees.create": 2, "employees.edit": 3, "employees.change_status": 4,
         "employees.end_contract": 5, "employees.delete": 6, "employees.reset_password": 7,
         "employees.assign_team": 8, "employees.assign_role": 9, "employees.request_role": 10,
+        // When someone's contract started (LATER_CHANGES_PLAN.md §7.2, PR 425).
+        "employees.edit_contract_start": 93,
         "profile_requests.review": 11, "requests.view": 12, "requests.review": 13, "requests.reset_points": 14,
         "tasks.view": 15, "tasks.create": 16, "tasks.edit": 17, "tasks.transfer": 18, "tasks.review": 19,
         "tasks.delete": 20, "tasks.pay": 21, "tasks.penalize": 22,
