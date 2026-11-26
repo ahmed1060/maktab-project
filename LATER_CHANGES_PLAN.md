@@ -1265,9 +1265,12 @@ too.
   company's Admin role there is already.
 - **On Add employee:** a date, the contract start date, today in the
   company's time zone unless changed, from a year back to a year ahead.
+  Today is the server's, in the calendar of the company they're joining,
+  and the date is sent only once it's changed (review on #425).
   The hiring and the starting salary are dated at the start of that day in
   the company's time zone, where they were dated at the moment the account
-  was made. A date in a month whose payroll is approved is refused.
+  was made. A date is refused where any month from it to this one has its
+  payroll approved, as they'd be paid in each (review on #425).
 - **Changing it:** on the person's profile, Change beside the date, for
   whoever holds the permission, opens a dialog with the date. The Super
   Admin alone changes an Admin's. It's refused:
@@ -1281,6 +1284,9 @@ too.
   history stays as it is, as the two dated before their start do. Logged,
   with the old and the new date. Their days are worked out again from the
   earlier of the two; a draft payroll is worked out each time it's opened.
+  Where that fails, the nightly run finds the change by its log line, as
+  the rows it moves keep when they were made, and rebuilds from the
+  earlier date (review on #425).
 - **Shown:** the contract start date among a person's details, to whoever
   sees their profile, and on one's own. When the account was made, for
   the Super Admin only, from when their hiring was recorded.
