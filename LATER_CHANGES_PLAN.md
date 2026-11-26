@@ -712,12 +712,16 @@ other filled in when one is typed, if that's possible.
      Add punch from a missing scan already named its people (8h). The
      notice telling reviewers a new photo waits is a name written at the
      time, with the last step.
-   - **8j. Attendance's import and numbers tabs, and its settings:** the
-     terminal numbers' people and their picker, the people a policy change
-     would move, the work calendar's people, the registered phones, and
-     the people a work location is for.
+   - **8j. Attendance's numbers and work locations (#421):** whose each
+     terminal number is on the Numbers tab, its person picker in the
+     page's order, and the dialog that removes one; and the people a work
+     location is for, in its row and in its people picker. The Import tab
+     names no one: its report lists the numbers nobody has.
+   - **8k. The work calendar and the policy preview:** the work calendar's
+     people and their picker, and the people a policy change would move.
    - **Then, by area,** one PR or more each:
-     requests, payroll with the costs and charges lists, the
+     requests (with the registered check-in phones, which the Requests
+     page lists), payroll with the costs and charges lists, the
      client's area, and last, names written from then on: notifications
      and messages, who last changed a status, a cost's or a location's
      author, and one's own name in the account menu.
@@ -1552,3 +1556,7 @@ same day as drawn in the All users: status badges canvas
   order, the dialogs that ask why, Approve overtime ahead's people, and
   the Face tab's photos, people and overdue re-verifications. The import
   and numbers tabs and attendance's settings next, as 8j.
+- **2026-11-26:** Step 8j split in two: the Numbers tab and work
+  locations as 8j, the work calendar and the policy preview as 8k. The
+  registered phones are listed on the Requests page, so they go with
+  requests.
