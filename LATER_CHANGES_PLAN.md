@@ -718,8 +718,12 @@ other filled in when one is typed, if that's possible.
      that removes one; and the people a work location is for, in its row
      and in its Choose people picker, in the page's order. The Import tab
      names no one: its report lists the numbers nobody has.
-   - **8k. The work calendar and the policy preview,** next: the work calendar's
-     people and their picker, and the people a policy change would move.
+   - **8k. The work calendar and the policy preview (Done, #422):** who
+     works which schedule, in the page's order, and withdrawing someone's
+     planned move, in Company settings' Attendance tab; Move people's
+     people, in the page's order; and the people a policy change would
+     move, in the policy preview. The calendar and the preview give each
+     name in Arabic too.
    - **Then, by area,** one PR or more each:
      requests (with the registered check-in phones, which the Requests
      page lists), payroll with the costs and charges lists, the
@@ -1566,3 +1570,9 @@ same day as drawn in the All users: status badges canvas
   number is, the Numbers tab's person pickers in the page's order, the
   Remove dialog, and a work location's people in its row and its Choose
   people picker. The work calendar and the policy preview next, as 8k.
+- **2026-11-26:** #422 merged: the work calendar and the policy preview
+  name people in the page's language (§3.1, step 8k): who works which
+  schedule and Move people, in the page's order, withdrawing a planned
+  move, and the people a policy change would move. Requests next, with
+  flagged punches and the registered check-in phones, after #423, which
+  keeps a row's words whole on a phone (`UI_PLAN.md`).
