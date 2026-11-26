@@ -1095,6 +1095,7 @@ export const en = {
         owner_already: "Already among the owners.",
         owner_not: "Already not among the owners.",
         owner_no_company: "Only someone in a company can be among its owners.",
+        owner_settled: "The contract has ended with a final settlement for this month or a later one, so this can't change now.",
         contract_start_none: "There's no contract start on record for them.",
         account_made_label: "Account made",
         profile_reset_password: "Reset password",

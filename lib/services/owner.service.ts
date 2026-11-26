@@ -40,7 +40,8 @@ export class OwnerService {
      * Marks someone an owner, or takes it off, from the start of this month.
      * Refused, with its code as the error's message: someone not in a company
      * (NO_COMPANY); the payroll of this month or a later one approved or
-     * paid (PAYROLL_MONTH_LOCKED);
+     * paid (PAYROLL_MONTH_LOCKED); a final settlement for this month or a
+     * later one (OWNER_SETTLED);
      * what they are already (ALREADY_OWNER, NOT_OWNER); work still open,
      * named (OWNER_OPEN_WORK), when marking.
      *
@@ -64,6 +65,10 @@ export class OwnerService {
             const months = monthsReached(month, last ? `${last.year}-${String(last.month).padStart(2, "0")}` : null)
             await lockMonths(tx, companyId, months)
             if ((await lockedMonths(tx, companyId, months)).size > 0) throw new OwnerRefused("PAYROLL_MONTH_LOCKED")
+            // A contract ended with a final settlement in a month the change
+            // reaches was settled as they were then: the change would leave
+            // the settlement, and any debt it made, wrong.
+            if (await tx.finalSettlement.findFirst({ where: { userId, lastWorkingDay: { gte: monthStart } }, select: { id: true } })) throw new OwnerRefused("OWNER_SETTLED")
             const periods = await tx.ownerPeriod.findMany({ where: { userId }, select: { id: true, startsAt: true, endsAt: true } })
             const plan = planOwner(periods, month, owner)
             if (!plan.ok) throw new OwnerRefused(plan.refusal)

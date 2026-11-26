@@ -132,6 +132,7 @@ describe("what's refused, in words", () => {
         expect(ownerRefusal("ALREADY_OWNER")).toBe("owner_already")
         expect(ownerRefusal("NOT_OWNER")).toBe("owner_not")
         expect(ownerRefusal("NO_COMPANY")).toBe("owner_no_company")
+        expect(ownerRefusal("OWNER_SETTLED")).toBe("owner_settled")
         expect(ownerRefusal("SOMETHING_ELSE")).toBeNull()
         expect(ownerRefusal(undefined)).toBeNull()
     })

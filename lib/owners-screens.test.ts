@@ -114,7 +114,7 @@ describe("the dialog, the route and the form", () => {
     it("says what changes from this month, and what it's refused for, in either language", () => {
         for (const words of [en, ar]) {
             for (const key of ["owner_add_title", "owner_remove_title", "owner_add_says", "owner_remove_says", "owner_add", "owner_remove", "owner_added", "owner_removed",
-                "owner_open_work", "owner_month_locked", "owner_already", "owner_not", "owner_no_company", "owner_work_task", "owner_work_obligation"] as const) {
+                "owner_open_work", "owner_month_locked", "owner_already", "owner_not", "owner_no_company", "owner_settled", "owner_work_task", "owner_work_obligation"] as const) {
                 expect(words[key], key).toBeTruthy()
             }
         }

@@ -253,6 +253,23 @@ describe.skipIf(!ADMIN_URL)("owners, in Postgres", () => {
         expect(employee.settles && employee.earnedMinor).toBeGreaterThan(0)
     })
 
+    it("refuses once their contract has ended with a final settlement this month or later, an earlier one not", async () => {
+        const settled = (id: string, day: string) => db.query(
+            `INSERT INTO "FinalSettlement"(id, "userId", "companyId", "lastWorkingDay", "earnedAmount", "netAmount", "dueDate", "updatedAt") VALUES ($1, 'e4', 'c1', $2, 7800, -1200, now(), now())`,
+            [id, new Date(startOfDate(day, ZONE).getTime() + 12 * 3_600_000).toISOString()])
+        try {
+            await settled("this", `${thisMonth}-01`)
+            expect(await refusal(Owners.set("e4", true, by))).toBe("OWNER_SETTLED")
+            await db.query(`DELETE FROM "FinalSettlement" WHERE id = 'this'`)
+            await settled("before", addDays(`${thisMonth}-01`, -1))
+            // Settled last month: this month's change doesn't reach it, and their open work is what's said.
+            expect(await refusal(Owners.set("e4", true, by))).toBe("OWNER_OPEN_WORK")
+            expect(await periodsOf("e4")).toEqual([])
+        } finally {
+            await db.query(`DELETE FROM "FinalSettlement" WHERE id IN ('this', 'before')`)
+        }
+    })
+
     it("refuses what they are already, and someone not in a company", async () => {
         expect(await refusal(Owners.set("e2", true, by))).toBe("ALREADY_OWNER")
         expect(await refusal(Owners.set("e4", false, by))).toBe("NOT_OWNER")

@@ -23,6 +23,7 @@ const REFUSALS: Record<string, [400 | 409, string]> = {
     ALREADY_OWNER: [409, "They're already among the owners."],
     NOT_OWNER: [409, "They're not among the owners."],
     NO_COMPANY: [400, "Only someone in a company can be among its owners."],
+    OWNER_SETTLED: [409, "Their contract has ended with a final settlement for this month or a later one."],
 }
 
 export const POST = withStandardHandler(async (_req, session, json, { params }) => {

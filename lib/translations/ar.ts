@@ -1028,6 +1028,7 @@ export const ar = {
         owner_already: "ضمن الملاك بالفعل.",
         owner_not: "خارج الملاك بالفعل.",
         owner_no_company: "لا يكون ضمن الملاك إلا من له شركة.",
+        owner_settled: "انتهى التعاقد بتسوية نهائية عن هذا الشهر أو شهر بعده، فلا يمكن التغيير الآن.",
         contract_start_none: "لا يوجد تاريخ بداية عقد مسجّل.",
         account_made_label: "تاريخ إنشاء الحساب",
         profile_reset_password: "إعادة تعيين كلمة المرور",

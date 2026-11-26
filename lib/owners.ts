@@ -109,6 +109,7 @@ const REFUSALS: Record<string, TranslationKey> = {
     ALREADY_OWNER: "owner_already",
     NOT_OWNER: "owner_not",
     NO_COMPANY: "owner_no_company",
+    OWNER_SETTLED: "owner_settled",
 }
 
 /** A refusal's code, as the words the dialog says it in; null for none of its own. */
