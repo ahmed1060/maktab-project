@@ -1091,7 +1091,7 @@ export const en = {
         owner_open_work: "Work is still open for this person. Move it to someone else first:",
         owner_work_task: "Task: {title}",
         owner_work_obligation: "Obligation: {title}",
-        owner_month_locked: "This month's payroll is approved, so it can't change now.",
+        owner_month_locked: "The payroll of this month or a later one is approved, so this can't change now.",
         owner_already: "Already among the owners.",
         owner_not: "Already not among the owners.",
         owner_no_company: "Only someone in a company can be among its owners.",

@@ -19,7 +19,7 @@ import { assertStepUp } from "@/lib/step-up"
 
 const REFUSALS: Record<string, [400 | 409, string]> = {
     OWNER_OPEN_WORK: [409, "They have work still open, to be moved to someone else first."],
-    PAYROLL_MONTH_LOCKED: [409, "This month's payroll is approved."],
+    PAYROLL_MONTH_LOCKED: [409, "The payroll of this month or a later one is approved."],
     ALREADY_OWNER: [409, "They're already among the owners."],
     NOT_OWNER: [409, "They're not among the owners."],
     NO_COMPANY: [400, "Only someone in a company can be among its owners."],

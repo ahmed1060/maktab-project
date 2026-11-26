@@ -52,6 +52,28 @@ export function ownerSince(periods: readonly OwnerPeriodRow[]): string | null {
     return open ? monthOf(open.startsAt) : null
 }
 
+/** The month after a month, 'YYYY-MM'. */
+function nextMonth(month: string): string {
+    const [year, m] = month.split("-").map(Number)
+    return m === 12 ? `${year + 1}-01` : `${year}-${String(m + 1).padStart(2, "0")}`
+}
+
+/**
+ * The months a change from `month` on reaches, 'YYYY-MM', to check and lock
+ * against their payroll's approval: this one and every one after, a year
+ * ahead, and on to `lastRun`, the last month with a payroll run, where that's
+ * further. A payroll approved further ahead with no run before it is beyond
+ * what's asked of anyone.
+ */
+export function monthsReached(month: string, lastRun: string | null): string[] {
+    let through = month
+    for (let i = 0; i < 12; i++) through = nextMonth(through)
+    if (lastRun !== null && lastRun > through) through = lastRun
+    const months = [month]
+    while (months[months.length - 1] < through) months.push(nextMonth(months[months.length - 1]))
+    return months
+}
+
 export type OwnerPlan =
     | { ok: true; action: "create" }
     | { ok: true; action: "reopen" | "close" | "delete"; id: string }

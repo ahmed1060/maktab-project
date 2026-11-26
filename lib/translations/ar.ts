@@ -1024,7 +1024,7 @@ export const ar = {
         owner_open_work: "لا يزال هناك عمل مفتوح مسند إلى هذا الشخص، ويجب نقله إلى غيره أولًا:",
         owner_work_task: "مهمة: {title}",
         owner_work_obligation: "التزام: {title}",
-        owner_month_locked: "رواتب هذا الشهر معتمدة، فلا يمكن التغيير الآن.",
+        owner_month_locked: "رواتب هذا الشهر أو شهر بعده معتمدة، فلا يمكن التغيير الآن.",
         owner_already: "ضمن الملاك بالفعل.",
         owner_not: "خارج الملاك بالفعل.",
         owner_no_company: "لا يكون ضمن الملاك إلا من له شركة.",

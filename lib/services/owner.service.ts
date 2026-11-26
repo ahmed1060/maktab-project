@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { calendarDateStr } from "@/lib/time"
 import { startOfDate } from "@/lib/contract-start"
-import { ownerSince, planOwner } from "@/lib/owners"
+import { monthsReached, ownerSince, planOwner } from "@/lib/owners"
 import { lockMonths, lockPersonDates, lockedMonths } from "./attendance-lock"
 
 /**
@@ -39,7 +39,8 @@ export class OwnerService {
     /**
      * Marks someone an owner, or takes it off, from the start of this month.
      * Refused, with its code as the error's message: someone not in a company
-     * (NO_COMPANY); this month's payroll approved (PAYROLL_MONTH_LOCKED);
+     * (NO_COMPANY); the payroll of this month or a later one approved or
+     * paid (PAYROLL_MONTH_LOCKED);
      * what they are already (ALREADY_OWNER, NOT_OWNER); work still open,
      * named (OWNER_OPEN_WORK), when marking.
      *
@@ -55,10 +56,14 @@ export class OwnerService {
         const monthStart = startOfDate(`${month}-01`, zone)
 
         await prisma.$transaction(async tx => {
-            // One change to a person's dates at a time, and to the month's payroll.
+            // One change to a person's dates at a time. It reaches every month
+            // from this one on, so it waits on each of those months' payroll
+            // approval, and an approved or paid one refuses it.
             await lockPersonDates(tx, userId)
-            await lockMonths(tx, companyId, [month])
-            if ((await lockedMonths(tx, companyId, [month])).size > 0) throw new OwnerRefused("PAYROLL_MONTH_LOCKED")
+            const last = await tx.payrollRun.findFirst({ where: { companyId }, orderBy: [{ year: "desc" }, { month: "desc" }], select: { year: true, month: true } })
+            const months = monthsReached(month, last ? `${last.year}-${String(last.month).padStart(2, "0")}` : null)
+            await lockMonths(tx, companyId, months)
+            if ((await lockedMonths(tx, companyId, months)).size > 0) throw new OwnerRefused("PAYROLL_MONTH_LOCKED")
             const periods = await tx.ownerPeriod.findMany({ where: { userId }, select: { id: true, startsAt: true, endsAt: true } })
             const plan = planOwner(periods, month, owner)
             if (!plan.ok) throw new OwnerRefused(plan.refusal)

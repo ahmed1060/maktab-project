@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { ownerIn, ownerSince, planOwner, ownerRefusal, notOwnerIn, monthOf } from "./owners"
+import { ownerIn, ownerSince, planOwner, ownerRefusal, notOwnerIn, monthOf, monthsReached } from "./owners"
 import { previewSettlement } from "./employment"
 import { toMinor } from "./payroll"
 
@@ -106,6 +106,22 @@ describe("marking someone as an owner, or taking it off", () => {
         expect(planOwner([{ id: "p1", startsAt: OCT, endsAt: null }], "2026-11", true)).toEqual({ ok: false, refusal: "ALREADY_OWNER" })
         expect(planOwner([{ id: "p1", startsAt: OCT, endsAt: NOV }], "2026-12", false)).toEqual({ ok: false, refusal: "NOT_OWNER" })
         expect(planOwner([], "2026-12", false)).toEqual({ ok: false, refusal: "NOT_OWNER" })
+    })
+})
+
+describe("the months a change reaches", () => {
+    it("is this month and every one after: a year ahead, and on to the last with a payroll run", () => {
+        const year = monthsReached("2026-11", null)
+        expect(year).toHaveLength(13)
+        expect(year[0]).toBe("2026-11")
+        expect(year[1]).toBe("2026-12")
+        expect(year[2]).toBe("2027-01")
+        expect(year[12]).toBe("2027-11")
+        expect(monthsReached("2026-11", "2026-05")).toEqual(year)
+        const further = monthsReached("2026-11", "2029-03")
+        expect(further[0]).toBe("2026-11")
+        expect(further[further.length - 1]).toBe("2029-03")
+        expect(further).toHaveLength(29)
     })
 })
 

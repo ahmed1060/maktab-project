@@ -202,6 +202,32 @@ describe.skipIf(!ADMIN_URL)("owners, in Postgres", () => {
         }
     })
 
+    it("refuses while a later month's payroll is approved or paid, as the change reaches it, a draft not", async () => {
+        const later = (months: number) => {
+            const [y, m] = thisMonth.split("-").map(Number)
+            const at = new Date(Date.UTC(y, m - 1 + months, 1))
+            return [at.getUTCMonth() + 1, at.getUTCFullYear()]
+        }
+        const run = (id: string, months: number, status: string) =>
+            db.query(`INSERT INTO "PayrollRun"(id, "companyId", month, year, status, "payrollDay", "updatedAt") VALUES ($1, 'c1', $2, $3, $4, 25, now())`, [id, ...later(months), status])
+        try {
+            await run("next", 1, "APPROVED")
+            expect(await refusal(Owners.set("e4", true, by))).toBe("PAYROLL_MONTH_LOCKED")
+            // Taken off too: it'd put them back on that month's register.
+            expect(await refusal(Owners.set("e2", false, by))).toBe("PAYROLL_MONTH_LOCKED")
+            await db.query(`DELETE FROM "PayrollRun" WHERE id = 'next'`)
+            await run("far", 30, "PAID")
+            expect(await refusal(Owners.set("e4", true, by))).toBe("PAYROLL_MONTH_LOCKED")
+            await db.query(`DELETE FROM "PayrollRun" WHERE id = 'far'`)
+            await run("draft", 1, "DRAFT")
+            expect(await refusal(Owners.set("e4", true, by))).toBe("OWNER_OPEN_WORK")
+            expect(await periodsOf("e4")).toEqual([])
+            expect(await periodsOf("e2")).toEqual([[startOf(lastMonth).toISOString(), null]])
+        } finally {
+            await db.query(`DELETE FROM "PayrollRun" WHERE id IN ('next', 'far', 'draft')`)
+        }
+    })
+
     it("keeps a month theirs whatever the company's time zone becomes", async () => {
         await Owners.set("e1", true, by)
         try {
