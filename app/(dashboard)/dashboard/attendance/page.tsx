@@ -16,7 +16,9 @@ import { send, json } from './send'
 import FaceTab from './FaceTab'
 import RequestsTab, { AskPermissionDialog, ReportMissingDialog } from './RequestsTab'
 import AddPunchDialog from './AddPunchDialog'
+import { personChoices, type Person } from './people'
 import { checkoutDate } from '@/lib/attendance/checkout-date'
+import { nameIn } from '@/lib/names'
 import { lastDayOf, pad, useDayInAddress, useFigures, useMonthInAddress } from './period'
 import ExceptionsTab from './ExceptionsTab'
 import ImportTab from './ImportTab'
@@ -49,13 +51,11 @@ import { attendanceTopics } from '@/lib/live-updates'
  */
 
 type Punch = {
-    id: string; userId: string | null; name: string | null; hardwareUserId: string | null
+    id: string; userId: string | null; name: string | null; nameAr?: string | null; hardwareUserId: string | null
     source: string; at: string; direction: 'IN' | 'OUT' | null; note: string | null; deviceName?: string | null
     placeName?: string | null; status?: string; flagReasons?: string[]
     voidedAt: string | null; voidReason: string | null
 }
-type Person = { id: string; name: string; teamLeaderId: string | null }
-
 type Tab = 'exceptions' | 'days' | 'punches' | 'requests' | 'face' | 'import' | 'numbers'
 
 
@@ -158,7 +158,7 @@ export default function AttendancePage() {
 
 type RuleOutcome = { minutes: number; days: number; occurrence: number; note: string | null }
 type Day = {
-    id: string; userId: string; name: string; date: string; status: string
+    id: string; userId: string; name: string; nameAr?: string | null; date: string; status: string
     firstIn: string | null; lastOut: string | null; workedMinutes: number
     lateMinutes: number; earlyLeaveMinutes: number; overtimeMinutes: number; excusedMinutes: number
     expectedStartMinutes: number | null; expectedEndMinutes: number | null
@@ -193,7 +193,7 @@ const MISSION_NOTE: Record<string, TranslationKey> = { DAYS: 'day_mission_days',
  * (§5.4), in the page's language throughout.
  */
 function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string | null; today: string; topics: string[] }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const { digits, num, amount, minutes, days: daysWord, clock } = useFigures()
     const { showToast } = useToast()
     const p = useCan()
@@ -219,8 +219,10 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
     // One person's month — one's own, or the person picked — gets its summary (§13.3).
     const onePerson = !seesOthers || !!who
     const oneself = !seesOthers || who === me
-    // Everyone's list says whose each day is.
+    // Everyone's list says whose each day is, in the page's language, or the one they have
+    // (LATER_CHANGES_PLAN.md §3.1, step 8h, PR 419).
     const everyone = seesOthers && !who
+    const whose = (d: Day) => nameIn(locale, { en: d.name, ar: d.nameAr })
     const { data: balanceBody, mutate: refreshBalance } = useSWR(oneself && me && !companyId ? `/api/attendance/permissions/balance?month=${month}` : null, fetcher)
     const [asking, setAsking] = useState<Parameters<typeof AskPermissionDialog>[0]['initial'] | null>(null)
     const [reporting, setReporting] = useState<string | null>(null)
@@ -295,7 +297,7 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
         )
     }
     const columns: Column<Day>[] = [
-        { key: 'date', header: t('punch_date'), cell: d => <ItemTitle title={dateText(d.date)} detail={everyone ? d.name : undefined} /> },
+        { key: 'date', header: t('punch_date'), cell: d => <ItemTitle title={dateText(d.date)} detail={everyone ? whose(d) : undefined} /> },
         { key: 'in', header: t('punch_in'), cell: d => time(d.firstIn) },
         { key: 'out', header: t('punch_out'), cell: d => time(d.lastOut) },
         { key: 'late', header: t('day_late'), align: 'end', cell: d => mins(d.lateMinutes) },
@@ -311,7 +313,7 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
             title={dateText(d.date)}
             status={badge(d)}
             details={[
-                ...(everyone ? [{ icon: UserIcon, text: d.name }] : []),
+                ...(everyone ? [{ icon: UserIcon, text: whose(d) }] : []),
                 // One line, as a span: the line spaces its pieces apart (found in the interface audit, PR 149).
                 ...(d.firstIn || d.lastOut ? [{ icon: ClockIcon, text: <span>{t('punch_in')} {time(d.firstIn)}, {t('punch_out')} {time(d.lastOut)}</span> }] : []),
                 ...(d.lateMinutes > 0 ? [{ icon: TimerIcon, text: `${t('day_late')}: ${minutes(d.lateMinutes)}` }] : []),
@@ -337,7 +339,7 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
                 )}</Field>
                 {seesOthers && (
                     <Field label={t('punch_person')}>{f => (
-                        <Select {...f} value={who} onChange={e => setWho(e.target.value)} options={[{ value: '', label: t('punch_everyone') }, ...people.map(x => ({ value: x.id, label: x.name }))]} />
+                        <Select {...f} value={who} onChange={e => setWho(e.target.value)} options={[{ value: '', label: t('punch_everyone') }, ...personChoices(people, locale)]} />
                     )}</Field>
                 )}
             </PeriodBar>
@@ -431,7 +433,7 @@ const PUNCH_BADGE: Record<string, { tone: StatusTone; label: TranslationKey }> =
  * one in the building blocks' dialog, which asks why.
  */
 function PunchesTab({ q, companyId, today, topics }: { q: string; companyId: string | null; today: string; topics: string[] }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const { digits, num } = useFigures()
     const { showToast } = useToast()
     const p = useCan()
@@ -501,12 +503,13 @@ function PunchesTab({ q, companyId, today, topics }: { q: string; companyId: str
     const whoOptions = [
         { value: '', label: t('punch_everyone') },
         ...(correctsCompany ? [{ value: UNMATCHED, label: t('punch_no_person') }] : []),
-        ...(seesOthers ? people.map(x => ({ value: x.id, label: x.name })) : []),
+        ...(seesOthers ? personChoices(people, locale) : []),
     ]
     const listTitle = dayName ? t('punch_list_title_day').replace('{day}', dayName) : t('punch_list_title').replace('{period}', monthName)
     // The punch's day and time on the company's clock, as it came in.
     const when = (x: Punch) => new Date(`${x.at.slice(0, 16)}:00Z`).toLocaleString(digits, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' })
-    const whose = (x: Punch) => x.name ?? t('punch_number').replace('{code}', x.hardwareUserId ?? '')
+    // In the page's language, or the one they have (LATER_CHANGES_PLAN.md §3.1, step 8h, PR 419).
+    const whose = (x: Punch) => (x.name ? nameIn(locale, { en: x.name, ar: x.nameAr }) : t('punch_number').replace('{code}', x.hardwareUserId ?? ''))
     const direction = (x: Punch) => (x.direction === 'IN' ? t('punch_in') : x.direction === 'OUT' ? t('punch_out') : t('punch_direction_unknown'))
     // A terminal's scan reads the same whichever way it came: through the agent, or from the terminal itself (PR 290).
     const source = (x: Punch) => (x.source === 'AGENT' || x.source === 'DEVICE_PUSH' ? t('punch_source_terminal').replace('{name}', x.deviceName ?? '—')

@@ -8,6 +8,7 @@ import { LOCK_WAIT, lockMonths, lockedMonths, punchMonths, punchMonthsOf } from 
 import { localToInstant, parseRows, detectColumns, type Cell, type ColumnMap, type DateOrder, type RowError } from "@/lib/attendance/punch-import"
 import { MAX_ROWS } from "@/lib/attendance/punch-file"
 import { addDays } from "@/lib/attendance/calendar"
+import { nameInArabic } from "@/lib/names"
 
 /**
  * Punches (ATTENDANCE_PLAN.md §8.6): what arrives from a spreadsheet or is
@@ -272,13 +273,15 @@ export class AttendancePunchService {
             select: {
                 id: true, userId: true, hardwareUserId: true, source: true, punchAtLocal: true, direction: true, status: true, note: true,
                 importId: true, receivedAt: true, voidedAt: true, voidReason: true, flagReasons: true,
-                user: { select: { firstName: true, lastName: true } },
+                user: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
                 device: { select: { name: true } },
                 workLocation: { select: { name: true } },
             },
         })
         return rows.map(({ user, punchAtLocal, device, workLocation, ...r }) => ({
             ...r, at: wallClockText(punchAtLocal), name: user ? `${user.firstName} ${user.lastName}`.trim() : null,
+            // Whose, in Arabic too where they have it (PR 419).
+            nameAr: user ? nameInArabic(user) : null,
             // Which terminal, for a punch from one (§17); which place, for a check-in from the app (§9).
             deviceName: device?.name ?? null,
             placeName: workLocation?.name ?? null,
@@ -292,10 +295,12 @@ export class AttendancePunchService {
                 companyId, status: { not: "DELETED" },
                 ...(visible.kind === "TEAM" ? { OR: [{ teamLeaderId: visible.leaderId }, { id: visible.leaderId }] } : visible.kind === "OWN" ? { id: visible.userId } : {}),
             },
-            select: { id: true, firstName: true, lastName: true, teamLeaderId: true },
+            select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, teamLeaderId: true },
             orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
         })
-        return users.map(u => ({ id: u.id, name: `${u.firstName} ${u.lastName}`.trim(), teamLeaderId: u.teamLeaderId }))
+        // Each in both languages, for the screen to name them in its own and order them by it
+        // (LATER_CHANGES_PLAN.md §3.1, step 8h, PR 419).
+        return users.map(u => ({ id: u.id, name: `${u.firstName} ${u.lastName}`.trim(), nameAr: nameInArabic(u), teamLeaderId: u.teamLeaderId }))
     }
 
     static async punchOf(id: string) {
