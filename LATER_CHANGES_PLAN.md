@@ -1410,7 +1410,12 @@ In three PRs, each whole on its own:
       the Super Admin does; on anyone else's details there's no Add to
       owners. An owner's role isn't changed away from Admin while they're
       one: it's refused (OWNER_STAYS_ADMIN), to remove them from owners
-      first (decided on 26 November).
+      first (decided on 26 November). Someone made an owner before this,
+      of any role, can still be taken off, by the same people.
+    - Reassigning a task or an obligation, or transferring a task, holds
+      the work first and reads who it has under that hold, so whoever
+      was taken off it meanwhile and marked an owner isn't put back
+      unchecked.
     - Attendance's person picker leaves them out, they get no check-in
       reminder for a day in a month they're an owner, and My attendance
       leaves an owner's side menu, as there's nothing there for them.
@@ -1984,3 +1989,5 @@ A step may take more than one PR.
   is offered on any open obligation.
 - **2026-11-26:** only Admins can be owners, marked by an Admin or the
   Super Admin, and an owner's role stays Admin; added to 3b2.
+- **2026-11-26:** Codex's two findings on #428: any owner can still be
+  taken off, and the work's people are read under its hold.
