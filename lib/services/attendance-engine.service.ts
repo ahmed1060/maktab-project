@@ -15,6 +15,7 @@ import { lockMonths, lockedMonths } from "./attendance-lock"
 import { NotificationService } from "./notification.service"
 import { ATTENDANCE_PAGE } from "@/lib/attendance-notice-target"
 import type { NoticeKey } from "@/lib/notice"
+import { nameInArabic } from "@/lib/names"
 
 /**
  * Rebuilding attendance days (ATTENDANCE_PLAN.md §11). Pure and idempotent:
@@ -662,7 +663,7 @@ export class AttendanceEngineService {
             orderBy: [{ date: "desc" }, { userId: "asc" }],
             take: limit,
             omit: { inputsHash: true },
-            include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true } } },
+            include: { user: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, teamLeaderId: true } } },
         })
         return rows.map(({ user, date, firstInAt, lastOutAt, deductionDays, ...r }) => ({
             ...r,
@@ -671,6 +672,8 @@ export class AttendanceEngineService {
             lastOut: lastOutAt ? wallClockText(lastOutAt) : null,
             deductionDays: Number(deductionDays),
             name: `${user.firstName} ${user.lastName}`.trim(),
+            // Whose, in Arabic too where they have it (LATER_CHANGES_PLAN.md §3.1, step 8h, PR 419).
+            nameAr: nameInArabic(user),
             teamLeaderId: user.teamLeaderId,
         }))
     }

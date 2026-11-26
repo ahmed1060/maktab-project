@@ -8,6 +8,7 @@ import type { TranslationKey } from '@/lib/translations'
 import DatePickerSingle from '@/components/DatePickerSingle'
 import { Button, Dialog, DialogActions, Field, Select, TextArea, TextInput } from '@/components/ui'
 import { send, json } from './send'
+import { personChoices, type Person } from './people'
 
 /**
  * A punch added by hand, for somebody else, with a reason (ATTENDANCE_PLAN.md §14).
@@ -17,10 +18,10 @@ import { send, json } from './send'
  * field, from Punches and from a missing punch on Exceptions.
  */
 
-type Person = { id: string; name: string; teamLeaderId: string | null }
 type Props = {
     companyId: string | null
     today: string
+    /** Whom it can be for, each named in the page's language, in its order (PR 419). */
     people: Person[]
     /** Where to start: the person and day a missing punch is for. */
     initial?: { userId?: string; date?: string; direction?: 'IN' | 'OUT' }
@@ -100,7 +101,7 @@ export function AddPunchForm({ companyId, today, people, initial, onRunning, onC
             <Field label={t('punch_person')} error={errors.userId}>{f => (
                 <Select {...f} name="person" value={userId} disabled={action.running}
                     onChange={e => { setUserId(e.target.value); clear('userId') }}
-                    options={[{ value: '', label: t('punch_choose_person') }, ...people.map(x => ({ value: x.id, label: x.name }))]} />
+                    options={[{ value: '', label: t('punch_choose_person') }, ...personChoices(people, locale)]} />
             )}</Field>
             {/* A punch is something that happened: today at the latest, on the company's calendar. */}
             <DatePickerSingle label={t('punch_date')} value={date} maxDate={today} error={errors.date} disabled={action.running}

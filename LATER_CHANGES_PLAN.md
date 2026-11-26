@@ -680,7 +680,7 @@ other filled in when one is typed, if that's possible.
      - the client's statement (the charges' one): the client and its
        owner on the sheet, the client in the line above the receipts,
        and the client in the page's heading and its back link.
-   - **8g. The responsible accountant and the tax statement (#418):**
+   - **8g. The responsible accountant and the tax statement (Done, #418):**
      - the responsible accountant, wherever it's named: a client's Tax
        position on its page, with its picker's people in the page's
        order; the client's area's home and its Contact on WhatsApp; and
@@ -689,8 +689,19 @@ other filled in when one is typed, if that's possible.
        which names the PDF, in the client's page's copy. The client's
        area's copy names the client as the area's frame does, from the
        session, which the client's area's step changes.
+   - **8h. Attendance's days and punches (#419):** the people it lists
+     (the person select its tabs share, in the page's order), the days
+     tab's rows, the punches tab's rows, and Add punch's people. Flagged
+     punches are the Requests page's, with requests.
+   - **8i. Attendance's exceptions, requests and face tabs,** next: each
+     row's person, the decided list, a missing-day's person, and the face
+     tab's people.
+   - **8j. Attendance's import and numbers tabs, and its settings:** the
+     terminal numbers' people and their picker, the people a policy change
+     would move, the work calendar's people, the registered phones, and
+     the people a work location is for.
    - **Then, by area,** one PR or more each:
-     attendance, requests, payroll with the costs and charges lists, the
+     requests, payroll with the costs and charges lists, the
      client's area, and last, names written from then on: notifications
      and messages, who last changed a status, a cost's or a location's
      author, and one's own name in the account menu.
@@ -1508,3 +1519,9 @@ same day as drawn in the All users: status badges canvas
   (§3.1, step 8f): whom a payslip or a settlement is issued to, and a
   statement's client and its owner, on the sheet and in the page's
   heading. The tax statement next, as 8g.
+- **2026-11-24:** #418 merged: the responsible accountant and the tax
+  statement name people and clients in the page's language (§3.1, step
+  8g): the accountant on a client's Tax position, its picker in the
+  page's order, the client's area's home and Contact on WhatsApp, and
+  the tax statement, whose client is named in the page's language on the
+  client's page's copy. Attendance next.
