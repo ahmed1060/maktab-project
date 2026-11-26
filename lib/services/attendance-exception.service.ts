@@ -5,6 +5,7 @@ import { AuditLogService } from "./audit-log.service"
 import { recomputeAfter } from "./attendance-recompute"
 import { lockMonths, lockedMonths } from "./attendance-lock"
 import type { Visibility } from "./attendance-punch.service"
+import { nameInArabic } from "@/lib/names"
 
 /**
  * Daily exceptions (ATTENDANCE_PLAN.md §13.1): only what needs a decision —
@@ -75,7 +76,7 @@ export class AttendanceExceptionService {
         const decisions = await prisma.attendanceDayDecision.findMany({
             where: base,
             orderBy: [{ date: "desc" }, { decidedAt: "desc" }],
-            include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true } } },
+            include: { user: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, teamLeaderId: true } } },
         })
         const decided = new Set(decisions.map(d => `${d.userId}:${toDateString(d.date)}:${d.subject}`))
         const decidedOf = (subject: Subject) => decisions.filter(d => d.subject === subject).length
@@ -89,7 +90,7 @@ export class AttendanceExceptionService {
             orderBy: [{ date: "desc" }, { userId: "asc" }],
             take: limit + extra + 1,
             omit: { inputsHash: true },
-            include: { user: { select: { firstName: true, lastName: true, teamLeaderId: true } } },
+            include: { user: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, teamLeaderId: true } } },
         })
         const [lateRows, earlyRows, absentRows, incompleteRows, departureRows, overtimeRows, permissions, missing, unmatched] = await Promise.all([
             kind({ status: "PRESENT", lateMinutes: { gt: 0 }, ...counted("lateness") }, decidedOf("LATENESS")),
@@ -113,6 +114,8 @@ export class AttendanceExceptionService {
             lastOut: lastOutAt ? wallClockText(lastOutAt) : null,
             deductionDays: Number(deductionDays),
             name: `${user.firstName} ${user.lastName}`.trim(),
+            // Whose, in Arabic too where they have it (LATER_CHANGES_PLAN.md §3.1, step 8i, PR 420).
+            nameAr: nameInArabic(user),
             teamLeaderId: user.teamLeaderId,
         })
         const capped: Record<string, boolean> = {}
@@ -129,7 +132,7 @@ export class AttendanceExceptionService {
         const overtime = open("overtime", overtimeRows)
         return {
             late, early, absent, incomplete, departure, overtime,
-            decided: decisions.slice(0, limit).map(({ user, date, ...d }) => ({ ...d, date: toDateString(date), name: `${user.firstName} ${user.lastName}`.trim(), teamLeaderId: user.teamLeaderId })),
+            decided: decisions.slice(0, limit).map(({ user, date, ...d }) => ({ ...d, date: toDateString(date), name: `${user.firstName} ${user.lastName}`.trim(), nameAr: nameInArabic(user), teamLeaderId: user.teamLeaderId })),
             counts: {
                 late: late.length, early: early.length, absent: absent.length, incomplete: incomplete.length, departure: departure.length, overtime: overtime.length,
                 permissions, missing, unmatched,

@@ -359,7 +359,7 @@ describe("face verification", () => {
         expect(tab).not.toContain('className="table"')
         expect(tab).not.toContain("style={")
         // Rejecting keeps the photos open, so they aren't fetched, and recorded, again.
-        expect(tab).toContain("title={rejecting ? t('face_reject_title') : t('face_review_title').replace('{name}', review.name)}")
+        expect(tab).toContain("title={rejecting ? t('face_reject_title') : t('face_review_title').replace('{name}', shownName(locale, review))}")
         expect(tab).toContain('<div className="ui-face-photos"')
         expect(tab).toMatch(/<Button variant="danger" type="submit"[^>]*busy=\{action\.is\('reject'\)\}>\{t\('chk_reject'\)\}<\/Button>/)
         // Asking to re-verify asks first.

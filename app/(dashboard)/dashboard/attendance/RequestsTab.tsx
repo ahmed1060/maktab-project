@@ -13,6 +13,7 @@ import DatePickerSingle from '@/components/DatePickerSingle'
 import type { TranslationKey } from '@/lib/translations'
 import { AskPermission, ReportMissingPunch } from '../requests/AttendanceDialogs'
 import { send, json } from './send'
+import { personChoices, type Person } from './people'
 
 /**
  * Requests (P0.6): one's own phone, and a pointer to the one Requests page
@@ -25,7 +26,6 @@ import { send, json } from './send'
  * the building blocks' dialog.
  */
 
-type Person = { id: string; name: string; teamLeaderId: string | null }
 type Phone = { model: string | null; platform: string }
 
 export default function RequestsTab({ q, companyId, today }: { q: string; companyId: string | null; today: string }) {
@@ -212,7 +212,7 @@ export function OvertimeAheadForm({ today, companyId, people, onCancel, onDone }
     onCancel: () => void
     onDone: () => void
 }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const action = useBusyAction()
     const [userId, setUserId] = useState('')
@@ -247,7 +247,7 @@ export function OvertimeAheadForm({ today, companyId, people, onCancel, onDone }
             <Field label={t('punch_person')} error={errors.userId}>{f => (
                 <Select {...f} name="person" value={userId} disabled={action.running}
                     onChange={e => { setUserId(e.target.value); setErrors(x => ({ ...x, userId: undefined })) }}
-                    options={[{ value: '', label: t('punch_choose_person') }, ...people.map(x => ({ value: x.id, label: x.name }))]} />
+                    options={[{ value: '', label: t('punch_choose_person') }, ...personChoices(people, locale)]} />
             )}</Field>
             <DatePickerSingle label={t('punch_date')} value={date} error={errors.date} disabled={action.running}
                 onChange={day => { setDate(day); setErrors(x => ({ ...x, date: undefined })) }} />

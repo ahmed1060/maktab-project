@@ -14,6 +14,8 @@ import { ActionStarts, useBusyAction } from '@/lib/useBusyAction'
 import { useLive, useWantedChannels } from '@/components/LiveUpdates'
 import { useArrivalsIn } from '@/components/useArrivals'
 import AddPunchDialog from './AddPunchDialog'
+import type { Person } from './people'
+import { nameIn } from '@/lib/names'
 import { checkoutDate } from '@/lib/attendance/checkout-date'
 import { send, json } from './send'
 import { lastDayOf, pad, useDayInAddress, useFigures, useMonthInAddress } from './period'
@@ -39,12 +41,12 @@ import { lastDayOf, pad, useDayInAddress, useFigures, useMonthInAddress } from '
 
 type RuleOutcome = { minutes: number; days: number; occurrence: number; note: string | null }
 type Row = {
-    id: string; userId: string; name: string; teamLeaderId: string | null; date: string; status: string
+    id: string; userId: string; name: string; nameAr?: string | null; teamLeaderId: string | null; date: string; status: string
     firstIn: string | null; lastOut: string | null; lateMinutes: number; earlyLeaveMinutes: number; overtimeMinutes: number
     deductionMinor: number | null; breakdown: { lateness: RuleOutcome; earlyLeave: RuleOutcome; absenceDays: number }
     expectedStartMinutes: number | null; expectedEndMinutes: number | null
 }
-type Decided = { id: string; userId: string; name: string; teamLeaderId: string | null; date: string; subject: Subject; outcome: 'EXCUSED' | 'ACCEPTED'; reason: string | null }
+type Decided = { id: string; userId: string; name: string; nameAr?: string | null; teamLeaderId: string | null; date: string; subject: Subject; outcome: 'EXCUSED' | 'ACCEPTED'; reason: string | null }
 type Subject = 'LATENESS' | 'EARLY_LEAVE' | 'ABSENCE' | 'INCOMPLETE'
 type Outcome = 'EXCUSED' | 'ACCEPTED'
 // A day with one scan (decision 22, PR 275) is a decision on the day: accepted, it is marked
@@ -65,8 +67,9 @@ type Data = {
     capped?: Record<string, boolean>
 }
 type Kind = 'lateEarly' | 'absent' | 'incomplete' | 'departure' | 'overtime' | 'decided'
-type Person = { id: string; name: string; teamLeaderId: string | null }
 /** A late arrival or an early leave, one row each. */
+/** Whose a row is: their name in English, and in Arabic where they have one (PR 420). */
+type Named = { name: string; nameAr?: string | null }
 type LateEarly = { key: string; r: Row; subject: 'LATENESS' | 'EARLY_LEAVE'; minutes: number; rule: RuleOutcome }
 
 const KINDS: Kind[] = ['lateEarly', 'absent', 'incomplete', 'departure', 'overtime', 'decided']
@@ -74,7 +77,9 @@ const KIND_LABEL: Record<Kind, TranslationKey> = { lateEarly: 'exc_tab_late', ab
 const NOTE_KEY: Record<string, TranslationKey> = { FREE_OCCURRENCE: 'day_note_free', ESCALATED: 'day_note_escalated', CAPPED: 'day_note_capped' }
 
 export default function ExceptionsTab({ q, companyId, today, topics }: { q: string; companyId: string | null; today: string; topics: string[] }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
+    // Whose, in the page's language, or the one they have (LATER_CHANGES_PLAN.md §3.1, step 8i, PR 420).
+    const named = (x: Named) => nameIn(locale, { en: x.name, ar: x.nameAr })
     const { num, amount, minutes: minutesText, days: daysWord, clock, date } = useFigures()
     const { showToast } = useToast()
     const p = useCan()
@@ -110,7 +115,7 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
         return `${pathname}?${next.toString()}`
     }
 
-    const [excusing, setExcusing] = useState<{ row: { userId: string; name: string; date: string }; subject: Subject; outcome: Outcome } | null>(null)
+    const [excusing, setExcusing] = useState<{ row: Named & { userId: string; date: string }; subject: Subject; outcome: Outcome } | null>(null)
     const [rejecting, setRejecting] = useState<Row | null>(null)
     const [reason, setReason] = useState('')
     const [reasonError, setReasonError] = useState<string | undefined>()
@@ -126,7 +131,8 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
     const lateEarly: LateEarly[] = data ? [
         ...data.late.map(r => ({ key: `${r.id}:LATENESS`, r, subject: 'LATENESS' as const, minutes: r.lateMinutes, rule: r.breakdown.lateness })),
         ...data.early.map(r => ({ key: `${r.id}:EARLY_LEAVE`, r, subject: 'EARLY_LEAVE' as const, minutes: r.earlyLeaveMinutes, rule: r.breakdown.earlyLeave })),
-    ].sort((a, b) => b.r.date.localeCompare(a.r.date) || a.r.name.localeCompare(b.r.name)) : []
+    // A day's in the page's order: on an Arabic page, Arabic names first, in Arabic order (PR 420).
+    ].sort((a, b) => b.r.date.localeCompare(a.r.date) || named(a.r).localeCompare(named(b.r), locale)) : []
 
     // Drawn again as attendance changes, and as the requests it counts do (part 2), while open
     // (REALTIME_PLAN.md, part 4c): at most every 30 seconds, whichever it hears, as a flagged
@@ -157,7 +163,7 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
     const approvesOvertime = (row: Row) => row.userId !== me && p.canFor('attendance.approve_overtime', row.userId, row.teamLeaderId)
 
     // Excusing, and settling a day with one scan, each ask why (PR 275).
-    const openExcuse = (row: { userId: string; name: string; date: string }, subject: Subject, outcome: Outcome = 'EXCUSED') => { setReason(''); setReasonError(undefined); setExcusing({ row, subject, outcome }) }
+    const openExcuse = (row: Named & { userId: string; date: string }, subject: Subject, outcome: Outcome = 'EXCUSED') => { setReason(''); setReasonError(undefined); setExcusing({ row, subject, outcome }) }
     const openReject = (row: Row) => { setReason(''); setReasonError(undefined); setRejecting(row) }
     // Not while it works: closing then would hide the answer.
     const closeExcuse = () => { if (!action.running) setExcusing(null) }
@@ -208,7 +214,7 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
     // A day's punches, from and to; none for a day with no punch, where it said —–— (found in the interface audit, PR 151).
     const times = (r: Row) => (r.firstIn || r.lastOut ? <bdi>{r.firstIn ? clock(r.firstIn) : '—'}–{r.lastOut ? clock(r.lastOut) : '—'}</bdi> : null)
     const note = (rule: RuleOutcome) => (rule.note && NOTE_KEY[rule.note] ? t(NOTE_KEY[rule.note]).replace('{n}', num(rule.occurrence)) : null)
-    const who = (r: { date: string; name: string }) => <ItemTitle title={date(r.date)} detail={r.name} />
+    const who = (r: Named & { date: string }) => <ItemTitle title={date(r.date)} detail={named(r)} />
     // What a decision was about: a day with one scan is named as its tab is.
     const subjectWord = (subject: Subject) => (subject === 'INCOMPLETE' ? t('exc_tab_incomplete') : t(`audit_value_${subject}` as TranslationKey))
     const busyKey = (key: string) => action.is(key)
@@ -236,7 +242,7 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
                     actionsColumn<LateEarly>(x => decisionButtons(x.r, x.subject)),
                 ]}
                 card={x => <ListCard title={date(x.r.date)} details={[
-                    { icon: UserIcon, text: x.r.name },
+                    { icon: UserIcon, text: named(x.r) },
                     { icon: ClockIcon, text: <span>{lateWhat(x)}{times(x.r) && <>, {times(x.r)}</>}</span> },
                     ...(note(x.rule) ? [{ icon: InfoIcon, text: note(x.rule) }] : []),
                     ...(x.rule.days > 0 ? [{ icon: CoinsIcon, text: <span>{t('day_deduction')}: {ruleDays(x.rule)}</span> }] : []),
@@ -250,7 +256,7 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
                     actionsColumn<Row>(r => decisionButtons(r, 'ABSENCE')),
                 ]}
                 card={r => <ListCard title={date(r.date)} details={[
-                    { icon: UserIcon, text: r.name },
+                    { icon: UserIcon, text: named(r) },
                     ...(r.deductionMinor ? [{ icon: CoinsIcon, text: <span>{t('day_deduction')}: <bdi>{amount(r.deductionMinor)}</bdi></span> }] : []),
                 ]} foot={decisionButtons(r, 'ABSENCE') ?? undefined} />} />
         )
@@ -272,7 +278,7 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
                         actionsColumn<Row>(add),
                     ]}
                     card={r => <ListCard title={date(r.date)} details={[
-                        { icon: UserIcon, text: r.name },
+                        { icon: UserIcon, text: named(r) },
                         { icon: ClockIcon, text: <span>{t('exc_punched')}: <bdi>{r.firstIn ? clock(r.firstIn) : '—'}</bdi></span> },
                         { icon: InfoIcon, text: t('day_unpriced_incomplete') },
                     ]} foot={add(r) ?? undefined} />} />
@@ -297,7 +303,7 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
                         actionsColumn<Row>(settle),
                     ]}
                     card={r => <ListCard title={date(r.date)} details={[
-                        { icon: UserIcon, text: r.name },
+                        { icon: UserIcon, text: named(r) },
                         { icon: ClockIcon, text: <span>{early(r)}{times(r) && <>, {times(r)}</>}</span> },
                         { icon: InfoIcon, text: t('day_unpriced_to_confirm') },
                     ]} foot={settle(r) ?? undefined} />} />
@@ -318,7 +324,7 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
                         actionsColumn<Row>(decideOvertime),
                     ]}
                     card={r => <ListCard title={date(r.date)} details={[
-                        { icon: UserIcon, text: r.name },
+                        { icon: UserIcon, text: named(r) },
                         { icon: ClockIcon, text: <span>{minutesText(r.overtimeMinutes)}{times(r) && <>, {times(r)}</>}</span> },
                     ]} foot={decideOvertime(r) ?? undefined} />} />
             )
@@ -336,7 +342,7 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
                     actionsColumn<Decided>(undo),
                 ]}
                 card={d => <ListCard title={date(d.date)} status={badge(d)} details={[
-                    { icon: UserIcon, text: d.name },
+                    { icon: UserIcon, text: named(d) },
                     { icon: InfoIcon, text: subjectWord(d.subject) },
                     ...(d.reason ? [{ icon: InfoIcon, text: d.reason }] : []),
                 ]} foot={undo(d) ?? undefined} />} />
@@ -344,8 +350,8 @@ export default function ExceptionsTab({ q, companyId, today, topics }: { q: stri
     })()
 
     // Which day and what, so the one meant is the one decided.
-    const facts = (row: { name: string; date: string }, what: string) => (
-        <Details items={[{ label: t('punch_person'), value: row.name }, { label: t('punch_date'), value: date(row.date) }, { label: t('exc_what'), value: what }]} />
+    const facts = (row: Named & { date: string }, what: string) => (
+        <Details items={[{ label: t('punch_person'), value: named(row) }, { label: t('punch_date'), value: date(row.date) }, { label: t('exc_what'), value: what }]} />
     )
 
     return (

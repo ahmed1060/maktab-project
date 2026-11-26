@@ -139,7 +139,11 @@ describe.skipIf(!ADMIN_URL)("face verification switches and consent, in Postgres
         await db.query(`UPDATE "User" SET "faceReverifyRequestedAt" = now() - interval '1 hour' WHERE id = 'e1'`)
         expect(await Face.overdueReverifications("c1")).toEqual([])
         await db.query(`UPDATE "User" SET "faceReverifyRequestedAt" = now() - interval '20 days' WHERE id = 'e1'`)
-        expect(await Face.overdueReverifications("c1")).toMatchObject([{ userId: "e1", name: "Ehab One" }])
+        expect(await Face.overdueReverifications("c1")).toMatchObject([{ userId: "e1", name: "Ehab One", nameAr: null }])
+        // Named in Arabic too where they have it, for the page's language (LATER_CHANGES_PLAN.md §3.1, step 8i, PR 420).
+        await db.query(`UPDATE "User" SET "firstNameAr" = 'إيهاب', "lastNameAr" = 'واحد' WHERE id = 'e1'`)
+        expect(await Face.overdueReverifications("c1")).toMatchObject([{ userId: "e1", name: "Ehab One", nameAr: "إيهاب واحد" }])
+        await db.query(`UPDATE "User" SET "firstNameAr" = NULL, "lastNameAr" = NULL WHERE id = 'e1'`)
         // Once a new photo waits, it is the reviewer's turn, not overdue.
         await db.query(`INSERT INTO "FaceReview"(id, "companyId", "userId", "phoneId", purpose, status, photo, "modelVersion") VALUES ('r-ov', 'c1', 'e1', 'p-ov', 'REVERIFY', 'PENDING', '\\xffd8ff', 'm1')`)
         expect(await Face.overdueReverifications("c1")).toEqual([])
@@ -155,7 +159,7 @@ describe.skipIf(!ADMIN_URL)("face verification switches and consent, in Postgres
             // From Wednesday, Thursday too made four.
             expect(await Face.overdueReverifications("c1")).toEqual([])
             vi.setSystemTime(new Date("2026-10-14T09:00:00Z"))
-            expect(await Face.overdueReverifications("c1")).toEqual([{ userId: "e1", name: "Ehab One", since: "2026-10-08" }])
+            expect(await Face.overdueReverifications("c1")).toEqual([{ userId: "e1", name: "Ehab One", nameAr: null, since: "2026-10-08" }])
         } finally {
             vi.useRealTimers()
         }

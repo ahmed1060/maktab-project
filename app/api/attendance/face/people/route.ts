@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { can, canCompanyWide } from "@/lib/permissions/can"
 import { FaceVerificationService, FACE_CONSENT_VERSION } from "@/lib/services/face-verification.service"
 import { punchCompany } from "@/lib/attendance/punch-access"
+import { nameInArabic } from "@/lib/names"
 
 /**
  * Who face verification is asked of (ATTENDANCE_PLAN.md §9.5), for whoever
@@ -21,7 +22,7 @@ export const GET = withStandardHandler(async (req, session) => {
         prisma.user.findMany({
             where: { companyId: access.companyId, status: { notIn: ["DELETED", "ARCHIVED"] }, id: { not: session.user.id } },
             select: {
-                id: true, firstName: true, lastName: true, faceVerificationRequired: true,
+                id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, faceVerificationRequired: true,
                 biometricConsents: { where: { textVersion: FACE_CONSENT_VERSION, withdrawnAt: null }, select: { acceptedAt: true }, take: 1 },
             },
             orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
@@ -32,7 +33,8 @@ export const GET = withStandardHandler(async (req, session) => {
         // Re-verifications left undone too long (§9.5); never one's own.
         overdue: overdue.filter(o => o.userId !== session.user.id),
         people: people.map(p => ({
-            id: p.id, name: `${p.firstName} ${p.lastName}`.trim(), required: p.faceVerificationRequired,
+            // Each in Arabic too where they have it, for the screen's language and order (PR 420).
+            id: p.id, name: `${p.firstName} ${p.lastName}`.trim(), nameAr: nameInArabic(p), required: p.faceVerificationRequired,
             consentedAt: p.biometricConsents[0]?.acceptedAt ?? null,
         })),
     })
