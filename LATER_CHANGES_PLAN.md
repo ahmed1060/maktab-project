@@ -1403,6 +1403,13 @@ In three PRs, each whole on its own:
       work can be moved (decided on 26 November). A finished one isn't
       reassigned: it would rewrite who did it, and move the points it
       earned.
+    - Only an Admin can be among the owners, not someone acting as one
+      for a while, whose acting role would end on its own. An Admin with
+      Set owners marks another Admin of the company, never themselves, as
+      the Super Admin does; on anyone else's details there's no Add to
+      owners. An owner's role isn't changed away from Admin while they're
+      one: it's refused (OWNER_STAYS_ADMIN), to remove them from owners
+      first (decided on 26 November).
     - Attendance's person picker leaves them out, they get no check-in
       reminder for a day in a month they're an owner, and My attendance
       leaves an owner's side menu, as there's nothing there for them.
@@ -1974,3 +1981,5 @@ A step may take more than one PR.
 - **2026-11-26:** 3b2 decided further: a repeating obligation still to
   make its next one refuses marking its person an owner, and Reassign
   is offered on any open obligation.
+- **2026-11-26:** only Admins can be owners, marked by an Admin or the
+  Super Admin, and an owner's role stays Admin; added to 3b2.
