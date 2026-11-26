@@ -6854,3 +6854,11 @@ The three choices were A (Stripe), B, "Structured" (IBM Carbon), and C,
   its filter offered only All employees. The filter now asks only when
   the viewer may see employees, and isn't shown otherwise; a link that
   names a person still filters by them (#368).
+- **2026-11-26:** Found in #422's interface audit: on a phone, a row
+  whose end side held a planned move and its Withdraw button left its
+  title and detail so little room that "Office" broke mid-word, in
+  Company settings' Who works which schedule. A row's end side may take
+  60% of it, and its title and detail break anywhere. They now keep at
+  least 128px beside the end side, and where the end side doesn't fit
+  beside them it goes on its own line under them, at the start, as wide
+  as the row on a phone (#423; `DESIGN.md` §5.5, Rows).
