@@ -505,9 +505,10 @@ export class AttendanceEngineService {
         }
         add(current.days, "current")
         add(proposed.days, "draft")
-        const names = await prisma.user.findMany({ where: { id: { in: [...byPerson.keys()] } }, select: { id: true, firstName: true, lastName: true } })
-        const nameOf = new Map(names.map(u => [u.id, `${u.firstName} ${u.lastName}`.trim()]))
-        const people = [...byPerson].map(([userId, v]) => ({ userId, name: nameOf.get(userId) ?? "", ...v }))
+        const names = await prisma.user.findMany({ where: { id: { in: [...byPerson.keys()] } }, select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } })
+        // Each in Arabic too where they have it, for the screen's language (LATER_CHANGES_PLAN.md §3.1, step 8k, PR 422).
+        const nameOf = new Map(names.map(u => [u.id, { name: `${u.firstName} ${u.lastName}`.trim(), nameAr: nameInArabic(u) }]))
+        const people = [...byPerson].map(([userId, v]) => ({ userId, name: nameOf.get(userId)?.name ?? "", nameAr: nameOf.get(userId)?.nameAr ?? null, ...v }))
             .sort((a, b) => (b.draft.deductionMinor - b.current.deductionMinor) - (a.draft.deductionMinor - a.current.deductionMinor) || a.name.localeCompare(b.name))
         const total = (side: "current" | "draft") => people.reduce((s, p) => ({
             deductionDays: Math.round((s.deductionDays + p[side].deductionDays) * 10_000) / 10_000,

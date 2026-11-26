@@ -6,11 +6,12 @@ import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { apiErrorText } from '@/lib/api-error-text'
 import { countOf } from '@/lib/plural'
+import { nameIn } from '@/lib/names'
 import type { PolicyBody } from '@/lib/attendance/policy'
 
 type Sum = { deductionDays: number; deductionMinor: number | null; overtimeMinor: number | null; days: number }
 /** Money is null for whoever may not see salaries: then the preview is in days. */
-type Result = { month: string; moneyHidden?: boolean; people: { userId: string; name: string; current: Sum; draft: Sum; overtimeChanged?: boolean }[]; totals: { current: Sum; draft: Sum; overtimeChanged?: boolean } }
+type Result = { month: string; moneyHidden?: boolean; people: { userId: string; name: string; nameAr?: string | null; current: Sum; draft: Sum; overtimeChanged?: boolean }[]; totals: { current: Sum; draft: Sum; overtimeChanged?: boolean } }
 
 /** A month ("2026-10") as the page's language writes one: "October 2026", "أكتوبر ٢٠٢٦". */
 export function monthText(month: string, intl: string): string {
@@ -99,7 +100,8 @@ export default function Simulation({ companyId, formKey, draft }: { companyId: s
                                             return (
                                                 <Row
                                                     key={x.userId}
-                                                    title={<bdi>{x.name}</bdi>}
+                                                    // In the page's language, or the one they have (LATER_CHANGES_PLAN.md §3.1, step 8k, PR 422).
+                                                    title={<bdi>{nameIn(locale, { en: x.name, ar: x.nameAr })}</bdi>}
                                                     detail={<>{t('sim_row').replace('{now}', amount(x.current)).replace('{then}', amount(x.draft))}{note && <> {note}</>}</>}
                                                     end={<bdi className="ui-sim-difference">{hidden ? signedDays(x.draft.deductionDays - x.current.deductionDays) : signed((x.draft.deductionMinor ?? 0) - (x.current.deductionMinor ?? 0))}</bdi>}
                                                 />

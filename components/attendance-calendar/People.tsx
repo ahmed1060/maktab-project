@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { UsersThreeIcon } from '@phosphor-icons/react/ssr'
 import { Button, Card, Row } from '@/components/ui'
 import { scheduleIdOn } from '@/lib/attendance/calendar'
+import { nameIn, namedInOrder } from '@/lib/names'
 import { fill } from './fill'
 import type { Ctx } from './types'
 
@@ -14,13 +15,16 @@ import type { Ctx } from './types'
  */
 export function PeopleCard({ ctx }: { ctx: Ctx }) {
     const { t, data, active, editable, send, askFirst, dateText, setMoving } = ctx
+    // Each in the page's language, or the one they have, in the page's order (LATER_CHANGES_PLAN.md §3.1, step 8k, PR 422).
+    const locale = ctx.locale === 'ar' ? 'ar' : 'en'
+    const named = (p: { name: string; nameAr?: string | null }) => nameIn(locale, { en: p.name, ar: p.nameAr })
 
-    const rows = useMemo(() => data.people.map(p => {
+    const rows = useMemo(() => namedInOrder(data.people, locale).map(p => {
         const mine = data.assignments.filter(a => a.userId === p.id)
         const now = scheduleIdOn(mine, data.defaults, data.today)
         const next = mine.filter(a => a.effectiveFrom > data.today).sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom))[0]
         return { ...p, now, next, explicit: mine.some(a => a.effectiveFrom <= data.today) }
-    }), [data])
+    }), [data, locale])
     const nameOf = (id: string | null | undefined) => data.schedules.find(s => s.id === id)?.name ?? t('attendance_none')
 
     // Nothing to move anybody to until there's a schedule.
@@ -40,7 +44,7 @@ export function PeopleCard({ ctx }: { ctx: Ctx }) {
                         return (
                             <Row
                                 key={r.id}
-                                title={<bdi>{r.name}</bdi>}
+                                title={<bdi>{named(r)}</bdi>}
                                 // Someone not moved anywhere is on the default, which says so.
                                 detail={!r.explicit && r.now ? fill(t('attendance_on_default'), { name: <bdi>{nameOf(r.now)}</bdi> }) : <bdi>{nameOf(r.now)}</bdi>}
                                 end={next && r.next && (
@@ -50,7 +54,7 @@ export function PeopleCard({ ctx }: { ctx: Ctx }) {
                                             <Button size="sm" variant="quiet" aria-label={t('attendance_withdraw_named').replace('{name}', next)}
                                                 onClick={() => askFirst({
                                                     title: t('attendance_withdraw_title'),
-                                                    body: t('attendance_withdraw_move_body').replace('{name}', r.name),
+                                                    body: t('attendance_withdraw_move_body').replace('{name}', named(r)),
                                                     confirm: t('attendance_withdraw'),
                                                     run: () => send(`/api/attendance/assignments/${r.next!.id}`, 'DELETE', undefined, t('attendance_withdrawn')),
                                                 })}>

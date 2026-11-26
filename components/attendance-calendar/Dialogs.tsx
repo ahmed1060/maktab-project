@@ -6,6 +6,7 @@ import AssigneeChecklist from '@/components/forms/AssigneeChecklist'
 import { Button, Dialog, DialogActions, Field, Select, TextInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { addDays } from '@/lib/attendance/calendar'
+import { namedInOrder } from '@/lib/names'
 import { focusFirstWrong } from './focus'
 import { firstOfNextMonth } from './hours-form'
 import type { Calendar, Schedule } from './types'
@@ -61,7 +62,7 @@ export function MoveDialog({ data, active, busy, onClose, onSubmit }: {
     onClose: () => void
     onSubmit: (move: { userIds: string[]; scheduleId: string; effectiveFrom: string }) => Promise<void>
 }) {
-    const { t } = useLanguage()
+    const { t, locale } = useLanguage()
     const form = useRef<HTMLFormElement>(null)
     const [userIds, setUserIds] = useState<string[]>([])
     const [scheduleId, setScheduleId] = useState(active[0]?.id ?? '')
@@ -82,7 +83,8 @@ export function MoveDialog({ data, active, busy, onClose, onSubmit }: {
             <form ref={form} className="ui-form" noValidate onSubmit={submit}>
                 <AssigneeChecklist
                     legend={t('attendance_people_label')}
-                    people={data.people.map(p => ({ id: p.id, firstName: p.name, lastName: '', role: p.role }))}
+                    // In the page's language and order: on an Arabic page, Arabic names first, in Arabic order (PR 422).
+                    people={namedInOrder(data.people, locale).map(p => ({ id: p.id, firstName: p.name, lastName: '', firstNameAr: p.nameAr ?? null, lastNameAr: null, role: p.role }))}
                     value={userIds}
                     onChange={ids => { setUserIds(ids); setErrors(x => ({ ...x, people: undefined })) }}
                     // The people come with the calendar, which has loaded.
