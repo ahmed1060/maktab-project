@@ -712,12 +712,13 @@ other filled in when one is typed, if that's possible.
      Add punch from a missing scan already named its people (8h). The
      notice telling reviewers a new photo waits is a name written at the
      time, with the last step.
-   - **8j. Attendance's numbers and work locations (#421):** whose each
-     terminal number is on the Numbers tab, its person picker in the
-     page's order, and the dialog that removes one; and the people a work
-     location is for, in its row and in its people picker. The Import tab
+   - **8j. Attendance's numbers and work locations (Done, #421):** whose
+     each terminal number is on the Numbers tab, its person pickers (for a
+     waiting number and a new one) in the page's order, and the dialog
+     that removes one; and the people a work location is for, in its row
+     and in its Choose people picker, in the page's order. The Import tab
      names no one: its report lists the numbers nobody has.
-   - **8k. The work calendar and the policy preview:** the work calendar's
+   - **8k. The work calendar and the policy preview,** next: the work calendar's
      people and their picker, and the people a policy change would move.
    - **Then, by area,** one PR or more each:
      requests (with the registered check-in phones, which the Requests
@@ -1560,3 +1561,8 @@ same day as drawn in the All users: status badges canvas
   locations as 8j, the work calendar and the policy preview as 8k. The
   registered phones are listed on the Requests page, so they go with
   requests.
+- **2026-11-26:** #421 merged: attendance's numbers and work locations
+  name people in the page's language (§3.1, step 8j): whose each terminal
+  number is, the Numbers tab's person pickers in the page's order, the
+  Remove dialog, and a work location's people in its row and its Choose
+  people picker. The work calendar and the policy preview next, as 8k.
