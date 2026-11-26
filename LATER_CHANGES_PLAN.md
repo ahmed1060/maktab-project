@@ -1310,7 +1310,12 @@ too.
 ### 7.3 Owners (Decided)
 
 - **An Owner switch** on an employee's page, set by the Super Admin or
-  the company's Admin, and logged.
+  the company's Admin, and logged. Its own permission, Set owners, that
+  the built-in Admin role has and other roles may be given (the owner's
+  answer, 2026-11-26), confirmed with a code as other changes to pay are.
+- **From when:** the month they're marked (the owner's answer,
+  2026-11-26). That month's draft payroll and attendance leave them out;
+  approved months stay as they were paid.
 - **An owner has:**
   - no attendance: their punches are ignored, and there are no days,
     lateness, absences, reminders or missing-punch alerts;
@@ -1862,3 +1867,8 @@ A step may take more than one PR.
   month on a draft month of the Payroll page, for whoever may save the
   draft; it reworks the month's days, then the register. The owner chose
   to add it to #425, merged with step 1 tonight.
+- **2026-11-26:** #425 merged: the contract start date (§7.2, step 1)
+  and Recalculate on the Payroll page (§7.1, step 2), together, at the
+  owner's word. Owners (§7.3) are next, in their own PRs: the owner's
+  answers added there, a permission of its own to set them, and from the
+  month they're marked.
