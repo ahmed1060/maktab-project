@@ -1252,6 +1252,39 @@ Checked read-only on the live database on 26 November:
   only.
 - **People already there** keep their account's date until theirs is set.
 
+#### How it's built (step 1)
+
+Checked read-only on the live database on 26 November: its 20 people have
+one start each, their hiring, and nothing else recorded about their jobs;
+each has a salary dated at that start, and two have one dated before it
+too.
+
+- **The permission:** `employees.edit_contract_start`, Change contract
+  start dates. For the company, never one's own, marked as affecting pay.
+  The built-in Admin role has it, and one migration gives it to each
+  company's Admin role there is already.
+- **On Add employee:** a date, the contract start date, today in the
+  company's time zone unless changed, from a year back to a year ahead.
+  The hiring and the starting salary are dated at the start of that day in
+  the company's time zone, where they were dated at the moment the account
+  was made. A date in a month whose payroll is approved is refused.
+- **Changing it:** on the person's profile, Change beside the date, for
+  whoever holds the permission, opens a dialog with the date. The Super
+  Admin alone changes an Admin's. It's refused:
+  - in a month, between the old date and the new, whose payroll is
+    approved;
+  - later than a salary change or anything else recorded about their job
+    after the start, which would leave it before the contract;
+  - more than a year back or ahead, or the date it is already.
+- **What moves:** their hiring's date, and their starting salary's when it
+  is their first salary and dated the old start. Otherwise the salary
+  history stays as it is, as the two dated before their start do. Logged,
+  with the old and the new date. Their days are worked out again from the
+  earlier of the two; a draft payroll is worked out each time it's opened.
+- **Shown:** the contract start date among a person's details, to whoever
+  sees their profile, and on one's own. When the account was made, for
+  the Super Admin only, from when their hiring was recorded.
+
 ### 7.3 Owners (Decided)
 
 - **An Owner switch** on an employee's page, set by the Super Admin or
@@ -1800,3 +1833,6 @@ A step may take more than one PR.
   Employees list.
 - **2026-11-26:** Owners can't be given tasks or obligations (§7.3), at
   the owner's word; the Owner switch waits until theirs are moved.
+- **2026-11-26:** Step 1 written (§7.2, How it's built): the permission
+  and its grant, the date on Add employee, changing it, what moves with
+  it, and where it shows.
