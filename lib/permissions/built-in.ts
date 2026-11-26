@@ -80,6 +80,7 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // (LATER_CHANGES_PLAN.md §7.2, PR 425). Given to the companies there
         // already are by its own migration.
         "employees.edit_contract_start": "COMPANY",
+        "employees.set_owner": "COMPANY",
         "salary.edit": "COMPANY",
 
         // Tasks: an Admin creates, edits, transfers, reviews, deletes, pays

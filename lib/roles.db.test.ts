@@ -158,6 +158,7 @@ const NAMES_IN_ARABIC = "20270119000000_names_in_arabic"
 // The built-in Admin role's employees.edit_contract_start, for the companies
 // there before it (LATER_CHANGES_PLAN.md §7.2, PR 425).
 const CONTRACT_START_GRANTED = "20270122000000_contract_start_permission"
+const OWNERS = "20270123000000_owner_periods"
 // Given to a new company's built-in roles only: no migration gives it to the
 // companies there before it, as none was when it came (CLIENT_PORTAL_PLAN.md
 // §9, §12 step 10d, skipped on 2026-11-20; PR 348).
@@ -242,6 +243,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(TAX_UPDATE_EMAILS))
         await db.query(sql(NAMES_IN_ARABIC))
         await db.query(sql(CONTRACT_START_GRANTED))
+        await db.query(sql(OWNERS))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
@@ -315,7 +317,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             // And one for the Admin role: client_accounts.manage (CLIENT_PORTAL_PLAN.md §12 step 6d, PR 330).
             // And one for the Admin role: employees.edit_contract_start (LATER_CHANGES_PLAN.md §7.2, PR 425).
             const { rows: roles } = await db.query(`SELECT "companyId", "builtIn", version FROM "Role" ORDER BY "companyId", "builtIn"`)
-            const version = { ADMIN: 17, TEAM_LEADER: 7, EMPLOYEE: 4 } as Record<string, number>
+            const version = { ADMIN: 18, TEAM_LEADER: 7, EMPLOYEE: 4 } as Record<string, number>
             for (const role of roles) expect(role.version, `${role.companyId} ${role.builtIn}`).toBe(version[role.builtIn])
             const { rows: companies } = await db.query(`SELECT "adminSettingsEnabled", "adminSettingsTabs" FROM "Company"`)
             expect(companies).toEqual([

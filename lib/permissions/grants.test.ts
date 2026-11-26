@@ -15,6 +15,8 @@ describe("permission codes", () => {
         "employees.assign_team": 8, "employees.assign_role": 9, "employees.request_role": 10,
         // When someone's contract started (LATER_CHANGES_PLAN.md §7.2, PR 425).
         "employees.edit_contract_start": 93,
+        // Adding someone to the owners (LATER_CHANGES_PLAN.md §7.3, PR 426).
+        "employees.set_owner": 94,
         "profile_requests.review": 11, "requests.view": 12, "requests.review": 13, "requests.reset_points": 14,
         "tasks.view": 15, "tasks.create": 16, "tasks.edit": 17, "tasks.transfer": 18, "tasks.review": 19,
         "tasks.delete": 20, "tasks.pay": 21, "tasks.penalize": 22,

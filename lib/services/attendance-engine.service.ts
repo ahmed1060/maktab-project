@@ -17,6 +17,7 @@ import { ATTENDANCE_PAGE } from "@/lib/attendance-notice-target"
 import type { NoticeKey } from "@/lib/notice"
 import { nameInArabic } from "@/lib/names"
 import { startMovedBetween } from "@/lib/contract-start"
+import { notOwnerIn } from "@/lib/owners"
 
 /**
  * Rebuilding attendance days (ATTENDANCE_PLAN.md §11). Pure and idempotent:
@@ -113,7 +114,8 @@ async function deriveMonth(
         tx.userSchedule.findMany({ where: { schedule: { companyId }, ...scope }, select: { userId: true, scheduleId: true, effectiveFrom: true } }),
         tx.scheduleDefault.findMany({ where: { companyId }, select: { scheduleId: true, effectiveFrom: true } }),
         tx.user.findMany({
-            where: { companyId, status: { not: "DELETED" }, ...(userIds ? { id: { in: [...userIds] } } : {}) },
+            // No days for an owner that month, their punches counting for nothing (LATER_CHANGES_PLAN.md §7.3, PR 426).
+            where: { companyId, status: { not: "DELETED" }, ...notOwnerIn(localToInstant(`${month}-01T00:00:00`, tz)), ...(userIds ? { id: { in: [...userIds] } } : {}) },
             select: {
                 id: true,
                 EmploymentEvent: { select: { type: true, effectiveFrom: true, deductSuspension: true, createdAt: true } },

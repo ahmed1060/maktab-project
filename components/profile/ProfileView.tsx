@@ -4,6 +4,7 @@ import { Button, Card, Details, StatusBadge } from '@/components/ui'
 import { countOf } from '@/lib/plural'
 import { STATUS_TONE, STATUS_WORD } from '@/lib/person-status'
 import { dayLabel } from '@/lib/end-contract'
+import { monthLabel } from '@/lib/owners'
 import type { ProfileAccess } from '@/lib/profile-access'
 import { PhotoRow } from './ProfilePhoto'
 import { RoleWaiting, type WaitingRole } from './RoleFields'
@@ -36,11 +37,13 @@ export type ProfileFacts = {
     contractStart: string | null
     /** When their account was made, a date, for the Super Admin's eye alone: null otherwise. */
     accountMade: string | null
+    /** The month they've been an owner since, 'YYYY-MM'; null for none (LATER_CHANGES_PLAN.md §7.3, PR 426). */
+    ownerSince?: string | null
 }
 
 const noop = () => {}
 
-export function ProfileView({ name, photo, access, facts, onResetPassword, onEndContract, onChangeContractStart = noop, roleAsk }: {
+export function ProfileView({ name, photo, access, facts, onResetPassword, onEndContract, onChangeContractStart = noop, onSetOwner = noop, roleAsk }: {
     name: string
     photo: string | null
     access: ProfileAccess
@@ -48,6 +51,7 @@ export function ProfileView({ name, photo, access, facts, onResetPassword, onEnd
     onResetPassword: () => void
     onEndContract: () => void
     onChangeContractStart?: () => void
+    onSetOwner?: () => void
     /**
      * Asking for another role, beside the role, for whoever may only ask
      * (ROLES_PLAN.md §6.12), or the change asked for, under it, while it
@@ -101,6 +105,20 @@ export function ProfileView({ name, photo, access, facts, onResetPassword, onEnd
                 : dayLabel(facts.contractStart, locale),
         }] : []),
         ...(facts.accountMade ? [{ label: t('account_made_label'), value: dayLabel(facts.accountMade, locale) }] : []),
+        // Among the owners since a month, to whoever sees them; whether they are, to whoever may say (PR 426).
+        ...(access.owner && (facts.ownerSince || access.setOwner) ? [{
+            label: t('owner_label'),
+            value: (
+                <span className="ui-detail-act">
+                    {facts.ownerSince ? t('owner_since').replace('{month}', monthLabel(facts.ownerSince, locale)) : t('owner_none')}
+                    {access.setOwner && (
+                        <Button size="sm" onClick={onSetOwner}>
+                            {t(facts.ownerSince ? 'owner_remove' : 'owner_add')}
+                        </Button>
+                    )}
+                </span>
+            ),
+        }] : []),
         ...(access.company ? [{ label: t('company_label'), value: facts.company ?? t('profile_none') }] : []),
         { label: t('gender_label'), value: t(facts.gender === 'FEMALE' ? 'female' : 'male') },
         ...(access.salary ? [{ label: t('monthly_base_salary_label'), value: facts.salary ? <span className="ui-num">{money(parseFloat(facts.salary) || 0)}</span> : t('no_data_available') }] : []),
