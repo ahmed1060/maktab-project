@@ -267,6 +267,29 @@ describe.skipIf(!ADMIN_URL)("payday and the attendance period, in Postgres", () 
         expect(kept.net).toBeCloseTo(kept.earned - kept.paid + kept.attendance, 2)
     })
 
+    it("refuses, once it holds the locks, a period that now ends later, not over yet (review on PR 430)", async () => {
+        vi.setSystemTime(new Date("2026-12-28T08:00:00Z"))
+        const real = Payroll.compute.bind(Payroll)
+        let first = true
+        // Payroll set to close on the 28th, today, between the first look and the locks.
+        const spy = vi.spyOn(Payroll, "compute").mockImplementation(async (...args: Parameters<typeof Payroll.compute>) => {
+            const out = await real(...args)
+            if (first) {
+                first = false
+                await db.query(`UPDATE "Company" SET "payrollCloseDay" = 28 WHERE id = 'c1'`)
+            }
+            return out
+        })
+        try {
+            expect(await Payroll.approve("c1", 2026, 12, SESSION)).toEqual({ refusal: expect.objectContaining({ code: "PERIOD_NOT_OVER", from: "2026-12-29" }) })
+        } finally {
+            spy.mockRestore()
+            vi.setSystemTime(NOW)
+            await db.query(`UPDATE "Company" SET "payrollCloseDay" = 24 WHERE id = 'c1'`)
+        }
+        expect((await run(12)).status).toBe("DRAFT")
+    })
+
     it("approves with the period as it is once it holds the locks, a payday changed meanwhile included (review on PR 430)", async () => {
         vi.setSystemTime(new Date("2026-12-28T08:00:00Z"))
         const real = Payroll.compute.bind(Payroll)
