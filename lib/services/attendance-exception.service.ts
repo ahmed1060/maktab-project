@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client"
 import { isDateString, toDateString } from "@/lib/attendance/calendar"
 import { AuditLogService } from "./audit-log.service"
 import { recomputeAfter } from "./attendance-recompute"
-import { lockDateMonths, lockedMonths } from "./attendance-lock"
+import { LOCK_WAIT, lockDateMonths, lockedMonths } from "./attendance-lock"
 import type { Visibility } from "./attendance-punch.service"
 import { nameInArabic } from "@/lib/names"
 
@@ -186,7 +186,7 @@ export class AttendanceExceptionService {
                 details: { companyId, userId: input.userId, date: input.date, subject: input.subject, outcome: input.outcome, reason },
             })
             return row
-        })
+        }, LOCK_WAIT)
         await recomputeAfter(companyId, input.date, [input.userId])
         return { ...saved, date: input.date }
     }
@@ -208,7 +208,7 @@ export class AttendanceExceptionService {
                 details: { companyId: d.companyId, userId: d.userId, date, subject: d.subject },
             })
             return { companyId: d.companyId, userId: d.userId, date }
-        })
+        }, LOCK_WAIT)
         await recomputeAfter(out.companyId, out.date, [out.userId])
     }
 }

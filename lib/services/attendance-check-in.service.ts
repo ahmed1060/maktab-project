@@ -4,7 +4,7 @@ import type { Prisma } from "@prisma/client"
 import { AttendanceChallengeService } from "./attendance-challenge.service"
 import { AttendanceLocationService } from "./attendance-location.service"
 import { recomputeAfter } from "./attendance-recompute"
-import { lockPunchMonths, lockedMonths } from "./attendance-lock"
+import { LOCK_WAIT, lockPunchMonths, lockedMonths } from "./attendance-lock"
 import { parsePhoneKey, signatureValid } from "@/lib/attendance/phone-keys"
 import { checkInText, type FaceResult } from "@/lib/attendance/signed-text"
 import { encryptFacePhoto, isJpeg } from "@/lib/face-photo-crypto"
@@ -186,7 +186,7 @@ export class AttendanceCheckInService {
             }
         // A dozen round trips to the database and maybe a failed face check's frame: not to be lost to Prisma's
         // default 5 s from Vercel's region to the database's, as the face check's photo was (production, 5 October).
-        }, { maxWait: 10_000, timeout: 30_000 })
+        }, { ...LOCK_WAIT, maxWait: 10_000 })
         if (!out.result) fail("PHONE_SIGNATURE_INVALID")
         if (out.result.outcome === "REFUSED") return out.result
         // The day rebuilt and the lateness measured side by side: the lateness reads the punches and the plan,

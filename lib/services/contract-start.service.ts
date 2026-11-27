@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { calendarDateStr } from "@/lib/time"
-import { lockMonths, lockPersonDates, lockedMonths } from "./attendance-lock"
+import { LOCK_WAIT, lockMonths, lockPersonDates, lockedMonths } from "./attendance-lock"
 import { inContractStartRange, planContractStart, startOfDate } from "@/lib/contract-start"
 
 /**
@@ -71,7 +71,7 @@ export class ContractStartService {
                 details: { from, to: date, salaryMoved: plan.moveSalaryIds.length > 0 },
             })
             return { from, to: date, earlier: plan.from.getTime() < to.getTime() ? plan.from : to }
-        })
+        }, LOCK_WAIT)
 
         // Never undoing the change: the nightly run catches up where this fails.
         try {

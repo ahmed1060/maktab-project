@@ -9,7 +9,7 @@ import { AttendancePolicyService } from "./attendance-policy.service"
 import { AttendanceCalendarService } from "./attendance-calendar.service"
 import { NotificationService } from "./notification.service"
 import { recomputeAfter } from "./attendance-recompute"
-import { SETTLED, lockDateMonths, lockPersonDates } from "./attendance-lock"
+import { LOCK_WAIT, SETTLED, lockDateMonths, lockPersonDates } from "./attendance-lock"
 import { refuseOwnerMonths } from "./owner.service"
 
 /**
@@ -131,7 +131,7 @@ export class MissionRequestService {
                 tx, userId, details: { companyId, type: input.kind, from: span.startDate, to: span.endDate, hoursPart: span.hoursPart, taskTitle: task?.title ?? null, reason },
             })
             return { id: created.id, status: created.status, startDate: span.startDate, endDate: span.endDate }
-        })
+        }, LOCK_WAIT)
     }
 
     static async of(id: string) {
@@ -179,7 +179,7 @@ export class MissionRequestService {
                 params: { when: whenParam(from, to), reason: reasonParam(rejectionReason) },
             }, id, tx)
             return { companyId: m.companyId, userId: m.userId, from, to }
-        })
+        }, LOCK_WAIT)
         if (decision.approve) await reworkMission(out.companyId, out.userId, out.from, out.to)
     }
 
@@ -212,7 +212,7 @@ export class MissionRequestService {
                 params: { when: whenParam(from, to), reason: reasonParam(reason) },
             }, id, tx)
             return { companyId: m.companyId, userId: m.userId, from, to }
-        })
+        }, LOCK_WAIT)
         await reworkMission(out.companyId, out.userId, out.from, out.to)
     }
 }
