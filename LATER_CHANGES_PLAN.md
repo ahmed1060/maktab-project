@@ -1796,7 +1796,9 @@ approving a month early, and decided the same day.
   (`ATTENDANCE_PENDING`, said under the date). Nothing settles them once
   the settlement is made. Days among them a later payroll already paid
   them for, approved before the end was recorded, are that payroll's: a
-  day it froze, where it has their payslip, isn't counted again.
+  day it froze, where it has their payslip, isn't counted again. One it
+  froze without paying them (left out of it) is counted, its mission
+  allowance as derived now, since freezing cleared it.
   The leaving month is the calendar month of the last working day, so a
   contract ending on the month's last day still counts the days after
   that month's close. Under the leaving month's lock and the next's, the
@@ -1814,7 +1816,13 @@ approving a month early, and decided the same day.
   The list of check-ins to review leaves out only those a decision would
   refuse: a check-in's month is read by the period, as deciding it does,
   so one after an approved month's close, the next month's, is still
-  there, and one on a day a settlement counted isn't.
+  there, and one on a day a settlement counted isn't. A punch beside a
+  settled day is that day's only where its shift is, as the engine
+  assigns it: someone taken back on the day after records their own day.
+  The work calendar's, a schedule's and the attendance policy's changes
+  go by the period too: refused where they reach a payroll month
+  approved, so a company holiday after an approved month's close, the
+  next month's, can still be added.
 - **Change this month's payday** (`PUT /api/payroll/{year}/{month}/payday`,
   `payroll.approve`, with the step-up a high-risk action asks for): the
   date, and while the run is a draft the attendance's last day, each
@@ -2402,3 +2410,9 @@ with قبول: «قبول العذر» and «قبول».
   later payroll had already paid them for, their end recorded since,
   counted again in the settlement; and Change payday could change a run
   being marked paid meanwhile. Each fixed, as built in §7.10.
+- **2026-11-27:** Codex's sixth review on #430: the work calendar, a
+  schedule and the policy refused changes by the calendar month, so one
+  after an approved month's close was refused though its month is open;
+  a punch beside a settled day was refused whatever shift it was on; and
+  a leaver's day a payroll froze without paying them counted no mission
+  allowance, as freezing had cleared it. Each fixed, as built in §7.10.
