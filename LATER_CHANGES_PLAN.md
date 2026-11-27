@@ -1207,8 +1207,8 @@ same day as drawn in the All users: status badges canvas
 The owner sent seven points on 2026-11-26, asked for them to be talked
 through first, and answered two rounds the same day. This part holds
 those answers, and payday and the attendance period, talked through on
-27 November (§7.10), and clearer words on Exceptions (§7.11). Two
-questions are open (§7.9). The names (§3.1) are paused after step 8l
+27 November (§7.10), and clearer words on Exceptions (§7.11). One
+question waits for the owner's own review, later (§7.9). The names (§3.1) are paused after step 8l
 (#424) until these are done; payroll, with the costs and charges lists,
 is next there.
 
@@ -1561,14 +1561,15 @@ In three PRs, each whole on its own:
 1. The contract start date (§7.2), which also fixes §7.1's days.
 2. Recalculate on the Payroll page (§7.1).
 3. Owners (§7.3).
-4. Clearer words on Exceptions (§7.11): one small PR.
+4. Clearer words on Exceptions (§7.11).
 5. Payday and the attendance period (§7.10), 10a to 10f, as the limits
-   on requests' first day follows the period.
+   on requests' first day follows the period. With step 4, in one PR,
+   each step in its own commits (the owner, 27 November).
 6. Limits on requests (§7.4): day off first, then permission hours and
    missions.
 7. Obligations with a client (§7.7).
 8. Salary advances (§7.5), Custody's new name first, once the owner has
-   reviewed §7.9's first point.
+   reviewed §7.9.
 9. Rating finished work (§7.6): DESIGN.md first, then tasks, then
    obligations.
 
@@ -1583,13 +1584,6 @@ A step may take more than one PR.
    Nizmo could stop an installment over it, warn, or take the most from
    the policy (10% unless changed). The owner reviews this later, before
    salary advances are built; nothing about it changes until then.
-2. **The other live company** (checked read-only on 27 November): payday
-   on the 25th, in its own month, without attendance in payroll, and no
-   payroll yet. With the same rules for it (§7.10), the 25th comes before
-   its month ends. Either:
-   - payroll closes on day 20, and payday stays on the 25th: five days to
-     approve, and a 25th on a Friday can still move back to the 24th; or
-   - payday on day 1 of the month after, as the other live company.
 
 ### 7.10 Payday and the attendance period (Decided)
 
@@ -1693,11 +1687,18 @@ approving a month early, and decided the same day.
     last day, so it moves to the working day after: 1 January 2027 is a
     Friday, so December is paid on Sunday 3 January.
   - A leaver is always owed their days, as nothing is paid ahead.
-  - Changed in production once 10a has merged, with the owner's yes, as
-    its period needs no change. Its first month on the new payday is paid
-    on the 1st of the next month instead of the 28th, once, a few days
-    later; no month is paid twice or missed. Until then, approving is as
-    today.
+  - Its first month on the new payday is paid on the 1st of the next
+    month instead of the 28th, once, a few days later; no month is paid
+    twice or missed.
+- **The other live company** (checked read-only on 27 November): payday
+  on the 25th, in its own month, without attendance in payroll, and no
+  payroll yet. The same rules apply to it, so the owner decided on 27
+  November: payday on day 1 of the month after, too.
+- **Both are moved by 10b's migration,** which the merge confirms: every
+  company whose payday doesn't come after its payroll's close is paid on
+  day 1 of the month after, its period staying the calendar month. That
+  is each company there is today, so no company's own settings are
+  written by hand.
 - **In six steps,** each with DESIGN.md first where a screen changes, then
   its plan, then the code:
   - **10a, payday:** a day or the month's last day, its own month or the
@@ -1749,7 +1750,7 @@ with قبول: «قبول العذر» and «قبول».
     every decision can be undone while the month's payroll is open."
   - Arabic in the same way, gender-neutral: «إعفاء من الخصم مع ذكر السبب،
     أو الخصم حسب السياسة».
-- **One small PR,** words and their tests only, before 10a.
+- **Words and their tests only,** before 10a, in the same PR (§7.8).
 
 ## Not here
 
@@ -2246,3 +2247,7 @@ with قبول: «قبول العذر» and «قبول».
   closing on the month's last day and payday on the 1st of the month
   after, and approving is refused where one still breaks it. The other
   live company's settings are open (§7.9).
+- **2026-11-27:** The other live company is paid on day 1 of the month
+  after, too, so 10b's migration moves every company whose payday doesn't
+  come after its close onto that. Steps 4 and 5 in one PR, at the owner's
+  word, each step in its own commits.
