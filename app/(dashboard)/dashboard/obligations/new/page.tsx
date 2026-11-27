@@ -16,6 +16,7 @@ import { useModules } from '@/lib/useModules'
 import { firstError } from '@/lib/form-errors'
 import AssigneeChecklist, { assigneesByRole } from '@/components/forms/AssigneeChecklist'
 import { useClientOptions } from '@/components/locations/useClientOptions'
+import { clientPickedIn, type ClientPick } from '@/lib/client-list'
 import { Button, ButtonLink, Card, Choice, Field, Page, PageHeader, Select, TextArea, TextInput } from '@/components/ui'
 
 /** The longest an obligation's title and description may be, as this form takes them. */
@@ -35,7 +36,7 @@ export default function NewObligationPage() {
     const now = useNow()
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
-    const [clientId, setClientId] = useState('')
+    const [clientPick, setClientPick] = useState<ClientPick>({ id: '', company: null })
     const [assigneeIds, setAssigneeIds] = useState<string[]>([])
     const [deadline, setDeadline] = useState('')
     const [difficulty, setDifficulty] = useState('')
@@ -64,6 +65,9 @@ export default function NewObligationPage() {
     const superAdmin = (session?.user as { role?: string } | undefined)?.role === 'SUPER_ADMIN'
     const seesClients = useCan().can('clients.view') && !(superAdmin && !selectedCompanyId)
     const clients = useClientOptions(mayCreate && seesClients)
+    // The one picked in the company chosen now, while the select is shown:
+    // switching company leaves none, not the last one's (Codex review of PR 435).
+    const clientId = seesClients ? clientPickedIn(clientPick, selectedCompanyId ?? null) : ''
 
     useEffect(() => {
         if (!mayCreate) return
@@ -163,7 +167,7 @@ export default function NewObligationPage() {
                 // select, which takes the focus, and the list is asked again.
                 // It's taken off, so the select shows what would be sent.
                 if (CLIENT_REFUSALS.includes(data.code)) {
-                    setClientId('')
+                    setClientPick({ id: '', company: selectedCompanyId ?? null })
                     setFieldErrors({ clientId: t('obligation_client_refused') })
                     setIsSubmitting(false)
                     clients.retry()
@@ -225,7 +229,7 @@ export default function NewObligationPage() {
                                 : (
                                     <Field label={t('location_client')} hint={clients.loading ? t('loading') : t('obligation_client_hint')} error={fieldErrors.clientId || undefined}>{p => (
                                         <Select {...p} icon={StorefrontIcon} name="clientId" value={clientId} disabled={isSubmitting || clients.loading}
-                                            onChange={e => { setClientId(e.target.value); clearError('clientId') }}
+                                            onChange={e => { setClientPick({ id: e.target.value, company: selectedCompanyId ?? null }); clearError('clientId') }}
                                             options={[
                                                 { value: '', label: t('task_no_client') },
                                                 ...clients.clients.filter(c => !c.archived).map(c => ({ value: c.id, label: c.name })),

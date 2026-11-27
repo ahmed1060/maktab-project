@@ -119,11 +119,24 @@ describe("an obligation's client, as it's asked for", () => {
         expect(source).toContain("setFieldErrors({ clientId: t('obligation_client_refused') })")
         expect(source).toContain("setClientRefused(n => n + 1)")
         // Taken off, so what's shown is what would be sent.
-        expect(source).toContain("if (CLIENT_REFUSALS.includes(data.code)) {\n                    setClientId('')")
+        expect(source).toContain("if (CLIENT_REFUSALS.includes(data.code)) {\n                    setClientPick({ id: '', company: selectedCompanyId ?? null })")
         // Once it's on again: while it's being sent, the select is off.
         expect(source).toContain("if (clientRefused) document.querySelector<HTMLElement>('#field-clientId select')?.focus()")
         expect(source).toContain("const CLIENT_REFUSALS = ['CLIENT_NOT_FOUND', 'CROSS_COMPANY_CLIENT_FORBIDDEN', 'CLIENT_ARCHIVED']")
         expect(source).toContain("const started = !!(title || description || clientId ||")
+    })
+
+    it("is the company's it was picked in: a Super Admin who switches company sends none (Codex review of PR 435)", async () => {
+        const { clientPickedIn } = await import("./client-list")
+        expect(clientPickedIn({ id: "k1", company: "c1" }, "c1")).toBe("k1")
+        expect(clientPickedIn({ id: "k1", company: "c1" }, "c2")).toBe("")
+        expect(clientPickedIn({ id: "k1", company: "c1" }, null)).toBe("")
+        // Someone of one company: none chosen, then or now.
+        expect(clientPickedIn({ id: "k1", company: null }, null)).toBe("k1")
+        const source = read(FORM)
+        expect(source).toContain("const clientId = seesClients ? clientPickedIn(clientPick, selectedCompanyId ?? null) : ''")
+        expect(source).toContain("onChange={e => { setClientPick({ id: e.target.value, company: selectedCompanyId ?? null }); clearError('clientId') }}")
+        expect(source).not.toContain("const [clientId, setClientId]")
     })
 
     it("is refused by the route with its code, for the form to say under the select", () => {
