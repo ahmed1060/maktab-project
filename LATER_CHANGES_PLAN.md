@@ -22,8 +22,9 @@ words on Exceptions (§7.11) and payday and the attendance period
 (§7.10) done in one PR (#430); the limits on requests (§7.4) done: day
 off (#431), every writer waiting for a month's lock as long as an import
 may hold it (#432, ATTENDANCE_PLAN.md §12.1), permission hours (#433) and
-missions (#434); obligations with a client (§7.7, step 7) under way,
-7a (an obligation's client) done (#435), 7b (the client's page) next; the
+missions (#434); obligations with a client (§7.7, step 7) done (#435),
+with no section on a client's page (the owner, 27 November); salary
+advances (§7.5, step 8) next, once the owner has reviewed §7.9; the
 names (§3) paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
@@ -1619,12 +1620,13 @@ In three PRs, each whole on its own:
   repeating one comes round, it keeps the client.
 - The client shows in the obligations list and an obligation's details,
   and the list can be filtered by client.
-- A client's page gets an Obligations section, coming and overdue.
+- No Obligations section on a client's page: the owner decided against
+  it on 27 November, after it was first decided.
 - Whether picking a client fills in their responsible accountant, and
   whether clients see their obligations, wait for the client's area
   (`CLIENT_PORTAL_PLAN.md` §13).
 
-Built in two PRs:
+Built in one PR:
 
 - **7a, an obligation's client** (Done, #435; as built, DESIGN.md §5.5,
   An obligation's client):
@@ -1649,7 +1651,8 @@ Built in two PRs:
     never widening it.
   - **Deleting a client:** one with obligations is archived instead, as
     one with tasks or records is, so they keep it.
-- **7b, the client's page:** an Obligations section, coming and overdue.
+- **7b, the client's page (Dropped):** an Obligations section, coming and
+  overdue. The owner decided on 27 November not to add it.
 
 ### 7.8 Order (Decided)
 
@@ -2555,3 +2558,6 @@ with قبول: «قبول العذر» and «قبول».
 - **2026-11-27:** #435 merged (7a, an obligation's client); its migration
   applies to production with the merge. 7b, the client's page's Obligations
   section, next.
+- **2026-11-27:** 7b dropped, as the owner decided: no Obligations section
+  on a client's page. Step 7 is done with 7a (#435). Salary advances (step
+  8) are next, once the owner has reviewed §7.9.
