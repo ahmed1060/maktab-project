@@ -8,6 +8,7 @@ import { calendarDateStr } from "@/lib/time"
 import { addDays } from "@/lib/attendance/calendar"
 import { policyOn } from "@/lib/attendance/policy"
 import { dayOffWindow, type DayOffDays } from "@/lib/day-off-window"
+import { LOCK_WAIT } from "./attendance-lock"
 import type { Prisma } from "@prisma/client"
 
 /**
@@ -78,6 +79,14 @@ export class DayOffService {
             throw new Error("END_DATE_BEFORE_START")
         }
 
+        // A first look before anything is locked, so days far outside the window are refused at
+        // once, not listed day by day with every month between locked (Codex review on PR 431).
+        // The look under the locks below is the one that counts.
+        const first = await DayOffService.window(userCompanyId ?? null)
+        if (requestDateStr < first.from || finalEndDateStr > first.to) throw new DayOffOutOfRange(first.from, first.to)
+
+        // Waits on the months' locks as long as an import may hold them, past Prisma's five
+        // seconds (Codex review on PR 431).
         return await prisma.$transaction(async (tx) => {
             // Never over a mission waiting or approved (ATTENDANCE_PLAN.md
             // §6.10, decision 10, PR 283), checked under the lock a mission
@@ -173,7 +182,7 @@ export class DayOffService {
             })
 
             return newRequest
-        })
+        }, LOCK_WAIT)
     }
 
     static async approve(id: string, input: AdminUpdateDayOffInput, session: any) {

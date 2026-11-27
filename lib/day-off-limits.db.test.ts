@@ -128,7 +128,8 @@ describe.skipIf(!ADMIN_URL)("asking for a day off within its days, in Postgres",
         const held: boolean[] = []
         const window = DayOffService.window.bind(DayOffService)
         const spy = vi.spyOn(DayOffService, "window").mockImplementation(async (...args) => {
-            for (const month of ["2026-11", "2026-12"]) {
+            // The look under the locks, given the transaction; not the first look before them.
+            if (args[1]) for (const month of ["2026-11", "2026-12"]) {
                 const { rows } = await other.query(`SELECT pg_try_advisory_lock(hashtext($1)) AS got`, [`attendance-month:c1:${month}`])
                 held.push(!rows[0].got)
                 if (rows[0].got) await other.query(`SELECT pg_advisory_unlock(hashtext($1))`, [`attendance-month:c1:${month}`])
@@ -143,6 +144,46 @@ describe.skipIf(!ADMIN_URL)("asking for a day off within its days, in Postgres",
             await other.end()
         }
     })
+
+    it("refuses days far outside them at once, before listing them or locking their months (Codex review on #431)", async () => {
+        const { DayOffService } = DayOff
+        const started = performance.now()
+        await expect(DayOffService.create({ date: "2026-11-03", endDate: "9998-12-31", type: "REGULAR" }, asker("e1", "c1"))).rejects.toMatchObject({ message: "DAY_OFF_OUT_OF_RANGE", from: "2026-11-01", to: "2027-02-27" })
+        await expect(DayOffService.create({ date: "0001-01-01", endDate: "2026-11-03", type: "REGULAR" }, asker("e1", "c1"))).rejects.toMatchObject({ message: "DAY_OFF_OUT_OF_RANGE", from: "2026-11-01", to: "2027-02-27" })
+        expect(performance.now() - started).toBeLessThan(3000)
+    }, 120_000)
+
+    it("goes by the look under the locks, whatever the first look before them said", async () => {
+        const { DayOffService } = DayOff
+        const window = DayOffService.window.bind(DayOffService)
+        // The first look, before any lock, says more days than there are by the time the locks are held.
+        const spy = vi.spyOn(DayOffService, "window").mockImplementation(async (...args) => args[1] ? window(...args) : { from: "2000-01-01", to: "2099-12-31" })
+        try {
+            await expect(DayOffService.create({ date: "2026-10-30", type: "CASUAL" }, asker("e1", "c1"))).rejects.toMatchObject({ message: "DAY_OFF_OUT_OF_RANGE", from: "2026-11-01", to: "2027-02-27" })
+            await expect(DayOffService.create({ date: "2027-02-28", type: "CASUAL" }, asker("e1", "c1"))).rejects.toMatchObject({ message: "DAY_OFF_OUT_OF_RANGE", from: "2026-11-01", to: "2027-02-27" })
+        } finally {
+            spy.mockRestore()
+        }
+        expect(await asked("e1")).not.toContain("2026-10-30")
+        expect(await asked("e1")).not.toContain("2027-02-28")
+    })
+
+    it("waits behind an import holding a month's lock longer than five seconds, then is taken (Codex review on #431)", async () => {
+        const { DayOffService } = DayOff
+        const importing = new Client({ connectionString: url.toString() })
+        await importing.connect()
+        try {
+            await importing.query("BEGIN")
+            await importing.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, ["attendance-month:c1:2026-12"])
+            const asking = DayOffService.create({ date: "2026-12-02", type: "CASUAL" }, asker("e1", "c1")).then(() => "taken", (e: Error) => e.message)
+            await new Promise(resolve => setTimeout(resolve, 6000))
+            await importing.query("COMMIT")
+            expect(await asking).toBe("taken")
+            expect(await asked("e1")).toContain("2026-12-02")
+        } finally {
+            await importing.end()
+        }
+    }, 30_000)
 
     it("refuses a day a final settlement counted, as for a month paid", async () => {
         const { DayOffService } = DayOff

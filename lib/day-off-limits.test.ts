@@ -148,6 +148,16 @@ describe("the Requests page", () => {
         expect(client).toContain("(k === 'dayOff' && !!dayOffAsk)")
     })
 
+    it("checks the days before listing them, and waits on their months' locks as long as an import may hold them (Codex review on #431)", () => {
+        const service = readFileSync("lib/services/day-off.service.ts", "utf8")
+        const create = service.slice(service.indexOf("static async create("), service.indexOf("static async approve("))
+        const first = create.indexOf("const first = await DayOffService.window(userCompanyId ?? null)\n")
+        expect(first).toBeGreaterThan(-1)
+        expect(create).toContain("if (requestDateStr < first.from || finalEndDateStr > first.to) throw new DayOffOutOfRange(first.from, first.to)")
+        expect(first).toBeLessThan(create.indexOf("prisma.$transaction("))
+        expect(create.trimEnd().endsWith("}, LOCK_WAIT)\n    }")).toBe(true)
+    })
+
     it("answers a day outside them with the days that may be asked for", () => {
         const route = readFileSync("app/api/day-off-requests/route.ts", "utf8")
         expect(route).toContain("if (error instanceof DayOffOutOfRange) return ApiResponse.refused(400, `Leave can be asked for from ${error.from} to ${error.to}.`, error.message, { from: error.from, to: error.to })")
