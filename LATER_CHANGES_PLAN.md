@@ -1795,14 +1795,20 @@ approving a month early, and decided the same day.
   overtime, a permission, a missing punch or a mission not yet decided
   (`ATTENDANCE_PENDING`, said under the date). Nothing settles them once
   the settlement is made.
-  The settlement then freezes what it counted. Under the leaving month's
-  lock and the next's, it marks those days with itself
-  (`AttendanceDay.lockedBySettlementId`, a column added on its own) and
-  keeps the leaving month's close where it counted from (its run's
-  `periodEnd`). A marked day is never rebuilt, nor marked again by the
-  next month's approval; a change to it is refused as one to a month
-  already paid; and the leaving month's attendance end no longer moves,
-  so Change payday changes only its payday.
+  The leaving month is the calendar month of the last working day, so a
+  contract ending on the month's last day still counts the days after
+  that month's close. Under the leaving month's lock and the next's, the
+  settlement reads those days again, rebuilt, and is refused if they
+  came to something else meanwhile (`ATTENDANCE_CHANGED`) or the close
+  moved (`PAYROLL_PERIOD_CHANGED`). Then it freezes what it counted: it
+  marks those days with itself (`AttendanceDay.lockedBySettlementId`, a
+  column added on its own) and keeps the leaving month's close where it
+  stood (its run's `periodEnd`), whether or not there were days after
+  it. A marked day is never rebuilt, never counted by a payroll (someone
+  taken back on isn't paid for it twice), nor marked again by the next
+  month's approval; a change to it is refused as one to a month already
+  paid; and a month with a contract settled in it keeps its attendance
+  end, so Change payday changes only its payday.
 - **Change this month's payday** (`PUT /api/payroll/{year}/{month}/payday`,
   `payroll.approve`, with the step-up a high-risk action asks for): the
   date, and while the run is a draft the attendance's last day, each
@@ -2376,3 +2382,9 @@ with قبول: «قبول العذر» and «قبول».
 - **2026-11-27:** Codex's third review on #430: approving read the period
   before holding the company's settings; a day a final settlement counted
   could still change. Each fixed, as built in §7.10.
+- **2026-11-27:** Codex's fourth review on #430: a marked day still
+  counted by a payroll; a settlement's attendance read before the month
+  locks; the close kept only where there were days after it. And, found
+  fixing them, a contract ending on the month's last day counted its
+  days after the close in no payroll and no settlement. Each fixed, as
+  built in §7.10.
