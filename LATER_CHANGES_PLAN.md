@@ -20,9 +20,9 @@ mark, permission and pay (#426, step 3a), what they're not asked for
 3b2), and the Owners list (#429, step 3c), so owners are done; clearer
 words on Exceptions (§7.11) and payday and the attendance period
 (§7.10) done in one PR (#430); the limits on requests (§7.4) under way,
-day off done (#431), permission hours next, after every writer waits
-for a month's lock (ATTENDANCE_PLAN.md §12.1); the names (§3) paused
-after step 8l (#424).** Done: the development database (§4),
+day off done (#431), and every writer now waits for a month's lock as
+long as an import may hold it (#432, ATTENDANCE_PLAN.md §12.1);
+permission hours next; the names (§3) paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their limit set
@@ -1515,6 +1515,32 @@ In three PRs, each whole on its own:
       them (`LOCK_WAIT`), as approving does (Codex review on #431).
   - **4b, permission hours:** the policy's choice of when they may be
     asked for, as above, "around the day" as today unless changed.
+    - **As built:** the permission hours rules get `when`:
+      `AROUND_THE_DAY` (before, or within `afterTheFactHours` after, as
+      today) or `ANY_DAY`. A version saved before it reads as
+      `AROUND_THE_DAY`, so nothing is migrated. The policy in force today
+      decides, as for day off's months ahead. With `ANY_DAY`, the days are
+      day off's rule with one month ahead (`dayOffWindow`): from the later
+      of the 1st of last month and the day after the latest approved or
+      paid payroll's period, to today plus one month, today the
+      company's. Asking reads them holding the date's months' locks, so a
+      month approved meanwhile can't let a day through, and refuses a day
+      outside them with `PERMISSION_OUT_OF_RANGE` and the days, before
+      the date's months are checked as open; inside them, a day already
+      passed may be asked for, whatever its hours. With `AROUND_THE_DAY`
+      nothing changes. The day's balance (`/api/attendance/permissions/
+      balance`) sends the days, or none around the day, so the form's
+      calendar offers only them wherever it opens (Requests, a day on
+      Attendance, check-in), and a refusal says them under the date, in
+      the words day off's use, with their own (`daysText`, in
+      `lib/day-off-window.ts` now, so the form needs nothing from day
+      off's). The policy's dialog asks it after the row of its limits, a
+      choice between two (radio buttons, as `DESIGN.md` §5.3 has a few
+      options: a select cut "Any day, from last month to a month ahead"
+      short on a phone), any day saying under it how its days are
+      counted, the hours after shown only around the day; the card says
+      which. Day off's window is read through one function with it
+      (today, and the first day not paid).
   - **4c, missions:** the policy's days back, 7 unless changed, which
     every version reads as 7 from then on.
 
@@ -2460,3 +2486,8 @@ with قبول: «قبول العذر» and «قبول».
   within its days, with the balance; every writer waiting for a month's
   lock as long as an import may hold it (ATTENDANCE_PLAN.md §12.1) next,
   then permission hours (4b).
+- **2026-11-27:** #432 merged. Every writer waits for a month's lock as
+  long as an import may hold it, and a test keeps it so
+  (ATTENDANCE_PLAN.md §12.1); permission hours (4b) next.
+- **2026-11-27:** Step 6 continues, 4b (permission hours): as built in
+  §7.4.

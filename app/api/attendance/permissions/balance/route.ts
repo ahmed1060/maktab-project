@@ -6,7 +6,9 @@ import { asksForSelf } from "@/lib/attendance/punch-access"
 /**
  * One's own permission hours for a month: allowed, spent, waiting and left.
  * With `date`, under the policy in force that day — the rules a request for
- * it is held to.
+ * it is held to. And the days they may be asked for, where the policy in
+ * force today says any day (LATER_CHANGES_PLAN.md §7.4, 4b), for the form's
+ * calendar to offer only them; none around the day.
  */
 export const GET = withStandardHandler(async (req, session) => {
     const self = asksForSelf(session)
@@ -14,5 +16,8 @@ export const GET = withStandardHandler(async (req, session) => {
     const params = new URL(req.url).searchParams
     const date = params.get("date")
     const month = date?.slice(0, 7) ?? params.get("month") ?? (await AttendanceRequestService.todayIn(self.companyId)).slice(0, 7)
-    return ApiResponse.success(await AttendanceRequestService.permissionBalance(self.companyId, self.userId, month, date))
+    return ApiResponse.success({
+        ...await AttendanceRequestService.permissionBalance(self.companyId, self.userId, month, date),
+        days: await AttendanceRequestService.permissionDays(self.companyId),
+    })
 })

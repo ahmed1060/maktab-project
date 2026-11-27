@@ -2,10 +2,10 @@
 
 import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import DatePickerSingle from '@/components/DatePickerSingle'
-import { Button, Dialog, DialogActions, Field, Select, TextInput } from '@/components/ui'
+import { Button, Choice, Dialog, DialogActions, Field, Select, TextInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { countOf } from '@/lib/plural'
-import { ABSENCE_MULTIPLIERS, DAY_OFF_MONTHS, MISSION_PAYS, PERMISSION_TYPES, type MissionAllowance, type PolicyBody } from '@/lib/attendance/policy'
+import { ABSENCE_MULTIPLIERS, DAY_OFF_MONTHS, MISSION_PAYS, PERMISSION_TYPES, PERMISSION_WHEN, type MissionAllowance, type PolicyBody } from '@/lib/attendance/policy'
 import { rebaseOnDate, startFromStale, type Based } from '@/lib/attendance/rebase'
 import { firstOfNextMonth } from '@/components/attendance-calendar/hours-form'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
@@ -247,11 +247,21 @@ export default function PolicyDialog({ title, start, startOn, defaultFrom, today
                                         <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={1} max={31} name="permissionHours.maxRequestsPerMonth" value={ph.maxRequestsPerMonth}
                                             onChange={e => edit(f => ({ ...f, permissionHours: { ...f.permissionHours, maxRequestsPerMonth: e.target.value } }), 'permissionHours.maxRequestsPerMonth')} />
                                     )}</Field>
-                                    <Field label={t('attendance_permission_after')} hint={t('attendance_permission_after_hint')} error={errorOf('permissionHours.afterTheFactHours')}>{p => (
-                                        <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={0} max={24 * 7} name="permissionHours.afterTheFactHours" value={ph.afterTheFactHours}
-                                            onChange={e => edit(f => ({ ...f, permissionHours: { ...f.permissionHours, afterTheFactHours: e.target.value } }), 'permissionHours.afterTheFactHours')} />
-                                    )}</Field>
                                 </div>
+                                {/* When they may be asked for (LATER_CHANGES_PLAN.md §7.4, 4b): a choice between two; the hours after only around the day. */}
+                                <Choice legend={t('attendance_permission_when')} name="permissionHours.when" value={ph.when}
+                                    onChange={when => edit(f => ({ ...f, permissionHours: { ...f.permissionHours, when } }), 'permissionHours.afterTheFactHours')}
+                                    options={PERMISSION_WHEN.map(w => ({ value: w, label: w === 'ANY_DAY'
+                                        ? <span className="ui-choice-text">{t('attendance_permission_when_ANY_DAY')}<span className="ui-hint">{t('attendance_permission_when_any_hint')}</span></span>
+                                        : t('attendance_permission_when_AROUND_THE_DAY') }))} />
+                                {ph.when === 'AROUND_THE_DAY' && (
+                                    <div className="ui-field-row">
+                                        <Field label={t('attendance_permission_after')} hint={t('attendance_permission_after_hint')} error={errorOf('permissionHours.afterTheFactHours')}>{p => (
+                                            <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={0} max={24 * 7} name="permissionHours.afterTheFactHours" value={ph.afterTheFactHours}
+                                                onChange={e => edit(f => ({ ...f, permissionHours: { ...f.permissionHours, afterTheFactHours: e.target.value } }), 'permissionHours.afterTheFactHours')} />
+                                        )}</Field>
+                                    </div>
+                                )}
                                 <Field label={t('attendance_permission_carry')}>{p => (
                                     <Select {...p} value={ph.carryOver}
                                         options={[{ value: 'LAPSE', label: t('attendance_carry_lapse') }, { value: 'CARRY_ONCE', label: t('attendance_carry_once') }]}

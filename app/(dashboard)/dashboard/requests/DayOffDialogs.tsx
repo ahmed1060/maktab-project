@@ -5,7 +5,7 @@ import { useToast } from '@/context/ToastContext'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { countOf } from '@/lib/plural'
 import { workDays } from '@/lib/day-off-range'
-import { overBalance, type DayOffDays } from '@/lib/day-off-window'
+import { daysText, overBalance, type DayOffDays } from '@/lib/day-off-window'
 import { ASKED_DAY_OFF_TYPES, DAY_OFF_TYPE_LABEL, type AskedDayOffType } from '@/lib/day-off-types'
 import type { TranslationKey } from '@/lib/translations'
 import { named, type FeedRow } from '@/lib/requests/kinds'
@@ -126,18 +126,6 @@ export function DecideDayOff({ request, decision, onClose, onDecided }: {
             )}
         </Dialog>
     )
-}
-
-/**
- * Which days a day off may be asked for, in the page's language and digits
- * (LATER_CHANGES_PLAN.md §7.4, 4a): "from 1 November to 27 December", with
- * the years where the two differ.
- */
-export function daysText(t: (key: TranslationKey) => string, locale: string, days: DayOffDays): string {
-    const years = days.from.slice(0, 4) !== days.to.slice(0, 4)
-    const format = new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'long', ...(years ? { year: 'numeric' } : {}), timeZone: 'UTC' })
-    const text = (iso: string) => format.format(new Date(`${iso}T00:00:00Z`))
-    return t('requests_day_off_range').replace('{from}', text(days.from)).replace('{to}', text(days.to))
 }
 
 /**
