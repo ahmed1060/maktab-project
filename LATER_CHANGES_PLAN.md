@@ -2031,12 +2031,15 @@ installments (§7.9).
      its own.
    - The net after all of them is what a salary advance's installment
      limit is worked out on (§7.5).
+   - **For a person** (the owner, 27 November): an employee's page lists
+     each of the company's deductions, with As the company, Their own
+     rate (or amount), or Not applied, for someone not insured yet, a
+     part-timer insured through another job, someone past the insurance
+     age or a foreign worker under another scheme. Owners have no payslip
+     (§7.3), so none of this touches them.
 3. **Open:**
    - What the percentages are of: the month's pay before them (the salary
      with its additions and Nizmo's deductions), or the salary alone.
-   - Whether they apply to everyone with a payslip, or can be set for a
-     person: turned off for someone not insured, or a rate of their own.
-     Owners have no payslip (§7.3), so these never touch them.
    - Egypt's income tax is worked out by brackets and social insurance on
      an insured wage with a floor and a ceiling. A flat percentage is a
      simplification, which may do for now.
@@ -2639,3 +2642,5 @@ installments (§7.9).
   ceiling, as a company may be outside Egypt; Block or Warn is a choice;
   installments kept going after someone leaves stay on their record as
   money owed, marked paid when received.
+- **2026-11-27:** The owner agreed to a per-person setting for each payroll
+  deduction on an employee's page (§7.12).
