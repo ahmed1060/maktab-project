@@ -71,7 +71,8 @@ export class DayOffService {
         const userName = session.user.name
 
         const requestDateStr = new Date(input.date).toISOString().split('T')[0]
-        const finalEndDateStr = input.endDate ? new Date(input.endDate).toISOString().split('T')[0] : requestDateStr
+        // Only a regular day off runs over several days; the others are their one day, whatever end is sent.
+        const finalEndDateStr = input.type === 'REGULAR' && input.endDate ? new Date(input.endDate).toISOString().split('T')[0] : requestDateStr
 
         if (input.type === 'REGULAR' && finalEndDateStr < requestDateStr) {
             throw new Error("END_DATE_BEFORE_START")
@@ -90,15 +91,13 @@ export class DayOffService {
             // the locks of the months its days fall in: approving one of them meanwhile waits
             // for this, or came first and its days are no longer offered. Never on a day a
             // final settlement counted, paid as a month approved is.
-            // Only a regular day off runs over several days; the others are kept as their first.
-            const lastDay = input.type === 'REGULAR' ? finalEndDateStr : requestDateStr
             if (userCompanyId) {
                 const days: string[] = []
-                for (let d = requestDateStr; d <= lastDay; d = addDays(d, 1)) days.push(d)
+                for (let d = requestDateStr; d <= finalEndDateStr; d = addDays(d, 1)) days.push(d)
                 if ((await lockDateMonths(tx, userCompanyId, days, userId)).includes(SETTLED)) throw new Error("PAYROLL_MONTH_LOCKED")
             }
             const window = await DayOffService.window(userCompanyId ?? null, tx)
-            if (requestDateStr < window.from || lastDay > window.to) throw new DayOffOutOfRange(window.from, window.to)
+            if (requestDateStr < window.from || finalEndDateStr > window.to) throw new DayOffOutOfRange(window.from, window.to)
             if (await tx.missionRequest.findFirst({ where: missionOver(userId, requestDateStr, finalEndDateStr), select: { id: true } })) {
                 throw new Error("DAY_OFF_OVERLAPS_MISSION")
             }
