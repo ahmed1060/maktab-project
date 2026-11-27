@@ -2084,6 +2084,44 @@ Found on 2026-11-27 from a November payslip whose salary was split at day
    November. November's payroll is still to be recalculated, by the owner
    pressing Recalculate on the Payroll page before approving it.
 
+### 7.14 Handing an obligation in (Decided)
+
+Found on 2026-11-27 from an obligation's page that a Team Leader was
+assigned to: it had no Your submission, so they couldn't hand it in.
+
+1. **The bug:** the page offered Your submission only to people who don't
+   see others' obligations. Anyone who does, a Team Leader or an Admin,
+   given one couldn't hand it in from its page, though the server takes it
+   from whoever it's assigned to. In the other companies, the people given
+   obligations were employees, so it didn't show.
+2. **Decided (the owner, 27 November):**
+   - Your submission is for whoever it's assigned to, whatever their role.
+   - A Team Leader on it keeps deciding it, as their team's. Someone who
+     decides obligations company-wide still doesn't decide their own.
+3. One PR, after #437.
+
+### 7.15 Who approves what (Decided)
+
+On 2026-11-27 the owner asked for a permission to review and approve tasks
+and one for obligations, and to go over anything approved or accepted
+without its own.
+
+1. Tasks have Review submitted tasks, and obligations Approve or reject
+   obligations, each for the team or the whole company. Leave, profile
+   changes, the Requests page, payroll, overtime, permission hours,
+   missions, phones, face photos and waiving a debt each have their own.
+2. **Kept as they are (the owner, 27 November):**
+   - Correct attendance also decides missing punches and flagged punches,
+     and excuses a day.
+   - Prepare payroll also resolves a payroll discrepancy.
+3. **Decided (the owner, 27 November):** access reviews get their own
+   permission, instead of Assign roles: seeing the company's reviews,
+   answering them, and being told when one opens. Asking for a change
+   still sends a role change request to the Super Admin. Every role with
+   Assign roles today gets it too, so nothing changes until it's
+   unticked. One PR, after §7.14's; `ROLES_PLAN.md` §6.14 says who
+   answers.
+
 ## Not here
 
 - The client portal's later ideas stay in `CLIENT_PORTAL_PLAN.md` §13.
@@ -2696,3 +2734,11 @@ Found on 2026-11-27 from a November payslip whose salary was split at day
 - **2026-11-27:** #437 merged (§7.13). November's payroll waits for the
   owner to press Recalculate before it's approved. No error in production
   after it.
+- **2026-11-27:** Handing an obligation in (§7.14): a Team Leader given
+  one had no Your submission on its page. It's for whoever it's assigned
+  to, whatever their role, and a Team Leader on it still decides it. One
+  PR, after #437.
+- **2026-11-27:** Who approves what (§7.15): tasks and obligations already
+  have their own. Correct attendance and Prepare payroll keep what they
+  decide; access reviews get their own permission, instead of Assign
+  roles, in a PR after §7.14's.
