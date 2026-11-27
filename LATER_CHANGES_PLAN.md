@@ -1794,7 +1794,9 @@ approving a month early, and decided the same day.
   waits on a decision: a day incomplete or a departure to confirm, or
   overtime, a permission, a missing punch or a mission not yet decided
   (`ATTENDANCE_PENDING`, said under the date). Nothing settles them once
-  the settlement is made.
+  the settlement is made. Days among them a later payroll already paid
+  them for, approved before the end was recorded, are that payroll's: a
+  day it froze, where it has their payslip, isn't counted again.
   The leaving month is the calendar month of the last working day, so a
   contract ending on the month's last day still counts the days after
   that month's close. Under the leaving month's lock and the next's, the
@@ -1809,6 +1811,10 @@ approving a month early, and decided the same day.
   month's approval; a change to it is refused as one to a month already
   paid; and a month with a contract settled in it keeps its attendance
   end, so Change payday changes only its payday.
+  The list of check-ins to review leaves out only those a decision would
+  refuse: a check-in's month is read by the period, as deciding it does,
+  so one after an approved month's close, the next month's, is still
+  there, and one on a day a settlement counted isn't.
 - **Change this month's payday** (`PUT /api/payroll/{year}/{month}/payday`,
   `payroll.approve`, with the step-up a high-risk action asks for): the
   date, and while the run is a draft the attendance's last day, each
@@ -1820,7 +1826,9 @@ approving a month early, and decided the same day.
   settings say since; so does a draft's whose next month is approved.
   A draft's last day equal to the setting's close is kept as the
   setting (no `periodEnd`), so a later change of the setting still
-  counts.
+  counts. It holds the month's run (`FOR UPDATE`) from reading its status
+  to writing, so marking the month paid meanwhile waits for it, or comes
+  first and it's refused (`RUN_PAID`).
 - **The screens:** the Payroll settings card's two settings, their
   fields lined up at the top and one under another on phones (found in
   the flows: half the width, every choice was cut short); the Payroll
@@ -2388,3 +2396,9 @@ with قبول: «قبول العذر» and «قبول».
   fixing them, a contract ending on the month's last day counted its
   days after the close in no payroll and no settlement. Each fixed, as
   built in §7.10.
+- **2026-11-27:** Codex's fifth review on #430: the list of check-ins to
+  review went by a check-in's calendar month, hiding one after an
+  approved month's close that could still be decided; a leaver's days a
+  later payroll had already paid them for, their end recorded since,
+  counted again in the settlement; and Change payday could change a run
+  being marked paid meanwhile. Each fixed, as built in §7.10.
