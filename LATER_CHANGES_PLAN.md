@@ -20,9 +20,9 @@ mark, permission and pay (#426, step 3a), what they're not asked for
 3b2), and the Owners list (#429, step 3c), so owners are done; clearer
 words on Exceptions (§7.11) and payday and the attendance period
 (§7.10) done in one PR (#430); the limits on requests (§7.4) under way,
-day off done (#431), permission hours next, after every writer waits
-for a month's lock (ATTENDANCE_PLAN.md §12.1); the names (§3) paused
-after step 8l (#424).** Done: the development database (§4),
+day off done (#431), and every writer now waits for a month's lock as
+long as an import may hold it (#432, ATTENDANCE_PLAN.md §12.1);
+permission hours next; the names (§3) paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their limit set
@@ -2460,3 +2460,6 @@ with قبول: «قبول العذر» and «قبول».
   within its days, with the balance; every writer waiting for a month's
   lock as long as an import may hold it (ATTENDANCE_PLAN.md §12.1) next,
   then permission hours (4b).
+- **2026-11-27:** #432 merged. Every writer waits for a month's lock as
+  long as an import may hold it, and a test keeps it so
+  (ATTENDANCE_PLAN.md §12.1); permission hours (4b) next.
