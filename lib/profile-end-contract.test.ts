@@ -246,6 +246,9 @@ describe("what's wrong, in the reader's language", () => {
         expect(endContractRefusal({ code: "ATTENDANCE_NOT_OVER" })).toEqual({ field: "lastWorkingDay", key: "end_contract_attendance_not_over" })
         // Or with one of those days still to decide (Codex review on PR 430).
         expect(endContractRefusal({ code: "ATTENDANCE_PENDING" })).toEqual({ field: "lastWorkingDay", key: "end_contract_attendance_pending" })
+        // What it counts changed while it was worked out, said above the buttons and worked out again (Codex review on PR 430).
+        expect(endContractRefusal({ code: "PAYROLL_PERIOD_CHANGED" })).toEqual({ key: "end_contract_changed", reload: true })
+        expect(endContractRefusal({ code: "ATTENDANCE_CHANGED" })).toEqual({ key: "end_contract_changed", reload: true })
         // The code prompt for a high-risk action, turned down: they know.
         expect(endContractRefusal({ code: "STEP_UP_REQUIRED" })).toBe("quiet")
         expect(endContractRefusal({ code: "MFA_ENROL_REQUIRED" })).toBe("quiet")
@@ -264,6 +267,11 @@ describe("what's wrong, in the reader's language", () => {
         expect(ar.end_contract_attendance_not_over).toMatch(/بعد انتهائه\.$/)
         expect(en.end_contract_attendance_pending).toMatch(/^Some of their attendance after payroll closed still waits on a decision/)
         expect(ar.end_contract_attendance_pending).toMatch(/ثم إنهاء العقد\.$/)
+        // And what it counts changed meanwhile (Codex review on PR 430): worked out again, to check first.
+        expect(en.end_contract_changed).toBe("What the settlement counts changed while it was worked out, and it's been worked out again. Check it, then end the contract.")
+        expect(ar.end_contract_changed).toBe("تغيّر ما تحتسبه التسوية أثناء حسابها، وأُعيد حسابها. يُرجى مراجعتها، ثم إنهاء العقد.")
+        // Worked out again as it's said, so End contract waits for the new figures.
+        expect(readFileSync("components/profile/EndContractDialog.tsx", "utf8")).toContain("if (refused.reload) retry()")
     })
 
     it("is answered by the server with its code beside its words", async () => {
@@ -279,6 +287,8 @@ describe("what's wrong, in the reader's language", () => {
         expect(route.split(`ApiResponse.refused(400, "Attendance after payroll closed still waits on a decision", "ATTENDANCE_PENDING")`).length - 1).toBe(2)
         // When payroll closes changed while the settlement was worked out (Codex review on PR 430).
         expect(route).toContain(`if (message === "PAYROLL_PERIOD_CHANGED") {\n            return ApiResponse.refused(409, "When payroll closes changed while this was worked out. Try again.", "PAYROLL_PERIOD_CHANGED")`)
+        // Or their attendance after it, read again under the months' locks (Codex review on PR 430).
+        expect(route).toContain(`if (message === "ATTENDANCE_CHANGED") {\n            return ApiResponse.refused(409, "Their attendance after payroll closed changed while this was worked out. Try again.", "ATTENDANCE_CHANGED")`)
         expect(route).toContain(`"USER_HAS_NO_COMPANY")`)
         // An Admin's, and the company's last Admin's, as a role's are (lib/role-errors.ts).
         expect(route).toContain("adminRefusal(error)")

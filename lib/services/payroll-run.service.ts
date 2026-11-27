@@ -470,12 +470,20 @@ export class PayrollRunService {
             // since, and while the month after is approved, which begins the day after
             // (review on PR 430): then only payday changes.
             const next = await tx.payrollRun.findUnique({ where: { companyId_month_year: { companyId, month: after.month, year: after.year } }, select: { status: true } })
-            // And once a final settlement counted days after it: moved, its payroll would count
-            // them again, or leave out the days between (Codex review on PR 430).
-            const settledAfter = await tx.attendanceDay.count({
-                where: { companyId, lockedBySettlementId: { not: null }, date: { gt: new Date(`${period.to}T00:00:00Z`), lte: new Date(`${lastDayOf(year, month)}T00:00:00Z`) } },
+            // And once a contract ending this month is settled, which kept this close: moved, its
+            // payroll would count again days the settlement did, or leave out days neither does
+            // (Codex review on PR 430).
+            const { timeZone } = await this.policy(companyId, tx)
+            const settled = await tx.finalSettlement.count({
+                where: {
+                    companyId,
+                    lastWorkingDay: {
+                        gte: startOfDayIn(new Date(`${monthKey(year, month)}-01T12:00:00Z`), timeZone),
+                        lt: startOfDayIn(new Date(`${monthKeyOf(after.year, after.month)}-01T12:00:00Z`), timeZone),
+                    },
+                },
             })
-            const endFixed = !draft || (!!next && next.status !== "DRAFT") || settledAfter > 0
+            const endFixed = !draft || (!!next && next.status !== "DRAFT") || settled > 0
             // While a draft, its attendance may end sooner, never later than the setting's close.
             const settingClose = closeDateOf(year, month, settings.closeDay)
             const until = endFixed ? period.to
@@ -493,8 +501,9 @@ export class PayrollRunService {
             const data = {
                 payday: new Date(`${input.payday}T00:00:00Z`),
                 paydayChanged: true,
-                // The setting's own close is kept as the setting, so a later change of it still counts.
-                ...(draft ? { periodEnd: until === settingClose ? null : new Date(`${until}T00:00:00Z`) } : {}),
+                // The setting's own close is kept as the setting, so a later change of it still counts,
+                // and a fixed end as it's kept (Codex review on PR 430).
+                ...(draft && !endFixed ? { periodEnd: until === settingClose ? null : new Date(`${until}T00:00:00Z`) } : {}),
             }
             const saved = await tx.payrollRun.upsert({
                 where: { companyId_month_year: { companyId, month, year } },

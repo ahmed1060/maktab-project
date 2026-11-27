@@ -33,11 +33,13 @@ export function attendanceReaches(from: Date | null, year: number, month: number
  * sum of each day's priced parts (§12.2). A day priced before the parts were
  * kept is split by the day-fractions each cause charged — and approval
  * rebuilds every day first, so what is approved is always exact. The mission
- * allowance (§6.10, PR 288) is the sum of the days' allowances.
+ * allowance (§6.10, PR 288) is the sum of the days' allowances. A day a
+ * final settlement counted is that settlement's, never a payroll's too,
+ * should they be taken back on (Codex review on PR 430).
  */
 export async function attendanceMoney(db: Db, companyId: string, period: Period): Promise<Map<string, AttendanceMoney>> {
     const days = await db.attendanceDay.findMany({
-        where: { companyId, date: daysOf(period) },
+        where: { companyId, lockedBySettlementId: null, date: daysOf(period) },
         select: { userId: true, status: true, deductionMinor: true, overtimeMinor: true, missionAllowanceMinor: true, breakdown: true },
     })
     const out = new Map<string, AttendanceMoney>()

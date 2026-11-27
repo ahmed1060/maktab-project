@@ -1579,6 +1579,7 @@ export const en = {
         end_contract_no_salary: "There's no salary on record for them in that month, so the settlement can't be worked out. Choose a day in a month they're paid for.",
         end_contract_attendance_not_over: "This day comes after payroll closes, so its attendance goes in the settlement, and a day's attendance is known once it's over. End the contract on this day once it's over.",
         end_contract_attendance_pending: "Some of their attendance after payroll closed still waits on a decision, and goes in the settlement. Decide it on the Attendance pages, then end the contract.",
+        end_contract_changed: "What the settlement counts changed while it was worked out, and it's been worked out again. Check it, then end the contract.",
         end_contract_date_needed: "Choose their last working day.",
         end_contract_last_admin: "They're the company's last Admin at work. Give the Admin role to someone else first.",
         end_contract_admin: "Only the Super Admin ends an Admin's contract.",

@@ -63,8 +63,12 @@ export function lastDayErrors({ lastWorkingDay }: { lastWorkingDay: string }): {
     return {}
 }
 
-/** Said under the date where it's about it, above the buttons otherwise. */
-export type EndContractRefusal = { field?: 'lastWorkingDay'; key: TranslationKey }
+/**
+ * Said under the date where it's about it, above the buttons otherwise.
+ * `reload`: what the settlement counts changed meanwhile, so it's worked out
+ * again for the figures to check (Codex review on PR 430).
+ */
+export type EndContractRefusal = { field?: 'lastWorkingDay'; key: TranslationKey; reload?: true }
 
 const REFUSED: Record<string, EndContractRefusal> = {
     // A date it can't read, which the calendar never sends: one is asked for.
@@ -74,6 +78,9 @@ const REFUSED: Record<string, EndContractRefusal> = {
     ATTENDANCE_NOT_OVER: { field: 'lastWorkingDay', key: 'end_contract_attendance_not_over' },
     // And with one of those days still to decide (Codex review on PR 430).
     ATTENDANCE_PENDING: { field: 'lastWorkingDay', key: 'end_contract_attendance_pending' },
+    // When payroll closes, or their attendance after it, changed while it was worked out (Codex review on PR 430).
+    PAYROLL_PERIOD_CHANGED: { key: 'end_contract_changed', reload: true },
+    ATTENDANCE_CHANGED: { key: 'end_contract_changed', reload: true },
     LAST_ADMIN: { key: 'end_contract_last_admin' },
     ADMIN_IS_SUPER_ADMINS: { key: 'end_contract_admin' },
     USER_HAS_NO_COMPANY: { key: 'end_contract_no_company' },

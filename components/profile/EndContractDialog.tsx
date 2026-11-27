@@ -169,8 +169,12 @@ export function EndContractDialog({ userId, name, status, leadsATeam = false, se
             if (refused?.field) {
                 setErrors({ [refused.field]: t(refused.key) })
                 focusFirstWrong(form.current)
+            } else if (refused) {
+                // Worked out again, so End contract waits for the figures to check (Codex review on PR 430).
+                if (refused.reload) retry()
+                setError(t(refused.key))
             } else {
-                setError(refused ? t(refused.key) : apiErrorText(text, t('error_generic')))
+                setError(apiErrorText(text, t('error_generic')))
             }
             return null
         } catch {

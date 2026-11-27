@@ -199,6 +199,10 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
         if (message === "PAYROLL_PERIOD_CHANGED") {
             return ApiResponse.refused(409, "When payroll closes changed while this was worked out. Try again.", "PAYROLL_PERIOD_CHANGED")
         }
+        // Or their attendance after it, read again under the months' locks (Codex review on PR 430).
+        if (message === "ATTENDANCE_CHANGED") {
+            return ApiResponse.refused(409, "Their attendance after payroll closed changed while this was worked out. Try again.", "ATTENDANCE_CHANGED")
+        }
         if (message === "USER_HAS_NO_COMPANY") {
             return ApiResponse.refused(400, "This account belongs to no company, so there is nobody to settle with.", "USER_HAS_NO_COMPANY")
         }
