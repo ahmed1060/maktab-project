@@ -9,6 +9,7 @@ import { fetcher, type SWRError } from '@/lib/swr-fetcher'
 import { apiErrorText } from '@/lib/api-error-text'
 import { countOf } from '@/lib/plural'
 import { policyOn, type DeductionRule, type MissionAllowance, type PolicyBody, type PolicyVersion } from '@/lib/attendance/policy'
+import { permissionWhenLine } from '@/lib/attendance/permission-when'
 import { toMajor } from '@/lib/payroll'
 import { Button, Card, Choice, Details, Dialog, EmptyState, Row } from '@/components/ui'
 import { firstOfNextMonth } from '@/components/attendance-calendar/hours-form'
@@ -193,7 +194,7 @@ export default function AttendancePolicyPanel({ companyId, readOnly, onChanged }
                     {
                         label: t('attendance_permission_hours'),
                         value: shown.body.permissionHours.enabled
-                            ? lines([t('attendance_permission_line').replace('{hours}', countOf(t, locale, shown.body.permissionHours.monthlyAllowanceMinutes / 60, 'hours'))])
+                            ? lines([t('attendance_permission_line').replace('{hours}', countOf(t, locale, shown.body.permissionHours.monthlyAllowanceMinutes / 60, 'hours')), permissionWhenLine(t, locale, shown.body.permissionHours)])
                             : t('attendance_rule_off'),
                     },
                     // Whether missions may be asked for (§6.10, PR 283), and what they pay (PR 286).

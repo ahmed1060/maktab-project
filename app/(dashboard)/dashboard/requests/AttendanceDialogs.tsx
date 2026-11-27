@@ -10,6 +10,7 @@ import { named, type FeedRow, type RequestKind } from '@/lib/requests/kinds'
 import DatePickerSingle from '@/components/DatePickerSingle'
 import DateRangePicker from '@/components/DateRangePicker'
 import { MISSION_MAX_DAYS, type MissionKey } from '@/lib/attendance/missions'
+import { daysText, type DayOffDays } from '@/lib/day-off-window'
 import { Button, Choice, Dialog, DialogActions, Field, Select, TextArea, TextInput } from '@/components/ui'
 
 /**
@@ -400,8 +401,12 @@ export function CancelMission({ request, question, onClose, onCancelled }: {
     )
 }
 
-/** The chosen day's rules and what's left of its month's (GET /api/attendance/permissions/balance). */
-type Balance = { enabled: boolean; types: string[]; remainingMinutes: number; minPerRequestMinutes: number; maxPerRequestMinutes: number }
+/**
+ * The chosen day's rules and what's left of its month's, and the days that may
+ * be asked for where the policy says any day (GET /api/attendance/permissions/balance;
+ * LATER_CHANGES_PLAN.md §7.4, 4b).
+ */
+type Balance = { enabled: boolean; types: string[]; remainingMinutes: number; minPerRequestMinutes: number; maxPerRequestMinutes: number; days: DayOffDays | null }
 
 type Errors = { date?: string; start?: string; end?: string; reason?: string }
 
@@ -461,7 +466,14 @@ export function AskPermission({ today, initial, onCancel, onAsked }: {
                     body: JSON.stringify({ date, type, start, end, reason: reason.trim() }),
                 })
                 if (!res.ok) {
-                    showToast(t(await refusal(res, 'failed_submit_request')), 'error')
+                    const body = await res.json().catch(() => ({}))
+                    // A day outside the ones that may be asked for: said under the date, with them (4b).
+                    if (body.code === 'PERMISSION_OUT_OF_RANGE' && body.from && body.to) {
+                        setErrors(x => ({ ...x, date: daysText(t, locale, { from: body.from, to: body.to }, 'requests_permission_range') }))
+                        requestAnimationFrame(() => form.querySelector<HTMLElement>('.ui-date-trigger')?.focus())
+                        return
+                    }
+                    showToast(t(REFUSED[body?.code] ?? 'failed_submit_request'), 'error')
                     return
                 }
                 showToast(t('req_asked'), 'success')
@@ -474,7 +486,7 @@ export function AskPermission({ today, initial, onCancel, onAsked }: {
 
     return (
         <form className="ui-form" noValidate onSubmit={submit}>
-            <DatePickerSingle label={t('date_label')} value={date} error={errors.date}
+            <DatePickerSingle label={t('date_label')} value={date} minDate={balance?.days?.from} maxDate={balance?.days?.to} error={errors.date}
                 onChange={day => { setDate(day); setErrors(x => ({ ...x, date: undefined })) }} />
             {limits && <p className="ui-hint" aria-live="polite">{limits}</p>}
             <Field label={t('requests_permission_type')}>{p => (

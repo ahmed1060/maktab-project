@@ -1,5 +1,6 @@
 import { workDays } from "./day-off-range"
 import { lastDayOf } from "./payroll-period"
+import type { TranslationKey } from "./translations"
 
 /**
  * The days a day off may be asked for (LATER_CHANGES_PLAN.md §7.4, 4a), as
@@ -33,4 +34,17 @@ export function dayOffWindow(today: string, monthsAhead: number, firstOpen: stri
 export function overBalance(from: string, to: string, balance: number): boolean {
     if (!from) return false
     return workDays(from, to || from) > balance
+}
+
+/**
+ * Which days may be asked for, in the page's language and digits
+ * (LATER_CHANGES_PLAN.md §7.4): "from 1 November to 27 December", with the
+ * years where the two differ. A day off says it with its words (4a),
+ * permission hours with theirs (4b).
+ */
+export function daysText(t: (key: TranslationKey) => string, locale: string, days: DayOffDays, key: TranslationKey = "requests_day_off_range"): string {
+    const years = days.from.slice(0, 4) !== days.to.slice(0, 4)
+    const format = new Intl.DateTimeFormat(locale === "ar" ? "ar-EG" : "en-GB", { day: "numeric", month: "long", ...(years ? { year: "numeric" } : {}), timeZone: "UTC" })
+    const text = (iso: string) => format.format(new Date(`${iso}T00:00:00Z`))
+    return t(key).replace("{from}", text(days.from)).replace("{to}", text(days.to))
 }

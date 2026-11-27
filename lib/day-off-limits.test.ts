@@ -125,7 +125,7 @@ describe("asking for a day off", () => {
     })
 
     it("says under the dates which days may be asked for, when a day outside them is refused", async () => {
-        const { daysText } = await import("@/app/(dashboard)/dashboard/requests/DayOffDialogs")
+        const { daysText } = await import("@/lib/day-off-window")
         const t = (key: string) => en[key as keyof typeof en] ?? key
         expect(daysText(t as never, "en", { from: "2026-11-01", to: "2026-12-27" })).toBe("Days off can be asked for from 1 November to 27 December.")
         // Across the year, with both years.

@@ -87,6 +87,12 @@ export const DAY_OFF_MONTHS_AHEAD = 1
 /** The choices for it: 1 to 12 months ahead (decided on 26 November). */
 export const DAY_OFF_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const
 
+/**
+ * When permission hours may be asked for (LATER_CHANGES_PLAN.md §7.4, 4b): before, or within the hours
+ * after below, as before; or any day from the first day not paid to a month ahead, as day off's days.
+ */
+export const PERMISSION_WHEN = ["AROUND_THE_DAY", "ANY_DAY"] as const
+
 export const permissionHoursSchema = z.object({
     enabled: z.boolean(),
     monthlyAllowanceMinutes: z.number().int().min(0).max(60 * 60),
@@ -97,6 +103,8 @@ export const permissionHoursSchema = z.object({
     afterTheFactHours: z.number().int().min(0).max(24 * 7),
     carryOver: z.enum(["LAPSE", "CARRY_ONCE"]),
     types: z.array(z.enum(PERMISSION_TYPES)).min(1),
+    /** Around the day unless changed: a version saved before it reads so. */
+    when: z.enum(PERMISSION_WHEN).default("AROUND_THE_DAY"),
 })
 
 /** What a kind of mission can pay, in days (§6.10, decision 6): nothing, a quarter, a half, one or two. */
@@ -282,7 +290,7 @@ export const STANDARD_OFFICE: PolicyBody = {
     absence: { multiplier: 1 },
     permissionHours: {
         enabled: true, monthlyAllowanceMinutes: 240, minPerRequestMinutes: 30, maxPerRequestMinutes: 120,
-        maxRequestsPerMonth: 4, afterTheFactHours: 24, carryOver: "LAPSE", types: [...PERMISSION_TYPES],
+        maxRequestsPerMonth: 4, afterTheFactHours: 24, carryOver: "LAPSE", types: [...PERMISSION_TYPES], when: "AROUND_THE_DAY",
     },
     noCheckInReminderMinutes: 15,
     scanWindowMinutes: DEFAULT_SCAN_WINDOW_MINUTES,
@@ -313,7 +321,7 @@ export const MEASURE_ONLY: PolicyBody = {
     absence: { multiplier: 0 },
     permissionHours: {
         enabled: false, monthlyAllowanceMinutes: 0, minPerRequestMinutes: 30, maxPerRequestMinutes: 120,
-        maxRequestsPerMonth: null, afterTheFactHours: 0, carryOver: "LAPSE", types: [...PERMISSION_TYPES],
+        maxRequestsPerMonth: null, afterTheFactHours: 0, carryOver: "LAPSE", types: [...PERMISSION_TYPES], when: "AROUND_THE_DAY",
     },
     noCheckInReminderMinutes: null,
     scanWindowMinutes: DEFAULT_SCAN_WINDOW_MINUTES,

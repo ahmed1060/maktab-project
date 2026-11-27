@@ -28,11 +28,14 @@ const REQUESTS: Record<string, any> = {
     rOther: record("rOther", "other", "c2"),
 }
 vi.mock("@/lib/services/attendance-request.service", () => ({
+    PermissionOutOfRange: class extends Error {},
     AttendanceRequestService: {
         todayIn: async () => "2026-10-20",
         permissions: async (companyId: string, _q: any, visible: any) => { reached.push(`permissions:${companyId}:${visible.kind}`); return [] },
         requestPermission: async (companyId: string, userId: string) => { reached.push(`ask:${companyId}:${userId}`); return { id: "new" } },
         permissionBalance: async (companyId: string, userId: string, month: string, date?: string | null) => { reached.push(`balance:${companyId}:${userId}:${month}${date ? `:${date}` : ""}`); return {} },
+        // Around the day: no days to send (LATER_CHANGES_PLAN.md §7.4, 4b).
+        permissionDays: async () => null,
         permissionOf: async (id: string) => REQUESTS[id] ?? null,
         cancelPermission: async (id: string, userId: string) => { reached.push(`cancel:${id}:${userId}`) },
         decidePermission: async (id: string, d: any) => { reached.push(`decide:${id}:${d.approve}`) },

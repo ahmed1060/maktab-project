@@ -12,6 +12,8 @@ import { refuseOwnerMonths } from "./owner.service"
 import { insertManualPunch, type Visibility } from "./attendance-punch.service"
 import { NotificationService } from "./notification.service"
 import { optional, type NoticeParam } from "@/lib/notice"
+import { dayOffWindow, type DayOffDays } from "@/lib/day-off-window"
+import { requestDaysBasis } from "./request-days"
 
 /**
  * Attendance requests (ATTENDANCE_PLAN.md §6.4, §6.6, §8.4): permission hours
@@ -26,6 +28,17 @@ import { optional, type NoticeParam } from "@/lib/notice"
 
 const dayParam = (date: string): NoticeParam => ({ date: `${date}T00:00:00.000Z` })
 const reasonParam = (reason: string | null) => optional("notice_reason_suffix", { reason: reason ?? "" }, reason)
+
+/**
+ * Permission hours asked for on a day outside the days they may be, where the
+ * policy says any day (LATER_CHANGES_PLAN.md §7.4, 4b), with those days, so
+ * the form can say which.
+ */
+export class PermissionOutOfRange extends Error {
+    constructor(public from: string, public to: string) {
+        super("PERMISSION_OUT_OF_RANGE")
+    }
+}
 
 function fail(code: string): never {
     throw new Error(code)
@@ -172,6 +185,17 @@ export class AttendanceRequestService {
         return prisma.$transaction(tx => balanceIn(tx, companyId, userId, monthOf(today) === month ? today : `${month}-01`))
     }
 
+    /**
+     * The days permission hours may be asked for, where the policy in force
+     * today says any day (LATER_CHANGES_PLAN.md §7.4, 4b): day off's days, one
+     * month ahead. None around the day: before, or within its hours after.
+     */
+    static async permissionDays(companyId: string, db: Prisma.TransactionClient = prisma): Promise<DayOffDays | null> {
+        const { today, firstOpen } = await requestDaysBasis(companyId, db)
+        const when = policyOn(await AttendancePolicyService.versions(companyId, db), today)?.body.permissionHours.when
+        return when === "ANY_DAY" ? dayOffWindow(today, 1, firstOpen) : null
+    }
+
     /** Asks for permission hours, for oneself. */
     static async requestPermission(companyId: string, userId: string, input: PermissionInput) {
         if (!isDateString(input.date)) fail("INVALID_DATE")
@@ -194,6 +218,11 @@ export class AttendanceRequestService {
             // And the next month's, whose carried minutes this one can spend.
             await lockMonths(tx, companyId, [monthOf(input.date), monthOf(next)])
             await refuseOwnerMonths(tx, userId, input.date)
+            // Any day, where the policy says so (LATER_CHANGES_PLAN.md §7.4, 4b): within its days, read holding
+            // the date's months' locks, so a month approved meanwhile can't let a day through; before the date's
+            // months are checked as open, so a day in an approved month is answered with the days too.
+            const days = await AttendanceRequestService.permissionDays(companyId, tx)
+            if (days && (input.date < days.from || input.date > days.to)) throw new PermissionOutOfRange(days.from, days.to)
             await openDate(tx, companyId, input.date, userId)
             const balance = await balanceIn(tx, companyId, userId, input.date)
             if (!balance.enabled) fail("PERMISSION_HOURS_OFF")
@@ -202,11 +231,12 @@ export class AttendanceRequestService {
             if (minutes > balance.maxPerRequestMinutes) fail("PERMISSION_TOO_LONG")
             if (balance.maxRequests !== null && balance.requests >= balance.maxRequests) fail("PERMISSION_TOO_MANY_REQUESTS")
             if (minutes > balance.remainingMinutes) fail("PERMISSION_OVER_ALLOWANCE")
-            // In advance, or within the policy's hours after the time has passed.
+            // Around the day: in advance, or within the policy's hours after the time has passed. Any day, its
+            // days are the limit, whatever the hours.
             const now = Date.now()
             const starts = localToInstant(localAt(input.date, startMinutes), company.timezone).getTime()
             const ends = localToInstant(localAt(input.date, endMinutes), company.timezone).getTime()
-            if (starts <= now && (balance.afterTheFactHours === 0 || now > ends + balance.afterTheFactHours * 3_600_000)) fail("PERMISSION_TOO_LATE")
+            if (!days && starts <= now && (balance.afterTheFactHours === 0 || now > ends + balance.afterTheFactHours * 3_600_000)) fail("PERMISSION_TOO_LATE")
             const overlapping = await tx.permissionRequest.findFirst({
                 where: { userId, date: wallClock(`${input.date}T00:00:00`), status: { in: ["APPROVED", "PENDING"] }, startMinutes: { lt: endMinutes }, endMinutes: { gt: startMinutes } },
                 select: { id: true },

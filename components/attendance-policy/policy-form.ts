@@ -64,6 +64,8 @@ export type PolicyForm = {
         afterTheFactHours: string
         carryOver: PolicyBody['permissionHours']['carryOver']
         types: PolicyBody['permissionHours']['types']
+        /** When they may be asked for (LATER_CHANGES_PLAN.md §7.4, 4b): a select. */
+        when: PolicyBody['permissionHours']['when']
     }
     noCheckInReminderMinutes: number | null
     /** How many months ahead a day off may be asked for (LATER_CHANGES_PLAN.md §7.4, 4a): a select, so a number. */
@@ -131,6 +133,7 @@ export function formFromBody(body: PolicyBody): PolicyForm {
             afterTheFactHours: text(p.afterTheFactHours),
             carryOver: p.carryOver,
             types: [...p.types],
+            when: p.when,
         },
         noCheckInReminderMinutes: body.noCheckInReminderMinutes,
         dayOffMonthsAhead: body.dayOffMonthsAhead,
@@ -275,9 +278,11 @@ export function bodyFromForm(form: PolicyForm, base: PolicyBody): { ok: true; bo
         minPerRequestMinutes: wholeIn(pOn, 'permissionHours.minPerRequestMinutes', p.minPerRequestMinutes, 1, 24 * 60, pWas.minPerRequestMinutes),
         maxPerRequestMinutes: wholeIn(pOn, 'permissionHours.maxPerRequestMinutes', p.maxPerRequestMinutes, 1, 24 * 60, pWas.maxPerRequestMinutes),
         maxRequestsPerMonth: optionalWhole(pOn, 'permissionHours.maxRequestsPerMonth', p.maxRequestsPerMonth, 1, 31, pWas.maxRequestsPerMonth),
-        afterTheFactHours: wholeIn(pOn, 'permissionHours.afterTheFactHours', p.afterTheFactHours, 0, 24 * 7, pWas.afterTheFactHours),
+        // Shown, so read, only around the day: any day, what was there is kept.
+        afterTheFactHours: wholeIn(pOn && p.when === 'AROUND_THE_DAY', 'permissionHours.afterTheFactHours', p.afterTheFactHours, 0, 24 * 7, pWas.afterTheFactHours),
         carryOver: p.carryOver,
         types: p.types.length ? [...p.types] : [],
+        when: p.when,
     }
     if (pOn) {
         // What the server would refuse in English (lib/attendance/policy.ts, policyProblem), said under the field.

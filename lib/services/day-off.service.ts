@@ -9,6 +9,7 @@ import { addDays } from "@/lib/attendance/calendar"
 import { policyOn } from "@/lib/attendance/policy"
 import { dayOffWindow, type DayOffDays } from "@/lib/day-off-window"
 import { LOCK_WAIT } from "./attendance-lock"
+import { requestDaysBasis } from "./request-days"
 import type { Prisma } from "@prisma/client"
 
 /**
@@ -48,21 +49,12 @@ export class DayOffService {
      */
     static async window(companyId: string | null, db: Prisma.TransactionClient = prisma): Promise<DayOffDays> {
         if (!companyId) return dayOffWindow(calendarDateStr(new Date()), 1, null)
-        const company = await db.company.findUnique({ where: { id: companyId }, select: { timezone: true } })
-        const today = calendarDateStr(new Date(), company?.timezone ?? undefined)
+        const { today, firstOpen } = await requestDaysBasis(companyId, db)
         const { companyHasModule } = await import("./company-package")
         const { AttendancePolicyService } = await import("./attendance-policy.service")
         const months = await companyHasModule(companyId, "ATTENDANCE", db)
             ? policyOn(await AttendancePolicyService.versions(companyId, db), today)?.body.dayOffMonthsAhead ?? 1
             : 1
-        // The latest month paid for, by its month: its period ends where the next one's open days begin.
-        const approved = await db.payrollRun.findFirst({
-            where: { companyId, status: { in: ["APPROVED", "PAID"] } },
-            orderBy: [{ year: "desc" }, { month: "desc" }],
-            select: { year: true, month: true },
-        })
-        const { PayrollPeriodService } = await import("./payroll-period.service")
-        const firstOpen = approved ? addDays((await PayrollPeriodService.periodOf(db, companyId, approved.year, approved.month)).to, 1) : null
         return dayOffWindow(today, months, firstOpen)
     }
 
