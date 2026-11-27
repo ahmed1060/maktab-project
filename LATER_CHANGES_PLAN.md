@@ -18,7 +18,7 @@ start date and Recalculate on the Payroll page done (#425), and owners'
 mark, permission and pay (#426, step 3a), what they're not asked for
 (#427, step 3b1), only Admins as owners, given no new work (#428, step
 3b2), and the Owners list (#429, step 3c), so owners are done; clearer
-words on Exceptions (§7.11, proposed) next, then payday and the attendance
+words on Exceptions (§7.11) next, then payday and the attendance
 period (§7.10), then the limits on requests (§7.4); the names (§3) paused
 after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
@@ -1207,9 +1207,10 @@ same day as drawn in the All users: status badges canvas
 The owner sent seven points on 2026-11-26, asked for them to be talked
 through first, and answered two rounds the same day. This part holds
 those answers, and payday and the attendance period, talked through on
-27 November (§7.10). One question waits for the owner's own review,
-later (§7.9). The names (§3.1) are paused after step 8l (#424) until these
-are done; payroll, with the costs and charges lists, is next there.
+27 November (§7.10), and clearer words on Exceptions (§7.11). Two
+questions are open (§7.9). The names (§3.1) are paused after step 8l
+(#424) until these are done; payroll, with the costs and charges lists,
+is next there.
 
 The rating's look is drawn on the Task rating flow canvas
 (https://claude.ai/artifact/QBRMH1KGp4NagBfHGbfcUp).
@@ -1560,15 +1561,14 @@ In three PRs, each whole on its own:
 1. The contract start date (§7.2), which also fixes §7.1's days.
 2. Recalculate on the Payroll page (§7.1).
 3. Owners (§7.3).
-4. Clearer words on Exceptions (§7.11), once the owner has picked them:
-   one small PR.
+4. Clearer words on Exceptions (§7.11): one small PR.
 5. Payday and the attendance period (§7.10), 10a to 10f, as the limits
    on requests' first day follows the period.
 6. Limits on requests (§7.4): day off first, then permission hours and
    missions.
 7. Obligations with a client (§7.7).
 8. Salary advances (§7.5), Custody's new name first, once the owner has
-   reviewed §7.9.
+   reviewed §7.9's first point.
 9. Rating finished work (§7.6): DESIGN.md first, then tasks, then
    obligations.
 
@@ -1583,6 +1583,13 @@ A step may take more than one PR.
    Nizmo could stop an installment over it, warn, or take the most from
    the policy (10% unless changed). The owner reviews this later, before
    salary advances are built; nothing about it changes until then.
+2. **The other live company** (checked read-only on 27 November): payday
+   on the 25th, in its own month, without attendance in payroll, and no
+   payroll yet. With the same rules for it (§7.10), the 25th comes before
+   its month ends. Either:
+   - payroll closes on day 20, and payday stays on the 25th: five days to
+     approve, and a 25th on a Friday can still move back to the 24th; or
+   - payday on day 1 of the month after, as the other live company.
 
 ### 7.10 Payday and the attendance period (Decided)
 
@@ -1594,13 +1601,14 @@ approving a month early, and decided the same day.
   month, so the days from then to the month's end are never measured.
   Omar, absent on 30 November after November was approved on the 26th,
   is counted nowhere.
-- **The attendance period,** where attendance reaches payroll: a setting
-  beside "Attendance reaches payroll", in the company's Attendance
-  settings:
-  - "The month's last day": the calendar month, as today, unless changed;
-  - "Up to day [1 to 28]": that day is counted. Up to day 24, November's
-    payroll counts 25 October to 24 November, and December's 25 November
-    to 24 December.
+- **The attendance period,** set as "Payroll closes", in the Payroll
+  settings beside payday, for every company, as the same rules apply
+  with attendance in payroll or without it (the owner, 27 November):
+  - "On the month's last day": the calendar month, as today, unless
+    changed;
+  - "On day [1 to 28]": that day is counted. Closing on day 24,
+    November's payroll counts attendance from 25 October to 24 November,
+    and December's from 25 November to 24 December.
   - **From the period:** the attendance lines: absence, lateness, early
     leave, overtime and the mission allowance.
   - **Still by the calendar month:** salary and its changes, joining and
@@ -1610,8 +1618,8 @@ approving a month early, and decided the same day.
   - The payslip says which days: "Attendance: 25 October to 24 November".
   - **Changed,** it counts from the first month not yet approved. That one
     period is shorter or longer, with no gap and no overlap.
-  - A company without attendance in payroll has no period: approving and
-    payday are as today, with the move below.
+  - Without attendance in payroll, it decides when the month may be
+    approved, and payday comes after it, as with attendance.
 - **Approving waits for the period's end:** November may be approved from
   the day after its period ends: 25 November up to day 24, or 1 December
   with the month's last day. Before then it's refused, saying from when,
@@ -1634,9 +1642,14 @@ approving a month early, and decided the same day.
   - A holiday added later, such as Eid once its dates are announced,
     moves it too, until the month is marked paid.
   - **It comes after the period.** A payday that doesn't is refused when
-    the settings are saved, saying why. In the month after, any day is
-    after it. A company whose saved payday isn't after its period is
-    told so on its Payroll settings.
+    the settings are saved, saying why, such as: "Payday has to come after
+    payroll closes, so the month can be approved before it's paid. Pick a
+    day after the 24th, or pay in the month after." In the month after,
+    any day is after it.
+  - **No company is left breaking it:** the release that adds the rule
+    moves each company onto settings that follow it, so there is nothing
+    to warn about. Should one still break it, approving its month is
+    refused, saying why and where to change it.
   - **Moving back never goes into the period:** where the working day
     before is inside it, payday moves to the working day after instead.
   - The Payroll page shows the month's payday, moved: "Payday: Thursday
@@ -1667,6 +1680,9 @@ approving a month early, and decided the same day.
 - **Companies today:** the period is the month's last day, payday stays in
   the payroll's own month, and it moves to the working day before. Nothing
   approved or paid changes.
+- **A new company:** payroll closes on the month's last day, and payday is
+  day 1 of the month after, so its settings follow the rule from the
+  start.
 - **The live company with attendance in payroll** (checked read-only on
   27 November): payday on the 28th, with the calendar month as its
   period, so payday comes before the period ends, which this part
@@ -1688,8 +1704,9 @@ approving a month early, and decided the same day.
     month after, the move off days off, never back into the period (the
     calendar month until 10b), the Payroll page's payday, and settlements
     and due dates by it.
-  - **10b, the period:** the setting and its dates, payday after it, and
-    the notice for one saved before.
+  - **10b, the period:** "Payroll closes" and its dates, payday after it,
+    every company moved onto settings that follow it, and approving
+    refused where one still doesn't.
   - **10c, payroll by the period:** the attendance lines from it, and the
     payslip's line.
   - **10d, freezing by the period:** approving waits for its end, and
@@ -1699,7 +1716,7 @@ approving a month early, and decided the same day.
   - **10f, Change this month's payday,** with this month's period, and
     Recalculate by the period.
 
-### 7.11 Clearer words on Exceptions (Proposed)
+### 7.11 Clearer words on Exceptions (Decided)
 
 Asked on 2026-11-27: Attendance's Exceptions tab names its two decisions
 "Excuse" and "Accept", which don't say what they do. In Arabic both start
@@ -1712,7 +1729,8 @@ with قبول: «قبول العذر» and «قبول».
   - **Accept** keeps what the policy deducts, none when it's a free time,
     and it counts as one of the times. On Departure to confirm, it
     confirms the early leave, which the policy then deducts.
-- **The words proposed,** for what they do, which stays as it is:
+- **The words,** for what they do, which stays as it is (decided on 27
+  November):
 
   | Where | Now | Proposed |
   |---|---|---|
@@ -2218,3 +2236,13 @@ with قبول: «قبول العذر» and «قبول».
   owner's ask: "Don't deduct" and "Deduct per policy" for Excuse and
   Accept, and "Present, no deduction" for Accept as it is. One small PR,
   before payday.
+- **2026-11-27:** The words on Exceptions (§7.11) decided as proposed.
+  §7.10 further: the same rules for a company without attendance in
+  payroll, so the period moves to the Payroll settings as "Payroll
+  closes"; a payday picked by hand stays where it's put; changing this
+  month's payday is for whoever may approve payroll; and a payday that
+  breaks the rule is refused, not warned about: the release moves every
+  company onto settings that follow it, a new company starts with payroll
+  closing on the month's last day and payday on the 1st of the month
+  after, and approving is refused where one still breaks it. The other
+  live company's settings are open (§7.9).
