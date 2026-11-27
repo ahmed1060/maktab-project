@@ -461,7 +461,10 @@ export class PayrollRunService {
         return prisma.$transaction(async tx => {
             const after = nextMonth(year, month)
             await lockMonths(tx, companyId, [monthKey(year, month), monthKeyOf(after.year, after.month)])
-            const run = await tx.payrollRun.findUnique({ where: { companyId_month_year: { companyId, month, year } }, select: { id: true, status: true, payrollDay: true } })
+            // Held from here to the write: marking it paid meanwhile waits for this, or came first and
+            // it's refused (Codex review on PR 430).
+            const [run] = await tx.$queryRaw<{ id: string; status: string }[]>`
+                SELECT id, status::text AS status FROM "PayrollRun" WHERE "companyId" = ${companyId} AND year = ${year} AND month = ${month} FOR UPDATE`
             if (run?.status === "PAID") return refuse("RUN_PAID")
             const settings = await PayrollPeriodService.settings(tx, companyId)
             const period = await PayrollPeriodService.periodOf(tx, companyId, year, month, settings)

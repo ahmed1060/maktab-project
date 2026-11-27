@@ -73,7 +73,14 @@ export class SettlementService {
         // undecided counts nothing, and nothing decides it once this is made (Codex review on PR 430).
         const waiting = await daysToSettle(db, companyId, after, [userId], 1)
         if (waiting.count + Object.values(waiting.requests).reduce((a, b) => a + b, 0) > 0) throw new Error("ATTENDANCE_PENDING")
-        const money = (await attendanceMoney(db, companyId, after)).get(userId)
+        // Nor a day a later payroll already paid them for, approved before their contract's end was recorded:
+        // one it froze, where it has their payslip, is that payroll's (Codex review on PR 430).
+        const paidBy = (await db.payslip.findMany({
+            where: { userId, excluded: false, payrollRun: { companyId, status: { in: ["APPROVED", "PAID"] } } },
+            select: { payrollRunId: true },
+        })).map(p => p.payrollRunId)
+        const unpaid = { OR: [{ lockedByPayrollRunId: null }, { lockedByPayrollRunId: { notIn: paidBy } }] }
+        const money = (await attendanceMoney(db, companyId, after, unpaid)).get(userId)
         return { minor: money ? money.overtime + money.missionAllowance - money.lateness - money.earlyLeave - money.absence : 0, ...after }
     }
 
@@ -418,7 +425,8 @@ export class SettlementService {
             })
             if (counted) {
                 await tx.attendanceDay.updateMany({
-                    where: { companyId, userId: input.userId, date: { gte: new Date(`${counted.from}T00:00:00Z`), lte: new Date(`${counted.to}T00:00:00Z`) } },
+                    // Not one a payroll froze: that payroll's already (Codex review on PR 430).
+                    where: { companyId, userId: input.userId, lockedByPayrollRunId: null, date: { gte: new Date(`${counted.from}T00:00:00Z`), lte: new Date(`${counted.to}T00:00:00Z`) } },
                     data: { lockedBySettlementId: settlement.id },
                 })
             }

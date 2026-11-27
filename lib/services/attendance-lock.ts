@@ -98,12 +98,23 @@ export async function lockDateMonths(tx: Prisma.TransactionClient, companyId: st
  * (Codex review on PR 430).
  */
 export async function lockPunchMonthsOf(tx: Prisma.TransactionClient, companyId: string, punches: readonly { userId: string | null; local: string }[]): Promise<string[][]> {
-    const shiftDays = (local: string) => { const d = local.slice(0, 10); return [addDays(d, -1), d, addDays(d, 1)] }
     await lockMonths(tx, companyId, punches.flatMap(p => shiftDays(p.local)).flatMap(reachOf))
     const months = await punchMonthsOf(tx, companyId, punches)
-    // One whose shift can be on a day a final settlement counted is paid too (Codex review on PR 430).
-    const settled = await settledOf(tx, companyId, punches.flatMap(p => shiftDays(p.local).map(date => ({ userId: p.userId, date }))))
-    return settled.size === 0 ? months : punches.map((p, i) => shiftDays(p.local).some(d => settled.has(`${p.userId}:${d}`)) ? [...months[i], SETTLED] : months[i])
+    const settled = await settledPunches(tx, companyId, punches)
+    return punches.map((p, i) => settled[i] ? [...months[i], SETTLED] : months[i])
+}
+
+/** The days a punch's shift can be on: the day before, its own and the day after. */
+const shiftDays = (local: string) => { const d = local.slice(0, 10); return [addDays(d, -1), d, addDays(d, 1)] }
+
+/**
+ * Of these punches, those whose shift can be on a day a final settlement
+ * counted: paid too (Codex review on PR 430). Read under the month locks by
+ * a writer, and by the list of check-ins to review, which writes nothing.
+ */
+export async function settledPunches(db: Prisma.TransactionClient, companyId: string, punches: readonly { userId: string | null; local: string }[]): Promise<boolean[]> {
+    const settled = await settledOf(db, companyId, punches.flatMap(p => shiftDays(p.local).map(date => ({ userId: p.userId, date }))))
+    return punches.map(p => shiftDays(p.local).some(d => settled.has(`${p.userId}:${d}`)))
 }
 
 /** One punch's months, for a writer, as lockPunchMonthsOf. */

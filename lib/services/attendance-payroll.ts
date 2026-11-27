@@ -35,11 +35,12 @@ export function attendanceReaches(from: Date | null, year: number, month: number
  * rebuilds every day first, so what is approved is always exact. The mission
  * allowance (§6.10, PR 288) is the sum of the days' allowances. A day a
  * final settlement counted is that settlement's, never a payroll's too,
- * should they be taken back on (Codex review on PR 430).
+ * should they be taken back on (Codex review on PR 430). `also` narrows
+ * the days further, as a settlement does to those no payroll paid.
  */
-export async function attendanceMoney(db: Db, companyId: string, period: Period): Promise<Map<string, AttendanceMoney>> {
+export async function attendanceMoney(db: Db, companyId: string, period: Period, also: Prisma.AttendanceDayWhereInput = {}): Promise<Map<string, AttendanceMoney>> {
     const days = await db.attendanceDay.findMany({
-        where: { companyId, lockedBySettlementId: null, date: daysOf(period) },
+        where: { ...also, companyId, lockedBySettlementId: null, date: daysOf(period) },
         select: { userId: true, status: true, deductionMinor: true, overtimeMinor: true, missionAllowanceMinor: true, breakdown: true },
     })
     const out = new Map<string, AttendanceMoney>()

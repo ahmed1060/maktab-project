@@ -587,4 +587,67 @@ describe.skipIf(!ADMIN_URL)("payday and the attendance period, in Postgres", () 
             await db.query(`UPDATE "Company" SET "payrollCloseDay" = 24 WHERE id = 'c1'`)
         }
     }, 120_000)
+
+    it("lists the check-ins a decision would take, by the period, and never one a settlement or a payroll has paid (Codex review on PR 430)", async () => {
+        vi.setSystemTime(new Date("2027-04-01T08:00:00Z"))
+        const { AttendanceFlagService: Flags } = await import("@/lib/services/attendance-flag.service")
+        const { SettlementService } = await import("@/lib/services/settlement.service")
+        const { prisma } = await import("@/lib/prisma")
+        const flagged = (id: string, userId: string, local: string, utc: string) => db.query(
+            `INSERT INTO "AttendancePunch"(id, "companyId", "userId", source, "sourceKey", "punchAtLocal", "punchAt", "resolvedWithTimeZone", status, "flagReasons")
+             VALUES ($1, 'c1', $2, 'MOBILE', $1, $3, $4, 'Africa/Cairo', 'FLAGGED', '{OUTSIDE_AREA}')`, [id, userId, local, utc])
+        try {
+            // February is approved, closing on the 24th: the 25th is March's, still open. Amal's check-in then is
+            // there to decide; Nour's isn't, a day her settlement counted.
+            await flagged("f1", "a1", "2027-02-25T09:00:00", "2027-02-25T07:00:00Z")
+            await flagged("f2", "e2", "2027-02-25T09:00:00", "2027-02-25T07:00:00Z")
+            const listed = (await Flags.list("COMPANY", { companyId: "c1", visible: { kind: "COMPANY" } })).map(f => f.id)
+            expect(listed).toContain("f1")
+            expect(listed).not.toContain("f2")
+
+            // Hani's 25th and 26th of March, after it closes, frozen by April's payroll, which paid him, before his
+            // end on the 26th was recorded: that payroll's, not counted again by his settlement.
+            await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "roleId", "lastDayOffResetYear", username, "companyId")
+                SELECT 'e5', 'e5@x', 'p', 'Hani', 'Five', role, "roleId", 2026, 'e5', 'c1' FROM "User" WHERE id = 'e1'`)
+            await db.query(`INSERT INTO "SalaryChange"(id, "userId", "monthlyAmount", "effectiveFrom") VALUES ('s6', 'e5', 9300, '2026-12-01T00:00:00Z')`)
+            await db.query(`INSERT INTO "EmploymentEvent"(id, "userId", type, "effectiveFrom") VALUES ('h6', 'e5', 'HIRED', '2026-12-01T00:00:00Z')`)
+            await Engine.recomputeMonth("c1", "2027-03", ["e5"])
+            const absent = (await db.query(`SELECT "deductionMinor" FROM "AttendanceDay" WHERE "userId" = 'e5' AND date = '2027-03-25'`)).rows[0].deductionMinor
+            expect(absent).toBeGreaterThan(0)
+            expect((await SettlementService.afterClose("c1", "e5", 2027, 3, "2027-03-26"))?.minor).toBe(-absent)
+            await db.query(`INSERT INTO "PayrollRun"(id, "companyId", month, year, status, "payrollDay", "periodStart", "periodEnd", "updatedAt") VALUES ('r5', 'c1', 4, 2027, 'APPROVED', 1, '2027-03-25', '2027-04-24', now())`)
+            await db.query(`INSERT INTO "Payslip"(id, "payrollRunId", "userId", "daysPaid", "updatedAt") VALUES ('p5', 'r5', 'e5', 30, now())`)
+            await db.query(`UPDATE "AttendanceDay" SET "lockedByPayrollRunId" = 'r5' WHERE "userId" = 'e5' AND date BETWEEN '2027-03-25' AND '2027-03-31'`)
+            expect((await SettlementService.afterClose("c1", "e5", 2027, 3, "2027-03-26"))?.minor).toBe(0)
+            // Left out of that payroll, they were never paid: the settlement counts them.
+            await db.query(`UPDATE "Payslip" SET excluded = true WHERE id = 'p5'`)
+            expect((await SettlementService.afterClose("c1", "e5", 2027, 3, "2027-03-26"))?.minor).toBe(-absent)
+            // His contract ended there: nothing counted again, and the days stay April's, not marked as settled.
+            await db.query(`UPDATE "Payslip" SET excluded = false WHERE id = 'p5'`)
+            await SettlementService.settleAndEnd({ userId: "e5", lastWorkingDay: "2027-03-26", createdById: "a1", actorRole: "ADMIN", actorName: "Amal One" })
+            expect((await db.query(`SELECT "attendanceAmount"::float AS a FROM "FinalSettlement" WHERE "userId" = 'e5'`)).rows[0].a).toBe(0)
+            expect((await db.query(`SELECT count(*)::int AS n FROM "AttendanceDay" WHERE "userId" = 'e5' AND "lockedBySettlementId" IS NOT NULL`)).rows[0].n).toBe(0)
+            await db.query(`UPDATE "AttendanceDay" SET "lockedByPayrollRunId" = NULL WHERE "userId" = 'e5'`)
+            await db.query(`DELETE FROM "PayrollRun" WHERE id = 'r5'`)
+
+            // Change payday holds March's run from reading it to writing it: marking it paid meanwhile waits.
+            const real = Periods.settings.bind(Periods)
+            let held: boolean | null = null
+            const spy = vi.spyOn(Periods, "settings").mockImplementation(async (...args: Parameters<typeof Periods.settings>) => {
+                if (held === null && args[0] !== prisma) held = await db.query(`SELECT id FROM "PayrollRun" WHERE "companyId" = 'c1' AND year = 2027 AND month = 3 FOR UPDATE NOWAIT`).then(() => false, () => true)
+                return real(...args)
+            })
+            try {
+                expect(await Payroll.changePayday("c1", 2027, 3, { payday: "2027-03-29" }, SESSION)).toEqual({ payday: "2027-03-29", periodEnd: "2027-03-24" })
+            } finally {
+                spy.mockRestore()
+            }
+            expect(held).toBe(true)
+        } finally {
+            vi.setSystemTime(NOW)
+            await db.query(`DELETE FROM "AttendancePunch" WHERE id IN ('f1', 'f2')`)
+            await db.query(`UPDATE "AttendanceDay" SET "lockedByPayrollRunId" = NULL WHERE "userId" = 'e5'`)
+            await db.query(`DELETE FROM "PayrollRun" WHERE id = 'r5'`)
+        }
+    }, 120_000)
 })
