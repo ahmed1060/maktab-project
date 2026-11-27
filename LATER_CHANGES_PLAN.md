@@ -1751,14 +1751,20 @@ approving a month early, and decided the same day.
 - **The rule,** on save in the company's settings and again on approving:
   payday comes after the close: always in the month after; in the own
   month, a day after the close day, or the last day with a close up to
-  the 27th, February's 28th being the shortest last day.
+  the 27th, February's 28th being the shortest last day. Approving checks
+  the month's own payday, one changed for it included, against its
+  period, and again once it holds the month locks: a payday changed to
+  the setting's close stays where it's put when the close later moves.
 - **Payroll reads the period:** the attendance lines, the days still to
   settle, the overtime left undecided and the days stamped as paid, from
   the period's dates; the days rebuilt before approving are those of the
   calendar months the period touches.
 - **Freezing by the period:** the month locks are taken, and checked, for
   the payroll months the dates written fall in, not their calendar
-  months. Approving takes its month's and the next's. A rebuild of a
+  months. Approving takes its month's and the next's. A writer takes,
+  for each date, its calendar month's lock and the next's, the two
+  payroll months it can fall in, before reading which of them counts it:
+  a payday changed or a month approved in between can't move it. A rebuild of a
   calendar month rebuilds the days not yet frozen, and records what
   changed on the frozen ones, as it did for a whole month. Owners, the
   contract start and joining keep the calendar month, as the payslip's
@@ -1783,12 +1789,18 @@ approving a month early, and decided the same day.
   it's over, so a contract whose last working day comes after the
   leaving month's close isn't ended before that day is over
   (`ATTENDANCE_NOT_OVER`, said under the date); ending it measures their
-  days first, as the nightly job would.
+  days first, as the nightly job would. Nor while one of those days
+  waits on a decision: a day incomplete or a departure to confirm, or
+  overtime, a permission, a missing punch or a mission not yet decided
+  (`ATTENDANCE_PENDING`, said under the date). Nothing settles them once
+  the settlement is made.
 - **Change this month's payday** (`PUT /api/payroll/{year}/{month}/payday`,
   `payroll.approve`, with the step-up a high-risk action asks for): the
   date, and while the run is a draft the attendance's last day, each
-  checked as above; written on the month's run, made if it has none,
-  with an audit line. The date is no later than the month after next.
+  checked as above, the last day within the month's own calendar month,
+  so a period touches two calendar months at most and a date is its own
+  month's or the next's; written on the month's run, made if it has
+  none, with an audit line. The date is no later than the month after next.
   An approved month's attendance stays as approved, whatever the
   settings say since; so does a draft's whose next month is approved.
   A draft's last day equal to the setting's close is kept as the
@@ -2347,3 +2359,8 @@ with قبول: «قبول العذر» and «قبول».
   close moved under an approved next month; settlements carried by the
   calendar month's end, not payday; the first payday on or after a date
   taken in month order. Each fixed, as built in §7.10.
+- **2026-11-27:** Codex's second review on #430: a date's payroll month
+  read before its lock was taken; a payday changed for a month checked
+  only against the settings on approving; a month's attendance allowed
+  to end in the month before; a settlement made with days after the
+  close still waiting on a decision. Each fixed, as built in §7.10.
