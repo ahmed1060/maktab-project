@@ -122,6 +122,8 @@ const SHOWS_TABS: Gate = { in: SETTINGS_ACCESS, code: 'const exposed: string[] =
 const EDITS: Gate[] = [{ in: "app/api/company-settings/route.ts", code: 'canEdit: can(session.user, "settings.edit", { companyId }),' }, "readOnly={!canEdit}"]
 const EDITS_ATTENDANCE: Gate[] = [...EDITS, "const editable = !readOnly && !!data?.canEdit"]
 const ATTENDANCE_TAB: Gate[] = [SHOWS_TABS, "{tab === 'attendance' && ("]
+// The Payroll tab's second card, payroll deductions (LATER_CHANGES_PLAN.md §7.12, PR 440): its own route, asked what the tab's fields are.
+const PAYROLL_TAB: Gate[] = [SHOWS_TABS, "{tab === 'payroll' && ("]
 const TERMINALS = "lib/attendance/terminals-access.ts"
 const MANAGES_TERMINALS: Gate[] = [{ in: TERMINALS, code: 'return company.terminalsSetupByCompany && can(actor, "attendance.manage_terminals", { companyId: company.id })' }, "{data.sections.terminals && <AttendanceTerminalsPanel"]
 // Roles and access's two tabs, each for whoever holds its permission (LATER_CHANGES_PLAN.md §7.15, PR 439).
@@ -390,6 +392,9 @@ const SCREENS: Record<string, Screen> = {
             "PUT /api/company-settings": { when: ["settings.edit"], routeChecks: SETTINGS_ACCESS, gates: EDITS },
             "POST /api/companies/logo": { when: ["settings.edit"], routeChecks: SETTINGS_ACCESS, gates: EDITS },
             "DELETE /api/companies/logo": { when: ["settings.edit"], routeChecks: SETTINGS_ACCESS, gates: EDITS },
+            // Payroll deductions: read when the Payroll tab shows, saved with Edit settings (PR 440).
+            "GET /api/company-deductions": { when: ["settings.view"], routeChecks: SETTINGS_ACCESS, gates: PAYROLL_TAB },
+            "PUT /api/company-deductions": { when: ["settings.edit"], routeChecks: SETTINGS_ACCESS, gates: [...EDITS, ...PAYROLL_TAB] },
             // Attendance: read when the tab shows, changed with Edit settings.
             "GET /api/attendance/calendar": reads,
             "GET /api/attendance/policy": reads,

@@ -4492,6 +4492,63 @@ a.ui-row:focus-visible {
   line-height: var(--leading-md);
   font-weight: 600;
 }
+/* Payroll deductions (DESIGN.md §5.5, PR 440): the company's own, one
+   block each under a rule, its name, how it's taken, its figure and
+   Remove on a line on computers, level at their tops, so an error under
+   one doesn't move the others; on phones one under another. */
+.ui-deductions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.ui-deductions > .ui-subsection-title {
+  margin: 0;
+}
+.ui-deduction {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--rule);
+}
+/* On a computer a deduction is one line, its name taking what's left: the
+   card is 590px inside wherever there's room beside the side bar. */
+.ui-deduction > .ui-deduction-name {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.ui-deduction > .ui-choices {
+  flex: 0 1 auto;
+}
+.ui-deduction > .ui-deduction-value {
+  flex: 0 1 128px;
+}
+/* Level with the fields' boxes, under their labels. */
+.ui-deduction > .ui-deduction-remove {
+  margin-block-start: calc(var(--leading-sm) + var(--space-2));
+}
+@media (max-width: 767px) {
+  .ui-deduction > .ui-deduction-name,
+  .ui-deduction > .ui-choices,
+  .ui-deduction > .ui-deduction-value {
+    flex: 1 1 100%;
+  }
+  .ui-deduction > .ui-deduction-remove {
+    margin-block-start: 0;
+  }
+}
+.ui-deductions-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+/* Holds the room of the two fields it waits for (§5.5, Card): a label
+   and a field's box. */
+.ui-deductions-loading {
+  min-block-size: calc(var(--leading-sm) + var(--space-2) + 36px);
+}
 /* A cost's name, its amount and Add on a line, the name taking what's
    left; on a phone the name takes the line, its suggestions needing it.
    Level at their tops: an error under the name pushed the others down. */

@@ -7,6 +7,7 @@ import { fetcher, SWRError } from '@/lib/swr-fetcher'
 import { useLanguage } from '@/context/LanguageContext'
 import { companyNameIn } from '@/lib/company-name'
 import { personName, type PersonNames } from '@/lib/names'
+import { payslipLineLabel } from '@/lib/payslip-line-label'
 
 /**
  * One payslip, to read and to print.
@@ -34,7 +35,7 @@ type Doc = {
     deductions: number
     net: number
     carried: number
-    lines: { kind: 'EARNING' | 'DEDUCTION'; label: string; amount: number }[]
+    lines: { kind: 'EARNING' | 'DEDUCTION'; label: string; source?: string | null; sourceId?: string | null; amount: number }[]
 }
 
 export default function PayslipDocumentPage() {
@@ -100,14 +101,14 @@ export default function PayslipDocumentPage() {
                 {doc.excluded && <DocNote tone="neutral">{t('doc_excluded_note').replace('{reason}', doc.exclusionReason || '')}</DocNote>}
 
                 <DocGroup title={t('doc_earnings')}>
-                    {earnings.map((l, i) => <DocLine key={i} label={l.label} amount={money(l.amount)} />)}
+                    {earnings.map((l, i) => <DocLine key={i} label={payslipLineLabel(l, t)} amount={money(l.amount)} />)}
                     <DocTotal label={t('doc_earnings')} amount={money(doc.earnings)} />
                 </DocGroup>
 
                 {deductions.length > 0 && (
                     <DocGroup title={t('doc_deductions')}>
                         {/* Taken off, so a minus sign, but none on nothing: "−0.00" (PR 155). */}
-                        {deductions.map((l, i) => <DocLine key={i} label={l.label} amount={money(l.amount)} minus={l.amount !== 0} />)}
+                        {deductions.map((l, i) => <DocLine key={i} label={payslipLineLabel(l, t)} amount={money(l.amount)} minus={l.amount !== 0} />)}
                         <DocTotal label={t('doc_deductions')} amount={money(doc.deductions)} minus={doc.deductions !== 0} />
                     </DocGroup>
                 )}
