@@ -24,8 +24,8 @@ off (#431), every writer waiting for a month's lock as long as an import
 may hold it (#432, ATTENDANCE_PLAN.md §12.1), permission hours (#433) and
 missions (#434); obligations with a client (§7.7, step 7) done: an
 obligation's client (#435), and View obligations on a client's page in
-place of a section (#436); payroll deductions (§7.12) and then salary
-advances (§7.5), step 8, next, the law's limit decided (§7.9), with a few
+place of a section (#436); a salary change's payroll (§7.13), a fix, under
+way, then payroll deductions (§7.12) and salary advances (§7.5), the law's limit decided (§7.9), with a few
 points open (§7.12.3); the names (§3) paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
@@ -1691,10 +1691,11 @@ Built in two PRs:
 6. Limits on requests (§7.4): day off first, then permission hours and
    missions.
 7. Obligations with a client (§7.7).
-8. Payroll deductions (§7.12), then salary advances (§7.5), Custody's new
+8. A salary change's payroll (§7.13), a fix found on 27 November.
+9. Payroll deductions (§7.12), then salary advances (§7.5), Custody's new
    name first, as an installment's limit is worked out on the net after
    them.
-9. Rating finished work (§7.6): DESIGN.md first, then tasks, then
+10. Rating finished work (§7.6): DESIGN.md first, then tasks, then
    obligations.
 
 A step may take more than one PR.
@@ -2045,6 +2046,30 @@ installments (§7.9).
      simplification, which may do for now.
    - The law's 25% limit on all debts together (§7.9) isn't checked
      anywhere, as there's no cap at payroll.
+
+### 7.13 A salary change's payroll (Decided)
+
+Found on 2026-11-27 from a November payslip whose salary was split at day
+22 into the salary and 0.
+
+1. **The bug:** an account made without a salary is given a starting
+   salary of 0, dated the day it was made. A salary set later is dated the
+   1st of the month, before it, so the 0 still won from its own day. Two
+   people's November payslips, both drafts, paid days at 0: one from day
+   22, one for every day of their contract.
+2. **Decided (the owner, 27 November):**
+   - Changing someone's salary asks which payroll it's for: this month's,
+     from its 1st, or next month's, from its 1st. Neither is picked for
+     them. The server already took the answer; no screen asked it.
+   - A salary set for a month is that month's from its 1st: a salary
+     recorded before it and dated later in the same month gives way to it,
+     for payslips and for pricing attendance. The two payslips are put
+     right by Recalculate, with no data changed.
+   - With this month's payroll approved, the new salary can only be next
+     month's: asked for this month's, the server refuses it
+     (`PAYROLL_MONTH_LOCKED`), said under the choice.
+3. One PR, before payroll deductions (§7.8). After it's merged, November's
+   payroll is recalculated.
 
 ## Not here
 
@@ -2644,3 +2669,7 @@ installments (§7.9).
   money owed, marked paid when received.
 - **2026-11-27:** The owner agreed to a per-person setting for each payroll
   deduction on an employee's page (§7.12).
+- **2026-11-27:** A salary change's payroll (§7.13): a starting salary of 0
+  outlived the salary set after it, on two November payslips. Changing a
+  salary will ask whether it's this month's payroll or next month's, and a
+  month's salary holds from its 1st. Before payroll deductions (§7.8).
