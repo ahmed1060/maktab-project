@@ -2448,6 +2448,16 @@ These are built once, in the building-blocks PR, and every page uses them
     this month's after next month's replaces both.
   - Their page shows the salary set last, next month's too; each month's
     payslip pays the salary for that month.
+- **Handing an obligation in** (`LATER_CHANGES_PLAN.md` §7.14): on an
+  obligation's page, Your submission is for whoever it's assigned to,
+  whatever their role, an Admin or a Team Leader as well as an employee.
+  - While it's being worked on, it has the files and Submit; handed in,
+    it says it's waiting; decided, that it's done with.
+  - A Team Leader on it decides it as well, as their team's: Approve and
+    Reject at the top of the page once it's handed in. Someone who decides
+    obligations company-wide still doesn't decide their own.
+  - Signed out while handing it in, what they'd added is saved as a
+    draft, whatever their role.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
