@@ -24,8 +24,9 @@ off (#431), every writer waiting for a month's lock as long as an import
 may hold it (#432, ATTENDANCE_PLAN.md §12.1), permission hours (#433) and
 missions (#434); obligations with a client (§7.7, step 7) done: an
 obligation's client (#435), and View obligations on a client's page in
-place of a section (#436); salary advances (§7.5, step 8) next, once the owner
-has reviewed §7.9; the names (§3) paused after step 8l (#424).** Done: the development database (§4),
+place of a section (#436); payroll deductions (§7.12) and then salary
+advances (§7.5), step 8, next, the law's limit decided (§7.9), with a few
+points open (§7.12.3); the names (§3) paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their limit set
@@ -1572,10 +1573,21 @@ In three PRs, each whole on its own:
   picks this month's payroll or next month's for the first installment
   (next month's when this month's is approved). They see each month's
   amount before sending.
-- **The policy decides**, each editable:
+- **The policy decides**, each editable, in Company Settings:
   - the most one may ask for: 2 months' salary unless changed;
   - whether only one may be open at a time;
-  - how long someone must have worked first.
+  - how long someone must have worked first;
+  - the most a month's installment may be: 10% of the net pay after
+    income tax and social insurance (§7.12), unless lowered. It can't be
+    set above 10%, the law's limit (§7.9);
+  - what happens when an installment would be over it: Block, unless
+    changed to Warn. Block keeps the months from going below what the
+    limit allows, for the employee asking and for the approver.
+- **No cap at payroll** (the owner, 27 November): once approved, each
+  installment is taken in full, even in a month whose pay came out lower.
+- **The employee's consent,** which the law asks for in writing: the
+  request says how much will be taken from each payslip until it's
+  repaid, and sending it agrees to that, kept with its date and time.
 - **Approving:** on the Requests page, with a new permission. The
   approver may change the months and the start, and picks how it's paid:
   cash or bank transfer.
@@ -1585,8 +1597,10 @@ In three PRs, each whole on its own:
 - **The balance** shows on the employee's page and on one's own profile.
 - **Managing**, with a permission: settle it early, or move an
   installment.
-- **At the end of a contract,** what's left comes off the final
-  settlement.
+- **At the end of a contract,** the final settlement asks whoever makes
+  it: take what's left now, or keep the installments going (the owner,
+  27 November; what keeping them going means after someone leaves is
+  open, §7.12.3).
 
 ### 7.6 Rating finished work (Decided)
 
@@ -1675,8 +1689,9 @@ Built in two PRs:
 6. Limits on requests (§7.4): day off first, then permission hours and
    missions.
 7. Obligations with a client (§7.7).
-8. Salary advances (§7.5), Custody's new name first, once the owner has
-   reviewed §7.9.
+8. Payroll deductions (§7.12), then salary advances (§7.5), Custody's new
+   name first, as an installment's limit is worked out on the net after
+   them.
 9. Rating finished work (§7.6): DESIGN.md first, then tasks, then
    obligations.
 
@@ -1689,8 +1704,12 @@ A step may take more than one PR.
    interest, and the same for wages paid ahead (article 113); all debts
    together, at most 25% of the wage after income tax (article 114).
    Nizmo could stop an installment over it, warn, or take the most from
-   the policy (10% unless changed). The owner reviews this later, before
-   salary advances are built; nothing about it changes until then.
+   the policy (10% unless changed).
+   **Decided by the owner on 27 November** (§7.5, §7.12): the 10% is of
+   the net after income tax and social insurance; an installment over it
+   is blocked, a setting that can be changed to warn; there's no cap at
+   payroll; and at a contract's end the settlement asks whether to take
+   what's left or keep the installments going.
 
 ### 7.10 Payday and the attendance period (Decided)
 
@@ -1990,6 +2009,37 @@ with قبول: «قبول العذر» and «قبول».
   - Arabic in the same way, gender-neutral: «إعفاء من الخصم مع ذكر السبب،
     أو الخصم حسب السياسة».
 - **Words and their tests only,** before 10a, in the same PR (§7.8).
+
+### 7.12 Payroll deductions (Decided in part)
+
+Talked through with the owner on 2026-11-27, from the law's limit on
+installments (§7.9).
+
+1. **Today's salaries are net:** the amounts entered in Nizmo are what
+   people take home, before Nizmo's own deductions and additions.
+2. **Decided:**
+   - Company Settings, in the Payroll settings card, gets Income tax and
+     Social insurance, each a percentage, 0 unless changed.
+   - And more deductions, as many as wanted, each with a name and either
+     a fixed amount or a percentage.
+   - With them all 0, as every company starts, nothing on a payslip
+     changes. A company can later enter gross salaries and set the
+     percentages, and each deduction shows on the payslip as a line of
+     its own.
+   - The net after income tax and social insurance is what a salary
+     advance's installment limit is worked out on (§7.5).
+3. **Open:**
+   - What the percentages are of: the month's pay before them (the salary
+     with its additions and Nizmo's deductions), or the salary alone.
+   - Whether they apply to everyone in the company, or can be turned off
+     for a person, such as an owner or someone not insured.
+   - Egypt's income tax is worked out by brackets and social insurance on
+     an insured wage with a floor and a ceiling. A flat percentage is a
+     simplification, which may do for now.
+   - After someone leaves there's no payslip to take installments from:
+     what "keep the installments going" does then (§7.5).
+   - The law's 25% limit on all debts together (§7.9) isn't checked
+     anywhere, as there's no cap at payroll.
 
 ## Not here
 
@@ -2576,3 +2626,9 @@ with قبول: «قبول العذر» and «قبول».
 - **2026-11-27:** #436 merged (7b, View obligations on a client's page), so
   step 7 is done. Salary advances (step 8) are next, once the owner has
   reviewed §7.9.
+- **2026-11-27:** The owner decided the law's limit on installments
+  (§7.9): 10% of the net after income tax and social insurance, Block
+  unless changed to Warn, no cap at payroll, and a question at a
+  contract's end. Payroll deductions added (§7.12): income tax and social
+  insurance percentages, 0 unless changed, and more named deductions, a
+  fixed amount or a percentage, before salary advances (§7.8).
