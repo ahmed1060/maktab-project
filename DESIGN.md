@@ -2301,18 +2301,23 @@ These are built once, in the building-blocks PR, and every page uses them
     whoever may approve payroll, until the month is marked paid.
   - **Change payday** opens the building blocks' dialog, titled Change
     this month's payday: a date field, Payday; and while the month isn't
-    approved, a second, Attendance counts up to, the day before the new
-    payday when that's before the close, and otherwise the close. A line
-    under them says that the days after go to next month's payroll, and
-    that next month goes back to the settings. Its button says Change
-    payday. A payday that isn't after the attendance's last day is said
-    under its field.
+    approved, nor the month after it, a second, Attendance counts up to,
+    the day before the new payday when that's before the close, and
+    otherwise the close. A line under them says that the days after go to
+    next month's payroll, and that next month goes back to the settings;
+    with the month after approved, that this month's attendance ends
+    where next month's begins, and only payday changes. Its button says
+    Change payday. A payday that isn't after the attendance's last day is
+    said under its field.
   - **Approve, before payroll closes,** stays where it is, greyed and
     `aria-disabled`, with the date it may be from in a note beside it,
     as a button that can't be used here is (§5.2). The server refuses it
     as well.
   - **On the payslip,** under the month, which days its attendance counts:
     "Attendance: 25 October to 24 November", in the payslip's language.
+  - **Ending a contract** on a day after payroll closes, before that day
+    is over, says under the date why it can't be settled yet: that day's
+    attendance goes in the settlement, and it's known once it's over.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
