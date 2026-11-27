@@ -2279,9 +2279,10 @@ These are built once, in the building-blocks PR, and every page uses them
   other, before the time zone.
   - **Payroll closes:** a select, On the month's last day or On a day of
     the month, and with the second a Day field, 1 to 28, beside it, as a
-    card's fields side by side are, each half the width on phones. Its hint: that the month's payroll
-    counts attendance up to that day, which is counted, and may be
-    approved from the day after.
+    card's fields side by side are, each half the width on phones. The
+    two line up at the top, so a hint or an error under one doesn't move
+    the other. Its hint: that the month's payroll counts attendance up to
+    that day, which is counted, and may be approved from the day after.
   - **Payday:** a select, On a day of the month or On the month's last
     day, with its Day field as above; then In, the payroll's own month or
     the month after; then If it's a day off, the working day before or
