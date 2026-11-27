@@ -2320,7 +2320,11 @@ These are built once, in the building-blocks PR, and every page uses them
     attendance goes in the settlement, and it's known once it's over.
     While one of the days after payroll closes still waits on a decision,
     it says so under the date too, and that they're decided on the
-    Attendance pages first.
+    Attendance pages first. Where what the settlement counts changed
+    while it was worked out, such as one of those days excused meanwhile,
+    it says so above the buttons and works the settlement out again, the
+    main button waiting for the new figures: the figure confirmed is the
+    figure recorded.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
