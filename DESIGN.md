@@ -2399,7 +2399,8 @@ These are built once, in the building-blocks PR, and every page uses them
     under the description, "No client" first, then the company's clients
     that aren't archived, each by its name in the page's language. Its
     hint: "Optional. The client it's done for." A Super Admin's waits for
-    a company to be picked, as a task's does. Without See clients there's
+    a company to be picked, as a task's does, and switching company takes
+    off the client picked in the last one. Without See clients there's
     no select, and the obligation has no client.
   - **A client the server refuses,** archived or gone while the form was
     open, is said under the select, which takes the focus. It's taken off
