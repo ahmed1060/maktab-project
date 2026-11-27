@@ -457,7 +457,7 @@ export class AttendanceEngineService {
             const scope = userIds ? { userId: { in: [...userIds] } } : {}
             const existing = await tx.attendanceDay.findMany({
                 where: { companyId, ...scope, date: { gte: wallClock(`${month}-01T00:00:00`), lte: wallClock(`${monthEnd(month)}T00:00:00`) } },
-                select: { id: true, userId: true, date: true, status: true, inputsHash: true, lockedByPayrollRunId: true },
+                select: { id: true, userId: true, date: true, status: true, inputsHash: true, lockedByPayrollRunId: true, lockedBySettlementId: true },
             })
             const stored = new Map(existing.map(e => [`${e.userId}:${toDateString(e.date)}`, e]))
             const keep = new Set<string>()
@@ -467,7 +467,8 @@ export class AttendanceEngineService {
                 keep.add(key)
                 result.derived += 1
                 const was = stored.get(key)
-                if (was?.lockedByPayrollRunId || was?.inputsHash === d.inputsHash) continue
+                // Frozen by a payroll, or by the final settlement that counted it (Codex review on PR 430).
+                if (was?.lockedByPayrollRunId || was?.lockedBySettlementId || was?.inputsHash === d.inputsHash) continue
                 await tx.attendanceDay.upsert({
                     where: { companyId_userId_date: { companyId, userId: d.userId, date: wallClock(`${d.date}T00:00:00`) } },
                     create: { companyId, userId: d.userId, date: wallClock(`${d.date}T00:00:00`), ...d.row, inputsHash: d.inputsHash },
@@ -489,7 +490,7 @@ export class AttendanceEngineService {
             }
 
             // Days no longer derived — before the first punch, outside employment — go.
-            const stale = existing.filter(e => !keep.has(`${e.userId}:${toDateString(e.date)}`) && !e.lockedByPayrollRunId).map(e => e.id)
+            const stale = existing.filter(e => !keep.has(`${e.userId}:${toDateString(e.date)}`) && !e.lockedByPayrollRunId && !e.lockedBySettlementId).map(e => e.id)
             if (stale.length > 0) result.removed = (await tx.attendanceDay.deleteMany({ where: { id: { in: stale } } })).count
             return result
         }

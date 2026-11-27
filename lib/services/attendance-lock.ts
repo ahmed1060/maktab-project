@@ -20,9 +20,32 @@ const lockKey = (companyId: string, month: string) => `attendance-month:${compan
  */
 export const LOCK_WAIT = { timeout: 90_000 }
 
+/**
+ * What a writer's months hold for a day a final settlement counted
+ * (LATER_CHANGES_PLAN.md §7.10, Codex review on PR 430): paid, with no payroll
+ * after it to pay a change, so lockedMonths reports it as it does an approved
+ * month, and every writer refuses or leaves it out the same way.
+ */
+export const SETTLED = "settled"
+
 /** Takes the lock for each month, in order, so two writers never wait on each other in a circle. */
 export async function lockMonths(tx: Prisma.TransactionClient, companyId: string, months: Iterable<string>) {
-    for (const month of [...new Set(months)].sort()) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey(companyId, month)}))::text`
+    for (const month of [...new Set(months)].filter(m => m !== SETTLED).sort()) await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey(companyId, month)}))::text`
+}
+
+/** Of these people's dates, those a final settlement counted, as "userId:date". Read under the month locks. */
+async function settledOf(tx: Prisma.TransactionClient, companyId: string, days: readonly { userId: string | null; date: string }[]): Promise<Set<string>> {
+    const theirs = days.filter((d): d is { userId: string; date: string } => !!d.userId)
+    if (theirs.length === 0) return new Set()
+    const settled = await tx.attendanceDay.findMany({
+        where: {
+            companyId, lockedBySettlementId: { not: null },
+            userId: { in: [...new Set(theirs.map(d => d.userId))] },
+            date: { in: [...new Set(theirs.map(d => d.date))].map(d => new Date(`${d}T00:00:00Z`)) },
+        },
+        select: { userId: true, date: true },
+    })
+    return new Set(settled.map(d => `${d.userId}:${d.date.toISOString().slice(0, 10)}`))
 }
 
 /**
@@ -60,10 +83,13 @@ export const reachOf = (date: string) => [date.slice(0, 7), addDays(`${date.slic
  * it wrote (Codex review on PR 430). Locked first, nothing that moves it
  * commits before this does.
  */
-export async function lockDateMonths(tx: Prisma.TransactionClient, companyId: string, dates: Iterable<string>): Promise<string[]> {
+export async function lockDateMonths(tx: Prisma.TransactionClient, companyId: string, dates: Iterable<string>, userId?: string): Promise<string[]> {
     const list = [...new Set(dates)]
     await lockMonths(tx, companyId, list.flatMap(reachOf))
-    return monthsOfDates(tx, companyId, list)
+    const months = await monthsOfDates(tx, companyId, list)
+    // Whose they are, and one their final settlement counted: paid (Codex review on PR 430).
+    if (userId && (await settledOf(tx, companyId, list.map(date => ({ userId, date })))).size > 0) months.push(SETTLED)
+    return months
 }
 
 /**
@@ -72,8 +98,12 @@ export async function lockDateMonths(tx: Prisma.TransactionClient, companyId: st
  * (Codex review on PR 430).
  */
 export async function lockPunchMonthsOf(tx: Prisma.TransactionClient, companyId: string, punches: readonly { userId: string | null; local: string }[]): Promise<string[][]> {
-    await lockMonths(tx, companyId, punches.flatMap(p => { const d = p.local.slice(0, 10); return [addDays(d, -1), d, addDays(d, 1)] }).flatMap(reachOf))
-    return punchMonthsOf(tx, companyId, punches)
+    const shiftDays = (local: string) => { const d = local.slice(0, 10); return [addDays(d, -1), d, addDays(d, 1)] }
+    await lockMonths(tx, companyId, punches.flatMap(p => shiftDays(p.local)).flatMap(reachOf))
+    const months = await punchMonthsOf(tx, companyId, punches)
+    // One whose shift can be on a day a final settlement counted is paid too (Codex review on PR 430).
+    const settled = await settledOf(tx, companyId, punches.flatMap(p => shiftDays(p.local).map(date => ({ userId: p.userId, date }))))
+    return settled.size === 0 ? months : punches.map((p, i) => shiftDays(p.local).some(d => settled.has(`${p.userId}:${d}`)) ? [...months[i], SETTLED] : months[i])
 }
 
 /** One punch's months, for a writer, as lockPunchMonthsOf. */
@@ -83,8 +113,11 @@ export async function lockPunchMonths(tx: Prisma.TransactionClient, companyId: s
 
 /** Which of these payroll months have an approved or paid payroll run. Read after the lock. */
 export async function lockedMonths(tx: Prisma.TransactionClient, companyId: string, months: Iterable<string>): Promise<Set<string>> {
-    const wanted = [...new Set(months)]
-    if (wanted.length === 0) return new Set()
+    const all = [...new Set(months)]
+    // A day a final settlement counted, said with them: paid as these are (Codex review on PR 430).
+    const settled = all.includes(SETTLED) ? [SETTLED] : []
+    const wanted = all.filter(m => m !== SETTLED)
+    if (wanted.length === 0) return new Set(settled)
     const runs = await tx.payrollRun.findMany({
         where: {
             companyId, status: { in: ["APPROVED", "PAID"] },
@@ -92,7 +125,7 @@ export async function lockedMonths(tx: Prisma.TransactionClient, companyId: stri
         },
         select: { year: true, month: true },
     })
-    return new Set(runs.map(r => `${r.year}-${String(r.month).padStart(2, "0")}`))
+    return new Set([...runs.map(r => `${r.year}-${String(r.month).padStart(2, "0")}`), ...settled])
 }
 
 

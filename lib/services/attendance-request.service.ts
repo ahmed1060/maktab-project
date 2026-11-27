@@ -48,9 +48,12 @@ async function companyOf(tx: Prisma.TransactionClient, companyId: string) {
     return await tx.company.findUnique({ where: { id: companyId }, select: { timezone: true } }) ?? fail("COMPANY_NOT_FOUND")
 }
 
-/** The payroll month a date falls in, locked and open (LATER_CHANGES_PLAN.md §7.10, PR 430), read under the locks (Codex review on PR 430). */
-async function openDate(tx: Prisma.TransactionClient, companyId: string, date: string) {
-    await openMonths(tx, companyId, await lockDateMonths(tx, companyId, [date]))
+/**
+ * The payroll month a date falls in, locked and open (LATER_CHANGES_PLAN.md §7.10, PR 430), read under the locks;
+ * and not a day the person's final settlement counted (Codex review on PR 430).
+ */
+async function openDate(tx: Prisma.TransactionClient, companyId: string, date: string, userId: string) {
+    await openMonths(tx, companyId, await lockDateMonths(tx, companyId, [date], userId))
 }
 
 async function openMonths(tx: Prisma.TransactionClient, companyId: string, months: string[]) {
@@ -191,7 +194,7 @@ export class AttendanceRequestService {
             // And the next month's, whose carried minutes this one can spend.
             await lockMonths(tx, companyId, [monthOf(input.date), monthOf(next)])
             await refuseOwnerMonths(tx, userId, input.date)
-            await openDate(tx, companyId, input.date)
+            await openDate(tx, companyId, input.date, userId)
             const balance = await balanceIn(tx, companyId, userId, input.date)
             if (!balance.enabled) fail("PERMISSION_HOURS_OFF")
             if (!balance.types.includes(input.type)) fail("PERMISSION_TYPE_NOT_ALLOWED")
@@ -252,7 +255,7 @@ export class AttendanceRequestService {
             const r = await tx.permissionRequest.findUnique({ where: { id } }) ?? fail("REQUEST_NOT_FOUND")
             if (r.userId !== userId) fail("REQUEST_NOT_FOUND")
             const date = toDateString(r.date)
-            await openDate(tx, r.companyId, date)
+            await openDate(tx, r.companyId, date, r.userId)
             if (r.status === "APPROVED") {
                 const company = await companyOf(tx, r.companyId)
                 if (localToInstant(localAt(date, r.startMinutes), company.timezone).getTime() <= Date.now()) fail("REQUEST_ALREADY_STARTED")
@@ -275,7 +278,7 @@ export class AttendanceRequestService {
             const r = await tx.permissionRequest.findUnique({ where: { id } }) ?? fail("REQUEST_NOT_FOUND")
             if (r.userId === reviewerId) fail("CANNOT_DECIDE_OWN")
             const date = toDateString(r.date)
-            await openDate(tx, r.companyId, date)
+            await openDate(tx, r.companyId, date, r.userId)
             if (r.status !== "PENDING") fail("REQUEST_ALREADY_DECIDED")
             if (decision.approve) {
                 const balance = await balanceIn(tx, r.companyId, r.userId, date, id)
@@ -414,7 +417,7 @@ export class AttendanceRequestService {
         const out = await prisma.$transaction(async tx => {
             const person = await tx.user.findFirst({ where: { id: input.userId, companyId, status: { not: "DELETED" } }, select: { id: true } })
             if (!person) fail("USER_NOT_FOUND")
-            await openDate(tx, companyId, input.date)
+            await openDate(tx, companyId, input.date, input.userId)
             const policy = policyOn(await AttendancePolicyService.versions(companyId), input.date)
             if (!policy?.body.overtime.enabled) fail("OVERTIME_OFF")
             if (!policy.body.overtime.requiresApproval) fail("OVERTIME_NEEDS_NO_APPROVAL")
@@ -456,7 +459,7 @@ export class AttendanceRequestService {
             const d = await tx.overtimeApproval.findUnique({ where: { id } }) ?? fail("DECISION_NOT_FOUND")
             if (d.userId === actorId) fail("CANNOT_DECIDE_OWN")
             const date = toDateString(d.date)
-            await openDate(tx, d.companyId, date)
+            await openDate(tx, d.companyId, date, d.userId)
             await tx.overtimeApproval.delete({ where: { id } })
             await AuditLogService.log("WITHDRAW_OVERTIME_DECISION", "OVERTIME_APPROVAL", id, {
                 tx, ...(await actorOf(tx, actorId)), details: { companyId: d.companyId, userId: d.userId, date },

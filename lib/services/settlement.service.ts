@@ -6,7 +6,8 @@ import { calendarDateStr, calendarParts, startOfDayIn } from "@/lib/time"
 import { daysInMonth } from "@/lib/payroll"
 import { PayrollPeriodService } from "./payroll-period.service"
 import { attendanceMoney, attendanceReaches, daysToSettle } from "./attendance-payroll"
-import { nextMonth, paidAlready } from "@/lib/payroll-period"
+import { monthKeyOf, nextMonth, paidAlready } from "@/lib/payroll-period"
+import { LOCK_WAIT, lockMonths } from "./attendance-lock"
 import { addDays } from "@/lib/attendance/calendar"
 import { resolveTimeZone } from "@/lib/timezone"
 import { EmploymentService } from "./employment.service"
@@ -48,11 +49,20 @@ export class SettlementService {
      * next month's payroll. Nothing where they left before the close.
      */
     static async attendanceAfterClose(companyId: string, userId: string, year: number, month: number, lastWorkingDay: string): Promise<number> {
+        return (await this.afterClose(companyId, userId, year, month, lastWorkingDay))?.minor ?? 0
+    }
+
+    /**
+     * What attendanceAfterClose counts, and the days it counts it over, which
+     * ending the contract freezes with the settlement (Codex review on PR
+     * 430). None where there are none.
+     */
+    static async afterClose(companyId: string, userId: string, year: number, month: number, lastWorkingDay: string): Promise<{ minor: number; from: string; to: string } | null> {
         const period = await PayrollPeriodService.periodOf(prisma, companyId, year, month)
-        if (lastWorkingDay <= period.to) return 0
+        if (lastWorkingDay <= period.to) return null
         const next = nextMonth(year, month)
         const company = await prisma.company.findUnique({ where: { id: companyId }, select: { attendancePayrollFrom: true, timezone: true } })
-        if (!attendanceReaches(company?.attendancePayrollFrom ?? null, next.year, next.month)) return 0
+        if (!attendanceReaches(company?.attendancePayrollFrom ?? null, next.year, next.month)) return null
         // A day's attendance is known once it's over: a last working day still to
         // come, or today, isn't settled until it is (review on PR 430).
         if (lastWorkingDay >= calendarDateStr(new Date(), company?.timezone ?? "UTC")) throw new Error("ATTENDANCE_NOT_OVER")
@@ -62,8 +72,7 @@ export class SettlementService {
         const waiting = await daysToSettle(prisma, companyId, after, [userId], 1)
         if (waiting.count + Object.values(waiting.requests).reduce((a, b) => a + b, 0) > 0) throw new Error("ATTENDANCE_PENDING")
         const money = (await attendanceMoney(prisma, companyId, after)).get(userId)
-        if (!money) return 0
-        return money.overtime + money.missionAllowance - money.lateness - money.earlyLeave - money.absence
+        return { minor: money ? money.overtime + money.missionAllowance - money.lateness - money.earlyLeave - money.absence : 0, ...after }
     }
 
     /** The company's calendar and payroll day, and whether it settles at all, resolved once. */
@@ -200,7 +209,8 @@ export class SettlementService {
         // Attendance after the leaving month's payroll closes (LATER_CHANGES_PLAN.md
         // §7.10, PR 430): those days are the next month's, which doesn't pay
         // them, so the settlement does, where attendance reaches that payroll.
-        const attendanceMinor = owner || !companyId ? 0 : await this.attendanceAfterClose(companyId, userId, year, month, calendarDateStr(lastDayInstant, timeZone))
+        const counted = owner || !companyId ? null : await this.afterClose(companyId, userId, year, month, calendarDateStr(lastDayInstant, timeZone))
+        const attendanceMinor = counted?.minor ?? 0
         const preview = previewSettlement({ events, rates, endsAt, paidMinor, timeZone, owner, attendanceMinor })
 
         // I1: the settlement is the last moment either side can be made whole,
@@ -226,6 +236,8 @@ export class SettlementService {
         return {
             settles: true as const,
             ...preview,
+            // The days it counts, frozen with it once made (Codex review on PR 430).
+            attendanceDays: counted ? { year, month, from: counted.from, to: counted.to } : null,
             endsAt,
             payrollDay,
             timeZone,
@@ -326,6 +338,27 @@ export class SettlementService {
         const rehome = await TeamHandOff.plan({ id: input.userId, companyId }, input.reassignReportsTo)
 
         const result = await prisma.$transaction(async (tx) => {
+            // What it counts after the leaving month's close is frozen with it (Codex review on PR 430). Under that
+            // month's lock and the next's, the close is the one counted, and kept on the month's run, so a change of
+            // the settings or of payday never counts those days again, nor leaves them out.
+            const counted = preview.settles ? preview.attendanceDays : null
+            if (counted) {
+                const after = nextMonth(counted.year, counted.month)
+                await lockMonths(tx, companyId, [monthKeyOf(counted.year, counted.month), monthKeyOf(after.year, after.month)])
+                const close = addDays(counted.from, -1)
+                if ((await PayrollPeriodService.periodOf(tx, companyId, counted.year, counted.month)).to !== close) throw new Error("PAYROLL_PERIOD_CHANGED")
+                const run = await tx.payrollRun.findUnique({ where: { companyId_month_year: { companyId, month: counted.month, year: counted.year } }, select: { periodEnd: true } })
+                if (!run?.periodEnd) {
+                    const periodEnd = new Date(`${close}T00:00:00Z`)
+                    const { payday } = await PayrollPeriodService.settings(tx, companyId)
+                    await tx.payrollRun.upsert({
+                        where: { companyId_month_year: { companyId, month: counted.month, year: counted.year } },
+                        update: { periodEnd },
+                        create: { companyId, month: counted.month, year: counted.year, payrollDay: payday.day, periodEnd },
+                    })
+                }
+            }
+
             if (rehome) {
                 await TeamHandOff.apply(tx, input.userId, rehome, {
                     id: input.createdById ?? input.userId,
@@ -358,6 +391,12 @@ export class SettlementService {
                     createdById: input.createdById ?? null,
                 },
             })
+            if (counted) {
+                await tx.attendanceDay.updateMany({
+                    where: { companyId, userId: input.userId, date: { gte: new Date(`${counted.from}T00:00:00Z`), lte: new Date(`${counted.to}T00:00:00Z`) } },
+                    data: { lockedBySettlementId: settlement.id },
+                })
+            }
 
             // What they still hold of a cash advance becomes a debt (CLIENTS_PLAN.md
             // §7.3), as much as the preview counted, and is paid down below as
@@ -411,7 +450,7 @@ export class SettlementService {
                 : null
 
             return { event, settlement, debt, advanceDebt, preview }
-        })
+        }, LOCK_WAIT)
 
         // News, after the commit, as every other hand-off does it.
         await notifyTeamMoves(TeamHandOff.moves(input.userId, rehome))

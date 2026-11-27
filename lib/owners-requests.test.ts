@@ -49,7 +49,7 @@ describe("asked for anyway", () => {
         expect(attendance).toContain("await openMonths(tx, companyId, await lockPunchMonths(tx, companyId, userId, local))\n            await refuseOwnerMonths(tx, userId, date)")
         const missions = source("lib/services/mission-request.service.ts")
         // The payroll months its dates fall in since PR 430.
-        expect(missions).toContain("await lockDateMonths(tx, companyId, dates)\n            await refuseOwnerMonths(tx, userId, span.startDate, span.endDate)")
+        expect(missions).toContain("if ((await lockDateMonths(tx, companyId, dates, userId)).includes(SETTLED)) fail(\"PAYROLL_MONTH_LOCKED\")\n            await refuseOwnerMonths(tx, userId, span.startDate, span.endDate)")
     })
 
     it("says why, as an answer and in each request's dialog, in either language", () => {

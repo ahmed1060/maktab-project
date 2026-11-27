@@ -40,10 +40,10 @@ async function actorOf(tx: Prisma.TransactionClient, actorId: string) {
     return superAdmin ? { superAdminId: actorId } : { userId: actorId }
 }
 
-async function openMonth(tx: Prisma.TransactionClient, companyId: string, date: string) {
+async function openMonth(tx: Prisma.TransactionClient, companyId: string, date: string, userId: string) {
     // Its payroll month's, which a day after the close is the next one (LATER_CHANGES_PLAN.md §7.10, PR 430),
-    // read once both it can be are locked (Codex review on PR 430).
-    const months = await lockDateMonths(tx, companyId, [date])
+    // read once both it can be are locked; and whether their final settlement counted it (Codex review on PR 430).
+    const months = await lockDateMonths(tx, companyId, [date], userId)
     if ((await lockedMonths(tx, companyId, months)).size > 0) fail("PAYROLL_MONTH_LOCKED")
 }
 
@@ -155,7 +155,7 @@ export class AttendanceExceptionService {
         const saved = await prisma.$transaction(async tx => {
             const person = await tx.user.findFirst({ where: { id: input.userId, companyId, status: { not: "DELETED" } }, select: { id: true } })
             if (!person) fail("USER_NOT_FOUND")
-            await openMonth(tx, companyId, input.date)
+            await openMonth(tx, companyId, input.date, input.userId)
             // Only an exception that is there now can be decided — or a decision
             // already made, changed. Otherwise a future day could be excused in
             // advance and the waiver applied, unseen, when it came (review on #15).
@@ -201,7 +201,7 @@ export class AttendanceExceptionService {
             const d = await tx.attendanceDayDecision.findUnique({ where: { id } }) ?? fail("DECISION_NOT_FOUND")
             if (d.userId === actorId) fail("CANNOT_CORRECT_OWN")
             const date = toDateString(d.date)
-            await openMonth(tx, d.companyId, date)
+            await openMonth(tx, d.companyId, date, d.userId)
             await tx.attendanceDayDecision.delete({ where: { id } })
             await AuditLogService.log("WITHDRAW_ATTENDANCE_DAY_DECISION", "ATTENDANCE_DAY_DECISION", id, {
                 tx, ...(await actorOf(tx, actorId)),

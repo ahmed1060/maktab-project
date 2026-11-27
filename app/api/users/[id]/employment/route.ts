@@ -195,6 +195,10 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
         if (message === "ATTENDANCE_PENDING") {
             return ApiResponse.refused(400, "Attendance after payroll closed still waits on a decision", "ATTENDANCE_PENDING")
         }
+        // When payroll closes changed while the settlement was worked out: what it counted is out of date.
+        if (message === "PAYROLL_PERIOD_CHANGED") {
+            return ApiResponse.refused(409, "When payroll closes changed while this was worked out. Try again.", "PAYROLL_PERIOD_CHANGED")
+        }
         if (message === "USER_HAS_NO_COMPANY") {
             return ApiResponse.refused(400, "This account belongs to no company, so there is nobody to settle with.", "USER_HAS_NO_COMPANY")
         }

@@ -470,7 +470,12 @@ export class PayrollRunService {
             // since, and while the month after is approved, which begins the day after
             // (review on PR 430): then only payday changes.
             const next = await tx.payrollRun.findUnique({ where: { companyId_month_year: { companyId, month: after.month, year: after.year } }, select: { status: true } })
-            const endFixed = !draft || (!!next && next.status !== "DRAFT")
+            // And once a final settlement counted days after it: moved, its payroll would count
+            // them again, or leave out the days between (Codex review on PR 430).
+            const settledAfter = await tx.attendanceDay.count({
+                where: { companyId, lockedBySettlementId: { not: null }, date: { gt: new Date(`${period.to}T00:00:00Z`), lte: new Date(`${lastDayOf(year, month)}T00:00:00Z`) } },
+            })
+            const endFixed = !draft || (!!next && next.status !== "DRAFT") || settledAfter > 0
             // While a draft, its attendance may end sooner, never later than the setting's close.
             const settingClose = closeDateOf(year, month, settings.closeDay)
             const until = endFixed ? period.to
@@ -579,6 +584,13 @@ export class PayrollRunService {
                 await lockMonths(tx, companyId, [key, monthKeyOf(after.year, after.month)])
                 const current = await tx.payrollRun.findUnique({ where: { companyId_month_year: { companyId, month, year } }, select: { status: true } })
                 if (current && current.status !== "DRAFT") throw new Error("RUN_NOT_DRAFT")
+                // The switch, read once and held (review on #16): FOR SHARE makes a
+                // concurrent change to it wait for this approval, and that change
+                // then sees the month approved. Everything below uses this reading.
+                // Taken before the period is read: the Payroll settings are on the
+                // same row, and saving them takes no month lock (Codex review on PR 430).
+                const [{ attendancePayrollFrom }] = await tx.$queryRaw<{ attendancePayrollFrom: Date | null }[]>`
+                    SELECT "attendancePayrollFrom" FROM "Company" WHERE id = ${companyId} FOR SHARE`
                 // The period again, now that nothing can change it: a payday changed
                 // since the look above moves it, and this one is what's approved,
                 // checked again (review on PR 430).
@@ -594,11 +606,6 @@ export class PayrollRunService {
                 if (payday.date <= period.to) return { refusal: { code: "PAYDAY_BEFORE_CLOSE" as const, message: PAYDAY_BEFORE_CLOSE } }
 
                 const approverId: string = session?.user?.id ?? "system"
-                // The switch, read once and held (review on #16): FOR SHARE makes a
-                // concurrent change to it wait for this approval, and that change
-                // then sees the month approved. Everything below uses this reading.
-                const [{ attendancePayrollFrom }] = await tx.$queryRaw<{ attendancePayrollFrom: Date | null }[]>`
-                    SELECT "attendancePayrollFrom" FROM "Company" WHERE id = ${companyId} FOR SHARE`
                 const reaches = attendanceReaches(attendancePayrollFrom, year, month)
                 let overtimeRejected = 0
                 if (reaches) {

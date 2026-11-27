@@ -277,6 +277,8 @@ describe("what's wrong, in the reader's language", () => {
         // Both the preview and the ending say a last working day not over yet (review on PR 430).
         expect(route.split(`ApiResponse.refused(400, "The last working day isn't over yet", "ATTENDANCE_NOT_OVER")`).length - 1).toBe(2)
         expect(route.split(`ApiResponse.refused(400, "Attendance after payroll closed still waits on a decision", "ATTENDANCE_PENDING")`).length - 1).toBe(2)
+        // When payroll closes changed while the settlement was worked out (Codex review on PR 430).
+        expect(route).toContain(`if (message === "PAYROLL_PERIOD_CHANGED") {\n            return ApiResponse.refused(409, "When payroll closes changed while this was worked out. Try again.", "PAYROLL_PERIOD_CHANGED")`)
         expect(route).toContain(`"USER_HAS_NO_COMPANY")`)
         // An Admin's, and the company's last Admin's, as a role's are (lib/role-errors.ts).
         expect(route).toContain("adminRefusal(error)")

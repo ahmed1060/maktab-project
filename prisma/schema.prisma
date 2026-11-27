@@ -2695,6 +2695,10 @@ model AttendanceDay {
   inputsHash           String
   derivedAt            DateTime            @default(now())
   lockedByPayrollRunId String?
+  /// The final settlement that counted this day, a leaver's after their
+  /// leaving month's payroll closed (LATER_CHANGES_PLAN.md §7.10, PR 430):
+  /// frozen with it, as lockedByPayrollRunId freezes a payroll's.
+  lockedBySettlementId String?
   company              Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 

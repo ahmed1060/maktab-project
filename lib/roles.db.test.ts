@@ -161,6 +161,8 @@ const CONTRACT_START_GRANTED = "20270122000000_contract_start_permission"
 const OWNERS = "20270123000000_owner_periods"
 // Payday and when payroll closes (PR 430).
 const PAYDAY_AND_CLOSE = "20270124000000_payday_and_close"
+// The days a final settlement counted, frozen with it (Codex review on PR 430).
+const SETTLED_DAYS = "20270125000000_settled_attendance_days"
 // Given to a new company's built-in roles only: no migration gives it to the
 // companies there before it, as none was when it came (CLIENT_PORTAL_PLAN.md
 // §9, §12 step 10d, skipped on 2026-11-20; PR 348).
@@ -247,6 +249,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(CONTRACT_START_GRANTED))
         await db.query(sql(OWNERS))
         await db.query(sql(PAYDAY_AND_CLOSE))
+        await db.query(sql(SETTLED_DAYS))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).

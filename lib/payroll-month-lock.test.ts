@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest"
 import { readFileSync, readdirSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { PayrollPeriodService } from "@/lib/services/payroll-period.service"
-import { lockDateMonths, lockPunchMonthsOf, reachOf } from "@/lib/services/attendance-lock"
+import { SETTLED, lockDateMonths, lockMonths, lockPunchMonthsOf, lockedMonths, reachOf } from "@/lib/services/attendance-lock"
 
 /**
  * The payroll month a writer writes to (LATER_CHANGES_PLAN.md §7.10, Codex
@@ -14,10 +14,19 @@ import { lockDateMonths, lockPunchMonthsOf, reachOf } from "@/lib/services/atten
  * a date can fall in first, and reads which of them it is under those locks.
  */
 
-// What a transaction is asked, in order: each lock taken, by its key, and the read.
-function recording() {
+// What a transaction is asked, in order: each lock taken, by its key, and the read. `settled`: the days a final
+// settlement counted, as "userId:date".
+function recording(settled: string[] = []) {
     const asked: string[] = []
-    const tx = { $queryRaw: async (_: TemplateStringsArray, key: string) => { asked.push(key); return [] } }
+    const tx = {
+        $queryRaw: async (_: TemplateStringsArray, key: string) => { asked.push(key); return [] },
+        attendanceDay: {
+            findMany: async ({ where }: { where: { userId: { in: string[] }; date: { in: Date[] } } }) => settled
+                .map(k => ({ userId: k.slice(0, k.indexOf(":")), date: new Date(`${k.slice(k.indexOf(":") + 1)}T00:00:00Z`) }))
+                .filter(d => where.userId.in.includes(d.userId) && where.date.in.some(x => x.getTime() === d.date.getTime())),
+        },
+        payrollRun: { findMany: async () => [] },
+    }
     return { asked, tx: tx as never }
 }
 
@@ -48,6 +57,25 @@ describe("the payroll month a writer writes to", () => {
         expect(asked).toEqual(["attendance-month:c1:2026-11", "attendance-month:c1:2026-12", "attendance-month:c1:2027-01", "read"])
     })
 
+    it("says a day a final settlement counted is paid, as an approved month's are (Codex review on PR 430)", async () => {
+        vi.spyOn(PayrollPeriodService, "monthsOfDates").mockImplementation(async () => ["2026-12"])
+        vi.spyOn(PayrollPeriodService, "payrollMonthsOf").mockImplementation(async (_db, _company, dates) => new Map(dates.map(d => [d, d.slice(0, 7)])))
+        // Ehab's 26th, after November closed, is his settlement's.
+        const { tx } = recording(["e1:2026-11-26"])
+        expect(await lockDateMonths(tx, "c1", ["2026-11-26"], "e1")).toEqual(["2026-12", SETTLED])
+        expect(await lockDateMonths(tx, "c1", ["2026-11-26"], "e9")).toEqual(["2026-12"])
+        // A punch whose shift can be on it: its own day, the day after, the day before.
+        expect(await lockPunchMonthsOf(tx, "c1", [
+            { userId: "e1", local: "2026-11-27T00:30:00" }, { userId: "e1", local: "2026-11-25T23:30:00" },
+            { userId: "e1", local: "2026-11-28T09:00:00" }, { userId: null, local: "2026-11-26T09:00:00" },
+        ])).toEqual([["2026-11", SETTLED], ["2026-11", SETTLED], ["2026-11"], ["2026-11"]])
+        // Reported as locked, never locked as a month.
+        expect(await lockedMonths(tx, "c1", ["2026-12", SETTLED])).toEqual(new Set([SETTLED]))
+        const { asked, tx: counting } = recording()
+        await lockMonths(counting, "c1", ["2026-12", SETTLED])
+        expect(asked).toEqual(["attendance-month:c1:2026-12"])
+    })
+
     it("is what every writer reads, the plain readers left to what writes nothing", () => {
         const READERS = /\b(monthsOfDates|punchMonthsOf|punchMonths)\(/g
         // Where they're defined, and the two that only read: the list of check-ins
@@ -68,5 +96,9 @@ describe("the payroll month a writer writes to", () => {
         expect(found).toEqual(READ_ONLY)
         expect(readFileSync("lib/services/attendance-flag.service.ts", "utf8")).toContain("await punchMonthsOf(prisma, companyId,")
         expect(readFileSync("lib/services/attendance-punch.service.ts", "utf8")).toContain("const rowMonths = commit ? await lockPunchMonthsOf(tx, companyId, rows) : await punchMonthsOf(tx, companyId, rows)")
+        // The person whose days they are, so a day their settlement counted is refused (Codex review on PR 430).
+        expect(readFileSync("lib/services/attendance-exception.service.ts", "utf8").match(/await openMonth\(tx, [\w.]+, [\w.]+, [\w.]+\)/g)).toHaveLength(2)
+        expect(readFileSync("lib/services/attendance-request.service.ts", "utf8").match(/await openDate\(tx, [\w.]+, [\w.]+, [\w.]+\)/g)).toHaveLength(5)
+        expect(readFileSync("lib/services/mission-request.service.ts", "utf8").match(/if \(\(await lockDateMonths\(tx, [\w.]+, (?:[\w.]+|datesOf\(from, to\)), [\w.]+\)\)\.includes\(SETTLED\)\) fail\("PAYROLL_MONTH_LOCKED"\)/g)).toHaveLength(3)
     })
 })

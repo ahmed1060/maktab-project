@@ -209,7 +209,8 @@ export async function reconcileEntries(
  * now, so that nothing reads as paid that wasn't (review on PR 288).
  */
 export async function stampDays(tx: Db, companyId: string, period: Period, payrollRunId: string, allowancePaidTo: readonly string[]) {
-    const freezing = { companyId, lockedByPayrollRunId: null, date: daysOf(period) }
+    // Never a day a final settlement counted: it paid that day, allowance and all (Codex review on PR 430).
+    const freezing = { companyId, lockedByPayrollRunId: null, lockedBySettlementId: null, date: daysOf(period) }
     await tx.attendanceDay.updateMany({
         where: { ...freezing, missionAllowanceMinor: { gt: 0 }, ...(allowancePaidTo.length > 0 ? { userId: { notIn: [...allowancePaidTo] } } : {}) },
         data: { missionAllowanceMinor: 0 },
