@@ -2417,6 +2417,11 @@ These are built once, in the building-blocks PR, and every page uses them
     archived ones marked.
   - **An obligation's page** names its client first in its details, as
     Client.
+  - **A client's page** has View obligations beside View tasks, on the
+    end of its details' heading, for whoever may see obligations. It opens
+    the Obligations list filtered to the client, as View tasks opens
+    Tasks. The page has no Obligations section of its own (the owner,
+    27 November).
   - **A client with obligations** is archived rather than deleted, as one
     with tasks or records is, so its obligations keep it. The Clients
     list's words say "tasks, obligations or records".

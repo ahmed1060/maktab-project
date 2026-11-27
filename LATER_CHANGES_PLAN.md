@@ -22,9 +22,10 @@ words on Exceptions (§7.11) and payday and the attendance period
 (§7.10) done in one PR (#430); the limits on requests (§7.4) done: day
 off (#431), every writer waiting for a month's lock as long as an import
 may hold it (#432, ATTENDANCE_PLAN.md §12.1), permission hours (#433) and
-missions (#434); obligations with a client (§7.7, step 7) under way,
-7a (an obligation's client) first; the
-names (§3) paused after step 8l (#424).** Done: the development database (§4),
+missions (#434); obligations with a client (§7.7, step 7): 7a done
+(#435), and 7b, View obligations on a client's page in place of a
+section, under way; salary advances (§7.5, step 8) next, once the owner
+has reviewed §7.9; the names (§3) paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their limit set
@@ -1619,15 +1620,18 @@ In three PRs, each whole on its own:
   repeating one comes round, it keeps the client.
 - The client shows in the obligations list and an obligation's details,
   and the list can be filtered by client.
-- A client's page gets an Obligations section, coming and overdue.
+- No Obligations section on a client's page: the owner decided against
+  it on 27 November, after it was first decided. Instead, View
+  obligations beside View tasks on its details opens the Obligations
+  list filtered to it.
 - Whether picking a client fills in their responsible accountant, and
   whether clients see their obligations, wait for the client's area
   (`CLIENT_PORTAL_PLAN.md` §13).
 
 Built in two PRs:
 
-- **7a, an obligation's client** (as built, DESIGN.md §5.5, An
-  obligation's client):
+- **7a, an obligation's client** (Done, #435; as built, DESIGN.md §5.5,
+  An obligation's client):
   - `Obligation.clientId`, optional, an index, and the client's foreign
     key, set to none if the client is deleted. The migration only adds.
   - **Picking:** Add obligation has Client under the description for
@@ -1649,7 +1653,15 @@ Built in two PRs:
     never widening it.
   - **Deleting a client:** one with obligations is archived instead, as
     one with tasks or records is, so they keep it.
-- **7b, the client's page:** an Obligations section, coming and overdue.
+- **7b, View obligations** (DESIGN.md §5.5, An obligation's client), in
+  place of an Obligations section on a client's page (the owner, 27
+  November):
+  - A link beside View tasks, on the end of the client's details'
+    heading, opening the Obligations list filtered to the client
+    (`?clientId=`), as View tasks opens Tasks.
+  - For whoever may see obligations (`obligations.view`). Someone who sees
+    only their own has a list the client filter doesn't narrow (7a), so
+    it isn't offered to them.
 
 ### 7.8 Order (Decided)
 
@@ -2552,3 +2564,12 @@ with قبول: «قبول العذر» and «قبول».
 - **2026-11-27:** #435 opened (7a). Codex's review: a Super Admin who
   picked a client and then switched company sent the last company's; the
   pick now keeps its company, and none is sent in another.
+- **2026-11-27:** #435 merged (7a, an obligation's client); its migration
+  applies to production with the merge. 7b, the client's page's Obligations
+  section, next.
+- **2026-11-27:** 7b dropped, as the owner decided: no Obligations section
+  on a client's page. Step 7 is done with 7a (#435). Salary advances (step
+  8) are next, once the owner has reviewed §7.9.
+- **2026-11-27:** 7b, as the owner asked instead of a section: View
+  obligations beside View tasks on a client's details, opening the
+  Obligations list filtered to the client.

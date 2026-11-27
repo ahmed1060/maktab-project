@@ -59,6 +59,9 @@ export default function ClientPage() {
     const seesRecords = can('records.view')
     const seesLocations = can('locations.view')
     const seesCharges = can('charges.view')
+    // Its obligations, on the Obligations list filtered to it: whoever sees only their own
+    // has a list the client doesn't narrow (LATER_CHANGES_PLAN.md §7.7, 7b).
+    const seesObligations = can('obligations.view')
     // Its tax position, where the company's package has the client portal (CLIENT_PORTAL_PLAN.md §3.5).
     const features = useFeatures()
     const seesTax = features.has('TAX_POSITION') && can('tax.view')
@@ -168,8 +171,14 @@ export default function ClientPage() {
             {client && (
                 <Card
                     title={t('client_details')}
-                    // Its tasks, on the Tasks page filtered to it (CLIENTS_PLAN.md §3.6).
-                    actions={<SectionLink href={`/dashboard/tasks?clientId=${encodeURIComponent(id)}`}>{t('clients_view_tasks')}</SectionLink>}
+                    // Its tasks, on the Tasks page filtered to it (CLIENTS_PLAN.md §3.6), and its
+                    // obligations on theirs, in place of a section of its own (DESIGN.md §5.5).
+                    actions={(
+                        <span className="ui-section-actions">
+                            <SectionLink href={`/dashboard/tasks?clientId=${encodeURIComponent(id)}`}>{t('clients_view_tasks')}</SectionLink>
+                            {seesObligations && <SectionLink href={`/dashboard/obligations?clientId=${encodeURIComponent(id)}`}>{t('clients_view_obligations')}</SectionLink>}
+                        </span>
+                    )}
                 >
                     <Details items={[
                         { label: t('client_owner_name'), value: <bdi>{ownerName(client, locale)}</bdi> },

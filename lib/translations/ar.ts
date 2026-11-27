@@ -264,6 +264,7 @@ export const ar = {
         obligation_client_refused: "لا يمكن اختيار هذا العميل. ربما أُرشف أو حُذف بعد فتح النموذج. يُرجى اختيار عميل آخر، أو بدون عميل.",
         filter_all_clients: "كل العملاء",
         clients_view_tasks: "عرض المهام",
+        clients_view_obligations: "عرض الالتزامات",
         clients_archived_mark: "مؤرشف",
         clients_status: "الحالة",
         clients_in_use: "قيد الاستخدام",
