@@ -2080,8 +2080,9 @@ Found on 2026-11-27 from a November payslip whose salary was split at day
      still saved where it's this month or next; one that's past is
      refused (`SALARY_MONTH_PASSED`), and the page names the new months
      with neither picked (Codex review on #437).
-3. One PR, before payroll deductions (§7.8). After it's merged, November's
-   payroll is recalculated.
+3. One PR, before payroll deductions (§7.8): #437, merged on 27
+   November. November's payroll is still to be recalculated, by the owner
+   pressing Recalculate on the Payroll page before approving it.
 
 ## Not here
 
@@ -2692,3 +2693,6 @@ Found on 2026-11-27 from a November payslip whose salary was split at day
 - **2026-11-27:** §7.13, Codex's review of #437: a salary's payroll refused
   saves nothing on the page, and the choice is for the months it names, a
   page left open past the 1st asking again once the month it named is past.
+- **2026-11-27:** #437 merged (§7.13). November's payroll waits for the
+  owner to press Recalculate before it's approved. No error in production
+  after it.
