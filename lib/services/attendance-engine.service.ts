@@ -450,6 +450,24 @@ export class AttendanceEngineService {
      * month's lock and knows the month is open — payroll approval's, which
      * recomputes as its last word before the month freezes (§12.1).
      */
+    /**
+     * The mission allowance one person's days earn, derived as they stand and
+     * writing nothing: for days a payroll froze without paying them, which
+     * cleared it (stampDays), counted in their settlement (Codex review on
+     * PR 430). Days up to yesterday, as the engine derives them.
+     */
+    static async derivedAllowance(db: Prisma.TransactionClient, companyId: string, userId: string, dates: readonly string[], tz: string): Promise<number> {
+        const today = calendarDateStr(new Date(), tz)
+        const wanted = new Set(dates)
+        let minor = 0
+        for (const month of [...new Set(dates.map(d => d.slice(0, 7)))].sort()) {
+            for (const d of (await deriveMonth(db, companyId, month, tz, today, [userId])).days) {
+                if (d.userId === userId && wanted.has(d.date)) minor += d.missionAllowanceMinor
+            }
+        }
+        return minor
+    }
+
     static async recomputeMonthIn(tx: Prisma.TransactionClient, companyId: string, month: string, tz: string, today: string, userIds?: readonly string[]): Promise<RecomputeResult> {
         const result: RecomputeResult = { month, locked: false, derived: 0, written: 0, removed: 0 }
         {

@@ -3,6 +3,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { PayrollPeriodService } from "@/lib/services/payroll-period.service"
 import { SETTLED, lockDateMonths, lockMonths, lockPunchMonthsOf, lockedMonths, reachOf } from "@/lib/services/attendance-lock"
+import { AttendanceEngineService } from "@/lib/services/attendance-engine.service"
 
 /**
  * The payroll month a writer writes to (LATER_CHANGES_PLAN.md §7.10, Codex
@@ -64,11 +65,19 @@ describe("the payroll month a writer writes to", () => {
         const { tx } = recording(["e1:2026-11-26"])
         expect(await lockDateMonths(tx, "c1", ["2026-11-26"], "e1")).toEqual(["2026-12", SETTLED])
         expect(await lockDateMonths(tx, "c1", ["2026-11-26"], "e9")).toEqual(["2026-12"])
-        // A punch whose shift can be on it: its own day, the day after, the day before.
+        // Ehab works 16:00 to midnight, and his 26th is settled. A punch on it is paid; one beside it, only where
+        // its shift is the 26th's, as the engine assigns it (Codex review on PR 430): just after midnight on the
+        // 27th, the 26th's check-out, is; late on the 25th, in the 25th's shift, isn't, nor the 27th's evening, his
+        // own day's, as someone taken back on records it.
+        vi.spyOn(AttendanceEngineService, "plansFor").mockImplementation(async (_company, users, dates) => ({
+            plans: new Map(users.map(u => [u, new Map(dates.map(d => [d, { kind: "WORK", hours: { startMinutes: 960, endMinutes: 1440 } }]))])) as never,
+            policyOn: () => null,
+        }))
         expect(await lockPunchMonthsOf(tx, "c1", [
             { userId: "e1", local: "2026-11-27T00:30:00" }, { userId: "e1", local: "2026-11-25T23:30:00" },
             { userId: "e1", local: "2026-11-28T09:00:00" }, { userId: null, local: "2026-11-26T09:00:00" },
-        ])).toEqual([["2026-11", SETTLED], ["2026-11", SETTLED], ["2026-11"], ["2026-11"]])
+            { userId: "e1", local: "2026-11-27T18:00:00" }, { userId: "e1", local: "2026-11-26T10:00:00" },
+        ])).toEqual([["2026-11", SETTLED], ["2026-11"], ["2026-11"], ["2026-11"], ["2026-11"], ["2026-11", SETTLED]])
         // Reported as locked, never locked as a month.
         expect(await lockedMonths(tx, "c1", ["2026-12", SETTLED])).toEqual(new Set([SETTLED]))
         const { asked, tx: counting } = recording()

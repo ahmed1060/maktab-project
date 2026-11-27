@@ -650,4 +650,57 @@ describe.skipIf(!ADMIN_URL)("payday and the attendance period, in Postgres", () 
             await db.query(`DELETE FROM "PayrollRun" WHERE id = 'r5'`)
         }
     }, 120_000)
+
+    it("goes by the period for the work calendar, a settled day's neighbours, and an allowance a payroll cleared (Codex review on PR 430)", async () => {
+        vi.setSystemTime(new Date("2027-04-01T08:00:00Z"))
+        const { SettlementService } = await import("@/lib/services/settlement.service")
+        const { SETTLED, lockPunchMonthsOf } = await import("@/lib/services/attendance-lock")
+        const { prisma } = await import("@/lib/prisma")
+        try {
+            // February is approved, closing on the 24th: the 25th on is March's, still open, and its calendar
+            // can still change.
+            await expect(Calendar.assertUnlocked("c1", ["2027-02-25"])).resolves.toBeUndefined()
+            await expect(Calendar.assertUnlocked("c1", ["2027-02-24"])).rejects.toThrow("PAYROLL_MONTH_LOCKED")
+            await expect(Calendar.assertSpanUnlocked("c1", { from: "2027-02-25", until: null })).resolves.toBeUndefined()
+            await expect(Calendar.assertSpanUnlocked("c1", { from: "2027-02-24", until: null })).rejects.toThrow("PAYROLL_MONTH_LOCKED")
+            const scheduleId = (await db.query(`SELECT id FROM "WorkSchedule" WHERE "companyId" = 'c1' LIMIT 1`)).rows[0].id
+            const hours = { startMinutes: 600, endMinutes: 900, breakMinutes: 0 }
+            await expect(Calendar.createOverride(scheduleId, { name: "Short days", startDate: "2027-02-20", endDate: "2027-02-28", ...hours }, "a1")).rejects.toThrow("PAYROLL_MONTH_LOCKED")
+            await Calendar.createOverride(scheduleId, { name: "Short days", startDate: "2027-02-25", endDate: "2027-02-28", ...hours }, "a1")
+            const override = (await db.query(`SELECT id FROM "ScheduleOverride" WHERE "scheduleId" = $1`, [scheduleId])).rows[0].id
+            await Calendar.deleteOverride(override, "a1")
+
+            // Ehab's 25th and 26th of November are settled. A punch on the 26th is; one on the 27th, a day his shift
+            // on the 26th can't reach, is his own day's, as someone taken back on records it.
+            const months = await prisma.$transaction(tx => lockPunchMonthsOf(tx, "c1", [
+                { userId: "e1", local: "2026-11-27T10:00:00" }, { userId: "e1", local: "2026-11-26T23:00:00" },
+            ]))
+            expect(months[0]).not.toContain(SETTLED)
+            expect(months[1]).toContain(SETTLED)
+
+            // Dina's mission on 25 March pays a day's allowance. April's payroll froze the day without paying her,
+            // left out of it, which cleared the allowance: her settlement counts it, derived again.
+            await Policy.saveVersion("c1", { effectiveFrom: "2027-03-01", body: { ...STANDARD_OFFICE, missions: { enabled: true, allowance: { dayWorth: "AMOUNT", amountMinor: 20000, days: 1, hours: 0 } } } }, "a1")
+            await db.query(`INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "roleId", "lastDayOffResetYear", username, "companyId")
+                SELECT 'e6', 'e6@x', 'p', 'Dina', 'Six', role, "roleId", 2026, 'e6', 'c1' FROM "User" WHERE id = 'e1'`)
+            await db.query(`INSERT INTO "SalaryChange"(id, "userId", "monthlyAmount", "effectiveFrom") VALUES ('s7', 'e6', 9300, '2026-12-01T00:00:00Z')`)
+            await db.query(`INSERT INTO "EmploymentEvent"(id, "userId", type, "effectiveFrom") VALUES ('h7', 'e6', 'HIRED', '2026-12-01T00:00:00Z')`)
+            await db.query(`INSERT INTO "MissionRequest"(id, "companyId", "userId", kind, "startDate", "endDate", reason, status) VALUES ('m6', 'c1', 'e6', 'DAYS', '2027-03-25', '2027-03-25', 'A visit', 'APPROVED')`)
+            await Engine.recomputeMonth("c1", "2027-03", ["e6"])
+            const allowance = (await db.query(`SELECT "missionAllowanceMinor" FROM "AttendanceDay" WHERE "userId" = 'e6' AND date = '2027-03-25'`)).rows[0].missionAllowanceMinor
+            expect(allowance).toBe(20000)
+            expect((await SettlementService.afterClose("c1", "e6", 2027, 3, "2027-03-26"))?.minor).toBe(20000)
+            await db.query(`INSERT INTO "PayrollRun"(id, "companyId", month, year, status, "payrollDay", "periodStart", "periodEnd", "updatedAt") VALUES ('r6', 'c1', 4, 2027, 'APPROVED', 1, '2027-03-25', '2027-04-24', now())`)
+            await db.query(`INSERT INTO "Payslip"(id, "payrollRunId", "userId", "daysPaid", excluded, "updatedAt") VALUES ('p6', 'r6', 'e6', 30, true, now())`)
+            await db.query(`UPDATE "AttendanceDay" SET "lockedByPayrollRunId" = 'r6', "missionAllowanceMinor" = 0 WHERE "userId" = 'e6' AND date BETWEEN '2027-03-25' AND '2027-03-31'`)
+            expect((await SettlementService.afterClose("c1", "e6", 2027, 3, "2027-03-26"))?.minor).toBe(20000)
+            // Paid by it instead, those days are April's, allowance and all: nothing again.
+            await db.query(`UPDATE "Payslip" SET excluded = false WHERE id = 'p6'`)
+            expect((await SettlementService.afterClose("c1", "e6", 2027, 3, "2027-03-26"))?.minor).toBe(0)
+        } finally {
+            vi.setSystemTime(NOW)
+            await db.query(`UPDATE "AttendanceDay" SET "lockedByPayrollRunId" = NULL WHERE "userId" = 'e6'`)
+            await db.query(`DELETE FROM "PayrollRun" WHERE id = 'r6'`)
+        }
+    }, 120_000)
 })

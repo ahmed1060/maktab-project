@@ -108,13 +108,22 @@ export async function lockPunchMonthsOf(tx: Prisma.TransactionClient, companyId:
 const shiftDays = (local: string) => { const d = local.slice(0, 10); return [addDays(d, -1), d, addDays(d, 1)] }
 
 /**
- * Of these punches, those whose shift can be on a day a final settlement
- * counted: paid too (Codex review on PR 430). Read under the month locks by
- * a writer, and by the list of check-ins to review, which writes nothing.
+ * Of these punches, those on a day a final settlement counted: paid too
+ * (Codex review on PR 430). Its own day settled, it is; a day beside it, only
+ * where its shift is that day's, as the engine assigns it (shiftDaysOf):
+ * someone taken back on the day after records their own day. Read under the
+ * month locks by a writer, and by the list of check-ins to review, which
+ * writes nothing.
  */
 export async function settledPunches(db: Prisma.TransactionClient, companyId: string, punches: readonly { userId: string | null; local: string }[]): Promise<boolean[]> {
     const settled = await settledOf(db, companyId, punches.flatMap(p => shiftDays(p.local).map(date => ({ userId: p.userId, date }))))
-    return punches.map(p => shiftDays(p.local).some(d => settled.has(`${p.userId}:${d}`)))
+    if (settled.size === 0) return punches.map(() => false)
+    const on = (userId: string | null, date: string) => settled.has(`${userId}:${date}`)
+    const beside = punches.filter((p): p is { userId: string; local: string } =>
+        !!p.userId && !on(p.userId, p.local.slice(0, 10)) && shiftDays(p.local).some(d => on(p.userId, d)))
+    const days = await shiftDaysOf(db, companyId, beside, () => true)
+    const theirs = new Map(beside.map((p, i) => [p, days[i]]))
+    return punches.map(p => on(p.userId, p.local.slice(0, 10)) || (theirs.get(p as { userId: string; local: string })?.some(d => on(p.userId, d)) ?? false))
 }
 
 /** One punch's months, for a writer, as lockPunchMonthsOf. */
@@ -181,32 +190,54 @@ export async function punchMonthsOf(tx: Prisma.TransactionClient, companyId: str
     // A date, or a punch's local time, whose date it reads.
     const monthOf = (date: string) => payrollMonth.get(date.slice(0, 10)) ?? date.slice(0, 7)
     const onEdge = (date: string) => monthOf(addDays(date, -1)) !== monthOf(date) || monthOf(addDays(date, 1)) !== monthOf(date)
-    const edge = punches.filter(p => p.userId && onEdge(p.local.slice(0, 10)))
+    const edge = punches.filter((p): p is { userId: string; local: string } => !!p.userId && onEdge(p.local.slice(0, 10)))
     if (edge.length === 0) return punches.map(p => [monthOf(p.local)])
-    const users = [...new Set(edge.map(p => p.userId!))]
-    const firsts = edge.filter(p => monthOf(addDays(p.local.slice(0, 10), -1)) !== monthOf(p.local))
+    // The night before as stored only where it's the month before's: there it may have been paid.
+    const days = await shiftDaysOf(tx, companyId, edge, p => monthOf(addDays(p.local.slice(0, 10), -1)) !== monthOf(p.local))
+    const theirs = new Map(edge.map((p, i) => [p, days[i]]))
+    return punches.map(p => {
+        const shifts = theirs.get(p as { userId: string; local: string })
+        if (!shifts) return [monthOf(p.local)]
+        return [...new Set(shifts.map(monthOf))]
+    })
+}
+
+/**
+ * The days whose shift each punch can belong to, as the engine decides it
+ * (lib/attendance/engine.ts assignPunches): its own date's, and of the shifts
+ * whose window (an early and a late margin) holds it, the nearest, the
+ * earlier day on a tie. A night shift's check-out after midnight belongs to
+ * the night before; an early arrival late in the evening, to a shift starting
+ * just after midnight (review on #14). The day before is read from its derived
+ * day, whose hours, in an approved month, are the ones it was paid on, where
+ * `stored` says, and from the calendar as well: either may be the one that
+ * counts (review on #49). The day itself and the day after, from the
+ * calendar: a stored day may be stale (review on #49).
+ */
+async function shiftDaysOf(tx: Prisma.TransactionClient, companyId: string, punches: readonly { userId: string; local: string }[], stored: (p: { userId: string; local: string }) => boolean): Promise<string[][]> {
+    if (punches.length === 0) return []
+    const users = [...new Set(punches.map(p => p.userId))]
+    const firsts = punches.filter(stored)
     const nights = firsts.length === 0 ? [] : await tx.attendanceDay.findMany({
         where: { companyId, userId: { in: users }, date: { in: [...new Set(firsts.map(p => addDays(p.local.slice(0, 10), -1)))].map(d => new Date(`${d}T00:00:00Z`)) } },
         select: { userId: true, date: true, expectedStartMinutes: true, expectedEndMinutes: true },
     })
-    const stored = new Map(nights.map(n => [`${n.userId}:${n.date.toISOString().slice(0, 10)}`, n]))
-    // The calendar for each edge punch's day and the days either side, through the writer's own transaction: on
+    const kept = new Map(nights.map(n => [`${n.userId}:${n.date.toISOString().slice(0, 10)}`, n]))
+    // The calendar for each punch's day and the days either side, through the writer's own transaction: on
     // another connection it could wait for good on a pool the writers' transactions hold (review on #49).
-    const dates = [...new Set(edge.flatMap(p => { const d = p.local.slice(0, 10); return [addDays(d, -1), d, addDays(d, 1)] }))]
+    const dates = [...new Set(punches.flatMap(p => shiftDays(p.local)))]
     const { plans } = await (await import("./attendance-engine.service")).AttendanceEngineService.plansFor(companyId, users, dates, tx)
     const planned = (userId: string, date: string): Shift | null => {
         const p = plans.get(userId)?.get(date)
         return p?.kind === "WORK" ? { start: p.hours.startMinutes, end: p.hours.endMinutes } : null
     }
     const before = (userId: string, date: string): Shift | null => {
-        const day = stored.get(`${userId}:${date}`)
+        const day = kept.get(`${userId}:${date}`)
         if (!day) return planned(userId, date)
         return day.expectedStartMinutes != null && day.expectedEndMinutes != null ? { start: day.expectedStartMinutes, end: day.expectedEndMinutes } : null
     }
     return punches.map(({ userId, local }) => {
         const date = local.slice(0, 10)
-        const months = [monthOf(date)]
-        if (!userId || !onEdge(date)) return months
         // In seconds, as the engine compares them: to the minute, a punch half a minute nearer the next day's shift
         // tied with the day's own, went to the earlier, and the next month's lock was left out (Codex review on #49).
         const t = Number(local.slice(11, 13)) * 3600 + Number(local.slice(14, 16)) * 60 + Number(local.slice(17, 19) || 0)
@@ -227,14 +258,13 @@ export async function punchMonthsOf(tx: Prisma.TransactionClient, companyId: str
             }
             return best?.date ?? null
         }
-        // The night before as stored, and as the calendar has it now: a derived day a failed rebuild left behind
-        // can disagree with the calendar an approval rebuilds from, and either may be the one that counts (review
-        // on #49). Both months, when they differ: a lock too many is a wait; one too few, a punch an approved
-        // month never counts.
+        // Its own day always; and the nearest shift's, by the night before as stored and as the calendar has it now.
+        // Both, when they differ: a lock too many is a wait; one too few, a punch an approved month never counts.
+        const days = [date]
         for (const prior of [before(userId, addDays(date, -1)), planned(userId, addDays(date, -1))]) {
             const day = nearest(prior)
-            if (day && !months.includes(monthOf(day))) months.push(monthOf(day))
+            if (day && !days.includes(day)) days.push(day)
         }
-        return months
+        return days
     })
 }

@@ -81,7 +81,15 @@ export class SettlementService {
         })).map(p => p.payrollRunId)
         const unpaid = { OR: [{ lockedByPayrollRunId: null }, { lockedByPayrollRunId: { notIn: paidBy } }] }
         const money = (await attendanceMoney(db, companyId, after, unpaid)).get(userId)
-        return { minor: money ? money.overtime + money.missionAllowance - money.lateness - money.earlyLeave - money.absence : 0, ...after }
+        // One a payroll froze without paying them, left out of it: freezing cleared its mission allowance, paid to
+        // nobody (review on PR 288), so what it earns is derived again (Codex review on PR 430).
+        const cleared = (await db.attendanceDay.findMany({
+            where: { companyId, userId, lockedBySettlementId: null, lockedByPayrollRunId: { not: null, notIn: paidBy }, date: { gte: new Date(`${after.from}T00:00:00Z`), lte: new Date(`${after.to}T00:00:00Z`) } },
+            select: { date: true },
+        })).map(d => d.date.toISOString().slice(0, 10))
+        const { AttendanceEngineService } = await import("./attendance-engine.service")
+        const allowance = cleared.length > 0 ? await AttendanceEngineService.derivedAllowance(db, companyId, userId, cleared, company?.timezone ?? "UTC") : 0
+        return { minor: (money ? money.overtime + money.missionAllowance - money.lateness - money.earlyLeave - money.absence : 0) + allowance, ...after }
     }
 
     /** The company's calendar and payroll day, and whether it settles at all, resolved once. */
