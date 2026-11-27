@@ -1734,8 +1734,10 @@ approving a month early, and decided the same day.
   month's own, from Change payday.
 - **The dates, worked out in one place** (`lib/payroll-period.ts`, pure,
   and `lib/services/payroll-period.service.ts`, which reads them):
-  - a month's close: its run's `periodEnd` where it has one, otherwise
-    the setting's day, or the month's last day;
+  - a month's close: its run's `periodEnd` where it has one; where the
+    month after is approved, the day before that month's first day, as
+    an approved month's period never moves; otherwise the setting's day,
+    or the month's last day;
   - its period: from the day after the month before's close to its own
     close, so a changed close makes one period shorter or longer, never
     a gap or an overlap;
@@ -1763,20 +1765,32 @@ approving a month early, and decided the same day.
   salary does.
 - **Approving waits for the period's end,** in the company's calendar,
   before anything is worked out: `PERIOD_NOT_OVER`, with the first day it
-  may be approved.
+  may be approved. Once it holds the month locks, it reads the period
+  again and goes by that one throughout, checked again, so a payday
+  changed meanwhile is the one approved.
 - **Settlements and debts** read the payday: what of the last month is
-  already paid, and a debt's due date, the first payday on or after.
+  already paid, and a debt's due date, the first payday on or after: the
+  earliest of the months' paydays, as a payday changed for one month can
+  come after the next month's. A settlement is carried by the run whose
+  payday is on or after its due date, so one due on 1 December is
+  November's when November is paid then.
   A leaver's attendance from the day after their leaving month's period
   to their last working day (overtime and a mission's allowance, less
   what's deducted) is counted in their settlement, kept on it as
   `attendanceAmount` and shown as its own line, "Attendance after
   payroll closed"; an owner's is none, as their pay is. The days before
-  are their leaving month's payroll's.
+  are their leaving month's payroll's. A day's attendance is known once
+  it's over, so a contract whose last working day comes after the
+  leaving month's close isn't ended before that day is over
+  (`ATTENDANCE_NOT_OVER`, said under the date); ending it measures their
+  days first, as the nightly job would.
 - **Change this month's payday** (`PUT /api/payroll/{year}/{month}/payday`,
   `payroll.approve`, with the step-up a high-risk action asks for): the
   date, and while the run is a draft the attendance's last day, each
   checked as above; written on the month's run, made if it has none,
   with an audit line. The date is no later than the month after next.
+  An approved month's attendance stays as approved, whatever the
+  settings say since; so does a draft's whose next month is approved.
   A draft's last day equal to the setting's close is kept as the
   setting (no `periodEnd`), so a later change of the setting still
   counts.
@@ -2327,3 +2341,9 @@ with قبول: «قبول العذر» and «قبول».
   leaver's attendance after their leaving month's period counted in their
   settlement, the payday route behind the step-up, and the settings'
   fields one under another on phones.
+- **2026-11-27:** Codex's six findings on #430: an approved month's close
+  checked against today's settings; approving read its period before
+  holding the locks; settling attendance not yet measured; a month's
+  close moved under an approved next month; settlements carried by the
+  calendar month's end, not payday; the first payday on or after a date
+  taken in month order. Each fixed, as built in §7.10.
