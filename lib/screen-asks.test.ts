@@ -124,6 +124,9 @@ const EDITS_ATTENDANCE: Gate[] = [...EDITS, "const editable = !readOnly && !!dat
 const ATTENDANCE_TAB: Gate[] = [SHOWS_TABS, "{tab === 'attendance' && ("]
 const TERMINALS = "lib/attendance/terminals-access.ts"
 const MANAGES_TERMINALS: Gate[] = [{ in: TERMINALS, code: 'return company.terminalsSetupByCompany && can(actor, "attendance.manage_terminals", { companyId: company.id })' }, "{data.sections.terminals && <AttendanceTerminalsPanel"]
+// Roles and access's two tabs, each for whoever holds its permission (LATER_CHANGES_PLAN.md §7.15, PR 439).
+const CHANGES_TAB: Gate = { in: "lib/roles-and-access.ts", code: "if (can('employees.assign_role')) tabs.push('changes')" }
+const REVIEWS_TAB: Gate = { in: "lib/roles-and-access.ts", code: "if (can('employees.review_access')) tabs.push('reviews')" }
 const CLIENT_PORTAL_TAB: Gate[] = [{ in: "lib/company-settings-tabs.ts", code: 'module: "TAX_POSITION", permission: "client_messages.manage",' }, "{tab === 'client_portal' && <>"]
 const SUPER_ADMINS_TAB = notHere("if (superAdmin || refused) return <AccessDenied />", "superAdmin={false}",
     { in: SETTINGS_ACCESS, code: "export const ELIGIBLE_SETTINGS_TABS = COMPANY_SETTINGS_TABS.filter(t => t.adminEligible)" })
@@ -357,15 +360,17 @@ const SCREENS: Record<string, Screen> = {
         },
     },
     "roles-and-access": {
-        // A company's own: its role change requests and access reviews. The Super Admin answers both from their own pages.
-        opens: ["employees.assign_role"],
+        // A company's own: its role change requests, for whoever gives roles, and its access reviews, for whoever
+        // answers them, each on its own tab (LATER_CHANGES_PLAN.md §7.15, PR 439). The Super Admin answers both
+        // from their own pages.
+        opens: ["employees.assign_role", "employees.review_access"],
         asks: {
-            "GET /api/role-change-requests": { needs: ["employees.assign_role"], routeChecks: "lib/services/role-change-request.service.ts" },
-            "POST /api/role-change-requests": { needs: ["employees.assign_role"], routeChecks: "lib/services/role-change-request.service.ts" },
-            "GET /api/roles/assignable": needs("employees.assign_role"),
+            "GET /api/role-change-requests": { when: ["employees.assign_role"], gates: [CHANGES_TAB], routeChecks: "lib/services/role-change-request.service.ts" },
+            "POST /api/role-change-requests": { when: ["employees.assign_role"], gates: [CHANGES_TAB], routeChecks: "lib/services/role-change-request.service.ts" },
+            "GET /api/roles/assignable": when("employees.assign_role", CHANGES_TAB),
             "PUT /api/role-change-requests/[x]": { superAdmin: ["end={side === 'superAdmin' && r.status === 'OPEN' && ("], routeChecks: "lib/services/role-change-request.service.ts" },
-            "GET /api/access-reviews": { needs: ["employees.assign_role"], routeChecks: "lib/services/access-review.service.ts" },
-            "PUT /api/access-reviews/lines/[x]": { needs: ["employees.assign_role"], routeChecks: "lib/services/access-review.service.ts" },
+            "GET /api/access-reviews": { when: ["employees.review_access"], gates: [REVIEWS_TAB], routeChecks: "lib/services/access-review.service.ts" },
+            "PUT /api/access-reviews/lines/[x]": { when: ["employees.review_access"], gates: [REVIEWS_TAB], routeChecks: "lib/services/access-review.service.ts" },
         },
     },
     "": {

@@ -43,9 +43,11 @@ describe("the side bar", () => {
         expect(Object.keys(PAGES)).not.toContain("profileRequests")
     })
 
-    it("offers Roles and access to whoever gives roles, not whoever only asks for them, nor the Super Admin (part 5b)", () => {
+    it("offers Roles and access to whoever gives roles or answers access reviews, not whoever only asks for them, nor the Super Admin (part 5b)", () => {
         const asks = (permission: string) => ({ ...viewer("EMPLOYEE"), can: (p: string) => p === permission })
         expect(shape(asks("employees.assign_role")).join(" ")).toContain("rolesAndAccess")
+        // Answering access reviews, a permission of its own (LATER_CHANGES_PLAN.md §7.15, PR 439).
+        expect(shape(asks("employees.review_access")).join(" ")).toContain("rolesAndAccess")
         expect(shape(asks("employees.request_role")).join(" ")).not.toContain("rolesAndAccess")
         expect(shape(viewer("SUPER_ADMIN")).join(" ")).not.toContain("rolesAndAccess")
         expect(PAGES.rolesAndAccess.href).toBe("/dashboard/roles-and-access")

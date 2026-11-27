@@ -226,6 +226,7 @@ them, as today.
 | | `employees.assign_role` | Assign a role directly (§4.2) | new |
 | | `employees.request_role` | Request a role assignment for Admin approval (§6.12) | new |
 | | `employees.edit_contract_start` | Change when someone's contract started, which their hiring and starting salary follow, so their pay does (LATER_CHANGES_PLAN.md §7.2, PR 425) | `users/[id]/contract-start` |
+| | `employees.review_access` | See the company's access reviews, answer them, and be told when one opens (§6.14); asking for a change still sends the Super Admin a role change request. Every role with `employees.assign_role` was given it (LATER_CHANGES_PLAN.md §7.15, PR 439) | `GET /access-reviews`, `access-reviews/lines/[id]` |
 | | `employees.set_owner` | Mark an Admin of the company as an owner, or take it off: from the month marked, no payslip and no attendance days; only an Admin is one, set by an Admin or the Super Admin, never one's own (LATER_CHANGES_PLAN.md §7.3, PR 426, PR 428) | `users/[id]/owner` |
 | **Profile requests** | `profile_requests.review` | Approve / reject name-change requests | `profile-requests/[id]/approve\|reject` |
 | **Requests** | `requests.view` | See internal requests | `GET /requests` |
@@ -831,6 +832,12 @@ When on, at each interval the company's Admins receive a short in-app review: wh
 each sensitive permission — salaries, payroll approval, role assignment — with a
 **confirm** or **request change** button per line. Unanswered reviews are visible to
 the Super Admin. Clients with an auditor will be asked for exactly this record.
+
+Who answers them is a permission of its own, `employees.review_access` (Answer access
+reviews), since 27 November 2026 (`LATER_CHANGES_PLAN.md` §7.15, PR 439); it was
+`employees.assign_role`. Every role that held that was given it, the built-in Admin
+among them, so the Admins still answer them until it's unticked. Asking for a change
+on a line sends the Super Admin a role change request whoever answers it.
 
 ---
 

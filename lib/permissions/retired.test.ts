@@ -55,8 +55,8 @@ describe("the catalogue", () => {
     })
 
     it("stays at its version: every session since each split holds the parts, never the old ones", () => {
-        // Raised since, for employees.edit_contract_start (PR 425) and employees.set_owner (PR 426), permissions of their own.
-        expect(CATALOGUE_VERSION).toBe(15)
+        // Raised since, for employees.edit_contract_start (PR 425), employees.set_owner (PR 426) and employees.review_access (PR 439), permissions of their own.
+        expect(CATALOGUE_VERSION).toBe(16)
     })
 
     it("seeds no built-in role with one", () => {
