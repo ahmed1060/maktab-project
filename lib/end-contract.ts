@@ -70,6 +70,8 @@ const REFUSED: Record<string, EndContractRefusal> = {
     // A date it can't read, which the calendar never sends: one is asked for.
     NOT_A_DATE: { field: 'lastWorkingDay', key: 'end_contract_date_needed' },
     NO_SALARY: { field: 'lastWorkingDay', key: 'end_contract_no_salary' },
+    // After payroll closed and not over yet: its attendance goes in the settlement (PR 430).
+    ATTENDANCE_NOT_OVER: { field: 'lastWorkingDay', key: 'end_contract_attendance_not_over' },
     LAST_ADMIN: { key: 'end_contract_last_admin' },
     ADMIN_IS_SUPER_ADMINS: { key: 'end_contract_admin' },
     USER_HAS_NO_COMPANY: { key: 'end_contract_no_company' },

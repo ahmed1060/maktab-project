@@ -69,6 +69,8 @@ type View = {
     period?: { from: string; to: string }
     approvableFrom?: string
     periodOver?: boolean
+    /** The month after is approved, so this one's attendance can't change (review on PR 430). */
+    nextApproved?: boolean
     /** When payroll closes by the settings: the latest a changed month's attendance can end. */
     settingClose?: string
     status: 'DRAFT' | 'APPROVED' | 'PAID'
@@ -505,7 +507,8 @@ export default function PayrollRegisterPage() {
                     month={month}
                     companyId={companyId || null}
                     payday={view.payday.date}
-                    draft={view.status === 'DRAFT'}
+                    draft={view.status === 'DRAFT' && !view.nextApproved}
+                    nextApproved={view.status === 'DRAFT' && !!view.nextApproved}
                     period={view.period}
                     close={view.settingClose ?? view.period.to}
                 />

@@ -49,6 +49,8 @@ const userModel = (inTx: boolean) => ({
 vi.mock("@/lib/prisma", () => ({
     prisma: {
         user: userModel(false),
+        // Whether attendance reaches its payroll, read before settling (PR 430): not here.
+        company: { findUnique: async () => null },
         notification: { createMany: async ({ data }: any) => { db.notified.push(...data); return { count: data.length } } },
         $transaction: async (fn: any) => {
             db.transactions++

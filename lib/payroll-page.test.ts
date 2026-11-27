@@ -604,6 +604,14 @@ describe("payday and when payroll closes, on the page (LATER_CHANGES_PLAN.md §7
         expect(header(await page({ shows: view(), grants: ["payroll.approve"], locale: "ar" }))).toContain(`>${ar.payday_change}<`)
     })
 
+    it("treats a draft whose next month is approved as one whose attendance can't change (review on PR 430)", () => {
+        const PAGE = readFileSync("app/(dashboard)/dashboard/payroll/page.tsx", "utf8")
+        expect(PAGE).toContain("draft={view.status === 'DRAFT' && !view.nextApproved}")
+        expect(PAGE).toContain("nextApproved={view.status === 'DRAFT' && !!view.nextApproved}")
+        const SERVICE = readFileSync("lib/services/payroll-run.service.ts", "utf8")
+        expect(SERVICE).toContain("nextApproved: !!next && next.status !== \"DRAFT\",")
+    })
+
     it("keeps Approve greyed before payroll closes, saying from when, and usable after", async () => {
         const early = header(await page({ shows: view({ periodOver: false, approvableFrom: "2026-11-01" }), grants: ["payroll.approve"] }))
         expect(early).toContain('<button type="button" class="ui-btn ui-btn-primary" aria-disabled="true" aria-describedby="approve-from">Approve</button>')

@@ -126,6 +126,17 @@ describe.skipIf(!ADMIN_URL)("payday and the attendance period, in Postgres", () 
         await db.query(`UPDATE "Company" SET "payrollCloseDay" = 24 WHERE id = 'c1'`)
     })
 
+    it("keeps a month's close where the approved month after it begins, and its payday change can't move it (review on PR 430)", async () => {
+        const { prisma } = await import("@/lib/prisma")
+        // February 2027 approved from 20 January: January's attendance ends on the 19th, whatever the setting says.
+        await db.query(`INSERT INTO "PayrollRun"(id, "companyId", month, year, status, "payrollDay", "updatedAt", "periodStart", "periodEnd", payday) VALUES ('r27', 'c1', 2, 2027, 'APPROVED', 1, now(), '2027-01-20', '2027-02-24', '2027-03-01')`)
+        expect(await Periods.periodOf(prisma, "c1", 2027, 1)).toEqual({ from: "2026-12-25", to: "2027-01-19" })
+        expect([...(await Periods.payrollMonthsOf(prisma, "c1", ["2027-01-19", "2027-01-22"])).values()]).toEqual(["2027-01", "2027-02"])
+        expect(await Payroll.changePayday("c1", 2027, 1, { payday: "2027-01-25", attendanceUntil: "2027-01-15" }, SESSION)).toEqual({ refused: expect.objectContaining({ code: "PERIOD_FROZEN", periodEnd: "2027-01-19" }) })
+        expect(await Payroll.changePayday("c1", 2027, 1, { payday: "2027-01-25" }, SESSION)).toEqual({ payday: "2027-01-25", periodEnd: "2027-01-19" })
+        await db.query(`DELETE FROM "PayrollRun" WHERE "companyId" = 'c1' AND year = 2027`)
+    })
+
     it("goes by the work week of the policy in force on payday, not Friday and Saturday whatever it says", async () => {
         const { prisma } = await import("@/lib/prisma")
         // From 2027, a policy working Monday to Friday: Friday 1 January is a working day, and payday.
@@ -152,12 +163,17 @@ describe.skipIf(!ADMIN_URL)("payday and the attendance period, in Postgres", () 
 
     it("approves once the period's over, freezing the period's days and keeping its dates and payday", async () => {
         expect(await Payroll.approve("c1", 2026, 10, SESSION)).toHaveProperty("runId")
+        // A settlement due on November's payday, 1 December in Cairo: November's to carry (review on PR 430).
+        await db.query(`INSERT INTO "FinalSettlement"(id, "userId", "companyId", "lastWorkingDay", "earnedAmount", "paidAmount", "netAmount", "dueDate", "updatedAt") VALUES ('fs1', 'a1', 'c1', '2026-11-20T21:59:59Z', 100, 0, 100, '2026-11-30T22:00:00Z', now())`)
         // A day of November's in October, its row gone since: approving rebuilds it, then freezes it.
         await db.query(`DELETE FROM "AttendanceDay" WHERE "userId" = 'e1' AND date = '2026-10-27'`)
         expect(await Payroll.approve("c1", 2026, 11, SESSION)).toHaveProperty("runId")
         expect(await run(11)).toEqual({ status: "APPROVED", from: "2026-10-25", to: "2026-11-24", payday: "2026-12-01", paydayChanged: false })
         expect(await frozen("2026-10-27")).toBe(true)
         expect(await frozen("2026-11-24")).toBe(true)
+        const carried = (await db.query(`SELECT s.status, r.month FROM "FinalSettlement" s JOIN "PayrollRun" r ON r.id = s."payrollRunId" WHERE s.id = 'fs1'`)).rows[0]
+        expect(carried).toEqual({ status: "APPROVED", month: 11 })
+        await db.query(`DELETE FROM "FinalSettlement" WHERE id = 'fs1'`)
         expect(await frozen("2026-11-25")).toBe(false)
         // Approved, its payday stays as it was, whatever the setting says after.
         const { prisma } = await import("@/lib/prisma")
@@ -172,6 +188,10 @@ describe.skipIf(!ADMIN_URL)("payday and the attendance period, in Postgres", () 
         expect(await Periods.nextPaydayOnOrAfter(prisma, "c1", "2026-11-26")).toBe("2026-12-01")
         expect(await Periods.nextPaydayOnOrAfter(prisma, "c1", "2026-12-01")).toBe("2026-12-01")
         expect(await Periods.nextPaydayOnOrAfter(prisma, "c1", "2026-12-02")).toBe("2026-12-31")
+        // October paid late, on 31 December: November's, on the 1st, is still the first (review on PR 430).
+        await Payroll.changePayday("c1", 2026, 10, { payday: "2026-12-31" }, SESSION)
+        expect(await Periods.nextPaydayOnOrAfter(prisma, "c1", "2026-11-26")).toBe("2026-12-01")
+        await Payroll.changePayday("c1", 2026, 10, { payday: "2026-11-01" }, SESSION)
     })
 
     it("refuses a decision on a frozen day, and takes one on a day after the close, the next month's", async () => {
@@ -198,6 +218,9 @@ describe.skipIf(!ADMIN_URL)("payday and the attendance period, in Postgres", () 
         const after = await SettlementService.attendanceAfterClose("c1", "e1", 2026, 11, "2026-11-26")
         expect(after).toBeLessThan(0)
         const absent = (await db.query(`SELECT "deductionMinor" FROM "AttendanceDay" WHERE "userId" = 'e1' AND date = '2026-11-26'`)).rows[0].deductionMinor
+        // Their last working day not over yet, its attendance isn't known: not settled until it is (review on PR 430).
+        await expect(SettlementService.preview("e1", "2026-11-27")).rejects.toThrow("ATTENDANCE_NOT_OVER")
+        await expect(SettlementService.preview("e1", "2026-11-28")).rejects.toThrow("ATTENDANCE_NOT_OVER")
         // Only the 26th: the 19th's absence is November's payroll's, approved and paid there.
         const before = (await db.query(`SELECT "deductionMinor" FROM "AttendanceDay" WHERE "userId" = 'e1' AND date = '2026-11-19'`)).rows[0].deductionMinor
         expect(before).toBeGreaterThan(0)
@@ -223,6 +246,10 @@ describe.skipIf(!ADMIN_URL)("payday and the attendance period, in Postgres", () 
         expect(await Payroll.changePayday("c1", 2026, 11, { payday: "2026-11-24" }, SESSION)).toEqual({ refused: expect.objectContaining({ code: "PAYDAY_NOT_AFTER_PERIOD" }) })
         // No later than the month after next: January, for November.
         expect(await Payroll.changePayday("c1", 2026, 11, { payday: "2027-02-01" }, SESSION)).toEqual({ refused: expect.objectContaining({ code: "PAYDAY_TOO_LATE" }) })
+        // Closing on the 20th from now on, November's attendance still ends on the 24th, as approved: only payday changes (review on PR 430).
+        await db.query(`UPDATE "Company" SET "payrollCloseDay" = 20 WHERE id = 'c1'`)
+        expect(await Payroll.changePayday("c1", 2026, 11, { payday: "2026-11-29" }, SESSION)).toEqual({ payday: "2026-11-29", periodEnd: "2026-11-24" })
+        await db.query(`UPDATE "Company" SET "payrollCloseDay" = 24 WHERE id = 'c1'`)
         expect(await Payroll.changePayday("c1", 2026, 11, { payday: "2026-11-30" }, SESSION)).toEqual({ payday: "2026-11-30", periodEnd: "2026-11-24" })
         expect(await run(11)).toEqual(expect.objectContaining({ status: "APPROVED", to: "2026-11-24", payday: "2026-11-30", paydayChanged: true }))
         await db.query(`UPDATE "PayrollRun" SET status = 'PAID' WHERE "companyId" = 'c1' AND year = 2026 AND month = 11`)
@@ -232,9 +259,33 @@ describe.skipIf(!ADMIN_URL)("payday and the attendance period, in Postgres", () 
     it("keeps a leaver's attendance after the close on the settlement made, in what's owed too", async () => {
         const { SettlementService } = await import("@/lib/services/settlement.service")
         const after = await SettlementService.attendanceAfterClose("c1", "e1", 2026, 11, "2026-11-26")
+        // Their last day not measured yet, as before the nightly job: settling measures it first.
+        await db.query(`DELETE FROM "AttendanceDay" WHERE "userId" = 'e1' AND date = '2026-11-26'`)
         await SettlementService.settleAndEnd({ userId: "e1", lastWorkingDay: "2026-11-26", createdById: "a1", actorRole: "ADMIN", actorName: "Amal One" })
         const kept = (await db.query(`SELECT "attendanceAmount"::float AS attendance, "earnedAmount"::float AS earned, "paidAmount"::float AS paid, "netAmount"::float AS net FROM "FinalSettlement" WHERE "userId" = 'e1'`)).rows[0]
         expect(kept.attendance).toBe(after / 100)
         expect(kept.net).toBeCloseTo(kept.earned - kept.paid + kept.attendance, 2)
+    })
+
+    it("approves with the period as it is once it holds the locks, a payday changed meanwhile included (review on PR 430)", async () => {
+        vi.setSystemTime(new Date("2026-12-28T08:00:00Z"))
+        const real = Payroll.compute.bind(Payroll)
+        let first = true
+        // December's payday changed between the first look and the approval's locks.
+        const spy = vi.spyOn(Payroll, "compute").mockImplementation(async (...args: Parameters<typeof Payroll.compute>) => {
+            const out = await real(...args)
+            if (first) {
+                first = false
+                await Payroll.changePayday("c1", 2026, 12, { payday: "2026-12-23", attendanceUntil: "2026-12-22" }, SESSION)
+            }
+            return out
+        })
+        try {
+            expect(await Payroll.approve("c1", 2026, 12, SESSION)).toHaveProperty("runId")
+        } finally {
+            spy.mockRestore()
+            vi.setSystemTime(NOW)
+        }
+        expect(await run(12)).toEqual(expect.objectContaining({ status: "APPROVED", from: "2026-11-25", to: "2026-12-22", payday: "2026-12-23" }))
     })
 })

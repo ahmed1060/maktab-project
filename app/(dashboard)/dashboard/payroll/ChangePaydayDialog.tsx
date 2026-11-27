@@ -34,7 +34,7 @@ export function attendanceUntilFor(payday: string, close: string): string {
     return payday <= close ? addDays(payday, -1) : close
 }
 
-export function ChangePaydayDialog({ open, onClose, onDone, year, month, companyId, payday, draft, period, close }: {
+export function ChangePaydayDialog({ open, onClose, onDone, year, month, companyId, payday, draft, nextApproved = false, period, close }: {
     open: boolean
     onClose: () => void
     onDone: () => void
@@ -45,6 +45,8 @@ export function ChangePaydayDialog({ open, onClose, onDone, year, month, company
     payday: string
     /** Whether the month is still a draft, so its attendance can end sooner. */
     draft: boolean
+    /** A draft whose next month is approved: its attendance ends where that month begins (review on PR 430). */
+    nextApproved?: boolean
     /** Its attendance period now. */
     period: { from: string; to: string }
     /** When payroll closes by the settings: the latest its attendance can end. */
@@ -101,7 +103,7 @@ export function ChangePaydayDialog({ open, onClose, onDone, year, month, company
                 <DatePickerSingle name="attendanceUntil" label={t('payday_change_until')} value={until} minDate={period.from} maxDate={close}
                     onChange={next => { setUntil(next); setErrors({}) }} error={errors.until} disabled={action.running} />
             )}
-            <p className="ui-hint">{t(draft ? 'payday_change_hint' : 'payday_change_hint_approved')}</p>
+            <p className="ui-hint">{t(draft ? 'payday_change_hint' : nextApproved ? 'payday_change_hint_next_approved' : 'payday_change_hint_approved')}</p>
         </Dialog>
     )
 }

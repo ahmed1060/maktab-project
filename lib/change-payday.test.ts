@@ -56,6 +56,14 @@ describe("Change this month's payday", () => {
         const approved = dialog(false)
         expect(approved).not.toContain('name="attendanceUntil"')
         expect(approved).toContain(esc(en.payday_change_hint_approved))
+        // A draft whose next month is approved: only payday, saying why (review on PR 430).
+        const pinned = renderToStaticMarkup(h(ChangePaydayDialog, {
+            open: true, onClose: () => {}, onDone: () => {}, year: 2026, month: 10, companyId: null,
+            payday: "2026-11-01", draft: false, nextApproved: true, period: { from: "2026-10-01", to: "2026-10-31" }, close: "2026-10-31",
+        }))
+        expect(pinned).not.toContain('name="attendanceUntil"')
+        expect(pinned).toContain(esc(en.payday_change_hint_next_approved))
+        expect(ar.payday_change_hint_next_approved).toBeTruthy()
     })
 })
 

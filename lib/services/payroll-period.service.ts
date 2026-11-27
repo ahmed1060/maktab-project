@@ -44,7 +44,9 @@ export class PayrollPeriodService {
 
     /**
      * Each month's close: its run's own where it keeps one (an approved month
-     * always does, a draft once its payday was changed with it), otherwise by
+     * always does, a draft once its payday was changed with it); where the
+     * month after is approved, the day before that month's first, as an
+     * approved month's period never moves (review on PR 430); otherwise by
      * the setting.
      */
     static async closes(db: Db, companyId: string, months: readonly Month[], settings?: PayrollSettings): Promise<Map<string, string>> {
@@ -52,12 +54,17 @@ export class PayrollPeriodService {
         const out = new Map<string, string>()
         if (wanted.length === 0) return out
         const { closeDay } = settings ?? await this.settings(db, companyId)
+        const after = (m: Month) => nextMonth(m.year, m.month)
         const runs = await db.payrollRun.findMany({
-            where: { companyId, periodEnd: { not: null }, OR: wanted.map(m => ({ year: m.year, month: m.month })) },
-            select: { year: true, month: true, periodEnd: true },
+            where: { companyId, OR: [...wanted, ...wanted.map(after)].map(m => ({ year: m.year, month: m.month })) },
+            select: { year: true, month: true, status: true, periodStart: true, periodEnd: true },
         })
-        const kept = new Map(runs.map(r => [monthKeyOf(r.year, r.month), toDateString(r.periodEnd!)]))
-        for (const m of wanted) out.set(keyOf(m), kept.get(keyOf(m)) ?? closeDateOf(m.year, m.month, closeDay))
+        const kept = new Map(runs.filter(r => r.periodEnd).map(r => [monthKeyOf(r.year, r.month), toDateString(r.periodEnd!)]))
+        const nextBegins = new Map(runs.filter(r => r.status !== "DRAFT" && r.periodStart).map(r => [monthKeyOf(r.year, r.month), toDateString(r.periodStart!)]))
+        for (const m of wanted) {
+            const begins = nextBegins.get(keyOf(after(m)))
+            out.set(keyOf(m), kept.get(keyOf(m)) ?? (begins ? addDays(begins, -1) : closeDateOf(m.year, m.month, closeDay)))
+        }
         return out
     }
 
@@ -123,17 +130,24 @@ export class PayrollPeriodService {
         return { date: movePayday(nominal, set.payday.move, isDayOff, close), changed: false }
     }
 
-    /** The first payday on or after a date: a debt's due date, and when a settlement made then is paid. */
+    /**
+     * The first payday on or after a date: a debt's due date, and when a
+     * settlement made then is paid. The earliest of the months' paydays, not
+     * the first month's: one changed for its month can be as late as the
+     * month after next, after the next month's (review on PR 430).
+     */
     static async nextPaydayOnOrAfter(db: Db, companyId: string, date: string): Promise<string> {
         const settings = await this.settings(db, companyId)
         const own = monthOfDate(date)
-        let month = previousMonth(own.year, own.month)
-        // Paid in the month after, the month before's payday falls in this one.
-        for (let i = 0; i < 4; i++) {
-            const { date: payday } = await this.paydayOf(db, companyId, month.year, month.month, settings)
-            if (payday >= date) return payday
+        // From three months before, whose payday may have been moved this late,
+        // to two after, whose payday comes after the date whatever was changed.
+        let month: Month = own
+        for (let i = 0; i < 3; i++) month = previousMonth(month.year, month.month)
+        const paydays: string[] = []
+        for (let i = 0; i < 6; i++) {
+            paydays.push((await this.paydayOf(db, companyId, month.year, month.month, settings)).date)
             month = nextMonth(month.year, month.month)
         }
-        return (await this.paydayOf(db, companyId, month.year, month.month, settings)).date
+        return paydays.filter(p => p >= date).sort()[0]
     }
 }

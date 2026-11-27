@@ -242,6 +242,8 @@ describe("what's wrong, in the reader's language", () => {
         expect(endContractRefusal({ code: "LAST_ADMIN" })).toEqual({ key: "end_contract_last_admin" })
         expect(endContractRefusal({ code: "ADMIN_IS_SUPER_ADMINS" })).toEqual({ key: "end_contract_admin" })
         expect(endContractRefusal({ code: "USER_HAS_NO_COMPANY" })).toEqual({ key: "end_contract_no_company" })
+        // A last working day after payroll closed, not over yet (review on PR 430).
+        expect(endContractRefusal({ code: "ATTENDANCE_NOT_OVER" })).toEqual({ field: "lastWorkingDay", key: "end_contract_attendance_not_over" })
         // The code prompt for a high-risk action, turned down: they know.
         expect(endContractRefusal({ code: "STEP_UP_REQUIRED" })).toBe("quiet")
         expect(endContractRefusal({ code: "MFA_ENROL_REQUIRED" })).toBe("quiet")
@@ -255,6 +257,11 @@ describe("what's wrong, in the reader's language", () => {
         expect(ar.end_contract_no_salary).toMatch(/يُرجى تحديد يوم في شهر مسجّل فيه راتب\.$/)
     })
 
+    it("says when a last working day after payroll closed can be settled, in both languages (review on PR 430)", () => {
+        expect(en.end_contract_attendance_not_over).toMatch(/once it's over\.$/)
+        expect(ar.end_contract_attendance_not_over).toMatch(/بعد انتهائه\.$/)
+    })
+
     it("is answered by the server with its code beside its words", async () => {
         const { ApiResponse } = await import("@/lib/api-response")
         const res = ApiResponse.refused(400, "No salary in effect for 2026-11", "NO_SALARY")
@@ -263,6 +270,8 @@ describe("what's wrong, in the reader's language", () => {
         const route = ROUTE()
         expect(route).toContain(`ApiResponse.refused(400, "lastWorkingDay must be YYYY-MM-DD", "NOT_A_DATE")`)
         expect(route).toContain(`ApiResponse.refused(400, message, "NO_SALARY")`)
+        // Both the preview and the ending say a last working day not over yet (review on PR 430).
+        expect(route.split(`ApiResponse.refused(400, "The last working day isn't over yet", "ATTENDANCE_NOT_OVER")`).length - 1).toBe(2)
         expect(route).toContain(`"USER_HAS_NO_COMPANY")`)
         // An Admin's, and the company's last Admin's, as a role's are (lib/role-errors.ts).
         expect(route).toContain("adminRefusal(error)")

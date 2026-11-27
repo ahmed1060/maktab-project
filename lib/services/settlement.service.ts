@@ -51,8 +51,11 @@ export class SettlementService {
         const period = await PayrollPeriodService.periodOf(prisma, companyId, year, month)
         if (lastWorkingDay <= period.to) return 0
         const next = nextMonth(year, month)
-        const company = await prisma.company.findUnique({ where: { id: companyId }, select: { attendancePayrollFrom: true } })
+        const company = await prisma.company.findUnique({ where: { id: companyId }, select: { attendancePayrollFrom: true, timezone: true } })
         if (!attendanceReaches(company?.attendancePayrollFrom ?? null, next.year, next.month)) return 0
+        // A day's attendance is known once it's over: a last working day still to
+        // come, or today, isn't settled until it is (review on PR 430).
+        if (lastWorkingDay >= calendarDateStr(new Date(), company?.timezone ?? "UTC")) throw new Error("ATTENDANCE_NOT_OVER")
         const money = (await attendanceMoney(prisma, companyId, { from: addDays(period.to, 1), to: lastWorkingDay })).get(userId)
         if (!money) return 0
         return money.overtime + money.missionAllowance - money.lateness - money.earlyLeave - money.absence
@@ -290,6 +293,17 @@ export class SettlementService {
          */
         reassignReportsTo?: string | null
     }) {
+        // Their days after the leaving month's payroll closed, measured first, as
+        // the nightly job would: the last of them may be yesterday, not yet
+        // turned into a measured day (review on PR 430).
+        const { companyId: measuredIn } = await this.policyFor(input.userId)
+        const measured = measuredIn && /^\d{4}-\d{2}-\d{2}$/.test(input.lastWorkingDay)
+            ? await prisma.company.findUnique({ where: { id: measuredIn }, select: { attendancePayrollFrom: true } })
+            : null
+        if (measuredIn && measured?.attendancePayrollFrom) {
+            const { AttendanceEngineService } = await import("./attendance-engine.service")
+            await AttendanceEngineService.recomputeMonth(measuredIn, input.lastWorkingDay.slice(0, 7), [input.userId])
+        }
         const preview = await this.preview(input.userId, input.lastWorkingDay)
         const { companyId } = await this.policyFor(input.userId)
         if (!companyId) throw new Error("USER_HAS_NO_COMPANY")
