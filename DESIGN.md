@@ -2435,9 +2435,13 @@ These are built once, in the building-blocks PR, and every page uses them
   - With this month's payroll approved, the server refuses this month's,
     said under the choice: "This month's payroll is approved, so the new
     salary can only be next month's."
-  - A salary set for a month is that month's from its 1st, so a payslip
-    shows it as one line, Salary, not split at a starting salary entered
-    before it.
+  - The salary set last is theirs from the 1st of the month it's for: one
+    entered before it and dated later gives way to it, a starting salary
+    or one set for next month alike. So a payslip shows it as one line,
+    Salary, not split at a starting salary entered before it, and setting
+    this month's after next month's replaces both.
+  - Their page shows the salary set last, next month's too; each month's
+    payslip pays the salary for that month.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
