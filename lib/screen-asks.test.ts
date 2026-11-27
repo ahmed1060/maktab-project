@@ -771,7 +771,9 @@ const SCREENS: Record<string, Screen> = {
             "POST /api/payroll/[x]/[x]": when("payroll.prepare", "const canPrepare = can('payroll.prepare')", "{canPrepare && (\n                            <Button onClick={() => action.run('save', save)}"),
             // A draft's days worked out again (PR 425): the draft's to prepare, where the company has attendance.
             "POST /api/payroll/[x]/[x]/recalculate": when("payroll.prepare", "const canPrepare = can('payroll.prepare')", "const canRecalculate = isDraft && canPrepare && features.has('ATTENDANCE')", "{canRecalculate && (\n                            <Button onClick={() => action.run('recalculate', recalculate)}"),
-            "POST /api/payroll/[x]/[x]/approve": when("payroll.approve", "const canApprove = can('payroll.approve')", "{canApprove && (\n                            <Button variant=\"primary\" onClick={openApprove}"),
+            "POST /api/payroll/[x]/[x]/approve": when("payroll.approve", "const canApprove = can('payroll.approve')", "{canApprove && (view?.periodOver === false && view.approvableFrom ? (", "<Button variant=\"primary\" onClick={openApprove}"),
+            // Change this month's payday (LATER_CHANGES_PLAN.md §7.10, PR 430), until it's paid.
+            "PUT /api/payroll/[x]/[x]/payday": when("payroll.approve", "const canApprove = can('payroll.approve')", "{canApprove && view.status !== 'PAID' && view.period && ("),
             "POST /api/payroll/[x]/[x]/issue": when("payroll.issue_payslips", "const canIssue = can('payroll.issue_payslips')", ") : canIssue && ("),
             "POST /api/payroll/[x]/[x]/paid": when("payroll.mark_paid", "const canMarkPaid = can('payroll.mark_paid')", ") : canMarkPaid ? ("),
             "POST /api/attendance/discrepancies/[x]/resolve": when("payroll.prepare", "const canPrepare = can('payroll.prepare')", "{canPrepare && <Button size=\"sm\" aria-label={t('attpay_resolve_for')"),

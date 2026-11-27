@@ -24,6 +24,8 @@ type Doc = {
     person: PersonNames & { email: string }
     company: { name: string; nameAr?: string | null; logoUrl?: string | null }
     period: { month: number; year: number }
+    /** The days its attendance counts, where it carried attendance (LATER_CHANGES_PLAN.md §7.10, PR 430). */
+    attendancePeriod?: { from: string; to: string } | null
     status: 'DRAFT' | 'APPROVED' | 'PAID'
     daysPaid: number
     excluded: boolean
@@ -50,6 +52,8 @@ export default function PayslipDocumentPage() {
         new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
     // "October 2026", the year in the page's digits too.
     const period = doc ? new Date(doc.period.year, doc.period.month - 1).toLocaleString(digits, { month: 'long', year: 'numeric' }) : undefined
+    // A day as "25 October", in the page's language.
+    const dayMonth = (date: string) => new Date(`${date}T12:00:00Z`).toLocaleDateString(digits, { day: 'numeric', month: 'long', timeZone: 'UTC' })
 
     const header = (
         <PageHeader
@@ -88,6 +92,8 @@ export default function PayslipDocumentPage() {
                 <Details items={[
                     { label: t('doc_issued_to'), value: <bdi>{personName(doc.person, locale)}</bdi> },
                     { label: t('doc_period'), value: period },
+                    // Under the month, which days its attendance counts: its period (PR 430).
+                    ...(doc.attendancePeriod ? [{ label: t('doc_attendance'), value: t('doc_attendance_days').replace('{from}', dayMonth(doc.attendancePeriod.from)).replace('{to}', dayMonth(doc.attendancePeriod.to)) }] : []),
                     { label: t('doc_days_paid'), value: doc.daysPaid.toLocaleString(digits) },
                 ]} />
 

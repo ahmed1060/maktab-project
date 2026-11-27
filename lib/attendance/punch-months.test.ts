@@ -32,10 +32,22 @@ import type { ExpectedDay } from "@/lib/attendance/calendar"
  */
 describe("the months many punches can change", () => {
     beforeEach(() => { calendar.days.clear(); calendar.asked = 0; calendar.through = [] })
-    const tx = (nights: { userId: string; date: string; expectedStartMinutes?: number | null; expectedEndMinutes: number | null }[]) => {
+    // The company's payroll close, for which payroll month each date falls in (LATER_CHANGES_PLAN.md
+    // §7.10, PR 430): the month's last day unless said, with no run keeping its own.
+    const tx = (nights: { userId: string; date: string; expectedStartMinutes?: number | null; expectedEndMinutes: number | null }[], closeDay: number | null = null) => {
         const findMany = vi.fn(async () => nights.map(n => ({ ...n, date: new Date(`${n.date}T00:00:00Z`) })))
-        return { findMany, tx: { attendanceDay: { findMany, findUnique: vi.fn() } } as unknown as Prisma.TransactionClient }
+        const company = { findUnique: vi.fn(async () => ({ payrollCloseDay: closeDay, payrollDay: 1, paydayLastDay: false, paydayNextMonth: true, paydayMove: "BEFORE" })) }
+        return { findMany, tx: { attendanceDay: { findMany, findUnique: vi.fn() }, company, payrollRun: { findMany: vi.fn(async () => []) } } as unknown as Prisma.TransactionClient }
     }
+
+    it("takes the payroll month a date falls in, the next one's after the close, and reads the night before where the close is the edge (PR 430)", async () => {
+        // Payroll closing on the 24th: the 25th is December's, and a punch at 01:00 on the 25th
+        // can be the 24th's night, November's.
+        const t = tx([{ userId: "e3", date: "2026-11-24", expectedStartMinutes: 1320, expectedEndMinutes: 1800 }], 24)
+        expect(await punchMonthsOf(t.tx, "c1", [{ userId: "e3", local: "2026-11-25T01:00:00" }, { userId: "e3", local: "2026-11-20T09:00:00" }]))
+            .toEqual([["2026-12", "2026-11"], ["2026-11"]])
+        expect(t.findMany).toHaveBeenCalledTimes(1)
+    })
 
     it("reads the nights before once, however many punches", async () => {
         // Eman's 30 September night ends at 06:00 on the 1st; with its late margin, up to noon is that night's.

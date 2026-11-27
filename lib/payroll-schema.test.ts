@@ -184,7 +184,8 @@ describe("P5's promise, finally keepable", () => {
     it("works the paid figure out instead of being handed it", () => {
         // P5's pure preview took paidMinor as an argument because nothing knew
         // the payroll day yet. It does now.
-        expect(service).toContain("daysAlreadyPaid")
+        // From the month's payday as the company has it, moved off a day off, since PR 430.
+        expect(service).toContain("paidAlready(calendarDateStr(lastDayInstant, timeZone), payday)")
         expect(service).not.toContain("paidMinor: input.paidMinor")
     })
 

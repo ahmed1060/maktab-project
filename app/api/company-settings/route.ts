@@ -34,6 +34,8 @@ export const GET = withStandardHandler(async (req, session) => {
             package: { select: { hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true, hasClientPortal: true } },
             autoVerifyLocation: true, cashAdvancesAllowed: true, cashAdvancesOn: true, costNamesFromListOnly: true, confirmHighRisk: true, logoUrl: true, brandColour: true,
             payrollDay: true, payslipsVisible: true, timezone: true, debtRecoveryPercent: true,
+            // Payday's choices and when payroll closes (LATER_CHANGES_PLAN.md §7.10, PR 430).
+            paydayLastDay: true, paydayNextMonth: true, paydayMove: true, payrollCloseDay: true,
             terminalsSetupByCompany: true,
             terminalsDirectAllowed: true,
         },
@@ -102,6 +104,11 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         await CompanyService.update(validation.data, session)
     } catch (error: any) {
         if (error.message === "COMPANY_NOT_FOUND") return ApiResponse.notFound("Company not found")
+        // Under payday's field (LATER_CHANGES_PLAN.md §7.10, PR 430); the form says it in its own words.
+        if (error.message === "PAYDAY_BEFORE_CLOSE") {
+            const why = "Payday has to come after payroll closes, so the month can be approved before it's paid."
+            return ApiResponse.badRequest(why, { code: "PAYDAY_BEFORE_CLOSE", closeDay: error.closeDay ?? null, payrollDay: { _errors: [why] } })
+        }
         throw error
     }
     return ApiResponse.success({ saved: fields })

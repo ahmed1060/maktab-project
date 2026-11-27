@@ -43,6 +43,8 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
         lastWorkingDay: settlement.lastWorkingDay,
         earned: Number(settlement.earnedAmount),
         paid: Number(settlement.paidAmount),
+        // Attendance after the leaving month's payroll closed, in the net (LATER_CHANGES_PLAN.md §7.10, PR 430).
+        attendance: Number(settlement.attendanceAmount),
         net,
         debtRecovered: Number(settlement.debtRecoveredAmount),
         // What actually moves. Kept separate from net so the document's own

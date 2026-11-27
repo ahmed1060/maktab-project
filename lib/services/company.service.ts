@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import { paydayRefusal } from "@/lib/payroll-period"
 import { Prisma } from "@prisma/client"
 import { NotificationService } from "./notification.service"
 import { RoleService } from "./role.service"
@@ -270,7 +271,7 @@ export class CompanyService {
     }
 
     static async update(input: UpdateCompanyInput, session: any) {
-        const { id, name, nameAr, usernameCode, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs, brandColour, cashAdvancesAllowed, cashAdvancesOn, costNamesFromListOnly, confirmHighRisk, terminalsSetupByCompany, terminalsDirectAllowed } = input
+        const { id, name, nameAr, usernameCode, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, paydayLastDay, paydayNextMonth, paydayMove, payrollCloseDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs, brandColour, cashAdvancesAllowed, cashAdvancesOn, costNamesFromListOnly, confirmHighRisk, terminalsSetupByCompany, terminalsDirectAllowed } = input
         const existing = await prisma.company.findUnique({ where: { id } })
         if (!existing) throw new Error("COMPANY_NOT_FOUND")
 
@@ -301,6 +302,19 @@ export class CompanyService {
             await assertRecentStepUp(session)
         }
 
+        // Payday comes after the month's payroll closes (LATER_CHANGES_PLAN.md
+        // §7.10, PR 430), the settings as they'll be once saved: a payday on or
+        // before the close isn't saved, saying why.
+        if ([payrollDay, paydayLastDay, paydayNextMonth, payrollCloseDay].some(v => v !== undefined)) {
+            const refusal = paydayRefusal({
+                day: payrollDay ?? existing.payrollDay,
+                lastDay: paydayLastDay ?? existing.paydayLastDay,
+                nextMonth: paydayNextMonth ?? existing.paydayNextMonth,
+                move: paydayMove ?? existing.paydayMove,
+            }, payrollCloseDay !== undefined ? payrollCloseDay : existing.payrollCloseDay)
+            if (refusal) throw Object.assign(new Error("PAYDAY_BEFORE_CLOSE"), { closeDay: refusal.closeDay })
+        }
+
         // Both maps are stored the same way now that vendorsLabel is gone — see
         // planOverrideWrite for what undefined, null and a map each mean here.
         const nextLabels = planOverrideWrite(moduleLabels, "labels")
@@ -328,6 +342,10 @@ export class CompanyService {
             // reach here — the zone in particular, because its refusal
             // carries a reason the form needs to show.
             ...(payrollDay !== undefined && { payrollDay }),
+            ...(paydayLastDay !== undefined && { paydayLastDay }),
+            ...(paydayNextMonth !== undefined && { paydayNextMonth }),
+            ...(paydayMove !== undefined && { paydayMove }),
+            ...(payrollCloseDay !== undefined && { payrollCloseDay }),
             ...(payslipsVisible !== undefined && { payslipsVisible }),
             ...(timezone !== undefined && { timezone }),
             ...(debtRecoveryPercent !== undefined && { debtRecoveryPercent }),
@@ -396,6 +414,18 @@ export class CompanyService {
         // change to any of them is worth as much of a trail as a ban is.
         if (payrollDay !== undefined && payrollDay !== existing.payrollDay) {
             changes.payrollDay = { old: existing.payrollDay, new: payrollDay }
+        }
+        if (paydayLastDay !== undefined && paydayLastDay !== existing.paydayLastDay) {
+            changes.paydayLastDay = { old: existing.paydayLastDay, new: paydayLastDay }
+        }
+        if (paydayNextMonth !== undefined && paydayNextMonth !== existing.paydayNextMonth) {
+            changes.paydayNextMonth = { old: existing.paydayNextMonth, new: paydayNextMonth }
+        }
+        if (paydayMove !== undefined && paydayMove !== existing.paydayMove) {
+            changes.paydayMove = { old: existing.paydayMove, new: paydayMove }
+        }
+        if (payrollCloseDay !== undefined && payrollCloseDay !== existing.payrollCloseDay) {
+            changes.payrollCloseDay = { old: existing.payrollCloseDay, new: payrollCloseDay }
         }
         if (payslipsVisible !== undefined && payslipsVisible !== existing.payslipsVisible) {
             changes.payslipsVisible = { old: existing.payslipsVisible, new: payslipsVisible }

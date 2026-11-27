@@ -34,7 +34,17 @@ export async function lockPersonDates(tx: Prisma.TransactionClient, userId: stri
     await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${`person-dates:${userId}`}))::text`
 }
 
-/** Which of these months have an approved or paid payroll run. Read after the lock. */
+/**
+ * The payroll months these dates fall in (LATER_CHANGES_PLAN.md §7.10, PR
+ * 430): a date after its month's close is the next month's, so what's
+ * locked and checked for a date is the payroll month that counts it.
+ */
+export async function monthsOfDates(tx: Prisma.TransactionClient, companyId: string, dates: Iterable<string>): Promise<string[]> {
+    const { PayrollPeriodService } = await import("./payroll-period.service")
+    return PayrollPeriodService.monthsOfDates(tx, companyId, dates)
+}
+
+/** Which of these payroll months have an approved or paid payroll run. Read after the lock. */
 export async function lockedMonths(tx: Prisma.TransactionClient, companyId: string, months: Iterable<string>): Promise<Set<string>> {
     const wanted = [...new Set(months)]
     if (wanted.length === 0) return new Set()
@@ -81,7 +91,14 @@ type Shift = { start: number; end: number }
  * on a month's first or last day can, so only theirs are read.
  */
 export async function punchMonthsOf(tx: Prisma.TransactionClient, companyId: string, punches: readonly { userId: string | null; local: string }[]): Promise<string[][]> {
-    const monthOf = (date: string) => date.slice(0, 7)
+    // The payroll month of each date a punch's shift can be on: its own, the day before's and the
+    // day after's (LATER_CHANGES_PLAN.md §7.10, PR 430). The edge is where that changes, the close,
+    // not the calendar month's.
+    const { PayrollPeriodService } = await import("./payroll-period.service")
+    const around = [...new Set(punches.flatMap(p => { const d = p.local.slice(0, 10); return [addDays(d, -1), d, addDays(d, 1)] }))]
+    const payrollMonth = around.length > 0 ? await PayrollPeriodService.payrollMonthsOf(tx, companyId, around) : new Map<string, string>()
+    // A date, or a punch's local time, whose date it reads.
+    const monthOf = (date: string) => payrollMonth.get(date.slice(0, 10)) ?? date.slice(0, 7)
     const onEdge = (date: string) => monthOf(addDays(date, -1)) !== monthOf(date) || monthOf(addDays(date, 1)) !== monthOf(date)
     const edge = punches.filter(p => p.userId && onEdge(p.local.slice(0, 10)))
     if (edge.length === 0) return punches.map(p => [monthOf(p.local)])

@@ -70,6 +70,7 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
                 // written down.
                 earned: toMajor(preview.earnedMinor),
                 paid: toMajor(preview.paidMinor),
+                attendance: toMajor(preview.attendanceMinor),
                 net: toMajor(preview.netMinor),
                 debtsOutstanding: toMajor(preview.debtsOutstandingMinor),
                 debtRecovered: toMajor(preview.debtRecoveredMinor),

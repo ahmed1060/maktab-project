@@ -338,6 +338,8 @@ export function SettlementPreview({ settlement, undecided = 0, stale = false, fa
                 <DocLine label={t('settlement_earned')} amount={money(settlement.earned)} />
                 {/* No minus sign on nothing, as the statement has it. */}
                 <DocLine label={t('settlement_paid')} amount={money(settlement.paid)} minus={settlement.paid !== 0} />
+                {/* The days after the leaving month's payroll closed, which that month doesn't count (LATER_CHANGES_PLAN.md §7.10, PR 430). */}
+                {!!settlement.attendance && <DocLine label={t('doc_attendance_after_close')} amount={money(Math.abs(settlement.attendance))} minus={settlement.attendance < 0} />}
                 <DocTotal label={t('settlement_net')} amount={money(settlement.net)} />
             </DocGroup>
             {/* What can't be taken out of the settlement stays a debt, said

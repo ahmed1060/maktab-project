@@ -80,6 +80,11 @@ export type CompanySettings = {
     /** The system's default, which "Use the default" goes back to. */
     defaultBrandColour?: string
     payrollDay: number
+    /** Payday's choices and when payroll closes (LATER_CHANGES_PLAN.md §7.10, PR 430). */
+    paydayLastDay?: boolean
+    paydayNextMonth?: boolean
+    paydayMove?: 'BEFORE' | 'AFTER'
+    payrollCloseDay?: number | null
     payslipsVisible: boolean
     timezone: string
     debtRecoveryPercent: number
@@ -219,6 +224,10 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
                     <CompanyPayrollCard
                         companyId={companyId}
                         payrollDay={company.payrollDay}
+                        paydayLastDay={company.paydayLastDay}
+                        paydayNextMonth={company.paydayNextMonth}
+                        paydayMove={company.paydayMove}
+                        payrollCloseDay={company.payrollCloseDay}
                         payslipsVisible={company.payslipsVisible}
                         timezone={company.timezone}
                         debtRecoveryPercent={company.debtRecoveryPercent}

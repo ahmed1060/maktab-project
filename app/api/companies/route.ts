@@ -26,6 +26,8 @@ export const GET = withStandardHandler(async (req, session) => {
                 terminalsSetupByCompany: true, terminalsDirectAllowed: true,
                 moduleLabels: true, moduleIcons: true, logoUrl: true, brandColour: true,
                 payrollDay: true, payslipsVisible: true, timezone: true, debtRecoveryPercent: true,
+            // Payday's choices and when payroll closes (LATER_CHANGES_PLAN.md §7.10, PR 430).
+            paydayLastDay: true, paydayNextMonth: true, paydayMove: true, payrollCloseDay: true,
                 adminSettingsEnabled: true, adminSettingsTabs: true,
                 packageId: true, trialPreset: true, trialExtensionDays: true, createdAt: true,
                 package: { select: { id: true, name: true, hasCompanyManagement: true, hasHR: true, hasAttendanceTerminals: true, hasAttendanceMobile: true, hasClientPortal: true } }

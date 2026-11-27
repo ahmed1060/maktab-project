@@ -30,6 +30,8 @@ const C1 = {
     autoVerifyLocation: false, cashAdvancesAllowed: false, cashAdvancesOn: true, costNamesFromListOnly: false, confirmHighRisk: true, logoUrl: "https://example.test/logo.png",
     terminalsSetupByCompany: false,
     payrollDay: 25, payslipsVisible: false, timezone: "Africa/Cairo", debtRecoveryPercent: 100,
+    // Paid in the month after, its payroll closing on the month's last day (LATER_CHANGES_PLAN.md §7.10, PR 430).
+    paydayLastDay: false, paydayNextMonth: true, paydayMove: "BEFORE", payrollCloseDay: null,
     moduleLabels: null, moduleIcons: null,
     adminSettingsEnabled: true, adminSettingsTabs: ["general", "payroll"],
     // Grandfathered: every module, Attendance included.
@@ -222,7 +224,7 @@ describe("the company settings API", () => {
         expect(data.canEdit).toBe(true)
         expect(Object.keys(data.company).sort()).toEqual([
             "autoVerifyLocation", "cashAdvancesAllowed", "cashAdvancesHeld", "cashAdvancesOn", "confirmHighRisk", "confirmHighRiskForAll", "costNamesFromListOnly",
-            "costNamesOffered", "costNamesSaved", "debtRecoveryPercent", "id", "name", "payrollDay", "payslipsVisible", "timezone",
+            "costNamesOffered", "costNamesSaved", "debtRecoveryPercent", "id", "name", "paydayLastDay", "paydayMove", "paydayNextMonth", "payrollCloseDay", "payrollDay", "payslipsVisible", "timezone",
         ])
     })
 
@@ -248,6 +250,18 @@ describe("the company settings API", () => {
         expect(audited[0][0]).toBe("UPDATE_COMPANY")
         expect(audited[0][3]).toMatchObject({ userId: "admin", details: { payrollDay: { old: 25, new: 20 }, payslipsVisible: { old: false, new: true } } })
         expect(audited[0][3].superAdminId).toBeUndefined()
+    })
+
+    it("refuses a payday that doesn't come after payroll closes, under payday's field, and writes nothing (PR 430)", async () => {
+        as("admin")
+        const res = await put({ tab: "payroll", paydayNextMonth: false, payrollDay: 20 })
+        expect(res.status).toBe(400)
+        const body = await res.json()
+        expect(body.details).toMatchObject({ code: "PAYDAY_BEFORE_CLOSE", closeDay: null })
+        expect(body.details.payrollDay._errors[0]).toContain("Payday has to come after payroll closes")
+        expect(state.written).toEqual([])
+        // Closing on the 19th, the 20th comes after it.
+        expect((await put({ tab: "payroll", paydayNextMonth: false, payrollDay: 20, payrollCloseDay: 19 })).status).toBe(200)
     })
 
     it("refuses a hidden tab, a field of another tab, and a field only the Super Admin sets", async () => {

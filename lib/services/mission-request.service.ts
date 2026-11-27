@@ -9,7 +9,7 @@ import { AttendancePolicyService } from "./attendance-policy.service"
 import { AttendanceCalendarService } from "./attendance-calendar.service"
 import { NotificationService } from "./notification.service"
 import { recomputeAfter } from "./attendance-recompute"
-import { lockMonths, lockPersonDates } from "./attendance-lock"
+import { lockMonths, lockPersonDates, monthsOfDates } from "./attendance-lock"
 import { refuseOwnerMonths } from "./owner.service"
 
 /**
@@ -106,7 +106,7 @@ export class MissionRequestService {
         const dates = datesOf(span.startDate, span.endDate)
         return prisma.$transaction(async tx => {
             await lockPersonDates(tx, userId)
-            await lockMonths(tx, companyId, dates.map(d => d.slice(0, 7)))
+            await lockMonths(tx, companyId, await monthsOfDates(tx, companyId, dates))
             await refuseOwnerMonths(tx, userId, span.startDate, span.endDate)
             const policies = await AttendancePolicyService.versions(companyId, tx)
             if (dates.some(d => policyOn(policies, d)?.body.missions.enabled === false)) fail("MISSIONS_OFF")
@@ -161,7 +161,7 @@ export class MissionRequestService {
             const m = await tx.missionRequest.findUnique({ where: { id } }) ?? fail("REQUEST_NOT_FOUND")
             if (m.userId === reviewerId) fail("CANNOT_DECIDE_OWN")
             const from = toDateString(m.startDate), to = toDateString(m.endDate)
-            await lockMonths(tx, m.companyId, datesOf(from, to).map(d => d.slice(0, 7)))
+            await lockMonths(tx, m.companyId, await monthsOfDates(tx, m.companyId, datesOf(from, to)))
             const status = decision.approve ? "APPROVED" : "REJECTED"
             const rejectionReason = decision.approve ? null : decision.reason?.trim() || null
             // Only while it waits: a withdrawal or another decision made meanwhile wins.
@@ -196,7 +196,7 @@ export class MissionRequestService {
             const m = await tx.missionRequest.findUnique({ where: { id } }) ?? fail("REQUEST_NOT_FOUND")
             if (m.userId === actorId) fail("CANNOT_DECIDE_OWN")
             const from = toDateString(m.startDate), to = toDateString(m.endDate)
-            await lockMonths(tx, m.companyId, datesOf(from, to).map(d => d.slice(0, 7)))
+            await lockMonths(tx, m.companyId, await monthsOfDates(tx, m.companyId, datesOf(from, to)))
             // Only an approved one: one waiting is rejected or withdrawn, and one cancelled meanwhile stays as it was.
             const { count } = await tx.missionRequest.updateMany({
                 where: { id, status: "APPROVED" },

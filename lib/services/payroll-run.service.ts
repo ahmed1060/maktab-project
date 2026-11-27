@@ -1,14 +1,16 @@
 import { prisma } from "@/lib/prisma"
+import { addDays } from "@/lib/attendance/calendar"
 import { Prisma } from "@prisma/client"
-import { lockMonths } from "./attendance-lock"
+import { LOCK_WAIT, lockMonths } from "./attendance-lock"
 import { attendanceReaches, attendanceMoney, rejectPendingOvertime, reconcileEntries, stampDays, monthKey, daysToSettle, waitingOf } from "./attendance-payroll"
 import { buildRegister, variance, nextIssueBatch, issueProgress, ISSUE_BATCH_SIZE, ATTENDANCE_SOURCE, type PersonMonth, type AdjustmentInput } from "@/lib/register"
 import { DEBT_RECOVERY_SOURCE, type RecoverableDebt } from "@/lib/debt-recovery"
 import { timelineForMonth } from "@/lib/employment"
 import { ratesForMonth } from "@/lib/salary-history"
 import { toMajor, toMinor } from "@/lib/payroll"
-import { paydayIn } from "@/lib/payday"
-import { calendarDateStr, startOfMonthIn } from "@/lib/time"
+import { closeDateOf, lastDayOf, paydayAfterClose, monthKeyOf, nextMonth } from "@/lib/payroll-period"
+import { PayrollPeriodService } from "./payroll-period.service"
+import { calendarDateStr, startOfDayIn, startOfMonthIn } from "@/lib/time"
 import { notOwnerIn } from "@/lib/owners"
 import { resolveTimeZone } from "@/lib/timezone"
 import { checkApproval, settleRefusal, type ApprovalRefusal } from "@/lib/approval"
@@ -34,6 +36,12 @@ class SettleRefused extends Error {
  * correction made five minutes ago; after approval it must show what was
  * approved, not today's answer to last month's question.
  */
+/** Why a month's payday isn't changed (LATER_CHANGES_PLAN.md §7.10, PR 430). */
+export type PaydayChangeRefusal = {
+    code: "RUN_PAID" | "PERIOD_FROZEN" | "ATTENDANCE_OUT_OF_RANGE" | "PAYDAY_NOT_AFTER_PERIOD" | "PAYDAY_TOO_LATE"
+    periodEnd?: string; from?: string; to?: string
+}
+
 export class PayrollRunService {
     /** The company's calendar and payroll day, resolved once per run. */
     private static async policy(companyId: string, db: Prisma.TransactionClient = prisma) {
@@ -98,7 +106,9 @@ export class PayrollRunService {
         // caller's transaction: approval's, after its own final recompute.
         // Before the company's chosen month it is shown, never deducted.
         const attendanceReachesPayroll = reaches ?? attendanceReaches(attendancePayrollFrom, year, month)
-        const attendance = await attendanceMoney(db, companyId, year, month)
+        // Its attendance period, not its calendar month (LATER_CHANGES_PLAN.md §7.10, PR 430).
+        const period = await PayrollPeriodService.periodOf(db, companyId, year, month)
+        const attendance = await attendanceMoney(db, companyId, period)
 
         // Everything still owed, and the moment after which a debt has not come
         // due yet — computed in the company's calendar, because a UTC month end
@@ -192,7 +202,7 @@ export class PayrollRunService {
         }
 
         return {
-            register: buildRegister(entries, year, month), refused, timeZone, payrollDay,
+            register: buildRegister(entries, year, month), refused, timeZone, payrollDay, period,
             attendance: {
                 reachesPayroll: attendanceReachesPayroll,
                 from: attendancePayrollFrom ? attendancePayrollFrom.toISOString().slice(0, 7) : null,
@@ -236,7 +246,7 @@ export class PayrollRunService {
         // An approved run shows attendance as it was approved, whatever the
         // switch says now (review on #16).
         const recorded = run && run.status !== "DRAFT" ? run.attendanceIncluded : undefined
-        const [{ register, refused, payrollDay, attendance, timeZone }, discrepanciesOpen, previous, debts] = await Promise.all([
+        const [{ register, refused, payrollDay, attendance, timeZone, period }, discrepanciesOpen, previous, debts] = await Promise.all([
             this.compute(companyId, year, month, prisma, recorded),
             // Owed whether or not attendance reaches payroll now: a run approved
             // with it keeps producing these after the switch is stopped.
@@ -254,13 +264,24 @@ export class PayrollRunService {
         // decisions 14 and 24, PR 276): for a draft, once attendance reaches
         // its payroll. Past approval, nothing waits.
         const toSettle = (run?.status ?? "DRAFT") === "DRAFT" && attendance.reachesPayroll
-            ? await daysToSettle(prisma, companyId, year, month, register.entries.filter(e => !e.excluded).map(e => e.userId))
+            ? await daysToSettle(prisma, companyId, period, register.entries.filter(e => !e.excluded).map(e => e.userId))
             : null
+        // The month's payday as a date, and from when it may be approved
+        // (LATER_CHANGES_PLAN.md §7.10, PR 430).
+        const payday = await PayrollPeriodService.paydayOf(prisma, companyId, year, month)
+        const today = calendarDateStr(new Date(), timeZone)
+        const { closeDay } = await PayrollPeriodService.settings(prisma, companyId)
 
         return {
             year,
             month,
             payrollDay,
+            payday,
+            period,
+            approvableFrom: addDays(period.to, 1),
+            periodOver: today > period.to,
+            // The latest a changed month's attendance can end: the settings' close.
+            settingClose: closeDateOf(year, month, closeDay),
             status: run?.status ?? "DRAFT",
             runId: run?.id ?? null,
             // How far delivery has got, from the stored payslips rather than
@@ -420,6 +441,61 @@ export class PayrollRunService {
     }
 
     /**
+     * Change this month's payday (LATER_CHANGES_PLAN.md §7.10, 10f, PR 430):
+     * a one-off, such as paying before Eid. The day picked stays where it's
+     * put, even on a day off. While the month is a draft, its attendance may
+     * end sooner with it, the day before the new payday unless said, and the
+     * days after go to next month's period. Once approved, only payday
+     * changes, still after the period; once paid, nothing does.
+     */
+    static async changePayday(
+        companyId: string, year: number, month: number,
+        input: { payday: string; attendanceUntil?: string | null },
+        session: any,
+    ): Promise<{ payday: string; periodEnd: string } | { refused: PaydayChangeRefusal }> {
+        const refuse = (code: PaydayChangeRefusal["code"], extra: Partial<PaydayChangeRefusal> = {}) => ({ refused: { code, ...extra } as PaydayChangeRefusal })
+        return prisma.$transaction(async tx => {
+            const after = nextMonth(year, month)
+            await lockMonths(tx, companyId, [monthKey(year, month), monthKeyOf(after.year, after.month)])
+            const run = await tx.payrollRun.findUnique({ where: { companyId_month_year: { companyId, month, year } }, select: { id: true, status: true, payrollDay: true } })
+            if (run?.status === "PAID") return refuse("RUN_PAID")
+            const settings = await PayrollPeriodService.settings(tx, companyId)
+            const period = await PayrollPeriodService.periodOf(tx, companyId, year, month, settings)
+            const draft = !run || run.status === "DRAFT"
+            // While a draft, its attendance may end sooner, never later than the setting's close.
+            const settingClose = closeDateOf(year, month, settings.closeDay)
+            const until = !draft ? period.to
+                : input.attendanceUntil ?? (input.payday <= settingClose ? addDays(input.payday, -1) : settingClose)
+            if (!draft && input.attendanceUntil && input.attendanceUntil !== period.to) return refuse("PERIOD_FROZEN", { periodEnd: period.to })
+            if (until < period.from || until > settingClose) return refuse("ATTENDANCE_OUT_OF_RANGE", { from: period.from, to: settingClose })
+            if (input.payday <= until) return refuse("PAYDAY_NOT_AFTER_PERIOD", { periodEnd: until })
+            // Within the month after next: far enough for paying in the month after and moving off a long holiday.
+            const twoAfter = nextMonth(after.year, after.month)
+            if (input.payday > lastDayOf(twoAfter.year, twoAfter.month)) return refuse("PAYDAY_TOO_LATE")
+            const data = {
+                payday: new Date(`${input.payday}T00:00:00Z`),
+                paydayChanged: true,
+                // The setting's own close is kept as the setting, so a later change of it still counts.
+                ...(draft ? { periodEnd: until === settingClose ? null : new Date(`${until}T00:00:00Z`) } : {}),
+            }
+            const saved = await tx.payrollRun.upsert({
+                where: { companyId_month_year: { companyId, month, year } },
+                update: data,
+                create: { companyId, month, year, payrollDay: settings.payday.day, ...data },
+                select: { id: true },
+            })
+            const { AuditLogService } = await import("./audit-log.service")
+            await AuditLogService.log("CHANGE_PAYROLL_PAYDAY", "PAYROLL", saved.id, {
+                tx,
+                userId: session?.user?.role !== "SUPER_ADMIN" ? session?.user?.id ?? null : null,
+                superAdminId: session?.user?.role === "SUPER_ADMIN" ? session.user.id : null,
+                details: { companyId, month, year, payday: input.payday, attendanceUntil: until },
+            })
+            return { payday: input.payday, periodEnd: until }
+        }, LOCK_WAIT)
+    }
+
+    /**
      * Freeze the month.
      *
      * Recomputed once more from source inside the transaction, so what gets
@@ -439,11 +515,12 @@ export class PayrollRunService {
         session: any,
         options: { acknowledgePending?: boolean } = {},
     ): Promise<{ runId: string } | { refusal: ApprovalRefusal }> {
-        const [{ register, refused, attendance }, existing] = await Promise.all([
+        const [{ register, refused, attendance, period, timeZone: zone }, existing, settings] = await Promise.all([
             this.compute(companyId, year, month),
             prisma.payrollRun.findUnique({
                 where: { companyId_month_year: { companyId, month, year } },
             }),
+            PayrollPeriodService.settings(prisma, companyId),
         ])
 
         // Days still incomplete or a departure to confirm, for the people on
@@ -452,7 +529,7 @@ export class PayrollRunService {
         // stored here, and again inside the transaction below.
         const onRegister = register.entries.filter(e => !e.excluded).map(e => e.userId)
         const stored = attendance.reachesPayroll && (existing?.status ?? "DRAFT") === "DRAFT"
-            ? await daysToSettle(prisma, companyId, year, month, onRegister)
+            ? await daysToSettle(prisma, companyId, period, onRegister)
             : null
         const settle = stored ? waitingOf(stored) : { count: 0, names: [] }
 
@@ -463,6 +540,9 @@ export class PayrollRunService {
             acknowledgePending: options.acknowledgePending === true,
             includedCount: register.includedCount,
             daysToSettle: settle,
+            // Not before its period has ended, and never with a payday before the close (§7.10, PR 430).
+            period: { to: period.to, today: calendarDateStr(new Date(), zone) },
+            paydayAfterClose: paydayAfterClose(settings.payday, settings.closeDay),
         })
         if (!verdict.ok) return { refusal: verdict.refusal }
 
@@ -479,7 +559,10 @@ export class PayrollRunService {
         try {
             return await prisma.$transaction(async (tx) => {
                 const key = monthKey(year, month)
-                await lockMonths(tx, companyId, [key])
+                // Its own payroll month's lock and the next's: a date near the
+                // close belongs to one or the other (§7.10, PR 430).
+                const after = nextMonth(year, month)
+                await lockMonths(tx, companyId, [key, monthKeyOf(after.year, after.month)])
                 const current = await tx.payrollRun.findUnique({ where: { companyId_month_year: { companyId, month, year } }, select: { status: true } })
                 if (current && current.status !== "DRAFT") throw new Error("RUN_NOT_DRAFT")
 
@@ -496,15 +579,18 @@ export class PayrollRunService {
                     // or missing is found and refused too; then rebuilt again so the
                     // money reflects those refusals (review on #16).
                     const today = calendarDateStr(new Date(), timeZone)
-                    await AttendanceEngineService.recomputeMonthIn(tx, companyId, key, timeZone, today)
+                    // The calendar months its period touches, each rebuilt; days
+                    // another approval froze stay as they were paid.
+                    const touched = [...new Set([period.from.slice(0, 7), period.to.slice(0, 7)])]
+                    for (const m of touched) await AttendanceEngineService.recomputeMonthIn(tx, companyId, m, timeZone, today)
                     // Checked again on the month as just rebuilt, before anything of
                     // the approval is written (PR 276): a day whose stored row was
                     // out of date waits too. Refused, the recompute is kept, as any
                     // recompute's would be, and nothing else is written.
-                    const still = await daysToSettle(tx, companyId, year, month, onRegister)
+                    const still = await daysToSettle(tx, companyId, period, onRegister)
                     if (still.count > 0) return { refusal: settleRefusal(waitingOf(still)) }
-                    overtimeRejected = await rejectPendingOvertime(tx, companyId, year, month, approverId)
-                    if (overtimeRejected > 0) await AttendanceEngineService.recomputeMonthIn(tx, companyId, key, timeZone, today)
+                    overtimeRejected = await rejectPendingOvertime(tx, companyId, period, approverId)
+                    if (overtimeRejected > 0) for (const m of touched) await AttendanceEngineService.recomputeMonthIn(tx, companyId, m, timeZone, today)
                 }
                 const { register: final, payrollDay } = await this.compute(companyId, year, month, tx, reaches)
                 // The register being approved, read again here, can hold somebody the
@@ -513,7 +599,7 @@ export class PayrollRunService {
                 // waiting, everything above is undone, the overtime rejected among it.
                 if (reaches) {
                     const unchecked = final.entries.filter(e => !e.excluded && !onRegister.includes(e.userId)).map(e => e.userId)
-                    const late = unchecked.length ? await daysToSettle(tx, companyId, year, month, unchecked) : null
+                    const late = unchecked.length ? await daysToSettle(tx, companyId, period, unchecked) : null
                     if (late && late.count > 0) throw new SettleRefused(settleRefusal(waitingOf(late)))
                 }
                 const draft = await this.writeDraft(tx, companyId, year, month, final, payrollDay)
@@ -523,13 +609,19 @@ export class PayrollRunService {
                 // payslips paid one: nobody, when attendance doesn't reach this
                 // payroll (review on PR 288).
                 const allowancePaidTo = reaches ? people.filter(p => !p.excluded && p.attendance.missionAllowance > 0).map(p => p.userId) : []
-                const daysLocked = await stampDays(tx, companyId, year, month, draft.id, allowancePaidTo)
+                const daysLocked = await stampDays(tx, companyId, period, draft.id, allowancePaidTo)
+                // What the month keeps: its period and its payday, so a later
+                // change of either setting never restates it (§7.10, PR 430).
+                const payday = await PayrollPeriodService.paydayOf(tx, companyId, year, month)
 
                 const run = await tx.payrollRun.update({
                     where: { companyId_month_year: { companyId, month, year } },
                     data: {
                         status: "APPROVED",
                         attendanceIncluded: reaches,
+                        periodStart: new Date(`${period.from}T00:00:00Z`),
+                        periodEnd: new Date(`${period.to}T00:00:00Z`),
+                        payday: new Date(`${payday.date}T00:00:00Z`),
                         approvedAt: new Date(),
                         approvedById: session?.user?.id ?? null,
                     },
@@ -587,7 +679,7 @@ export class PayrollRunService {
                             sourceId: payslip.id,
                             // Due on the payday this run is for: the month it could
                             // not be taken from is the month it became owed.
-                            dueDate: paydayIn(year, month, run.payrollDay, timeZone),
+                            dueDate: startOfDayIn(new Date(`${payday.date}T12:00:00Z`), timeZone),
                         },
                     })
                 }

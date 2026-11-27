@@ -12,6 +12,8 @@ import { daysInMonth, toMinor } from "@/lib/payroll"
 import { SCHEDULE_INCLUDE, serializeSchedule } from "./attendance-calendar.service"
 import { AttendancePolicyService } from "./attendance-policy.service"
 import { lockMonths, lockedMonths } from "./attendance-lock"
+import { PayrollPeriodService } from "./payroll-period.service"
+import { monthKeyOf, nextMonth } from "@/lib/payroll-period"
 import { NotificationService } from "./notification.service"
 import { ATTENDANCE_PAGE } from "@/lib/attendance-notice-target"
 import type { NoticeKey } from "@/lib/notice"
@@ -325,20 +327,26 @@ async function deriveMonth(
  * out, or with no payslip in it, was paid none, and that is no change.
  */
 async function recordDiscrepancies(tx: Prisma.TransactionClient, companyId: string, month: string, tz: string, today: string, userIds?: readonly string[]): Promise<number> {
-    // Whether this month's payslips carried attendance, as approved — not
-    // today's setting, which may since have moved.
+    // Whether this payroll month's payslips carried attendance, as approved —
+    // not today's setting, which may since have moved.
     const run = await tx.payrollRun.findFirst({
         where: { companyId, year: Number(month.slice(0, 4)), month: Number(month.slice(5, 7)), status: { in: ["APPROVED", "PAID"] }, attendanceIncluded: true },
-        select: { id: true },
+        select: { id: true, periodStart: true, periodEnd: true },
     })
     if (!run) return 0
     const scope = userIds ? { userId: { in: [...userIds] } } : {}
-    const range = { gte: wallClock(`${month}-01T00:00:00`), lte: wallClock(`${monthEnd(month)}T00:00:00`) }
-    const [derived, paid, recorded] = await Promise.all([
-        deriveMonth(tx, companyId, month, tz, today, userIds),
-        tx.attendanceDay.findMany({ where: { companyId, ...scope, date: range }, select: { userId: true, date: true, status: true, deductionMinor: true, overtimeMinor: true, missionAllowanceMinor: true } }),
-        tx.attendanceDiscrepancy.findMany({ where: { companyId, ...scope, date: range } }),
-    ])
+    // The days it paid: its period, as it kept it (LATER_CHANGES_PLAN.md §7.10,
+    // PR 430), the calendar month for a run approved before; derived from
+    // the calendar months that holds, one after another.
+    const from = run.periodStart ? toDateString(run.periodStart) : `${month}-01`
+    const to = run.periodEnd ? toDateString(run.periodEnd) : monthEnd(month)
+    const range = { gte: wallClock(`${from}T00:00:00`), lte: wallClock(`${to}T00:00:00`) }
+    const derived = { days: [] as DerivedDay[] }
+    for (const m of [...new Set([from.slice(0, 7), to.slice(0, 7)])]) {
+        derived.days.push(...(await deriveMonth(tx, companyId, m, tz, today, userIds)).days.filter(d => d.date >= from && d.date <= to))
+    }
+    const paid = await tx.attendanceDay.findMany({ where: { companyId, ...scope, date: range }, select: { userId: true, date: true, status: true, deductionMinor: true, overtimeMinor: true, missionAllowanceMinor: true } })
+    const recorded = await tx.attendanceDiscrepancy.findMany({ where: { companyId, ...scope, date: range } })
     // Whose allowance the run paid: those with a payslip in it, not left out.
     const paidPeople = new Set((await tx.payslip.findMany({ where: { payrollRunId: run.id, excluded: false, ...scope }, select: { userId: true } })).map(p => p.userId))
     const paidBy = (userId: string, minor: number) => (paidPeople.has(userId) ? minor : 0)
@@ -414,12 +422,24 @@ export class AttendanceEngineService {
         const result: RecomputeResult = { month, locked: false, derived: 0, written: 0, removed: 0 }
 
         return prisma.$transaction(async tx => {
-            await lockMonths(tx, companyId, [month])
-            if ((await lockedMonths(tx, companyId, [month])).size > 0) {
-                // Its days stay as they were paid; what has changed since is
-                // recorded for an adjustment instead (§12.3).
-                const discrepancies = await recordDiscrepancies(tx, companyId, month, tz, today, userIds)
-                return { ...result, locked: true, discrepancies }
+            // A calendar month's days belong to its own payroll month up to its
+            // close, and to the next one's after it (LATER_CHANGES_PLAN.md
+            // §7.10, PR 430): both locks, and either may be approved.
+            const after = nextMonth(Number(month.slice(0, 4)), Number(month.slice(5, 7)))
+            const nextKey = monthKeyOf(after.year, after.month)
+            await lockMonths(tx, companyId, [month, nextKey])
+            const locked = await lockedMonths(tx, companyId, [month, nextKey])
+            if (locked.size > 0) {
+                // The frozen days stay as they were paid; what has changed since
+                // is recorded for an adjustment instead (§12.3).
+                let discrepancies = 0
+                for (const m of [...locked].sort()) discrepancies += await recordDiscrepancies(tx, companyId, m, tz, today, userIds)
+                const close = (await PayrollPeriodService.closes(tx, companyId, [{ year: Number(month.slice(0, 4)), month: Number(month.slice(5, 7)) }])).get(month)
+                const allFrozen = locked.has(month) && (locked.has(nextKey) || close === monthEnd(month))
+                if (allFrozen) return { ...result, locked: true, discrepancies }
+                // The days after the close, the next month's, are rebuilt;
+                // a frozen day never is.
+                return { ...await this.recomputeMonthIn(tx, companyId, month, tz, today, userIds), discrepancies }
             }
             return this.recomputeMonthIn(tx, companyId, month, tz, today, userIds)
         }, { timeout: 120_000 })

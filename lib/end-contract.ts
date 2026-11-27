@@ -13,6 +13,8 @@ export type Settlement = {
     daysWorked: number
     earned: number
     paid: number
+    /** Attendance after the leaving month's payroll closed, in the net (LATER_CHANGES_PLAN.md §7.10, PR 430). */
+    attendance?: number
     net: number
     direction: 'COMPANY_OWES' | 'PERSON_OWES' | 'SETTLED'
     /** OWNER: a month they're among the owners, with no salary to settle (LATER_CHANGES_PLAN.md §7.3). */

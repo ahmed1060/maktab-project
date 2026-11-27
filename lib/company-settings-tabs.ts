@@ -51,7 +51,7 @@ export const COMPANY_SETTINGS_TABS = [
     { key: "branding", labelKey: "settings_tab_branding", adminEligible: true, fields: ["brandColour"] },
     {
         key: "payroll", labelKey: "settings_tab_payroll", adminEligible: true,
-        fields: ["payrollDay", "payslipsVisible", "timezone", "debtRecoveryPercent"],
+        fields: ["payrollDay", "paydayLastDay", "paydayNextMonth", "paydayMove", "payrollCloseDay", "payslipsVisible", "timezone", "debtRecoveryPercent"],
         // How much of a debt comes out of one payslip is a term of the
         // contract with the company, not a setting the company tunes.
         superAdminOnly: ["debtRecoveryPercent"],

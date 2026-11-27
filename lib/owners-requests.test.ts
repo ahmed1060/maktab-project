@@ -48,7 +48,8 @@ describe("asked for anyway", () => {
         expect(attendance).toContain("await lockMonths(tx, companyId, [monthOf(input.date), monthOf(next)])\n            await refuseOwnerMonths(tx, userId, input.date)")
         expect(attendance).toContain("await openMonths(tx, companyId, await punchMonths(tx, companyId, userId, local))\n            await refuseOwnerMonths(tx, userId, date)")
         const missions = source("lib/services/mission-request.service.ts")
-        expect(missions).toContain("await lockMonths(tx, companyId, dates.map(d => d.slice(0, 7)))\n            await refuseOwnerMonths(tx, userId, span.startDate, span.endDate)")
+        // The payroll months its dates fall in since PR 430.
+        expect(missions).toContain("await lockMonths(tx, companyId, await monthsOfDates(tx, companyId, dates))\n            await refuseOwnerMonths(tx, userId, span.startDate, span.endDate)")
     })
 
     it("says why, as an answer and in each request's dialog, in either language", () => {

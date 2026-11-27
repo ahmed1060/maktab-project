@@ -2,8 +2,12 @@ import { prisma } from "@/lib/prisma"
 import { previewSettlement, endOfContractInstant } from "@/lib/employment"
 import { toMajor, toMinor, valueDaysIn } from "@/lib/payroll"
 import { planFinalRecovery, type RecoverableDebt } from "@/lib/debt-recovery"
-import { calendarParts } from "@/lib/time"
-import { nextPaydayOnOrAfter, daysAlreadyPaid } from "@/lib/payday"
+import { calendarDateStr, calendarParts, startOfDayIn } from "@/lib/time"
+import { daysInMonth } from "@/lib/payroll"
+import { PayrollPeriodService } from "./payroll-period.service"
+import { attendanceMoney, attendanceReaches } from "./attendance-payroll"
+import { nextMonth, paidAlready } from "@/lib/payroll-period"
+import { addDays } from "@/lib/attendance/calendar"
 import { resolveTimeZone } from "@/lib/timezone"
 import { EmploymentService } from "./employment.service"
 import { SalaryHistoryService } from "./salary-history.service"
@@ -33,7 +37,27 @@ import { ownerIn } from "@/lib/owners"
  * records the ending alone (DESIGN.md §5.5, Dialog). Decided by the company's
  * package, whoever ends the contract.
  */
+/** The instant a company's date starts, in its calendar. */
+const dayStartIn = (date: string, timeZone: string) => startOfDayIn(new Date(`${date}T12:00:00Z`), timeZone)
+
 export class SettlementService {
+    /**
+     * A leaver's attendance from the day after the leaving month's period to
+     * their last working day: overtime and the mission allowance less what
+     * lateness, early leave and absence deduct, where attendance reaches the
+     * next month's payroll. Nothing where they left before the close.
+     */
+    static async attendanceAfterClose(companyId: string, userId: string, year: number, month: number, lastWorkingDay: string): Promise<number> {
+        const period = await PayrollPeriodService.periodOf(prisma, companyId, year, month)
+        if (lastWorkingDay <= period.to) return 0
+        const next = nextMonth(year, month)
+        const company = await prisma.company.findUnique({ where: { id: companyId }, select: { attendancePayrollFrom: true } })
+        if (!attendanceReaches(company?.attendancePayrollFrom ?? null, next.year, next.month)) return 0
+        const money = (await attendanceMoney(prisma, companyId, { from: addDays(period.to, 1), to: lastWorkingDay })).get(userId)
+        if (!money) return 0
+        return money.overtime + money.missionAllowance - money.lateness - money.earlyLeave - money.absence
+    }
+
     /** The company's calendar and payroll day, and whether it settles at all, resolved once. */
     private static async policyFor(userId: string) {
         const user = await prisma.user.findUnique({
@@ -147,7 +171,11 @@ export class SettlementService {
         // The last day worked, as an instant inside that day, for the payday
         // comparison — endsAt is already the day after.
         const lastDayInstant = new Date(endsAt.getTime() - 1)
-        const paidDays = daysAlreadyPaid(lastDayInstant, payrollDay, timeZone)
+        // The month's payday as the company has it, moved off a day off, or
+        // as its run keeps it (LATER_CHANGES_PLAN.md §7.10, PR 430): paid in
+        // the month after, the leaving month is never paid yet.
+        const payday = companyId ? (await PayrollPeriodService.paydayOf(prisma, companyId, year, month)).date : null
+        const paidDays = payday && paidAlready(calendarDateStr(lastDayInstant, timeZone), payday) ? daysInMonth(year, month) : 0
 
         // An owner that month has no payslip for it, and no salary to settle
         // (LATER_CHANGES_PLAN.md §7.3, PR 426): nothing earned, and nothing
@@ -161,7 +189,11 @@ export class SettlementService {
             : valueDaysIn(year, month, paidDays, rates[rates.length - 1].monthlyMinor)
         const paidMinor = paid.source === "PAYSLIP" ? paid.minor : assumedMinor
 
-        const preview = previewSettlement({ events, rates, endsAt, paidMinor, timeZone, owner })
+        // Attendance after the leaving month's payroll closes (LATER_CHANGES_PLAN.md
+        // §7.10, PR 430): those days are the next month's, which doesn't pay
+        // them, so the settlement does, where attendance reaches that payroll.
+        const attendanceMinor = owner || !companyId ? 0 : await this.attendanceAfterClose(companyId, userId, year, month, calendarDateStr(lastDayInstant, timeZone))
+        const preview = previewSettlement({ events, rates, endsAt, paidMinor, timeZone, owner, attendanceMinor })
 
         // I1: the settlement is the last moment either side can be made whole,
         // and it was the one moment the system did not look. A leaver owing
@@ -173,7 +205,7 @@ export class SettlementService {
         // debt, which is a thing somebody can chase or write off, rather than a
         // figure on a final statement telling a departing employee they owe
         // money.
-        const dueDate = nextPaydayOnOrAfter(endsAt, payrollDay, timeZone)
+        const dueDate = companyId ? dayStartIn(await PayrollPeriodService.nextPaydayOnOrAfter(prisma, companyId, calendarDateStr(endsAt, timeZone)), timeZone) : endsAt
         // What they still hold of a cash advance becomes a debt as the contract
         // ends (CLIENTS_PLAN.md §7.3), due with the settlement, and is recovered
         // from it as the debts already there are.
@@ -300,6 +332,7 @@ export class SettlementService {
                     earnedAmount: toMajor(preview.earnedMinor),
                     paidAmount: toMajor(preview.paidMinor),
                     netAmount: toMajor(preview.netMinor),
+                    attendanceAmount: toMajor(preview.attendanceMinor),
                     debtRecoveredAmount: toMajor(preview.debtRecoveredMinor),
                     dueDate: preview.dueDate,
                     reason: input.reason ?? null,

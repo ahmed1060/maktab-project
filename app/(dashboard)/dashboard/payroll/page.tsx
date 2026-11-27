@@ -19,6 +19,7 @@ import { dayLabel } from '@/lib/cash-advances'
 import { addressWithPeriod, periodFromAddress, yearsAround } from '@/lib/period-address'
 import type { TranslationKey } from '@/lib/translations'
 import { DaysToSettle, UndecidedRequests, type ToSettle } from './SettleFirst'
+import { ChangePaydayDialog } from './ChangePaydayDialog'
 
 const NO_REQUESTS: ToSettle['requests'] = { permissions: 0, missing: 0, overtime: 0, missions: 0 }
 
@@ -62,6 +63,14 @@ type View = {
     year: number
     month: number
     payrollDay: number
+    /** The month's payday as a date, and whether it was changed for it (LATER_CHANGES_PLAN.md §7.10, PR 430). */
+    payday?: { date: string; changed: boolean }
+    /** Its attendance period, and from when it may be approved. */
+    period?: { from: string; to: string }
+    approvableFrom?: string
+    periodOver?: boolean
+    /** When payroll closes by the settings: the latest a changed month's attendance can end. */
+    settingClose?: string
     status: 'DRAFT' | 'APPROVED' | 'PAID'
     delivery: { paidAt: string | null; batchSize: number; sent: number; sendable: number; unsent: number } | null
     payslipIds: Record<string, string>
@@ -139,6 +148,8 @@ export default function PayrollRegisterPage() {
     // made on the 25th is usually recorded on the 27th, and stamping the 27th
     // makes the record disagree with the bank.
     const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10))
+    // Change this month's payday (LATER_CHANGES_PLAN.md §7.10, PR 430).
+    const [changingPayday, setChangingPayday] = useState(false)
 
     const isSuper = (session?.user as any)?.role === 'SUPER_ADMIN'
     const companyId = isSuper ? (selectedCompanyId ?? '') : ''
@@ -395,6 +406,8 @@ export default function PayrollRegisterPage() {
         label: y.toLocaleString(digits, { useGrouping: false }),
     }))
 
+    // A company's date, read as written, in the page's language: "Thursday 26 November".
+    const longDay = (date: string) => new Date(`${date}T12:00:00Z`).toLocaleDateString(digits, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
     const register = view?.register
     const isDraft = view?.status === 'DRAFT'
     const canPrepare = can('payroll.prepare')
@@ -438,7 +451,23 @@ export default function PayrollRegisterPage() {
                         {view && <StatusBadge tone={STATUS_TONE[view.status]}>{t(`payroll_status_${view.status}` as TranslationKey)}</StatusBadge>}
                     </span>
                 )}
-                subtitle={`${new Date(year, month - 1).toLocaleString(digits, { month: 'long', year: 'numeric' })}${view ? ` · ${t('payroll_payday_line').replace('{day}', count(view.payrollDay))}` : ''}`}
+                // The month, then its payday as a date, moved off a day off, with Change
+                // payday beside it for whoever approves payroll, until it's paid (PR 430).
+                subtitle={(
+                    <>
+                        {new Date(year, month - 1).toLocaleString(digits, { month: 'long', year: 'numeric' })}
+                        {view?.payday && (
+                            <>
+                                {'. '}
+                                {t('payroll_payday_line').replace('{date}', longDay(view.payday.date))}
+                                {view.payday.changed && `, ${t('payroll_payday_changed')}`}
+                                {canApprove && view.status !== 'PAID' && view.period && (
+                                    <>{' '}<Button size="sm" variant="quiet" onClick={() => setChangingPayday(true)}>{t('payday_change')}</Button></>
+                                )}
+                            </>
+                        )}
+                    </>
+                )}
                 // A draft's: saving it, and approving it, which asks first.
                 action={isDraft && (canPrepare || canApprove) && (
                     <>
@@ -452,14 +481,35 @@ export default function PayrollRegisterPage() {
                                 {t('payroll_save_draft')}
                             </Button>
                         )}
-                        {canApprove && (
+                        {canApprove && (view?.periodOver === false && view.approvableFrom ? (
+                            // Greyed until payroll closes, with the date it may be from (§5.2; PR 430).
+                            <>
+                                <Button variant="primary" aria-disabled="true" aria-describedby="approve-from">{t('payroll_approve')}</Button>
+                                <span id="approve-from" className="ui-hint">{t('payroll_approve_from').replace('{date}', longDay(view.approvableFrom))}</span>
+                            </>
+                        ) : (
                             <Button variant="primary" onClick={openApprove} disabled={action.running || !register || register.includedCount === 0}>
                                 {t('payroll_approve')}
                             </Button>
-                        )}
+                        ))}
                     </>
                 )}
             />
+
+            {changingPayday && view?.payday && view.period && (
+                <ChangePaydayDialog
+                    open
+                    onClose={() => setChangingPayday(false)}
+                    onDone={() => { setChangingPayday(false); load() }}
+                    year={year}
+                    month={month}
+                    companyId={companyId || null}
+                    payday={view.payday.date}
+                    draft={view.status === 'DRAFT'}
+                    period={view.period}
+                    close={view.settingClose ?? view.period.to}
+                />
+            )}
 
             <PeriodBar>
                 <Field label={t('payroll_month')}>{p => (

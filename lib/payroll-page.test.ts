@@ -51,7 +51,10 @@ vi.mock("swr/infinite", () => ({ default: () => ({ data: state.discrepancies, mu
 
 type View = Record<string, unknown>
 const view = (fields: View = {}, register: View = {}): View => ({
-    year: 2026, month: 10, payrollDay: 25, status: "DRAFT",
+    year: 2026, month: 10, payrollDay: 1, status: "DRAFT",
+    // The month's payday as a date, and its period (LATER_CHANGES_PLAN.md §7.10, PR 430).
+    payday: { date: "2026-11-01", changed: false }, period: { from: "2026-10-01", to: "2026-10-31" },
+    approvableFrom: "2026-11-01", periodOver: true, settingClose: "2026-10-31",
     delivery: null, payslipIds: {},
     register: { entries: [], payableMinor: 1234500, carriedMinor: 0, includedCount: 12, excludedCount: 0, pendingDecisions: [], ...register },
     refused: [], variance: null, sinceDraft: null, draftSavedAt: null, debts: [],
@@ -103,15 +106,16 @@ describe("Payroll's page header", () => {
     it("names the register, with its status, the month it's for and its payday", async () => {
         const top = header(await page({ shows: view() }))
         expect(top).toContain('<h1 class="ui-page-title"><span class="ui-title-with-badge">Payroll register<span class="ui-badge ui-badge-neutral">Draft</span></span></h1>')
-        // The payday was "Month 25": the month's label, not the payday's.
-        expect(top).toContain('<p class="ui-page-subtitle">October 2026 · Payday: 25</p>')
+        // The payday was "Month 25": the month's label, not the payday's. Since PR 430, the payday as a date.
+        expect(top).toContain('<p class="ui-page-subtitle">October 2026. Payday: Sunday 1 November')
         expect(header(await page({ shows: view({ status: "APPROVED" }) }))).toContain('<span class="ui-badge ui-badge-good">Approved</span>')
         expect(header(await page({ shows: view({ status: "PAID" }) }))).toContain('<span class="ui-badge ui-badge-good">Paid</span>')
     })
 
     it("says the month in the page's language, its digits too", async () => {
         const top = header(await page({ shows: view(), locale: "ar" }))
-        expect(top).toContain("أكتوبر ٢٠٢٦ · يوم الصرف: ٢٥")
+        expect(top).toContain("أكتوبر ٢٠٢٦. يوم الصرف: الأحد")
+        expect(top).toContain("١ نوفمبر")
     })
 
     it("has no status until there's a register to have one", async () => {
@@ -172,7 +176,7 @@ describe("the month Payroll is for", () => {
 
     it("opens on the month its address names, so a reload or a link keeps it", async () => {
         const html = await page({ shows: view(), search: "year=2025&month=3" })
-        expect(header(html)).toContain('<p class="ui-page-subtitle">March 2025 · Payday: 25</p>')
+        expect(header(html)).toContain('<p class="ui-page-subtitle">March 2025. Payday: ')
         expect(period(html)).toContain('<option value="3" selected="">March</option>')
         expect(period(html)).toContain('<option value="2025" selected="">2025</option>')
         expect(state.keys).toContain("/api/payroll/2025/3")

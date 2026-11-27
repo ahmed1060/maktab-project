@@ -229,7 +229,17 @@ model Company {
   /// February is a payroll day that silently moves, and "the 30th" meaning the
   /// 28th in one month out of twelve is the kind of rule nobody remembers when
   /// they are reading a payslip.
-  payrollDay           Int                       @default(25)
+  payrollDay           Int                       @default(1)
+  /// Payday on the month's last day instead of payrollDay (LATER_CHANGES_PLAN.md §7.10, PR 430).
+  paydayLastDay        Boolean                   @default(false)
+  /// Payday in the month after the payroll's own. A new company's default:
+  /// nobody is paid ahead, and the month can close before it's paid.
+  paydayNextMonth      Boolean                   @default(true)
+  /// Where payday moves when it falls on a day off.
+  paydayMove           PaydayMove                @default(BEFORE)
+  /// The day the month's payroll closes, 1-28, its attendance counted up to
+  /// it; none for the month's last day. Payday comes after it.
+  payrollCloseDay      Int?
   /// Whether an employee can see their own payslip at all.
   ///
   /// Off by default, and deliberately so: turning payslips on is a decision a
@@ -1574,6 +1584,15 @@ model PayrollRun {
   /// through Company: changing the payroll day must not rewrite what a past
   /// settlement was measured against.
   payrollDay   Int
+  /// The month's attendance days, both counted (LATER_CHANGES_PLAN.md §7.10,
+  /// PR 430): set when it's approved. A draft's periodEnd is this month's
+  /// own close, from Change payday.
+  periodStart  DateTime?         @db.Date
+  periodEnd    DateTime?         @db.Date
+  /// The day it's paid: set when it's approved, or changed for this month.
+  payday       DateTime?         @db.Date
+  /// Whether payday was changed for this month, by hand.
+  paydayChanged Boolean          @default(false)
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
   company      Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -1590,6 +1609,12 @@ model PayrollRun {
   @@unique([companyId, month, year])
   @@index([companyId, year, month])
   @@index([status])
+}
+
+/// Where payday moves off a day off (LATER_CHANGES_PLAN.md §7.10, PR 430).
+enum PaydayMove {
+  BEFORE
+  AFTER
 }
 
 enum PayrollRunStatus {
@@ -1692,6 +1717,11 @@ model FinalSettlement {
   /// shows earned, paid and their difference, and a net that quietly included
   /// something else would stop adding up in front of the person reading it.
   netAmount           Decimal          @db.Decimal(12, 2)
+  /// What attendance came to after the leaving month's payroll closed, up
+  /// to the last working day (LATER_CHANGES_PLAN.md §7.10, PR 430): those
+  /// days belong to a month they're not paid in, so the settlement counts
+  /// them. Overtime and allowances less deductions; in the net.
+  attendanceAmount    Decimal          @default(0) @db.Decimal(12, 2)
   /// What this settlement took back against debts the person already owed.
   ///
   /// A separate line rather than folded into netAmount, and capped at netAmount

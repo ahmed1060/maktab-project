@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client"
 import { isDateString, toDateString } from "@/lib/attendance/calendar"
 import { AuditLogService } from "./audit-log.service"
 import { recomputeAfter } from "./attendance-recompute"
-import { lockMonths, lockedMonths } from "./attendance-lock"
+import { lockMonths, lockedMonths, monthsOfDates } from "./attendance-lock"
 import type { Visibility } from "./attendance-punch.service"
 import { nameInArabic } from "@/lib/names"
 
@@ -41,8 +41,10 @@ async function actorOf(tx: Prisma.TransactionClient, actorId: string) {
 }
 
 async function openMonth(tx: Prisma.TransactionClient, companyId: string, date: string) {
-    await lockMonths(tx, companyId, [date.slice(0, 7)])
-    if ((await lockedMonths(tx, companyId, [date.slice(0, 7)])).size > 0) fail("PAYROLL_MONTH_LOCKED")
+    // Its payroll month's, which a day after the close is the next one (LATER_CHANGES_PLAN.md §7.10, PR 430).
+    const months = await monthsOfDates(tx, companyId, [date])
+    await lockMonths(tx, companyId, months)
+    if ((await lockedMonths(tx, companyId, months)).size > 0) fail("PAYROLL_MONTH_LOCKED")
 }
 
 function visibleWhere(v: Visibility) {
