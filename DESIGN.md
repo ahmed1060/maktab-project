@@ -2303,7 +2303,7 @@ These are built once, in the building-blocks PR, and every page uses them
     this month's payday: a date field, Payday; and while the month isn't
     approved, nor the month after it, a second, Attendance counts up to,
     the day before the new payday when that's before the close, and
-    otherwise the close. A line under them says that the days after go to
+    otherwise the close, from the month's 1st at the earliest. A line under them says that the days after go to
     next month's payroll, and that next month goes back to the settings;
     with the month after approved, that this month's attendance ends
     where next month's begins, and only payday changes. Its button says
@@ -2318,6 +2318,9 @@ These are built once, in the building-blocks PR, and every page uses them
   - **Ending a contract** on a day after payroll closes, before that day
     is over, says under the date why it can't be settled yet: that day's
     attendance goes in the settlement, and it's known once it's over.
+    While one of the days after payroll closes still waits on a decision,
+    it says so under the date too, and that they're decided on the
+    Attendance pages first.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
