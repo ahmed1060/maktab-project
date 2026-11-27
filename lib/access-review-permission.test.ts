@@ -95,4 +95,14 @@ describe("Roles and access", () => {
         expect(client).toContain("tabs.includes('changes')")
         expect(client).toContain("tabs.includes('reviews')")
     })
+
+    it("says under its title what the tabs held are for", () => {
+        const client = read("app/(dashboard)/dashboard/roles-and-access/RolesAndAccessClient.tsx")
+        expect(client).toContain("const hint = tabs.length > 1 ? 'roles_access_hint' : tabs[0] === 'reviews' ? 'roles_access_hint_reviews' : 'roles_access_hint_changes'")
+        expect(client).toContain("subtitle={t(hint)}")
+        expect(en.roles_access_hint_changes).toBe("Ask the Super Admin to change a role.")
+        expect(en.roles_access_hint_reviews).toBe("Review who holds which.")
+        expect(ar.roles_access_hint_changes).toBe("يُرجى طلب تعديل أي دور من مدير النظام.")
+        expect(ar.roles_access_hint_reviews).toBe("مراجعة من يحمل كل دور.")
+    })
 })

@@ -4517,6 +4517,8 @@ export const en = {
         // The Role requests page's other two tabs, on their own page (UI_PLAN.md §2.3, part 5b).
         roles_access_title: "Roles and access",
         roles_access_hint: "Ask the Super Admin to change a role, and review who holds which.",
+        roles_access_hint_changes: "Ask the Super Admin to change a role.",
+        roles_access_hint_reviews: "Review who holds which.",
         role_requests_sent: "Request sent for approval",
         role_requests_pending_for: "Waiting for approval: {role}",
         role_requests_will_ask: "The account starts on the company's default role. The role you pick is sent to an Admin for approval.",

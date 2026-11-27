@@ -4499,6 +4499,8 @@ export const ar = {
         super_admins_deleted: "تم حذف {name}.",
         roles_access_title: "الأدوار والصلاحيات",
         roles_access_hint: "يُرجى طلب تعديل أي دور من مدير النظام، ومراجعة من يحمل كل دور.",
+        roles_access_hint_changes: "يُرجى طلب تعديل أي دور من مدير النظام.",
+        roles_access_hint_reviews: "مراجعة من يحمل كل دور.",
         role_requests_sent: "تم إرسال الطلب للموافقة",
         role_requests_pending_for: "بانتظار الموافقة: {role}",
         role_requests_will_ask: "يبدأ الحساب بالدور الافتراضي للشركة، ويُرسل الدور المختار إلى المدير للموافقة.",

@@ -12,9 +12,11 @@ import type { RolesAndAccessTab } from '@/lib/roles-and-access'
  */
 export default function RolesAndAccessClient({ tabs, tab, highlight }: { tabs: RolesAndAccessTab[]; tab: RolesAndAccessTab; highlight: string | null }) {
     const { t } = useLanguage()
+    // What the tabs they hold are for, holding one (DESIGN.md, Answering access reviews).
+    const hint = tabs.length > 1 ? 'roles_access_hint' : tabs[0] === 'reviews' ? 'roles_access_hint_reviews' : 'roles_access_hint_changes'
     return (
         <Page>
-            <PageHeader title={t('roles_access_title')} subtitle={t('roles_access_hint')} />
+            <PageHeader title={t('roles_access_title')} subtitle={t(hint)} />
             <TabLinks label={t('roles_access_title')} items={[
                 ...(tabs.includes('changes') ? [{ href: '/dashboard/roles-and-access?tab=changes', label: t('role_changes_tab_changes'), current: tab === 'changes' }] : []),
                 // Periodic access review (ROLES_PLAN.md §6.14), when the company has it.
