@@ -1771,9 +1771,10 @@ approving a month early, and decided the same day.
   salary does.
 - **Approving waits for the period's end,** in the company's calendar,
   before anything is worked out: `PERIOD_NOT_OVER`, with the first day it
-  may be approved. Once it holds the month locks, it reads the period
-  again and goes by that one throughout, checked again, so a payday
-  changed meanwhile is the one approved.
+  may be approved. Once it holds the month locks and the company's row
+  (`FOR SHARE`, so the Payroll settings can't change until it's done), it
+  reads the period again and goes by that one throughout, checked again,
+  so a payday changed meanwhile is the one approved.
 - **Settlements and debts** read the payday: what of the last month is
   already paid, and a debt's due date, the first payday on or after: the
   earliest of the months' paydays, as a payday changed for one month can
@@ -1794,6 +1795,14 @@ approving a month early, and decided the same day.
   overtime, a permission, a missing punch or a mission not yet decided
   (`ATTENDANCE_PENDING`, said under the date). Nothing settles them once
   the settlement is made.
+  The settlement then freezes what it counted. Under the leaving month's
+  lock and the next's, it marks those days with itself
+  (`AttendanceDay.lockedBySettlementId`, a column added on its own) and
+  keeps the leaving month's close where it counted from (its run's
+  `periodEnd`). A marked day is never rebuilt, nor marked again by the
+  next month's approval; a change to it is refused as one to a month
+  already paid; and the leaving month's attendance end no longer moves,
+  so Change payday changes only its payday.
 - **Change this month's payday** (`PUT /api/payroll/{year}/{month}/payday`,
   `payroll.approve`, with the step-up a high-risk action asks for): the
   date, and while the run is a draft the attendance's last day, each
@@ -2364,3 +2373,6 @@ with قبول: «قبول العذر» and «قبول».
   only against the settings on approving; a month's attendance allowed
   to end in the month before; a settlement made with days after the
   close still waiting on a decision. Each fixed, as built in §7.10.
+- **2026-11-27:** Codex's third review on #430: approving read the period
+  before holding the company's settings; a day a final settlement counted
+  could still change. Each fixed, as built in §7.10.
