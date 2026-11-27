@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client"
 import { AuditLogService } from "./audit-log.service"
 import { NotificationService } from "./notification.service"
 import { recomputeAfter } from "./attendance-recompute"
-import { lockMonths, lockedMonths, punchMonths, punchMonthsOf } from "./attendance-lock"
+import { lockPunchMonths, lockedMonths, punchMonthsOf } from "./attendance-lock"
 import type { Visibility } from "./attendance-punch.service"
 import { addDays } from "@/lib/attendance/calendar"
 import { optional } from "@/lib/notice"
@@ -126,8 +126,7 @@ export class AttendanceFlagService {
             const punch = await tx.attendancePunch.findUnique({ where: { id }, select: { companyId: true, userId: true, punchAtLocal: true, status: true, flagReasons: true } }) ?? fail("CHECK_IN_NOT_FOUND")
             if (punch.userId === deciderId) fail("CANNOT_DECIDE_OWN")
             const local = wallClockText(punch.punchAtLocal)
-            const months = await punchMonths(tx, punch.companyId, punch.userId!, local)
-            await lockMonths(tx, punch.companyId, months)
+            const months = await lockPunchMonths(tx, punch.companyId, punch.userId!, local)
             if ((await lockedMonths(tx, punch.companyId, months)).size > 0) fail("PAYROLL_MONTH_LOCKED")
             // Read again under the lock: another reviewer may have decided it first,
             // or it was withdrawn while it waited (review on #23).

@@ -29,6 +29,16 @@ describe("Change this month's payday", () => {
         expect(attendanceUntilFor("2026-11-01", "2026-10-31")).toBe("2026-10-31")
     })
 
+    it("never lets the attendance end before the month's own 1st, its period starting in the month before (review on PR 430)", async () => {
+        const { earliestUntil } = await import("@/app/(dashboard)/dashboard/payroll/ChangePaydayDialog")
+        expect(earliestUntil(2026, 11, "2026-10-25")).toBe("2026-11-01")
+        expect(earliestUntil(2026, 11, "2026-11-01")).toBe("2026-11-01")
+        expect(earliestUntil(2026, 12, "2026-12-02")).toBe("2026-12-02")
+        const source = (await import("node:fs")).readFileSync("app/(dashboard)/dashboard/payroll/ChangePaydayDialog.tsx", "utf8")
+        expect(source).toContain("minDate={earliestUntil(year, month, period.from)}")
+        expect(en.payday_change_until_range).toBe("Attendance can end no earlier than this month's 1st, and no later than payroll closes.")
+    })
+
     it("says each refusal under the field it's about, in both languages", async () => {
         const { PAYDAY_REFUSAL } = await import("@/app/(dashboard)/dashboard/payroll/ChangePaydayDialog")
         expect(Object.keys(PAYDAY_REFUSAL).sort()).toEqual(["ATTENDANCE_OUT_OF_RANGE", "PAYDAY_NOT_AFTER_PERIOD", "PAYDAY_TOO_LATE", "PERIOD_FROZEN", "RUN_PAID"])

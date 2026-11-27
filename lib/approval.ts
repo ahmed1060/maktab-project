@@ -32,7 +32,7 @@ export interface ApprovalInput {
      * waits for the period to end.
      */
     period?: { to: string; today: string }
-    /** Whether the company's payday comes after its payroll's close, as it always should. */
+    /** Whether this month's payday, one changed for it included, comes after its period, as it always should. */
     paydayAfterClose?: boolean
 }
 
@@ -60,6 +60,9 @@ export type ApprovalRefusal =
 export type ApprovalVerdict =
     | { ok: true }
     | { ok: false; refusal: ApprovalRefusal }
+
+/** Why a month whose payday doesn't come after its period isn't approved. */
+export const PAYDAY_BEFORE_CLOSE = "This month's payday comes before its payroll closes. Change this month's payday, or payday or when payroll closes in the Payroll settings, first."
 
 export function checkApproval(input: ApprovalInput): ApprovalVerdict {
     if (input.status !== "DRAFT") {
@@ -95,7 +98,7 @@ export function checkApproval(input: ApprovalInput): ApprovalVerdict {
             ok: false,
             refusal: {
                 code: "PAYDAY_BEFORE_CLOSE",
-                message: "Payday comes before this month's payroll closes. Change payday or when payroll closes in the Payroll settings first.",
+                message: PAYDAY_BEFORE_CLOSE,
             },
         }
     }

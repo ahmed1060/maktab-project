@@ -44,6 +44,43 @@ export async function monthsOfDates(tx: Prisma.TransactionClient, companyId: str
     return PayrollPeriodService.monthsOfDates(tx, companyId, dates)
 }
 
+/**
+ * The two payroll months a date can fall in: its own calendar month's, up to
+ * that month's close, and the next one's after it (LATER_CHANGES_PLAN.md
+ * §7.10, PR 430). A month's close is always in its own month, so there are
+ * no others.
+ */
+export const reachOf = (date: string) => [date.slice(0, 7), addDays(`${date.slice(0, 7)}-28`, 4).slice(0, 7)]
+
+/**
+ * What a writer locks and checks for these dates: both months each can fall
+ * in, locked, then which of them counts it, read under those locks. Read
+ * first, a payday changed or a month approved before the lock was taken could
+ * move a date into a month this never locked, frozen meanwhile without what
+ * it wrote (Codex review on PR 430). Locked first, nothing that moves it
+ * commits before this does.
+ */
+export async function lockDateMonths(tx: Prisma.TransactionClient, companyId: string, dates: Iterable<string>): Promise<string[]> {
+    const list = [...new Set(dates)]
+    await lockMonths(tx, companyId, list.flatMap(reachOf))
+    return monthsOfDates(tx, companyId, list)
+}
+
+/**
+ * punchMonthsOf for a writer: read once both months of each date a punch's
+ * shift can be on, the day before, its own and the day after, are locked
+ * (Codex review on PR 430).
+ */
+export async function lockPunchMonthsOf(tx: Prisma.TransactionClient, companyId: string, punches: readonly { userId: string | null; local: string }[]): Promise<string[][]> {
+    await lockMonths(tx, companyId, punches.flatMap(p => { const d = p.local.slice(0, 10); return [addDays(d, -1), d, addDays(d, 1)] }).flatMap(reachOf))
+    return punchMonthsOf(tx, companyId, punches)
+}
+
+/** One punch's months, for a writer, as lockPunchMonthsOf. */
+export async function lockPunchMonths(tx: Prisma.TransactionClient, companyId: string, userId: string, local: string): Promise<string[]> {
+    return (await lockPunchMonthsOf(tx, companyId, [{ userId, local }]))[0]
+}
+
 /** Which of these payroll months have an approved or paid payroll run. Read after the lock. */
 export async function lockedMonths(tx: Prisma.TransactionClient, companyId: string, months: Iterable<string>): Promise<Set<string>> {
     const wanted = [...new Set(months)]

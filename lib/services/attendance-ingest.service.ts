@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@prisma/client"
 import { recomputeAfter } from "./attendance-recompute"
 import { serialize } from "./attendance-calendar.service"
-import { lockMonths, lockedMonths, punchMonthsOf } from "./attendance-lock"
+import { lockPunchMonthsOf, lockedMonths } from "./attendance-lock"
 import { localToInstant } from "@/lib/attendance/punch-import"
 import { addDays } from "@/lib/attendance/calendar"
 import { calendarDateStr, offsetMsIn } from "@/lib/time"
@@ -111,10 +111,9 @@ async function store(
     // night shift's backlog read the days and the calendar again for each
     // punch (review on #49).
     const keys = [...candidates.keys()]
-    const listed = await punchMonthsOf(tx, companyId, keys.map(k => ({ userId: owner.get(candidates.get(k)!.userNumber) ?? null, local: candidates.get(k)!.at })))
+    const listed = await lockPunchMonthsOf(tx, companyId, keys.map(k => ({ userId: owner.get(candidates.get(k)!.userNumber) ?? null, local: candidates.get(k)!.at })))
     const monthsOf = new Map(keys.map((k, i) => [k, listed[i]]))
     const months = new Set([...monthsOf.values()].flat())
-    await lockMonths(tx, companyId, months)
     const approved = await lockedMonths(tx, companyId, months)
 
     // Under either source: the agent's delivery and the terminal's own are the same scan.

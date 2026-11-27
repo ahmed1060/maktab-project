@@ -5,7 +5,7 @@ import { planFinalRecovery, type RecoverableDebt } from "@/lib/debt-recovery"
 import { calendarDateStr, calendarParts, startOfDayIn } from "@/lib/time"
 import { daysInMonth } from "@/lib/payroll"
 import { PayrollPeriodService } from "./payroll-period.service"
-import { attendanceMoney, attendanceReaches } from "./attendance-payroll"
+import { attendanceMoney, attendanceReaches, daysToSettle } from "./attendance-payroll"
 import { nextMonth, paidAlready } from "@/lib/payroll-period"
 import { addDays } from "@/lib/attendance/calendar"
 import { resolveTimeZone } from "@/lib/timezone"
@@ -56,7 +56,12 @@ export class SettlementService {
         // A day's attendance is known once it's over: a last working day still to
         // come, or today, isn't settled until it is (review on PR 430).
         if (lastWorkingDay >= calendarDateStr(new Date(), company?.timezone ?? "UTC")) throw new Error("ATTENDANCE_NOT_OVER")
-        const money = (await attendanceMoney(prisma, companyId, { from: addDays(period.to, 1), to: lastWorkingDay })).get(userId)
+        const after = { from: addDays(period.to, 1), to: lastWorkingDay }
+        // Nor while one of those days waits on a decision, as a payroll waits on its days: what's
+        // undecided counts nothing, and nothing decides it once this is made (Codex review on PR 430).
+        const waiting = await daysToSettle(prisma, companyId, after, [userId], 1)
+        if (waiting.count + Object.values(waiting.requests).reduce((a, b) => a + b, 0) > 0) throw new Error("ATTENDANCE_PENDING")
+        const money = (await attendanceMoney(prisma, companyId, after)).get(userId)
         if (!money) return 0
         return money.overtime + money.missionAllowance - money.lateness - money.earlyLeave - money.absence
     }

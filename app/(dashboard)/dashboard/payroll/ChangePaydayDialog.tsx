@@ -34,6 +34,12 @@ export function attendanceUntilFor(payday: string, close: string): string {
     return payday <= close ? addDays(payday, -1) : close
 }
 
+/** The earliest its attendance can end: its period's start, and never before the month's own 1st (review on PR 430). */
+export function earliestUntil(year: number, month: number, periodFrom: string): string {
+    const first = `${year}-${String(month).padStart(2, '0')}-01`
+    return periodFrom > first ? periodFrom : first
+}
+
 export function ChangePaydayDialog({ open, onClose, onDone, year, month, companyId, payday, draft, nextApproved = false, period, close }: {
     open: boolean
     onClose: () => void
@@ -100,7 +106,7 @@ export function ChangePaydayDialog({ open, onClose, onDone, year, month, company
         >
             <DatePickerSingle name="payday" label={t('payroll_day_label')} value={day} minDate={period.from} onChange={pickPayday} error={errors.payday} disabled={action.running} />
             {draft && (
-                <DatePickerSingle name="attendanceUntil" label={t('payday_change_until')} value={until} minDate={period.from} maxDate={close}
+                <DatePickerSingle name="attendanceUntil" label={t('payday_change_until')} value={until} minDate={earliestUntil(year, month, period.from)} maxDate={close}
                     onChange={next => { setUntil(next); setErrors({}) }} error={errors.until} disabled={action.running} />
             )}
             <p className="ui-hint">{t(draft ? 'payday_change_hint' : nextApproved ? 'payday_change_hint_next_approved' : 'payday_change_hint_approved')}</p>

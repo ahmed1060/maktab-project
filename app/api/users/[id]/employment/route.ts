@@ -94,6 +94,10 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
         if (message === "ATTENDANCE_NOT_OVER") {
             return ApiResponse.refused(400, "The last working day isn't over yet", "ATTENDANCE_NOT_OVER")
         }
+        // Or one of those days still waits on a decision (Codex review on PR 430).
+        if (message === "ATTENDANCE_PENDING") {
+            return ApiResponse.refused(400, "Attendance after payroll closed still waits on a decision", "ATTENDANCE_PENDING")
+        }
         throw error
     }
 })
@@ -186,6 +190,10 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
         // isn't known until it is (LATER_CHANGES_PLAN.md §7.10, review on PR 430).
         if (message === "ATTENDANCE_NOT_OVER") {
             return ApiResponse.refused(400, "The last working day isn't over yet", "ATTENDANCE_NOT_OVER")
+        }
+        // Or one of those days still waits on a decision (Codex review on PR 430).
+        if (message === "ATTENDANCE_PENDING") {
+            return ApiResponse.refused(400, "Attendance after payroll closed still waits on a decision", "ATTENDANCE_PENDING")
         }
         if (message === "USER_HAS_NO_COMPANY") {
             return ApiResponse.refused(400, "This account belongs to no company, so there is nobody to settle with.", "USER_HAS_NO_COMPANY")

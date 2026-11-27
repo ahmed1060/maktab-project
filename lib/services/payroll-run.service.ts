@@ -8,12 +8,12 @@ import { DEBT_RECOVERY_SOURCE, type RecoverableDebt } from "@/lib/debt-recovery"
 import { timelineForMonth } from "@/lib/employment"
 import { ratesForMonth } from "@/lib/salary-history"
 import { toMajor, toMinor } from "@/lib/payroll"
-import { closeDateOf, lastDayOf, paydayAfterClose, monthKeyOf, nextMonth } from "@/lib/payroll-period"
+import { closeDateOf, lastDayOf, monthKeyOf, nextMonth } from "@/lib/payroll-period"
 import { PayrollPeriodService } from "./payroll-period.service"
 import { calendarDateStr, startOfDayIn, startOfMonthIn } from "@/lib/time"
 import { notOwnerIn } from "@/lib/owners"
 import { resolveTimeZone } from "@/lib/timezone"
-import { checkApproval, settleRefusal, type ApprovalRefusal } from "@/lib/approval"
+import { PAYDAY_BEFORE_CLOSE, checkApproval, settleRefusal, type ApprovalRefusal } from "@/lib/approval"
 
 /**
  * A day still to settle found on the register being approved, for someone
@@ -476,7 +476,11 @@ export class PayrollRunService {
             const until = endFixed ? period.to
                 : input.attendanceUntil ?? (input.payday <= settingClose ? addDays(input.payday, -1) : settingClose)
             if (endFixed && input.attendanceUntil && input.attendanceUntil !== period.to) return refuse("PERIOD_FROZEN", { periodEnd: period.to })
-            if (!endFixed && (until < period.from || until > settingClose)) return refuse("ATTENDANCE_OUT_OF_RANGE", { from: period.from, to: settingClose })
+            // From the month's own 1st at the earliest: a date is its own month's or the next's,
+            // so a period touches two calendar months at most (review on PR 430).
+            const firstDay = `${monthKey(year, month)}-01`
+            const earliest = period.from > firstDay ? period.from : firstDay
+            if (!endFixed && (until < earliest || until > settingClose)) return refuse("ATTENDANCE_OUT_OF_RANGE", { from: earliest, to: settingClose })
             if (input.payday <= until) return refuse("PAYDAY_NOT_AFTER_PERIOD", { periodEnd: until })
             // Within the month after next: far enough for paying in the month after and moving off a long holiday.
             const twoAfter = nextMonth(after.year, after.month)
@@ -524,12 +528,13 @@ export class PayrollRunService {
         session: any,
         options: { acknowledgePending?: boolean } = {},
     ): Promise<{ runId: string } | { refusal: ApprovalRefusal }> {
-        const [{ register, refused, attendance, period: seen, timeZone: zone }, existing, settings] = await Promise.all([
+        const [{ register, refused, attendance, period: seen, timeZone: zone }, existing, payday] = await Promise.all([
             this.compute(companyId, year, month),
             prisma.payrollRun.findUnique({
                 where: { companyId_month_year: { companyId, month, year } },
             }),
-            PayrollPeriodService.settings(prisma, companyId),
+            // This month's own payday, one changed for it included (Codex review on PR 430).
+            PayrollPeriodService.paydayOf(prisma, companyId, year, month),
         ])
 
         // Days still incomplete or a departure to confirm, for the people on
@@ -551,7 +556,7 @@ export class PayrollRunService {
             daysToSettle: settle,
             // Not before its period has ended, and never with a payday before the close (§7.10, PR 430).
             period: { to: seen.to, today: calendarDateStr(new Date(), zone) },
-            paydayAfterClose: paydayAfterClose(settings.payday, settings.closeDay),
+            paydayAfterClose: payday.date > seen.to,
         })
         if (!verdict.ok) return { refusal: verdict.refusal }
 
@@ -583,6 +588,10 @@ export class PayrollRunService {
                     const from = addDays(period.to, 1)
                     return { refusal: { code: "PERIOD_NOT_OVER" as const, message: `This month can be approved from ${from}, once its payroll closes.`, from } }
                 }
+                // Its payday, read again here too: one changed for the month stays where it's put,
+                // and a close moved since can put the period past it (Codex review on PR 430).
+                const payday = await PayrollPeriodService.paydayOf(tx, companyId, year, month)
+                if (payday.date <= period.to) return { refusal: { code: "PAYDAY_BEFORE_CLOSE" as const, message: PAYDAY_BEFORE_CLOSE } }
 
                 const approverId: string = session?.user?.id ?? "system"
                 // The switch, read once and held (review on #16): FOR SHARE makes a
@@ -627,9 +636,9 @@ export class PayrollRunService {
                 // payroll (review on PR 288).
                 const allowancePaidTo = reaches ? people.filter(p => !p.excluded && p.attendance.missionAllowance > 0).map(p => p.userId) : []
                 const daysLocked = await stampDays(tx, companyId, period, draft.id, allowancePaidTo)
-                // What the month keeps: its period and its payday, so a later
-                // change of either setting never restates it (§7.10, PR 430).
-                const payday = await PayrollPeriodService.paydayOf(tx, companyId, year, month)
+                // What the month keeps: its period and its payday, both read
+                // above, so a later change of either setting never restates it
+                // (§7.10, PR 430).
 
                 const run = await tx.payrollRun.update({
                     where: { companyId_month_year: { companyId, month, year } },

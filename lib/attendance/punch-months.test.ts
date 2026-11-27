@@ -147,13 +147,13 @@ describe("the months many punches can change", () => {
 
     it("is what a terminal agent's batch takes, at once (review on #49)", () => {
         const ingest = readFileSync("lib/services/attendance-ingest.service.ts", "utf8")
-        expect(ingest).toContain("await punchMonthsOf(tx, companyId, keys.map(")
+        expect(ingest).toContain("await lockPunchMonthsOf(tx, companyId, keys.map(")
         expect(ingest).not.toMatch(/await punchMonths\(/)
     })
 
     it("is what approving a phone takes for what it held", () => {
         const phones = readFileSync("lib/services/attendance-phone.service.ts", "utf8")
-        expect(phones).toContain("await punchMonthsOf(tx, phone.companyId, waiting.map(")
+        expect(phones).toContain("await lockPunchMonthsOf(tx, phone.companyId, waiting.map(")
         expect(phones).not.toMatch(/for \(const w of waiting\)/)
     })
 })

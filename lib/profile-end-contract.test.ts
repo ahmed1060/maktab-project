@@ -244,6 +244,8 @@ describe("what's wrong, in the reader's language", () => {
         expect(endContractRefusal({ code: "USER_HAS_NO_COMPANY" })).toEqual({ key: "end_contract_no_company" })
         // A last working day after payroll closed, not over yet (review on PR 430).
         expect(endContractRefusal({ code: "ATTENDANCE_NOT_OVER" })).toEqual({ field: "lastWorkingDay", key: "end_contract_attendance_not_over" })
+        // Or with one of those days still to decide (Codex review on PR 430).
+        expect(endContractRefusal({ code: "ATTENDANCE_PENDING" })).toEqual({ field: "lastWorkingDay", key: "end_contract_attendance_pending" })
         // The code prompt for a high-risk action, turned down: they know.
         expect(endContractRefusal({ code: "STEP_UP_REQUIRED" })).toBe("quiet")
         expect(endContractRefusal({ code: "MFA_ENROL_REQUIRED" })).toBe("quiet")
@@ -260,6 +262,8 @@ describe("what's wrong, in the reader's language", () => {
     it("says when a last working day after payroll closed can be settled, in both languages (review on PR 430)", () => {
         expect(en.end_contract_attendance_not_over).toMatch(/once it's over\.$/)
         expect(ar.end_contract_attendance_not_over).toMatch(/بعد انتهائه\.$/)
+        expect(en.end_contract_attendance_pending).toMatch(/^Some of their attendance after payroll closed still waits on a decision/)
+        expect(ar.end_contract_attendance_pending).toMatch(/ثم إنهاء العقد\.$/)
     })
 
     it("is answered by the server with its code beside its words", async () => {
@@ -272,6 +276,7 @@ describe("what's wrong, in the reader's language", () => {
         expect(route).toContain(`ApiResponse.refused(400, message, "NO_SALARY")`)
         // Both the preview and the ending say a last working day not over yet (review on PR 430).
         expect(route.split(`ApiResponse.refused(400, "The last working day isn't over yet", "ATTENDANCE_NOT_OVER")`).length - 1).toBe(2)
+        expect(route.split(`ApiResponse.refused(400, "Attendance after payroll closed still waits on a decision", "ATTENDANCE_PENDING")`).length - 1).toBe(2)
         expect(route).toContain(`"USER_HAS_NO_COMPANY")`)
         // An Admin's, and the company's last Admin's, as a role's are (lib/role-errors.ts).
         expect(route).toContain("adminRefusal(error)")

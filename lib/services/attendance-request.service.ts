@@ -7,7 +7,7 @@ import { AuditLogService } from "./audit-log.service"
 import { AttendancePolicyService } from "./attendance-policy.service"
 import { AttendanceCalendarService } from "./attendance-calendar.service"
 import { recomputeAfter } from "./attendance-recompute"
-import { lockMonths, lockedMonths, monthsOfDates, punchMonths } from "./attendance-lock"
+import { lockDateMonths, lockMonths, lockPunchMonths, lockedMonths } from "./attendance-lock"
 import { refuseOwnerMonths } from "./owner.service"
 import { insertManualPunch, type Visibility } from "./attendance-punch.service"
 import { NotificationService } from "./notification.service"
@@ -48,9 +48,9 @@ async function companyOf(tx: Prisma.TransactionClient, companyId: string) {
     return await tx.company.findUnique({ where: { id: companyId }, select: { timezone: true } }) ?? fail("COMPANY_NOT_FOUND")
 }
 
-/** The payroll month a date falls in, locked and open (LATER_CHANGES_PLAN.md §7.10, PR 430). */
+/** The payroll month a date falls in, locked and open (LATER_CHANGES_PLAN.md §7.10, PR 430), read under the locks (Codex review on PR 430). */
 async function openDate(tx: Prisma.TransactionClient, companyId: string, date: string) {
-    await openMonths(tx, companyId, await monthsOfDates(tx, companyId, [date]))
+    await openMonths(tx, companyId, await lockDateMonths(tx, companyId, [date]))
 }
 
 async function openMonths(tx: Prisma.TransactionClient, companyId: string, months: string[]) {
@@ -328,7 +328,7 @@ export class AttendanceRequestService {
             const company = await companyOf(tx, companyId)
             if (localToInstant(local, company.timezone).getTime() > Date.now()) fail("PUNCH_IN_FUTURE")
             // Its own month, and the month before when it is a night's check-out (review on #14).
-            await openMonths(tx, companyId, await punchMonths(tx, companyId, userId, local))
+            await openMonths(tx, companyId, await lockPunchMonths(tx, companyId, userId, local))
             await refuseOwnerMonths(tx, userId, date)
             const same = await tx.missingPunchRequest.findFirst({ where: { userId, claimedAt: wallClock(local), status: { in: ["PENDING", "APPROVED"] } }, select: { id: true } })
             if (same) fail("MISSING_PUNCH_ALREADY_REPORTED")
@@ -363,7 +363,7 @@ export class AttendanceRequestService {
             const r = await tx.missingPunchRequest.findUnique({ where: { id } }) ?? fail("REQUEST_NOT_FOUND")
             if (r.userId === reviewerId) fail("CANNOT_DECIDE_OWN")
             const local = wallClockText(r.claimedAt)
-            await openMonths(tx, r.companyId, await punchMonths(tx, r.companyId, r.userId, local))
+            await openMonths(tx, r.companyId, await lockPunchMonths(tx, r.companyId, r.userId, local))
             if (r.status !== "PENDING") fail("REQUEST_ALREADY_DECIDED")
             let punchId: string | null = null
             if (decision.approve) {
