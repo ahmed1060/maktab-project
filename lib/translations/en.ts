@@ -1441,7 +1441,7 @@ export const en = {
         payroll_register: "Payroll register",
         payroll_payday_line: "Payday: {date}",
         // The month's payday as a date, changed for it, and from when it may be approved (LATER_CHANGES_PLAN.md §7.10, PR 430).
-        payroll_payday_changed: "changed for this month",
+        payroll_payday_line_changed: "Payday: {date}, changed for this month",
         payroll_approve_from: "Can be approved from {date}, once payroll closes.",
         payday_change: "Change payday",
         payday_change_title: "Change this month's payday",

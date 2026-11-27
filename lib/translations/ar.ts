@@ -1382,7 +1382,7 @@ export const ar = {
         payroll_register: "كشف الرواتب",
         payroll_payday_line: "يوم الصرف: {date}",
         // يوم صرف الشهر وتاريخ اعتماده (LATER_CHANGES_PLAN.md §7.10, PR 430).
-        payroll_payday_changed: "مُعدَّل لهذا الشهر",
+        payroll_payday_line_changed: "يوم الصرف: {date}، مُعدَّل لهذا الشهر",
         payroll_approve_from: "يمكن الاعتماد من {date}، بعد إقفال الرواتب.",
         payday_change: "تغيير يوم الصرف",
         payday_change_title: "تغيير يوم صرف هذا الشهر",

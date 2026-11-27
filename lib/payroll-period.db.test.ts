@@ -19,7 +19,8 @@ import { addDays, weekdayOf } from "@/lib/attendance/calendar"
  * approved, before the migration: it's moved onto day 1 of the month
  * after, and September keeps the calendar month it was paid for. Then,
  * on 27 November (in Cairo): payroll closes on the 24th; Ehab works
- * 09:00 to 17:00 every working day but the 26th, absent, as Omar was.
+ * 09:00 to 17:00 every working day but the 19th, absent in November's
+ * period, and the 26th, absent after it, as Omar was.
  */
 
 const ADMIN_URL = process.env.ROLES_TEST_DATABASE_URL
@@ -77,8 +78,8 @@ describe.skipIf(!ADMIN_URL)("payday and the attendance period, in Postgres", () 
             if (![0, 1, 2, 3, 4].includes(weekdayOf(d)) || off.has(d)) continue
             const dmy = (t: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)} ${t}`
             rows.push(["2", dmy("09:00")], ["2", dmy("17:00")])
-            // Absent on the 26th, after November closes on the 24th.
-            if (d !== "2026-11-26") rows.push(["1", dmy("09:00")], ["1", dmy("17:00")])
+            // Absent on the 19th, in November's period, and on the 26th, after November closes on the 24th.
+            if (d !== "2026-11-19" && d !== "2026-11-26") rows.push(["1", dmy("09:00")], ["1", dmy("17:00")])
         }
         await Punches.mapCode("c1", { code: "1", userId: "e1" }, "a1")
         await Punches.mapCode("c1", { code: "2", userId: "a1" }, "e1")
@@ -125,6 +126,15 @@ describe.skipIf(!ADMIN_URL)("payday and the attendance period, in Postgres", () 
         await db.query(`UPDATE "Company" SET "payrollCloseDay" = 24 WHERE id = 'c1'`)
     })
 
+    it("goes by the work week of the policy in force on payday, not Friday and Saturday whatever it says", async () => {
+        const { prisma } = await import("@/lib/prisma")
+        // From 2027, a policy working Monday to Friday: Friday 1 January is a working day, and payday.
+        await Policy.saveVersion("c1", { effectiveFrom: "2027-01-01", body: { ...STANDARD_OFFICE, workWeek: [1, 2, 3, 4, 5] } }, "a1")
+        expect((await Periods.paydayOf(prisma, "c1", 2026, 12)).date).toBe("2027-01-01")
+        await db.query(`DELETE FROM "AttendancePolicy" WHERE "companyId" = 'c1' AND "effectiveFrom" = '2027-01-01'`)
+        expect((await Periods.paydayOf(prisma, "c1", 2026, 12)).date).toBe("2026-12-31")
+    })
+
     it("refuses to approve a month before its period ends, saying from when", async () => {
         await db.query(`UPDATE "Company" SET "payrollCloseDay" = NULL WHERE id = 'c1'`)
         const out = await Payroll.approve("c1", 2026, 11, SESSION)
@@ -142,10 +152,26 @@ describe.skipIf(!ADMIN_URL)("payday and the attendance period, in Postgres", () 
 
     it("approves once the period's over, freezing the period's days and keeping its dates and payday", async () => {
         expect(await Payroll.approve("c1", 2026, 10, SESSION)).toHaveProperty("runId")
+        // A day of November's in October, its row gone since: approving rebuilds it, then freezes it.
+        await db.query(`DELETE FROM "AttendanceDay" WHERE "userId" = 'e1' AND date = '2026-10-27'`)
         expect(await Payroll.approve("c1", 2026, 11, SESSION)).toHaveProperty("runId")
         expect(await run(11)).toEqual({ status: "APPROVED", from: "2026-10-25", to: "2026-11-24", payday: "2026-12-01", paydayChanged: false })
+        expect(await frozen("2026-10-27")).toBe(true)
         expect(await frozen("2026-11-24")).toBe(true)
         expect(await frozen("2026-11-25")).toBe(false)
+        // Approved, its payday stays as it was, whatever the setting says after.
+        const { prisma } = await import("@/lib/prisma")
+        await db.query(`UPDATE "Company" SET "payrollDay" = 5 WHERE id = 'c1'`)
+        expect(await Periods.paydayOf(prisma, "c1", 2026, 11)).toEqual({ date: "2026-12-01", changed: false })
+        await db.query(`UPDATE "Company" SET "payrollDay" = 1 WHERE id = 'c1'`)
+    })
+
+    it("finds the first payday on or after a date: a debt's due date, and when a settlement is paid", async () => {
+        const { prisma } = await import("@/lib/prisma")
+        // Paid in the month after, November's payday is in December, payday itself included.
+        expect(await Periods.nextPaydayOnOrAfter(prisma, "c1", "2026-11-26")).toBe("2026-12-01")
+        expect(await Periods.nextPaydayOnOrAfter(prisma, "c1", "2026-12-01")).toBe("2026-12-01")
+        expect(await Periods.nextPaydayOnOrAfter(prisma, "c1", "2026-12-02")).toBe("2026-12-31")
     })
 
     it("refuses a decision on a frozen day, and takes one on a day after the close, the next month's", async () => {
@@ -160,6 +186,8 @@ describe.skipIf(!ADMIN_URL)("payday and the attendance period, in Postgres", () 
         const out = await Engine.recomputeMonth("c1", "2026-11")
         expect(out.locked).toBe(false)
         expect(await frozen("2026-11-20")).toBe(true)
+        // October's days are October's and November's, both approved: nothing of it is rebuilt.
+        expect((await Engine.recomputeMonth("c1", "2026-10")).locked).toBe(true)
     })
 
     it("counts in a leaver's settlement their attendance after the leaving month's payroll closed, and nothing before it", async () => {
@@ -170,10 +198,16 @@ describe.skipIf(!ADMIN_URL)("payday and the attendance period, in Postgres", () 
         const after = await SettlementService.attendanceAfterClose("c1", "e1", 2026, 11, "2026-11-26")
         expect(after).toBeLessThan(0)
         const absent = (await db.query(`SELECT "deductionMinor" FROM "AttendanceDay" WHERE "userId" = 'e1' AND date = '2026-11-26'`)).rows[0].deductionMinor
+        // Only the 26th: the 19th's absence is November's payroll's, approved and paid there.
+        const before = (await db.query(`SELECT "deductionMinor" FROM "AttendanceDay" WHERE "userId" = 'e1' AND date = '2026-11-19'`)).rows[0].deductionMinor
+        expect(before).toBeGreaterThan(0)
         expect(after).toBe(-absent)
     })
 
     it("changes a draft month's payday, ending its attendance the day before, the days after going to the next month", async () => {
+        // Never later than payroll closes, the 24th.
+        expect(await Payroll.changePayday("c1", 2026, 12, { payday: "2026-12-30", attendanceUntil: "2026-12-26" }, SESSION)).toEqual({ refused: expect.objectContaining({ code: "ATTENDANCE_OUT_OF_RANGE", to: "2026-12-24" }) })
+        expect(await run(12)).toBeUndefined()
         const out = await Payroll.changePayday("c1", 2026, 12, { payday: "2026-12-21" }, SESSION)
         expect(out).toEqual({ payday: "2026-12-21", periodEnd: "2026-12-20" })
         expect(await run(12)).toEqual(expect.objectContaining({ status: "DRAFT", to: "2026-12-20", payday: "2026-12-21", paydayChanged: true }))
@@ -187,9 +221,20 @@ describe.skipIf(!ADMIN_URL)("payday and the attendance period, in Postgres", () 
     it("changes only payday once approved, still after the period, and refuses what isn't", async () => {
         expect(await Payroll.changePayday("c1", 2026, 11, { payday: "2026-11-30", attendanceUntil: "2026-11-20" }, SESSION)).toEqual({ refused: expect.objectContaining({ code: "PERIOD_FROZEN" }) })
         expect(await Payroll.changePayday("c1", 2026, 11, { payday: "2026-11-24" }, SESSION)).toEqual({ refused: expect.objectContaining({ code: "PAYDAY_NOT_AFTER_PERIOD" }) })
+        // No later than the month after next: January, for November.
+        expect(await Payroll.changePayday("c1", 2026, 11, { payday: "2027-02-01" }, SESSION)).toEqual({ refused: expect.objectContaining({ code: "PAYDAY_TOO_LATE" }) })
         expect(await Payroll.changePayday("c1", 2026, 11, { payday: "2026-11-30" }, SESSION)).toEqual({ payday: "2026-11-30", periodEnd: "2026-11-24" })
         expect(await run(11)).toEqual(expect.objectContaining({ status: "APPROVED", to: "2026-11-24", payday: "2026-11-30", paydayChanged: true }))
         await db.query(`UPDATE "PayrollRun" SET status = 'PAID' WHERE "companyId" = 'c1' AND year = 2026 AND month = 11`)
         expect(await Payroll.changePayday("c1", 2026, 11, { payday: "2026-12-01" }, SESSION)).toEqual({ refused: expect.objectContaining({ code: "RUN_PAID" }) })
+    })
+
+    it("keeps a leaver's attendance after the close on the settlement made, in what's owed too", async () => {
+        const { SettlementService } = await import("@/lib/services/settlement.service")
+        const after = await SettlementService.attendanceAfterClose("c1", "e1", 2026, 11, "2026-11-26")
+        await SettlementService.settleAndEnd({ userId: "e1", lastWorkingDay: "2026-11-26", createdById: "a1", actorRole: "ADMIN", actorName: "Amal One" })
+        const kept = (await db.query(`SELECT "attendanceAmount"::float AS attendance, "earnedAmount"::float AS earned, "paidAmount"::float AS paid, "netAmount"::float AS net FROM "FinalSettlement" WHERE "userId" = 'e1'`)).rows[0]
+        expect(kept.attendance).toBe(after / 100)
+        expect(kept.net).toBeCloseTo(kept.earned - kept.paid + kept.attendance, 2)
     })
 })

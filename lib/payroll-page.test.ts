@@ -591,7 +591,9 @@ describe("payday and when payroll closes, on the page (LATER_CHANGES_PLAN.md §7
     it("says when the month's payday was changed for it", async () => {
         const top = header(await page({ shows: view({ payday: { date: "2026-10-29", changed: true } }) }))
         expect(top).toContain("Payday: Thursday 29 October, changed for this month")
-        expect(header(await page({ shows: view() }))).not.toContain(en.payroll_payday_changed)
+        // In Arabic, after an Arabic comma.
+        expect(header(await page({ shows: view({ payday: { date: "2026-10-29", changed: true } }), locale: "ar" }))).toContain("يوم الصرف: الخميس، ٢٩ أكتوبر، مُعدَّل لهذا الشهر")
+        expect(header(await page({ shows: view() }))).not.toContain("changed for this month")
     })
 
     it("offers Change payday beside it to whoever may approve payroll, until the month is paid", async () => {

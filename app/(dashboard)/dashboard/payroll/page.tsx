@@ -459,8 +459,8 @@ export default function PayrollRegisterPage() {
                         {view?.payday && (
                             <>
                                 {'. '}
-                                {t('payroll_payday_line').replace('{date}', longDay(view.payday.date))}
-                                {view.payday.changed && `, ${t('payroll_payday_changed')}`}
+                                {/* Changed for the month, it says so in the same line, its comma the page's language's. */}
+                                {t(view.payday.changed ? 'payroll_payday_line_changed' : 'payroll_payday_line').replace('{date}', longDay(view.payday.date))}
                                 {canApprove && view.status !== 'PAID' && view.period && (
                                     <>{' '}<Button size="sm" variant="quiet" onClick={() => setChangingPayday(true)}>{t('payday_change')}</Button></>
                                 )}
