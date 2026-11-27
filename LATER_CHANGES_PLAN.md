@@ -1577,11 +1577,12 @@ In three PRs, each whole on its own:
   - the most one may ask for: 2 months' salary unless changed;
   - whether only one may be open at a time;
   - how long someone must have worked first;
-  - the most a month's installment may be: 10% of the net pay after
-    income tax and social insurance (§7.12), unless lowered. It can't be
-    set above 10%, the law's limit (§7.9);
-  - what happens when an installment would be over it: Block, unless
-    changed to Warn. Block keeps the months from going below what the
+  - the most a month's installment may be: a percentage of the net pay
+    after all the payroll deductions (§7.12), 10% unless changed, Egypt's
+    legal limit (§7.9). It can be set higher too, as a company may be
+    outside Egypt (the owner, 27 November);
+  - what happens when an installment would be over it: Block or Warn, a
+    choice, Block unless changed. Block keeps the months from going below what the
     limit allows, for the employee asking and for the approver.
 - **No cap at payroll** (the owner, 27 November): once approved, each
   installment is taken in full, even in a month whose pay came out lower.
@@ -1599,8 +1600,9 @@ In three PRs, each whole on its own:
   installment.
 - **At the end of a contract,** the final settlement asks whoever makes
   it: take what's left now, or keep the installments going (the owner,
-  27 November; what keeping them going means after someone leaves is
-  open, §7.12.3).
+  27 November). Kept going, as there are no payslips after someone
+  leaves, what's left stays on their record as money they owe, marked
+  paid when it's received.
 
 ### 7.6 Rating finished work (Decided)
 
@@ -1705,9 +1707,10 @@ A step may take more than one PR.
    together, at most 25% of the wage after income tax (article 114).
    Nizmo could stop an installment over it, warn, or take the most from
    the policy (10% unless changed).
-   **Decided by the owner on 27 November** (§7.5, §7.12): the 10% is of
-   the net after income tax and social insurance; an installment over it
-   is blocked, a setting that can be changed to warn; there's no cap at
+   **Decided by the owner on 27 November** (§7.5, §7.12): the limit is
+   of the net after all payroll deductions, 10% unless changed, and may
+   be set higher for a company outside Egypt; an installment over it is
+   blocked or warned of, a setting, Block unless changed; there's no cap at
    payroll; and at a contract's end the settlement asks whether to take
    what's left or keep the installments going.
 
@@ -2026,18 +2029,17 @@ installments (§7.9).
      changes. A company can later enter gross salaries and set the
      percentages, and each deduction shows on the payslip as a line of
      its own.
-   - The net after income tax and social insurance is what a salary
-     advance's installment limit is worked out on (§7.5).
+   - The net after all of them is what a salary advance's installment
+     limit is worked out on (§7.5).
 3. **Open:**
    - What the percentages are of: the month's pay before them (the salary
      with its additions and Nizmo's deductions), or the salary alone.
-   - Whether they apply to everyone in the company, or can be turned off
-     for a person, such as an owner or someone not insured.
+   - Whether they apply to everyone with a payslip, or can be set for a
+     person: turned off for someone not insured, or a rate of their own.
+     Owners have no payslip (§7.3), so these never touch them.
    - Egypt's income tax is worked out by brackets and social insurance on
      an insured wage with a floor and a ceiling. A flat percentage is a
      simplification, which may do for now.
-   - After someone leaves there's no payslip to take installments from:
-     what "keep the installments going" does then (§7.5).
    - The law's 25% limit on all debts together (§7.9) isn't checked
      anywhere, as there's no cap at payroll.
 
@@ -2632,3 +2634,8 @@ installments (§7.9).
   contract's end. Payroll deductions added (§7.12): income tax and social
   insurance percentages, 0 unless changed, and more named deductions, a
   fixed amount or a percentage, before salary advances (§7.8).
+- **2026-11-27:** The owner's answers: an installment's limit is of the
+  net after all payroll deductions and is 10% unless changed, with no
+  ceiling, as a company may be outside Egypt; Block or Warn is a choice;
+  installments kept going after someone leaves stay on their record as
+  money owed, marked paid when received.
