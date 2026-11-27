@@ -2374,6 +2374,24 @@ These are built once, in the building-blocks PR, and every page uses them
   isn't shown. The policy's card says which under the hours a month:
   "Before, or up to 24 hours after", "Only in advance" (no hours after),
   or "Any day, from last month to a month ahead".
+- **Asking for a mission** (`LATER_CHANGES_PLAN.md` §7.4, 4c), as the
+  attendance policy in force today says:
+  - **The dates' calendar,** by days or by hours, offers only the days
+    that may be asked for, as day off's does: from today less the days
+    back the policy allows (7 to start) to a year ahead, as before. Today
+    is the company's, in its time zone. A month whose payroll is approved
+    is no refusal, as before.
+  - **A day outside them,** sent all the same (the dialog left open past
+    midnight, or the policy changed meanwhile), is refused under the
+    dates, saying which days may be asked for: "Missions can be asked for
+    from 20 November 2026 to 27 November 2027." The focus goes back to
+    the dates.
+- **The attendance policy's missions:** under Employees can ask for
+  missions, while it's ticked, a number, Can be asked for up to this many
+  days back, 0 to 365, 7 to start. Its hint: that it counts from today,
+  and that 0 means from today on. The policy's card says it under the
+  missions' line: "Can be asked for up to 7 days back", or "Can be asked
+  for from today on" with 0.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
