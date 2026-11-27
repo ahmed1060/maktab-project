@@ -14,7 +14,6 @@ type Db = Prisma.TransactionClient
 
 const monthKey = (year: number, month: number) => `${year}-${String(month).padStart(2, "0")}`
 const monthStart = (year: number, month: number) => new Date(`${monthKey(year, month)}-01T00:00:00Z`)
-const nextMonthStart = (year: number, month: number) => (month === 12 ? monthStart(year + 1, 1) : monthStart(year, month + 1))
 
 /**
  * A payroll month's attendance days, both counted (LATER_CHANGES_PLAN.md
