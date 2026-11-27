@@ -1717,6 +1717,63 @@ approving a month early, and decided the same day.
   - **10f, Change this month's payday,** with this month's period, and
     Recalculate by the period.
 
+#### How it's built (steps 4 and 5, PR 430)
+
+- **The settings,** on Company, in one migration with the runs' fields:
+  - `payrollCloseDay`: 1 to 28, or none for the month's last day;
+  - payday: `payrollDay` (1 to 28), `paydayLastDay`, `paydayNextMonth`
+    and `paydayMove` (`BEFORE` or `AFTER`).
+  - The migration moves every company whose payday doesn't come after its
+    close (each one there is today) onto day 1 of the month after, then
+    makes that the default for a new company. Nothing else of theirs
+    changes.
+- **Each month's run keeps** its period's first and last days and its
+  payday (`periodStart`, `periodEnd`, `payday`), set when it's approved;
+  runs approved before keep the calendar month and the payday they had.
+  A draft's `periodEnd` and `payday`, with `paydayChanged`, are this
+  month's own, from Change payday.
+- **The dates, worked out in one place** (`lib/payroll-period.ts`, pure,
+  and `lib/services/payroll-period.service.ts`, which reads them):
+  - a month's close: its run's `periodEnd` where it has one, otherwise
+    the setting's day, or the month's last day;
+  - its period: from the day after the month before's close to its own
+    close, so a changed close makes one period shorter or longer, never
+    a gap or an overlap;
+  - which payroll month a date belongs to: its own month's, up to that
+    month's close, and the next month's after it;
+  - payday: the setting's day in the payroll's own month or the next,
+    moved off a day off (a weekend day by the attendance policy in force
+    then, Friday and Saturday without one; a public holiday the company
+    observes; one of its own) the way the setting says, and moved
+    forward instead where moving back reaches the period.
+- **The rule,** on save in the company's settings and again on approving:
+  payday comes after the close: always in the month after; in the own
+  month, a day after the close day, or the last day with a close up to
+  the 27th, February's 28th being the shortest last day.
+- **Payroll reads the period:** the attendance lines, the days still to
+  settle, the overtime left undecided and the days stamped as paid, from
+  the period's dates; the days rebuilt before approving are those of the
+  calendar months the period touches.
+- **Freezing by the period:** the month locks are taken, and checked, for
+  the payroll months the dates written fall in, not their calendar
+  months. Approving takes its month's and the next's. A rebuild of a
+  calendar month rebuilds the days not yet frozen, and records what
+  changed on the frozen ones, as it did for a whole month. Owners, the
+  contract start and joining keep the calendar month, as the payslip's
+  salary does.
+- **Approving waits for the period's end,** in the company's calendar,
+  before anything is worked out: `PERIOD_NOT_OVER`, with the first day it
+  may be approved.
+- **Settlements and debts** read the payday: what of the last month is
+  already paid, and a debt's due date, the first payday on or after.
+- **Change this month's payday** (`PUT /api/payroll/{year}/{month}/payday`,
+  `payroll.approve`): the date, and while the run is a draft the
+  attendance's last day, each checked as above; written on the month's
+  run, made if it has none, with an audit line.
+- **The screens:** the Payroll settings card's two settings; the Payroll
+  page's payday line with Change payday and Approve greyed with its date;
+  the payslip's attendance line.
+
 ### 7.11 Clearer words on Exceptions (Decided)
 
 Asked on 2026-11-27: Attendance's Exceptions tab names its two decisions
@@ -2251,3 +2308,4 @@ with قبول: «قبول العذر» and «قبول».
   after, too, so 10b's migration moves every company whose payday doesn't
   come after its close onto that. Steps 4 and 5 in one PR, at the owner's
   word, each step in its own commits.
+- **2026-11-27:** How steps 4 and 5 are built (§7.10), before the code.
