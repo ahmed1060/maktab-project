@@ -2365,15 +2365,15 @@ These are built once, in the building-blocks PR, and every page uses them
     midnight, or a month approved meanwhile), is refused under the date,
     saying which days may be asked for: "Permission hours can be asked
     for from 1 November to 27 December." The focus goes back to the date.
-- **The attendance policy's permission hours:** in the row of its limits,
-  after Requests a month, a select, Can be asked for: Before, or up to
-  some hours after (to start) and Any day, from last month to a month
-  ahead. With the first, Can ask up to this many hours after follows it
-  as today. With the second, that field isn't shown, and the select's
-  hint says that it counts from today, and that a day in a month whose
-  payroll is approved never is. The policy's card says which under the
-  hours a month: "Before, or up to 24 hours after", "Only in advance"
-  (no hours after), or "Any day, from last month to a month ahead".
+- **The attendance policy's permission hours:** after the row of its
+  limits, a choice between two (§5.3), Can be asked for: Before, or up to
+  some hours after (to start), and Any day, from last month to a month
+  ahead, with under it that it counts from today, and that a day in a
+  month whose payroll is approved never is. With the first, Can ask up to
+  this many hours after follows it, as today; with the second, that field
+  isn't shown. The policy's card says which under the hours a month:
+  "Before, or up to 24 hours after", "Only in advance" (no hours after),
+  or "Any day, from last month to a month ahead".
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
