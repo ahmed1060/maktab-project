@@ -2425,6 +2425,19 @@ These are built once, in the building-blocks PR, and every page uses them
   - **A client with obligations** is archived rather than deleted, as one
     with tasks or records is, so its obligations keep it. The Clients
     list's words say "tasks, obligations or records".
+- **A salary change's payroll** (`LATER_CHANGES_PLAN.md` §7.13): on an
+  employee's Edit, once the monthly salary is changed, a choice under it,
+  Applies to, with two answers in the page's language:
+  - "This month's payroll, from 1 November";
+  - "Next month's payroll, from 1 December".
+  - Neither is picked for them: Update says under it "Pick which payroll
+    the new salary is for." Put back to what it was, the choice goes.
+  - With this month's payroll approved, the server refuses this month's,
+    said under the choice: "This month's payroll is approved, so the new
+    salary can only be next month's."
+  - A salary set for a month is that month's from its 1st, so a payslip
+    shows it as one line, Salary, not split at a starting salary entered
+    before it.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
