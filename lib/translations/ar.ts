@@ -965,6 +965,7 @@ export const ar = {
         salary_effective_next: "رواتب الشهر القادم، من {date}",
         salary_effective_required: "يُرجى اختيار الرواتب التي يُطبَّق عليها الراتب الجديد.",
         salary_effective_locked: "تم اعتماد رواتب هذا الشهر، لذا لا يُطبَّق الراتب الجديد إلا على رواتب الشهر القادم.",
+        salary_effective_month_passed: "بدأ شهر جديد منذ فتح هذه الصفحة. يُرجى اختيار الرواتب التي يُطبَّق عليها الراتب الجديد.",
         new_password_optional_label: "كلمة مرور جديدة (اختياري)",
         close_button: "إغلاق",
         profile_photo_upload: "رفع صورة",

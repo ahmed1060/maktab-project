@@ -84,7 +84,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // The company's calendar, which a return date is read in, as loaded with
     // them; and when the profile was opened, for the day after it.
     const [companyZone, setCompanyZone] = useState<string | null>(null)
-    const [openedAt] = useState(() => new Date())
+    const [openedAt, setOpenedAt] = useState(() => new Date())
     const [acting, setActing] = useState<{ until: string; returnTo: { name: string; builtIn?: string | null } | null } | null>(null)
     const [gender, setGender] = useState('MALE')
     const [salary, setSalary] = useState<string>('')
@@ -602,6 +602,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     avatar: avatarUrl,
                     salary: access.changeSalary ? parseFloat(salary) || 0 : undefined,
                     salaryEffective: salaryMoved ? salaryEffective : undefined,
+                    // The month the choice was shown for: left open past the
+                    // 1st, it still means the months it named (PR 437).
+                    salaryMonth: salaryMoved ? today.slice(0, 7) : undefined,
                     baseDayOffCredit: access.changeDayOffCredit ? parseFloat(baseDayOffCredit) || 0 : undefined,
                     username: access.changeUsername ? changedUsername(username, savedUsername) : undefined,
                     status: access.status ? status : undefined,
@@ -641,6 +644,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 // otherwise. About the role, from a save that didn't change it,
                 // as the last Admin's status can be: above the buttons, still
                 // in the reader's language.
+                // The month it named is past: the page names the new months,
+                // with nothing picked, and says so under the choice (PR 437).
+                if (answer?.code === 'SALARY_MONTH_PASSED') { setOpenedAt(new Date()); setSalaryEffective('') }
                 const refused = refusedField(answer)
                 if (ownRefused) setFormError(t(ownRefused))
                 else if (refused && (refused.field !== 'roleId' || roleGiven)) wrongAt({ [refused.field]: mistakeText(t, locale, refused.field, refused.key) })

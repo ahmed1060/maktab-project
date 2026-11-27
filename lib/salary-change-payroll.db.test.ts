@@ -132,6 +132,42 @@ describe.skipIf(!ADMIN_URL)("a salary change's payroll, in Postgres", () => {
         expect(await changes("e1")).toEqual([])
     })
 
+    it("is for the months the page named: next month's, named in November and saved on 1 December, is December's", async () => {
+        // The page was opened in November; it's saved after midnight on the 1st (Codex review on PR 437).
+        vi.setSystemTime(new Date("2026-12-01T08:00:00Z"))
+        await UserService.update({ id: "e1", salary: 6500, salaryEffective: "NEXT_MONTH", salaryMonth: "2026-11" } as any, admin("a1", "c1"))
+        expect(await changes("e1")).toEqual([[6500, "2026-11-30T22:00:00.000Z"]])
+    })
+
+    it("refuses a month the page named that's past, saving nothing", async () => {
+        vi.setSystemTime(new Date("2026-12-01T08:00:00Z"))
+        await expect(UserService.update({ id: "e1", gender: "FEMALE", salary: 6000, salaryEffective: "THIS_MONTH", salaryMonth: "2026-11" } as any, admin("a1", "c1")))
+            .rejects.toThrow("SALARY_MONTH_PASSED")
+        expect(await changes("e1")).toEqual([])
+        expect(await salary("e1")).toBe(5000)
+        expect(await gender("e1")).toBe("MALE")
+    })
+
+    it("takes the month the page named while it's this month", async () => {
+        vi.setSystemTime(new Date("2026-11-15T10:00:00Z"))
+        await UserService.update({ id: "e1", salary: 6000, salaryEffective: "THIS_MONTH", salaryMonth: "2026-11" } as any, admin("a1", "c1"))
+        expect(await changes("e1")).toEqual([[6000, "2026-10-31T22:00:00.000Z"]])
+    })
+
+    it("takes January as the month after a December the page named", async () => {
+        // 1:30 on 1 January in Cairo; the page was opened in December.
+        vi.setSystemTime(new Date("2026-12-31T23:30:00Z"))
+        await UserService.update({ id: "e1", salary: 7000, salaryEffective: "NEXT_MONTH", salaryMonth: "2026-12" } as any, admin("a1", "c1"))
+        expect(await changes("e1")).toEqual([[7000, "2026-12-31T22:00:00.000Z"]])
+    })
+
+    it("refuses a December the page named once December's payroll is approved", async () => {
+        vi.setSystemTime(new Date("2026-12-01T08:00:00Z"))
+        await approve("c1", 2026, 12)
+        await expect(UserService.update({ id: "e1", salary: 6500, salaryEffective: "NEXT_MONTH", salaryMonth: "2026-11" } as any, admin("a1", "c1"))).rejects.toThrow("PAYROLL_MONTH_LOCKED")
+        expect(await changes("e1")).toEqual([])
+    })
+
     it("dates it from this month's 1st where the choice isn't sent, as it always was", async () => {
         vi.setSystemTime(new Date("2026-11-15T10:00:00Z"))
         await UserService.update({ id: "e1", salary: 6000 } as any, admin("a1", "c1"))

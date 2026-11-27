@@ -368,6 +368,8 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         // A new salary for this month's payroll, approved: said under its
         // choice (LATER_CHANGES_PLAN.md §7.13, PR 437).
         if (error.message === 'PAYROLL_MONTH_LOCKED') return ApiResponse.refused(409, "This month's payroll is approved, so the new salary can only be next month's.", "PAYROLL_MONTH_LOCKED")
+        // The page was left open past the 1st, and the month it named is past (Codex review on PR 437).
+        if (error.message === 'SALARY_MONTH_PASSED') return ApiResponse.refused(409, "A new month has begun since this page was opened. Pick which payroll the new salary is for.", "SALARY_MONTH_PASSED")
         if (error.message === 'FORBIDDEN_PASSWORD_RESET') return ApiResponse.forbidden("Changing somebody else's password needs the reset-password permission")
         // With their codes, said in the reader's language (PR 229).
         if (error.message === 'CURRENT_PASSWORD_WRONG') return ApiResponse.refused(403, CURRENT_PASSWORD_WRONG, 'CURRENT_PASSWORD_WRONG')

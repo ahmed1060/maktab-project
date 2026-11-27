@@ -1032,6 +1032,7 @@ export const en = {
         salary_effective_next: "Next month's payroll, from {date}",
         salary_effective_required: "Pick which payroll the new salary is for.",
         salary_effective_locked: "This month's payroll is approved, so the new salary can only be next month's.",
+        salary_effective_month_passed: "A new month has begun since this page was opened. Pick which payroll the new salary is for.",
         new_password_optional_label: "New password (optional)",
         close_button: "Close",
         profile_photo_upload: "Upload a photo",

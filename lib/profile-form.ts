@@ -192,6 +192,8 @@ export function refusedField(body: { error?: string; code?: string; details?: Re
     // This month's payroll approved, the new salary can only be next month's
     // (LATER_CHANGES_PLAN.md §7.13, PR 437): the only one a save refuses so.
     if (body.code === 'PAYROLL_MONTH_LOCKED') return { field: 'salaryEffective', key: 'salary_effective_locked' }
+    // The page left open past the 1st, the month it named is past (Codex review on PR 437).
+    if (body.code === 'SALARY_MONTH_PASSED') return { field: 'salaryEffective', key: 'salary_effective_month_passed' }
     if (body.error === 'Username in use') return { field: 'username', key: 'username_in_use' }
     if (body.error === USERNAME_RESERVED) return { field: 'username', key: 'username_reserved' }
     if (body.error === 'Email in use') return { field: 'email', key: 'emp_new_email_taken' }

@@ -144,28 +144,46 @@ describe("what's checked, and what's refused", () => {
         const route = stripComments(readFileSync("app/api/users/route.ts", "utf8"))
         const put = route.slice(route.indexOf("export const PUT"))
         expect(put).toMatch(/if \(error\.message === 'PAYROLL_MONTH_LOCKED'\) return ApiResponse\.refused\(409, "[^"]+", "PAYROLL_MONTH_LOCKED"\)/)
+        expect(put).toMatch(/if \(error\.message === 'SALARY_MONTH_PASSED'\) return ApiResponse\.refused\(409, "[^"]+", "SALARY_MONTH_PASSED"\)/)
+    })
+
+    it("says a month that's past under the choice", async () => {
+        const { refusedField } = await import("@/lib/profile-form")
+        expect(refusedField({ error: "A new month has begun.", code: "SALARY_MONTH_PASSED" })).toEqual({ field: "salaryEffective", key: "salary_effective_month_passed" })
     })
 })
 
 describe("the salary, saved", () => {
     const service = stripComments(readFileSync("lib/services/user.service.ts", "utf8"))
-    const recorded = service.slice(service.indexOf("if (salaryMoved) {"), service.indexOf("const { month: m, year: y } = calendarMonth(now, zone)"))
+    const write = service.slice(service.indexOf("const updated = await (handOff || keepFrom || leavesAdmin || salaryPlan"), service.indexOf(").catch(error => {", service.indexOf("const updated = await (handOff")))
 
-    it("is written with its history under this month's lock, which approving its payroll takes, refused there too", () => {
-        expect(recorded).toContain("await prisma.$transaction(async (tx) => {")
-        expect(recorded).toContain("await lockMonths(tx, regularUser.companyId, [key])")
-        expect(recorded).toContain(`if ((await lockedMonths(tx, regularUser.companyId, [key])).size > 0) throw new Error("PAYROLL_MONTH_LOCKED")`)
-        expect(recorded).toContain("await SalaryHistoryService.record({")
-        expect(recorded).toContain("}, tx)")
-        expect(recorded).toContain("await tx.user.update({ where: { id }, data: { salary: updateData.salary } })")
-        expect(recorded.indexOf("lockedMonths(tx")).toBeLessThan(recorded.indexOf("SalaryHistoryService.record({"))
+    it("is written in the same transaction as the rest of their details, under the month's lock, refused there first", () => {
+        // A refusal, approval having won the race, saves nothing on the page (Codex review on PR 437).
+        expect(write).toContain("prisma.$transaction(async (tx) => {")
+        expect(write).toContain("}, LOCK_WAIT)")
+        const plan = service.slice(service.indexOf("const writeSalary = async (tx: Prisma.TransactionClient) => {"), service.indexOf("const updated = await (handOff"))
+        expect(plan).toContain("await lockMonths(tx, regularUser.companyId, [salaryPlan.month])")
+        expect(plan).toContain(`if ((await lockedMonths(tx, regularUser.companyId, [salaryPlan.month])).size > 0) throw new Error("PAYROLL_MONTH_LOCKED")`)
+        expect(plan).toContain("await SalaryHistoryService.record({")
+        expect(plan).toContain("}, tx)")
+        expect(write.indexOf("await writeSalary(tx)")).toBeGreaterThan(-1)
+        expect(write.indexOf("await writeSalary(tx)")).toBeLessThan(write.indexOf("tx.user.update("))
+        // With the salary, the set last, next month's too (DESIGN.md).
+        expect(write).toContain("data: kept ? { ...updateData, keptSession: kept } : updateData, select: writeSelect")
     })
 
-    it("isn't written with the rest of their details, which go first", () => {
-        expect(service).toContain("const rowData = { ...updateData }\n            delete rowData.salary")
-        expect(service).toContain("data: kept ? { ...rowData, keptSession: kept } : rowData, select: writeSelect")
-        expect(service).toContain("prisma.user.update({ where: { id }, data: rowData, select: writeSelect })")
-        expect(service).not.toMatch(/data: updateData, select: writeSelect|: updateData, select: writeSelect/)
+    it("is for the months the page named, refused where that's past, before anything is written", () => {
+        const planned = service.slice(service.indexOf("const salaryPlan = salaryMoved"), service.indexOf("const writeSalary"))
+        expect(planned).toContain("const named = input.salaryMonth ?? current")
+        expect(planned).toContain("const month = choice === 'NEXT_MONTH' ? monthAfter(named) : named")
+        expect(planned).toContain(`if (month !== current && month !== monthAfter(current)) throw new Error("SALARY_MONTH_PASSED")`)
+        expect(planned).toContain("effectiveFrom: effectiveFromChoice(now, month === current ? 'THIS_MONTH' : 'NEXT_MONTH', zone)")
+        expect(service.indexOf("const salaryPlan = salaryMoved")).toBeLessThan(service.indexOf("const updated = await (handOff"))
+    })
+
+    it("takes the month it's for from the page, as a month", () => {
+        const schema = stripComments(readFileSync("lib/validations/user.schema.ts", "utf8"))
+        expect(schema).toContain("salaryMonth: z.string().regex(/^\\d{4}-\\d{2}$/).optional(),")
     })
 })
 
@@ -182,6 +200,18 @@ describe("the Edit page, wired to it", () => {
         expect(payload).toContain("salaryEffective: salaryMoved ? salaryEffective : undefined,")
     })
 
+    it("sends the month its choice was shown for", () => {
+        const payload = FORM.slice(FORM.indexOf("method: 'PUT'"), FORM.indexOf("reassignReportsTo: reassignTo"))
+        expect(payload).toContain("salaryMonth: salaryMoved ? today.slice(0, 7) : undefined,")
+    })
+
+    it("names the new months, with nothing picked, once the month it named is past", () => {
+        const save = FORM.slice(FORM.indexOf("const executeSubmit"), FORM.indexOf("// Their role, as the form may change it"))
+        expect(FORM).toContain("const [openedAt, setOpenedAt] = useState(() => new Date())")
+        expect(save).toContain("if (answer?.code === 'SALARY_MONTH_PASSED') { setOpenedAt(new Date()); setSalaryEffective('') }")
+        expect(save.indexOf("answer?.code === 'SALARY_MONTH_PASSED'")).toBeLessThan(save.indexOf("const refused = refusedField(answer)"))
+    })
+
     it("picks nothing for them, and forgets the pick once the salary is put back", () => {
         expect(FORM).toContain("const [salaryEffective, setSalaryEffective] = useState('')")
         expect(FORM).toContain("if (field === 'salary' && !salaryChanged(value, savedSalary)) setSalaryEffective('')")
@@ -193,7 +223,7 @@ describe("the Edit page, wired to it", () => {
 })
 
 describe("its words", () => {
-    const KEYS = ["salary_effective_label", "salary_effective_this", "salary_effective_next", "salary_effective_required", "salary_effective_locked"] as const
+    const KEYS = ["salary_effective_label", "salary_effective_this", "salary_effective_next", "salary_effective_required", "salary_effective_locked", "salary_effective_month_passed"] as const
 
     it("are as DESIGN.md says them", () => {
         expect(en.salary_effective_label).toBe("Applies to")
@@ -201,6 +231,7 @@ describe("its words", () => {
         expect(en.salary_effective_next).toBe("Next month's payroll, from {date}")
         expect(en.salary_effective_required).toBe("Pick which payroll the new salary is for.")
         expect(en.salary_effective_locked).toBe("This month's payroll is approved, so the new salary can only be next month's.")
+        expect(en.salary_effective_month_passed).toBe("A new month has begun since this page was opened. Pick which payroll the new salary is for.")
     })
 
     it("are in Arabic, asking nothing in the masculine", () => {
