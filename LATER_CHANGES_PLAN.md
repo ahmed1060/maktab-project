@@ -17,9 +17,10 @@ Status: **the owner's points of 26 November (§7) decided; the contract
 start date and Recalculate on the Payroll page done (#425), and owners'
 mark, permission and pay (#426, step 3a), what they're not asked for
 (#427, step 3b1), only Admins as owners, given no new work (#428, step
-3b2), and the Owners list (#429, step 3c), so owners are done; payday
-and the attendance period (§7.10) next, then the limits on requests
-(§7.4); the names (§3) paused after step 8l (#424).** Done: the development database (§4),
+3b2), and the Owners list (#429, step 3c), so owners are done; clearer
+words on Exceptions (§7.11, proposed) next, then payday and the attendance
+period (§7.10), then the limits on requests (§7.4); the names (§3) paused
+after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their limit set
@@ -1559,14 +1560,16 @@ In three PRs, each whole on its own:
 1. The contract start date (§7.2), which also fixes §7.1's days.
 2. Recalculate on the Payroll page (§7.1).
 3. Owners (§7.3).
-4. Payday and the attendance period (§7.10), 10a to 10f, as the limits
+4. Clearer words on Exceptions (§7.11), once the owner has picked them:
+   one small PR.
+5. Payday and the attendance period (§7.10), 10a to 10f, as the limits
    on requests' first day follows the period.
-5. Limits on requests (§7.4): day off first, then permission hours and
+6. Limits on requests (§7.4): day off first, then permission hours and
    missions.
-6. Obligations with a client (§7.7).
-7. Salary advances (§7.5), Custody's new name first, once the owner has
+7. Obligations with a client (§7.7).
+8. Salary advances (§7.5), Custody's new name first, once the owner has
    reviewed §7.9.
-8. Rating finished work (§7.6): DESIGN.md first, then tasks, then
+9. Rating finished work (§7.6): DESIGN.md first, then tasks, then
    obligations.
 
 A step may take more than one PR.
@@ -1695,6 +1698,40 @@ approving a month early, and decided the same day.
     settlements.
   - **10f, Change this month's payday,** with this month's period, and
     Recalculate by the period.
+
+### 7.11 Clearer words on Exceptions (Proposed)
+
+Asked on 2026-11-27: Attendance's Exceptions tab names its two decisions
+"Excuse" and "Accept", which don't say what they do. In Arabic both start
+with قبول: «قبول العذر» and «قبول».
+
+- **What they do,** on Late / left early, Absent and Departure to confirm:
+  - **Excuse** asks why, then nothing of it is deducted, and it doesn't
+    count as one of the policy's times, so a later lateness is counted as
+    one fewer.
+  - **Accept** keeps what the policy deducts, none when it's a free time,
+    and it counts as one of the times. On Departure to confirm, it
+    confirms the early leave, which the policy then deducts.
+- **The words proposed,** for what they do, which stays as it is:
+
+  | Where | Now | Proposed |
+  |---|---|---|
+  | The first button | Excuse, «قبول العذر» | Don't deduct, «إعفاء من الخصم» |
+  | The second button | Accept, «قبول» | Deduct per policy, «خصم حسب السياسة» |
+  | Its dialog's title | Excuse | Don't deduct |
+  | Once done | Excused, Accepted | Not deducted, Deducted per policy |
+  | On Decided and in the audit log | Excused, Accepted as charged | Not deducted, Deducted per policy |
+  | Punch missing's button | Accept as it is, «قبول اليوم كما هو» | Present, no deduction, «حضور بدون خصم» |
+
+  - The dialog's line: "Not deducted, and not counted as one of the
+    policy's times. Say why; it's kept with the day and in the audit
+    log."
+  - The tab's line: "Only what needs a decision: don't deduct it, saying
+    why, or deduct it per policy. Either way it leaves the list, and
+    every decision can be undone while the month's payroll is open."
+  - Arabic in the same way, gender-neutral: «إعفاء من الخصم مع ذكر السبب،
+    أو الخصم حسب السياسة».
+- **One small PR,** words and their tests only, before 10a.
 
 ## Not here
 
@@ -2177,3 +2214,7 @@ approving a month early, and decided the same day.
 - **2026-11-27:** The live company's payday decided instead: day 1, in
   the month after, with the calendar month as its period, changed once
   10a has merged. §7.9 is back to one point.
+- **2026-11-27:** Clearer words on Exceptions (§7.11) proposed, at the
+  owner's ask: "Don't deduct" and "Deduct per policy" for Excuse and
+  Accept, and "Present, no deduction" for Accept as it is. One small PR,
+  before payday.
