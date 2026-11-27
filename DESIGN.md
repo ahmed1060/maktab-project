@@ -2434,7 +2434,13 @@ These are built once, in the building-blocks PR, and every page uses them
     the new salary is for." Put back to what it was, the choice goes.
   - With this month's payroll approved, the server refuses this month's,
     said under the choice: "This month's payroll is approved, so the new
-    salary can only be next month's."
+    salary can only be next month's." Refused, nothing on the page is
+    saved.
+  - The choice is for the months it names. Left open past the 1st, the
+    month it named is still saved where it's this month or next; one
+    that's past is refused, said under the choice: "A new month has begun
+    since this page was opened. Pick which payroll the new salary is
+    for.", with the new months named and neither picked.
   - The salary set last is theirs from the 1st of the month it's for: one
     entered before it and dated later gives way to it, a starting salary
     or one set for next month alike. So a payslip shows it as one line,
