@@ -1515,6 +1515,27 @@ In three PRs, each whole on its own:
       them (`LOCK_WAIT`), as approving does (Codex review on #431).
   - **4b, permission hours:** the policy's choice of when they may be
     asked for, as above, "around the day" as today unless changed.
+    - **As built:** the permission hours rules get `when`:
+      `AROUND_THE_DAY` (before, or within `afterTheFactHours` after, as
+      today) or `ANY_DAY`. A version saved before it reads as
+      `AROUND_THE_DAY`, so nothing is migrated. The policy in force today
+      decides, as for day off's months ahead. With `ANY_DAY`, the days are
+      day off's rule with one month ahead (`dayOffWindow`): from the later
+      of the 1st of last month and the day after the latest approved or
+      paid payroll's period, to today plus one month, today the
+      company's. Asking reads them holding the date's months' locks, so a
+      month approved meanwhile can't let a day through, and refuses a day
+      outside them with `PERMISSION_OUT_OF_RANGE` and the days, before
+      the date's months are checked as open; inside them, a day already
+      passed may be asked for, whatever its hours. With `AROUND_THE_DAY`
+      nothing changes. The day's balance (`/api/attendance/permissions/
+      balance`) sends the days, or none around the day, so the form's
+      calendar offers only them wherever it opens (Requests, a day on
+      Attendance, check-in), and a refusal says them under the date. The
+      policy's dialog asks it after Requests a month, the hours after
+      shown only around the day; the card says which. Day off's window is
+      read through one function with it (today, and the first day not
+      paid).
   - **4c, missions:** the policy's days back, 7 unless changed, which
     every version reads as 7 from then on.
 
@@ -2463,3 +2484,5 @@ with قبول: «قبول العذر» and «قبول».
 - **2026-11-27:** #432 merged. Every writer waits for a month's lock as
   long as an import may hold it, and a test keeps it so
   (ATTENDANCE_PLAN.md §12.1); permission hours (4b) next.
+- **2026-11-27:** Step 6 continues, 4b (permission hours): as built in
+  §7.4.
