@@ -1,7 +1,7 @@
 'use client'
 import { useEffect } from 'react'
 import Link from 'next/link'
-import { CircleHalfIcon, ListChecksIcon, PlusIcon, RepeatIcon, SortAscendingIcon, UserCheckIcon, UserIcon } from '@phosphor-icons/react/ssr'
+import { CircleHalfIcon, ListChecksIcon, PlusIcon, RepeatIcon, SortAscendingIcon, StorefrontIcon, UserCheckIcon, UserIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { personName, type PersonNames } from '@/lib/names'
 import { useModules } from '@/lib/useModules'
@@ -11,10 +11,14 @@ import { RECURRENCE_STYLE } from '@/lib/recurrence'
 import { useFadingHighlight } from '@/lib/useFadingHighlight'
 import type { TranslationKey } from '@/lib/translations'
 import { decidedByName } from '@/lib/decided-by'
+import { clientName, type ClientName } from '@/lib/client-list'
 import SafeDate from '@/components/SafeDate'
 import DateRangePicker from '@/components/DateRangePicker'
 import { useListAddress, useSearchField } from '@/components/filters/useListAddress'
 import { useEmployeeOptions } from '@/components/filters/useEmployeeOptions'
+import { pickExtra } from '@/components/filters/extra-filters'
+import ExtraFilterSelects from '@/components/filters/ExtraFilterSelects'
+import { usePlaceFilters } from '@/components/locations/usePlaceFilters'
 import {
     Button, ButtonLink, DataList, DueDate, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, Person,
     SearchInput, Select, StatusBadge, taskStatusTone, visibleRow, type Column,
@@ -34,6 +38,8 @@ type ObligationRow = {
     /** Who approved, completed or rejected it. */
     lastStatusUpdateBy?: string | null
     assignees: ({ id: string } & PersonNames)[]
+    /** The client it's done for, in both languages (LATER_CHANGES_PLAN.md §7.7, 7a). */
+    client?: ClientName | null
 }
 
 interface ObligationsClientProps {
@@ -83,14 +89,18 @@ export default function ObligationsClient({ obligations, total, page, totalPages
         dateFrom: picked.get('dateFrom') || '',
         dateTo: picked.get('dateTo') || '',
         search: picked.get('search') || '',
+        clientId: picked.get('clientId') || '',
     }
+    // Its client, or none, for whoever may see clients (LATER_CHANGES_PLAN.md §7.7, 7a).
+    const clientFilter = usePlaceFilters({ clientId: filters.clientId })
+    const pickFilter = (key: string, value: string) => go(pickExtra(clientFilter, { clientId: filters.clientId }, key, value))
     const employeeOptions = useEmployeeOptions(!ownObligationsOnly)
     const { query, setQuery, clear } = useSearchField(filters.search, go)
 
-    const filtersOn = ownObligationsOnly ? 0 : (filters.employeeId ? 1 : 0) + (filters.status ? 1 : 0) + (filters.dateFrom || filters.dateTo ? 1 : 0)
+    const filtersOn = ownObligationsOnly ? 0 : (filters.employeeId ? 1 : 0) + (filters.status ? 1 : 0) + (filters.dateFrom || filters.dateTo ? 1 : 0) + clientFilter.filter(f => f.value).length
     const resetFilters = () => {
         clear()
-        go({ employeeId: '', status: '', dateFrom: '', dateTo: '', search: '', sortBy: '', sortOrder: '' })
+        go({ employeeId: '', status: '', dateFrom: '', dateTo: '', search: '', clientId: '', sortBy: '', sortOrder: '' })
     }
 
     const sortParam = `${picked.get('sortBy') || 'smart'}_${picked.get('sortOrder') || 'asc'}`
@@ -122,6 +132,8 @@ export default function ObligationsClient({ obligations, total, page, totalPages
     // In the page's language, or the one they have (PR 415).
     const names = (o: ObligationRow) => o.assignees.map(a => personName(a, locale))
     const who = (o: ObligationRow) => <Person names={names(o)} moreLabel={n => `+${n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')}`} />
+    // Its client in the page's language, or the one it has.
+    const client = (o: ObligationRow) => o.client ? clientName(o.client, locale) : undefined
     // How often it comes round; one from before recurrence has none to say.
     const recurs = (o: ObligationRow) => {
         const style = o.recurrence ? RECURRENCE_STYLE[o.recurrence] : undefined
@@ -144,7 +156,7 @@ export default function ObligationsClient({ obligations, total, page, totalPages
     }
 
     const columns: Column<ObligationRow>[] = [
-        { key: 'obligation', header: t('obligations_col_obligation'), cell: o => <ItemTitle title={title(o)} detail={recurs(o)} detailIcon={RepeatIcon} /> },
+        { key: 'obligation', header: t('obligations_col_obligation'), cell: o => <ItemTitle title={title(o)} details={[...(client(o) ? [{ icon: StorefrontIcon, text: <bdi>{client(o)}</bdi> }] : []), ...(recurs(o) ? [{ icon: RepeatIcon, text: recurs(o) }] : [])]} /> },
         { key: 'who', header: t('assignees_label'), cell: who },
         { key: 'deadline', header: t('deadline_label'), cell: due },
         { key: 'points', header: t('difficulty'), cell: points },
@@ -189,6 +201,7 @@ export default function ObligationsClient({ obligations, total, page, totalPages
                             <Select {...p} icon={CircleHalfIcon} value={filters.status} onChange={e => go({ status: e.target.value })}
                                 options={[{ value: '', label: t('all_statuses') }, ...STATUSES.map(s => ({ value: s, label: t(`status_${s.toLowerCase()}` as TranslationKey) }))]} />
                         )}</Field>
+                        <ExtraFilterSelects filters={clientFilter} onPick={pickFilter} />
                         <DateRangePicker hideLabel dateFrom={filters.dateFrom} dateTo={filters.dateTo} onChange={(dateFrom, dateTo) => go({ dateFrom, dateTo })} />
                         <Field label={t('sort_by')} hideLabel>{p => (
                             <Select {...p} icon={SortAscendingIcon} value={sortKey} onChange={e => { const [by, order] = e.target.value.split('_'); go({ sortBy: by, sortOrder: order, page: String(page) }) }}
@@ -209,6 +222,7 @@ export default function ObligationsClient({ obligations, total, page, totalPages
                         title={title(o)}
                         status={badge(o)}
                         details={[
+                            ...(client(o) ? [{ icon: StorefrontIcon, text: <bdi>{client(o)}</bdi> }] : []),
                             ...(recurs(o) ? [{ icon: RepeatIcon, text: recurs(o) }] : []),
                             { icon: UserIcon, text: <span>{t('assignees_label')}: <bdi>{names(o).join(locale === 'ar' ? '، ' : ', ')}</bdi></span> },
                             ...(decidedBy(o) ? [{ icon: UserCheckIcon, text: <bdi>{decidedBy(o)}</bdi> }] : []),

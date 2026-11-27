@@ -5,6 +5,7 @@ import { scopesToTeam } from "@/lib/team-scope"
 import { isTeamWork } from "@/lib/security"
 import { checkAssignees } from "./assignee-guard"
 import { holdAssignees } from "./owner.service"
+import { clientFor, holdClientInUse } from "./client-in-use"
 import type { Prisma } from "@prisma/client"
 import { nextOccurrence } from "@/lib/recurrence"
 import { CreateObligationInput } from "../validations/obligation.schema"
@@ -66,7 +67,7 @@ export class ObligationService {
     static async create(input: CreateObligationInput, session: any) {
         const userRole = session.user.role
         const creatorCompanyId = (session.user as any).companyId
-        const { title, description, assigneeIds, deadline, recurrence, difficulty, attachments } = input
+        const { title, description, assigneeIds, deadline, recurrence, difficulty, attachments, clientId } = input
 
         if (!can(session.user, "obligations.create")) throw new Error("EMPLOYEES_CANNOT_CREATE_OBLIGATIONS")
 
@@ -98,14 +99,22 @@ export class ObligationService {
             if (firstAssignee) targetCompanyId = firstAssignee.companyId
         }
 
-        // 3. Create, for no owner, held so none is marked one meanwhile (§7.3, step 3b2, PR 428).
+        // Its client, optional, as a task's is (LATER_CHANGES_PLAN.md §7.7,
+        // 7a): there, the obligation's company's, and not archived.
+        const resolvedClientId = clientId ? await clientFor(clientId, targetCompanyId) : null
+
+        // 3. Create, for no owner, held so none is marked one meanwhile (§7.3,
+        // step 3b2, PR 428), and its client held until it's written, so one
+        // archived meanwhile is refused.
         return await prisma.$transaction(async (tx) => {
             if ((await holdAssignees(tx, assigneeIds)).size > 0) throw new Error("ASSIGNEE_IS_OWNER")
+            if (resolvedClientId) await holdClientInUse(tx, resolvedClientId)
             return tx.obligation.create({
                 data: {
                     title,
                     description,
                     companyId: targetCompanyId,
+                    clientId: resolvedClientId,
                     assignees: {
                         connect: assigneeIds.map(id => ({ id }))
                     },
@@ -448,6 +457,9 @@ export class ObligationService {
                         deadline: nextDeadline,
                         recurrence: obl.recurrence,
                         difficulty: obl.difficulty,
+                        // Its client, archived since or not, so it's still
+                        // clear whose it is (LATER_CHANGES_PLAN.md §7.7, 7a).
+                        clientId: obl.clientId,
                         status: 'PENDING',
                         attachments: null,
                         assignees: {

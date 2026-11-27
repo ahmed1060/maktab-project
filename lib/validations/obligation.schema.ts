@@ -9,6 +9,8 @@ export const createObligationSchema = z.object({
     recurrence: z.enum(['ONE_TIME', 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY']).optional().default('ONE_TIME'),
     difficulty: z.coerce.number().min(0).max(10).optional().default(0),
     attachments: z.any().optional(),
+    // The client it's done for, or none (LATER_CHANGES_PLAN.md §7.7, 7a).
+    clientId: z.string().min(1).nullish(),
 })
 
 export const updateObligationSchema = partialWithoutDefaults(createObligationSchema).extend({

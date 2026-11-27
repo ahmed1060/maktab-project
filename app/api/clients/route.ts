@@ -72,7 +72,7 @@ export const GET = withStandardHandler(async (req, session) => {
             // Whether deleting it archives it instead: it has tasks or
             // records, a tax position, or people who can sign in
             // (CLIENT_PORTAL_PLAN.md §3.6).
-            _count: { select: { tasks: true, taxClaims: true, accounts: true } },
+            _count: { select: { tasks: true, obligations: true, taxClaims: true, accounts: true } },
             recordSections: { where: { records: { some: {} } }, select: { id: true }, take: 1 },
             taxPosition: { select: { clientId: true, asOf: true } },
             // createdBy is null for a Super-Admin-created client (the FK
@@ -93,8 +93,8 @@ export const GET = withStandardHandler(async (req, session) => {
 
     return ApiResponse.success(clients.map(({ _count, recordSections, taxPosition, ...client }) => ({
         ...client,
-        // Held by its tasks or records: it stays in the archive.
-        inUse: _count.tasks > 0 || recordSections.length > 0,
+        // Held by its tasks, obligations or records: it stays in the archive.
+        inUse: _count.tasks > 0 || _count.obligations > 0 || recordSections.length > 0,
         // A file uploaded for it, with claims open or none.
         ...(deletes ? { hasTax: _count.taxClaims > 0 || !!taxPosition } : {}),
         ...(seesTax ? { taxClaims: _count.taxClaims } : {}),

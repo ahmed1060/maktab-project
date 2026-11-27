@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
-import { PlusIcon } from '@phosphor-icons/react/ssr'
+import { PlusIcon, StorefrontIcon } from '@phosphor-icons/react/ssr'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import DateTimePicker from '@/components/DateTimePicker'
@@ -15,14 +15,17 @@ import { fetchRetrying } from '@/lib/swr-fetcher'
 import { useModules } from '@/lib/useModules'
 import { firstError } from '@/lib/form-errors'
 import AssigneeChecklist, { assigneesByRole } from '@/components/forms/AssigneeChecklist'
-import { Button, ButtonLink, Card, Choice, Field, Page, PageHeader, TextArea, TextInput } from '@/components/ui'
+import { useClientOptions } from '@/components/locations/useClientOptions'
+import { Button, ButtonLink, Card, Choice, Field, Page, PageHeader, Select, TextArea, TextInput } from '@/components/ui'
 
 /** The longest an obligation's title and description may be, as this form takes them. */
 const TITLE_MAX = 100
 const DESCRIPTION_MAX = 500
 /** Its fields in the order they're in, for the first one wrong to take the focus. */
-const FIELDS = ['title', 'description', 'assigneeIds', 'deadline', 'difficulty'] as const
+const FIELDS = ['title', 'description', 'clientId', 'assigneeIds', 'deadline', 'difficulty'] as const
 const RECURRENCES = ['ONE_TIME', 'DAILY', 'WEEKLY', 'MONTHLY'] as const
+/** The server's refusals of its client, said under the select (LATER_CHANGES_PLAN.md §7.7, 7a). */
+const CLIENT_REFUSALS = ['CLIENT_NOT_FOUND', 'CROSS_COMPANY_CLIENT_FORBIDDEN', 'CLIENT_ARCHIVED']
 
 export default function NewObligationPage() {
     const { t, locale } = useLanguage()
@@ -32,6 +35,7 @@ export default function NewObligationPage() {
     const now = useNow()
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
+    const [clientId, setClientId] = useState('')
     const [assigneeIds, setAssigneeIds] = useState<string[]>([])
     const [deadline, setDeadline] = useState('')
     const [difficulty, setDifficulty] = useState('')
@@ -54,6 +58,12 @@ export default function NewObligationPage() {
     // them); anyone else reaching this address by hand is told so, rather
     // than asking for a colleague list they may not read.
     const mayCreate = useCan().can('obligations.create')
+    // Its client, for whoever may see clients, as a task's is
+    // (LATER_CHANGES_PLAN.md §7.7, 7a); a Super Admin's once a company is
+    // picked. Only those in use: an archived client takes no new work.
+    const superAdmin = (session?.user as { role?: string } | undefined)?.role === 'SUPER_ADMIN'
+    const seesClients = useCan().can('clients.view') && !(superAdmin && !selectedCompanyId)
+    const clients = useClientOptions(mayCreate && seesClients)
 
     useEffect(() => {
         if (!mayCreate) return
@@ -77,10 +87,16 @@ export default function NewObligationPage() {
     const [error, setError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({})
     const [isSubmitting, setIsSubmitting] = useState(false)
+    // A refusal of its client moves the focus to its select once the form
+    // can be used again: while it's being sent, the select is off.
+    const [clientRefused, setClientRefused] = useState(0)
+    useEffect(() => {
+        if (clientRefused) document.querySelector<HTMLElement>('#field-clientId select')?.focus()
+    }, [clientRefused])
 
     // Reloading or closing the tab with something typed asks first, as it
     // would lose it; not once it's being sent (Vercel's web interface audit).
-    const started = !!(title || description || assigneeIds.length || deadline || difficulty || recurrence !== 'ONE_TIME')
+    const started = !!(title || description || clientId || assigneeIds.length || deadline || difficulty || recurrence !== 'ONE_TIME')
     useEffect(() => {
         if (!started || isSubmitting) return
         const warn = (e: BeforeUnloadEvent) => { e.preventDefault() }
@@ -131,6 +147,7 @@ export default function NewObligationPage() {
                 body: JSON.stringify({
                     title,
                     description,
+                    clientId: clientId || null,
                     assigneeIds,
                     deadline,
                     difficulty: parseInt(difficulty) || 0,
@@ -142,6 +159,17 @@ export default function NewObligationPage() {
 
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}))
+                // Its client archived or gone meanwhile is said under the
+                // select, which takes the focus, and the list is asked again.
+                // It's taken off, so the select shows what would be sent.
+                if (CLIENT_REFUSALS.includes(data.code)) {
+                    setClientId('')
+                    setFieldErrors({ clientId: t('obligation_client_refused') })
+                    setIsSubmitting(false)
+                    clients.retry()
+                    setClientRefused(n => n + 1)
+                    return
+                }
                 // data.error is always a plain string; data.details (when
                 // present) is a raw Zod .format() object and must never be
                 // used as the message itself — stringifying it renders as
@@ -182,6 +210,30 @@ export default function NewObligationPage() {
                                 onChange={e => { setDescription(e.target.value); clearError('description') }} />
                         )}</Field>
                     </div>
+                    {/* The client it's done for, optional (DESIGN.md §5.5, An obligation's client). */}
+                    {seesClients && (
+                        <div id="field-clientId">
+                            {clients.failed
+                                ? (
+                                    <div className="ui-field">
+                                        <span className="ui-label">{t('location_client')}</span>
+                                        <span className="ui-error" role="alert">{t('records_clients_failed')}</span>
+                                        {/* Its own width, not the field's. */}
+                                        <div><Button busy={clients.retrying} onClick={clients.retry}>{t('try_again')}</Button></div>
+                                    </div>
+                                )
+                                : (
+                                    <Field label={t('location_client')} hint={clients.loading ? t('loading') : t('obligation_client_hint')} error={fieldErrors.clientId || undefined}>{p => (
+                                        <Select {...p} icon={StorefrontIcon} name="clientId" value={clientId} disabled={isSubmitting || clients.loading}
+                                            onChange={e => { setClientId(e.target.value); clearError('clientId') }}
+                                            options={[
+                                                { value: '', label: t('task_no_client') },
+                                                ...clients.clients.filter(c => !c.archived).map(c => ({ value: c.id, label: c.name })),
+                                            ]} />
+                                    )}</Field>
+                                )}
+                        </div>
+                    )}
                     {/* Who it's for: as many as it needs, found by name (DESIGN.md §5.3). */}
                     <AssigneeChecklist
                         id="field-assigneeIds"

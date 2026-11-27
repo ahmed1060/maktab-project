@@ -93,12 +93,17 @@ export function DataList<T>({ caption, columns, rows, rowKey, card, tone, arrive
     )
 }
 
-/** The first column: the item's title, and one detail line below it with its icon. */
-export function ItemTitle({ title, detail, detailIcon }: { title: ReactNode; detail?: ReactNode; detailIcon?: PhosphorIcon }) {
+/**
+ * The first column: the item's title, and a detail line below it with its
+ * icon, or several, each a line with its own, such as an obligation's client
+ * and how often it comes round (DESIGN.md §5.4).
+ */
+export function ItemTitle({ title, detail, detailIcon, details = [] }: { title: ReactNode; detail?: ReactNode; detailIcon?: PhosphorIcon; details?: { icon: PhosphorIcon; text: ReactNode }[] }) {
     return (
         <>
             <div className="ui-item-title">{title}</div>
             {detail && <div className="ui-item-detail">{detailIcon && <Icon icon={detailIcon} size={16} />}{detail}</div>}
+            {details.map((d, i) => <div key={i} className="ui-item-detail"><Icon icon={d.icon} size={16} />{d.text}</div>)}
         </>
     )
 }

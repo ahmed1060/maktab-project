@@ -115,7 +115,7 @@ export class ClientService {
      * archived whatever it holds now: archiving is what was confirmed, and it
      * can be undone where deleting can't.
      *
-     * With `forGood`, an archived client that no task or record holds is
+     * With `forGood`, an archived client that no task, obligation or record holds is
      * deleted, its tax position going with it: the second step, and from the
      * archive only.
      */
@@ -132,7 +132,7 @@ export class ClientService {
 
         const { AuditLogService } = await import("./audit-log.service")
         const result = await prisma.$transaction(async tx => {
-            // One with tasks or records is archived instead (CLIENTS_PLAN.md
+            // One with tasks, obligations or records is archived instead (CLIENTS_PLAN.md
             // §4.3): its records would go with it, licences, contracts and
             // their files, and its tasks would lose it. Its row is held first,
             // so a record or task being added meanwhile is counted, or finds
@@ -142,7 +142,9 @@ export class ClientService {
             // One after another: a transaction has one connection.
             const records = await tx.clientRecord.count({ where: { section: { clientId: id } } })
             const tasks = await tx.task.count({ where: { clientId: id } })
-            const held = records > 0 || tasks > 0
+            // Its obligations too, which would lose it (LATER_CHANGES_PLAN.md §7.7, 7a).
+            const obligations = await tx.obligation.count({ where: { clientId: id } })
+            const held = records > 0 || tasks > 0 || obligations > 0
             // Its tax position is as much its history as its records are: a
             // file uploaded for it, with claims open or none
             // (CLIENT_PORTAL_PLAN.md §3.6).
@@ -159,7 +161,7 @@ export class ClientService {
             const mover = { id: userId, name: session.user.name, role: userRole }
             if (options.forGood) {
                 // From the archive only, so deleting for good is always a
-                // second step; and never one that tasks or records hold, whose
+                // second step; and never one that tasks, obligations or records hold, whose
                 // records would go with it and whose tasks would lose it.
                 if (!locked[0].archivedAt) throw new Error("CLIENT_NOT_ARCHIVED")
                 if (held) throw new Error("CLIENT_IN_USE")
@@ -182,9 +184,9 @@ export class ClientService {
                     tx,
                     userId: userRole !== 'SUPER_ADMIN' ? userId : null,
                     superAdminId: userRole === 'SUPER_ADMIN' ? userId : null,
-                    details: { name: client.name, records, tasks, ...(hasTax ? { claims } : {}), ...(people ? { people } : {}) }
+                    details: { name: client.name, records, tasks, ...(obligations ? { obligations } : {}), ...(hasTax ? { claims } : {}), ...(people ? { people } : {}) }
                 })
-                // Kept for its tax position alone, where no task or record
+                // Kept for its tax position alone, where no task, obligation or record
                 // holds it; or for its people alone, where nothing else does.
                 return { ...archived, archived: true as const, forTax: !held && hasTax, forPeople: !held && !hasTax && people > 0 }
             }

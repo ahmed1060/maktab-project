@@ -28,7 +28,9 @@ export default async function ObligationDetailPage(props: { params: Promise<{ id
             // Each name in Arabic too, for the page's language (PR 415).
             assignees: {
                 select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, status: true }
-            }
+            },
+            // Its client, in both languages (LATER_CHANGES_PLAN.md §7.7, 7a).
+            client: { select: { name: true, nameAr: true } },
         }
     })
 

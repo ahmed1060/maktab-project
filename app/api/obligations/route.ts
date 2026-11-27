@@ -7,6 +7,7 @@ import { assignedToTeamWhere, and } from "@/lib/team-scope"
 import { grantFor } from "@/lib/permissions/can"
 import { parsePaging } from "@/lib/pagination"
 import { dayRangeIn } from "@/lib/services/filter-zone"
+import { placeFilters } from "@/lib/place-filters"
 
 export const GET = withStandardHandler(async (req, session) => {
     const userId = (session.user as any).id
@@ -52,6 +53,10 @@ export const GET = withStandardHandler(async (req, session) => {
     }
 
     if (statusFilter) whereClause.status = statusFilter
+
+    // Its client, or none (LATER_CHANGES_PLAN.md §7.7, 7a): narrowing what's
+    // in scope, never widening it, and not for someone who sees only their own.
+    if (reach !== null) for (const narrower of placeFilters(searchParams.get('clientId'))) and(whereClause, narrower)
 
     if (searchFilter) {
         whereClause.AND = whereClause.AND || []
@@ -109,6 +114,10 @@ export const POST = withStandardHandler(async (req, session, json) => {
         if (error.message === 'CROSS_COMPANY_ASSIGNMENT_FORBIDDEN') return ApiResponse.forbidden("Cannot assign obligations across companies")
         if (error.message === 'TEAM_LEADER_CANNOT_ASSIGN_TO_ADMIN') return ApiResponse.forbidden("Team Leaders cannot assign obligations to Admins")
         if (error.message === 'TEAM_LEADER_CANNOT_ASSIGN_OUTSIDE_TEAM') return ApiResponse.forbidden("Team Leaders can only assign obligations to their own team")
+        // Its client, with the code, for the form to say under the select
+        // (LATER_CHANGES_PLAN.md §7.7, 7a); archived is answered as a known refusal.
+        if (error.message === 'CLIENT_NOT_FOUND') return ApiResponse.refused(404, "That client isn't there any more.", error.message)
+        if (error.message === 'CROSS_COMPANY_CLIENT_FORBIDDEN') return ApiResponse.refused(403, "Cannot use a client from a different company", error.message)
 
         throw error
     }

@@ -23,7 +23,7 @@ describe("the clients route", () => {
     })
 
     it("says of each client whether it has a tax position, apart from its tasks and records, to whoever may delete it", () => {
-        expect(route).toContain("inUse: _count.tasks > 0 || recordSections.length > 0")
+        expect(route).toContain("inUse: _count.tasks > 0 || _count.obligations > 0 || recordSections.length > 0")
         expect(route).toContain(`const deletes = can(session.user, "clients.delete")`)
         expect(route).toContain("...(deletes ? { hasTax: _count.taxClaims > 0 || !!taxPosition } : {})")
     })
@@ -34,7 +34,7 @@ describe("the clients route", () => {
     })
 
     it("says whether it has people who can sign in to whoever may delete it, and how many to those of them who may manage who signs in (PR 329)", () => {
-        expect(route).toContain("_count: { select: { tasks: true, taxClaims: true, accounts: true } }")
+        expect(route).toContain("_count: { select: { tasks: true, obligations: true, taxClaims: true, accounts: true } }")
         expect(route).toContain("...(deletes ? { hasPeople: _count.accounts > 0 } : {})")
         expect(route).toContain(`const seesPeople = deletes && can(session.user, "client_accounts.view") && sessionHasModule(session, "TAX_POSITION")`)
         expect(route).toContain("...(seesPeople ? { people: _count.accounts } : {})")
@@ -47,7 +47,7 @@ describe("the clients route", () => {
     it("answers its two refusals as ones the person can act on, not as a fault", () => {
         expect(knownRefusal(new Error("CLIENT_NOT_ARCHIVED"))).toMatchObject({ status: 409 })
         expect(knownRefusal(new Error("CLIENT_IN_USE"))).toMatchObject({ status: 409 })
-        expect(knownRefusal(new Error("CLIENT_IN_USE"))?.message).toMatch(/tasks or records/)
+        expect(knownRefusal(new Error("CLIENT_IN_USE"))?.message).toMatch(/tasks, obligations or records/)
     })
 })
 

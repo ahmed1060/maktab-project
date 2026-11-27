@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto"
 import { prisma } from "@/lib/prisma"
-import type { Prisma } from "@prisma/client"
 import { noticeRow } from "@/lib/notice-row"
 import { roleKindParam } from "@/lib/notice"
 import { can, canCompanyWide } from "@/lib/permissions/can"
 import { scopesToTeam, assignedToTeamWhere, and } from "@/lib/team-scope"
 import { checkAssignees } from "./assignee-guard"
 import { holdAssignees } from "./owner.service"
+import { clientFor, holdClientInUse } from "./client-in-use"
 import { CreateTaskInput, UpdateTaskInput } from "../validations/task.schema"
 import { extractCoords, extractAccuracy, locationVerdict } from "@/lib/location"
 import { supabase } from "@/lib/storage"
@@ -49,17 +49,6 @@ function nameOf(text: string | null): string | null {
         if (parsed && typeof parsed.name === "string") return parsed.name
     } catch { /* plain text */ }
     return text
-}
-
-/**
- * A task's client, held until the task is written, as archiving holds it
- * (CLIENTS_PLAN.md §4.3): one archived meanwhile is seen here, and takes no
- * new work.
- */
-async function holdClientInUse(tx: Prisma.TransactionClient, clientId: string) {
-    const [held] = await tx.$queryRaw<{ archived: boolean }[]>`SELECT "archivedAt" IS NOT NULL AS archived FROM "Client" WHERE id = ${clientId} FOR SHARE`
-    if (!held) throw new Error("CLIENT_NOT_FOUND")
-    if (held.archived) throw new Error("CLIENT_ARCHIVED")
 }
 
 /**
@@ -129,15 +118,8 @@ export class TaskService {
 
         // The client, optional, and the location, its client's or a shared
         // one, each the task's company's.
-        let resolvedClientId: string | null = null
-        if (clientId) {
-            const client = await prisma.client.findUnique({ where: { id: clientId }, select: { id: true, companyId: true, archivedAt: true } })
-            if (!client) throw new Error("CLIENT_NOT_FOUND")
-            if (client.companyId !== targetCompanyId) throw new Error("CROSS_COMPANY_CLIENT_FORBIDDEN")
-            // An archived client takes no new work (CLIENTS_PLAN.md §4.3).
-            if (client.archivedAt) throw new Error("CLIENT_ARCHIVED")
-            resolvedClientId = client.id
-        }
+        // An archived client takes no new work (CLIENTS_PLAN.md §4.3).
+        const resolvedClientId = clientId ? await clientFor(clientId, targetCompanyId) : null
 
         // 3. Database Transaction: for no owner, the Super Admin's too,
         // held so none is marked one meanwhile (§7.3, step 3b2, PR 428).

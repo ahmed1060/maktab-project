@@ -1005,10 +1005,14 @@ model Obligation {
   // always means Super Admin, the way it safely can for Task/Client.
   createdById        String?
   createdBy          User?                @relation("ObligationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  /// The client it's done for, optional, as a task's is (LATER_CHANGES_PLAN.md §7.7, 7a).
+  clientId           String?
+  client             Client?              @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([companyId])
   @@index([createdAt])
+  @@index([clientId])
 }
 
 model SalaryRecord {
@@ -1287,7 +1291,7 @@ model Client {
   locationName String
   locationLink String?
   createdById  String?
-  /// Archived instead of deleted, as it has tasks or records (CLIENTS_PLAN.md
+  /// Archived instead of deleted, as it has tasks, obligations or records (CLIENTS_PLAN.md
   /// §4.3): left out of what's picked from, kept in filters and history.
   archivedAt   DateTime?
   createdAt    DateTime @default(now())
@@ -1295,6 +1299,8 @@ model Client {
   company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdBy    User?    @relation("ClientCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   tasks        Task[]
+  /// Obligations done for it (LATER_CHANGES_PLAN.md §7.7, 7a).
+  obligations  Obligation[]
   /// Cash advance money given for it (CLIENTS_PLAN.md §7.9).
   advancesFor  CashAdvanceEntry[]
   /// Its records, in sections (CLIENTS_PLAN.md §0.2).
