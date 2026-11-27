@@ -123,6 +123,10 @@ export const PERMISSIONS = {
     // Marking someone as an owner, or taking it off (LATER_CHANGES_PLAN.md §7.3, PR 426): from the month
     // marked, no payslip and no attendance days.
     "employees.set_owner": { code: 94, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"], notOnOwn: true, highRisk: "Affects pay" },
+    // Answering access reviews (LATER_CHANGES_PLAN.md §7.15, PR 439; ROLES_PLAN.md §6.14): the company's
+    // reviews, a line confirmed or a change asked for, and being told when one opens. It was Assign roles'.
+    // Nobody answers their own line, which AccessReviewService.answer keeps.
+    "employees.review_access": { code: 95, module: "EMPLOYEES", scopes: COMPANY, implies: ["employees.view"] },
 
     // --- Profile requests and internal requests ---------------------------
     "profile_requests.review":  { code: 11, module: "PROFILE_REQUESTS", scopes: COMPANY, notOnOwn: true },
@@ -397,8 +401,11 @@ export type Permission = keyof typeof PERMISSIONS
  *
  * 15: employees.set_owner (code 94, LATER_CHANGES_PLAN.md §7.3, PR 426), the
  * same way.
+ *
+ * 16: employees.review_access (code 95, LATER_CHANGES_PLAN.md §7.15, PR 439),
+ * which its own migration gives every role holding employees.assign_role.
  */
-export const CATALOGUE_VERSION = 15
+export const CATALOGUE_VERSION = 16
 
 /**
  * Permissions that no longer exist, by name, with the code each had: never

@@ -67,6 +67,16 @@ function renamed(): Record<string, string> {
     }
 }
 
+// A later one giving a permission to every role holding another, the built-in
+// ones among them: Answer access reviews, to whoever has Assign roles
+// (LATER_CHANGES_PLAN.md §7.15, PR 439). Read out of its SQL too.
+const GIVEN_TO_HOLDERS = (() => {
+    const sql = readFileSync("prisma/migrations/20270127000000_access_review_permission/migration.sql", "utf8")
+    const given = sql.match(/SELECT g\."roleId", '([a-z_.]+)', '(\w+)'::"PermissionScope"\s+FROM "RoleGrant" g WHERE g\."permission" = '([a-z_.]+)'/)
+    if (!given) throw new Error("the access review migration's grant wasn't found")
+    return [{ permission: given[1], scope: given[2], holding: given[3] }]
+})()
+
 function seeded(): Record<string, Record<string, string>> {
     const out: Record<string, Record<string, string>> = {}
     const rename = renamed()
@@ -76,6 +86,7 @@ function seeded(): Record<string, Record<string, string>> {
             ;(out[role] ??= {})[rename[permission] ?? permission] = scope
         }
     }
+    for (const grants of Object.values(out)) for (const { permission, scope, holding } of GIVEN_TO_HOLDERS) if (grants[holding]) grants[permission] = scope
     return out
 }
 

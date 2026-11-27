@@ -81,6 +81,10 @@ export const BUILT_IN_GRANTS: Record<BuiltInRole, Grants> = {
         // already are by its own migration.
         "employees.edit_contract_start": "COMPANY",
         "employees.set_owner": "COMPANY",
+        // Answering access reviews, Assign roles' until PR 439
+        // (LATER_CHANGES_PLAN.md §7.15). Its migration gives it to every role
+        // that holds Assign roles.
+        "employees.review_access": "COMPANY",
         "salary.edit": "COMPANY",
 
         // Tasks: an Admin creates, edits, transfers, reviews, deletes, pays

@@ -3732,6 +3732,7 @@ export const en = {
         perm_employees_request_role: "Request role changes",
         perm_employees_edit_contract_start: "Change contract start dates",
         perm_employees_set_owner: "Set owners",
+        perm_employees_review_access: "Answer access reviews",
         perm_profile_requests_review: "Review profile change requests",
         perm_requests_view: "See requests",
         perm_requests_review: "Review requests",

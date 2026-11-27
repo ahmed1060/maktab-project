@@ -12,10 +12,13 @@ import type { Prisma, UserRole } from "@prisma/client"
  * Off unless the Super Admin switches it on for a company, as part of its
  * contract — the company cannot, since a review the reviewed can switch off is
  * not much of a review. When on, every few months a review opens: who holds
- * each sensitive permission, a line each, for the company's Admins to confirm
- * or ask to change. Nobody answers their own line; the Super Admin can answer
- * any. Asking to change one becomes a role change request to the Super Admin
- * (§6.9), the channel roles already change through. Reviews are kept.
+ * each sensitive permission, a line each, to confirm or ask to change, for
+ * whoever holds employees.review_access, Answer access reviews: the company's
+ * Admins, and every role that held Assign roles, which it was until PR 439
+ * (LATER_CHANGES_PLAN.md §7.15). Nobody answers their own line; the Super
+ * Admin can answer any. Asking to change one becomes a role change request to
+ * the Super Admin (§6.9), the channel roles already change through, whoever
+ * asks. Reviews are kept.
  */
 
 /** The permissions reviewed: salaries, payroll approval, role assignment. */
@@ -114,7 +117,7 @@ export class AccessReviewService {
         })
         if (lines.length > 0) {
             const deciders = await prisma.user.findMany({
-                where: { companyId, status: { in: [...AT_WORK] }, ...holdersOf("employees.assign_role") },
+                where: { companyId, status: { in: [...AT_WORK] }, ...holdersOf("employees.review_access") },
                 select: { id: true },
             })
             const { NotificationService } = await import("./notification.service")
@@ -153,7 +156,7 @@ export class AccessReviewService {
         if (session.user.role === "SUPER_ADMIN") {
             if (filter.companyId) where.companyId = filter.companyId
         } else {
-            if (!session.user.companyId || !can(session.user, "employees.assign_role")) throw new Error("FORBIDDEN")
+            if (!session.user.companyId || !can(session.user, "employees.review_access")) throw new Error("FORBIDDEN")
             where.companyId = session.user.companyId
         }
         return withBuiltIn(await prisma.accessReview.findMany({ where, select: SHAPE, orderBy: { createdAt: "desc" }, take: 50 }))
@@ -175,7 +178,7 @@ export class AccessReviewService {
         })
         if (!line) throw new Error("LINE_NOT_FOUND")
         const superAdmin = actor.role === "SUPER_ADMIN"
-        if (!superAdmin && (actor.companyId !== line.review.companyId || !can(actor, "employees.assign_role"))) throw new Error("FORBIDDEN")
+        if (!superAdmin && (actor.companyId !== line.review.companyId || !can(actor, "employees.review_access"))) throw new Error("FORBIDDEN")
         // Nobody vouches for their own access.
         if (!superAdmin && line.userId === actor.id) throw new Error("OWN_LINE")
         if (input.decision === "CHANGE_REQUESTED" && !input.note?.trim()) throw new Error("REASON_REQUIRED")
@@ -197,7 +200,7 @@ export class AccessReviewService {
                     // now; gone since, it is a request about the company's roles.
                     roleId: line.roleId,
                     description: `Access review: ${line.userName} holds ${line.permission} through ${line.roleName}. ${input.note!.trim()}`,
-                }, session)
+                }, session, "ACCESS_REVIEW")
             } catch (error) {
                 // No request filed, so not answered: it waits again.
                 await prisma.accessReviewLine.update({

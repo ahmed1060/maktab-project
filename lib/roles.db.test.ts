@@ -163,6 +163,9 @@ const OWNERS = "20270123000000_owner_periods"
 const PAYDAY_AND_CLOSE = "20270124000000_payday_and_close"
 // The days a final settlement counted, frozen with it (Codex review on PR 430).
 const SETTLED_DAYS = "20270125000000_settled_attendance_days"
+// Answering access reviews, a permission of its own, given to every role and
+// template with Assign roles (LATER_CHANGES_PLAN.md §7.15, PR 439).
+const REVIEW_ACCESS_GRANTED = "20270127000000_access_review_permission"
 // Given to a new company's built-in roles only: no migration gives it to the
 // companies there before it, as none was when it came (CLIENT_PORTAL_PLAN.md
 // §9, §12 step 10d, skipped on 2026-11-20; PR 348).
@@ -250,6 +253,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(OWNERS))
         await db.query(sql(PAYDAY_AND_CLOSE))
         await db.query(sql(SETTLED_DAYS))
+        await db.query(sql(REVIEW_ACCESS_GRANTED))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).
@@ -322,8 +326,9 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             // And one for the Admin role: tax.manage (CLIENT_PORTAL_PLAN.md §12 step 3d, PR 317).
             // And one for the Admin role: client_accounts.manage (CLIENT_PORTAL_PLAN.md §12 step 6d, PR 330).
             // And one for the Admin role: employees.edit_contract_start (LATER_CHANGES_PLAN.md §7.2, PR 425).
+            // And one for the Admin role, which holds Assign roles: employees.review_access (LATER_CHANGES_PLAN.md §7.15, PR 439).
             const { rows: roles } = await db.query(`SELECT "companyId", "builtIn", version FROM "Role" ORDER BY "companyId", "builtIn"`)
-            const version = { ADMIN: 18, TEAM_LEADER: 7, EMPLOYEE: 4 } as Record<string, number>
+            const version = { ADMIN: 19, TEAM_LEADER: 7, EMPLOYEE: 4 } as Record<string, number>
             for (const role of roles) expect(role.version, `${role.companyId} ${role.builtIn}`).toBe(version[role.builtIn])
             const { rows: companies } = await db.query(`SELECT "adminSettingsEnabled", "adminSettingsTabs" FROM "Company"`)
             expect(companies).toEqual([
@@ -1335,6 +1340,76 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
             await db.query(`UPDATE "Company" SET "accessReviewNextAt" = NULL WHERE id = 'c1'`)
             expect((await AccessReviewService.runDue(new Date(Date.now() + 400 * 86400000))).opened).toBe(0)
             expect((await AccessReviewService.list(sa, { companyId: "c1" })).length).toBe(1)
+        })
+
+        it("is answered by whoever holds Answer access reviews, not Assign roles (LATER_CHANGES_PLAN.md §7.15)", async () => {
+            const before = (await db.query(`SELECT id, "roleId" FROM "User" WHERE id IN ('e1', 't1')`)).rows
+            const reviewer = { user: { id: "e1", role: "EMPLOYEE", companyId: "c1", grants: encodeGrants({ "employees.view": "COMPANY", "employees.review_access": "COMPANY" }) } }
+            const assigner = { user: { id: "t1", role: "TEAM_LEADER", companyId: "c1", grants: encodeGrants({ "employees.view": "COMPANY", "employees.assign_role": "COMPANY" }) } }
+            const since = (await db.query(`SELECT now() AS at`)).rows[0].at
+            let opened: { id: string } | null = null
+            try {
+                // Two roles of the company's own: one that answers reviews, one that only gives roles.
+                await db.query(`INSERT INTO "Role"(id, "companyId", name, "baseRole", "updatedAt") VALUES ('r-reviews', 'c1', 'Auditor', 'EMPLOYEE', now()), ('r-assigns', 'c1', 'People officer', 'TEAM_LEADER', now())`)
+                await db.query(`INSERT INTO "RoleGrant"("roleId", permission, scope) VALUES ('r-reviews', 'employees.view', 'COMPANY'), ('r-reviews', 'employees.review_access', 'COMPANY'), ('r-assigns', 'employees.view', 'COMPANY'), ('r-assigns', 'employees.assign_role', 'COMPANY')`)
+                await db.query(`UPDATE "User" SET "roleId" = 'r-reviews' WHERE id = 'e1'`)
+                await db.query(`UPDATE "User" SET "roleId" = 'r-assigns' WHERE id = 't1'`)
+                // Told when one opens: whoever answers, not whoever only gives roles.
+                opened = await AccessReviewService.open("c1")
+                const told = async (who: string) => (await db.query(`SELECT count(*)::int AS n FROM "Notification" WHERE "userId" = $1 AND type = 'ROLE_ACCESS_REVIEW' AND "createdAt" >= $2`, [who, since])).rows[0].n
+                expect(await told("e1")).toBe(1)
+                expect(await told("t1")).toBe(0)
+                // The company's reviews, for whoever answers them.
+                const review = (await AccessReviewService.list(reviewer, { status: "OPEN" })).find(r => r.id === opened!.id)!
+                expect(review).toBeTruthy()
+                await expect(AccessReviewService.list(assigner, {})).rejects.toThrow("FORBIDDEN")
+                const [first, second] = review.lines.filter(l => l.userId !== "e1")
+                await expect(AccessReviewService.answer(first.id, { decision: "CONFIRMED" }, assigner)).rejects.toThrow("FORBIDDEN")
+                await AccessReviewService.answer(first.id, { decision: "CONFIRMED" }, reviewer)
+                // A change asked for goes to the Super Admin, though they don't give roles.
+                await AccessReviewService.answer(second.id, { decision: "CHANGE_REQUESTED", note: "Left payroll in October" }, reviewer)
+                const asked = (await db.query(`SELECT "requestedById" FROM "RoleChangeRequest" WHERE description LIKE '%Left payroll in October'`)).rows
+                expect(asked).toEqual([{ requestedById: "e1" }])
+                // Asking the Super Admin directly is still for whoever gives roles,
+                // and a review's change for whoever answers reviews.
+                await expect(RoleChangeRequestService.create({ description: "A new role for drivers" }, reviewer)).rejects.toThrow("FORBIDDEN")
+                await expect(RoleChangeRequestService.create({ description: "Left payroll in October" }, assigner, "ACCESS_REVIEW")).rejects.toThrow("FORBIDDEN")
+            } finally {
+                for (const { id, roleId } of before) await db.query(`UPDATE "User" SET "roleId" = $1 WHERE id = $2`, [roleId, id])
+                await db.query(`DELETE FROM "RoleChangeRequest" WHERE description LIKE '%Left payroll in October'`)
+                if (opened) await db.query(`DELETE FROM "AccessReview" WHERE id = $1`, [opened.id])
+                await db.query(`DELETE FROM "Notification" WHERE type = 'ROLE_ACCESS_REVIEW' AND "createdAt" >= $1`, [since])
+                await db.query(`DELETE FROM "Role" WHERE id IN ('r-reviews', 'r-assigns')`)
+            }
+        })
+
+        it("is given to every role and template with Assign roles, once, by its migration (PR 439)", async () => {
+            const versions = async () => Object.fromEntries((await db.query(`SELECT id, version FROM "Role" WHERE "companyId" = 'c1'`)).rows.map(r => [r.id, r.version]))
+            try {
+                await db.query(`INSERT INTO "Role"(id, "companyId", name, "baseRole", "updatedAt") VALUES ('r-gives', 'c1', 'Gives roles', 'EMPLOYEE', now()), ('r-other', 'c1', 'Does not', 'EMPLOYEE', now())`)
+                await db.query(`INSERT INTO "RoleGrant"("roleId", permission, scope) VALUES ('r-gives', 'employees.view', 'COMPANY'), ('r-gives', 'employees.assign_role', 'COMPANY'), ('r-other', 'employees.view', 'COMPANY')`)
+                await db.query(`INSERT INTO "RoleTemplate"(id, name, "baseRole", grants, "updatedAt") VALUES
+                    ('t-gives', 'Gives roles (test)', 'EMPLOYEE', '[{"permission":"employees.view","scope":"COMPANY"},{"permission":"employees.assign_role","scope":"COMPANY"}]', now()),
+                    ('t-other', 'Does not (test)', 'EMPLOYEE', '[{"permission":"employees.view","scope":"COMPANY"}]', now())`)
+                const was = await versions()
+                await db.query(sql(REVIEW_ACCESS_GRANTED))
+                const grants = async (role: string) => (await db.query(`SELECT permission, scope FROM "RoleGrant" WHERE "roleId" = $1 ORDER BY permission`, [role])).rows
+                expect(await grants("r-gives")).toContainEqual({ permission: "employees.review_access", scope: "COMPANY" })
+                expect(await grants("r-other")).not.toContainEqual(expect.objectContaining({ permission: "employees.review_access" }))
+                const template = async (id: string) => (await db.query(`SELECT grants FROM "RoleTemplate" WHERE id = $1`, [id])).rows[0].grants
+                expect(await template("t-gives")).toContainEqual({ permission: "employees.review_access", scope: "COMPANY" })
+                expect(await template("t-other")).not.toContainEqual(expect.objectContaining({ permission: "employees.review_access" }))
+                // Only the role it changed reloads: the Admin role had it already.
+                const now = await versions()
+                expect(Object.keys(now).filter(id => now[id] !== was[id])).toEqual(["r-gives"])
+                // Run again, it changes nothing.
+                await db.query(sql(REVIEW_ACCESS_GRANTED))
+                expect(await versions()).toEqual(now)
+                expect((await template("t-gives")).filter((g: { permission: string }) => g.permission === "employees.review_access")).toHaveLength(1)
+            } finally {
+                await db.query(`DELETE FROM "Role" WHERE id IN ('r-gives', 'r-other')`)
+                await db.query(`DELETE FROM "RoleTemplate" WHERE id IN ('t-gives', 't-other')`)
+            }
         })
     })
 

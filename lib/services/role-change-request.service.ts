@@ -28,8 +28,16 @@ export class RoleChangeRequestService {
         return session.user.role !== "SUPER_ADMIN" && !!session.user.companyId && can(session.user, "employees.assign_role")
     }
 
-    static async create(input: { roleId?: string | null; description: string }, session: Session) {
-        if (!RoleChangeRequestService.mayAsk(session)) throw new Error("FORBIDDEN")
+    /**
+     * Asked from an access review's line, it's filed for whoever answers
+     * reviews, Assign roles or not (LATER_CHANGES_PLAN.md §7.15, PR 439):
+     * asking for a change is how a review's answer reaches the Super Admin.
+     */
+    static async create(input: { roleId?: string | null; description: string }, session: Session, from?: "ACCESS_REVIEW") {
+        const may = from === "ACCESS_REVIEW"
+            ? session.user.role !== "SUPER_ADMIN" && !!session.user.companyId && can(session.user, "employees.review_access")
+            : RoleChangeRequestService.mayAsk(session)
+        if (!may) throw new Error("FORBIDDEN")
         const companyId = session.user.companyId!
         if (input.roleId) {
             const role = await prisma.role.findUnique({ where: { id: input.roleId }, select: { companyId: true } })

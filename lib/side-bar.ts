@@ -146,7 +146,8 @@ export function shows(key: SideBarItemKey, v: SideBarViewer): boolean {
         // Not for an owner now: there's nothing there for them (PR 428).
         case 'myAttendance': return attendance && !seesOthersAttendance && !v.owner
         // For whoever gives roles, as its two tabs were; the Super Admin answers both from their own pages.
-        case 'rolesAndAccess': return !v.superAdmin && v.can('employees.assign_role')
+        // For whoever gives roles or answers access reviews, each tab for its own (PR 439).
+        case 'rolesAndAccess': return !v.superAdmin && (v.can('employees.assign_role') || v.can('employees.review_access'))
         // A Team Leader manages people, not pay.
         case 'payroll': return v.can('payroll.view')
         // The Super Admin is nobody's employee, and has no payslips.

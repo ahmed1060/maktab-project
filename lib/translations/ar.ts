@@ -3718,6 +3718,7 @@ export const ar = {
         perm_employees_request_role: "طلب تغيير الأدوار",
         perm_employees_edit_contract_start: "تغيير تواريخ بداية العقود",
         perm_employees_set_owner: "تحديد الملاك",
+        perm_employees_review_access: "الرد على مراجعات الصلاحيات",
         perm_profile_requests_review: "مراجعة طلبات تعديل الملف الشخصي",
         perm_requests_view: "عرض الطلبات",
         perm_requests_review: "مراجعة الطلبات",
