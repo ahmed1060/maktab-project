@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import DatePickerSingle from '@/components/DatePickerSingle'
-import { Button, Dialog, DialogActions } from '@/components/ui'
+import { Button, Dialog } from '@/components/ui'
 import { addDays } from '@/lib/attendance/calendar'
 import { useBusyAction } from '@/lib/useBusyAction'
 import type { TranslationKey } from '@/lib/translations'
@@ -83,12 +83,10 @@ export function ChangePaydayDialog({ open, onClose, onDone, year, month, company
             open={open}
             onClose={() => { if (!action.running) onClose() }}
             title={t('payday_change_title')}
-            actions={(
-                <DialogActions>
-                    <Button variant="quiet" onClick={onClose} disabled={action.running}>{t('cancel')}</Button>
-                    <Button variant="primary" busy={action.is('payday')} disabled={action.running} onClick={() => action.run('payday', save)}>{t('payday_change')}</Button>
-                </DialogActions>
-            )}
+            actions={<>
+                <Button variant="quiet" onClick={onClose} disabled={action.running}>{t('cancel')}</Button>
+                <Button variant="primary" busy={action.is('payday')} disabled={action.running} onClick={() => action.run('payday', save)}>{t('payday_change')}</Button>
+            </>}
         >
             <DatePickerSingle name="payday" label={t('payroll_day_label')} value={day} minDate={period.from} onChange={pickPayday} error={errors.payday} disabled={action.running} />
             {draft && (

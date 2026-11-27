@@ -584,3 +584,30 @@ describe("Payroll is on the building blocks throughout", () => {
         expect(PAGE).toContain("action.run('waive'")
     })
 })
+
+describe("payday and when payroll closes, on the page (LATER_CHANGES_PLAN.md §7.10, PR 430)", () => {
+    const change = '<button type="button" class="ui-btn ui-btn-quiet ui-btn-sm">Change payday</button>'
+
+    it("says when the month's payday was changed for it", async () => {
+        const top = header(await page({ shows: view({ payday: { date: "2026-10-29", changed: true } }) }))
+        expect(top).toContain("Payday: Thursday 29 October, changed for this month")
+        expect(header(await page({ shows: view() }))).not.toContain(en.payroll_payday_changed)
+    })
+
+    it("offers Change payday beside it to whoever may approve payroll, until the month is paid", async () => {
+        expect(header(await page({ shows: view(), grants: ["payroll.approve"] }))).toContain(`Payday: Sunday 1 November ${change}`)
+        expect(header(await page({ shows: view({ status: "APPROVED" }), grants: ["payroll.approve"] }))).toContain(change)
+        expect(header(await page({ shows: view({ status: "PAID" }), grants: ["payroll.approve"] }))).not.toContain("Change payday")
+        expect(header(await page({ shows: view(), grants: ["payroll.prepare"] }))).not.toContain("Change payday")
+        expect(header(await page({ shows: view(), grants: ["payroll.approve"], locale: "ar" }))).toContain(`>${ar.payday_change}<`)
+    })
+
+    it("keeps Approve greyed before payroll closes, saying from when, and usable after", async () => {
+        const early = header(await page({ shows: view({ periodOver: false, approvableFrom: "2026-11-01" }), grants: ["payroll.approve"] }))
+        expect(early).toContain('<button type="button" class="ui-btn ui-btn-primary" aria-disabled="true" aria-describedby="approve-from">Approve</button>')
+        expect(early).toContain('<span id="approve-from" class="ui-hint">Can be approved from Sunday 1 November, once payroll closes.</span>')
+        const over = header(await page({ shows: view(), grants: ["payroll.approve"] }))
+        expect(over).not.toContain('aria-disabled="true"')
+        expect(over).toContain('<button type="button" class="ui-btn ui-btn-primary">Approve</button>')
+    })
+})
