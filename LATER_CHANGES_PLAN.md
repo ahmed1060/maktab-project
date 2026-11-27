@@ -2014,7 +2014,7 @@ with قبول: «قبول العذر» and «قبول».
     أو الخصم حسب السياسة».
 - **Words and their tests only,** before 10a, in the same PR (§7.8).
 
-### 7.12 Payroll deductions (Decided in part)
+### 7.12 Payroll deductions (Decided)
 
 Talked through with the owner on 2026-11-27, from the law's limit on
 installments (§7.9).
@@ -2038,14 +2038,17 @@ installments (§7.9).
      part-timer insured through another job, someone past the insurance
      age or a foreign worker under another scheme. Owners have no payslip
      (§7.3), so none of this touches them.
-3. **Open:**
-   - What the percentages are of: the month's pay before them (the salary
-     with its additions and Nizmo's deductions), or the salary alone.
-   - Egypt's income tax is worked out by brackets and social insurance on
-     an insured wage with a floor and a ceiling. A flat percentage is a
-     simplification, which may do for now.
-   - The law's 25% limit on all debts together (§7.9) isn't checked
-     anywhere, as there's no cap at payroll.
+3. **Decided (the owner, 27 November):**
+   - The percentages are of the month's pay before them: the salary with
+     its additions and Nizmo's deductions.
+   - A flat percentage each does for now, with each person's own rate
+     where it's set. Income tax's brackets, and social insurance's insured
+     wage with its floor and ceiling, come later, in a PR of their own.
+   - The law's 25% limit on all debts together (§7.9) is a company
+     setting, 25% unless changed. It's checked when a salary advance is
+     asked for, counting the person's other debts, and blocked or warned
+     of by the same setting as an installment's limit. The Payroll page
+     also warns of a month over it. There's still no cap at payroll.
 
 ### 7.13 A salary change's payroll (Decided)
 
@@ -2764,3 +2767,7 @@ without its own.
 - **2026-11-27:** #439 merged (§7.15): access reviews are answered with
   Answer access reviews, given by its migration to every role holding
   Assign roles. Its migration in production is checked after the deploy.
+- **2026-11-27:** §7.12 decided: the percentages are of the month's pay
+  before them; a flat percentage each for now, brackets and the insured
+  wage later; the 25% limit on all debts a company setting, checked when
+  an advance is asked for and warned of on the Payroll page.
