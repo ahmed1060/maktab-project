@@ -19,8 +19,10 @@ mark, permission and pay (#426, step 3a), what they're not asked for
 (#427, step 3b1), only Admins as owners, given no new work (#428, step
 3b2), and the Owners list (#429, step 3c), so owners are done; clearer
 words on Exceptions (§7.11) and payday and the attendance period
-(§7.10) done in one PR (#430); the limits on requests (§7.4) next; the
-names (§3) paused after step 8l (#424).** Done: the development database (§4),
+(§7.10) done in one PR (#430); the limits on requests (§7.4) under way,
+day off done (#431), permission hours next, after every writer waits
+for a month's lock (ATTENDANCE_PLAN.md §12.1); the names (§3) paused
+after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their limit set
@@ -1471,7 +1473,7 @@ In three PRs, each whole on its own:
 - **Missing punches:** no new limit for now, at the owner's word. How far
   back and how many a month can be added later.
 - **In three PRs**, day off first:
-  - **4a, day off:**
+  - **4a, day off (Done, #431):**
     - "Today" is the company's date, in its time zone, on the server and
       in the form.
     - The first day it may be asked for is the first day not in an
@@ -2454,3 +2456,7 @@ with قبول: «قبول العذر» and «قبول».
   outside its days is refused before they're listed or their months
   locked, and asking waits on those locks as long as an import may hold
   them. As built in §7.4.
+- **2026-11-27:** #431 merged (step 6a, 4a). Day off is asked for
+  within its days, with the balance; every writer waiting for a month's
+  lock as long as an import may hold it (ATTENDANCE_PLAN.md §12.1) next,
+  then permission hours (4b).

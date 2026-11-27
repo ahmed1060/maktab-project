@@ -7,7 +7,7 @@ import { AuditLogService } from "./audit-log.service"
 import { AttendancePolicyService } from "./attendance-policy.service"
 import { AttendanceCalendarService } from "./attendance-calendar.service"
 import { recomputeAfter } from "./attendance-recompute"
-import { lockDateMonths, lockMonths, lockPunchMonths, lockedMonths } from "./attendance-lock"
+import { LOCK_WAIT, lockDateMonths, lockMonths, lockPunchMonths, lockedMonths } from "./attendance-lock"
 import { refuseOwnerMonths } from "./owner.service"
 import { insertManualPunch, type Visibility } from "./attendance-punch.service"
 import { NotificationService } from "./notification.service"
@@ -241,7 +241,7 @@ export class AttendanceRequestService {
                 tx, userId, details: { companyId, date: input.date, type: input.type, minutes, reason: input.reason.trim() },
             })
             return created
-        })
+        }, LOCK_WAIT)
         return serializePermission(out)
     }
 
@@ -263,7 +263,7 @@ export class AttendanceRequestService {
             await tx.permissionRequest.update({ where: { id }, data: { status: "CANCELLED" } })
             await AuditLogService.log("CANCEL_ATTENDANCE_PERMISSION", "PERMISSION_REQUEST", id, { tx, userId, details: { companyId: r.companyId, date } })
             return { companyId: r.companyId, date, wasApproved: r.status === "APPROVED" }
-        })
+        }, LOCK_WAIT)
         if (out.wasApproved) await recomputeAfter(out.companyId, out.date, [userId])
     }
 
@@ -298,7 +298,7 @@ export class AttendanceRequestService {
                 params: { date: dayParam(date), start: hhmm(r.startMinutes), end: hhmm(r.endMinutes), reason: reasonParam(rejectionReason) },
             }, id, tx)
             return { companyId: r.companyId, userId: r.userId, date }
-        })
+        }, LOCK_WAIT)
         if (decision.approve) await recomputeAfter(out.companyId, out.date, [out.userId])
     }
 
@@ -342,7 +342,7 @@ export class AttendanceRequestService {
                 tx, userId, details: { companyId, at: local, direction: input.direction, reason: input.reason.trim() },
             })
             return created
-        })
+        }, LOCK_WAIT)
         return serializeMissing(out)
     }
 
@@ -389,7 +389,7 @@ export class AttendanceRequestService {
                 params: { date: dayParam(local.slice(0, 10)), time: local.slice(11, 16), reason: reasonParam(rejectionReason) },
             }, id, tx)
             return { companyId: r.companyId, userId: r.userId, date: local.slice(0, 10) }
-        })
+        }, LOCK_WAIT)
         // From the day before: a punch after midnight may close the night before's shift.
         if (decision.approve) await recomputeAfter(out.companyId, addDays(out.date, -1), [out.userId])
     }
@@ -444,7 +444,7 @@ export class AttendanceRequestService {
                 params: { date: dayParam(input.date), minutes, reason: reasonParam(note) },
             }, saved.id, tx)
             return saved
-        })
+        }, LOCK_WAIT)
         await recomputeAfter(companyId, input.date, [input.userId])
         return serializeDecision(out)
     }
@@ -465,7 +465,7 @@ export class AttendanceRequestService {
                 tx, ...(await actorOf(tx, actorId)), details: { companyId: d.companyId, userId: d.userId, date },
             })
             return { companyId: d.companyId, userId: d.userId, date }
-        })
+        }, LOCK_WAIT)
         await recomputeAfter(out.companyId, out.date, [out.userId])
     }
 

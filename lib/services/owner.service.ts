@@ -3,7 +3,7 @@ import { calendarDateStr } from "@/lib/time"
 import { startOfDate } from "@/lib/contract-start"
 import { monthOf, monthsReached, monthsSpanned, ownerIn, ownerSince, planOwner } from "@/lib/owners"
 import type { Prisma } from "@prisma/client"
-import { lockMonths, lockPersonDates, lockedMonths } from "./attendance-lock"
+import { LOCK_WAIT, lockMonths, lockPersonDates, lockedMonths } from "./attendance-lock"
 
 /**
  * Owners (LATER_CHANGES_PLAN.md §7.3, step 3a, PR 426): whether someone is
@@ -170,7 +170,7 @@ export class OwnerService {
             await AuditLogService.log(owner ? "OWNER_MARKED" : "OWNER_UNMARKED", "USER", userId, {
                 userId: by.userId, superAdminId: by.superAdminId, tx, details: { month },
             })
-        })
+        }, LOCK_WAIT)
 
         // Never undoing the change: the nightly run works out this month and last again.
         try {

@@ -14,7 +14,7 @@ import { CreateUserInput, UpdateUserInput } from "../validations/user.schema"
 import { arabicBeside, hasArabic } from "@/lib/names"
 import { calendarDateStr, calendarMonth, calendarYear, DEFAULT_TIME_ZONE } from "@/lib/time"
 import { inContractStartRange, startOfDate } from "@/lib/contract-start"
-import { lockMonths, lockedMonths } from "./attendance-lock"
+import { LOCK_WAIT, lockMonths, lockedMonths } from "./attendance-lock"
 import { effectiveFromChoice } from "@/lib/salary-history"
 import { checkTeamAssignment, clearsOwnLeader, stripsLeadership } from "@/lib/team-assignment"
 import { notifyTeamMoves } from "./team-notify.service"
@@ -256,7 +256,7 @@ export class UserService {
             }
 
             return created
-        })
+        }, LOCK_WAIT)
 
         // Somebody given the same username a moment ago, between the check
         // and this save: a typed one is said to be in use, a made-up one is

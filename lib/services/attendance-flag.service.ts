@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client"
 import { AuditLogService } from "./audit-log.service"
 import { NotificationService } from "./notification.service"
 import { recomputeAfter } from "./attendance-recompute"
-import { lockPunchMonths, lockedMonths, punchMonthsOf, settledPunches } from "./attendance-lock"
+import { LOCK_WAIT, lockPunchMonths, lockedMonths, punchMonthsOf, settledPunches } from "./attendance-lock"
 import type { Visibility } from "./attendance-punch.service"
 import { addDays } from "@/lib/attendance/calendar"
 import { optional } from "@/lib/notice"
@@ -158,7 +158,7 @@ export class AttendanceFlagService {
                 params: { date: { date: local.slice(0, 10) }, time: local.slice(11, 16), reason: optional("notice_reason_suffix", { reason: reason ?? "" }, reason) },
             }, "/dashboard/attendance?tab=punches", tx)
             return { companyId: punch.companyId, userId: punch.userId!, date: local.slice(0, 10) }
-        })
+        }, LOCK_WAIT)
         // From the day before: a check-in after midnight can end the night shift that began then.
         if (decision.accept) await recomputeAfter(out.companyId, addDays(out.date, -1), [out.userId])
     }
