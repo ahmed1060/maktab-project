@@ -12,7 +12,8 @@
  * route nor this map answers, other than the few listed there as faults.
  */
 export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; message: string }> = {
-    DATE_IN_PAST: { status: 400, message: "You can't ask for leave on a day that has passed." },
+    // Answered by its route with the days it may be asked for (LATER_CHANGES_PLAN.md §7.4, 4a); this, where it isn't.
+    DAY_OFF_OUT_OF_RANGE: { status: 400, message: "Leave can't be asked for on that day. Pick one of the days the calendar offers." },
     // Owners have no attendance (LATER_CHANGES_PLAN.md §7.3, step 3b1).
     OWNER_NO_ATTENDANCE: { status: 409, message: "Owners have no attendance, so there's nothing to ask for on those days." },
     OVERLAPPING_REQUEST: { status: 409, message: "You already have a leave request for that day." },

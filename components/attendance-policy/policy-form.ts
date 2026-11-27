@@ -66,6 +66,8 @@ export type PolicyForm = {
         types: PolicyBody['permissionHours']['types']
     }
     noCheckInReminderMinutes: number | null
+    /** How many months ahead a day off may be asked for (LATER_CHANGES_PLAN.md §7.4, 4a): a select, so a number. */
+    dayOffMonthsAhead: number
     scanWindowMinutes: string
     departureThresholdMinutes: string
     faceVerificationAvailable: boolean
@@ -131,6 +133,7 @@ export function formFromBody(body: PolicyBody): PolicyForm {
             types: [...p.types],
         },
         noCheckInReminderMinutes: body.noCheckInReminderMinutes,
+        dayOffMonthsAhead: body.dayOffMonthsAhead,
         scanWindowMinutes: text(body.scanWindowMinutes),
         departureThresholdMinutes: text(body.departureThresholdMinutes),
         faceVerificationAvailable: body.faceVerificationAvailable,
@@ -331,6 +334,7 @@ export function bodyFromForm(form: PolicyForm, base: PolicyBody): { ok: true; bo
             faceVerificationAvailable: form.faceVerificationAvailable,
             faceReverifyMonths,
             missions: { enabled: form.missions.enabled, allowance },
+            dayOffMonthsAhead: form.dayOffMonthsAhead,
         },
     }
 }

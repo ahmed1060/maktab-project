@@ -11,6 +11,7 @@ import { usedDayOffCredit } from "@/lib/day-off-credit"
 import { AttendanceRequestService } from "@/lib/services/attendance-request.service"
 import { MissionRequestService } from "@/lib/services/mission-request.service"
 import { OwnerService } from "@/lib/services/owner.service"
+import { DayOffService } from "@/lib/services/day-off.service"
 import AccessDenied from "@/components/AccessDenied"
 import { REQUEST_KINDS, requestFeed, tabsFor, type RequestKind, type RequestsShow, type RequestsTab, type Viewer } from "@/lib/requests/feed"
 import RequestsClient from "./RequestsClient"
@@ -90,6 +91,9 @@ export default async function RequestsPage(props: { searchParams: Promise<Record
         const balance = await prisma.user.findUnique({ where: { id: viewer.id }, select: { dayOffCredit: true, baseDayOffCredit: true } })
         if (balance) credit = { remaining: balance.dayOffCredit, used: usedDayOffCredit(balance.baseDayOffCredit ?? balance.dayOffCredit, balance.dayOffCredit) }
     }
+    // What asking offers (LATER_CHANGES_PLAN.md §7.4, 4a): the days it may be asked for, as the
+    // server reads them, and the balance, under the dates on any tab.
+    const dayOffAsk = mayAskDayOff ? { days: await DayOffService.window(viewer.companyId ?? null), balance: (await prisma.user.findUnique({ where: { id: viewer.id }, select: { dayOffCredit: true } }))?.dayOffCredit ?? 0 } : null
 
     // Asking for permission hours and reporting a missing punch, for whoever
     // has attendance of their own, as the attendance API's rule
@@ -117,7 +121,7 @@ export default async function RequestsPage(props: { searchParams: Promise<Record
     return (
         <RequestsClient
             rows={feed.rows} total={feed.total} page={page} totalPages={feed.totalPages} kinds={feed.kinds}
-            tabs={tabs} tab={tab} show={show} superAdmin={superAdmin} mayAskDayOff={mayAskDayOff} credit={credit}
+            tabs={tabs} tab={tab} show={show} superAdmin={superAdmin} dayOffAsk={dayOffAsk} credit={credit}
             mayAskAttendance={mayAskAttendance} attendanceToday={attendanceToday} allowance={allowance} mayAskMission={mayAskMission}
         />
     )

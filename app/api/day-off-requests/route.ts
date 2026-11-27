@@ -1,7 +1,7 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { createDayOffSchema } from "@/lib/validations/day-off.schema"
-import { DayOffService } from "@/lib/services/day-off.service"
+import { DayOffService, DayOffOutOfRange } from "@/lib/services/day-off.service"
 import { parsePaging } from "@/lib/pagination"
 import { dayOffListFilters } from "@/lib/services/day-off-query"
 import { can } from "@/lib/permissions/can"
@@ -39,6 +39,8 @@ export const POST = withStandardHandler(async (req, session, json) => {
         const result = await DayOffService.create(validation.data, session)
         return ApiResponse.success(result, 201)
     } catch (error: any) {
+        // Outside the days it may be asked for (LATER_CHANGES_PLAN.md §7.4, 4a): which days, for the form to say.
+        if (error instanceof DayOffOutOfRange) return ApiResponse.refused(400, `Leave can be asked for from ${error.from} to ${error.to}.`, error.message, { from: error.from, to: error.to })
         if (error.message === 'END_DATE_BEFORE_START') {
             return ApiResponse.badRequest("End date cannot be before start date")
         }

@@ -68,6 +68,11 @@ const models: Record<string, any> = {
         findMany: async ({ where }: any) => { seen.listWhere = where; return [] },
         update: async ({ where, data }: any) => ({ ...REQUESTS[where.id], ...data }),
     }),
+    // The requester's company, as asking for leave reads it since LATER_CHANGES_PLAN.md §7.4, 4a:
+    // its time zone, its package (none: every module), and when payroll closes.
+    company: permissiveModel({
+        findUnique: async () => ({ timezone: "Africa/Cairo", package: null, payrollCloseDay: null, payrollDay: 1, paydayLastDay: false, paydayNextMonth: true, paydayMove: "BEFORE" }),
+    }),
     user: permissiveModel({
         findUnique: async ({ where }: any) => USERS[where.id] ?? null,
         findMany: async ({ where }: any) => { seen.notified.push(JSON.stringify(where)); return [] },

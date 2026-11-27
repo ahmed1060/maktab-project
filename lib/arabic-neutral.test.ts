@@ -47,7 +47,6 @@ describe("the app's Arabic, part 1: searching, picking and trying again", () => 
 
     it("asks with يُرجى where it said اختر or حاول", () => {
         expect(ar.payroll_pick_company_hint).toBe("يُرجى اختيار شركة من الأعلى لعرض كشف رواتبها.")
-        expect(ar.requests_day_off_passed).toBe("مضى هذا اليوم. يُرجى اختيار يوم من اليوم فصاعدًا.")
         expect(ar.punch_failed).toBe("لم تنجح العملية. يُرجى المحاولة مرة أخرى.")
         expect(ar.face_ci_not_available).toBe("التحقق من الوجه غير متاح الآن. يُرجى المحاولة لاحقًا.")
     })

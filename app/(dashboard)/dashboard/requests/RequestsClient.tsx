@@ -31,6 +31,7 @@ import {
     Row, Rows, RowMenu, SearchInput, Section, Select, StatusBadge, TabLinks, TextArea, TextInput, visibleRow, type Column, type StatusTone,
 } from '@/components/ui'
 import { AskDayOff, DecideDayOff } from './DayOffDialogs'
+import type { DayOffDays } from '@/lib/day-off-window'
 import {
     AskMission, AskPermission, CancelMission, MISSION_KIND_LABEL, PERMISSION_TYPE_LABEL, RejectRequest, ReportMissingPunch, RevokePhone, WithdrawAttendance, clockText, decideRequest, permissionDay, punchDay, punchTime,
 } from './AttendanceDialogs'
@@ -104,8 +105,12 @@ interface RequestsClientProps {
     tab: RequestsTab
     show: RequestsShow
     superAdmin: boolean
-    /** Whether their role may ask for leave, in a company with Day off (§2.3, part 2c). */
-    mayAskDayOff?: boolean
+    /**
+     * What asking for a day off offers, for whoever's role may ask for leave in a company
+     * with Day off (§2.3, part 2c): the days it may be asked for, and their balance
+     * (LATER_CHANGES_PLAN.md §7.4, 4a). Null for whoever may not.
+     */
+    dayOffAsk?: { days: DayOffDays; balance: number } | null
     /** Their day off balance, on Mine, for whoever may ask for leave. */
     credit?: { remaining: number; used: number } | null
     /** Whether they have attendance of their own: to ask permission hours of, and report a missing punch in (§2.3, part 3). */
@@ -119,7 +124,7 @@ interface RequestsClientProps {
 }
 
 export default function RequestsClient({
-    rows, total, page, totalPages, kinds, tabs, tab, show, superAdmin, mayAskDayOff = false, credit = null, mayAskAttendance = false, attendanceToday = null, allowance = null, mayAskMission = false,
+    rows, total, page, totalPages, kinds, tabs, tab, show, superAdmin, dayOffAsk = null, credit = null, mayAskAttendance = false, attendanceToday = null, allowance = null, mayAskMission = false,
 }: RequestsClientProps) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
@@ -644,7 +649,7 @@ export default function RequestsClient({
                         onClose={() => setCancelling(null)} onCancelled={() => { setCancelling(null); setViewing(null); refreshed() }} />
                 )}
 
-                <NewRequest open={asking} mayAskDayOff={mayAskDayOff} today={mayAskAttendance ? attendanceToday : null} mayAskMission={mayAskMission} onClose={() => setAsking(false)} onAsked={() => {
+                <NewRequest open={asking} dayOffAsk={dayOffAsk} today={mayAskAttendance ? attendanceToday : null} mayAskMission={mayAskMission} onClose={() => setAsking(false)} onAsked={() => {
                     setAsking(false)
                     // Theirs, waiting: where it now is.
                     if (tab === 'mine' && show === 'waiting') refreshed()
@@ -662,9 +667,10 @@ export default function RequestsClient({
  * own (part 3); or a mission, while their policy has missions on
  * (ATTENDANCE_PLAN.md §6.10, PR 283).
  */
-function NewRequest({ open, mayAskDayOff, today, mayAskMission, onClose, onAsked }: {
+function NewRequest({ open, dayOffAsk, today, mayAskMission, onClose, onAsked }: {
     open: boolean
-    mayAskDayOff: boolean
+    /** For whoever may ask for leave: the days it may be asked for, and their balance. */
+    dayOffAsk: { days: DayOffDays; balance: number } | null
     mayAskMission: boolean
     /** The company's day, for whoever has attendance of their own; null for whoever hasn't. */
     today: string | null
@@ -673,7 +679,7 @@ function NewRequest({ open, mayAskDayOff, today, mayAskMission, onClose, onAsked
 }) {
     const { t } = useLanguage()
     const [what, setWhat] = useState<RequestKind>('internal')
-    const offered = REQUEST_KINDS.filter(k => k === 'internal' || (k === 'dayOff' && mayAskDayOff) || ((k === 'permission' || k === 'missingPunch') && today !== null)
+    const offered = REQUEST_KINDS.filter(k => k === 'internal' || (k === 'dayOff' && !!dayOffAsk) || ((k === 'permission' || k === 'missingPunch') && today !== null)
         || (k === 'mission' && mayAskMission && today !== null))
     const close = () => {
         setWhat('internal')
@@ -689,8 +695,8 @@ function NewRequest({ open, mayAskDayOff, today, mayAskMission, onClose, onAsked
                 <Choice legend={t('requests_ask_for')} name="ask-for" value={what} onChange={setWhat}
                     options={offered.map(k => ({ value: k, label: t(KIND_LABEL[k]) }))} />
             )}
-            {what === 'dayOff'
-                ? <AskDayOff onCancel={close} onAsked={asked} />
+            {what === 'dayOff' && dayOffAsk
+                ? <AskDayOff days={dayOffAsk.days} balance={dayOffAsk.balance} onCancel={close} onAsked={asked} />
                 : what === 'permission' && today
                     ? <AskPermission today={today} onCancel={close} onAsked={asked} />
                     : what === 'mission' && today

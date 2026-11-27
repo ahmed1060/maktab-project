@@ -173,10 +173,10 @@ describe("day off on it (UI_PLAN.md §2.3, part 2c)", () => {
     })
 
     it("shows one's day off balance on Mine, above the list, to whoever may ask for leave", async () => {
-        const mine = await page({ tab: "mine", kinds: ["internal", "dayOff"], credit: { remaining: 9, used: 3 }, mayAskDayOff: true })
+        const mine = await page({ tab: "mine", kinds: ["internal", "dayOff"], credit: { remaining: 9, used: 3 }, dayOffAsk: { days: { from: "2026-11-01", to: "2026-12-27" }, balance: 9 } })
         expect(mine).toContain("credit_overview")
         expect(mine.indexOf("credit_overview")).toBeLessThan(mine.indexOf("ui-filterbar"))
-        expect(await page({ kinds: ["internal", "dayOff"], credit: { remaining: 9, used: 3 }, mayAskDayOff: true })).not.toContain("credit_overview")
+        expect(await page({ kinds: ["internal", "dayOff"], credit: { remaining: 9, used: 3 }, dayOffAsk: { days: { from: "2026-11-01", to: "2026-12-27" }, balance: 9 } })).not.toContain("credit_overview")
         expect(await page({ tab: "mine", credit: null })).not.toContain("credit_overview")
     })
 
@@ -188,12 +188,12 @@ describe("day off on it (UI_PLAN.md §2.3, part 2c)", () => {
     })
 
     it("is asked for from New request, by whoever may, with its type, days and reason", () => {
-        expect(client).toContain("mayAskDayOff")
+        expect(client).toContain("dayOffAsk")
         expect(dialogs).toContain("fetch('/api/day-off-requests'")
         expect(dialogs).toContain("t('requests_day_off_date_missing')")
         // Why the server refused it, in their language.
         expect(dialogs).toContain("OVERLAPPING_REQUEST")
-        expect(dialogs).toContain("DATE_IN_PAST")
+        expect(dialogs).toContain("DAY_OFF_OUT_OF_RANGE")
     })
 
     it("has no styles typed in", async () => {
@@ -264,7 +264,7 @@ describe("permission hours on it (UI_PLAN.md §2.3, part 3a)", () => {
     })
 
     it("shows what's left of the month's permission hours on Mine, under the day off balance and above the list", async () => {
-        const mine = await page({ tab: "mine", kinds: ["internal", "dayOff", "permission"], credit: { remaining: 9, used: 3 }, mayAskDayOff: true, allowance })
+        const mine = await page({ tab: "mine", kinds: ["internal", "dayOff", "permission"], credit: { remaining: 9, used: 3 }, dayOffAsk: { days: { from: "2026-11-01", to: "2026-12-27" }, balance: 9 }, allowance })
         expect(mine).toContain("requests_permission_left")
         expect(mine).toContain("requests_permission_waiting")
         expect(mine.indexOf("credit_overview")).toBeLessThan(mine.indexOf("requests_permission_left"))

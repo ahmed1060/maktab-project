@@ -188,6 +188,8 @@ export default function AttendancePolicyPanel({ companyId, readOnly, onChanged }
                             ? t('attendance_absence_none_line')
                             : t('attendance_absence_line').replace('{days}', countOf(t, locale, shown.body.absence.multiplier, 'days'))]),
                     },
+                    // How far ahead a day off may be asked for (LATER_CHANGES_PLAN.md §7.4, 4a).
+                    { label: t('attendance_day_off'), value: t('attendance_day_off_line').replace('{months}', countOf(t, locale, shown.body.dayOffMonthsAhead, 'months')) },
                     {
                         label: t('attendance_permission_hours'),
                         value: shown.body.permissionHours.enabled
