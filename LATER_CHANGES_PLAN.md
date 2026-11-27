@@ -2121,6 +2121,20 @@ without its own.
    Assign roles today gets it too, so nothing changes until it's
    unticked. One PR, after §7.14's; `ROLES_PLAN.md` §6.14 says who
    answers.
+4. **How (planned for PR 439):** `employees.review_access`, Answer access
+   reviews, code 95, in Employees beside Assign roles, for the whole
+   company, with See employees.
+   - It's asked where Assign roles was: the company's reviews, answering a
+     line, and who's told when one opens. Asking for a change files the
+     Super Admin's role change request for whoever answers, without
+     Assign roles.
+   - Roles and access, in the side bar, for whoever holds either; each tab
+     for whoever holds its own.
+   - A migration gives it to every role and role template holding Assign
+     roles, at the company's scope, and their holders reload their grants
+     once. The built-in Admin has it from then on.
+   - Not one of the permissions an access review asks about: those stay
+     salaries, payroll approval and role assignment.
 
 ## Not here
 
@@ -2745,3 +2759,5 @@ without its own.
 - **2026-11-27:** #438 merged (§7.14): an obligation is handed in by
   whoever it's assigned to. No error in production after it. §7.15's
   access reviews are next.
+- **2026-11-27:** §7.15: how access reviews get their own permission,
+  `employees.review_access`, given to every role holding Assign roles.
