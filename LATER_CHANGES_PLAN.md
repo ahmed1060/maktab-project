@@ -1531,11 +1531,16 @@ In three PRs, each whole on its own:
       nothing changes. The day's balance (`/api/attendance/permissions/
       balance`) sends the days, or none around the day, so the form's
       calendar offers only them wherever it opens (Requests, a day on
-      Attendance, check-in), and a refusal says them under the date. The
-      policy's dialog asks it after Requests a month, the hours after
-      shown only around the day; the card says which. Day off's window is
-      read through one function with it (today, and the first day not
-      paid).
+      Attendance, check-in), and a refusal says them under the date, in
+      the words day off's use, with their own (`daysText`, in
+      `lib/day-off-window.ts` now, so the form needs nothing from day
+      off's). The policy's dialog asks it after the row of its limits, a
+      choice between two (radio buttons, as `DESIGN.md` §5.3 has a few
+      options: a select cut "Any day, from last month to a month ahead"
+      short on a phone), any day saying under it how its days are
+      counted, the hours after shown only around the day; the card says
+      which. Day off's window is read through one function with it
+      (today, and the first day not paid).
   - **4c, missions:** the policy's days back, 7 unless changed, which
     every version reads as 7 from then on.
 
