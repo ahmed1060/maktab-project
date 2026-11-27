@@ -108,8 +108,8 @@ describe("what's checked before anything is sent", () => {
 
     it("knows its fields' order, so the first one wrong is the one focused", async () => {
         const { PROFILE_FIELDS } = await import("@/lib/profile-form")
-        // The role and its date after them since part 4 (lib/profile-role.test.ts), and each name in Arabic beside it (PR 403).
-        expect(PROFILE_FIELDS).toEqual(["firstName", "firstNameAr", "lastName", "lastNameAr", "email", "username", "salary", "dayOffCredit", "password", "roleId", "actingUntil"])
+        // The role and its date after them since part 4 (lib/profile-role.test.ts), each name in Arabic beside it (PR 403), and the payroll a changed salary is for after it (PR 437).
+        expect(PROFILE_FIELDS).toEqual(["firstName", "firstNameAr", "lastName", "lastNameAr", "email", "username", "salary", "salaryEffective", "dayOffCredit", "password", "roleId", "actingUntil"])
     })
 
     it("asks for each name in English and in Arabic where it keeps both, each in its own letters (PR 403)", async () => {

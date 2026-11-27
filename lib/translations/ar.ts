@@ -959,6 +959,13 @@ export const ar = {
         female: "أنثى",
         select_company: "اختيار الشركة",
         monthly_base_salary_label: "الراتب الأساسي الشهري (ج.م)",
+        // Which payroll a changed salary is for (LATER_CHANGES_PLAN.md §7.13, PR 437).
+        salary_effective_label: "يُطبَّق على",
+        salary_effective_this: "رواتب هذا الشهر، من {date}",
+        salary_effective_next: "رواتب الشهر القادم، من {date}",
+        salary_effective_required: "يُرجى اختيار الرواتب التي يُطبَّق عليها الراتب الجديد.",
+        salary_effective_locked: "تم اعتماد رواتب هذا الشهر، لذا لا يُطبَّق الراتب الجديد إلا على رواتب الشهر القادم.",
+        salary_effective_month_passed: "بدأ شهر جديد منذ فتح هذه الصفحة. يُرجى اختيار الرواتب التي يُطبَّق عليها الراتب الجديد.",
         new_password_optional_label: "كلمة مرور جديدة (اختياري)",
         close_button: "إغلاق",
         profile_photo_upload: "رفع صورة",

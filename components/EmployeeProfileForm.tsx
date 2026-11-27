@@ -32,7 +32,7 @@ import { keepsBothNames, nameAskedFor, profileAccess } from '@/lib/profile-acces
 import { missingLanguages, personName } from '@/lib/names'
 import { inPageOrder, savedName } from '@/lib/names/name-fields'
 import { mistakeText } from '@/lib/new-employee-form'
-import { askedNameRefused, dayAfter, PROFILE_FIELDS, profileErrors, refusedField, type ProfileField } from '@/lib/profile-form'
+import { askedNameRefused, dayAfter, PROFILE_FIELDS, profileErrors, refusedField, salaryChanged, salaryMonths, type ProfileField } from '@/lib/profile-form'
 import { ownPasswordRefusal, resetRefusal } from '@/lib/profile-password'
 import { fetcher, fetchRetrying } from '@/lib/swr-fetcher'
 import { calendarDateStr, DEFAULT_TIME_ZONE } from '@/lib/time'
@@ -84,10 +84,14 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     // The company's calendar, which a return date is read in, as loaded with
     // them; and when the profile was opened, for the day after it.
     const [companyZone, setCompanyZone] = useState<string | null>(null)
-    const [openedAt] = useState(() => new Date())
+    const [openedAt, setOpenedAt] = useState(() => new Date())
     const [acting, setActing] = useState<{ until: string; returnTo: { name: string; builtIn?: string | null } | null } | null>(null)
     const [gender, setGender] = useState('MALE')
     const [salary, setSalary] = useState<string>('')
+    // The salary as saved, and which payroll a changed one is for: neither
+    // picked for them (LATER_CHANGES_PLAN.md §7.13, PR 437).
+    const [savedSalary, setSavedSalary] = useState('')
+    const [salaryEffective, setSalaryEffective] = useState('')
     const [baseDayOffCredit, setBaseDayOffCredit] = useState<string>('')
     const [username, setUsername] = useState('')
     // As loaded: the username is sent only when it's been changed.
@@ -244,6 +248,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 setActing(employee.actingUntil ? { until: employee.actingUntil, returnTo: employee.returnRole ?? null } : null)
                 setGender(employee.gender || 'MALE')
                 setSalary(employee.salary !== undefined && employee.salary !== null ? employee.salary.toString() : '')
+                setSavedSalary(employee.salary !== undefined && employee.salary !== null ? employee.salary.toString() : '')
                 setBaseDayOffCredit(employee.baseDayOffCredit !== undefined && employee.baseDayOffCredit !== null ? employee.baseDayOffCredit.toString() : '0')
                 setCompanyId(employee.companyId || '')
                 setCompanyZone(employee.company?.timezone ?? null)
@@ -405,6 +410,8 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
     const waitingRole: WaitingRole | null = waitingData?.data?.[0] ?? null
     // Only a different role is a change, and none is asked for while one
     // waits: one picked before it was known to wait isn't sent.
+    // A changed salary asks which payroll it's for, this month's or next month's (PR 437).
+    const salaryMoved = access.changeSalary && salaryChanged(salary, savedSalary)
     const roleChange = !!access.changeRole && !(access.changeRole === 'ask' && (waitingRole || askedElsewhere)) && !!roleId && roleId !== currentRole?.id
     const digits = locale === 'ar' ? 'ar-EG' : 'en-GB'
     // Until when they're acting in their role, as their details and the form's role field say it.
@@ -456,6 +463,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
             email: access.changeEmail ? email : undefined,
             username: access.changeUsername ? changedUsername(username, savedUsername) : undefined,
             salary: access.changeSalary ? salary : undefined,
+            salaryEffective: salaryMoved ? salaryEffective : undefined,
             dayOffCredit: access.changeDayOffCredit ? baseDayOffCredit : undefined,
             actingUntil: roleChange ? actingDate : undefined,
             actingFrom: tomorrow,
@@ -593,6 +601,10 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     gender,
                     avatar: avatarUrl,
                     salary: access.changeSalary ? parseFloat(salary) || 0 : undefined,
+                    salaryEffective: salaryMoved ? salaryEffective : undefined,
+                    // The month the choice was shown for: left open past the
+                    // 1st, it still means the months it named (PR 437).
+                    salaryMonth: salaryMoved ? today.slice(0, 7) : undefined,
                     baseDayOffCredit: access.changeDayOffCredit ? parseFloat(baseDayOffCredit) || 0 : undefined,
                     username: access.changeUsername ? changedUsername(username, savedUsername) : undefined,
                     status: access.status ? status : undefined,
@@ -632,6 +644,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                 // otherwise. About the role, from a save that didn't change it,
                 // as the last Admin's status can be: above the buttons, still
                 // in the reader's language.
+                // The month it named is past: the page names the new months,
+                // with nothing picked, and says so under the choice (PR 437).
+                if (answer?.code === 'SALARY_MONTH_PASSED') { setOpenedAt(new Date()); setSalaryEffective('') }
                 const refused = refusedField(answer)
                 if (ownRefused) setFormError(t(ownRefused))
                 else if (refused && (refused.field !== 'roleId' || roleGiven)) wrongAt({ [refused.field]: mistakeText(t, locale, refused.field, refused.key) })
@@ -645,6 +660,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
             // Saved, it's nothing to lose.
             setChanged(false)
             confirmed.current = ''
+            // Saved, the salary typed is the one saved, and asks nothing more.
+            setSavedSalary(salary)
+            setSalaryEffective('')
 
             // Sync Logic
             if (userId === session?.user?.id) {
@@ -784,15 +802,17 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
         )
     }
 
-    const values: ProfileValues = { firstName, firstNameAr, lastName, lastNameAr, gender, email, username, salary, dayOffCredit: baseDayOffCredit, password, status, teamLeaderId }
+    const values: ProfileValues = { firstName, firstNameAr, lastName, lastNameAr, gender, email, username, salary, salaryEffective, dayOffCredit: baseDayOffCredit, password, status, teamLeaderId }
     const setters: Record<keyof ProfileValues, (value: string) => void> = {
         firstName: setFirstName, firstNameAr: setFirstNameAr, lastName: setLastName, lastNameAr: setLastNameAr, gender: setGender, email: setEmail, username: setUsername,
-        salary: setSalary, dayOffCredit: setBaseDayOffCredit, password: setPassword, status: setStatus, teamLeaderId: setTeamLeaderId,
+        salary: setSalary, salaryEffective: setSalaryEffective, dayOffCredit: setBaseDayOffCredit, password: setPassword, status: setStatus, teamLeaderId: setTeamLeaderId,
     }
     // Typed again, a field's mistake is gone.
     const set = (field: keyof ProfileValues, value: string) => {
         setters[field](value)
         setChanged(true)
+        // Put back to what it was, the salary asks nothing, and a pick is forgotten.
+        if (field === 'salary' && !salaryChanged(value, savedSalary)) setSalaryEffective('')
         if (field in fieldErrors && fieldErrors[field as ProfileField]) setFieldErrors(errors => ({ ...errors, [field]: undefined }))
     }
     // Picked again, the role's mistakes are gone, and its date's. Its kind is
@@ -819,6 +839,7 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     access={access}
                     missing={namesMissing}
                     companyId={viewer?.role === 'SUPER_ADMIN' ? companyId || null : null}
+                    salaryMonths={salaryMoved ? salaryMonths(today, locale) : null}
                     company={role === 'SUPER_ADMIN' ? 'SHSD' : companies.find(c => c.id === companyId)?.name ?? null}
                     ownTeamLeader={myLeader ? `${myLeader.firstName} ${myLeader.lastName}`.trim() : null}
                     leaders={leaders.filter(l => l.id !== userId).map(l => ({ id: l.id, name: `${l.firstName} ${l.lastName}`.trim() }))}

@@ -17,7 +17,7 @@ import { usernameError } from '@/lib/username-rules'
  * focus: each name's in Arabic beside it, where it keeps both (PR 403), put
  * in the page's order by inPageOrder (lib/names/name-fields.ts).
  */
-export const PROFILE_FIELDS = ['firstName', 'firstNameAr', 'lastName', 'lastNameAr', 'email', 'username', 'salary', 'dayOffCredit', 'password', 'roleId', 'actingUntil'] as const
+export const PROFILE_FIELDS = ['firstName', 'firstNameAr', 'lastName', 'lastNameAr', 'email', 'username', 'salary', 'salaryEffective', 'dayOffCredit', 'password', 'roleId', 'actingUntil'] as const
 export type ProfileField = (typeof PROFILE_FIELDS)[number]
 
 /** Above it, a salary is taken for a slip of the finger. */
@@ -45,6 +45,12 @@ export function profileErrors(typed: {
     /** Empty keeps the password as it is. */
     password: string
     salary?: string
+    /**
+     * Which payroll a changed salary is for, THIS_MONTH or NEXT_MONTH
+     * (LATER_CHANGES_PLAN.md §7.13, PR 437): sent only once the salary is
+     * changed, and neither is picked for them.
+     */
+    salaryEffective?: string
     dayOffCredit?: string
     /** When an acting role ends, where another role is picked: empty is for good. */
     actingUntil?: string
@@ -81,6 +87,7 @@ export function profileErrors(typed: {
         if (typed.unreadable?.includes('salary') || !zeroOrMore(typed.salary)) errors.salary = 'emp_new_salary_invalid'
         else if (Number(typed.salary) > SALARY_MAX) errors.salary = 'salary_limit_error'
     }
+    if (typed.salaryEffective !== undefined && typed.salaryEffective !== 'THIS_MONTH' && typed.salaryEffective !== 'NEXT_MONTH') errors.salaryEffective = 'salary_effective_required'
     if (typed.dayOffCredit !== undefined && (typed.unreadable?.includes('dayOffCredit') || !zeroOrMore(typed.dayOffCredit))) errors.dayOffCredit = 'emp_new_day_off_invalid'
     if (typed.password && typed.password.length < PASSWORD_MIN) errors.password = 'emp_new_password_short'
     if (typed.actingUntil !== undefined) {
@@ -123,6 +130,28 @@ export function dayAfter(now: Date, timeZone: string): string {
     return new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10)
 }
 
+/**
+ * Whether the salary typed differs from the one saved, as it's sent: left
+ * empty, 0 (LATER_CHANGES_PLAN.md §7.13, PR 437). Once it does, Applies to
+ * asks which payroll it's for.
+ */
+export function salaryChanged(typed: string, saved: string): boolean {
+    return (parseFloat(typed) || 0) !== (parseFloat(saved) || 0)
+}
+
+/**
+ * The 1st of this month and of next month, as Applies to names them, "1
+ * November" or «١ نوفمبر»: of the month `today` is in, the company's today.
+ */
+export function salaryMonths(today: string, locale: string): { thisMonth: string; nextMonth: string } {
+    const year = Number(today.slice(0, 4))
+    const month = Number(today.slice(5, 7))
+    // Month 13 is January of the year after, as Date.UTC counts.
+    const first = (m: number) => new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' })
+        .format(new Date(Date.UTC(year, m - 1, 1)))
+    return { thisMonth: first(month), nextMonth: first(month + 1) }
+}
+
 const named = (name: string) => name.trim().length > 0 && name.trim().length <= NAME_MAX
 
 /** Left empty is fine (it's sent as 0); otherwise a number, 0 or more. */
@@ -160,6 +189,11 @@ const ROLE_REFUSED: Record<string, { field: ProfileField; key: TranslationKey }>
 export function refusedField(body: { error?: string; code?: string; details?: Record<string, unknown> } | null): { field: ProfileField; key: TranslationKey } | null {
     if (!body) return null
     if (body.code && Object.hasOwn(ROLE_REFUSED, body.code)) return ROLE_REFUSED[body.code]
+    // This month's payroll approved, the new salary can only be next month's
+    // (LATER_CHANGES_PLAN.md §7.13, PR 437): the only one a save refuses so.
+    if (body.code === 'PAYROLL_MONTH_LOCKED') return { field: 'salaryEffective', key: 'salary_effective_locked' }
+    // The page left open past the 1st, the month it named is past (Codex review on PR 437).
+    if (body.code === 'SALARY_MONTH_PASSED') return { field: 'salaryEffective', key: 'salary_effective_month_passed' }
     if (body.error === 'Username in use') return { field: 'username', key: 'username_in_use' }
     if (body.error === USERNAME_RESERVED) return { field: 'username', key: 'username_reserved' }
     if (body.error === 'Email in use') return { field: 'email', key: 'emp_new_email_taken' }
@@ -178,6 +212,7 @@ export function refusedField(body: { error?: string; code?: string; details?: Re
     if (details.username) return { field: 'username', key: 'username_invalid' }
     if (details.password) return { field: 'password', key: 'emp_new_password_short' }
     if (details.salary) return { field: 'salary', key: 'emp_new_salary_invalid' }
+    if (details.salaryEffective) return { field: 'salaryEffective', key: 'salary_effective_required' }
     if (details.baseDayOffCredit) return { field: 'dayOffCredit', key: 'emp_new_day_off_invalid' }
     return null
 }

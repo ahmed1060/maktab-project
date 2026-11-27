@@ -70,6 +70,10 @@ export const updateUserSchema = partialWithoutDefaults(createUserSchema).extend(
     // the behaviour that already existed — the new salary applies to the month
     // being worked. The screen that asks the question arrives in P7.
     salaryEffective: z.enum(['THIS_MONTH', 'NEXT_MONTH']).optional(),
+    // The month the choice was shown for, its "this month" (LATER_CHANGES_PLAN.md
+    // §7.13, Codex review on PR 437): a page left open past the 1st still
+    // means the months it named.
+    salaryMonth: z.string().regex(/^\d{4}-\d{2}$/).optional(),
     salaryReason: z.string().max(200).optional(),
     // The answer to "where do this leader's team members go?", supplied only
     // when the change would strip their leadership. Three states again, and

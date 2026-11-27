@@ -22,10 +22,11 @@ words on Exceptions (§7.11) and payday and the attendance period
 (§7.10) done in one PR (#430); the limits on requests (§7.4) done: day
 off (#431), every writer waiting for a month's lock as long as an import
 may hold it (#432, ATTENDANCE_PLAN.md §12.1), permission hours (#433) and
-missions (#434); obligations with a client (§7.7, step 7): 7a done
-(#435), and 7b, View obligations on a client's page in place of a
-section, under way; salary advances (§7.5, step 8) next, once the owner
-has reviewed §7.9; the names (§3) paused after step 8l (#424).** Done: the development database (§4),
+missions (#434); obligations with a client (§7.7, step 7) done: an
+obligation's client (#435), and View obligations on a client's page in
+place of a section (#436); a salary change's payroll (§7.13), a fix, under
+way, then payroll deductions (§7.12) and salary advances (§7.5), the law's limit decided (§7.9), with a few
+points open (§7.12.3); the names (§3) paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their limit set
@@ -1572,10 +1573,22 @@ In three PRs, each whole on its own:
   picks this month's payroll or next month's for the first installment
   (next month's when this month's is approved). They see each month's
   amount before sending.
-- **The policy decides**, each editable:
+- **The policy decides**, each editable, in Company Settings:
   - the most one may ask for: 2 months' salary unless changed;
   - whether only one may be open at a time;
-  - how long someone must have worked first.
+  - how long someone must have worked first;
+  - the most a month's installment may be: a percentage of the net pay
+    after all the payroll deductions (§7.12), 10% unless changed, Egypt's
+    legal limit (§7.9). It can be set higher too, as a company may be
+    outside Egypt (the owner, 27 November);
+  - what happens when an installment would be over it: Block or Warn, a
+    choice, Block unless changed. Block keeps the months from going below what the
+    limit allows, for the employee asking and for the approver.
+- **No cap at payroll** (the owner, 27 November): once approved, each
+  installment is taken in full, even in a month whose pay came out lower.
+- **The employee's consent,** which the law asks for in writing: the
+  request says how much will be taken from each payslip until it's
+  repaid, and sending it agrees to that, kept with its date and time.
 - **Approving:** on the Requests page, with a new permission. The
   approver may change the months and the start, and picks how it's paid:
   cash or bank transfer.
@@ -1585,8 +1598,11 @@ In three PRs, each whole on its own:
 - **The balance** shows on the employee's page and on one's own profile.
 - **Managing**, with a permission: settle it early, or move an
   installment.
-- **At the end of a contract,** what's left comes off the final
-  settlement.
+- **At the end of a contract,** the final settlement asks whoever makes
+  it: take what's left now, or keep the installments going (the owner,
+  27 November). Kept going, as there are no payslips after someone
+  leaves, what's left stays on their record as money they owe, marked
+  paid when it's received.
 
 ### 7.6 Rating finished work (Decided)
 
@@ -1653,7 +1669,7 @@ Built in two PRs:
     never widening it.
   - **Deleting a client:** one with obligations is archived instead, as
     one with tasks or records is, so they keep it.
-- **7b, View obligations** (DESIGN.md §5.5, An obligation's client), in
+- **7b, View obligations** (Done, #436; DESIGN.md §5.5, An obligation's client), in
   place of an Obligations section on a client's page (the owner, 27
   November):
   - A link beside View tasks, on the end of the client's details'
@@ -1675,9 +1691,11 @@ Built in two PRs:
 6. Limits on requests (§7.4): day off first, then permission hours and
    missions.
 7. Obligations with a client (§7.7).
-8. Salary advances (§7.5), Custody's new name first, once the owner has
-   reviewed §7.9.
-9. Rating finished work (§7.6): DESIGN.md first, then tasks, then
+8. A salary change's payroll (§7.13), a fix found on 27 November.
+9. Payroll deductions (§7.12), then salary advances (§7.5), Custody's new
+   name first, as an installment's limit is worked out on the net after
+   them.
+10. Rating finished work (§7.6): DESIGN.md first, then tasks, then
    obligations.
 
 A step may take more than one PR.
@@ -1689,8 +1707,13 @@ A step may take more than one PR.
    interest, and the same for wages paid ahead (article 113); all debts
    together, at most 25% of the wage after income tax (article 114).
    Nizmo could stop an installment over it, warn, or take the most from
-   the policy (10% unless changed). The owner reviews this later, before
-   salary advances are built; nothing about it changes until then.
+   the policy (10% unless changed).
+   **Decided by the owner on 27 November** (§7.5, §7.12): the limit is
+   of the net after all payroll deductions, 10% unless changed, and may
+   be set higher for a company outside Egypt; an installment over it is
+   blocked or warned of, a setting, Block unless changed; there's no cap at
+   payroll; and at a contract's end the settlement asks whether to take
+   what's left or keep the installments going.
 
 ### 7.10 Payday and the attendance period (Decided)
 
@@ -1990,6 +2013,75 @@ with قبول: «قبول العذر» and «قبول».
   - Arabic in the same way, gender-neutral: «إعفاء من الخصم مع ذكر السبب،
     أو الخصم حسب السياسة».
 - **Words and their tests only,** before 10a, in the same PR (§7.8).
+
+### 7.12 Payroll deductions (Decided in part)
+
+Talked through with the owner on 2026-11-27, from the law's limit on
+installments (§7.9).
+
+1. **Today's salaries are net:** the amounts entered in Nizmo are what
+   people take home, before Nizmo's own deductions and additions.
+2. **Decided:**
+   - Company Settings, in the Payroll settings card, gets Income tax and
+     Social insurance, each a percentage, 0 unless changed.
+   - And more deductions, as many as wanted, each with a name and either
+     a fixed amount or a percentage.
+   - With them all 0, as every company starts, nothing on a payslip
+     changes. A company can later enter gross salaries and set the
+     percentages, and each deduction shows on the payslip as a line of
+     its own.
+   - The net after all of them is what a salary advance's installment
+     limit is worked out on (§7.5).
+   - **For a person** (the owner, 27 November): an employee's page lists
+     each of the company's deductions, with As the company, Their own
+     rate (or amount), or Not applied, for someone not insured yet, a
+     part-timer insured through another job, someone past the insurance
+     age or a foreign worker under another scheme. Owners have no payslip
+     (§7.3), so none of this touches them.
+3. **Open:**
+   - What the percentages are of: the month's pay before them (the salary
+     with its additions and Nizmo's deductions), or the salary alone.
+   - Egypt's income tax is worked out by brackets and social insurance on
+     an insured wage with a floor and a ceiling. A flat percentage is a
+     simplification, which may do for now.
+   - The law's 25% limit on all debts together (§7.9) isn't checked
+     anywhere, as there's no cap at payroll.
+
+### 7.13 A salary change's payroll (Decided)
+
+Found on 2026-11-27 from a November payslip whose salary was split at day
+22 into the salary and 0.
+
+1. **The bug:** an account made without a salary is given a starting
+   salary of 0, dated the day it was made. A salary set later is dated the
+   1st of the month, before it, so the 0 still won from its own day. Two
+   people's November payslips, both drafts, paid days at 0: one from day
+   22, one for every day of their contract.
+2. **Decided (the owner, 27 November):**
+   - Changing someone's salary asks which payroll it's for: this month's,
+     from its 1st, or next month's, from its 1st. Neither is picked for
+     them. The server already took the answer; no screen asked it.
+   - The salary set last is theirs from the 1st of the month it's for: a
+     salary recorded before it and dated later gives way to it, for
+     payslips and for pricing attendance. A starting salary entered before
+     it goes, and so does one set before it for next month, so setting
+     this month's after next month's replaces both, as their page, which
+     shows the salary set last, says. The two payslips are put right by
+     Recalculate, with no data changed. In production, on 27 November, the
+     only salaries this changes are those two people's, in November, a
+     draft.
+   - With this month's payroll approved, the new salary can only be next
+     month's: asked for this month's, the server refuses it
+     (`PAYROLL_MONTH_LOCKED`), said under the choice. The refusal is in
+     the same transaction as the rest of the save, under the month's
+     lock, so nothing on the page is saved (Codex review on #437).
+   - The choice is for the months it names: the page sends the month its
+     choice was shown for. Saved after the 1st, the month it named is
+     still saved where it's this month or next; one that's past is
+     refused (`SALARY_MONTH_PASSED`), and the page names the new months
+     with neither picked (Codex review on #437).
+3. One PR, before payroll deductions (§7.8). After it's merged, November's
+   payroll is recalculated.
 
 ## Not here
 
@@ -2573,3 +2665,30 @@ with قبول: «قبول العذر» and «قبول».
 - **2026-11-27:** 7b, as the owner asked instead of a section: View
   obligations beside View tasks on a client's details, opening the
   Obligations list filtered to the client.
+- **2026-11-27:** #436 merged (7b, View obligations on a client's page), so
+  step 7 is done. Salary advances (step 8) are next, once the owner has
+  reviewed §7.9.
+- **2026-11-27:** The owner decided the law's limit on installments
+  (§7.9): 10% of the net after income tax and social insurance, Block
+  unless changed to Warn, no cap at payroll, and a question at a
+  contract's end. Payroll deductions added (§7.12): income tax and social
+  insurance percentages, 0 unless changed, and more named deductions, a
+  fixed amount or a percentage, before salary advances (§7.8).
+- **2026-11-27:** The owner's answers: an installment's limit is of the
+  net after all payroll deductions and is 10% unless changed, with no
+  ceiling, as a company may be outside Egypt; Block or Warn is a choice;
+  installments kept going after someone leaves stay on their record as
+  money owed, marked paid when received.
+- **2026-11-27:** The owner agreed to a per-person setting for each payroll
+  deduction on an employee's page (§7.12).
+- **2026-11-27:** A salary change's payroll (§7.13): a starting salary of 0
+  outlived the salary set after it, on two November payslips. Changing a
+  salary will ask whether it's this month's payroll or next month's, and a
+  month's salary holds from its 1st. Before payroll deductions (§7.8).
+- **2026-11-27:** §7.13: the salary set last holds from its month's 1st
+  whichever month a salary entered before it is dated in, so one set for
+  next month gives way to this month's set after it, as their page shows
+  the salary set last. One PR, #437.
+- **2026-11-27:** §7.13, Codex's review of #437: a salary's payroll refused
+  saves nothing on the page, and the choice is for the months it names, a
+  page left open past the 1st asking again once the month it named is past.

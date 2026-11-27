@@ -57,6 +57,25 @@ async function keepAsWritten(tx: Prisma.TransactionClient, table: 'User' | 'Supe
     return account ? keepAfterChange(account, from) : null
 }
 
+/**
+ * This month in a company's calendar, as its payroll names it ("2026-11"),
+ * and the calendar: the month a salary for this month's payroll is dated
+ * from (LATER_CHANGES_PLAN.md §7.13, PR 437).
+ */
+async function salaryMonth(companyId: string | null, now: Date): Promise<{ zone: string; key: string }> {
+    const company = companyId ? await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } }) : null
+    const zone = company?.timezone ?? DEFAULT_TIME_ZONE
+    const { year, month } = calendarMonth(now, zone)
+    return { zone, key: `${year}-${String(month).padStart(2, '0')}` }
+}
+
+/** The month after one named as payroll names it, "2026-12" after "2026-11". */
+function monthAfter(month: string): string {
+    const year = Number(month.slice(0, 4))
+    const m = Number(month.slice(5, 7))
+    return m === 12 ? `${year + 1}-01` : `${year}-${String(m + 1).padStart(2, '0')}`
+}
+
 export class UserService {
     static async create(input: CreateUserInput, session: any) {
         const userRole = session.user.role
@@ -533,9 +552,8 @@ export class UserService {
                 // effective-dated fact, not a field edit: it has to land in
                 // SalaryChange as well, and the two have to move together or a
                 // payslip computed from history will disagree with the number
-                // an admin is looking at. SalaryHistoryService.record does both
-                // in one transaction, and is called below once the rest of the
-                // update has succeeded.
+                // an admin is looking at. SalaryHistoryService.record does both,
+                // below, in the same transaction as the rest of the update.
                 updateData.salary = salary
             }
             if (can(session.user, "dayoff.adjust_credit", person) && sessionHasModule(session, "DAY_OFF")) {
@@ -656,17 +674,68 @@ export class UserService {
                 roleId: updateData.roleId, status: updateData.status,
             })
 
+            // Salary history and record sync.
+            //
+            // Only when the value actually moved. The old code ran on every
+            // update that mentioned salary, so saving a user's name with the
+            // salary field untouched still wrote a change — which would now
+            // mean a SalaryChange row saying the salary changed to what it
+            // already was, in a history whose whole purpose is to be read back.
+            const previousSalary = regularUser ? Number(regularUser.salary) : null
+            const salaryMoved = updateData.salary !== undefined
+                && previousSalary !== null
+                && Number(updateData.salary) !== previousSalary
+            const now = new Date()
+            // The payroll it's for, as Edit asks (LATER_CHANGES_PLAN.md §7.13,
+            // PR 437): this month's from its 1st or next month's from its 1st,
+            // in the company's calendar. For the months the page named: left
+            // open past the 1st, it still means the month it showed while that's
+            // this month or next, and one that's past is refused before anything
+            // is written (Codex review on PR 437). Not sent, this month's, as it
+            // always was.
+            const salaryPlan = salaryMoved ? await (async () => {
+                const choice = input.salaryEffective ?? 'THIS_MONTH'
+                const { zone, key: current } = await salaryMonth(regularUser.companyId, now)
+                const named = input.salaryMonth ?? current
+                const month = choice === 'NEXT_MONTH' ? monthAfter(named) : named
+                if (month !== current && month !== monthAfter(current)) throw new Error("SALARY_MONTH_PASSED")
+                return { zone, month, effectiveFrom: effectiveFromChoice(now, month === current ? 'THIS_MONTH' : 'NEXT_MONTH', zone) }
+            })() : null
+            const { SalaryHistoryService } = await import("./salary-history.service")
+            // With its history, under its month's lock, which approving that
+            // payroll takes too, in the same transaction as the rest of their
+            // details: approved, it's refused and nothing on the page is saved
+            // (Codex review on PR 437).
+            const writeSalary = async (tx: Prisma.TransactionClient) => {
+                if (!salaryPlan) return
+                if (regularUser.companyId) {
+                    await lockMonths(tx, regularUser.companyId, [salaryPlan.month])
+                    if ((await lockedMonths(tx, regularUser.companyId, [salaryPlan.month])).size > 0) throw new Error("PAYROLL_MONTH_LOCKED")
+                }
+                await SalaryHistoryService.record({
+                    userId: id,
+                    monthlyAmount: Number(updateData.salary),
+                    effectiveFrom: salaryPlan.effectiveFrom,
+                    reason: input.salaryReason,
+                    createdById: session?.user?.id ?? null,
+                }, tx)
+            }
+
             const writeSelect = { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true, avatar: true, dayOffCredit: true, baseDayOffCredit: true, username: true }
             const handOff = rehome
             // An owner's role stays Admin (LATER_CHANGES_PLAN.md §7.3, step 3b2, PR 428).
             const leavesAdmin = regularUser.role === 'ADMIN' && updateData.role !== undefined && updateData.role !== 'ADMIN'
-            const updated = await (handOff || keepFrom || leavesAdmin
+            const updated = await (handOff || keepFrom || leavesAdmin || salaryPlan
                 ? prisma.$transaction(async (tx) => {
+                    await writeSalary(tx)
                     if (leavesAdmin) await keepsOwnerAnAdmin(tx, id)
                     if (handOff) await TeamHandOff.apply(tx, id, handOff, { id: session.user.id, role: userRole })
                     const kept = keepFrom ? await keepAsWritten(tx, 'User', id, keepFrom) : null
+                    // With the salary: their page shows the salary set last, next
+                    // month's too (DESIGN.md, A salary change's payroll); each
+                    // month's payslip pays the salary for it, from the history.
                     return tx.user.update({ where: { id }, data: kept ? { ...updateData, keptSession: kept } : updateData, select: writeSelect })
-                })
+                }, LOCK_WAIT)
                 : prisma.user.update({ where: { id }, data: updateData, select: writeSelect })
             ).catch(error => {
                 // Given to somebody else a moment ago, after the check above.
@@ -699,18 +768,6 @@ export class UserService {
             ]
             if (teamMoves.length > 0) await notifyTeamMoves(teamMoves)
 
-            // Salary history and record sync.
-            //
-            // Only when the value actually moved. The old code ran on every
-            // update that mentioned salary, so saving a user's name with the
-            // salary field untouched still wrote a change — which would now
-            // mean a SalaryChange row saying the salary changed to what it
-            // already was, in a history whose whole purpose is to be read back.
-            const previousSalary = regularUser ? Number(regularUser.salary) : null
-            const salaryMoved = updateData.salary !== undefined
-                && previousSalary !== null
-                && Number(updateData.salary) !== previousSalary
-
             // The employment timeline, on the same reasoning as the salary
             // history above: a suspension entered through this screen has to
             // leave a trace, or a payslip pays the suspended month in full
@@ -726,25 +783,14 @@ export class UserService {
                 })
             }
 
-            if (salaryMoved) {
-                const now = new Date()
-                const { SalaryHistoryService } = await import("./salary-history.service")
-                await SalaryHistoryService.record({
-                    userId: id,
-                    monthlyAmount: Number(updateData.salary),
-                    // Effective from the start of the current month unless the
-                    // caller says otherwise. P7's screen will offer the
-                    // this-month-or-next choice; until it does, the safe default
-                    // is the behaviour that already existed — the new salary
-                    // applies to the month being worked.
-                    effectiveFrom: effectiveFromChoice(now, input.salaryEffective ?? 'THIS_MONTH'),
-                    reason: input.salaryReason,
-                    createdById: session?.user?.id ?? null,
-                })
-
-                const { month: m, year: y } = calendarMonth(now)
+            if (salaryPlan) {
+                // Attendance prices days at the salary in force on them.
+                const { recomputeForPersonFrom } = await import("./attendance-recompute")
+                await recomputeForPersonFrom(id, salaryPlan.effectiveFrom)
+                const { month: m, year: y } = calendarMonth(now, salaryPlan.zone)
                 const { SalaryService } = await import("./salary.service")
-                await SalaryService.ensureRecordExists(id, m, y, updateData.salary)
+                // This month's record, where there's none yet, at this month's salary.
+                await SalaryService.ensureRecordExists(id, m, y, salaryPlan.effectiveFrom.getTime() <= now.getTime() ? updateData.salary : previousSalary)
             }
 
 
