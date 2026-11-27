@@ -2121,7 +2121,7 @@ without its own.
    Assign roles today gets it too, so nothing changes until it's
    unticked. One PR, after §7.14's; `ROLES_PLAN.md` §6.14 says who
    answers.
-4. **How (planned for PR 439):** `employees.review_access`, Answer access
+4. **How (#439, merged on 27 November):** `employees.review_access`, Answer access
    reviews, code 95, in Employees beside Assign roles, for the whole
    company, with See employees.
    - It's asked where Assign roles was: the company's reviews, answering a
@@ -2761,3 +2761,6 @@ without its own.
   access reviews are next.
 - **2026-11-27:** §7.15: how access reviews get their own permission,
   `employees.review_access`, given to every role holding Assign roles.
+- **2026-11-27:** #439 merged (§7.15): access reviews are answered with
+  Answer access reviews, given by its migration to every role holding
+  Assign roles. Its migration in production is checked after the deploy.
