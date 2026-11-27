@@ -2402,7 +2402,9 @@ These are built once, in the building-blocks PR, and every page uses them
     a company to be picked, as a task's does. Without See clients there's
     no select, and the obligation has no client.
   - **A client the server refuses,** archived or gone while the form was
-    open, is said under the select, which takes the focus.
+    open, is said under the select, which takes the focus. It's taken off
+    the select, which shows "No client", so what's shown is what would be
+    sent, and the clients are loaded again.
   - **Each time a repeating one comes round,** the next one has the same
     client, archived since or not, so it's still clear whose it is.
   - **In the Obligations list,** for anyone who sees the obligation: its
