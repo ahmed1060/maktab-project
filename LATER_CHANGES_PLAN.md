@@ -19,11 +19,11 @@ mark, permission and pay (#426, step 3a), what they're not asked for
 (#427, step 3b1), only Admins as owners, given no new work (#428, step
 3b2), and the Owners list (#429, step 3c), so owners are done; clearer
 words on Exceptions (§7.11) and payday and the attendance period
-(§7.10) done in one PR (#430); the limits on requests (§7.4) under way,
-day off done (#431), and every writer now waits for a month's lock as
-long as an import may hold it (#432, ATTENDANCE_PLAN.md §12.1);
-permission hours done (#433), missions next; the names (§3) paused
-after step 8l (#424).** Done: the development database (§4),
+(§7.10) done in one PR (#430); the limits on requests (§7.4) done: day
+off (#431), every writer waiting for a month's lock as long as an import
+may hold it (#432, ATTENDANCE_PLAN.md §12.1), permission hours (#433) and
+missions (#434); obligations with a client (§7.7, step 7) next; the
+names (§3) paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their limit set
@@ -2512,3 +2512,7 @@ with قبول: «قبول العذر» and «قبول».
   day within day off's days with one month ahead; its dialog asks it as
   a choice between two. Missions (4c) next.
 - **2026-11-27:** Step 6 continues, 4c (missions): as built in §7.4.
+- **2026-11-27:** #434 merged (4c). Missions are asked for back as far as
+  the policy allows, 7 days unless changed, and a year ahead as before;
+  so the limits on requests (§7.4, step 6) are done. Obligations with a
+  client (§7.7, step 7) next.
