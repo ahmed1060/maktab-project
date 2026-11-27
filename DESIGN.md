@@ -2469,6 +2469,42 @@ These are built once, in the building-blocks PR, and every page uses them
     role." or "Review who holds which."
   - Asking for a change on a review's line still sends the Super Admin a
     role change request, whoever answers it.
+- **Payroll deductions** (`LATER_CHANGES_PLAN.md` §7.12): a card of its
+  own on Company Settings' Payroll tab, Payroll deductions, under Payroll
+  settings, for whoever may change settings, and shown without being
+  changed to whoever may only see them, as Payroll settings is.
+  - Its note says what it's for: what's taken from each payslip, as a
+    percentage of the month's pay before them, which is the salary with
+    its additions less Nizmo's own deductions, or as a fixed amount. At
+    0, nothing is taken, and a change reaches months not approved yet.
+  - **Income tax** and **Social insurance:** a percentage each, 0 unless
+    changed, 0 to 100 with up to two decimals, side by side on computers
+    and one under the other on phones.
+  - **More deductions,** under them, headed as a titled part, one block
+    each: its Name, up to 40 characters; How it's taken, a choice of two,
+    A percentage or A fixed amount; the figure, its label saying which;
+    and Remove, a quiet button named for the deduction, "Remove Union
+    fee". On a computer each is one line, its name taking what's left;
+    on a phone, one under the other. "None yet." while there are none.
+    Add a deduction, a quiet button under them, adds an empty one with its
+    name field focused, up to 10.
+  - Saved together, with Save on the card's end side, as Payroll settings
+    is. What's typed wrong is said under its field before anything is
+    sent: a name is needed, two can't share one, a percentage is 0 to 100
+    and an amount 0 or more.
+  - Removed, a deduction goes from months not approved yet. Months
+    approved keep what they were approved with, on their payslips and on
+    the Payroll page, as they keep everything.
+  - **On a payslip,** each one over 0 is a line of its own under
+    Deductions, after Nizmo's own and before a debt's recovery: Income
+    tax and Social insurance, in the payslip's language, then the others
+    in the card's order, as the company named them.
+    - A percentage is of the month's pay before any of them, rounded to
+      two decimals, half up. Each takes no more than what's left of the
+      pay, so they never take the net below 0 or leave a debt.
+    - Someone left out of the month has none, as nothing is paid.
+  - **On the Payroll page,** a person's lines show them the same way, and
+    the month's totals count them.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
@@ -3680,3 +3716,8 @@ changed:
   payday as a date on the Payroll page with Change payday and its
   dialog, Approve greyed with its date until payroll closes, and the
   attendance's days on the payslip (`LATER_CHANGES_PLAN.md` §7.10).
+- **2026-11-27:** Payroll deductions (§5.5), as the owner decided: a card
+  of its own on the Payroll tab with Income tax, Social insurance and more
+  deductions, each a percentage of the month's pay before them or a fixed
+  amount, and each a line of its own on the payslip
+  (`LATER_CHANGES_PLAN.md` §7.12).
