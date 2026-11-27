@@ -437,7 +437,7 @@ describe("a mission's allowance, date by date (§6.10, decisions 6, 9 and 12, PR
     })
     // One day worth 200.00, a mission by days paying one for each date and a mission by hours a half: the plan's example.
     const paying = (allowance: Partial<MissionAllowance> = {}): PolicyBody =>
-        ({ ...STANDARD_OFFICE, missions: { enabled: true, allowance: { dayWorth: "AMOUNT", amountMinor: 20_000, days: 1, hours: 0.5, ...allowance } } })
+        ({ ...STANDARD_OFFICE, missions: { ...STANDARD_OFFICE.missions, enabled: true, allowance: { dayWorth: "AMOUNT", amountMinor: 20_000, days: 1, hours: 0.5, ...allowance } } })
     // 9,300.00 a month in a 31-day month: 300.00 a day.
     const input = (d: MeasuredDay, extra: Partial<PricingInput> = {}): PricingInput =>
         ({ day: d, policy: paying(), monthlyMinor: 930_000, daysInMonth: 31, paidMinutes: 420, mission: "DAYS", ...extra })

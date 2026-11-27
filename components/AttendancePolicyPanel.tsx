@@ -10,6 +10,7 @@ import { apiErrorText } from '@/lib/api-error-text'
 import { countOf } from '@/lib/plural'
 import { policyOn, type DeductionRule, type MissionAllowance, type PolicyBody, type PolicyVersion } from '@/lib/attendance/policy'
 import { permissionWhenLine } from '@/lib/attendance/permission-when'
+import { missionDaysBackLine } from '@/lib/attendance/missions'
 import { toMajor } from '@/lib/payroll'
 import { Button, Card, Choice, Details, Dialog, EmptyState, Row } from '@/components/ui'
 import { firstOfNextMonth } from '@/components/attendance-calendar/hours-form'
@@ -197,8 +198,8 @@ export default function AttendancePolicyPanel({ companyId, readOnly, onChanged }
                             ? lines([t('attendance_permission_line').replace('{hours}', countOf(t, locale, shown.body.permissionHours.monthlyAllowanceMinutes / 60, 'hours')), permissionWhenLine(t, locale, shown.body.permissionHours)])
                             : t('attendance_rule_off'),
                     },
-                    // Whether missions may be asked for (§6.10, PR 283), and what they pay (PR 286).
-                    { label: t('attendance_missions'), value: lines([shown.body.missions.enabled ? t('attendance_missions_line') : t('attendance_missions_off_line'), ...allowanceLines(shown.body.missions.allowance)]) },
+                    // Whether missions may be asked for (§6.10, PR 283), how far back (LATER_CHANGES_PLAN.md §7.4, 4c), and what they pay (PR 286).
+                    { label: t('attendance_missions'), value: lines([shown.body.missions.enabled ? t('attendance_missions_line') : t('attendance_missions_off_line'), ...(shown.body.missions.enabled ? [missionDaysBackLine(t, locale, shown.body.missions.daysBack)] : []), ...allowanceLines(shown.body.missions.allowance)]) },
                 ]} />
             )}
 

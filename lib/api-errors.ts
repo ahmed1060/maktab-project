@@ -262,7 +262,7 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     MISSIONS_OFF: { status: 400, message: "The attendance policy doesn't allow missions on one of those days." },
     MISSION_DATES_INVALID: { status: 400, message: "A mission by days needs its first and last dates, in order; one by hours, its date and the part of the day." },
     MISSION_TOO_LONG: { status: 400, message: "A mission by days can't be longer than 90 days." },
-    MISSION_OUT_OF_RANGE: { status: 400, message: "A mission's dates can't be more than a year before today or after it." },
+    MISSION_OUT_OF_RANGE: { status: 400, message: "Missions can't be asked for on those dates. Pick days the calendar offers." },
     MISSION_OVERLAPS: { status: 409, message: "There's already a mission on one of those days." },
     MISSION_OVERLAPS_DAY_OFF: { status: 409, message: "There's already a day off on one of those days." },
     MISSION_NOT_APPROVED: { status: 409, message: "Only an approved mission can be cancelled, and that one isn't approved now." },

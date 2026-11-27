@@ -5,7 +5,7 @@ import DatePickerSingle from '@/components/DatePickerSingle'
 import { Button, Choice, Dialog, DialogActions, Field, Select, TextInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { countOf } from '@/lib/plural'
-import { ABSENCE_MULTIPLIERS, DAY_OFF_MONTHS, MISSION_PAYS, PERMISSION_TYPES, PERMISSION_WHEN, type MissionAllowance, type PolicyBody } from '@/lib/attendance/policy'
+import { ABSENCE_MULTIPLIERS, DAY_OFF_MONTHS, MISSION_DAYS_BACK_MAX, MISSION_PAYS, PERMISSION_TYPES, PERMISSION_WHEN, type MissionAllowance, type PolicyBody } from '@/lib/attendance/policy'
 import { rebaseOnDate, startFromStale, type Based } from '@/lib/attendance/rebase'
 import { firstOfNextMonth } from '@/components/attendance-calendar/hours-form'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
@@ -302,6 +302,15 @@ export default function PolicyDialog({ title, start, startOn, defaultFrom, today
                                 onChange={e => setMissions({ enabled: e.target.checked })} />
                             {t('attendance_missions_on')}
                         </label>
+                        {/* How far back they may be asked for (LATER_CHANGES_PLAN.md §7.4, 4c): read only while they may be. */}
+                        {m.enabled && (
+                            <div className="ui-field-row">
+                                <Field label={t('attendance_mission_days_back')} hint={t('attendance_mission_days_back_hint')} error={errorOf('missions.daysBack')}>{p => (
+                                    <TextInput {...p} type="number" inputMode="numeric" autoComplete="off" min={0} max={MISSION_DAYS_BACK_MAX} name="missions.daysBack" value={m.daysBack}
+                                        onChange={e => setMissions({ daysBack: e.target.value }, 'missions.daysBack')} />
+                                )}</Field>
+                            </div>
+                        )}
                         <fieldset className="ui-field ui-fieldset" aria-describedby={allowanceHintId}>
                             <legend className="ui-label">{t('attendance_mission_allowance')}</legend>
                             <p className="ui-hint" id={allowanceHintId}>{t('attendance_mission_allowance_hint')}</p>

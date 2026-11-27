@@ -6,7 +6,7 @@ import { withGrants } from "@/lib/permissions/test-actors"
 import { PERMISSIONS } from "@/lib/permissions/catalogue"
 import { BUILT_IN_GRANTS } from "@/lib/permissions/built-in"
 import { MEASURE_ONLY, SIX_DAY_FACTORY, STANDARD_OFFICE, policyBodySchema } from "@/lib/attendance/policy"
-import { MISSION_MAX_DAYS, datesOf, missionKey, missionSpan, missionScans } from "@/lib/attendance/missions"
+import { MISSION_MAX_DAYS, datesOf, missionDays, missionKey, missionSpan, missionScans } from "@/lib/attendance/missions"
 import { missionRow, missionWhere } from "@/lib/requests/feed"
 import { REQUEST_KINDS, type FeedRow } from "@/lib/requests/kinds"
 import { attendanceNoticeTarget } from "@/lib/attendance-notice-target"
@@ -104,7 +104,7 @@ describe("the policy's Missions switch (decision 11)", () => {
         expect(dialog).toContain("t('attendance_missions')")
         expect(dialog).toContain("t('attendance_missions_on')")
         expect(dialog).toContain("setMissions({ enabled: e.target.checked })")
-        expect(form).toContain("missions: { enabled: form.missions.enabled, allowance }")
+        expect(form).toContain("missions: { enabled: form.missions.enabled, allowance, daysBack }")
         expect(panel).toContain("shown.body.missions.enabled")
         expect(en.attendance_missions_on).toBe("Employees can ask for missions")
         expect(ar.attendance_missions_on).toBe("يمكن للموظفين طلب المأموريات")
@@ -120,15 +120,17 @@ describe("the policy's Missions switch (decision 11)", () => {
 
 describe("a mission's dates", () => {
     const today = "2026-11-14"
+    // A year back, as before the policy's days back (LATER_CHANGES_PLAN.md §7.4, 4c): these rules aren't about them.
+    const days = missionDays(today, 365)
 
     it("by days, run from its first date to its last, both kept", () => {
-        expect(missionSpan({ kind: "DAYS", startDate: "2026-11-16", endDate: "2026-11-18" }, today)).toEqual({ startDate: "2026-11-16", endDate: "2026-11-18", hoursPart: null })
-        expect(missionSpan({ kind: "DAYS", startDate: "2026-11-16", endDate: "2026-11-16" }, today)).toEqual({ startDate: "2026-11-16", endDate: "2026-11-16", hoursPart: null })
+        expect(missionSpan({ kind: "DAYS", startDate: "2026-11-16", endDate: "2026-11-18" }, days)).toEqual({ startDate: "2026-11-16", endDate: "2026-11-18", hoursPart: null })
+        expect(missionSpan({ kind: "DAYS", startDate: "2026-11-16", endDate: "2026-11-16" }, days)).toEqual({ startDate: "2026-11-16", endDate: "2026-11-16", hoursPart: null })
     })
 
     it("by hours, are one date with its part of the day", () => {
-        expect(missionSpan({ kind: "HOURS", startDate: "2026-11-16", hoursPart: "TO_END" }, today)).toEqual({ startDate: "2026-11-16", endDate: "2026-11-16", hoursPart: "TO_END" })
-        expect(missionSpan({ kind: "HOURS", startDate: "2026-11-16", endDate: "2026-11-16", hoursPart: "FROM_START" }, today)).toEqual({ startDate: "2026-11-16", endDate: "2026-11-16", hoursPart: "FROM_START" })
+        expect(missionSpan({ kind: "HOURS", startDate: "2026-11-16", hoursPart: "TO_END" }, days)).toEqual({ startDate: "2026-11-16", endDate: "2026-11-16", hoursPart: "TO_END" })
+        expect(missionSpan({ kind: "HOURS", startDate: "2026-11-16", endDate: "2026-11-16", hoursPart: "FROM_START" }, days)).toEqual({ startDate: "2026-11-16", endDate: "2026-11-16", hoursPart: "FROM_START" })
     })
 
     it("are refused out of order, by hours across two dates or without its part, or by days with one", () => {
@@ -139,19 +141,24 @@ describe("a mission's dates", () => {
             { kind: "HOURS" as const, startDate: "2026-11-16", endDate: "2026-11-17", hoursPart: "TO_END" as const },
             { kind: "HOURS" as const, startDate: "2026-11-16" },
             { kind: "DAYS" as const, startDate: "2026-02-30", endDate: "2026-03-01" },
-        ]) expect(missionSpan(ask, today), JSON.stringify(ask)).toEqual({ refused: "MISSION_DATES_INVALID" })
+        ]) expect(missionSpan(ask, days), JSON.stringify(ask)).toEqual({ refused: "MISSION_DATES_INVALID" })
     })
 
     it(`by days are ${MISSION_MAX_DAYS} days at most`, () => {
-        expect(missionSpan({ kind: "DAYS", startDate: "2026-11-01", endDate: "2027-01-29" }, today)).toMatchObject({ endDate: "2027-01-29" })
-        expect(missionSpan({ kind: "DAYS", startDate: "2026-11-01", endDate: "2027-01-30" }, today)).toEqual({ refused: "MISSION_TOO_LONG" })
+        expect(missionSpan({ kind: "DAYS", startDate: "2026-11-01", endDate: "2027-01-29" }, days)).toMatchObject({ endDate: "2027-01-29" })
+        expect(missionSpan({ kind: "DAYS", startDate: "2026-11-01", endDate: "2027-01-30" }, days)).toEqual({ refused: "MISSION_TOO_LONG" })
     })
 
-    it("are no more than a year before today or after it", () => {
-        expect(missionSpan({ kind: "HOURS", startDate: "2025-11-14", hoursPart: "TO_END" }, today)).toMatchObject({ startDate: "2025-11-14" })
-        expect(missionSpan({ kind: "HOURS", startDate: "2025-11-13", hoursPart: "TO_END" }, today)).toEqual({ refused: "MISSION_OUT_OF_RANGE" })
-        expect(missionSpan({ kind: "DAYS", startDate: "2027-11-10", endDate: "2027-11-14" }, today)).toMatchObject({ endDate: "2027-11-14" })
-        expect(missionSpan({ kind: "DAYS", startDate: "2027-11-10", endDate: "2027-11-15" }, today)).toEqual({ refused: "MISSION_OUT_OF_RANGE" })
+    it("are within the days that may be asked for: back as far as the policy allows, and a year ahead", () => {
+        const week = missionDays(today, 7)
+        expect(missionSpan({ kind: "HOURS", startDate: "2026-11-07", hoursPart: "TO_END" }, week)).toMatchObject({ startDate: "2026-11-07" })
+        expect(missionSpan({ kind: "HOURS", startDate: "2026-11-06", hoursPart: "TO_END" }, week)).toEqual({ refused: "MISSION_OUT_OF_RANGE" })
+        expect(missionSpan({ kind: "DAYS", startDate: "2026-11-06", endDate: "2026-11-08" }, week)).toEqual({ refused: "MISSION_OUT_OF_RANGE" })
+        expect(missionSpan({ kind: "DAYS", startDate: "2027-11-10", endDate: "2027-11-14" }, week)).toMatchObject({ endDate: "2027-11-14" })
+        expect(missionSpan({ kind: "DAYS", startDate: "2027-11-10", endDate: "2027-11-15" }, week)).toEqual({ refused: "MISSION_OUT_OF_RANGE" })
+        // A year back, at most.
+        expect(missionSpan({ kind: "HOURS", startDate: "2025-11-14", hoursPart: "TO_END" }, days)).toMatchObject({ startDate: "2025-11-14" })
+        expect(missionSpan({ kind: "HOURS", startDate: "2025-11-13", hoursPart: "TO_END" }, days)).toEqual({ refused: "MISSION_OUT_OF_RANGE" })
     })
 
     it("are each date of it, in order, across a month's end", () => {

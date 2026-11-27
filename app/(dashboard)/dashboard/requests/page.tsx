@@ -117,12 +117,14 @@ export default async function RequestsPage(props: { searchParams: Promise<Record
 
     // Asking for a mission, while today's policy has missions on (ATTENDANCE_PLAN.md §6.10, decision 11).
     const mayAskMission = mayAskAttendance && await MissionRequestService.missionsOnToday(viewer.companyId!)
+    // The days it may be asked for, by today's policy (LATER_CHANGES_PLAN.md §7.4, 4c).
+    const missionDays = mayAskMission ? await MissionRequestService.window(viewer.companyId!) : null
 
     return (
         <RequestsClient
             rows={feed.rows} total={feed.total} page={page} totalPages={feed.totalPages} kinds={feed.kinds}
             tabs={tabs} tab={tab} show={show} superAdmin={superAdmin} dayOffAsk={dayOffAsk} credit={credit}
-            mayAskAttendance={mayAskAttendance} attendanceToday={attendanceToday} allowance={allowance} mayAskMission={mayAskMission}
+            mayAskAttendance={mayAskAttendance} attendanceToday={attendanceToday} allowance={allowance} mayAskMission={mayAskMission} missionDays={missionDays}
         />
     )
 }

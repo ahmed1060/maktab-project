@@ -599,9 +599,11 @@ type MissionErrors = { dates?: string; reason?: string }
  * and last dates; by hours, its date and the part of the day; one of their
  * open tasks, if it's for one (decision 18); and why.
  */
-export function AskMission({ today, onCancel, onAsked }: {
+export function AskMission({ today, days, onCancel, onAsked }: {
     /** Today, as the company's calendar has it: where the pickers start. */
     today: string
+    /** The days it may be asked for, by today's policy (LATER_CHANGES_PLAN.md §7.4, 4c): the calendars offer only them. */
+    days: DayOffDays
     onCancel: () => void
     onAsked: () => void
 }) {
@@ -642,8 +644,14 @@ export function AskMission({ today, onCancel, onAsked }: {
                         : { kind, startDate: from, hoursPart: part, taskId: taskId || null, reason: reason.trim() }),
                 })
                 if (!res.ok) {
-                    const said = await refusal(res, 'failed_submit_request')
-                    showToast(t(said).replace('{max}', num(MISSION_MAX_DAYS)), 'error')
+                    const body = await res.json().catch(() => ({}))
+                    // A date outside the days it may be asked for: said under the dates, with them (4c).
+                    if (body.code === 'MISSION_OUT_OF_RANGE' && body.from && body.to) {
+                        setErrors(x => ({ ...x, dates: daysText(t, locale, { from: body.from, to: body.to }, 'requests_mission_range') }))
+                        requestAnimationFrame(() => form.querySelector<HTMLElement>('.ui-date-trigger')?.focus())
+                        return
+                    }
+                    showToast(t(REFUSED[body?.code] ?? 'failed_submit_request').replace('{max}', num(MISSION_MAX_DAYS)), 'error')
                     return
                 }
                 showToast(t('req_asked'), 'success')
@@ -660,9 +668,9 @@ export function AskMission({ today, onCancel, onAsked }: {
                 onChange={k => { setKind(k); setFrom(k === 'HOURS' ? today : ''); setTo(''); setErrors(x => ({ ...x, dates: undefined })) }}
                 options={[{ value: 'DAYS', label: t('requests_mission_by_days') }, { value: 'HOURS', label: t('requests_mission_by_hours') }]} />
             {kind === 'DAYS'
-                ? <DateRangePicker label={t('dates_label')} dateFrom={from} dateTo={to} error={errors.dates}
+                ? <DateRangePicker label={t('dates_label')} dateFrom={from} dateTo={to} minDate={days.from} maxDate={days.to} error={errors.dates}
                     onChange={(start, end) => { setFrom(start); setTo(end); setErrors(x => ({ ...x, dates: undefined })) }} />
-                : <DatePickerSingle label={t('date_label')} value={from} error={errors.dates}
+                : <DatePickerSingle label={t('date_label')} value={from} minDate={days.from} maxDate={days.to} error={errors.dates}
                     onChange={d => { setFrom(d); setErrors(x => ({ ...x, dates: undefined })) }} />}
             {kind === 'HOURS' && (
                 <Choice legend={t('requests_mission_part')} name="mission-part" value={part} onChange={setPart}

@@ -46,7 +46,8 @@ INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayO
 `
 
 const NOW = new Date("2026-11-14T08:00:00Z")
-const paying = (allowance: MissionAllowance) => ({ ...STANDARD_OFFICE, missions: { enabled: true, allowance } })
+// A year back, as before the policy's days back (LATER_CHANGES_PLAN.md §7.4, 4c): October's days are asked for here.
+const paying = (allowance: MissionAllowance) => ({ ...STANDARD_OFFICE, missions: { enabled: true, allowance, daysBack: 365 } })
 
 describe.skipIf(!ADMIN_URL)("each mission day priced, in Postgres", () => {
     const dbName = `mission_allowance_test_${Date.now()}`
