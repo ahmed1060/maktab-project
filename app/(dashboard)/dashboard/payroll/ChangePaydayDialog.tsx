@@ -26,6 +26,9 @@ export const PAYDAY_REFUSAL: Record<string, { key: TranslationKey; field: 'payda
     RUN_PAID: { key: 'payday_change_paid', field: 'payday' },
 }
 
+/** Each field's control, by its name: where a refusal said under it takes the focus. */
+const FIELD_NAME = { payday: 'payday', until: 'attendanceUntil' } as const
+
 /** The attendance's last day to start with: the day before the new payday where that's before the close, otherwise the close. */
 export function attendanceUntilFor(payday: string, close: string): string {
     return payday <= close ? addDays(payday, -1) : close
@@ -74,8 +77,13 @@ export function ChangePaydayDialog({ open, onClose, onDone, year, month, company
             return
         }
         const why = PAYDAY_REFUSAL[body?.code ?? body?.details?.code]
-        if (why) setErrors({ [why.field]: t(why.key) })
-        else showToast(body?.error || t('error_generic'), 'error')
+        if (!why) {
+            showToast(body?.error || t('error_generic'), 'error')
+            return
+        }
+        setErrors({ [why.field]: t(why.key) })
+        // As a form's first wrong field is: the focus goes where the refusal is said.
+        requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-dialog] button[name="${FIELD_NAME[why.field]}"]`)?.focus())
     }
 
     return (

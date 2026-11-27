@@ -66,8 +66,20 @@ describe("the Payroll settings card", () => {
         expect(selected(last, en.payday_in_own)).toBe(true)
     })
 
-    it("puts a day and its select side by side, as a card's fields are", () => {
-        expect(readFileSync("components/CompanyPayrollCard.tsx", "utf8")).toContain('<div className="ui-field-row">')
+    it("puts a day and its select side by side, as a card's fields are, lined up at the top", () => {
+        // So a hint or an error under one doesn't move the other (found in the flows).
+        const source = readFileSync("components/CompanyPayrollCard.tsx", "utf8")
+        expect(source.split('<div className="ui-field-row ui-field-row-top">').length - 1).toBe(3)
+        expect(source).not.toContain('<div className="ui-field-row">')
+        expect(readFileSync("components/ui/ui.css", "utf8")).toMatch(/\.ui-field-row-top \{\s*align-items: flex-start;\s*\}/)
+    })
+
+    it("puts one field under another on phones, where a select's words need the whole line", () => {
+        // Half the width, every choice was cut short on a phone (found in the flows).
+        const css = readFileSync("components/ui/ui.css", "utf8")
+        const rule = css.indexOf(".ui-field-row-top > .ui-field {\n    flex: 1 1 100%;")
+        expect(rule).toBeGreaterThan(css.indexOf(".ui-field-row > .ui-field {\n    flex: 1 1 calc(50%"))
+        expect(css.lastIndexOf("@media (max-width: 767px)", rule)).toBeGreaterThan(css.indexOf(".ui-field-row-top {"))
     })
 
     it("is in the page's language", async () => {

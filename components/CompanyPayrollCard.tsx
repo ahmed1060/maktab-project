@@ -224,7 +224,7 @@ export default function CompanyPayrollCard({
             <form ref={form} className="ui-card-form" noValidate onSubmit={save}>
                 {/* When payroll closes, then payday, as one decides the other
                     (DESIGN.md §5.5, Payday and when payroll closes). */}
-                <div className="ui-field-row">
+                <div className="ui-field-row ui-field-row-top">
                     <Field label={t('payroll_close_label')} hint={t('payroll_close_hint')}>
                         {p => (
                             <Select {...p} name="payrollCloses" value={closeLast ? 'last' : 'day'} disabled={readOnly}
@@ -242,7 +242,7 @@ export default function CompanyPayrollCard({
                     )}
                 </div>
 
-                <div className="ui-field-row">
+                <div className="ui-field-row ui-field-row-top">
                     <Field label={t('payroll_day_label')} error={payLast ? errors.payrollDay : undefined}>
                         {p => (
                             <Select {...p} name="paydayKind" value={payLast ? 'last' : 'day'} disabled={readOnly}
@@ -260,7 +260,7 @@ export default function CompanyPayrollCard({
                     )}
                 </div>
 
-                <div className="ui-field-row">
+                <div className="ui-field-row ui-field-row-top">
                     <Field label={t('payday_in_label')}>
                         {p => (
                             <Select {...p} name="paydayMonth" value={payNext ? 'next' : 'own'} disabled={readOnly}

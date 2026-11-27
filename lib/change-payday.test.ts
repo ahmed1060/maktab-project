@@ -58,3 +58,12 @@ describe("Change this month's payday", () => {
         expect(approved).toContain(esc(en.payday_change_hint_approved))
     })
 })
+
+describe("a refusal in the dialog", () => {
+    it("takes the focus to the field it's said under, as a form's first wrong field (found in the interface audit)", async () => {
+        const { readFileSync } = await import("node:fs")
+        const source = readFileSync("app/(dashboard)/dashboard/payroll/ChangePaydayDialog.tsx", "utf8")
+        expect(source).toContain("requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-dialog] button[name=\"${FIELD_NAME[why.field]}\"]`)?.focus())")
+        expect(source).toContain("const FIELD_NAME = { payday: 'payday', until: 'attendanceUntil' } as const")
+    })
+})

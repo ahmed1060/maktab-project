@@ -4083,6 +4083,18 @@ tbody + tbody .ui-doc-group-row th {
     flex: 1 1 calc(50% - var(--space-3) / 2);
   }
 }
+/* Fields whose labels are a line each, lined up at the top, so a hint or an
+   error under one doesn't move the other: payday and when payroll closes
+   (DESIGN.md §5.5; PR 430). On a phone a select's words need the whole
+   line, so one goes under another. */
+.ui-field-row-top {
+  align-items: flex-start;
+}
+@media (max-width: 767px) {
+  .ui-field-row-top > .ui-field {
+    flex: 1 1 100%;
+  }
+}
 /* What a file holds before it's imported, a line each, those to look at in
    their status colour (DESIGN.md §2.3). */
 .ui-report {
