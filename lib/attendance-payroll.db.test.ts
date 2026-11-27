@@ -54,8 +54,10 @@ describe.skipIf(!ADMIN_URL)("attendance in payroll, in Postgres", () => {
         }
         process.env.POSTGRES_PRISMA_URL = url.toString()
 
-        await db.query(`INSERT INTO "SalaryChange"(id, "userId", "monthlyAmount", "effectiveFrom") VALUES
-            ('s1', 'e1', 9300, '2026-01-01T00:00:00Z'), ('s2', 'a1', 15000, '2026-01-01T00:00:00Z')`)
+        // Entered the day they're from, before anything the tests enter on their
+        // clock: the salary entered last holds from its date (PR 437).
+        await db.query(`INSERT INTO "SalaryChange"(id, "userId", "monthlyAmount", "effectiveFrom", "createdAt") VALUES
+            ('s1', 'e1', 9300, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'), ('s2', 'a1', 15000, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')`)
         await db.query(`INSERT INTO "EmploymentEvent"(id, "userId", type, "effectiveFrom") VALUES
             ('h1', 'e1', 'HIRED', '2026-01-01T00:00:00Z'), ('h2', 'a1', 'HIRED', '2026-01-01T00:00:00Z')`)
         await Calendar.createSchedule("c1", { name: "Office", version: { effectiveFrom: "2026-09-01", startMinutes: 540, endMinutes: 1020, breakMinutes: 60 } }, "a1")

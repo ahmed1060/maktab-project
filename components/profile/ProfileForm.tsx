@@ -28,6 +28,8 @@ export type ProfileValues = {
     email: string
     username: string
     salary: string
+    /** Which payroll a changed salary is for, or '' with neither picked (PR 437). */
+    salaryEffective: string
     dayOffCredit: string
     password: string
     status: string
@@ -40,7 +42,7 @@ const SETTABLE = ['ACTIVE', 'SUSPENDED', 'OFFLINE'] as const
 /** The note above a name saved before in one language, by what it lacks. */
 const MISSING_NOTE = { en: 'name_missing_en_note', ar: 'name_missing_ar_note', both: 'name_missing_both_note' } as const
 
-export function ProfileForm({ values, set, errors, error, access, company, ownTeamLeader, leaders, busy, role, onSubmit, cancelHref, missing = [], companyId = null }: {
+export function ProfileForm({ values, set, errors, error, access, company, ownTeamLeader, leaders, busy, role, onSubmit, cancelHref, missing = [], companyId = null, salaryMonths = null }: {
     values: ProfileValues
     set: (field: keyof ProfileValues, value: string) => void
     errors: Partial<Record<ProfileField, string>>
@@ -66,6 +68,12 @@ export function ProfileForm({ values, set, errors, error, access, company, ownTe
     missing?: readonly ('en' | 'ar')[]
     /** The Super Admin's company in view, theirs, whose spellings come first. */
     companyId?: string | null
+    /**
+     * Once the salary is changed, the 1st of this month and of next, as
+     * Applies to names them (lib/profile-form.ts, salaryMonths); null while
+     * it's as saved, when it isn't asked.
+     */
+    salaryMonths?: { thisMonth: string; nextMonth: string } | null
 }) {
     const { t, locale } = useLanguage()
     const digits = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
@@ -128,6 +136,17 @@ export function ProfileForm({ values, set, errors, error, access, company, ownTe
                     <TextInput {...p} name="salary" type="number" inputMode="decimal" min={0} autoComplete="off" value={values.salary} disabled={busy || !access.changeSalary}
                         onChange={e => set('salary', e.target.value)} />
                 )}</Field>
+            )}
+            {access.changeSalary && salaryMonths && (
+                // Which payroll a changed salary is for, each from its 1st, neither
+                // picked for them (LATER_CHANGES_PLAN.md §7.13, PR 437; DESIGN.md,
+                // A salary change's payroll).
+                <Choice legend={t('salary_effective_label')} name="salaryEffective" value={values.salaryEffective} onChange={v => set('salaryEffective', v)}
+                    options={[
+                        { value: 'THIS_MONTH', label: t('salary_effective_this').replace('{date}', salaryMonths.thisMonth), disabled: busy },
+                        { value: 'NEXT_MONTH', label: t('salary_effective_next').replace('{date}', salaryMonths.nextMonth), disabled: busy },
+                    ]}
+                    warning={errors.salaryEffective} />
             )}
             {access.dayOffCredit && (
                 <Field label={t('day_off_credit_assigned')} hint={access.changeDayOffCredit ? undefined : locked} error={errors.dayOffCredit}>{p => (

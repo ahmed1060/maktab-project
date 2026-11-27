@@ -201,6 +201,86 @@ describe("the rate at an instant", () => {
     })
 })
 
+describe("the salary set last holds from its month's 1st", () => {
+    // LATER_CHANGES_PLAN.md §7.13 (PR 437). Made-up people and amounts.
+    // An account made without a salary is given 0 from the day it was made;
+    // the salary set after it, for this month, is dated the 1st, before it.
+    const startedAtZero = [
+        change("2026-11-21T22:00:00Z", 0, "Starting salary", "2026-11-22T09:00:00Z"),
+        change("2026-10-31T22:00:00Z", 9_000, "Raise", "2026-11-25T10:00:00Z"),
+    ]
+
+    it("isn't split at a starting salary entered before it and dated later", () => {
+        const rates = ratesForMonth(startedAtZero, 2026, 11, CAIRO)
+        expect(rates).toEqual([{ fromDay: 1, monthlyMinor: toMinor(9_000), reason: "Raise" }])
+    })
+
+    it("is one Salary line for someone who started mid-month", () => {
+        // Their contract began on the 20th, and their starting salary with it.
+        const rates = ratesForMonth([
+            change("2026-11-19T22:00:00Z", 0, "Starting salary", "2026-11-20T08:00:00Z"),
+            change("2026-10-31T22:00:00Z", 7_500, "Raise", "2026-11-21T08:00:00Z"),
+        ], 2026, 11, CAIRO)
+        const segments = splitMonth(2026, 11, rates, { fromDay: 20, toDay: 30 })
+        expect(segments.map(s => [s.fromDay, s.toDay, s.monthlyMinor])).toEqual([[20, 30, toMinor(7_500)]])
+    })
+
+    it("is the month after's opening rate too", () => {
+        expect(ratesForMonth(startedAtZero, 2026, 12, CAIRO)).toEqual([{ fromDay: 1, monthlyMinor: toMinor(9_000), reason: "Raise" }])
+    })
+
+    it("is the rate on each of the month's days", () => {
+        for (const day of ["2026-11-05T10:00:00Z", "2026-11-23T10:00:00Z", "2026-12-15T10:00:00Z"]) {
+            expect(rateAt(startedAtZero, new Date(day))?.monthlyAmount).toBe("9000")
+        }
+    })
+
+    it("replaces a salary set before it for next month", () => {
+        // Next month's set first, then this month's: the page shows this
+        // month's, the one set last, and December pays it too.
+        const history = [
+            change("2026-01-01T00:00:00Z", 8_000, "Starting salary", "2026-01-01T00:00:00Z"),
+            change("2026-11-30T22:00:00Z", 9_500, "Next month", "2026-11-10T09:00:00Z"),
+            change("2026-10-31T22:00:00Z", 8_800, "This month", "2026-11-20T09:00:00Z"),
+        ]
+        expect(ratesForMonth(history, 2026, 11, CAIRO).map(r => r.monthlyMinor)).toEqual([toMinor(8_800)])
+        expect(ratesForMonth(history, 2026, 12, CAIRO).map(r => r.monthlyMinor)).toEqual([toMinor(8_800)])
+        expect(rateAt(history, new Date("2026-12-10T10:00:00Z"))?.monthlyAmount).toBe("8800")
+    })
+
+    it("leaves a salary set after it for later in place", () => {
+        // This month's set first, then next month's: each month its own.
+        const history = [
+            change("2026-01-01T00:00:00Z", 8_000, "Starting salary", "2026-01-01T00:00:00Z"),
+            change("2026-10-31T22:00:00Z", 8_800, "This month", "2026-11-10T09:00:00Z"),
+            change("2026-11-30T22:00:00Z", 9_500, "Next month", "2026-11-20T09:00:00Z"),
+        ]
+        expect(ratesForMonth(history, 2026, 11, CAIRO).map(r => r.monthlyMinor)).toEqual([toMinor(8_800)])
+        expect(ratesForMonth(history, 2026, 12, CAIRO).map(r => r.monthlyMinor)).toEqual([toMinor(9_500)])
+    })
+
+    it("keeps this month's starting salary where the salary set after it is next month's", () => {
+        // Their 0 from the 22nd stays November's: the salary set after it is December's.
+        const history = [
+            change("2026-11-21T22:00:00Z", 0, "Starting salary", "2026-11-22T09:00:00Z"),
+            change("2026-11-30T22:00:00Z", 9_000, "Next month", "2026-11-25T10:00:00Z"),
+        ]
+        expect(ratesForMonth(history, 2026, 11, CAIRO)).toEqual([{ fromDay: 22, monthlyMinor: 0, reason: "Starting salary" }])
+        expect(ratesForMonth(history, 2026, 12, CAIRO).map(r => r.monthlyMinor)).toEqual([toMinor(9_000)])
+    })
+
+    it("leaves earlier months as they were", () => {
+        // A salary set for November doesn't reach back into October's.
+        const history = [
+            change("2026-01-01T00:00:00Z", 8_000, "Starting salary", "2026-01-01T00:00:00Z"),
+            change("2026-09-30T21:00:00Z", 8_400, "October", "2026-09-20T09:00:00Z"),
+            change("2026-10-31T22:00:00Z", 9_000, "November", "2026-11-25T10:00:00Z"),
+        ]
+        expect(ratesForMonth(history, 2026, 10, CAIRO).map(r => r.monthlyMinor)).toEqual([toMinor(8_400)])
+        expect(rateAt(history, new Date("2026-10-15T10:00:00Z"))?.monthlyAmount).toBe("8400")
+    })
+})
+
 describe("the two stores of a salary move together", () => {
     const service = stripComments(readFileSync("lib/services/salary-history.service.ts", "utf8"))
 

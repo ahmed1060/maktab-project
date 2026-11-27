@@ -365,6 +365,9 @@ export const PUT = withStandardHandler(async (req, session, json) => {
         // Under the name's field, as a schema's refusal is (PR 403).
         if (error.message === 'NAME_IN_BOTH_LANGUAGES') return ApiResponse.badRequest("Validation Error", { [error.field]: { _errors: [error.why] } })
         if (error.message === 'FORBIDDEN') return ApiResponse.forbidden()
+        // A new salary for this month's payroll, approved: said under its
+        // choice (LATER_CHANGES_PLAN.md §7.13, PR 437).
+        if (error.message === 'PAYROLL_MONTH_LOCKED') return ApiResponse.refused(409, "This month's payroll is approved, so the new salary can only be next month's.", "PAYROLL_MONTH_LOCKED")
         if (error.message === 'FORBIDDEN_PASSWORD_RESET') return ApiResponse.forbidden("Changing somebody else's password needs the reset-password permission")
         // With their codes, said in the reader's language (PR 229).
         if (error.message === 'CURRENT_PASSWORD_WRONG') return ApiResponse.refused(403, CURRENT_PASSWORD_WRONG, 'CURRENT_PASSWORD_WRONG')

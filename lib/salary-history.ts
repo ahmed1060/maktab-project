@@ -54,6 +54,29 @@ export function effectiveFromChoice(
 }
 
 /**
+ * The salary set last holds from the date it's for (LATER_CHANGES_PLAN.md
+ * §7.13, PR 437): a change recorded before it and dated on or after it gives
+ * way to it, whichever month that is.
+ *
+ * Two kinds of row were left standing wrongly without it. An account made
+ * without a salary is given 0 from the day it was made, and the salary set
+ * after it, for this month, is dated the 1st, before it: the 0 won from its
+ * own day, and the payslip was split there. And a salary set for next month,
+ * then this month's set after it, left next month at the first one, while
+ * their page, which shows the salary set last, said the second.
+ *
+ * Only what was dated on or after it gives way: what came before its date
+ * was paid at its own rate, and stays. Neither does a row recorded after it,
+ * which is the later word.
+ */
+function standing(changes: SalaryChangeRow[]): SalaryChangeRow[] {
+    const recorded = (c: SalaryChangeRow) => c.createdAt?.getTime() ?? 0
+    return changes.filter(earlier => !changes.some(later =>
+        recorded(later) > recorded(earlier)
+        && later.effectiveFrom.getTime() <= earlier.effectiveFrom.getTime()))
+}
+
+/**
  * The rates in force across one calendar month, as splitMonth wants them.
  *
  * Every change before the month collapses into a single day-1 rate — the latest
@@ -79,7 +102,7 @@ export function ratesForMonth(
     )
     const nextMonthStart = effectiveFromChoice(monthStart, "NEXT_MONTH", timeZone)
 
-    const ordered = [...changes].sort((a, b) => {
+    const ordered = standing(changes).sort((a, b) => {
         const byDate = a.effectiveFrom.getTime() - b.effectiveFrom.getTime()
         if (byDate !== 0) return byDate
         // Same effective date: the row written later is the correction.
@@ -138,7 +161,7 @@ export function rateAt(
     changes: SalaryChangeRow[],
     at: Date,
 ): SalaryChangeRow | null {
-    const applicable = changes
+    const applicable = standing(changes)
         .filter(c => c.effectiveFrom.getTime() <= at.getTime())
         .sort((a, b) => {
             const byDate = a.effectiveFrom.getTime() - b.effectiveFrom.getTime()

@@ -1026,6 +1026,12 @@ export const en = {
         female: "Female",
         select_company: "Select Company",
         monthly_base_salary_label: "Monthly base salary (EGP)",
+        // Which payroll a changed salary is for (LATER_CHANGES_PLAN.md §7.13, PR 437).
+        salary_effective_label: "Applies to",
+        salary_effective_this: "This month's payroll, from {date}",
+        salary_effective_next: "Next month's payroll, from {date}",
+        salary_effective_required: "Pick which payroll the new salary is for.",
+        salary_effective_locked: "This month's payroll is approved, so the new salary can only be next month's.",
         new_password_optional_label: "New password (optional)",
         close_button: "Close",
         profile_photo_upload: "Upload a photo",

@@ -57,6 +57,18 @@ async function keepAsWritten(tx: Prisma.TransactionClient, table: 'User' | 'Supe
     return account ? keepAfterChange(account, from) : null
 }
 
+/**
+ * This month in a company's calendar, as its payroll names it ("2026-11"),
+ * and the calendar: the month a salary for this month's payroll is dated
+ * from (LATER_CHANGES_PLAN.md §7.13, PR 437).
+ */
+async function salaryMonth(companyId: string | null, now: Date): Promise<{ zone: string; key: string }> {
+    const company = companyId ? await prisma.company.findUnique({ where: { id: companyId }, select: { timezone: true } }) : null
+    const zone = company?.timezone ?? DEFAULT_TIME_ZONE
+    const { year, month } = calendarMonth(now, zone)
+    return { zone, key: `${year}-${String(month).padStart(2, '0')}` }
+}
+
 export class UserService {
     static async create(input: CreateUserInput, session: any) {
         const userRole = session.user.role
@@ -528,7 +540,17 @@ export class UserService {
             if (salary !== undefined && can(session.user, "salary.edit", person) && sessionHasModule(session, "PAYROLL")) {
                 // Changing somebody's pay is high-risk (ROLES_PLAN.md §6.15); the
                 // form sends the salary with every save, so only a new figure asks.
-                if (Number(salary) !== Number(regularUser.salary)) await assertStepUp(session, "salary.edit")
+                if (Number(salary) !== Number(regularUser.salary)) {
+                    await assertStepUp(session, "salary.edit")
+                    // With this month's payroll approved, the new salary can only
+                    // be next month's (LATER_CHANGES_PLAN.md §7.13, PR 437):
+                    // refused before anything is saved, and again under the
+                    // month's lock where it's recorded, below.
+                    if ((input.salaryEffective ?? 'THIS_MONTH') === 'THIS_MONTH' && regularUser.companyId) {
+                        const { key } = await salaryMonth(regularUser.companyId, new Date())
+                        if ((await lockedMonths(prisma, regularUser.companyId, [key])).size > 0) throw new Error("PAYROLL_MONTH_LOCKED")
+                    }
+                }
                 // Deliberately not written here. A salary change is an
                 // effective-dated fact, not a field edit: it has to land in
                 // SalaryChange as well, and the two have to move together or a
@@ -657,6 +679,10 @@ export class UserService {
             })
 
             const writeSelect = { id: true, firstName: true, lastName: true, email: true, role: true, gender: true, salary: true, companyId: true, avatar: true, dayOffCredit: true, baseDayOffCredit: true, username: true }
+            // Everything but the salary, which is written with its history, below,
+            // under its month's lock (LATER_CHANGES_PLAN.md §7.13, PR 437).
+            const rowData = { ...updateData }
+            delete rowData.salary
             const handOff = rehome
             // An owner's role stays Admin (LATER_CHANGES_PLAN.md §7.3, step 3b2, PR 428).
             const leavesAdmin = regularUser.role === 'ADMIN' && updateData.role !== undefined && updateData.role !== 'ADMIN'
@@ -665,9 +691,9 @@ export class UserService {
                     if (leavesAdmin) await keepsOwnerAnAdmin(tx, id)
                     if (handOff) await TeamHandOff.apply(tx, id, handOff, { id: session.user.id, role: userRole })
                     const kept = keepFrom ? await keepAsWritten(tx, 'User', id, keepFrom) : null
-                    return tx.user.update({ where: { id }, data: kept ? { ...updateData, keptSession: kept } : updateData, select: writeSelect })
+                    return tx.user.update({ where: { id }, data: kept ? { ...rowData, keptSession: kept } : rowData, select: writeSelect })
                 })
-                : prisma.user.update({ where: { id }, data: updateData, select: writeSelect })
+                : prisma.user.update({ where: { id }, data: rowData, select: writeSelect })
             ).catch(error => {
                 // Given to somebody else a moment ago, after the check above.
                 if (updateData.username !== undefined && isUsernameClash(error)) throw new Error("USERNAME_IN_USE")
@@ -728,23 +754,42 @@ export class UserService {
 
             if (salaryMoved) {
                 const now = new Date()
+                // The payroll it's for, as Edit asks (LATER_CHANGES_PLAN.md
+                // §7.13, PR 437): this month's from its 1st or next month's from
+                // its 1st, in the company's calendar. Not sent, this month's, as
+                // it always was.
+                const choice = input.salaryEffective ?? 'THIS_MONTH'
+                const { zone, key } = await salaryMonth(regularUser.companyId, now)
+                const effectiveFrom = effectiveFromChoice(now, choice, zone)
                 const { SalaryHistoryService } = await import("./salary-history.service")
-                await SalaryHistoryService.record({
-                    userId: id,
-                    monthlyAmount: Number(updateData.salary),
-                    // Effective from the start of the current month unless the
-                    // caller says otherwise. P7's screen will offer the
-                    // this-month-or-next choice; until it does, the safe default
-                    // is the behaviour that already existed — the new salary
-                    // applies to the month being worked.
-                    effectiveFrom: effectiveFromChoice(now, input.salaryEffective ?? 'THIS_MONTH'),
-                    reason: input.salaryReason,
-                    createdById: session?.user?.id ?? null,
-                })
+                await prisma.$transaction(async (tx) => {
+                    // Approving this month's payroll takes this lock too, so one
+                    // approved since the check above refuses it here.
+                    if (choice === 'THIS_MONTH' && regularUser.companyId) {
+                        await lockMonths(tx, regularUser.companyId, [key])
+                        if ((await lockedMonths(tx, regularUser.companyId, [key])).size > 0) throw new Error("PAYROLL_MONTH_LOCKED")
+                    }
+                    await SalaryHistoryService.record({
+                        userId: id,
+                        monthlyAmount: Number(updateData.salary),
+                        effectiveFrom,
+                        reason: input.salaryReason,
+                        createdById: session?.user?.id ?? null,
+                    }, tx)
+                    // Their page shows the salary set last, next month's too
+                    // (DESIGN.md, A salary change's payroll); each month's
+                    // payslip pays the salary for it, from the history.
+                    await tx.user.update({ where: { id }, data: { salary: updateData.salary } })
+                }, LOCK_WAIT)
+                // Attendance prices days at the salary in force on them.
+                const { recomputeForPersonFrom } = await import("./attendance-recompute")
+                await recomputeForPersonFrom(id, effectiveFrom)
+                serializedUpdated.salary = Number(updateData.salary)
 
-                const { month: m, year: y } = calendarMonth(now)
+                const { month: m, year: y } = calendarMonth(now, zone)
                 const { SalaryService } = await import("./salary.service")
-                await SalaryService.ensureRecordExists(id, m, y, updateData.salary)
+                // This month's record, where there's none yet, at this month's salary.
+                await SalaryService.ensureRecordExists(id, m, y, choice === 'THIS_MONTH' ? updateData.salary : previousSalary)
             }
 
 
