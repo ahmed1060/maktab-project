@@ -1206,9 +1206,9 @@ same day as drawn in the All users: status badges canvas
 The owner sent seven points on 2026-11-26, asked for them to be talked
 through first, and answered two rounds the same day. This part holds
 those answers, and payday and the attendance period, talked through on
-27 November (§7.10). Two questions are open (§7.9). The names (§3.1) are
-paused after step 8l (#424) until these are done; payroll, with the costs
-and charges lists, is next there.
+27 November (§7.10). One question waits for the owner's own review,
+later (§7.9). The names (§3.1) are paused after step 8l (#424) until these
+are done; payroll, with the costs and charges lists, is next there.
 
 The rating's look is drawn on the Task rating flow canvas
 (https://claude.ai/artifact/QBRMH1KGp4NagBfHGbfcUp).
@@ -1565,7 +1565,7 @@ In three PRs, each whole on its own:
    missions.
 6. Obligations with a client (§7.7).
 7. Salary advances (§7.5), Custody's new name first, once the owner has
-   reviewed §7.9's first point.
+   reviewed §7.9.
 8. Rating finished work (§7.6): DESIGN.md first, then tasks, then
    obligations.
 
@@ -1580,14 +1580,6 @@ A step may take more than one PR.
    Nizmo could stop an installment over it, warn, or take the most from
    the policy (10% unless changed). The owner reviews this later, before
    salary advances are built; nothing about it changes until then.
-2. **The live company with attendance in payroll** (checked read-only on
-   27 November): payday on the 28th, and its period the calendar month,
-   so payday comes before the period ends, which §7.10 refuses. The
-   owner: its payday becomes the month's last day. As its period ends
-   that same day, it still needs a cut-off, such as up to day 25, or
-   payday in the month after: open. It's changed in production once 10b
-   has merged, with the owner's yes. Until then, its Payroll settings
-   say why.
 
 ### 7.10 Payday and the attendance period (Decided)
 
@@ -1671,13 +1663,28 @@ approving a month early, and decided the same day.
   restates a month already approved.
 - **Companies today:** the period is the month's last day, payday stays in
   the payroll's own month, and it moves to the working day before. Nothing
-  approved or paid changes. The one live company with attendance in
-  payroll is §7.9's second point.
+  approved or paid changes.
+- **The live company with attendance in payroll** (checked read-only on
+  27 November): payday on the 28th, with the calendar month as its
+  period, so payday comes before the period ends, which this part
+  refuses. The owner decided on 27 November:
+  - payday on day 1, in the month after, and the period stays the
+    calendar month. A month is approved and paid on the 1st.
+  - Where the 1st is a day off, the working day before is the period's
+    last day, so it moves to the working day after: 1 January 2027 is a
+    Friday, so December is paid on Sunday 3 January.
+  - A leaver is always owed their days, as nothing is paid ahead.
+  - Changed in production once 10a has merged, with the owner's yes, as
+    its period needs no change. Its first month on the new payday is paid
+    on the 1st of the next month instead of the 28th, once, a few days
+    later; no month is paid twice or missed. Until then, approving is as
+    today.
 - **In six steps,** each with DESIGN.md first where a screen changes, then
   its plan, then the code:
   - **10a, payday:** a day or the month's last day, its own month or the
-    month after, the move off days off, the Payroll page's payday, and
-    settlements and due dates by it.
+    month after, the move off days off, never back into the period (the
+    calendar month until 10b), the Payroll page's payday, and settlements
+    and due dates by it.
   - **10b, the period:** the setting and its dates, payday after it, and
     the notice for one saved before.
   - **10c, payroll by the period:** the attendance lines from it, and the
@@ -2167,3 +2174,6 @@ approving a month early, and decided the same day.
   before the limits on requests (now fifth), whose first day follows the
   period. The live company's payday becomes the month's last day; its
   period is open (§7.9).
+- **2026-11-27:** The live company's payday decided instead: day 1, in
+  the month after, with the calendar month as its period, changed once
+  10a has merged. §7.9 is back to one point.
