@@ -2328,6 +2328,29 @@ These are built once, in the building-blocks PR, and every page uses them
     it says so above the buttons and works the settlement out again, the
     main button waiting for the new figures: the figure confirmed is the
     figure recorded.
+- **Asking for a day off** (`LATER_CHANGES_PLAN.md` §7.4), in New request
+  on the Requests page:
+  - **The dates' calendar** offers only the days that may be asked for;
+    the others are in `--muted` and do nothing, as a day that can't be
+    picked is (§5.3). They run from the first day not in a month whose
+    payroll is approved, and never before the 1st of last month, to today
+    plus the months ahead the attendance policy allows: the same date that
+    many months on, or that month's last day where it has fewer. Today is
+    the company's, in its time zone.
+  - **Under the dates,** as their hint, the balance: "Your balance: 12
+    days." Picking more days than it holds says so under the dates, in the
+    words the approval dialog's short balance uses, and doesn't stop the
+    request: "That's more than your balance, so if it's approved, it may
+    come out of your pay." The days are counted as approving counts them.
+  - **A day outside them,** sent all the same (the dialog left open past
+    midnight, or a month approved meanwhile), is refused under the dates,
+    saying which days may be asked for: "Days off can be asked for from 1
+    November to 27 December." The focus goes back to the dates.
+- **The attendance policy's day off:** in the policy's dialog, after
+  Absence, a select, Day off can be asked for, from Up to 1 month ahead to
+  Up to 12 months ahead, 1 to start. Its hint: that it counts from today,
+  and that the first day is never in a month whose payroll is approved.
+  The policy's card says it on a line of its own, Day off.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are

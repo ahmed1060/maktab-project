@@ -5,6 +5,7 @@ import { useToast } from '@/context/ToastContext'
 import { useBusyAction } from '@/lib/useBusyAction'
 import { countOf } from '@/lib/plural'
 import { workDays } from '@/lib/day-off-range'
+import { overBalance, type DayOffDays } from '@/lib/day-off-window'
 import { ASKED_DAY_OFF_TYPES, DAY_OFF_TYPE_LABEL, type AskedDayOffType } from '@/lib/day-off-types'
 import type { TranslationKey } from '@/lib/translations'
 import { named, type FeedRow } from '@/lib/requests/kinds'
@@ -23,7 +24,6 @@ const REJECTION_MAX = 300
 
 /** Why the server refused a day off, by its code (lib/api-errors.ts), in the person's language. */
 const REFUSED: Record<string, TranslationKey> = {
-    DATE_IN_PAST: 'requests_day_off_passed',
     OVERLAPPING_REQUEST: 'requests_day_off_overlap',
     OWNER_NO_ATTENDANCE: 'requests_owner_no_attendance',
 }
@@ -128,17 +128,32 @@ export function DecideDayOff({ request, decision, onClose, onDecided }: {
     )
 }
 
-/** Today, as the calendar day the pickers take: no day before it can be asked for. */
-function today() {
-    const d = new Date()
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+/**
+ * Which days a day off may be asked for, in the page's language and digits
+ * (LATER_CHANGES_PLAN.md §7.4, 4a): "from 1 November to 27 December", with
+ * the years where the two differ.
+ */
+export function daysText(t: (key: TranslationKey) => string, locale: string, days: DayOffDays): string {
+    const years = days.from.slice(0, 4) !== days.to.slice(0, 4)
+    const format = new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-GB', { day: 'numeric', month: 'long', ...(years ? { year: 'numeric' } : {}), timeZone: 'UTC' })
+    const text = (iso: string) => format.format(new Date(`${iso}T00:00:00Z`))
+    return t('requests_day_off_range').replace('{from}', text(days.from)).replace('{to}', text(days.to))
 }
 
 /**
  * Asking for a day off: its type, the day or days, and why. A regular day
- * off may run over several days; the others are one day each.
+ * off may run over several days; the others are one day each. Only the days
+ * it may be asked for can be picked, with the balance under them, and a
+ * warning when they're more (LATER_CHANGES_PLAN.md §7.4, 4a).
  */
-export function AskDayOff({ onCancel, onAsked }: { onCancel: () => void; onAsked: () => void }) {
+export function AskDayOff({ days, balance, onCancel, onAsked }: {
+    /** The days it may be asked for, as the server reads them (DayOffService.window). */
+    days: DayOffDays
+    /** The asker's day-off balance. */
+    balance: number
+    onCancel: () => void
+    onAsked: () => void
+}) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
     const action = useBusyAction()
@@ -149,6 +164,9 @@ export function AskDayOff({ onCancel, onAsked }: { onCancel: () => void; onAsked
     const [reason, setReason] = useState('')
     const [dateError, setDateError] = useState<string>()
     const regular = type === 'REGULAR'
+    // More days than the balance holds: said, and still sent; approving decides where they come from.
+    const short = overBalance(from, to, balance)
+    const balanceText = t('requests_day_off_balance').replace('{days}', countOf(t, locale, balance, 'days'))
 
     const submit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -169,6 +187,12 @@ export function AskDayOff({ onCancel, onAsked }: { onCancel: () => void; onAsked
                 })
                 if (!res.ok) {
                     const body = await res.json().catch(() => ({}))
+                    // A day outside the days it may be asked for: which days, under the dates, as a field's error.
+                    if (body.code === 'DAY_OFF_OUT_OF_RANGE' && body.from && body.to) {
+                        setDateError(daysText(t, locale, { from: body.from, to: body.to }))
+                        requestAnimationFrame(() => form.querySelector<HTMLElement>('.ui-date-trigger')?.focus())
+                        return
+                    }
                     showToast(t(REFUSED[body.code] ?? 'failed_submit_request'), 'error')
                     return
                 }
@@ -187,10 +211,11 @@ export function AskDayOff({ onCancel, onAsked }: { onCancel: () => void; onAsked
                     options={ASKED_DAY_OFF_TYPES.map(v => ({ value: v, label: t(DAY_OFF_TYPE_LABEL[v]) }))} />
             )}</Field>
             {regular
-                ? <DateRangePicker label={t('dates_label')} dateFrom={from} dateTo={to} minDate={today()} error={dateError}
+                ? <DateRangePicker label={t('dates_label')} dateFrom={from} dateTo={to} minDate={days.from} maxDate={days.to} error={dateError} hint={balanceText}
                     onChange={(start, end) => { setFrom(start); setTo(end); setDateError(undefined) }} />
-                : <DatePickerSingle label={t('date_label')} value={from} minDate={today()} error={dateError}
+                : <DatePickerSingle label={t('date_label')} value={from} minDate={days.from} maxDate={days.to} error={dateError} hint={balanceText}
                     onChange={day => { setFrom(day); setTo(day); setDateError(undefined) }} />}
+            {short && <p className="ui-error" role="status">{t('requests_day_off_over_balance')}</p>}
             <Field label={t('reason_label')} hint={t('ui_characters_used').replace('{used}', num(reason.length)).replace('{max}', num(REASON_MAX))}>{p => (
                 <TextArea {...p} dir="auto" placeholder={t('reason_placeholder')} value={reason} onChange={e => setReason(e.target.value)} maxLength={100} />
             )}</Field>

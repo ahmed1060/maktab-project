@@ -4,6 +4,22 @@ import { optional } from "@/lib/notice"
 import { can, type Target } from "@/lib/permissions/can"
 import { holdersOf } from "@/lib/permissions/holders"
 import { CreateDayOffInput, AdminUpdateDayOffInput } from "../validations/day-off.schema"
+import { calendarDateStr } from "@/lib/time"
+import { addDays } from "@/lib/attendance/calendar"
+import { policyOn } from "@/lib/attendance/policy"
+import { dayOffWindow, type DayOffDays } from "@/lib/day-off-window"
+import { LOCK_WAIT } from "./attendance-lock"
+import type { Prisma } from "@prisma/client"
+
+/**
+ * A day off asked for outside the days it may be (LATER_CHANGES_PLAN.md
+ * §7.4, 4a), with those days, so the form can say which.
+ */
+export class DayOffOutOfRange extends Error {
+    constructor(public from: string, public to: string) {
+        super("DAY_OFF_OUT_OF_RANGE")
+    }
+}
 
 export class DayOffService {
     /** One person's own requests, newest first, narrowed by the list's filters (lib/services/day-off-query.ts). */
@@ -23,32 +39,74 @@ export class DayOffService {
         return { requests, total }
     }
 
+    /**
+     * The days a day off may be asked for in this company (LATER_CHANGES_PLAN.md
+     * §7.4, 4a): from the first day not in an approved payroll's period, never
+     * before the 1st of last month, to today plus the months ahead of the
+     * policy in force today; 1 without Attendance, or without a policy. Today
+     * is the company's, in its time zone.
+     */
+    static async window(companyId: string | null, db: Prisma.TransactionClient = prisma): Promise<DayOffDays> {
+        if (!companyId) return dayOffWindow(calendarDateStr(new Date()), 1, null)
+        const company = await db.company.findUnique({ where: { id: companyId }, select: { timezone: true } })
+        const today = calendarDateStr(new Date(), company?.timezone ?? undefined)
+        const { companyHasModule } = await import("./company-package")
+        const { AttendancePolicyService } = await import("./attendance-policy.service")
+        const months = await companyHasModule(companyId, "ATTENDANCE", db)
+            ? policyOn(await AttendancePolicyService.versions(companyId, db), today)?.body.dayOffMonthsAhead ?? 1
+            : 1
+        // The latest month paid for, by its month: its period ends where the next one's open days begin.
+        const approved = await db.payrollRun.findFirst({
+            where: { companyId, status: { in: ["APPROVED", "PAID"] } },
+            orderBy: [{ year: "desc" }, { month: "desc" }],
+            select: { year: true, month: true },
+        })
+        const { PayrollPeriodService } = await import("./payroll-period.service")
+        const firstOpen = approved ? addDays((await PayrollPeriodService.periodOf(db, companyId, approved.year, approved.month)).to, 1) : null
+        return dayOffWindow(today, months, firstOpen)
+    }
+
     static async create(input: CreateDayOffInput, session: any) {
         const userId = session.user.id
         const userCompanyId = session.user.companyId
         const userName = session.user.name
 
         const requestDateStr = new Date(input.date).toISOString().split('T')[0]
-        const finalEndDateStr = input.endDate ? new Date(input.endDate).toISOString().split('T')[0] : requestDateStr
-
-        const todayStr = new Date().toISOString().split('T')[0]
-        if (requestDateStr < todayStr) {
-            throw new Error("DATE_IN_PAST")
-        }
+        // Only a regular day off runs over several days; the others are their one day, whatever end is sent.
+        const finalEndDateStr = input.type === 'REGULAR' && input.endDate ? new Date(input.endDate).toISOString().split('T')[0] : requestDateStr
 
         if (input.type === 'REGULAR' && finalEndDateStr < requestDateStr) {
             throw new Error("END_DATE_BEFORE_START")
         }
 
+        // A first look before anything is locked, so days far outside the window are refused at
+        // once, not listed day by day with every month between locked (Codex review on PR 431).
+        // The look under the locks below is the one that counts.
+        const first = await DayOffService.window(userCompanyId ?? null)
+        if (requestDateStr < first.from || finalEndDateStr > first.to) throw new DayOffOutOfRange(first.from, first.to)
+
+        // Waits on the months' locks as long as an import may hold them, past Prisma's five
+        // seconds (Codex review on PR 431).
         return await prisma.$transaction(async (tx) => {
             // Never over a mission waiting or approved (ATTENDANCE_PLAN.md
             // §6.10, decision 10, PR 283), checked under the lock a mission
             // asked at once takes too.
-            const { lockPersonDates } = await import("./attendance-lock")
+            const { lockPersonDates, lockDateMonths, SETTLED } = await import("./attendance-lock")
             const { missionOver } = await import("./mission-request.service")
             const { refuseOwnerMonths } = await import("./owner.service")
             await lockPersonDates(tx, userId)
             await refuseOwnerMonths(tx, userId, requestDateStr, finalEndDateStr)
+            // Within the days it may be asked for (LATER_CHANGES_PLAN.md §7.4, 4a), read holding
+            // the locks of the months its days fall in: approving one of them meanwhile waits
+            // for this, or came first and its days are no longer offered. Never on a day a
+            // final settlement counted, paid as a month approved is.
+            if (userCompanyId) {
+                const days: string[] = []
+                for (let d = requestDateStr; d <= finalEndDateStr; d = addDays(d, 1)) days.push(d)
+                if ((await lockDateMonths(tx, userCompanyId, days, userId)).includes(SETTLED)) throw new Error("PAYROLL_MONTH_LOCKED")
+            }
+            const window = await DayOffService.window(userCompanyId ?? null, tx)
+            if (requestDateStr < window.from || finalEndDateStr > window.to) throw new DayOffOutOfRange(window.from, window.to)
             if (await tx.missionRequest.findFirst({ where: missionOver(userId, requestDateStr, finalEndDateStr), select: { id: true } })) {
                 throw new Error("DAY_OFF_OVERLAPS_MISSION")
             }
@@ -124,7 +182,7 @@ export class DayOffService {
             })
 
             return newRequest
-        })
+        }, LOCK_WAIT)
     }
 
     static async approve(id: string, input: AdminUpdateDayOffInput, session: any) {

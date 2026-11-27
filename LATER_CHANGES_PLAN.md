@@ -19,8 +19,8 @@ mark, permission and pay (#426, step 3a), what they're not asked for
 (#427, step 3b1), only Admins as owners, given no new work (#428, step
 3b2), and the Owners list (#429, step 3c), so owners are done; clearer
 words on Exceptions (§7.11) and payday and the attendance period
-(§7.10) built in one PR (#430), waiting on the owner's review; then the
-limits on requests (§7.4); the names (§3) paused after step 8l (#424).** Done: the development database (§4),
+(§7.10) done in one PR (#430); the limits on requests (§7.4) next; the
+names (§3) paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their limit set
@@ -1489,6 +1489,28 @@ In three PRs, each whole on its own:
       for, and the form's date picker offers only them.
     - The balance shows while asking. Asking for more days than it holds
       warns, and doesn't refuse.
+    - **As built:** one rule gives the days (`dayOffWindow`, in
+      `lib/day-off-window.ts`): the earliest is the later of the 1st of
+      last month and the day after the latest approved or paid payroll's
+      period (§7.10); the latest is today plus the policy's
+      `dayOffMonthsAhead` (the policy in force today), or 1 where the
+      company has no Attendance or no policy. Asking reads it under the
+      locks of the months its days fall in, so a month approved meanwhile
+      can't let a day through, and refuses with `DAY_OFF_OUT_OF_RANGE`
+      and the days that may be asked for; a day a final settlement
+      counted is refused as for a month paid. The Requests page sends the
+      days and the balance to the form; the days asked are counted as
+      approving counts them (`workDays`). The policy's dialog and card
+      show the months ahead, 1 to 12. `DATE_IN_PAST` goes: a day already
+      passed may be asked for, within the days. A day off of a one-day
+      type is that day throughout, whatever end is sent with it: its
+      checks, its notice and its audit line (found by the tests: an end
+      sent with one was checked for overlaps though never kept). Before
+      anything is locked, a first look at the days refuses one far
+      outside them at once, so an end years away isn't listed day by day
+      nor its months locked; the look under the locks is the one that
+      counts. Asking waits on those locks as long as an import may hold
+      them (`LOCK_WAIT`), as approving does (Codex review on #431).
   - **4b, permission hours:** the policy's choice of when they may be
     asked for, as above, "around the day" as today unless changed.
   - **4c, missions:** the policy's days back, 7 unless changed, which
@@ -2424,3 +2446,11 @@ with قبول: «قبول العذر» and «قبول».
   contract settled in it, Change payday still offered the attendance's
   last day and sent it, which the change refuses, so its payday couldn't
   be changed. Fixed, as built in §7.10.
+- **2026-11-27:** #430 merged (steps 4 and 5). Clearer words on
+  Exceptions (§7.11) and payday and the attendance period (§7.10) done;
+  the limits on requests (§7.4) next, day off first.
+- **2026-11-27:** Step 6 started, 4a first (day off): as built in §7.4.
+- **2026-11-27:** Codex's first review of #431: a day off asked for far
+  outside its days is refused before they're listed or their months
+  locked, and asking waits on those locks as long as an import may hold
+  them. As built in §7.4.

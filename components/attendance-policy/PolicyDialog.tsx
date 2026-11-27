@@ -5,7 +5,7 @@ import DatePickerSingle from '@/components/DatePickerSingle'
 import { Button, Dialog, DialogActions, Field, Select, TextInput } from '@/components/ui'
 import { useLanguage } from '@/context/LanguageContext'
 import { countOf } from '@/lib/plural'
-import { ABSENCE_MULTIPLIERS, MISSION_PAYS, PERMISSION_TYPES, type MissionAllowance, type PolicyBody } from '@/lib/attendance/policy'
+import { ABSENCE_MULTIPLIERS, DAY_OFF_MONTHS, MISSION_PAYS, PERMISSION_TYPES, type MissionAllowance, type PolicyBody } from '@/lib/attendance/policy'
 import { rebaseOnDate, startFromStale, type Based } from '@/lib/attendance/rebase'
 import { firstOfNextMonth } from '@/components/attendance-calendar/hours-form'
 import { focusFirstWrong } from '@/components/attendance-calendar/focus'
@@ -210,6 +210,13 @@ export default function PolicyDialog({ title, start, startOn, defaultFrom, today
                     <Select {...p} value={String(form.absence.multiplier)}
                         options={absences.map(m => ({ value: String(m), label: m === 0 ? t('attendance_absence_none') : countOf(t, locale, m, 'days') }))}
                         onChange={e => edit(f => ({ ...f, absence: { multiplier: Number(e.target.value) } }))} />
+                )}</Field>
+
+                {/* How far ahead a day off may be asked for (LATER_CHANGES_PLAN.md §7.4, 4a). */}
+                <Field label={t('attendance_day_off_ahead')} hint={t('attendance_day_off_ahead_hint')}>{p => (
+                    <Select {...p} value={String(form.dayOffMonthsAhead)}
+                        options={DAY_OFF_MONTHS.map(m => ({ value: String(m), label: t('attendance_day_off_ahead_option').replace('{months}', countOf(t, locale, m, 'months')) }))}
+                        onChange={e => edit(f => ({ ...f, dayOffMonthsAhead: Number(e.target.value) }))} />
                 )}</Field>
 
                 <fieldset className="ui-fieldset">

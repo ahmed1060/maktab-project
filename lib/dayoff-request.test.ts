@@ -41,6 +41,6 @@ describe("asking for leave", () => {
         expect(readFileSync("app/api/day-off-requests/route.ts", "utf8")).toContain('can(session.user, "dayoff.request")')
         // Not "whoever doesn't see others' leave": an HR officer may ask too.
         expect(readFileSync("app/(dashboard)/dashboard/requests/page.tsx", "utf8")).toContain("can(viewer, 'dayoff.request')")
-        expect(readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")).toContain("<NewRequest open={asking} mayAskDayOff={mayAskDayOff}")
+        expect(readFileSync("app/(dashboard)/dashboard/requests/RequestsClient.tsx", "utf8")).toContain("<NewRequest open={asking} dayOffAsk={dayOffAsk}")
     })
 })

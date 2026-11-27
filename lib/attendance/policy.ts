@@ -82,6 +82,10 @@ export const PERMISSION_TYPES = ["LATE_ARRIVAL", "EARLY_LEAVE", "MIDDAY"] as con
 export const DEFAULT_SCAN_WINDOW_MINUTES = 5
 /** Early leave longer than this waits to be confirmed (§6.9, PR 274). */
 export const DEFAULT_DEPARTURE_THRESHOLD_MINUTES = 120
+/** How many months ahead a day off may be asked for, where nothing else says (LATER_CHANGES_PLAN.md §7.4, 4a). */
+export const DAY_OFF_MONTHS_AHEAD = 1
+/** The choices for it: 1 to 12 months ahead (decided on 26 November). */
+export const DAY_OFF_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const
 
 export const permissionHoursSchema = z.object({
     enabled: z.boolean(),
@@ -172,6 +176,13 @@ export const policyBodySchema = z.object({
         enabled: z.boolean(),
         allowance: missionAllowanceSchema.default(NO_MISSION_ALLOWANCE),
     }).default({ enabled: true, allowance: NO_MISSION_ALLOWANCE }),
+    /**
+     * How many months ahead of today a day off may be asked for, 1 to 12
+     * (LATER_CHANGES_PLAN.md §7.4, 4a). A version saved before it reads as
+     * 1, so nothing is migrated; a company with Day off but without
+     * Attendance has no policy to read, and keeps 1 too.
+     */
+    dayOffMonthsAhead: z.number().int().min(1).max(12).default(DAY_OFF_MONTHS_AHEAD),
 })
 
 export type Band = z.infer<typeof bandSchema>
@@ -279,6 +290,7 @@ export const STANDARD_OFFICE: PolicyBody = {
     faceVerificationAvailable: false,
     faceReverifyMonths: null,
     missions: { enabled: true, allowance: NO_MISSION_ALLOWANCE },
+    dayOffMonthsAhead: DAY_OFF_MONTHS_AHEAD,
 }
 
 export const SIX_DAY_FACTORY: PolicyBody = {
@@ -309,6 +321,7 @@ export const MEASURE_ONLY: PolicyBody = {
     faceVerificationAvailable: false,
     faceReverifyMonths: null,
     missions: { enabled: true, allowance: NO_MISSION_ALLOWANCE },
+    dayOffMonthsAhead: DAY_OFF_MONTHS_AHEAD,
 }
 
 export type PolicyVersion = { id: string; effectiveFrom: string; body: PolicyBody }
