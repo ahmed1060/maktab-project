@@ -74,6 +74,15 @@ describe("Change this month's payday", () => {
         expect(pinned).not.toContain('name="attendanceUntil"')
         expect(pinned).toContain(esc(en.payday_change_hint_next_approved))
         expect(ar.payday_change_hint_next_approved).toBeTruthy()
+        // A draft with a contract ending in it settled: only payday, saying why (Codex review on PR 430).
+        const settled = renderToStaticMarkup(h(ChangePaydayDialog, {
+            open: true, onClose: () => {}, onDone: () => {}, year: 2026, month: 10, companyId: null,
+            payday: "2026-11-01", draft: false, settled: true, period: { from: "2026-10-01", to: "2026-10-31" }, close: "2026-10-31",
+        }))
+        expect(settled).not.toContain('name="attendanceUntil"')
+        expect(settled).toContain(esc(en.payday_change_hint_settled))
+        expect(en.payday_change_hint_settled).toBe("A contract ending this month is settled, so this month's attendance stays as it is; only payday changes.")
+        expect(ar.payday_change_hint_settled).toBe("تمت تسوية عقد ينتهي هذا الشهر، لذا يبقى حضور هذا الشهر كما هو، ويتغير يوم الصرف فقط.")
     })
 })
 

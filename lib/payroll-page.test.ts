@@ -604,12 +604,16 @@ describe("payday and when payroll closes, on the page (LATER_CHANGES_PLAN.md §7
         expect(header(await page({ shows: view(), grants: ["payroll.approve"], locale: "ar" }))).toContain(`>${ar.payday_change}<`)
     })
 
-    it("treats a draft whose next month is approved as one whose attendance can't change (review on PR 430)", () => {
+    it("treats a draft whose next month is approved, or with a contract ending in it settled, as one whose attendance can't change (reviews on PR 430)", () => {
         const PAGE = readFileSync("app/(dashboard)/dashboard/payroll/page.tsx", "utf8")
-        expect(PAGE).toContain("draft={view.status === 'DRAFT' && !view.nextApproved}")
+        expect(PAGE).toContain("draft={view.status === 'DRAFT' && !view.nextApproved && !view.endSettled}")
         expect(PAGE).toContain("nextApproved={view.status === 'DRAFT' && !!view.nextApproved}")
+        expect(PAGE).toContain("settled={view.status === 'DRAFT' && !view.nextApproved && !!view.endSettled}")
         const SERVICE = readFileSync("lib/services/payroll-run.service.ts", "utf8")
         expect(SERVICE).toContain("nextApproved: !!next && next.status !== \"DRAFT\",")
+        // The view and the change count the month's settlements the same way.
+        expect(SERVICE).toContain("endSettled: await this.settledIn(prisma, companyId, year, month, timeZone),")
+        expect(SERVICE).toContain("const settled = await this.settledIn(tx, companyId, year, month, timeZone)")
     })
 
     it("keeps Approve greyed before payroll closes, saying from when, and usable after", async () => {

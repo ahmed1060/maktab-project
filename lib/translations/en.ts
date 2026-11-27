@@ -1449,6 +1449,7 @@ export const en = {
         payday_change_hint: "The days after it go to next month's payroll. Next month goes back to the settings.",
         payday_change_hint_approved: "This month is approved, so its attendance stays as it is; only payday changes. Next month goes back to the settings.",
         payday_change_hint_next_approved: "Next month is approved, so this month's attendance ends where next month's begins; only payday changes.",
+        payday_change_hint_settled: "A contract ending this month is settled, so this month's attendance stays as it is; only payday changes.",
         payday_changed: "Payday changed",
         payday_change_not_after: "Payday has to come after the attendance's last day, so the month can be approved before it's paid.",
         payday_change_too_late: "Payday can be no later than the month after next.",

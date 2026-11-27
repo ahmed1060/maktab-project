@@ -286,6 +286,9 @@ export class PayrollRunService {
             settingClose: closeDateOf(year, month, closeDay),
             // The month after approved, this one's attendance ends where that one's begins (review on PR 430).
             nextApproved: !!next && next.status !== "DRAFT",
+            // A contract ending in it is settled, which keeps its attendance's end too: the dialog asks
+            // only for the payday then, as the change takes only that (Codex review on PR 430).
+            endSettled: await this.settledIn(prisma, companyId, year, month, timeZone),
             status: run?.status ?? "DRAFT",
             runId: run?.id ?? null,
             // How far delivery has got, from the stored payslips rather than
@@ -445,6 +448,26 @@ export class PayrollRunService {
     }
 
     /**
+     * Whether a contract ending in the month is settled (Codex review on PR
+     * 430): its settlement counted the days after the month's close, so that
+     * close is kept. By the last working day's calendar month in the
+     * company's time zone, as the settlement's leaving month is.
+     */
+    static async settledIn(db: Prisma.TransactionClient, companyId: string, year: number, month: number, timeZone: string): Promise<boolean> {
+        const after = nextMonth(year, month)
+        const settled = await db.finalSettlement.count({
+            where: {
+                companyId,
+                lastWorkingDay: {
+                    gte: startOfDayIn(new Date(`${monthKey(year, month)}-01T12:00:00Z`), timeZone),
+                    lt: startOfDayIn(new Date(`${monthKeyOf(after.year, after.month)}-01T12:00:00Z`), timeZone),
+                },
+            },
+        })
+        return settled > 0
+    }
+
+    /**
      * Change this month's payday (LATER_CHANGES_PLAN.md §7.10, 10f, PR 430):
      * a one-off, such as paying before Eid. The day picked stays where it's
      * put, even on a day off. While the month is a draft, its attendance may
@@ -477,16 +500,8 @@ export class PayrollRunService {
             // payroll would count again days the settlement did, or leave out days neither does
             // (Codex review on PR 430).
             const { timeZone } = await this.policy(companyId, tx)
-            const settled = await tx.finalSettlement.count({
-                where: {
-                    companyId,
-                    lastWorkingDay: {
-                        gte: startOfDayIn(new Date(`${monthKey(year, month)}-01T12:00:00Z`), timeZone),
-                        lt: startOfDayIn(new Date(`${monthKeyOf(after.year, after.month)}-01T12:00:00Z`), timeZone),
-                    },
-                },
-            })
-            const endFixed = !draft || (!!next && next.status !== "DRAFT") || settled > 0
+            const settled = await this.settledIn(tx, companyId, year, month, timeZone)
+            const endFixed = !draft || (!!next && next.status !== "DRAFT") || settled
             // While a draft, its attendance may end sooner, never later than the setting's close.
             const settingClose = closeDateOf(year, month, settings.closeDay)
             const until = endFixed ? period.to

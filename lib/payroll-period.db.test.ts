@@ -555,7 +555,10 @@ describe.skipIf(!ADMIN_URL)("payday and the attendance period, in Postgres", () 
             await db.query(`INSERT INTO "SalaryChange"(id, "userId", "monthlyAmount", "effectiveFrom") VALUES ('s4', 'e3', 9300, '2026-12-01T00:00:00Z'), ('s5', 'e4', 9300, '2026-12-01T00:00:00Z')`)
             await db.query(`INSERT INTO "EmploymentEvent"(id, "userId", type, "effectiveFrom") VALUES ('h4', 'e3', 'HIRED', '2026-12-01T00:00:00Z'), ('h5', 'e4', 'HIRED', '2026-12-01T00:00:00Z')`)
             expect(await march()).toBeUndefined()
+            expect((await Payroll.view("c1", 2027, 3)).endSettled).toBe(false)
             await SettlementService.settleAndEnd(leaving("e3", "2027-03-22"))
+            // The Payroll page is told, so Change payday asks only for the payday (Codex review on PR 430).
+            expect((await Payroll.view("c1", 2027, 3)).endSettled).toBe(true)
             // No days after the close to settle, and the close kept all the same: moved sooner, the 23rd and 24th
             // would be April's period, which doesn't pay him, and in no settlement.
             expect(await marked("e3")).toEqual([])
@@ -580,6 +583,7 @@ describe.skipIf(!ADMIN_URL)("payday and the attendance period, in Postgres", () 
             expect(kept.attendance).toBeCloseTo(-owed.d / 100, 2)
             expect((await attendanceMoney(prisma, "c1", { from: "2027-03-25", to: "2027-03-31" })).has("e4")).toBe(false)
             // Her contract ends with March, in Cairo: April, with nobody settled in it, can still end sooner.
+            expect((await Payroll.view("c1", 2027, 4)).endSettled).toBe(false)
             expect(await Payroll.changePayday("c1", 2027, 4, { payday: "2027-04-21", attendanceUntil: "2027-04-20" }, SESSION)).toEqual({ payday: "2027-04-21", periodEnd: "2027-04-20" })
             await db.query(`DELETE FROM "PayrollRun" WHERE "companyId" = 'c1' AND year = 2027 AND month = 4`)
         } finally {
