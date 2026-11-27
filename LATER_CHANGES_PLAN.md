@@ -22,7 +22,8 @@ words on Exceptions (§7.11) and payday and the attendance period
 (§7.10) done in one PR (#430); the limits on requests (§7.4) under way,
 day off done (#431), and every writer now waits for a month's lock as
 long as an import may hold it (#432, ATTENDANCE_PLAN.md §12.1);
-permission hours next; the names (§3) paused after step 8l (#424).** Done: the development database (§4),
+permission hours done (#433), missions next; the names (§3) paused
+after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their limit set
@@ -1543,6 +1544,21 @@ In three PRs, each whole on its own:
       (today, and the first day not paid).
   - **4c, missions:** the policy's days back, 7 unless changed, which
     every version reads as 7 from then on.
+    - **As built:** the missions rules get `daysBack`, a whole number
+      from 0 to 365, 7 to start. A version saved before it reads as 7, so
+      nothing is migrated, and a company without a policy keeps 7. The
+      policy in force today decides, as for day off and permission hours.
+      The days a mission may be asked for run from today less `daysBack`
+      to a year ahead, as before (`missionDays`); `missionSpan` takes them
+      in place of today. A month whose payroll is approved stays no
+      refusal (ATTENDANCE_PLAN.md §6.10, decision 16), so the days don't
+      read the payroll and asking takes no lock for them. A date outside
+      them is refused with `MISSION_OUT_OF_RANGE` and the days. The
+      Requests page sends the days, so the form's calendars offer only
+      them, and a refusal says them under the dates (`daysText`, with the
+      missions' words). The policy's dialog asks it under Employees can ask
+      for missions, while that's ticked; unticked, what was there is kept.
+      The card says it under the missions' line.
 
 ### 7.5 Salary advances (Decided)
 
@@ -2491,3 +2507,8 @@ with قبول: «قبول العذر» and «قبول».
   (ATTENDANCE_PLAN.md §12.1); permission hours (4b) next.
 - **2026-11-27:** Step 6 continues, 4b (permission hours): as built in
   §7.4.
+- **2026-11-27:** #433 merged (4b). The attendance policy chooses when
+  permission hours may be asked for: around the day, as before, or any
+  day within day off's days with one month ahead; its dialog asks it as
+  a choice between two. Missions (4c) next.
+- **2026-11-27:** Step 6 continues, 4c (missions): as built in §7.4.

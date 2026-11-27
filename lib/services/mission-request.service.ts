@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { toDateString } from "@/lib/attendance/calendar"
-import { policyOn } from "@/lib/attendance/policy"
-import { datesOf, missionSpan, type MissionKind, type MissionPart } from "@/lib/attendance/missions"
+import { MISSION_DAYS_BACK, policyOn } from "@/lib/attendance/policy"
+import { datesOf, missionDays, missionSpan, type MissionKind, type MissionPart } from "@/lib/attendance/missions"
+import type { DayOffDays } from "@/lib/day-off-window"
 import { optional, type NoticeParam, type NoticeText } from "@/lib/notice"
 import { AuditLogService } from "./audit-log.service"
 import { AttendancePolicyService } from "./attendance-policy.service"
@@ -30,6 +31,17 @@ import { refuseOwnerMonths } from "./owner.service"
 
 function fail(code: string): never {
     throw new Error(code)
+}
+
+/**
+ * A mission asked for on a date outside the days it may be
+ * (LATER_CHANGES_PLAN.md §7.4, 4c), with those days, so the form can say
+ * which.
+ */
+export class MissionOutOfRange extends Error {
+    constructor(public from: string, public to: string) {
+        super("MISSION_OUT_OF_RANGE")
+    }
 }
 
 /** A task one may name: theirs, and still open (decision 18). */
@@ -83,6 +95,16 @@ export class MissionRequestService {
         return policyOn(policies, today)?.body.missions.enabled ?? true
     }
 
+    /**
+     * The days a mission may be asked for (LATER_CHANGES_PLAN.md §7.4, 4c):
+     * back as far as the policy in force today allows, 7 where it says
+     * nothing or there's none, to a year ahead. Today is the company's.
+     */
+    static async window(companyId: string): Promise<DayOffDays> {
+        const [today, policies] = await Promise.all([AttendanceCalendarService.today(companyId), AttendancePolicyService.versions(companyId)])
+        return missionDays(today, policyOn(policies, today)?.body.missions.daysBack ?? MISSION_DAYS_BACK)
+    }
+
     /** One's open tasks, which a mission may name (decision 18): theirs, Pending or In progress, in their company. */
     static async openTasks(companyId: string, userId: string) {
         return prisma.task.findMany({
@@ -100,9 +122,13 @@ export class MissionRequestService {
     static async ask(companyId: string, userId: string, input: MissionInput, { tasks = true }: { tasks?: boolean } = {}) {
         const reason = input.reason.trim()
         if (!reason) fail("REASON_REQUIRED")
-        const today = await AttendanceCalendarService.today(companyId)
-        const span = missionSpan(input, today)
-        if ("refused" in span) fail(span.refused)
+        const days = await MissionRequestService.window(companyId)
+        const span = missionSpan(input, days)
+        if ("refused" in span) {
+            // Outside the days it may be asked for: refused with them, so the form can say which (4c).
+            if (span.refused === "MISSION_OUT_OF_RANGE") throw new MissionOutOfRange(days.from, days.to)
+            fail(span.refused)
+        }
         const dates = datesOf(span.startDate, span.endDate)
         return prisma.$transaction(async tx => {
             await lockPersonDates(tx, userId)

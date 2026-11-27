@@ -23,24 +23,24 @@ import { bodyFromForm, formFromBody } from "@/components/attendance-policy/polic
  */
 
 const withAllowance = (allowance: Partial<PolicyBody["missions"]["allowance"]>, enabled = true): PolicyBody => ({
-    ...STANDARD_OFFICE, missions: { enabled, allowance: { ...NO_MISSION_ALLOWANCE, ...allowance } },
+    ...STANDARD_OFFICE, missions: { ...STANDARD_OFFICE.missions, enabled, allowance: { ...NO_MISSION_ALLOWANCE, ...allowance } },
 })
 const parses = (allowance: object) => policyBodySchema.safeParse({ ...STANDARD_OFFICE, missions: { enabled: true, allowance: { ...NO_MISSION_ALLOWANCE, ...allowance } } }).success
 
 describe("the allowance's settings (decisions 6 and 12, PR 286)", () => {
     it("start at nothing for both kinds, in every starting policy", () => {
         expect(NO_MISSION_ALLOWANCE).toEqual({ dayWorth: "OWN_PAY", amountMinor: 0, days: 0, hours: 0 })
-        for (const body of [STANDARD_OFFICE, SIX_DAY_FACTORY, MEASURE_ONLY]) expect(body.missions).toEqual({ enabled: true, allowance: NO_MISSION_ALLOWANCE })
+        for (const body of [STANDARD_OFFICE, SIX_DAY_FACTORY, MEASURE_ONLY]) expect(body.missions).toEqual({ enabled: true, allowance: NO_MISSION_ALLOWANCE, daysBack: 7 })
     })
 
     it("read as nothing in a version saved before them, so nothing is migrated", () => {
         // Saved by #283, with the switch alone.
         const off = policyBodySchema.parse({ ...STANDARD_OFFICE, missions: { enabled: false } })
-        expect(off.missions).toEqual({ enabled: false, allowance: NO_MISSION_ALLOWANCE })
+        expect(off.missions).toEqual({ enabled: false, allowance: NO_MISSION_ALLOWANCE, daysBack: 7 })
         // Saved before missions, with neither.
         const older: Record<string, unknown> = { ...STANDARD_OFFICE }
         delete older.missions
-        expect(policyBodySchema.parse(older).missions).toEqual({ enabled: true, allowance: NO_MISSION_ALLOWANCE })
+        expect(policyBodySchema.parse(older).missions).toEqual({ enabled: true, allowance: NO_MISSION_ALLOWANCE, daysBack: 7 })
     })
 
     it("take what each kind pays: nothing, a quarter, a half, one or two days", () => {
@@ -86,8 +86,8 @@ describe("the policy form", () => {
         bodyFromForm({ ...formFromBody(base), missions: { ...formFromBody(base).missions, ...missions } }, base)
 
     it("holds the amount as typed, in the currency's own units, and empty while there's none", () => {
-        expect(formFromBody(STANDARD_OFFICE).missions).toEqual({ enabled: true, dayWorth: "OWN_PAY", amount: "", days: 0, hours: 0 })
-        expect(formOf({ dayWorth: "AMOUNT", amountMinor: 200_00, days: 1, hours: 0.5 }).missions).toEqual({ enabled: true, dayWorth: "AMOUNT", amount: "200", days: 1, hours: 0.5 })
+        expect(formFromBody(STANDARD_OFFICE).missions).toEqual({ enabled: true, dayWorth: "OWN_PAY", amount: "", days: 0, hours: 0, daysBack: "7" })
+        expect(formOf({ dayWorth: "AMOUNT", amountMinor: 200_00, days: 1, hours: 0.5 }).missions).toEqual({ enabled: true, dayWorth: "AMOUNT", amount: "200", days: 1, hours: 0.5, daysBack: "7" })
         expect(formOf({ dayWorth: "AMOUNT", amountMinor: 12_50 }).missions.amount).toBe("12.5")
     })
 
@@ -100,7 +100,7 @@ describe("the policy form", () => {
         ]) {
             const body = withAllowance(allowance, false)
             const out = bodyFromForm(formFromBody(body), body)
-            expect(out.ok && out.body.missions).toEqual({ enabled: false, allowance })
+            expect(out.ok && out.body.missions).toEqual({ enabled: false, allowance, daysBack: 7 })
         }
     })
 
@@ -136,7 +136,7 @@ describe("the policy form", () => {
 
     it("keeps the allowance while missions can't be asked for: one approved before still counts", () => {
         const out = save({ enabled: false, dayWorth: "AMOUNT", days: 1, amount: "200" })
-        expect(out.ok && out.body.missions).toEqual({ enabled: false, allowance: { dayWorth: "AMOUNT", amountMinor: 200_00, days: 1, hours: 0 } })
+        expect(out.ok && out.body.missions).toEqual({ enabled: false, allowance: { dayWorth: "AMOUNT", amountMinor: 200_00, days: 1, hours: 0 }, daysBack: 7 })
         const missing = save({ enabled: false, dayWorth: "AMOUNT", days: 1, amount: "" })
         expect(missing.ok).toBe(false)
     })
@@ -168,9 +168,15 @@ describe("the policy dialog's Missions section", () => {
     })
 
     it("shows them whether or not missions can be asked for", () => {
-        // The switch changes asking alone: the allowance isn't inside it.
+        // The switch changes asking alone: the allowance isn't inside it. Only how far back they may be asked for is
+        // (LATER_CHANGES_PLAN.md §7.4, 4c), in a block of its own that closes before the allowance.
         expect(dialog).not.toMatch(/form\.missions\.enabled && \(/)
-        expect(dialog).not.toMatch(/m\.enabled && \(/)
+        const asking = dialog.indexOf("{m.enabled && (")
+        expect(dialog.indexOf("{m.enabled && (", asking + 1)).toBe(-1)
+        const closes = dialog.indexOf("\n                        )}", asking)
+        expect(dialog.slice(asking, closes)).toContain("t('attendance_mission_days_back')")
+        expect(dialog.slice(asking, closes)).not.toContain("attendance_mission_allowance")
+        expect(closes).toBeLessThan(dialog.indexOf("t('attendance_mission_allowance')"))
     })
 })
 

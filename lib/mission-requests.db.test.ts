@@ -78,7 +78,8 @@ describe.skipIf(!ADMIN_URL)("missions asked for and decided, in Postgres", () =>
         // 9,300.00 a month.
         await db.query(`INSERT INTO "SalaryChange"(id, "userId", "monthlyAmount", "effectiveFrom") VALUES ('s1', 'e1', 9300, '2026-01-01T00:00:00Z'), ('s2', 'e2', 9300, '2026-01-01T00:00:00Z')`)
         await Calendar.createSchedule("c1", { name: "Office", version: { effectiveFrom: "2026-10-01", startMinutes: 540, endMinutes: 1020, breakMinutes: 60 } }, "a1")
-        await Policy.saveVersion("c1", { effectiveFrom: "2026-10-01", body: STANDARD_OFFICE }, "a1")
+        // A year back, as before the policy's days back (LATER_CHANGES_PLAN.md §7.4, 4c): October's days are asked for here.
+        await Policy.saveVersion("c1", { effectiveFrom: "2026-10-01", body: { ...STANDARD_OFFICE, missions: { ...STANDARD_OFFICE.missions, daysBack: 365 } } }, "a1")
         await Policy.saveVersion("c1", { effectiveFrom: "2026-12-01", body: { ...STANDARD_OFFICE, missions: { enabled: false } } }, "a1")
         // October worked out, then paid with attendance: Ehab absent on Thursday the 29th.
         // Attendance starts with the company's first scan: Eman's on 1 October.

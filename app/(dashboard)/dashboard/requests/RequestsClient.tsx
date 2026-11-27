@@ -121,10 +121,12 @@ interface RequestsClientProps {
     allowance?: { left: number; total: number; pending: number; carried: number } | null
     /** Whether they may ask for a mission: attendance of their own, under a policy with missions on today (ATTENDANCE_PLAN.md §6.10). */
     mayAskMission?: boolean
+    /** The days a mission may be asked for, by today's policy (LATER_CHANGES_PLAN.md §7.4, 4c); null where none may be. */
+    missionDays?: DayOffDays | null
 }
 
 export default function RequestsClient({
-    rows, total, page, totalPages, kinds, tabs, tab, show, superAdmin, dayOffAsk = null, credit = null, mayAskAttendance = false, attendanceToday = null, allowance = null, mayAskMission = false,
+    rows, total, page, totalPages, kinds, tabs, tab, show, superAdmin, dayOffAsk = null, credit = null, mayAskAttendance = false, attendanceToday = null, allowance = null, mayAskMission = false, missionDays = null,
 }: RequestsClientProps) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
@@ -649,7 +651,7 @@ export default function RequestsClient({
                         onClose={() => setCancelling(null)} onCancelled={() => { setCancelling(null); setViewing(null); refreshed() }} />
                 )}
 
-                <NewRequest open={asking} dayOffAsk={dayOffAsk} today={mayAskAttendance ? attendanceToday : null} mayAskMission={mayAskMission} onClose={() => setAsking(false)} onAsked={() => {
+                <NewRequest open={asking} dayOffAsk={dayOffAsk} today={mayAskAttendance ? attendanceToday : null} mayAskMission={mayAskMission} missionDays={missionDays} onClose={() => setAsking(false)} onAsked={() => {
                     setAsking(false)
                     // Theirs, waiting: where it now is.
                     if (tab === 'mine' && show === 'waiting') refreshed()
@@ -667,11 +669,13 @@ export default function RequestsClient({
  * own (part 3); or a mission, while their policy has missions on
  * (ATTENDANCE_PLAN.md §6.10, PR 283).
  */
-function NewRequest({ open, dayOffAsk, today, mayAskMission, onClose, onAsked }: {
+function NewRequest({ open, dayOffAsk, today, mayAskMission, missionDays, onClose, onAsked }: {
     open: boolean
     /** For whoever may ask for leave: the days it may be asked for, and their balance. */
     dayOffAsk: { days: DayOffDays; balance: number } | null
     mayAskMission: boolean
+    /** The days a mission may be asked for (LATER_CHANGES_PLAN.md §7.4, 4c). */
+    missionDays: DayOffDays | null
     /** The company's day, for whoever has attendance of their own; null for whoever hasn't. */
     today: string | null
     onClose: () => void
@@ -680,7 +684,7 @@ function NewRequest({ open, dayOffAsk, today, mayAskMission, onClose, onAsked }:
     const { t } = useLanguage()
     const [what, setWhat] = useState<RequestKind>('internal')
     const offered = REQUEST_KINDS.filter(k => k === 'internal' || (k === 'dayOff' && !!dayOffAsk) || ((k === 'permission' || k === 'missingPunch') && today !== null)
-        || (k === 'mission' && mayAskMission && today !== null))
+        || (k === 'mission' && mayAskMission && today !== null && missionDays !== null))
     const close = () => {
         setWhat('internal')
         onClose()
@@ -699,8 +703,8 @@ function NewRequest({ open, dayOffAsk, today, mayAskMission, onClose, onAsked }:
                 ? <AskDayOff days={dayOffAsk.days} balance={dayOffAsk.balance} onCancel={close} onAsked={asked} />
                 : what === 'permission' && today
                     ? <AskPermission today={today} onCancel={close} onAsked={asked} />
-                    : what === 'mission' && today
-                        ? <AskMission today={today} onCancel={close} onAsked={asked} />
+                    : what === 'mission' && today && missionDays
+                        ? <AskMission today={today} days={missionDays} onCancel={close} onAsked={asked} />
                     : what === 'missingPunch' && today
                         ? <ReportMissingPunch today={today} onCancel={close} onReported={asked} />
                         : <AskInternal onCancel={close} onAsked={onAsked} />}
