@@ -9,6 +9,7 @@ import { grantFor } from "@/lib/permissions/can"
 import { dayRangeIn } from "@/lib/services/filter-zone"
 import { redirect } from "next/navigation"
 import { askedPage, pageRedirect } from "@/lib/list-page"
+import { placeFilters } from "@/lib/place-filters"
 
 export default async function ObligationsPage(props: { searchParams: Promise<{ company?: string, page?: string, status?: string, search?: string }> }) {
     // Next 15 hands a page its dynamic segments and query string as
@@ -64,7 +65,7 @@ export default async function ObligationsPage(props: { searchParams: Promise<{ c
     }
 
     // Apply Filters from searchParams
-    const { status, search, employeeId, dateFrom, dateTo } = searchParams as any
+    const { status, search, employeeId, dateFrom, dateTo, clientId } = searchParams as any
 
     if (status) {
         whereClause.status = status
@@ -77,6 +78,9 @@ export default async function ObligationsPage(props: { searchParams: Promise<{ c
         // replaces it.
         and(whereClause, { assignees: { some: { id: employeeId } } })
     }
+    // Its client, or none (LATER_CHANGES_PLAN.md §7.7, 7a): narrowing, as the
+    // person filter does, and not for someone who sees only their own.
+    if (scope !== null) for (const narrower of placeFilters(clientId)) and(whereClause, narrower)
 
     // Days where the company is, not on the server's clock.
     const updatedAt = await dayRangeIn(dateFrom, dateTo, whereClause.companyId)
@@ -91,6 +95,8 @@ export default async function ObligationsPage(props: { searchParams: Promise<{ c
                 createdAt: true, updatedAt: true, lastStatusUpdateBy: true,
                 // Each name in Arabic too, for the page's language (PR 415).
                 assignees: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
+                // Its client, in both languages (LATER_CHANGES_PLAN.md §7.7, 7a).
+                client: { select: { name: true, nameAr: true } },
             },
             orderBy: { deadline: 'asc' },
             skip,

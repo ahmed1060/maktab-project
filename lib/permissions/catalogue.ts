@@ -156,7 +156,7 @@ export const PERMISSIONS = {
     // adding it; handing it to other people, moving it along and removing
     // others' attachments; approving or rejecting it, or changing one
     // approved; and deleting it. Its details don't change once it's made.
-    "obligations.create":       { code: 75, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"] },
+    "obligations.create":       { code: 75, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"], lessWithout: ["clients.view"] },
     "obligations.edit":         { code: 76, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"] },
     "obligations.approve":      { code: 77, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"] },
     "obligations.delete":       { code: 78, module: "OBLIGATIONS", scopes: TEAM_OR_COMPANY, implies: ["obligations.view"] },

@@ -245,7 +245,7 @@ them, as today.
 | | `lists.archive` | Archive a saved name, and restore one (#379); opens the Saved lists page | `PUT /lists` with `archived` |
 | | `lists.manage` | Retired (#386): split into the three above (#379), and the grant for companies already there (#385) wrote it as them in every role and template. It included `lists.add`, which none of them does | — |
 | **Obligations** | `obligations.view` | See obligations | `GET /obligations` |
-| | `obligations.create` | Add one, with its people | `POST /obligations`, `GET /assignees` |
+| | `obligations.create` | Add one, with its people, and its client for whoever may see clients (`LATER_CHANGES_PLAN.md` §7.7, 7a) | `POST /obligations`, `GET /assignees` |
 | | `obligations.edit` | Hand it to other people, move it along as a manager (back to Pending, archived, completed for someone deleted), remove others' attachments | `PUT /obligations/[id]`, `GET /assignees` |
 | | `obligations.approve` | Approve or reject one handed in, and change one already approved | `PUT /obligations/[id]` with `APPROVED` or `REJECTED` |
 | | `obligations.delete` | Delete one | `DELETE /obligations/[id]` |
@@ -449,7 +449,8 @@ its row in the editor offers "Add *See locations*" (rule 4; #375).
 
 A permission that **works with less** without another is recorded as
 **lessWithout** (`tasks.create` does less without `clients.view`: no client
-can be picked for a task; LATER_CHANGES_PLAN.md §5.1 rule 3, §5.3; #373). It
+can be picked for a task; LATER_CHANGES_PLAN.md §5.1 rule 3, §5.3; #373; and
+`obligations.create` the same for an obligation, §7.7, 7a). It
 saves, as a separation-of-duties pair does (§6.11): the role editor lists each
 one the role holds, one a save newly brings is confirmed, and the server
 refuses it unconfirmed and records the decision. Held or not counts, not how

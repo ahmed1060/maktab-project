@@ -10,7 +10,7 @@ import type { TranslationKey } from "@/lib/translations"
 /** What the list knows of a client, as the clients route gives it. */
 export type Deletable = {
     name: string
-    /** It has tasks or records. */
+    /** It has tasks, obligations or records. */
     inUse?: boolean
     /** It has a tax position: a file uploaded for it, with claims open or none. */
     hasTax?: boolean
@@ -32,7 +32,7 @@ type Done = { archived?: boolean; forTax?: boolean; forPeople?: boolean } | null
  */
 export const archivesInstead = (c: Deletable): boolean => !!(c.inUse || c.hasTax || c.hasPeople)
 
-/** What's asked first: why it's archived, tasks or records before a tax position, a tax position before people. */
+/** What's asked first: why it's archived, tasks, obligations or records before a tax position, a tax position before people. */
 export function deleteQuestionKey(c: Deletable): TranslationKey {
     if (c.inUse) return 'clients_archive_question'
     if (c.hasTax) return 'clients_archive_question_tax'

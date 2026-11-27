@@ -26,6 +26,7 @@ vi.setConfig({ testTimeout: 120_000 })
 
 const LESS: [Permission, Permission][] = [
     ["tasks.create", "clients.view"],
+    ["obligations.create", "clients.view"],
     ["salary.view", "employees.view"],
     ["settings.edit", "salary.view"],
 ]

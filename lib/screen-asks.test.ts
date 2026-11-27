@@ -74,7 +74,7 @@ const notHere = (...gates: Gate[]): Ask => ({ notHere: gates })
 
 // Shared by several screens: the components' own checks.
 const CLIENT_PICKERS = ["useClientOptions(onePage && can('clients.view'), true)", "const clients = useClientOptions(choosing && can('clients.view'))"]
-const PLACE_FILTERS = ["const seesClients = can('clients.view') && !waits", "const seesLocations = can('locations.view') && !waits"]
+const PLACE_FILTERS = ["const seesClients = can('clients.view') && !waits", "const seesLocations = placed && can('locations.view') && !waits"]
 const LOCATION_COMPANY = "const pickCompany = choosing && sharedChosen && superAdmin && !selectedCompanyId"
 const CHARGE_FEE = ["const canSet = can('charges.set')", ": !canSet ? [] : c.notCharged"]
 const CHARGE_COLLECT = ["const canCollect = can('charges.collect')", "{canCollect && offer && <Button"]
@@ -195,6 +195,9 @@ const SCREENS: Record<string, Screen> = {
         opens: ANYONE,
         asks: {
             "GET /api/users": when("employees.view", "const asks = on && can('employees.view')"),
+            // The client filter (LATER_CHANGES_PLAN.md §7.7, 7a); an obligation has no location, so its filter's list isn't asked for.
+            "GET /api/clients": when("clients.view", ...PLACE_FILTERS),
+            "GET /api/locations": notHere("const clientFilter = usePlaceFilters({ clientId: filters.clientId })", { in: "components/locations/usePlaceFilters.ts", code: "const placed = picked.locationId !== undefined" }),
         },
     },
     "obligations/[id]": {
@@ -217,6 +220,8 @@ const SCREENS: Record<string, Screen> = {
         asks: {
             "POST /api/obligations": { needs: ["obligations.create"], routeChecks: "lib/services/obligation.service.ts" },
             "GET /api/assignees": { needs: ["obligations.create"], routeChecks: ASSIGNEES },
+            // Its client, for whoever may see clients (LATER_CHANGES_PLAN.md §7.7, 7a).
+            "GET /api/clients": when("clients.view", "const seesClients = useCan().can('clients.view') && !(superAdmin && !selectedCompanyId)", "const clients = useClientOptions(mayCreate && seesClients)"),
         },
     },
     "records": {
@@ -1478,7 +1483,7 @@ describe("the test itself", () => {
         expect(redirectProblems("vendors")).toEqual([])
         // It sends an old address on, but ends showing the list.
         expect(redirectProblems("tasks")).toEqual(expect.arrayContaining(["tasks: doesn't end by sending you on", "tasks: asks GET /api/realtime/token"]))
-        expect(redirectProblems("obligations")).toEqual(["obligations: doesn't end by sending you on", "obligations: asks GET /api/users"])
+        expect(redirectProblems("obligations")).toEqual(["obligations: doesn't end by sending you on", "obligations: asks GET /api/users", "obligations: asks GET /api/clients", "obligations: asks GET /api/locations"])
     })
 
     it("keeps held what a permission brings and needs first, and nothing else", () => {

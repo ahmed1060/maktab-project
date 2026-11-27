@@ -51,3 +51,17 @@ export function clientMissing(c: ClientNames): ('en' | 'ar')[] {
 export function missingCount(clients: readonly ClientNames[]): number {
     return clients.filter(c => clientMissing(c).length > 0).length
 }
+
+/** A client a form picked, with the company chosen when it was. */
+export type ClientPick = { id: string; company: string | null }
+
+/**
+ * The client a form sends while `company` is the one chosen: the one picked
+ * in it, and none in another. A Super Admin who picks a client and then
+ * switches company sends no other company's client, which the server would
+ * refuse, nor a hidden one (Codex review of PR 435), as a title picked from a
+ * company's list isn't kept either (saved-lists.ts, pickIn).
+ */
+export function clientPickedIn(pick: ClientPick, company: string | null): string {
+    return pick.company === company ? pick.id : ''
+}

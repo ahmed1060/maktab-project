@@ -278,7 +278,7 @@ describe("the app's Arabic, part 5: someone else spoken of as \"he\"", () => {
         expect(ar.all_users_left_none).toBe("لم يغادر أحد")
         expect(ar.client_hq_locked).toContain("من يحق له")
         expect(ar.profile_role_ask_body).toContain("حتى يوافق المسؤول")
-        expect(ar.clients_archived_done).toBe("تمت الأرشفة: لديه مهام أو سجلات")
+        expect(ar.clients_archived_done).toBe("تمت الأرشفة: لديه مهام أو التزامات أو سجلات")
     })
 
     it("changes nothing in English", () => {

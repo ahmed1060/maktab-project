@@ -87,7 +87,7 @@ describe("every path that hands out work", () => {
         expect(tasks).toContain("const owners = await holdAssignees(tx, tasks.flatMap(t => t.assigneeIds || []))")
         expect(tasks).toContain("if ((assigneeIds as string[]).some(id => owners.has(id))) throw new Error(`ASSIGNEE_IS_OWNER: ${task.title}`)")
         // Adding an obligation and reassigning one.
-        expect(obligations).toContain("return await prisma.$transaction(async (tx) => {\n            if ((await holdAssignees(tx, assigneeIds)).size > 0) throw new Error(\"ASSIGNEE_IS_OWNER\")\n            return tx.obligation.create({")
+        expect(obligations).toContain("return await prisma.$transaction(async (tx) => {\n            if ((await holdAssignees(tx, assigneeIds)).size > 0) throw new Error(\"ASSIGNEE_IS_OWNER\")\n            if (resolvedClientId) await holdClientInUse(tx, resolvedClientId)\n            return tx.obligation.create({")
         expect(obligations).toContain("if ((await holdAssignees(tx, assigneeIds.filter((uid: string) => !current.assignees.some(a => a.id === uid)))).size > 0) throw new Error(\"ASSIGNEE_IS_OWNER\")\n                const verdict = await checkAssignees(assigneeIds, session, \"obligations.edit\"")
         expect(obligations).toContain("await tx.$queryRaw`SELECT id FROM \"Obligation\" WHERE id = ${id} FOR UPDATE`\n            const current = await tx.obligation.findUnique({")
     })

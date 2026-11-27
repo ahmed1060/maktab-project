@@ -18,6 +18,7 @@ import { useBusyAction } from '@/lib/useBusyAction'
 import { fetchRetrying } from '@/lib/swr-fetcher'
 import type { TranslationKey } from '@/lib/translations'
 import { decidedByName } from '@/lib/decided-by'
+import { clientName } from '@/lib/client-list'
 import { useDeadlineClock } from '@/lib/useDeadlineClock'
 
 const FILE_TYPES = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx']
@@ -403,6 +404,8 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
             >
                 {obligation.description && <p className="ui-prose" dir="auto">{obligation.description}</p>}
                 <Details items={[
+                    // Its client first, as a task's place is (LATER_CHANGES_PLAN.md §7.7, 7a).
+                    ...(obligation.client ? [{ label: t('client_label'), value: <bdi>{clientName(obligation.client, locale)}</bdi> }] : []),
                     { label: t('assigned_by'), value: creatorName ? <bdi>{creatorName}</bdi> : creatorUnknown ? t('assigned_by_unknown') : t('role_super_admin') },
                     { label: t('deadline_label'), value: <DueDate overdue={isOverdue}><SafeDate date={obligation.deadline} locale={locale} showTime /></DueDate> },
                     ...(recurrence ? [{ label: t('recurrence_label'), value: t(recurrence.labelKey as TranslationKey) }] : []),

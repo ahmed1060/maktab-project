@@ -29,7 +29,9 @@ export type ExtraFilter = {
 
 /**
  * The client and location filters (CLIENTS_PLAN.md §3) for the Tasks and
- * Costs pages' filter bar, from the address's `clientId` and `locationId`:
+ * Costs pages' filter bar, from the address's `clientId` and `locationId`,
+ * and the client filter alone for Obligations, which have no location
+ * (LATER_CHANGES_PLAN.md §7.7, 7a):
  * the client filter for whoever may see clients, with "No client"; the
  * location filter for whoever may see locations, offering the picked
  * client's and the shared ones, the archived ones last. A Super Admin
@@ -37,7 +39,7 @@ export type ExtraFilter = {
  * pick it, is hidden, so it can be cleared. Each client in the page's
  * language, in the page's order (PR 412).
  */
-export function usePlaceFilters(picked: { clientId: string; locationId: string }): ExtraFilter[] {
+export function usePlaceFilters(picked: { clientId: string; locationId?: string }): ExtraFilter[] {
     const { t, locale } = useLanguage()
     const { can } = useCan()
     const { data: session } = useSession()
@@ -47,7 +49,9 @@ export function usePlaceFilters(picked: { clientId: string; locationId: string }
     const company = superAdmin && selectedCompanyId ? `companyId=${encodeURIComponent(selectedCompanyId)}` : ''
 
     const seesClients = can('clients.view') && !waits
-    const seesLocations = can('locations.view') && !waits
+    // Obligations have no location, so neither the filter nor its list.
+    const placed = picked.locationId !== undefined
+    const seesLocations = placed && can('locations.view') && !waits
     // Archived clients too: a filter keeps them (CLIENTS_PLAN.md §4.3).
     const { data: clientsBody } = useSWR<{ data: (ClientName & { id: string; archivedAt?: string | null })[] }>(seesClients ? `/api/clients?archived=all${company ? `&${company}` : ''}` : null, fetcher)
     const { data: placesBody } = useSWR<{ data: { locations: FilterPlace[] } }>(seesLocations ? `/api/locations?pick=filters${company ? `&${company}` : ''}` : null, fetcher)
@@ -72,7 +76,7 @@ export function usePlaceFilters(picked: { clientId: string; locationId: string }
         filters.push({
             key: 'locationId',
             label: t('task_location'),
-            value: picked.locationId,
+            value: picked.locationId ?? '',
             options: chosen => [
                 { value: '', label: t('locations_filter_all') },
                 ...locationFilterChoices(places, chosen.clientId ?? '', p => locationLabel(p.name, clientName(p.clientId)), l => `${l} · ${t('locations_archived_mark')}`),

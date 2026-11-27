@@ -852,7 +852,8 @@ These are built once, in the building-blocks PR, and every page uses them
   - rows separated by hairlines;
   - the first column holds the item's title in `--ink`, weight 500, with a
     secondary line below it in `--muted` and a small icon, such as the
-    "Client – Location" line for tasks;
+    "Client – Location" line for tasks, and an obligation's client, then
+    how often it comes round, each a line with its icon;
   - the status column and the action column are at the end;
   - a table wider than its panel scrolls sideways inside it, and the
     panel keeps its rounded corners, so the end columns are never cut off;
@@ -2392,6 +2393,33 @@ These are built once, in the building-blocks PR, and every page uses them
   and that 0 means from today on. The policy's card says it under the
   missions' line: "Can be asked for up to 7 days back", or "Can be asked
   for from today on" with 0.
+- **An obligation's client** (`LATER_CHANGES_PLAN.md` §7.7, 7a), as a
+  task's is:
+  - **On Add obligation,** for whoever may see clients: Client, a select
+    under the description, "No client" first, then the company's clients
+    that aren't archived, each by its name in the page's language. Its
+    hint: "Optional. The client it's done for." A Super Admin's waits for
+    a company to be picked, as a task's does, and switching company takes
+    off the client picked in the last one. Without See clients there's
+    no select, and the obligation has no client.
+  - **A client the server refuses,** archived or gone while the form was
+    open, is said under the select, which takes the focus. It's taken off
+    the select, which shows "No client", so what's shown is what would be
+    sent, and the clients are loaded again.
+  - **Each time a repeating one comes round,** the next one has the same
+    client, archived since or not, so it's still clear whose it is.
+  - **In the Obligations list,** for anyone who sees the obligation: its
+    client on the line under its title, with the client's icon, and how
+    often it comes round on the line under that, with its own. On a
+    phone's card, the client is a line of its own, before how often.
+  - **The filter bar,** for whoever may see clients, has Client after the
+    status, as Tasks has: "All clients", "No client", then every client,
+    archived ones marked.
+  - **An obligation's page** names its client first in its details, as
+    Client.
+  - **A client with obligations** is archived rather than deleted, as one
+    with tasks or records is, so its obligations keep it. The Clients
+    list's words say "tasks, obligations or records".
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
