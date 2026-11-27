@@ -16,9 +16,11 @@ Each part is marked:
 Status: **the owner's points of 26 November (§7) decided; the contract
 start date and Recalculate on the Payroll page done (#425), and owners'
 mark, permission and pay (#426, step 3a), what they're not asked for
-(#427, step 3b1), and only Admins as owners, given no new work (#428,
-step 3b2), with 3c next; the names (§3)
-paused after step 8l (#424).** Done: the development database (§4),
+(#427, step 3b1), only Admins as owners, given no new work (#428, step
+3b2), and the Owners list (#429, step 3c), so owners are done; clearer
+words on Exceptions (§7.11) and payday and the attendance period
+(§7.10) built in one PR (#430), waiting on the owner's review; then the
+limits on requests (§7.4); the names (§3) paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their limit set
@@ -1204,9 +1206,11 @@ same day as drawn in the All users: status badges canvas
 
 The owner sent seven points on 2026-11-26, asked for them to be talked
 through first, and answered two rounds the same day. This part holds
-those answers. One question waits for the owner's own review, later
-(§7.9). The names (§3.1) are paused after step 8l (#424) until these are
-done; payroll, with the costs and charges lists, is next there.
+those answers, and payday and the attendance period, talked through on
+27 November (§7.10), and clearer words on Exceptions (§7.11). One
+question waits for the owner's own review, later (§7.9). The names (§3.1) are paused after step 8l
+(#424) until these are done; payroll, with the costs and charges lists,
+is next there.
 
 The rating's look is drawn on the Task rating flow canvas
 (https://claude.ai/artifact/QBRMH1KGp4NagBfHGbfcUp).
@@ -1449,22 +1453,46 @@ In three PRs, each whole on its own:
 
 - **Day off:**
   - "Today" is the company's, in its time zone, not UTC's.
-  - It may be asked for from the 1st of this month, or of last month
-    while last month's payroll isn't approved yet, up to a number of
+  - It may be asked for from the first day not in an approved payroll's
+    period (§7.10), never before the 1st of last month, up to a number of
     months ahead set in the policy: 1 unless changed.
   - It may not overlap a mission or another day off, as today.
   - The balance shows while asking, with a warning when it's short.
 - **Permission hours:** the policy gets a choice of when they may be
   asked for:
   - before, or within the policy's hours after, as today; or
-  - any day from the 1st of this month, or of last month while last
-    month's payroll isn't approved yet, up to one month ahead of today.
+  - any day from the first day not in an approved payroll's period
+    (§7.10), never before the 1st of last month, up to one month ahead of
+    today.
   The allowance, the lengths, the number a month and the approval stay as
   they are.
 - **Missions:** the policy gets how far back they may be asked for, in
   days: 7 unless changed. Today it's a year.
 - **Missing punches:** no new limit for now, at the owner's word. How far
   back and how many a month can be added later.
+- **In three PRs**, day off first:
+  - **4a, day off:**
+    - "Today" is the company's date, in its time zone, on the server and
+      in the form.
+    - The first day it may be asked for is the first day not in an
+      approved payroll's period (§7.10), and never before the 1st of last
+      month.
+    - The last is today plus the policy's months ahead: the same date
+      that many months on, or that month's last day where it has fewer
+      (decided on 26 November: on 26 November, one month ahead is 26
+      December).
+    - The number is in the attendance policy, 1 to 12, 1 unless changed
+      (decided on 26 November). A version saved before it reads as 1, so
+      nothing is migrated. A company with Day off but without Attendance
+      keeps 1.
+    - Outside those days it's refused, saying which days may be asked
+      for, and the form's date picker offers only them.
+    - The balance shows while asking. Asking for more days than it holds
+      warns, and doesn't refuse.
+  - **4b, permission hours:** the policy's choice of when they may be
+    asked for, as above, "around the day" as today unless changed.
+  - **4c, missions:** the policy's days back, 7 unless changed, which
+    every version reads as 7 from then on.
 
 ### 7.5 Salary advances (Decided)
 
@@ -1533,12 +1561,16 @@ In three PRs, each whole on its own:
 1. The contract start date (§7.2), which also fixes §7.1's days.
 2. Recalculate on the Payroll page (§7.1).
 3. Owners (§7.3).
-4. Limits on requests (§7.4): day off first, then permission hours and
+4. Clearer words on Exceptions (§7.11).
+5. Payday and the attendance period (§7.10), 10a to 10f, as the limits
+   on requests' first day follows the period. With step 4, in one PR,
+   each step in its own commits (the owner, 27 November).
+6. Limits on requests (§7.4): day off first, then permission hours and
    missions.
-5. Obligations with a client (§7.7).
-6. Salary advances (§7.5), Custody's new name first, once the owner has
+7. Obligations with a client (§7.7).
+8. Salary advances (§7.5), Custody's new name first, once the owner has
    reviewed §7.9.
-7. Rating finished work (§7.6): DESIGN.md first, then tasks, then
+9. Rating finished work (§7.6): DESIGN.md first, then tasks, then
    obligations.
 
 A step may take more than one PR.
@@ -1552,6 +1584,305 @@ A step may take more than one PR.
    Nizmo could stop an installment over it, warn, or take the most from
    the policy (10% unless changed). The owner reviews this later, before
    salary advances are built; nothing about it changes until then.
+
+### 7.10 Payday and the attendance period (Decided)
+
+Talked through with the owner on 2026-11-27, from a question about
+approving a month early, and decided the same day.
+
+- **Why:** today a month's payroll can be approved before the month ends.
+  Approving works its attendance out up to yesterday, then freezes the
+  month, so the days from then to the month's end are never measured.
+  Omar, absent on 30 November after November was approved on the 26th,
+  is counted nowhere.
+- **The attendance period,** set as "Payroll closes", in the Payroll
+  settings beside payday, for every company, as the same rules apply
+  with attendance in payroll or without it (the owner, 27 November):
+  - "On the month's last day": the calendar month, as today, unless
+    changed;
+  - "On day [1 to 28]": that day is counted. Closing on day 24,
+    November's payroll counts attendance from 25 October to 24 November,
+    and December's from 25 November to 24 December.
+  - **From the period:** the attendance lines: absence, lateness, early
+    leave, overtime and the mission allowance.
+  - **Still by the calendar month:** salary and its changes, joining and
+    leaving, the contract start, bonuses and deductions, permission hours
+    and the number of requests a month, owners, and attendance's monthly
+    views.
+  - The payslip says which days: "Attendance: 25 October to 24 November".
+  - **Changed,** it counts from the first month not yet approved. That one
+    period is shorter or longer, with no gap and no overlap.
+  - Without attendance in payroll, it decides when the month may be
+    approved, and payday comes after it, as with attendance.
+- **Approving waits for the period's end:** November may be approved from
+  the day after its period ends: 25 November up to day 24, or 1 December
+  with the month's last day. Before then it's refused, saying from when,
+  and that a cut-off allows it sooner.
+  - Approving freezes the period's days, not the calendar month's. A
+    punch, request or correction on a frozen day is refused; one after
+    the period goes to the next month's. The places that freeze by month
+    today (about 15) move to the period.
+- **Payday,** where it's set today, in the Payroll settings:
+  - "On day [1 to 28]" or "On the month's last day";
+  - in the payroll's own month, as today, or the month after;
+  - on a day off, it moves to the working day before, unless changed to
+    the working day after. "Don't move it" isn't offered (the owner,
+    27 November). A day off is:
+    - a weekend day, by the attendance policy in force that day (Friday
+      and Saturday without one);
+    - a public holiday the company applies, not one it works through, nor
+      while its public holidays are off;
+    - a company holiday.
+  - A holiday added later, such as Eid once its dates are announced,
+    moves it too, until the month is marked paid.
+  - **It comes after the period.** A payday that doesn't is refused when
+    the settings are saved, saying why, such as: "Payday has to come after
+    payroll closes, so the month can be approved before it's paid. Pick a
+    day after the 24th, or pay in the month after." In the month after,
+    any day is after it.
+  - **No company is left breaking it:** the release that adds the rule
+    moves each company onto settings that follow it, so there is nothing
+    to warn about. Should one still break it, approving its month is
+    refused, saying why and where to change it.
+  - **Moving back never goes into the period:** where the working day
+    before is inside it, payday moves to the working day after instead.
+  - The Payroll page shows the month's payday, moved: "Payday: Thursday
+    26 November".
+  - In Nizmo it decides final settlements (whether the leaving month is
+    already paid: never, in the month after) and debts' due dates. Nizmo
+    doesn't move the money; Mark paid records that it went.
+- **Change this month's payday:** on the Payroll page, for whoever may
+  approve payroll, until the month is marked paid. For a one-off, such as
+  paying before Eid.
+  - A day picked by hand stays where it's put, even on a day off.
+  - Before approval, this month's period can end sooner with it:
+    "Attendance counts up to", the day before the new payday unless
+    changed. The days after go to next month's period, which is that much
+    longer, with no gap and no overlap. With the period up to day 24,
+    payday the 28th and Eid off from the 22nd to the 25th, paying on the
+    21st counts attendance up to the 20th; the 21st to the 24th go to the
+    next month.
+  - After approval only payday can change, and it still comes after the
+    period.
+  - It's in the audit log, and the Payroll page says "changed for this
+    month". The next month goes back to the setting.
+- **Final settlements:** a leaver's attendance runs from the day after the
+  last approved period to their last working day.
+- **What each approved month keeps:** its period's first and last days and
+  its payday, as it keeps its payroll day today, so a later change never
+  restates a month already approved.
+- **Companies today:** the period is the month's last day, payday stays in
+  the payroll's own month, and it moves to the working day before. Nothing
+  approved or paid changes.
+- **A new company:** payroll closes on the month's last day, and payday is
+  day 1 of the month after, so its settings follow the rule from the
+  start.
+- **The live company with attendance in payroll** (checked read-only on
+  27 November): payday on the 28th, with the calendar month as its
+  period, so payday comes before the period ends, which this part
+  refuses. The owner decided on 27 November:
+  - payday on day 1, in the month after, and the period stays the
+    calendar month. A month is approved and paid on the 1st.
+  - Where the 1st is a day off, the working day before is the period's
+    last day, so it moves to the working day after: 1 January 2027 is a
+    Friday, so December is paid on Sunday 3 January.
+  - A leaver is always owed their days, as nothing is paid ahead.
+  - Its first month on the new payday is paid on the 1st of the next
+    month instead of the 28th, once, a few days later; no month is paid
+    twice or missed.
+- **The other live company** (checked read-only on 27 November): payday
+  on the 25th, in its own month, without attendance in payroll, and no
+  payroll yet. The same rules apply to it, so the owner decided on 27
+  November: payday on day 1 of the month after, too.
+- **Both are moved by 10b's migration,** which the merge confirms: every
+  company whose payday doesn't come after its payroll's close is paid on
+  day 1 of the month after, its period staying the calendar month. That
+  is each company there is today, so no company's own settings are
+  written by hand.
+- **In six steps,** each with DESIGN.md first where a screen changes, then
+  its plan, then the code:
+  - **10a, payday:** a day or the month's last day, its own month or the
+    month after, the move off days off, never back into the period (the
+    calendar month until 10b), the Payroll page's payday, and settlements
+    and due dates by it.
+  - **10b, the period:** "Payroll closes" and its dates, payday after it,
+    every company moved onto settings that follow it, and approving
+    refused where one still doesn't.
+  - **10c, payroll by the period:** the attendance lines from it, and the
+    payslip's line.
+  - **10d, freezing by the period:** approving waits for its end, and
+    frozen days are the period's.
+  - **10e, a period changed:** the shorter or longer one, and final
+    settlements.
+  - **10f, Change this month's payday,** with this month's period, and
+    Recalculate by the period.
+
+#### How it's built (steps 4 and 5, PR 430)
+
+- **The settings,** on Company, in one migration with the runs' fields:
+  - `payrollCloseDay`: 1 to 28, or none for the month's last day;
+  - payday: `payrollDay` (1 to 28), `paydayLastDay`, `paydayNextMonth`
+    and `paydayMove` (`BEFORE` or `AFTER`).
+  - The migration moves every company whose payday doesn't come after its
+    close (each one there is today) onto day 1 of the month after, then
+    makes that the default for a new company. Nothing else of theirs
+    changes.
+- **Each month's run keeps** its period's first and last days and its
+  payday (`periodStart`, `periodEnd`, `payday`), set when it's approved;
+  runs approved before keep the calendar month and the payday they had.
+  A draft's `periodEnd` and `payday`, with `paydayChanged`, are this
+  month's own, from Change payday.
+- **The dates, worked out in one place** (`lib/payroll-period.ts`, pure,
+  and `lib/services/payroll-period.service.ts`, which reads them):
+  - a month's close: its run's `periodEnd` where it has one; where the
+    month after is approved, the day before that month's first day, as
+    an approved month's period never moves; otherwise the setting's day,
+    or the month's last day;
+  - its period: from the day after the month before's close to its own
+    close, so a changed close makes one period shorter or longer, never
+    a gap or an overlap;
+  - which payroll month a date belongs to: its own month's, up to that
+    month's close, and the next month's after it;
+  - payday: the setting's day in the payroll's own month or the next,
+    moved off a day off (a weekend day by the attendance policy in force
+    then, Friday and Saturday without one; a public holiday the company
+    observes; one of its own) the way the setting says, and moved
+    forward instead where moving back reaches the period.
+- **The rule,** on save in the company's settings and again on approving:
+  payday comes after the close: always in the month after; in the own
+  month, a day after the close day, or the last day with a close up to
+  the 27th, February's 28th being the shortest last day. Approving checks
+  the month's own payday, one changed for it included, against its
+  period, and again once it holds the month locks: a payday changed to
+  the setting's close stays where it's put when the close later moves.
+- **Payroll reads the period:** the attendance lines, the days still to
+  settle, the overtime left undecided and the days stamped as paid, from
+  the period's dates; the days rebuilt before approving are those of the
+  calendar months the period touches.
+- **Freezing by the period:** the month locks are taken, and checked, for
+  the payroll months the dates written fall in, not their calendar
+  months. Approving takes its month's and the next's. A writer takes,
+  for each date, its calendar month's lock and the next's, the two
+  payroll months it can fall in, before reading which of them counts it:
+  a payday changed or a month approved in between can't move it. A rebuild of a
+  calendar month rebuilds the days not yet frozen, and records what
+  changed on the frozen ones, as it did for a whole month. Owners, the
+  contract start and joining keep the calendar month, as the payslip's
+  salary does.
+- **Approving waits for the period's end,** in the company's calendar,
+  before anything is worked out: `PERIOD_NOT_OVER`, with the first day it
+  may be approved. Once it holds the month locks and the company's row
+  (`FOR SHARE`, so the Payroll settings can't change until it's done), it
+  reads the period again and goes by that one throughout, checked again,
+  so a payday changed meanwhile is the one approved.
+- **Settlements and debts** read the payday: what of the last month is
+  already paid, and a debt's due date, the first payday on or after: the
+  earliest of the months' paydays, as a payday changed for one month can
+  come after the next month's. A settlement is carried by the run whose
+  payday is on or after its due date, so one due on 1 December is
+  November's when November is paid then.
+  A leaver's attendance from the day after their leaving month's period
+  to their last working day (overtime and a mission's allowance, less
+  what's deducted) is counted in their settlement, kept on it as
+  `attendanceAmount` and shown as its own line, "Attendance after
+  payroll closed"; an owner's is none, as their pay is. The days before
+  are their leaving month's payroll's. A day's attendance is known once
+  it's over, so a contract whose last working day comes after the
+  leaving month's close isn't ended before that day is over
+  (`ATTENDANCE_NOT_OVER`, said under the date); ending it measures their
+  days first, as the nightly job would. Nor while one of those days
+  waits on a decision: a day incomplete or a departure to confirm, or
+  overtime, a permission, a missing punch or a mission not yet decided
+  (`ATTENDANCE_PENDING`, said under the date). Nothing settles them once
+  the settlement is made. Days among them a later payroll already paid
+  them for, approved before the end was recorded, are that payroll's: a
+  day it froze, where it has their payslip, isn't counted again. One it
+  froze without paying them (left out of it) is counted, its mission
+  allowance as derived now, since freezing cleared it.
+  The leaving month is the calendar month of the last working day, so a
+  contract ending on the month's last day still counts the days after
+  that month's close. Under the leaving month's lock and the next's, the
+  settlement reads those days again, rebuilt, and is refused if they
+  came to something else meanwhile (`ATTENDANCE_CHANGED`) or the close
+  moved (`PAYROLL_PERIOD_CHANGED`). Then it freezes what it counted: it
+  marks those days with itself (`AttendanceDay.lockedBySettlementId`, a
+  column added on its own) and keeps the leaving month's close where it
+  stood (its run's `periodEnd`), whether or not there were days after
+  it. A marked day is never rebuilt, never counted by a payroll (someone
+  taken back on isn't paid for it twice), nor marked again by the next
+  month's approval; a change to it is refused as one to a month already
+  paid; and a month with a contract settled in it keeps its attendance
+  end, so Change payday changes only its payday.
+  The list of check-ins to review leaves out only those a decision would
+  refuse: a check-in's month is read by the period, as deciding it does,
+  so one after an approved month's close, the next month's, is still
+  there, and one on a day a settlement counted isn't. A punch beside a
+  settled day is that day's only where its shift is, as the engine
+  assigns it: someone taken back on the day after records their own day.
+  The work calendar's, a schedule's and the attendance policy's changes
+  go by the period too: refused where they reach a payroll month
+  approved, so a company holiday after an approved month's close, the
+  next month's, can still be added.
+- **Change this month's payday** (`PUT /api/payroll/{year}/{month}/payday`,
+  `payroll.approve`, with the step-up a high-risk action asks for): the
+  date, and while the run is a draft the attendance's last day, each
+  checked as above, the last day within the month's own calendar month,
+  so a period touches two calendar months at most and a date is its own
+  month's or the next's; written on the month's run, made if it has
+  none, with an audit line. The date is no later than the month after next.
+  An approved month's attendance stays as approved, whatever the
+  settings say since; so does a draft's whose next month is approved,
+  or with a contract ending in it settled. The Payroll page's view says
+  which (`nextApproved`, `endSettled`, the latter by the same count of
+  settlements as the change), so the dialog shows only Payday then, with
+  a line saying why, and sends no attendance end to be refused.
+  A draft's last day equal to the setting's close is kept as the
+  setting (no `periodEnd`), so a later change of the setting still
+  counts. It holds the month's run (`FOR UPDATE`) from reading its status
+  to writing, so marking the month paid meanwhile waits for it, or comes
+  first and it's refused (`RUN_PAID`).
+- **The screens:** the Payroll settings card's two settings, their
+  fields lined up at the top and one under another on phones (found in
+  the flows: half the width, every choice was cut short); the Payroll
+  page's payday line, saying when it was changed for the month, with
+  Change payday and Approve greyed with its date; Change payday's
+  refusals under their field, with the focus there; the payslip's
+  attendance line.
+
+### 7.11 Clearer words on Exceptions (Decided)
+
+Asked on 2026-11-27: Attendance's Exceptions tab names its two decisions
+"Excuse" and "Accept", which don't say what they do. In Arabic both start
+with قبول: «قبول العذر» and «قبول».
+
+- **What they do,** on Late / left early, Absent and Departure to confirm:
+  - **Excuse** asks why, then nothing of it is deducted, and it doesn't
+    count as one of the policy's times, so a later lateness is counted as
+    one fewer.
+  - **Accept** keeps what the policy deducts, none when it's a free time,
+    and it counts as one of the times. On Departure to confirm, it
+    confirms the early leave, which the policy then deducts.
+- **The words,** for what they do, which stays as it is (decided on 27
+  November):
+
+  | Where | Now | Proposed |
+  |---|---|---|
+  | The first button | Excuse, «قبول العذر» | Don't deduct, «إعفاء من الخصم» |
+  | The second button | Accept, «قبول» | Deduct per policy, «خصم حسب السياسة» |
+  | Its dialog's title | Excuse | Don't deduct |
+  | Once done | Excused, Accepted | Not deducted, Deducted per policy |
+  | On Decided and in the audit log | Excused, Accepted as charged | Not deducted, Deducted per policy |
+  | Punch missing's button | Accept as it is, «قبول اليوم كما هو» | Present, no deduction, «حضور بدون خصم» |
+
+  - The dialog's line: "Not deducted, and not counted as one of the
+    policy's times. Say why; it's kept with the day and in the audit
+    log."
+  - The tab's line: "Only what needs a decision: don't deduct it, saying
+    why, or deduct it per policy. Either way it leaves the list, and
+    every decision can be undone while the month's payroll is open."
+  - Arabic in the same way, gender-neutral: «إعفاء من الخصم مع ذكر السبب،
+    أو الخصم حسب السياسة».
+- **Words and their tests only,** before 10a, in the same PR (§7.8).
 
 ## Not here
 
@@ -2018,3 +2349,78 @@ A step may take more than one PR.
 - **2026-11-26:** #428 merged (3b2). 3c next.
 - **2026-11-26:** 3c decided further: the Owners list's icon is Crown,
   and an Admin is added to the owners from their details alone.
+- **2026-11-26:** #429 merged (3c). Owners (§7.3) done; the limits on
+  requests (§7.4) next.
+- **2026-11-26:** §7.4 split into 4a, 4b and 4c. Day off's months ahead is
+  in the attendance policy, and one month ahead of 26 November is 26
+  December (decided).
+- **2026-11-27:** Payday and the attendance period (§7.10) decided, from
+  Omar's case: an attendance cut-off, approving after the period's end,
+  payday on a day or the month's last day, in its own month or the month
+  after, moved to the working day before or after a day off, and changed
+  for one month, with its period, for a one-off such as Eid. It comes
+  before the limits on requests (now fifth), whose first day follows the
+  period. The live company's payday becomes the month's last day; its
+  period is open (§7.9).
+- **2026-11-27:** The live company's payday decided instead: day 1, in
+  the month after, with the calendar month as its period, changed once
+  10a has merged. §7.9 is back to one point.
+- **2026-11-27:** Clearer words on Exceptions (§7.11) proposed, at the
+  owner's ask: "Don't deduct" and "Deduct per policy" for Excuse and
+  Accept, and "Present, no deduction" for Accept as it is. One small PR,
+  before payday.
+- **2026-11-27:** The words on Exceptions (§7.11) decided as proposed.
+  §7.10 further: the same rules for a company without attendance in
+  payroll, so the period moves to the Payroll settings as "Payroll
+  closes"; a payday picked by hand stays where it's put; changing this
+  month's payday is for whoever may approve payroll; and a payday that
+  breaks the rule is refused, not warned about: the release moves every
+  company onto settings that follow it, a new company starts with payroll
+  closing on the month's last day and payday on the 1st of the month
+  after, and approving is refused where one still breaks it. The other
+  live company's settings are open (§7.9).
+- **2026-11-27:** The other live company is paid on day 1 of the month
+  after, too, so 10b's migration moves every company whose payday doesn't
+  come after its close onto that. Steps 4 and 5 in one PR, at the owner's
+  word, each step in its own commits.
+- **2026-11-27:** How steps 4 and 5 are built (§7.10), before the code.
+- **2026-11-27:** Steps 4 and 5 built (#430): as built in §7.10, with a
+  leaver's attendance after their leaving month's period counted in their
+  settlement, the payday route behind the step-up, and the settings'
+  fields one under another on phones.
+- **2026-11-27:** Codex's six findings on #430: an approved month's close
+  checked against today's settings; approving read its period before
+  holding the locks; settling attendance not yet measured; a month's
+  close moved under an approved next month; settlements carried by the
+  calendar month's end, not payday; the first payday on or after a date
+  taken in month order. Each fixed, as built in §7.10.
+- **2026-11-27:** Codex's second review on #430: a date's payroll month
+  read before its lock was taken; a payday changed for a month checked
+  only against the settings on approving; a month's attendance allowed
+  to end in the month before; a settlement made with days after the
+  close still waiting on a decision. Each fixed, as built in §7.10.
+- **2026-11-27:** Codex's third review on #430: approving read the period
+  before holding the company's settings; a day a final settlement counted
+  could still change. Each fixed, as built in §7.10.
+- **2026-11-27:** Codex's fourth review on #430: a marked day still
+  counted by a payroll; a settlement's attendance read before the month
+  locks; the close kept only where there were days after it. And, found
+  fixing them, a contract ending on the month's last day counted its
+  days after the close in no payroll and no settlement. Each fixed, as
+  built in §7.10.
+- **2026-11-27:** Codex's fifth review on #430: the list of check-ins to
+  review went by a check-in's calendar month, hiding one after an
+  approved month's close that could still be decided; a leaver's days a
+  later payroll had already paid them for, their end recorded since,
+  counted again in the settlement; and Change payday could change a run
+  being marked paid meanwhile. Each fixed, as built in §7.10.
+- **2026-11-27:** Codex's sixth review on #430: the work calendar, a
+  schedule and the policy refused changes by the calendar month, so one
+  after an approved month's close was refused though its month is open;
+  a punch beside a settled day was refused whatever shift it was on; and
+  a leaver's day a payroll froze without paying them counted no mission
+  allowance, as freezing had cleared it. Each fixed, as built in §7.10.
+- **2026-11-27:** Codex's seventh review on #430: in a draft month with a
+  contract settled in it, Change payday still offered the attendance's
+  last day and sent it, which the change refuses, so its payday couldn't
+  be changed. Fixed, as built in §7.10.

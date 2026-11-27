@@ -14,7 +14,14 @@ type Db = Prisma.TransactionClient
 
 const monthKey = (year: number, month: number) => `${year}-${String(month).padStart(2, "0")}`
 const monthStart = (year: number, month: number) => new Date(`${monthKey(year, month)}-01T00:00:00Z`)
-const nextMonthStart = (year: number, month: number) => (month === 12 ? monthStart(year + 1, 1) : monthStart(year, month + 1))
+
+/**
+ * A payroll month's attendance days, both counted (LATER_CHANGES_PLAN.md
+ * §7.10, PR 430): from the day after the month before's close to its own,
+ * so what payroll reads of attendance is its period, not its calendar month.
+ */
+export type Period = { from: string; to: string }
+const daysOf = (period: Period) => ({ gte: new Date(`${period.from}T00:00:00Z`), lte: new Date(`${period.to}T00:00:00Z`) })
 
 /** Whether this month's attendance reaches payroll: on or after the company's chosen month. */
 export function attendanceReaches(from: Date | null, year: number, month: number): boolean {
@@ -26,11 +33,14 @@ export function attendanceReaches(from: Date | null, year: number, month: number
  * sum of each day's priced parts (§12.2). A day priced before the parts were
  * kept is split by the day-fractions each cause charged — and approval
  * rebuilds every day first, so what is approved is always exact. The mission
- * allowance (§6.10, PR 288) is the sum of the days' allowances.
+ * allowance (§6.10, PR 288) is the sum of the days' allowances. A day a
+ * final settlement counted is that settlement's, never a payroll's too,
+ * should they be taken back on (Codex review on PR 430). `also` narrows
+ * the days further, as a settlement does to those no payroll paid.
  */
-export async function attendanceMoney(db: Db, companyId: string, year: number, month: number): Promise<Map<string, AttendanceMoney>> {
+export async function attendanceMoney(db: Db, companyId: string, period: Period, also: Prisma.AttendanceDayWhereInput = {}): Promise<Map<string, AttendanceMoney>> {
     const days = await db.attendanceDay.findMany({
-        where: { companyId, date: { gte: monthStart(year, month), lt: nextMonthStart(year, month) } },
+        where: { ...also, companyId, lockedBySettlementId: null, date: daysOf(period) },
         select: { userId: true, status: true, deductionMinor: true, overtimeMinor: true, missionAllowanceMinor: true, breakdown: true },
     })
     const out = new Map<string, AttendanceMoney>()
@@ -86,8 +96,8 @@ export type ToSettle = {
  * many of its requests are not yet decided. From the days as stored, so
  * inside approval's transaction it reads the month's last recompute.
  */
-export async function daysToSettle(db: Db, companyId: string, year: number, month: number, userIds: string[], take = 50): Promise<ToSettle> {
-    const date = { gte: monthStart(year, month), lt: nextMonthStart(year, month) }
+export async function daysToSettle(db: Db, companyId: string, period: Period, userIds: string[], take = 50): Promise<ToSettle> {
+    const date = daysOf(period)
     const people = { companyId, userId: { in: userIds }, date }
     const waiting = { ...people, status: { in: ["INCOMPLETE", "TO_CONFIRM"] as ("INCOMPLETE" | "TO_CONFIRM")[] } }
     // One after another: inside approval's transaction, two queries at once
@@ -108,7 +118,7 @@ export async function daysToSettle(db: Db, companyId: string, year: number, mont
     const overtime = await db.attendanceDay.count({ where: { ...people, overtimeStatus: "PENDING" } })
     // Missions waiting with a day in the month (ATTENDANCE_PLAN.md §6.10, PR 283).
     const missions = await db.missionRequest.count({
-        where: { companyId, userId: { in: userIds }, status: "PENDING", startDate: { lt: date.lt }, endDate: { gte: date.gte } },
+        where: { companyId, userId: { in: userIds }, status: "PENDING", startDate: { lte: date.lte }, endDate: { gte: date.gte } },
     })
     return {
         count,
@@ -135,9 +145,9 @@ export const waitingOf = (t: ToSettle) => ({ count: t.count, names: namesOf(t.da
  * Overtime still waiting for a decision when the month's payroll is approved
  * is rejected (§12.1): once paid, nobody can approve it into that month.
  */
-export async function rejectPendingOvertime(tx: Db, companyId: string, year: number, month: number, actorId: string) {
+export async function rejectPendingOvertime(tx: Db, companyId: string, period: Period, actorId: string) {
     const waiting = await tx.attendanceDay.findMany({
-        where: { companyId, overtimeStatus: "PENDING", date: { gte: monthStart(year, month), lt: nextMonthStart(year, month) } },
+        where: { companyId, overtimeStatus: "PENDING", date: daysOf(period) },
         select: { userId: true, date: true },
     })
     for (const d of waiting) {
@@ -201,8 +211,9 @@ export async function reconcileEntries(
  * payroll, someone left out of the run) it is cleared on the days frozen
  * now, so that nothing reads as paid that wasn't (review on PR 288).
  */
-export async function stampDays(tx: Db, companyId: string, year: number, month: number, payrollRunId: string, allowancePaidTo: readonly string[]) {
-    const freezing = { companyId, lockedByPayrollRunId: null, date: { gte: monthStart(year, month), lt: nextMonthStart(year, month) } }
+export async function stampDays(tx: Db, companyId: string, period: Period, payrollRunId: string, allowancePaidTo: readonly string[]) {
+    // Never a day a final settlement counted: it paid that day, allowance and all (Codex review on PR 430).
+    const freezing = { companyId, lockedByPayrollRunId: null, lockedBySettlementId: null, date: daysOf(period) }
     await tx.attendanceDay.updateMany({
         where: { ...freezing, missionAllowanceMinor: { gt: 0 }, ...(allowancePaidTo.length > 0 ? { userId: { notIn: [...allowancePaidTo] } } : {}) },
         data: { missionAllowanceMinor: 0 },

@@ -36,6 +36,16 @@ vi.mock("@/lib/prisma", () => ({
 vi.mock("@/lib/services/company.service", () => ({
     CompanyService: { settingsExposure: async (id: string) => (id in packages ? { id, package: packages[id] } : null) },
 }))
+// The month's period: the calendar month, unless a test says (LATER_CHANGES_PLAN.md §7.10, PR 430).
+const periods: Record<string, { from: string; to: string }> = {}
+vi.mock("@/lib/services/payroll-period.service", () => ({
+    PayrollPeriodService: {
+        periodOf: async (_db: unknown, companyId: string, year: number, month: number) => {
+            const key = `${year}-${String(month).padStart(2, "0")}`
+            return periods[`${companyId}:${key}`] ?? { from: `${key}-01`, to: `${key}-${String(new Date(Date.UTC(year, month, 0)).getUTCDate()).padStart(2, "0")}` }
+        },
+    },
+}))
 vi.mock("@/lib/services/attendance-engine.service", () => ({
     AttendanceEngineService: {
         recomputeMonth: async (companyId: string, month: string) => {
@@ -73,6 +83,15 @@ describe("recalculating a draft month", () => {
         expect(done.status).toBe(200)
         expect(done.body.data).toEqual({ month: "2026-11", written: 2, removed: 0 })
         expect(recomputed).toEqual(["c1:2026-11"])
+    })
+
+    it("works out every calendar month its period touches, closing on the 24th reaching back into the one before (PR 430)", async () => {
+        periods["c1:2026-11"] = { from: "2026-10-25", to: "2026-11-24" }
+        const done = await recalculate(admin, "2026", "11", { companyId: "c2" })
+        delete periods["c1:2026-11"]
+        expect(done.status).toBe(200)
+        expect(done.body.data).toEqual({ month: "2026-11", written: 4, removed: 0 })
+        expect(recomputed).toEqual(["c1:2026-10", "c1:2026-11"])
     })
 
     it("works out the company asked about, for the Super Admin, and none that isn't there", async () => {

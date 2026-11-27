@@ -324,14 +324,14 @@ describe.skipIf(!ADMIN_URL)("each mission day priced, in Postgres", () => {
             // Frozen with only Eman paid: hers stay, the others' are cleared. Undone after, to leave November open.
             let after: Record<string, number> = {}
             await expect(prisma.$transaction(async tx => {
-                expect(await stampDays(tx, "c1", 2026, 11, runId, ["e2"])).toBeGreaterThan(30)
+                expect(await stampDays(tx, "c1", { from: "2026-11-01", to: "2026-11-30" }, runId, ["e2"])).toBeGreaterThan(30)
                 after = await held(tx)
                 throw new Error("UNDO")
             })).rejects.toThrow("UNDO")
             expect(after).toEqual({ e2: 60_000 })
             // And with nobody paid, none stays.
             await expect(prisma.$transaction(async tx => {
-                await stampDays(tx, "c1", 2026, 11, runId, [])
+                await stampDays(tx, "c1", { from: "2026-11-01", to: "2026-11-30" }, runId, [])
                 after = await held(tx)
                 throw new Error("UNDO")
             })).rejects.toThrow("UNDO")
@@ -347,7 +347,9 @@ describe.skipIf(!ADMIN_URL)("each mission day priced, in Postgres", () => {
             const dry = await Payroll.compute("c1", 2026, 11)
             expect(dry.attendance.reachesPayroll).toBe(false)
             expect(dry.attendance.byPerson.e2.missionAllowance).toBe(60_000)
-            const result = await Payroll.approve("c1", 2026, 11, SESSION, { acknowledgePending: true })
+            // Approved once November's over: not before its period ends (LATER_CHANGES_PLAN.md §7.10, PR 430).
+            vi.setSystemTime(new Date("2026-12-01T08:00:00Z"))
+            const result = await Payroll.approve("c1", 2026, 11, SESSION, { acknowledgePending: true }).finally(() => vi.setSystemTime(NOW))
             expect(result).toHaveProperty("runId")
             const november = (result as { runId: string }).runId
             expect((await db.query(`SELECT status, "attendanceIncluded" FROM "PayrollRun" WHERE id = $1`, [november])).rows[0]).toEqual({ status: "APPROVED", attendanceIncluded: false })

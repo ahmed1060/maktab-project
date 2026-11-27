@@ -178,7 +178,8 @@ describe("found in the browser and the audit (company settings part 2)", () => {
         // Set left to right, the select started its text under the arrow,
         // which sits on the end side: the left, in Arabic.
         const html = await payroll({}, "ar")
-        const select = html.match(/<select[^>]*>/)![0]
+        // The time zone's, now after when payroll closes and payday's (PR 430).
+        const select = html.match(/<select[^>]*name="timezone"[^>]*>/)![0]
         expect(select).not.toContain('dir="ltr"')
         expect(select).toContain('translate="no"')
     })
@@ -227,7 +228,10 @@ describe("found by Codex on #161", () => {
         expect(sameWhole("", 0)).toBe(false)
         expect(sameWhole("5.0", 5)).toBe(false)
         const src = readFileSync("components/CompanyPayrollCard.tsx", "utf8")
-        expect(src).toMatch(/const dirty = !sameWhole\(dayText, payrollDay\)[^\n]*!sameWhole\(capText, debtRecoveryPercent\)/)
+        // Payday's day with its other choices since PR 430, and the close day too.
+        expect(src).toContain("const paydayChanged = (!payLast && !sameWhole(dayText, payrollDay))")
+        expect(src).toMatch(/const dirty = closeChanged \|\| paydayChanged[^\n]*!sameWhole\(capText, debtRecoveryPercent\)/)
+        expect(src).toContain("!sameWhole(closeText, payrollCloseDay ?? NaN)")
         // And the field shows what was saved.
         expect(src).toContain("setDayText(text => shownAfterSave(text, sentDay, day))")
     })

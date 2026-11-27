@@ -89,6 +89,13 @@ export const updateCompanySchema = z.object({
                 `every month is a day that moves without anybody deciding it should.`,
         })
         .optional(),
+    // Payday's choices, and the day the month's payroll closes, none for its
+    // last day (LATER_CHANGES_PLAN.md §7.10, PR 430). That payday comes after
+    // the close is checked against what's stored too, in CompanyService.
+    paydayLastDay: z.boolean().optional(),
+    paydayNextMonth: z.boolean().optional(),
+    paydayMove: z.enum(["BEFORE", "AFTER"]).optional(),
+    payrollCloseDay: z.number().int().min(1).max(MAX_PAYROLL_DAY).nullable().optional(),
     // Off by default and stays off until somebody turns it on: a payslip is the
     // most sensitive thing this app holds about a person, and "we switched it
     // on for you" is not a sentence anybody wants to hear about their pay.

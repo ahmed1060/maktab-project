@@ -29,6 +29,8 @@ type Doc = {
     company: { name: string; nameAr?: string | null; logoUrl?: string | null }
     lastWorkingDay: string
     earned: number
+    /** Attendance after the leaving month's payroll closed (LATER_CHANGES_PLAN.md §7.10, PR 430). */
+    attendance?: number
     paid: number
     net: number
     debtRecovered: number
@@ -129,6 +131,8 @@ export default function SettlementDocumentPage() {
                     <DocLine label={t('doc_earned')} amount={money(doc.earned)} />
                     {/* No minus sign on nothing: a settled statement said "−0.00" (PR 155). */}
                     <DocLine label={t('doc_already_paid')} amount={money(doc.paid)} minus={doc.paid !== 0} />
+                    {/* The days after the leaving month's payroll closed, which that month didn't count (PR 430). */}
+                    {!!doc.attendance && <DocLine label={t('doc_attendance_after_close')} amount={money(Math.abs(doc.attendance))} minus={doc.attendance < 0} />}
                     <DocTotal label={t('doc_net')} amount={money(doc.net)} />
                 </DocGroup>
 

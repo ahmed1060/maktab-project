@@ -2274,6 +2274,60 @@ These are built once, in the building-blocks PR, and every page uses them
     the date keep their boxes.
   - On phones the badge and the button go under the line, as the
     company's other switches' do.
+- **Payday and when payroll closes** (`LATER_CHANGES_PLAN.md` §7.10): two
+  settings at the top of the Payroll settings card, as one decides the
+  other, before the time zone.
+  - **Payroll closes:** a select, On the month's last day or On a day of
+    the month, and with the second a Day field, 1 to 28, beside it on
+    computers, the two lined up at the top, so a hint or an error under
+    one doesn't move the other; on phones, under it, as a select's words
+    need the whole line there. Its hint: that the month's payroll counts
+    attendance up to that day, which is counted, and may be approved from
+    the day after.
+  - **Payday:** a select, On a day of the month or On the month's last
+    day, with its Day field as above; then In, the payroll's own month or
+    the month after; then If it's a day off, the working day before or
+    the working day after, the last two side by side on computers and one
+    under the other on phones. Its hint: what a day off is (a weekend day, a
+    public holiday the company observes, or one of its own holidays), and
+    that it never moves back to before payroll closes.
+  - **A payday that doesn't come after payroll closes** isn't saved. Its
+    error is under the payday's field, saying why and what to pick: a day
+    after the close, or the month after.
+  - **On the Payroll page,** the month's line under its title says the
+    payday as a date, moved where it's a day off, in the page's language:
+    "Payday: Thursday 26 November". Changed for that month, it says so
+    after the date. Beside it, Change payday, a quiet small button, for
+    whoever may approve payroll, until the month is marked paid.
+  - **Change payday** opens the building blocks' dialog, titled Change
+    this month's payday: a date field, Payday; and while the month isn't
+    approved, nor the month after it, and no contract ending in it is
+    settled, a second, Attendance counts up to,
+    the day before the new payday when that's before the close, and
+    otherwise the close, from the month's 1st at the earliest. A line under them says that the days after go to
+    next month's payroll, and that next month goes back to the settings;
+    with the month after approved, that this month's attendance ends
+    where next month's begins, and only payday changes; with a contract
+    ending in it settled, that its attendance stays as it is, and only
+    payday changes. Its button says
+    Change payday. A payday that isn't after the attendance's last day is
+    said under its field.
+  - **Approve, before payroll closes,** stays where it is, greyed and
+    `aria-disabled`, with the date it may be from in a note beside it,
+    as a button that can't be used here is (§5.2). The server refuses it
+    as well.
+  - **On the payslip,** under the month, which days its attendance counts:
+    "Attendance: 25 October to 24 November", in the payslip's language.
+  - **Ending a contract** on a day after payroll closes, before that day
+    is over, says under the date why it can't be settled yet: that day's
+    attendance goes in the settlement, and it's known once it's over.
+    While one of the days after payroll closes still waits on a decision,
+    it says so under the date too, and that they're decided on the
+    Attendance pages first. Where what the settlement counts changed
+    while it was worked out, such as one of those days excused meanwhile,
+    it says so above the buttons and works the settlement out again, the
+    main button waiting for the new figures: the figure confirmed is the
+    figure recorded.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
@@ -3480,3 +3534,8 @@ changed:
   Remove from owners, nothing about pay or points, and no button to add
   one, which stays on an Admin's details. Its side bar icon is `Crown`
   (§6) (`LATER_CHANGES_PLAN.md` §7.3).
+- **2026-11-27:** Payday and when payroll closes (§5.5), as the owner
+  decided: the two settings at the top of the Payroll settings card, the
+  payday as a date on the Payroll page with Change payday and its
+  dialog, Approve greyed with its date until payroll closes, and the
+  attendance's days on the payslip (`LATER_CHANGES_PLAN.md` §7.10).

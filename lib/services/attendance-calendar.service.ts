@@ -97,6 +97,15 @@ const WORKING = { notIn: ["ARCHIVED", "DELETED"] as ("ARCHIVED" | "DELETED")[] }
  * one company. A transaction-scoped Postgres advisory lock, released at
  * commit; the overlap and in-use checks run after it.
  */
+/**
+ * Each date's payroll month, by the period (LATER_CHANGES_PLAN.md §7.10, PR 430). Loaded
+ * lazily: the payroll periods read the attendance policy, which reads this calendar.
+ */
+async function payrollMonthsOf(db: Prisma.TransactionClient | typeof prisma, companyId: string, dates: readonly string[]): Promise<Map<string, string>> {
+    const { PayrollPeriodService } = await import("./payroll-period.service")
+    return PayrollPeriodService.payrollMonthsOf(db as Prisma.TransactionClient, companyId, [...new Set(dates)])
+}
+
 export async function serialize(tx: Prisma.TransactionClient, key: string) {
     await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))::text`
 }
@@ -110,12 +119,15 @@ export class AttendanceCalendarService {
 
     /**
      * Refuses when any of these dates falls in a payroll month that is
-     * approved or paid (§6.1). Dates are the company's own calendar dates, so
-     * their year and month are the payroll run's.
+     * approved or paid (§6.1). Dates are the company's own calendar dates,
+     * in their payroll month by the period: one after an approved month's
+     * close is the next month's (LATER_CHANGES_PLAN.md §7.10, Codex review
+     * on PR 430).
      */
     static async assertUnlocked(companyId: string, dates: readonly string[]) {
-        const months = [...new Set(dates.map(d => d.slice(0, 7)))].map(ym => ({ year: Number(ym.slice(0, 4)), month: Number(ym.slice(5, 7)) }))
-        if (months.length === 0) return
+        if (dates.length === 0) return
+        const monthOf = await payrollMonthsOf(prisma, companyId, dates)
+        const months = [...new Set(dates.map(d => monthOf.get(d)!))].map(ym => ({ year: Number(ym.slice(0, 4)), month: Number(ym.slice(5, 7)) }))
         const locked = await prisma.payrollRun.findFirst({
             where: { companyId, status: { in: ["APPROVED", "PAID"] }, OR: months },
             select: { id: true },
@@ -130,8 +142,11 @@ export class AttendanceCalendarService {
      * in an open month rewrite a later locked one (review on #10).
      */
     static async assertSpanUnlocked(companyId: string, span: { from: string; until: string | null }, client: Prisma.TransactionClient | typeof prisma = prisma) {
-        const first = span.from.slice(0, 7)
-        const last = span.until ? addDays(span.until, -1).slice(0, 7) : null
+        // Its first and last days' payroll months, by the period (Codex review on PR 430).
+        const ends = span.until ? [span.from, addDays(span.until, -1)] : [span.from]
+        const monthOf = await payrollMonthsOf(client, companyId, ends)
+        const first = monthOf.get(span.from)!
+        const last = span.until ? monthOf.get(addDays(span.until, -1))! : null
         if (last !== null && last < first) return
         const runs = await client.payrollRun.findMany({
             where: { companyId, status: { in: ["APPROVED", "PAID"] } },
@@ -471,7 +486,7 @@ export class AttendanceCalendarService {
         const schedule = await this.scheduleOf(scheduleId) ?? fail("SCHEDULE_NOT_FOUND")
         if (schedule.archivedAt) fail("SCHEDULE_ARCHIVED")
         this.checkOverride(input)
-        await this.assertUnlocked(schedule.companyId, this.monthsBetween(input.startDate, input.endDate))
+        await this.assertSpanUnlocked(schedule.companyId, { from: input.startDate, until: addDays(input.endDate, 1) })
         const out = await prisma.$transaction(async tx => {
             await serialize(tx, `schedule:${scheduleId}`)
             await this.assertNoOverlap(tx, scheduleId, input, null)
@@ -500,10 +515,8 @@ export class AttendanceCalendarService {
         const existing = await this.overrideOf(overrideId) ?? fail("OVERRIDE_NOT_FOUND")
         this.checkOverride(input)
         const companyId = existing.schedule.companyId
-        await this.assertUnlocked(companyId, [
-            ...this.monthsBetween(toDateString(existing.startDate), toDateString(existing.endDate)),
-            ...this.monthsBetween(input.startDate, input.endDate),
-        ])
+        await this.assertSpanUnlocked(companyId, { from: toDateString(existing.startDate), until: addDays(toDateString(existing.endDate), 1) })
+        await this.assertSpanUnlocked(companyId, { from: input.startDate, until: addDays(input.endDate, 1) })
         const out = await prisma.$transaction(async tx => {
             await serialize(tx, `schedule:${existing.scheduleId}`)
             await this.assertNoOverlap(tx, existing.scheduleId, input, overrideId)
@@ -523,7 +536,7 @@ export class AttendanceCalendarService {
     static async deleteOverride(overrideId: string, actorId: string) {
         const existing = await this.overrideOf(overrideId) ?? fail("OVERRIDE_NOT_FOUND")
         const companyId = existing.schedule.companyId
-        await this.assertUnlocked(companyId, this.monthsBetween(toDateString(existing.startDate), toDateString(existing.endDate)))
+        await this.assertSpanUnlocked(companyId, { from: toDateString(existing.startDate), until: addDays(toDateString(existing.endDate), 1) })
         await prisma.$transaction(async tx => {
             await tx.scheduleOverride.delete({ where: { id: overrideId } })
             await AuditLogService.log("DELETE_SCHEDULE_OVERRIDE", "ATTENDANCE_CALENDAR", overrideId, { tx, ...(await actorOf(tx, actorId)), details: {
@@ -682,18 +695,6 @@ export class AttendanceCalendarService {
     }
 
     /** The first day of every month a span touches, for the payroll lock. */
-    private static monthsBetween(start: string, end: string): string[] {
-        const out: string[] = []
-        let y = Number(start.slice(0, 4)), m = Number(start.slice(5, 7))
-        const endY = Number(end.slice(0, 4)), endM = Number(end.slice(5, 7))
-        while (y < endY || (y === endY && m <= endM)) {
-            out.push(`${y}-${String(m).padStart(2, "0")}-01`)
-            if (++m > 12) { m = 1; y++ }
-            if (out.length > 120) break
-        }
-        return out
-    }
-
     private static async assertNoOverlap(tx: Prisma.TransactionClient, scheduleId: string, input: OverrideInput, ignoreId: string | null) {
         const others = await tx.scheduleOverride.findMany({
             where: { scheduleId, ...(ignoreId ? { id: { not: ignoreId } } : {}) },

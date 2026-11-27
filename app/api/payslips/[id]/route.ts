@@ -24,6 +24,8 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
             payrollRun: {
                 select: {
                     month: true, year: true, status: true, payrollDay: true, paidAt: true,
+                    // Which days its attendance counts (LATER_CHANGES_PLAN.md §7.10, PR 430).
+                    attendanceIncluded: true, periodStart: true, periodEnd: true,
                     company: { select: { id: true, name: true, nameAr: true, logoUrl: true, payslipsVisible: true } },
                 },
             },
@@ -56,6 +58,10 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
         },
         company: { name: company.name, nameAr: company.nameAr, logoUrl: company.logoUrl },
         period: { month: payslip.payrollRun.month, year: payslip.payrollRun.year },
+        // The days its attendance counts, where the payslip carried attendance: its period, not its month (PR 430).
+        attendancePeriod: payslip.payrollRun.attendanceIncluded && payslip.payrollRun.periodStart && payslip.payrollRun.periodEnd
+            ? { from: payslip.payrollRun.periodStart.toISOString().slice(0, 10), to: payslip.payrollRun.periodEnd.toISOString().slice(0, 10) }
+            : null,
         status: payslip.payrollRun.status,
         paidAt: payslip.payrollRun.paidAt,
         daysPaid: payslip.daysPaid,

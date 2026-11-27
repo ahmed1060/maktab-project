@@ -17,6 +17,18 @@ describe("what has to be true before a month can be frozen", () => {
         expect(checkApproval(base)).toEqual({ ok: true })
     })
 
+    it("waits for the month's payroll to close: from the day after, never on the close day itself (PR 430)", () => {
+        const on = checkApproval({ ...base, period: { to: "2026-11-24", today: "2026-11-24" } })
+        expect(!on.ok && on.refusal).toEqual(expect.objectContaining({ code: "PERIOD_NOT_OVER", from: "2026-11-25" }))
+        expect(checkApproval({ ...base, period: { to: "2026-11-24", today: "2026-11-25" } })).toEqual({ ok: true })
+    })
+
+    it("refuses where payday comes before the close, the settings' own refusal being the first (PR 430)", () => {
+        const verdict = checkApproval({ ...base, paydayAfterClose: false })
+        expect(!verdict.ok && verdict.refusal.code).toBe("PAYDAY_BEFORE_CLOSE")
+        expect(checkApproval({ ...base, paydayAfterClose: true })).toEqual({ ok: true })
+    })
+
     it("refuses a month that is already approved", () => {
         // Approving again would restate figures that have been issued.
         for (const status of ["APPROVED", "PAID"] as const) {
@@ -169,7 +181,7 @@ describe("approving is its own act", () => {
         // refused there, nothing of the approval is written.
         const approve = service.slice(service.indexOf("static async approve"))
         const recompute = approve.indexOf("AttendanceEngineService.recomputeMonthIn(tx")
-        const recheck = approve.indexOf("daysToSettle(tx, companyId, year, month")
+        const recheck = approve.indexOf("daysToSettle(tx, companyId, period")
         const reject = approve.indexOf("rejectPendingOvertime(tx")
         expect(recompute).toBeGreaterThan(-1)
         expect(recheck).toBeGreaterThan(recompute)
@@ -184,7 +196,7 @@ describe("approving is its own act", () => {
         // the one approved: their days are checked there, once it's built.
         const approve = service.slice(service.indexOf("static async approve"))
         const final = approve.indexOf("const { register: final, payrollDay } = await this.compute(companyId, year, month, tx, reaches)")
-        const late = approve.indexOf("daysToSettle(tx, companyId, year, month, unchecked)")
+        const late = approve.indexOf("daysToSettle(tx, companyId, period, unchecked)")
         const written = approve.indexOf("this.writeDraft(tx, companyId, year, month, final, payrollDay)")
         expect(final).toBeGreaterThan(-1)
         expect(late).toBeGreaterThan(final)

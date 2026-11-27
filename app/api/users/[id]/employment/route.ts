@@ -70,6 +70,7 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
                 // written down.
                 earned: toMajor(preview.earnedMinor),
                 paid: toMajor(preview.paidMinor),
+                attendance: toMajor(preview.attendanceMinor),
                 net: toMajor(preview.netMinor),
                 debtsOutstanding: toMajor(preview.debtsOutstandingMinor),
                 debtRecovered: toMajor(preview.debtRecoveredMinor),
@@ -87,6 +88,15 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
         }
         if (/No salary in effect/.test(message)) {
             return ApiResponse.refused(400, message, "NO_SALARY")
+        }
+        // A last working day after payroll closed and not over yet: its attendance
+        // isn't known until it is (LATER_CHANGES_PLAN.md §7.10, review on PR 430).
+        if (message === "ATTENDANCE_NOT_OVER") {
+            return ApiResponse.refused(400, "The last working day isn't over yet", "ATTENDANCE_NOT_OVER")
+        }
+        // Or one of those days still waits on a decision (Codex review on PR 430).
+        if (message === "ATTENDANCE_PENDING") {
+            return ApiResponse.refused(400, "Attendance after payroll closed still waits on a decision", "ATTENDANCE_PENDING")
         }
         throw error
     }
@@ -175,6 +185,23 @@ export const POST = withStandardHandler(async (req, session, json, { params }) =
         }
         if (/No salary in effect/.test(message)) {
             return ApiResponse.refused(400, message, "NO_SALARY")
+        }
+        // A last working day after payroll closed and not over yet: its attendance
+        // isn't known until it is (LATER_CHANGES_PLAN.md §7.10, review on PR 430).
+        if (message === "ATTENDANCE_NOT_OVER") {
+            return ApiResponse.refused(400, "The last working day isn't over yet", "ATTENDANCE_NOT_OVER")
+        }
+        // Or one of those days still waits on a decision (Codex review on PR 430).
+        if (message === "ATTENDANCE_PENDING") {
+            return ApiResponse.refused(400, "Attendance after payroll closed still waits on a decision", "ATTENDANCE_PENDING")
+        }
+        // When payroll closes changed while the settlement was worked out: what it counted is out of date.
+        if (message === "PAYROLL_PERIOD_CHANGED") {
+            return ApiResponse.refused(409, "When payroll closes changed while this was worked out. Try again.", "PAYROLL_PERIOD_CHANGED")
+        }
+        // Or their attendance after it, read again under the months' locks (Codex review on PR 430).
+        if (message === "ATTENDANCE_CHANGED") {
+            return ApiResponse.refused(409, "Their attendance after payroll closed changed while this was worked out. Try again.", "ATTENDANCE_CHANGED")
         }
         if (message === "USER_HAS_NO_COMPANY") {
             return ApiResponse.refused(400, "This account belongs to no company, so there is nobody to settle with.", "USER_HAS_NO_COMPANY")

@@ -74,8 +74,9 @@ describe("one way in for both", () => {
 
     it("takes the agent's punches and a terminal's own through the same steps", () => {
         const shared = ingest.slice(ingest.indexOf("async function store("), ingest.indexOf("export class AttendanceIngestService"))
-        // The employee numbers, the months' lock, what's already there, the direction, the terminal's last scan.
-        for (const step of ["attendance-codes:", "punchMonthsOf(", "lockMonths(", "lockedMonths(", "createMany(", "direction:", "lastPunchAt"]) expect(shared, step).toContain(step)
+        // The employee numbers, the months' lock (taken before their months are read, Codex review on PR 430),
+        // what's already there, the direction, the terminal's last scan.
+        for (const step of ["attendance-codes:", "lockPunchMonthsOf(", "lockedMonths(", "createMany(", "direction:", "lastPunchAt"]) expect(shared, step).toContain(step)
         const service = ingest.slice(ingest.indexOf("export class AttendanceIngestService"))
         expect(service.match(/await store\(tx, /g)).toHaveLength(2)
         expect(service).toMatch(/"AGENT"/)

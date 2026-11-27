@@ -374,6 +374,8 @@ export interface SettlementPreview {
     earnedMinor: Minor
     /** What has already gone out for that month. */
     paidMinor: Minor
+    /** Attendance after the leaving month's payroll closed: overtime and allowances less deductions (PR 430). */
+    attendanceMinor: Minor
     /** Positive: the company owes. Negative: the person owes. */
     netMinor: Minor
     direction: SettlementDirection
@@ -409,6 +411,13 @@ export function previewSettlement(input: {
      * nothing was paid, whatever their salary still says.
      */
     owner?: boolean
+    /**
+     * Attendance after the leaving month's payroll closed, up to the last
+     * working day (LATER_CHANGES_PLAN.md §7.10, PR 430): overtime and
+     * allowances less deductions. Those days belong to a month they're not
+     * paid in, so the settlement counts them.
+     */
+    attendanceMinor?: Minor
 }): SettlementPreview {
     const timeZone = input.timeZone ?? DEFAULT_TIME_ZONE
     const { year, month } = calendarParts(input.endsAt, timeZone)
@@ -436,7 +445,8 @@ export function previewSettlement(input: {
     }
 
     const paidMinor = input.owner ? 0 : input.paidMinor ?? 0
-    const netMinor = earnedMinor - paidMinor
+    const attendanceMinor = input.owner ? 0 : input.attendanceMinor ?? 0
+    const netMinor = earnedMinor - paidMinor + attendanceMinor
 
     return {
         year,
@@ -445,6 +455,7 @@ export function previewSettlement(input: {
         daysWorked,
         earnedMinor,
         paidMinor,
+        attendanceMinor,
         netMinor,
         direction: netMinor > 0 ? "COMPANY_OWES" : netMinor < 0 ? "PERSON_OWES" : "SETTLED",
     }

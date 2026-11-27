@@ -1,3 +1,5 @@
+import { addDays } from "./attendance/calendar"
+
 /**
  * What has to be true before a month can be frozen.
  *
@@ -24,6 +26,14 @@ export interface ApprovalInput {
      * (ATTENDANCE_PLAN.md §6.9, decision 14, PR 276): how many, and whose.
      */
     daysToSettle: WaitingDays
+    /**
+     * The month's attendance period's last day, and today, both in the
+     * company's calendar (LATER_CHANGES_PLAN.md §7.10, PR 430): approving
+     * waits for the period to end.
+     */
+    period?: { to: string; today: string }
+    /** Whether this month's payday, one changed for it included, comes after its period, as it always should. */
+    paydayAfterClose?: boolean
 }
 
 /**
@@ -44,10 +54,15 @@ export type ApprovalRefusal =
     | { code: "DAYS_TO_SETTLE"; message: string; names: string[]; waiting: WaitingDays }
     | { code: "PENDING_UNACKNOWLEDGED"; message: string; names: string[] }
     | { code: "NOBODY_TO_PAY"; message: string }
+    | { code: "PERIOD_NOT_OVER"; message: string; from: string }
+    | { code: "PAYDAY_BEFORE_CLOSE"; message: string }
 
 export type ApprovalVerdict =
     | { ok: true }
     | { ok: false; refusal: ApprovalRefusal }
+
+/** Why a month whose payday doesn't come after its period isn't approved. */
+export const PAYDAY_BEFORE_CLOSE = "This month's payday comes before its payroll closes. Change this month's payday, or payday or when payroll closes in the Payroll settings, first."
 
 export function checkApproval(input: ApprovalInput): ApprovalVerdict {
     if (input.status !== "DRAFT") {
@@ -56,6 +71,34 @@ export function checkApproval(input: ApprovalInput): ApprovalVerdict {
             refusal: {
                 code: "ALREADY_APPROVED",
                 message: "This month has already been approved. Approving again would restate figures that have been issued.",
+            },
+        }
+    }
+
+    // Not before the month's attendance period has ended (LATER_CHANGES_PLAN.md
+    // §7.10, PR 430): approving freezes its days, and a day frozen before it
+    // was lived is one nobody measures, as Omar's absence on the 30th wasn't.
+    if (input.period && input.period.today <= input.period.to) {
+        const from = addDays(input.period.to, 1)
+        return {
+            ok: false,
+            refusal: {
+                code: "PERIOD_NOT_OVER",
+                message: `This month can be approved from ${from}, once its payroll closes. Closing payroll on an earlier day, in the Payroll settings, allows it sooner.`,
+                from,
+            },
+        }
+    }
+
+    // Payday comes after the close; one that doesn't would pay the month
+    // before it could be approved. Settings saved since refuse it, and the
+    // release moved every company onto ones that follow it: this is the net.
+    if (input.paydayAfterClose === false) {
+        return {
+            ok: false,
+            refusal: {
+                code: "PAYDAY_BEFORE_CLOSE",
+                message: PAYDAY_BEFORE_CLOSE,
             },
         }
     }

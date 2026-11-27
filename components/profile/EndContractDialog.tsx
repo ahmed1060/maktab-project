@@ -169,8 +169,12 @@ export function EndContractDialog({ userId, name, status, leadsATeam = false, se
             if (refused?.field) {
                 setErrors({ [refused.field]: t(refused.key) })
                 focusFirstWrong(form.current)
+            } else if (refused) {
+                // Worked out again, so End contract waits for the figures to check (Codex review on PR 430).
+                if (refused.reload) retry()
+                setError(t(refused.key))
             } else {
-                setError(refused ? t(refused.key) : apiErrorText(text, t('error_generic')))
+                setError(apiErrorText(text, t('error_generic')))
             }
             return null
         } catch {
@@ -338,6 +342,8 @@ export function SettlementPreview({ settlement, undecided = 0, stale = false, fa
                 <DocLine label={t('settlement_earned')} amount={money(settlement.earned)} />
                 {/* No minus sign on nothing, as the statement has it. */}
                 <DocLine label={t('settlement_paid')} amount={money(settlement.paid)} minus={settlement.paid !== 0} />
+                {/* The days after the leaving month's payroll closed, which that month doesn't count (LATER_CHANGES_PLAN.md §7.10, PR 430). */}
+                {!!settlement.attendance && <DocLine label={t('doc_attendance_after_close')} amount={money(Math.abs(settlement.attendance))} minus={settlement.attendance < 0} />}
                 <DocTotal label={t('settlement_net')} amount={money(settlement.net)} />
             </DocGroup>
             {/* What can't be taken out of the settlement stays a debt, said

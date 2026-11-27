@@ -13,6 +13,8 @@ export type Settlement = {
     daysWorked: number
     earned: number
     paid: number
+    /** Attendance after the leaving month's payroll closed, in the net (LATER_CHANGES_PLAN.md §7.10, PR 430). */
+    attendance?: number
     net: number
     direction: 'COMPANY_OWES' | 'PERSON_OWES' | 'SETTLED'
     /** OWNER: a month they're among the owners, with no salary to settle (LATER_CHANGES_PLAN.md §7.3). */
@@ -61,13 +63,24 @@ export function lastDayErrors({ lastWorkingDay }: { lastWorkingDay: string }): {
     return {}
 }
 
-/** Said under the date where it's about it, above the buttons otherwise. */
-export type EndContractRefusal = { field?: 'lastWorkingDay'; key: TranslationKey }
+/**
+ * Said under the date where it's about it, above the buttons otherwise.
+ * `reload`: what the settlement counts changed meanwhile, so it's worked out
+ * again for the figures to check (Codex review on PR 430).
+ */
+export type EndContractRefusal = { field?: 'lastWorkingDay'; key: TranslationKey; reload?: true }
 
 const REFUSED: Record<string, EndContractRefusal> = {
     // A date it can't read, which the calendar never sends: one is asked for.
     NOT_A_DATE: { field: 'lastWorkingDay', key: 'end_contract_date_needed' },
     NO_SALARY: { field: 'lastWorkingDay', key: 'end_contract_no_salary' },
+    // After payroll closed and not over yet: its attendance goes in the settlement (PR 430).
+    ATTENDANCE_NOT_OVER: { field: 'lastWorkingDay', key: 'end_contract_attendance_not_over' },
+    // And with one of those days still to decide (Codex review on PR 430).
+    ATTENDANCE_PENDING: { field: 'lastWorkingDay', key: 'end_contract_attendance_pending' },
+    // When payroll closes, or their attendance after it, changed while it was worked out (Codex review on PR 430).
+    PAYROLL_PERIOD_CHANGED: { key: 'end_contract_changed', reload: true },
+    ATTENDANCE_CHANGED: { key: 'end_contract_changed', reload: true },
     LAST_ADMIN: { key: 'end_contract_last_admin' },
     ADMIN_IS_SUPER_ADMINS: { key: 'end_contract_admin' },
     USER_HAS_NO_COMPANY: { key: 'end_contract_no_company' },

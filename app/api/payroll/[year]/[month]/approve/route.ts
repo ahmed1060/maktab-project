@@ -38,6 +38,8 @@ export const POST = withStandardHandler(async (_req, session, json, { params }) 
             // What waits, for the window to show even when the register read
             // again can't: an approval undone takes its recompute with it (PR 276).
             ...('waiting' in result.refusal ? { waiting: result.refusal.waiting } : {}),
+            // The first day it may be approved (LATER_CHANGES_PLAN.md §7.10, PR 430).
+            ...('from' in result.refusal ? { from: result.refusal.from } : {}),
         })
     }
 

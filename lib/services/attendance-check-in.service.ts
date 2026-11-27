@@ -4,7 +4,7 @@ import type { Prisma } from "@prisma/client"
 import { AttendanceChallengeService } from "./attendance-challenge.service"
 import { AttendanceLocationService } from "./attendance-location.service"
 import { recomputeAfter } from "./attendance-recompute"
-import { lockMonths, lockedMonths, punchMonths } from "./attendance-lock"
+import { lockPunchMonths, lockedMonths } from "./attendance-lock"
 import { parsePhoneKey, signatureValid } from "@/lib/attendance/phone-keys"
 import { checkInText, type FaceResult } from "@/lib/attendance/signed-text"
 import { encryptFacePhoto, isJpeg } from "@/lib/face-photo-crypto"
@@ -151,8 +151,7 @@ export class AttendanceCheckInService {
             }
 
             // A month whose payroll is approved takes no more attendance, as for every other punch.
-            const months = await punchMonths(tx, companyId, userId, local)
-            await lockMonths(tx, companyId, months)
+            const months = await lockPunchMonths(tx, companyId, userId, local)
             if ((await lockedMonths(tx, companyId, months)).size > 0) {
                 await AttendanceCheckInService.refuse(tx, companyId, userId, phone!.id, "MONTH_LOCKED", ip, now)
                 return { result: { outcome: "REFUSED" as const, reason: "MONTH_LOCKED" }, counts: false }

@@ -314,6 +314,14 @@ describe("the settlement preview shows the sign against the chosen date", () => 
         expect(formatMinor(preview.netMinor)).toBe("-20000.00")
     })
 
+    it("counts a leaver's attendance after the leaving month's payroll closed in what's owed, none for an owner (PR 430)", () => {
+        const preview = previewSettlement({ events: [HIRED_AT_EPOCH], rates, endsAt, timeZone: CAIRO, attendanceMinor: toMinor(-150) })
+        expect(preview.attendanceMinor).toBe(toMinor(-150))
+        expect(formatMinor(preview.netMinor)).toBe("9850.00")
+        const owner = previewSettlement({ events: [HIRED_AT_EPOCH], rates, endsAt, timeZone: CAIRO, owner: true, attendanceMinor: toMinor(-150) })
+        expect(owner.attendanceMinor).toBe(0)
+    })
+
     it("is settled when what went out matches what was earned", () => {
         const preview = previewSettlement({
             events: [HIRED_AT_EPOCH], rates, endsAt,

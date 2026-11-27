@@ -5,6 +5,7 @@ import { resolvePayrollScope, payrollScopeRefusal } from "@/lib/payroll-scope"
 import { CompanyService } from "@/lib/services/company.service"
 import { AttendanceEngineService } from "@/lib/services/attendance-engine.service"
 import { lockedMonths } from "@/lib/services/attendance-lock"
+import { PayrollPeriodService } from "@/lib/services/payroll-period.service"
 import { hasModule, resolveBundles } from "@/lib/features/bundles"
 
 /**
@@ -33,8 +34,17 @@ export const POST = withStandardHandler(async (_req, session, json, { params }) 
     const month = `${scope.year}-${String(scope.month).padStart(2, "0")}`
     if ((await lockedMonths(prisma, scope.companyId, [month])).size > 0) return ApiResponse.refused(409, LOCKED, "PAYROLL_MONTH_LOCKED")
 
-    const result = await AttendanceEngineService.recomputeMonth(scope.companyId, month)
-    // Approved while it was asked: what changed is kept for an adjustment instead.
-    if (result.locked) return ApiResponse.refused(409, LOCKED, "PAYROLL_MONTH_LOCKED")
-    return ApiResponse.success({ month, written: result.written, removed: result.removed })
+    // Its attendance period's days, in each calendar month the period touches
+    // (LATER_CHANGES_PLAN.md §7.10, PR 430): a month closing on the 24th
+    // reaches back into the one before. Days another approval froze stay.
+    const period = await PayrollPeriodService.periodOf(prisma, scope.companyId, scope.year, scope.month)
+    let written = 0, removed = 0
+    for (const calendar of [...new Set([period.from.slice(0, 7), period.to.slice(0, 7)])]) {
+        const result = await AttendanceEngineService.recomputeMonth(scope.companyId, calendar)
+        // Approved while it was asked: what changed is kept for an adjustment instead.
+        if (calendar === month && result.locked) return ApiResponse.refused(409, LOCKED, "PAYROLL_MONTH_LOCKED")
+        written += result.written
+        removed += result.removed
+    }
+    return ApiResponse.success({ month, written, removed })
 })

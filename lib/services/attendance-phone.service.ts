@@ -4,7 +4,7 @@ import { AuditLogService } from "./audit-log.service"
 import { NotificationService } from "./notification.service"
 import { AttendanceChallengeService } from "./attendance-challenge.service"
 import { recomputeAfter } from "./attendance-recompute"
-import { LOCK_WAIT, lockMonths, lockedMonths, punchMonthsOf } from "./attendance-lock"
+import { LOCK_WAIT, lockPunchMonthsOf, lockedMonths } from "./attendance-lock"
 import type { Visibility } from "./attendance-punch.service"
 import { parsePhoneKey, signatureValid, signedText } from "@/lib/attendance/phone-keys"
 import { attestationMode, verifyAttestation } from "@/lib/attendance/attestation"
@@ -212,9 +212,8 @@ export class AttendancePhoneService {
             let late: string[] = []
             if (decision.approve) {
                 const waiting = await tx.attendancePunch.findMany({ where: { phoneId: id, status: "PENDING_DEVICE" }, select: { id: true, punchAtLocal: true } })
-                const monthsOf = await punchMonthsOf(tx, phone.companyId, waiting.map(w => ({ userId: phone.userId, local: w.punchAtLocal.toISOString().slice(0, 19) })))
+                const monthsOf = await lockPunchMonthsOf(tx, phone.companyId, waiting.map(w => ({ userId: phone.userId, local: w.punchAtLocal.toISOString().slice(0, 19) })))
                 const months = [...new Set(monthsOf.flat())]
-                await lockMonths(tx, phone.companyId, months)
                 const closed = await lockedMonths(tx, phone.companyId, months)
                 late = waiting.filter((_, i) => monthsOf[i].some(m => closed.has(m))).map(w => w.id)
                 if (late.length > 0) await tx.attendancePunch.updateMany({ where: { id: { in: late } }, data: { status: "REJECTED" } })
