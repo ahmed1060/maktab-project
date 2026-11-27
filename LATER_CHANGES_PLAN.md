@@ -2049,6 +2049,39 @@ installments (§7.9).
      asked for, counting the person's other debts, and blocked or warned
      of by the same setting as an installment's limit. The Payroll page
      also warns of a month over it. There's still no cap at payroll.
+4. **How it's built (planned), in steps of their own:**
+   - **9a, the company's (planned for PR 440):** a card of its own,
+     Payroll deductions, on the Payroll tab (`DESIGN.md` §5.5), under
+     Payroll settings rather than inside it, as its deductions are a list.
+     - A table of the company's deductions, one row each, with RLS:
+       Income tax and Social insurance, kept by what they are, and the
+       others by their names, each a percentage or a fixed amount, in the
+       card's order, 10 more at most.
+     - Saved through a route of its own, which asks what the Payroll tab's
+       fields ask: the tab shown to them, and Change company settings to
+       save. Each save is in the audit log.
+     - Payroll works them out on each month not approved yet, after
+       Nizmo's own deductions and before a debt's recovery, each line with
+       where it came from, so the Payroll page and the payslip say Income
+       tax and Social insurance in their language. An approved month keeps
+       the deductions it was approved with, stored with it, so the Payroll
+       page shows it as its payslips do, whatever's changed since.
+     - With none set, as every company starts, no payslip changes.
+     - A save while a month is being approved waits for the approval, as
+       both hold the company's row, so the deductions an approval keeps are
+       the ones its payslips took.
+     - The payslip names attendance's lines in its language too, as the
+       Payroll page already did, by the same rule as income tax's.
+   - **9b, for a person:** each of the company's deductions on an
+     employee's page, As the company, Their own rate (or amount), or Not
+     applied, changed with Change salaries and seen with See salaries.
+   - **Later, in a PR of its own:** income tax's brackets and social
+     insurance's insured wage.
+   - **With salary advances (§7.5):** the 25% limit's setting, its check
+     when one's asked for, and the Payroll page's warning, as the debts it
+     counts arrive with them.
+   - **Open:** whether a contract's final settlement takes them too. It
+     doesn't in 9a.
 
 ### 7.13 A salary change's payroll (Decided)
 
@@ -2771,3 +2804,7 @@ without its own.
   before them; a flat percentage each for now, brackets and the insured
   wage later; the 25% limit on all debts a company setting, checked when
   an advance is asked for and warned of on the Payroll page.
+- **2026-11-27:** §7.12, how payroll deductions are built: the company's
+  on a card of their own (9a, planned for PR 440), then each person's
+  (9b); brackets later; the 25% limit with salary advances. Whether a
+  final settlement takes them is open.
