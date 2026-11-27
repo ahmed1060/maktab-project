@@ -18,9 +18,9 @@ start date and Recalculate on the Payroll page done (#425), and owners'
 mark, permission and pay (#426, step 3a), what they're not asked for
 (#427, step 3b1), only Admins as owners, given no new work (#428, step
 3b2), and the Owners list (#429, step 3c), so owners are done; clearer
-words on Exceptions (§7.11) next, then payday and the attendance
-period (§7.10), then the limits on requests (§7.4); the names (§3) paused
-after step 8l (#424).** Done: the development database (§4),
+words on Exceptions (§7.11) and payday and the attendance period
+(§7.10) built in one PR (#430), waiting on the owner's review; then the
+limits on requests (§7.4); the names (§3) paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their limit set
@@ -1766,13 +1766,27 @@ approving a month early, and decided the same day.
   may be approved.
 - **Settlements and debts** read the payday: what of the last month is
   already paid, and a debt's due date, the first payday on or after.
+  A leaver's attendance from the day after their leaving month's period
+  to their last working day (overtime and a mission's allowance, less
+  what's deducted) is counted in their settlement, kept on it as
+  `attendanceAmount` and shown as its own line, "Attendance after
+  payroll closed"; an owner's is none, as their pay is. The days before
+  are their leaving month's payroll's.
 - **Change this month's payday** (`PUT /api/payroll/{year}/{month}/payday`,
-  `payroll.approve`): the date, and while the run is a draft the
-  attendance's last day, each checked as above; written on the month's
-  run, made if it has none, with an audit line.
-- **The screens:** the Payroll settings card's two settings; the Payroll
-  page's payday line with Change payday and Approve greyed with its date;
-  the payslip's attendance line.
+  `payroll.approve`, with the step-up a high-risk action asks for): the
+  date, and while the run is a draft the attendance's last day, each
+  checked as above; written on the month's run, made if it has none,
+  with an audit line. The date is no later than the month after next.
+  A draft's last day equal to the setting's close is kept as the
+  setting (no `periodEnd`), so a later change of the setting still
+  counts.
+- **The screens:** the Payroll settings card's two settings, their
+  fields lined up at the top and one under another on phones (found in
+  the flows: half the width, every choice was cut short); the Payroll
+  page's payday line, saying when it was changed for the month, with
+  Change payday and Approve greyed with its date; Change payday's
+  refusals under their field, with the focus there; the payslip's
+  attendance line.
 
 ### 7.11 Clearer words on Exceptions (Decided)
 
@@ -2309,3 +2323,7 @@ with قبول: «قبول العذر» and «قبول».
   come after its close onto that. Steps 4 and 5 in one PR, at the owner's
   word, each step in its own commits.
 - **2026-11-27:** How steps 4 and 5 are built (§7.10), before the code.
+- **2026-11-27:** Steps 4 and 5 built (#430): as built in §7.10, with a
+  leaver's attendance after their leaving month's period counted in their
+  settlement, the payday route behind the step-up, and the settings'
+  fields one under another on phones.
