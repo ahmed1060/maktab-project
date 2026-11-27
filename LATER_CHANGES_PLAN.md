@@ -1505,7 +1505,12 @@ In three PRs, each whole on its own:
       passed may be asked for, within the days. A day off of a one-day
       type is that day throughout, whatever end is sent with it: its
       checks, its notice and its audit line (found by the tests: an end
-      sent with one was checked for overlaps though never kept).
+      sent with one was checked for overlaps though never kept). Before
+      anything is locked, a first look at the days refuses one far
+      outside them at once, so an end years away isn't listed day by day
+      nor its months locked; the look under the locks is the one that
+      counts. Asking waits on those locks as long as an import may hold
+      them (`LOCK_WAIT`), as approving does (Codex review on #431).
   - **4b, permission hours:** the policy's choice of when they may be
     asked for, as above, "around the day" as today unless changed.
   - **4c, missions:** the policy's days back, 7 unless changed, which
@@ -2445,3 +2450,7 @@ with قبول: «قبول العذر» and «قبول».
   Exceptions (§7.11) and payday and the attendance period (§7.10) done;
   the limits on requests (§7.4) next, day off first.
 - **2026-11-27:** Step 6 started, 4a first (day off): as built in §7.4.
+- **2026-11-27:** Codex's first review of #431: a day off asked for far
+  outside its days is refused before they're listed or their months
+  locked, and asking waits on those locks as long as an import may hold
+  them. As built in §7.4.
