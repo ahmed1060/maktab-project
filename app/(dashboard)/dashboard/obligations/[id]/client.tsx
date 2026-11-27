@@ -90,6 +90,10 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
     const canEdit = can('obligations.edit')
     const teamReach = scope('obligations.view') === 'TEAM'
     const isOnIt = obligation.assignees?.some((a: any) => a.id === userId)
+    // Handing it in is for whoever it's assigned to, whatever their role: a
+    // Team Leader or an Admin given one hands it in too (LATER_CHANGES_PLAN.md
+    // §7.14, PR 438).
+    const working = !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status)
     const ownRule = (permission: 'obligations.approve' | 'obligations.delete') => can(permission) && (scope(permission) === 'TEAM' || !isOnIt)
     const mayApproveThis = ownRule('obligations.approve')
     const mayDeleteThis = ownRule('obligations.delete')
@@ -191,7 +195,7 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
         const handleSuspendSave = async () => {
             try {
                 // Only auto-save while its assignee is working on it.
-                if (!seesOthers && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status)) {
+                if (isOnIt && working) {
                     await handleUpload(true, true)
                 }
             } finally {
@@ -204,7 +208,7 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
         }
         window.addEventListener('app:suspend-detected', handleSuspendSave)
         return () => window.removeEventListener('app:suspend-detected', handleSuspendSave)
-    }, [obligation.status, handleUpload, seesOthers])
+    }, [isOnIt, working, handleUpload])
 
     const attachments = attachmentsOf(obligation.attachments)
     // Taking a file off is for whoever edits it: their own files, or
@@ -348,7 +352,6 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
     const names = (obligation.assignees ?? []).map((a: any) => personName(a, locale))
     const creatorName = creator && personName(creator, locale)
     const deleted = (obligation.assignees ?? []).filter((a: any) => a.status === 'DELETED')
-    const working = !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status)
 
     const menu: MenuItem[] = [
         // Moved to someone else while it's open, for whoever edits obligations,
@@ -427,7 +430,7 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
             </Card>
 
             {/* What its assignee hands in, while they're working on it. */}
-            {!seesOthers && !['PENDING_CONFIRMATION', 'APPROVED', 'COMPLETED', 'REJECTED'].includes(obligation.status) && (
+            {isOnIt && working && (
                 <Card title={t('obligation_your_submission')}>
                     <div className="ui-form">
                         {locked && <p className="ui-error" role="status">{t('overdue_obligation_alert_msg')}</p>}
@@ -452,7 +455,7 @@ export default function ObligationDetailClient({ obligation, now, userRole, user
             )}
 
             {/* Handed in or done with: its assignee is told where it stands. */}
-            {!seesOthers && !working && obligation.status !== 'REJECTED' && (
+            {isOnIt && !working && obligation.status !== 'REJECTED' && (
                 <Card title={t('obligation_your_submission')}>
                     <p className="ui-hint">{obligation.status === 'PENDING_CONFIRMATION' ? t('pending_confirmation_msg') : t('obligation_finalized_msg')}</p>
                 </Card>

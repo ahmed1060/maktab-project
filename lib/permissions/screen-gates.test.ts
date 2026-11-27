@@ -194,7 +194,10 @@ const GATES: Gate[] = [
     { what: "obligations: employee filters", file: D + "obligations/ObligationsClient.tsx", uses: "const ownObligationsOnly = !permissions.can('obligations.view')", before: r => r === "EMPLOYEE", now: p => !p.can("obligations.view") },
     // The team-only pickers are the server's now: the names-only list for each action (PR 371, lib/assignees.test.ts).
     { what: "obligation: overdue lock (flag: on it)", file: OBL, uses: "const isRestrictedRole = !seesOthers || (teamReach && isUserAssignee)", before: (r, on) => r === "EMPLOYEE" || (r === "TEAM_LEADER" && on), now: (p, on) => !p.can("obligations.view") || (p.scope("obligations.view") === "TEAM" && on) },
-    { what: "obligation: acts as assignee", file: OBL, uses: "{!seesOthers && !['PENDING_CONFIRMATION'", before: r => r === "EMPLOYEE", now: p => !p.can("obligations.view") },
+    // Was `r === "EMPLOYEE"`, then `!can('obligations.view')`: handing it in is
+    // for whoever it's assigned to, whatever their role, as a task's is
+    // (LATER_CHANGES_PLAN.md §7.14, PR 438).
+    { what: "obligation: acts as assignee (flag: on it)", file: OBL, uses: "{isOnIt && working && (", before: (_r, on) => on, now: (_p, on) => on },
     { what: "obligation: edit", file: OBL, uses: "const canEdit = can('obligations.edit')", before: managers, now: p => p.can("obligations.edit") },
     ...(["obligations.approve", "obligations.delete"] as const).map((perm): Gate => ({
         what: `obligation: ${perm} (flag: on it)`, file: OBL, uses: "const ownRule = (permission: 'obligations.approve' | 'obligations.delete') => can(permission) && (scope(permission) === 'TEAM' || !isOnIt)",
