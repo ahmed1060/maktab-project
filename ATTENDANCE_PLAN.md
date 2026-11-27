@@ -1712,6 +1712,17 @@ So approval and locking are serialized:
   request approval that touches a date take the same Postgres advisory lock for
   that company and month (`pg_advisory_xact_lock`) before writing. They cannot
   interleave.
+- **Waiting for it:** an import holds the lock for as long as its own minute
+  allows (60 seconds: a file of punches, or what a terminal sends), so every
+  other transaction that takes it waits longer (`LOCK_WAIT`, 90 seconds)
+  rather than failing after Prisma's five (the review on #12). Most already
+  did; asking for a day off didn't until Codex's review on #431, and 17 more
+  were then found: check-ins (which allowed 30 seconds), flagged punches
+  decided, exceptions, permission hours, missing punches and overtime,
+  missions, contract start dates, owners and a new user's start. All of them
+  wait now, and a test reads the code for every transaction that takes the
+  lock, through whatever it calls, and holds the imports to their minute
+  (`lib/lock-wait-guard.test.ts`).
 - **Before it** (round 10, built in #276, §6.9): once attendance reaches the
   month's payroll, approval is refused while any day in the month, for
   someone on the register, is `INCOMPLETE` or `TO_CONFIRM`, and the screen
