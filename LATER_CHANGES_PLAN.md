@@ -19,8 +19,8 @@ mark, permission and pay (#426, step 3a), what they're not asked for
 (#427, step 3b1), only Admins as owners, given no new work (#428, step
 3b2), and the Owners list (#429, step 3c), so owners are done; clearer
 words on Exceptions (§7.11) and payday and the attendance period
-(§7.10) built in one PR (#430), waiting on the owner's review; then the
-limits on requests (§7.4); the names (§3) paused after step 8l (#424).** Done: the development database (§4),
+(§7.10) done in one PR (#430); the limits on requests (§7.4) next; the
+names (§3) paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
 #384). The names are decided, their design approved and their limit set
@@ -2424,3 +2424,6 @@ with قبول: «قبول العذر» and «قبول».
   contract settled in it, Change payday still offered the attendance's
   last day and sent it, which the change refuses, so its payday couldn't
   be changed. Fixed, as built in §7.10.
+- **2026-11-27:** #430 merged (steps 4 and 5). Clearer words on
+  Exceptions (§7.11) and payday and the attendance period (§7.10) done;
+  the limits on requests (§7.4) next, day off first.
