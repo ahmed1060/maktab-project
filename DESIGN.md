@@ -2464,7 +2464,9 @@ These are built once, in the building-blocks PR, and every page uses them
   - Roles and access, in the side bar, is for whoever holds either. Its
     tabs are each for whoever holds theirs: Changes to roles for Assign
     roles, Access reviews for Answer access reviews. Holding only one, the page
-    opens on that one and the other tab isn't there.
+    opens on that one and the other tab isn't there, and the line under the
+    title says only what that one is for: "Ask the Super Admin to change a
+    role." or "Review who holds which."
   - Asking for a change on a review's line still sends the Super Admin a
     role change request, whoever answers it.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
