@@ -1831,7 +1831,11 @@ approving a month early, and decided the same day.
   month's or the next's; written on the month's run, made if it has
   none, with an audit line. The date is no later than the month after next.
   An approved month's attendance stays as approved, whatever the
-  settings say since; so does a draft's whose next month is approved.
+  settings say since; so does a draft's whose next month is approved,
+  or with a contract ending in it settled. The Payroll page's view says
+  which (`nextApproved`, `endSettled`, the latter by the same count of
+  settlements as the change), so the dialog shows only Payday then, with
+  a line saying why, and sends no attendance end to be refused.
   A draft's last day equal to the setting's close is kept as the
   setting (no `periodEnd`), so a later change of the setting still
   counts. It holds the month's run (`FOR UPDATE`) from reading its status
@@ -2416,3 +2420,7 @@ with قبول: «قبول العذر» and «قبول».
   a punch beside a settled day was refused whatever shift it was on; and
   a leaver's day a payroll froze without paying them counted no mission
   allowance, as freezing had cleared it. Each fixed, as built in §7.10.
+- **2026-11-27:** Codex's seventh review on #430: in a draft month with a
+  contract settled in it, Change payday still offered the attendance's
+  last day and sent it, which the change refuses, so its payday couldn't
+  be changed. Fixed, as built in §7.10.
