@@ -2098,7 +2098,7 @@ assigned to: it had no Your submission, so they couldn't hand it in.
    - Your submission is for whoever it's assigned to, whatever their role.
    - A Team Leader on it keeps deciding it, as their team's. Someone who
      decides obligations company-wide still doesn't decide their own.
-3. One PR, after #437.
+3. One PR, after #437: #438, merged on 27 November.
 
 ### 7.15 Who approves what (Decided)
 
@@ -2742,3 +2742,6 @@ without its own.
   have their own. Correct attendance and Prepare payroll keep what they
   decide; access reviews get their own permission, instead of Assign
   roles, in a PR after §7.14's.
+- **2026-11-27:** #438 merged (§7.14): an obligation is handed in by
+  whoever it's assigned to. No error in production after it. §7.15's
+  access reviews are next.
