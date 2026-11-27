@@ -269,6 +269,7 @@ export const en = {
         obligation_client_refused: "This client can't be picked. It may have been archived or deleted since the form opened. Pick another, or No client.",
         filter_all_clients: "All clients",
         clients_view_tasks: "View tasks",
+        clients_view_obligations: "View obligations",
         clients_archived_mark: "archived",
         clients_status: "Status",
         clients_in_use: "In use",
