@@ -2458,6 +2458,15 @@ These are built once, in the building-blocks PR, and every page uses them
     obligations company-wide still doesn't decide their own.
   - Signed out while handing it in, what they'd added is saved as a
     draft, whatever their role.
+- **Answering access reviews** (`LATER_CHANGES_PLAN.md` §7.15): a
+  permission of its own, Answer access reviews, beside Assign roles in the
+  role editor's Employees.
+  - Roles and access, in the side bar, is for whoever holds either. Its
+    tabs are each for whoever holds theirs: Changes to roles for Assign
+    roles, Access reviews for Answer access reviews. Holding only one, the page
+    opens on that one and the other tab isn't there.
+  - Asking for a change on a review's line still sends the Super Admin a
+    role change request, whoever answers it.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
