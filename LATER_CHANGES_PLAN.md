@@ -22,9 +22,9 @@ words on Exceptions (§7.11) and payday and the attendance period
 (§7.10) done in one PR (#430); the limits on requests (§7.4) done: day
 off (#431), every writer waiting for a month's lock as long as an import
 may hold it (#432, ATTENDANCE_PLAN.md §12.1), permission hours (#433) and
-missions (#434); obligations with a client (§7.7, step 7): 7a done
-(#435), and 7b, View obligations on a client's page in place of a
-section, under way; salary advances (§7.5, step 8) next, once the owner
+missions (#434); obligations with a client (§7.7, step 7) done: an
+obligation's client (#435), and View obligations on a client's page in
+place of a section (#436); salary advances (§7.5, step 8) next, once the owner
 has reviewed §7.9; the names (§3) paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
@@ -1653,7 +1653,7 @@ Built in two PRs:
     never widening it.
   - **Deleting a client:** one with obligations is archived instead, as
     one with tasks or records is, so they keep it.
-- **7b, View obligations** (DESIGN.md §5.5, An obligation's client), in
+- **7b, View obligations** (Done, #436; DESIGN.md §5.5, An obligation's client), in
   place of an Obligations section on a client's page (the owner, 27
   November):
   - A link beside View tasks, on the end of the client's details'
@@ -2573,3 +2573,6 @@ with قبول: «قبول العذر» and «قبول».
 - **2026-11-27:** 7b, as the owner asked instead of a section: View
   obligations beside View tasks on a client's details, opening the
   Obligations list filtered to the client.
+- **2026-11-27:** #436 merged (7b, View obligations on a client's page), so
+  step 7 is done. Salary advances (step 8) are next, once the owner has
+  reviewed §7.9.
