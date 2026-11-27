@@ -1119,6 +1119,7 @@ permission bringing "See obligations". None found missing.
 | Permission | Without | It works, but |
 |---|---|---|
 | `tasks.create` | `clients.view` | no client can be picked for a task |
+| `obligations.create` | `clients.view` | no client can be picked for an obligation (§7.7, 7a) |
 | `salary.view` | `employees.view` | salaries don't show on the Employees list or a profile, only where a page shows them without it, such as Attendance's days and exceptions |
 | `settings.edit` | `salary.view` | the attendance policy's preview shows days, not money |
 
