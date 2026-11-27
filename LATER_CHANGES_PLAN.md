@@ -22,7 +22,8 @@ words on Exceptions (§7.11) and payday and the attendance period
 (§7.10) done in one PR (#430); the limits on requests (§7.4) done: day
 off (#431), every writer waiting for a month's lock as long as an import
 may hold it (#432, ATTENDANCE_PLAN.md §12.1), permission hours (#433) and
-missions (#434); obligations with a client (§7.7, step 7) next; the
+missions (#434); obligations with a client (§7.7, step 7) under way,
+7a (an obligation's client) first; the
 names (§3) paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
@@ -1622,6 +1623,31 @@ In three PRs, each whole on its own:
   whether clients see their obligations, wait for the client's area
   (`CLIENT_PORTAL_PLAN.md` §13).
 
+Built in two PRs:
+
+- **7a, an obligation's client** (as built, DESIGN.md §5.5, An
+  obligation's client):
+  - `Obligation.clientId`, optional, an index, and the client's foreign
+    key, set to none if the client is deleted. The migration only adds.
+  - **Picking:** Add obligation has Client under the description for
+    whoever may see clients, "No client" first, then the clients that
+    aren't archived. The server takes it as for a task: the client must
+    be there, the obligation's company's, and not archived, and it's held
+    while the obligation is written, so one archived meanwhile is refused.
+    A refusal is said under the select.
+  - `obligations.create` works with less without `clients.view` (no
+    client can be picked), as `tasks.create` does (§5.1, rule 3).
+  - **Coming round:** the next one of a repeating obligation has its
+    client, archived since or not.
+  - **Shown:** in the list, under the title, for anyone who sees the
+    obligation, and first in an obligation's page's details.
+  - **The filter:** Client on the list and `GET /api/obligations`
+    (`?clientId=`, `none` for no client), narrowing what's in scope,
+    never widening it.
+  - **Deleting a client:** one with obligations is archived instead, as
+    one with tasks or records is, so they keep it.
+- **7b, the client's page:** an Obligations section, coming and overdue.
+
 ### 7.8 Order (Decided)
 
 1. The contract start date (§7.2), which also fixes §7.1's days.
@@ -2516,3 +2542,7 @@ with قبول: «قبول العذر» and «قبول».
   the policy allows, 7 days unless changed, and a year ahead as before;
   so the limits on requests (§7.4, step 6) are done. Obligations with a
   client (§7.7, step 7) next.
+- **2026-11-27:** Step 7 started: 7a, an obligation's client, then 7b,
+  the client's page's Obligations section (§7.7). A client with
+  obligations is archived rather than deleted, as one with tasks or
+  records is.
