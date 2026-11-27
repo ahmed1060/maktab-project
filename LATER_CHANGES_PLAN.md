@@ -1502,7 +1502,10 @@ In three PRs, each whole on its own:
       days and the balance to the form; the days asked are counted as
       approving counts them (`workDays`). The policy's dialog and card
       show the months ahead, 1 to 12. `DATE_IN_PAST` goes: a day already
-      passed may be asked for, within the days.
+      passed may be asked for, within the days. A day off of a one-day
+      type is that day throughout, whatever end is sent with it: its
+      checks, its notice and its audit line (found by the tests: an end
+      sent with one was checked for overlaps though never kept).
   - **4b, permission hours:** the policy's choice of when they may be
     asked for, as above, "around the day" as today unless changed.
   - **4c, missions:** the policy's days back, 7 unless changed, which
