@@ -2351,6 +2351,29 @@ These are built once, in the building-blocks PR, and every page uses them
   Up to 12 months ahead, 1 to start. Its hint: that it counts from today,
   and that the first day is never in a month whose payroll is approved.
   The policy's card says it on a line of its own, Day off.
+- **Asking for permission hours** (`LATER_CHANGES_PLAN.md` §7.4, 4b), as
+  the attendance policy in force today says:
+  - **Before, or up to some hours after** (as before, and to start): the
+    day's calendar offers any day, and hours asked for too late are
+    refused as before.
+  - **Any day, from last month to a month ahead:** the day's calendar
+    offers only the days that may be asked for, as day off's does: from
+    the first day not in a month whose payroll is approved, and never
+    before the 1st of last month, to today plus one month. A day already
+    passed may be asked for, whatever its hours.
+  - **A day outside them,** sent all the same (the dialog left open past
+    midnight, or a month approved meanwhile), is refused under the date,
+    saying which days may be asked for: "Permission hours can be asked
+    for from 1 November to 27 December." The focus goes back to the date.
+- **The attendance policy's permission hours:** in the row of its limits,
+  after Requests a month, a select, Can be asked for: Before, or up to
+  some hours after (to start) and Any day, from last month to a month
+  ahead. With the first, Can ask up to this many hours after follows it
+  as today. With the second, that field isn't shown, and the select's
+  hint says that it counts from today, and that a day in a month whose
+  payroll is approved never is. The policy's card says which under the
+  hours a month: "Before, or up to 24 hours after", "Only in advance"
+  (no hours after), or "Any day, from last month to a month ahead".
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
