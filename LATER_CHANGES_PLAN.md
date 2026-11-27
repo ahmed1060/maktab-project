@@ -1635,7 +1635,9 @@ Built in two PRs:
     aren't archived. The server takes it as for a task: the client must
     be there, the obligation's company's, and not archived, and it's held
     while the obligation is written, so one archived meanwhile is refused.
-    A refusal is said under the select.
+    A refusal is said under the select. A Super Admin's pick is the
+    company's it was made in: switching company, or picking all of them,
+    sends none (Codex's review of #435).
   - `obligations.create` works with less without `clients.view` (no
     client can be picked), as `tasks.create` does (§5.1, rule 3).
   - **Coming round:** the next one of a repeating obligation has its
@@ -2547,3 +2549,6 @@ with قبول: «قبول العذر» and «قبول».
   the client's page's Obligations section (§7.7). A client with
   obligations is archived rather than deleted, as one with tasks or
   records is.
+- **2026-11-27:** #435 opened (7a). Codex's review: a Super Admin who
+  picked a client and then switched company sent the last company's; the
+  pick now keeps its company, and none is sent in another.
