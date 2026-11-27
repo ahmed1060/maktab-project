@@ -23,7 +23,7 @@ words on Exceptions (§7.11) and payday and the attendance period
 off (#431), every writer waiting for a month's lock as long as an import
 may hold it (#432, ATTENDANCE_PLAN.md §12.1), permission hours (#433) and
 missions (#434); obligations with a client (§7.7, step 7) under way,
-7a (an obligation's client) first; the
+7a (an obligation's client) done (#435), 7b (the client's page) next; the
 names (§3) paused after step 8l (#424).** Done: the development database (§4),
 each "manage" permission split (§2), the rules between permissions with
 their screen test (§5, #369 to #395), and status counts on All users (§6,
@@ -1626,8 +1626,8 @@ In three PRs, each whole on its own:
 
 Built in two PRs:
 
-- **7a, an obligation's client** (as built, DESIGN.md §5.5, An
-  obligation's client):
+- **7a, an obligation's client** (Done, #435; as built, DESIGN.md §5.5,
+  An obligation's client):
   - `Obligation.clientId`, optional, an index, and the client's foreign
     key, set to none if the client is deleted. The migration only adds.
   - **Picking:** Add obligation has Client under the description for
@@ -2552,3 +2552,6 @@ with قبول: «قبول العذر» and «قبول».
 - **2026-11-27:** #435 opened (7a). Codex's review: a Super Admin who
   picked a client and then switched company sent the last company's; the
   pick now keeps its company, and none is sent in another.
+- **2026-11-27:** #435 merged (7a, an obligation's client); its migration
+  applies to production with the merge. 7b, the client's page's Obligations
+  section, next.
