@@ -2061,10 +2061,15 @@ Found on 2026-11-27 from a November payslip whose salary was split at day
    - Changing someone's salary asks which payroll it's for: this month's,
      from its 1st, or next month's, from its 1st. Neither is picked for
      them. The server already took the answer; no screen asked it.
-   - A salary set for a month is that month's from its 1st: a salary
-     recorded before it and dated later in the same month gives way to it,
-     for payslips and for pricing attendance. The two payslips are put
-     right by Recalculate, with no data changed.
+   - The salary set last is theirs from the 1st of the month it's for: a
+     salary recorded before it and dated later gives way to it, for
+     payslips and for pricing attendance. A starting salary entered before
+     it goes, and so does one set before it for next month, so setting
+     this month's after next month's replaces both, as their page, which
+     shows the salary set last, says. The two payslips are put right by
+     Recalculate, with no data changed. In production, on 27 November, the
+     only salaries this changes are those two people's, in November, a
+     draft.
    - With this month's payroll approved, the new salary can only be next
      month's: asked for this month's, the server refuses it
      (`PAYROLL_MONTH_LOCKED`), said under the choice.
@@ -2673,3 +2678,7 @@ Found on 2026-11-27 from a November payslip whose salary was split at day
   outlived the salary set after it, on two November payslips. Changing a
   salary will ask whether it's this month's payroll or next month's, and a
   month's salary holds from its 1st. Before payroll deductions (§7.8).
+- **2026-11-27:** §7.13: the salary set last holds from its month's 1st
+  whichever month a salary entered before it is dated in, so one set for
+  next month gives way to this month's set after it, as their page shows
+  the salary set last. One PR, #437.
