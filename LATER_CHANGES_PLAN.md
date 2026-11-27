@@ -2072,7 +2072,14 @@ Found on 2026-11-27 from a November payslip whose salary was split at day
      draft.
    - With this month's payroll approved, the new salary can only be next
      month's: asked for this month's, the server refuses it
-     (`PAYROLL_MONTH_LOCKED`), said under the choice.
+     (`PAYROLL_MONTH_LOCKED`), said under the choice. The refusal is in
+     the same transaction as the rest of the save, under the month's
+     lock, so nothing on the page is saved (Codex review on #437).
+   - The choice is for the months it names: the page sends the month its
+     choice was shown for. Saved after the 1st, the month it named is
+     still saved where it's this month or next; one that's past is
+     refused (`SALARY_MONTH_PASSED`), and the page names the new months
+     with neither picked (Codex review on #437).
 3. One PR, before payroll deductions (§7.8). After it's merged, November's
    payroll is recalculated.
 
@@ -2682,3 +2689,6 @@ Found on 2026-11-27 from a November payslip whose salary was split at day
   whichever month a salary entered before it is dated in, so one set for
   next month gives way to this month's set after it, as their page shows
   the salary set last. One PR, #437.
+- **2026-11-27:** §7.13, Codex's review of #437: a salary's payroll refused
+  saves nothing on the page, and the choice is for the months it names, a
+  page left open past the 1st asking again once the month it named is past.
