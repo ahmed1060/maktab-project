@@ -2301,12 +2301,15 @@ These are built once, in the building-blocks PR, and every page uses them
     whoever may approve payroll, until the month is marked paid.
   - **Change payday** opens the building blocks' dialog, titled Change
     this month's payday: a date field, Payday; and while the month isn't
-    approved, nor the month after it, a second, Attendance counts up to,
+    approved, nor the month after it, and no contract ending in it is
+    settled, a second, Attendance counts up to,
     the day before the new payday when that's before the close, and
     otherwise the close, from the month's 1st at the earliest. A line under them says that the days after go to
     next month's payroll, and that next month goes back to the settings;
     with the month after approved, that this month's attendance ends
-    where next month's begins, and only payday changes. Its button says
+    where next month's begins, and only payday changes; with a contract
+    ending in it settled, that its attendance stays as it is, and only
+    payday changes. Its button says
     Change payday. A payday that isn't after the attendance's last day is
     said under its field.
   - **Approve, before payroll closes,** stays where it is, greyed and
