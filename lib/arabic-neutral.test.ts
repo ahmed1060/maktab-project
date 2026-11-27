@@ -144,8 +144,8 @@ describe("the app's Arabic, part 3: every other command", () => {
     })
 
     it("names a button with a verbal noun", () => {
-        expect(ar.exc_accept).toBe("قبول")
-        expect(ar.exc_excuse).toBe("قبول العذر")
+        expect(ar.exc_accept).toBe("خصم حسب السياسة")
+        expect(ar.exc_excuse).toBe("إعفاء من الخصم")
         expect(ar.punch_check_file).toBe("فحص الملف")
         expect(ar.face_rekey_run).toBe("إعادة التشفير بالمفتاح الجديد")
         expect(ar.attendance_make_default).toBe("جعله افتراضيًا")
@@ -168,7 +168,7 @@ describe("the app's Arabic, part 3: every other command", () => {
     })
 
     it("changes nothing in English", () => {
-        expect(en.exc_accept).toBe("Accept")
+        expect(en.ci_key_failed).toBeTruthy()
         expect(en.ci_key_failed).toBe("This phone's secure key couldn't be used. Register the phone again.")
     })
 })
@@ -260,7 +260,7 @@ describe("the app's Arabic, part 5: someone else spoken of as \"he\"", () => {
     it("names a day, a scope or a status without describing a man", () => {
         expect(ar.audit_value_PRESENT).toBe("حضور")
         expect(ar.audit_value_ABSENT).toBe("غياب")
-        expect(ar.audit_value_EXCUSED).toBe("بعذر")
+        expect(ar.audit_value_EXCUSED).toBe("بدون خصم")
         expect(ar.scope_OWN).toBe("الشخص نفسه")
         expect(ar.scope_TEAM).toBe("الفريق")
         expect(ar.face_consent).toBe("الموافقة")

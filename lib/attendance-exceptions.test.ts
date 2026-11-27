@@ -177,16 +177,16 @@ describe("each kind's list", () => {
         expect(one).toContain("0.25 days")
     })
 
-    it("offers Excuse and Accept on another's day to whoever corrects it, and nothing on one's own", async () => {
+    it("offers Don't deduct and Deduct per policy on another's day to whoever corrects it, and nothing on one's own", async () => {
         const html = panel(await page())
-        expect(row_(html, "d1:LATENESS")).toMatch(/<button type="button" class="ui-btn ui-btn-primary ui-btn-sm">Excuse<\/button><button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">Accept<\/button>/)
+        expect(row_(html, "d1:LATENESS")).toMatch(/<button type="button" class="ui-btn ui-btn-primary ui-btn-sm">Don&#x27;t deduct<\/button><button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">Deduct per policy<\/button>/)
         expect(row_(html, "d9:LATENESS")).not.toContain("<button")
     })
 
     it("for absences gives what the day costs", async () => {
         const one = row_(panel(await page({ search: "tab=exceptions&kind=absent" })), "d2")
         expect(one).toContain("<bdi>500.00</bdi>")
-        expect(one).toContain(">Excuse</button>")
+        expect(one).toContain(">Don&#x27;t deduct</button>")
     })
 
     it("for a missing punch gives the one there is, and Add a punch", async () => {
@@ -204,7 +204,7 @@ describe("each kind's list", () => {
 
     it("for the decided gives the decision as a badge, its reason, and Undo", async () => {
         const one = row_(panel(await page({ search: "tab=exceptions&kind=decided" })), "x1")
-        expect(one).toContain('<span class="ui-badge ui-badge-good">Excused</span>')
+        expect(one).toContain('<span class="ui-badge ui-badge-good">Not deducted</span>')
         expect(one).toContain("Bus strike")
         expect(one).toContain(">Undo</button>")
     })
@@ -238,7 +238,7 @@ describe("a departure to confirm (ATTENDANCE_PLAN.md §6.9, §13.1, round 10, de
 
     it("offers adding the departure first, then accepting or excusing the early leave, to whoever corrects it", async () => {
         const one = row_(panel(await page({ search: "tab=exceptions&kind=departure" })), "d6")
-        expect(one).toMatch(/<button type="button" class="ui-btn ui-btn-primary ui-btn-sm">Add the departure<\/button><button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">Accept<\/button><button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">Excuse<\/button>/)
+        expect(one).toMatch(/<button type="button" class="ui-btn ui-btn-primary ui-btn-sm">Add the departure<\/button><button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">Deduct per policy<\/button><button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">Don&#x27;t deduct<\/button>/)
         // One's own waiting day is somebody else's to settle.
         const mine = { ...DATA, departure: [row({ id: "d7", userId: "u1", name: "Hana Saad", status: "TO_CONFIRM", earlyLeaveMinutes: 200 })] }
         expect(row_(panel(await page({ shows: mine, search: "tab=exceptions&kind=departure" })), "d7")).not.toContain("<button")
@@ -262,7 +262,7 @@ describe("settling a day with a punch missing (ATTENDANCE_PLAN.md §6.9, §13.1,
 
     it("offers adding the punch first, then marking the day absent or accepting it as it is, to whoever corrects it", async () => {
         const one = row_(panel(await page({ search: "tab=exceptions&kind=incomplete" })), "d3")
-        expect(one).toMatch(/<button type="button" class="ui-btn ui-btn-primary ui-btn-sm">Add a punch<\/button><button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">Mark absent<\/button><button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">Accept as it is<\/button>/)
+        expect(one).toMatch(/<button type="button" class="ui-btn ui-btn-primary ui-btn-sm">Add a punch<\/button><button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">Mark absent<\/button><button type="button" class="ui-btn ui-btn-secondary ui-btn-sm">Present, no deduction<\/button>/)
         // One's own day is somebody else's to settle.
         const mine = { ...DATA, incomplete: [row({ id: "d8", userId: "u1", name: "Hana Saad", status: "INCOMPLETE", lastOut: null })] }
         expect(row_(panel(await page({ shows: mine, search: "tab=exceptions&kind=incomplete" })), "d8")).not.toContain("<button")
@@ -274,7 +274,7 @@ describe("settling a day with a punch missing (ATTENDANCE_PLAN.md §6.9, §13.1,
     it("can't mark a rest day or a holiday absent, where nobody was expected, only accept it", async () => {
         const rest = { ...DATA, incomplete: [row({ id: "d5", status: "INCOMPLETE", lastOut: null, expectedStartMinutes: null, expectedEndMinutes: null })] }
         const one = row_(panel(await page({ shows: rest, search: "tab=exceptions&kind=incomplete" })), "d5")
-        expect(one).toContain(">Accept as it is</button>")
+        expect(one).toContain(">Present, no deduction</button>")
         expect(one).not.toContain(">Mark absent</button>")
     })
 
@@ -288,7 +288,7 @@ describe("settling a day with a punch missing (ATTENDANCE_PLAN.md §6.9, §13.1,
             expect(words.exc_accept_as_is_hint).toBeTruthy()
         }
         expect(en.exc_mark_absent_hint).toContain("charged as an absence")
-        expect(en.exc_accept_as_is_hint).toContain("nothing of the day is charged")
+        expect(en.exc_accept_as_is_hint).toContain("nothing of the day is deducted")
     })
 
     it("lists what was decided as the punch missing, marked absent or accepted as it is, with its reason and Undo", async () => {
@@ -300,7 +300,7 @@ describe("settling a day with a punch missing (ATTENDANCE_PLAN.md §6.9, §13.1,
         expect(row_(html, "x2")).toContain(`>${en.exc_tab_incomplete}<`)
         expect(row_(html, "x2")).toContain('<span class="ui-badge ui-badge-neutral">Marked absent</span>')
         expect(row_(html, "x2")).toContain("Went home ill")
-        expect(row_(html, "x3")).toContain('<span class="ui-badge ui-badge-good">Accepted as it is</span>')
+        expect(row_(html, "x3")).toContain('<span class="ui-badge ui-badge-good">Present, no deduction</span>')
         expect(row_(html, "x3")).toContain(">Undo</button>")
     })
 })
