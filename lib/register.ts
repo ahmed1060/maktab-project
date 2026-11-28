@@ -19,6 +19,7 @@ import {
 } from "./payroll"
 import { payableWindows, undecidedDays, employedWholeMonth, type MonthTimeline } from "./employment"
 import { planRecovery, recoveryLabel, DEBT_RECOVERY_SOURCE, FULL_RECOVERY_PERCENT, type RecoverableDebt } from "./debt-recovery"
+import { deductionLines, type PayrollDeductionRule } from "./payroll-deductions"
 
 /** A payslip line, plus where it came from, so a disputed figure is traceable. */
 export interface RegisterLine extends PayslipLine {
@@ -64,6 +65,12 @@ export interface PersonMonth {
     attendance?: AttendanceMoney
     /** Present when this person is deliberately left out of the run. */
     exclusion?: { reason: string }
+    /**
+     * The company's payroll deductions (LATER_CHANGES_PLAN.md §7.12, PR 440):
+     * income tax, social insurance and its own, taken after everything above
+     * and before a debt's recovery. Absent or empty takes nothing.
+     */
+    payrollDeductions?: PayrollDeductionRule[]
     /** What this person still owes, for recovery out of this month's net. */
     debts?: RecoverableDebt[]
     /** The company's cap, as a percentage of net. Absent means the whole net. */
@@ -175,6 +182,16 @@ export function buildEntry(person: PersonMonth): RegisterEntry {
         ] as const) {
             if (amountMinor <= 0) continue
             lines.push({ kind, label, amountMinor, source: ATTENDANCE_SOURCE, sourceId: category, sortOrder: order++ })
+        }
+    }
+
+    // The company's payroll deductions (LATER_CHANGES_PLAN.md §7.12, PR 440),
+    // each a percentage of the pay so far or a fixed amount, and together
+    // never more than it: a deduction isn't a debt. Not from someone left out
+    // of the month, as nothing is paid them, for the reason recovery isn't.
+    if (!person.exclusion && person.payrollDeductions?.length) {
+        for (const line of deductionLines(totalPayslip(lines).netMinor, person.payrollDeductions)) {
+            lines.push({ ...line, sortOrder: order++ })
         }
     }
 

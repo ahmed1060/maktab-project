@@ -18,6 +18,7 @@ import { useBusyAction } from '@/lib/useBusyAction'
 import { dayLabel } from '@/lib/cash-advances'
 import { addressWithPeriod, periodFromAddress, yearsAround } from '@/lib/period-address'
 import type { TranslationKey } from '@/lib/translations'
+import { payslipLineLabel } from '@/lib/payslip-line-label'
 import { DaysToSettle, UndecidedRequests, type ToSettle } from './SettleFirst'
 import { ChangePaydayDialog } from './ChangePaydayDialog'
 
@@ -784,7 +785,7 @@ export default function PayrollRegisterPage() {
                                         </>}
                                         label={t('payroll_lines_of').replace('{name}', entry.name)}
                                         lines={entry.lines.map(line => ({
-                                            label: line.source === 'ATTENDANCE' && line.sourceId ? t(`attpay_line_${line.sourceId}` as TranslationKey) : line.label,
+                                            label: payslipLineLabel(line, t),
                                             // A deduction's sign as every other amount's on the page.
                                             value: line.kind === 'DEDUCTION' ? signedMoney(-line.amountMinor) : money(line.amountMinor),
                                         }))}

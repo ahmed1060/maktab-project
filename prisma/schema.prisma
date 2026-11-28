@@ -303,6 +303,8 @@ model Company {
   usernameNext         Int                       @default(0)
   cashAdvanceEntries   CashAdvanceEntry[]
   payrollRuns          PayrollRun[]
+  /// Income tax, social insurance and its own (LATER_CHANGES_PLAN.md §7.12, PR 440).
+  payrollDeductions    PayrollDeduction[]
   workSchedules        WorkSchedule[]
   attendancePolicies   AttendancePolicy[]
   scheduleDefaults     ScheduleDefault[]
@@ -1609,12 +1611,56 @@ model PayrollRun {
   /// §12): set at approval, so a later change of the company's chosen month
   /// never restates which paid months carried attendance.
   attendanceIncluded Boolean @default(false)
+  /// The payroll deductions it was approved with (LATER_CHANGES_PLAN.md §7.12,
+  /// PR 440), as payroll took them: set at approval, so a deduction changed
+  /// or removed later never restates an approved month on the Payroll page,
+  /// as its payslips already don't. None on a month approved before them.
+  payrollDeductions Json?
 
   /// One run per company per month. A second draft for a month that already has
   /// one is how two people approve different figures for the same payroll.
   @@unique([companyId, month, year])
   @@index([companyId, year, month])
   @@index([status])
+}
+
+/// What a company takes from every payslip before it's paid
+/// (LATER_CHANGES_PLAN.md §7.12, PR 440): income tax and social insurance,
+/// one row each at most, kept by what they are, and as many of its own as it
+/// names, up to 10. Each a percentage of the month's pay before them, or a
+/// fixed amount.
+///
+/// Read when a month not approved yet is worked out, never after: an
+/// approved payslip keeps its lines, so a deduction changed or removed later
+/// leaves the months already approved as they were.
+model PayrollDeduction {
+  id        String                @id @default(uuid())
+  companyId String
+  kind      PayrollDeductionKind
+  /// The company's own name for it. None for income tax and social insurance,
+  /// which each page names in its own language.
+  name      String?
+  basis     PayrollDeductionBasis @default(PERCENT)
+  /// A percentage, 0 to 100, or an amount in the company's money.
+  value     Decimal               @db.Decimal(12, 2)
+  /// The card's order, among the company's own.
+  sortOrder Int                   @default(0)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  company   Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+}
+
+enum PayrollDeductionKind {
+  INCOME_TAX
+  SOCIAL_INSURANCE
+  OTHER
+}
+
+enum PayrollDeductionBasis {
+  PERCENT
+  AMOUNT
 }
 
 /// Where payday moves off a day off (LATER_CHANGES_PLAN.md §7.10, PR 430).

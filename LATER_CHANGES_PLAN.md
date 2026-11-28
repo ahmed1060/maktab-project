@@ -2014,7 +2014,7 @@ with قبول: «قبول العذر» and «قبول».
     أو الخصم حسب السياسة».
 - **Words and their tests only,** before 10a, in the same PR (§7.8).
 
-### 7.12 Payroll deductions (Decided in part)
+### 7.12 Payroll deductions (Decided)
 
 Talked through with the owner on 2026-11-27, from the law's limit on
 installments (§7.9).
@@ -2038,14 +2038,54 @@ installments (§7.9).
      part-timer insured through another job, someone past the insurance
      age or a foreign worker under another scheme. Owners have no payslip
      (§7.3), so none of this touches them.
-3. **Open:**
-   - What the percentages are of: the month's pay before them (the salary
-     with its additions and Nizmo's deductions), or the salary alone.
-   - Egypt's income tax is worked out by brackets and social insurance on
-     an insured wage with a floor and a ceiling. A flat percentage is a
-     simplification, which may do for now.
-   - The law's 25% limit on all debts together (§7.9) isn't checked
-     anywhere, as there's no cap at payroll.
+3. **Decided (the owner, 27 November):**
+   - The percentages are of the month's pay before them: the salary with
+     its additions and Nizmo's deductions.
+   - A flat percentage each does for now, with each person's own rate
+     where it's set. Income tax's brackets, and social insurance's insured
+     wage with its floor and ceiling, come later, in a PR of their own.
+   - The law's 25% limit on all debts together (§7.9) is a company
+     setting, 25% unless changed. It's checked when a salary advance is
+     asked for, counting the person's other debts, and blocked or warned
+     of by the same setting as an installment's limit. The Payroll page
+     also warns of a month over it. There's still no cap at payroll.
+4. **How it's built (planned), in steps of their own:**
+   - **9a, the company's (planned for PR 440):** a card of its own,
+     Payroll deductions, on the Payroll tab (`DESIGN.md` §5.5), under
+     Payroll settings rather than inside it, as its deductions are a list.
+     - A table of the company's deductions, one row each, with RLS:
+       Income tax and Social insurance, kept by what they are, and the
+       others by their names, each a percentage or a fixed amount, in the
+       card's order, 10 more at most.
+     - Saved through a route of its own, which asks what the Payroll tab's
+       fields ask: the tab shown to them, and Change company settings to
+       save. Each save is in the audit log.
+     - Payroll works them out on each month not approved yet, after
+       Nizmo's own deductions and before a debt's recovery, each line with
+       where it came from, so the Payroll page and the payslip say Income
+       tax and Social insurance in their language. An approved month keeps
+       the deductions it was approved with, stored with it, so the Payroll
+       page shows it as its payslips do, whatever's changed since.
+     - With none set, as every company starts, no payslip changes.
+     - A save while a month is being approved waits for the approval, as
+       both hold the company's row, so the deductions an approval keeps are
+       the ones its payslips took.
+     - The payslip names attendance's lines in its language too, as the
+       Payroll page already did, by the same rule as income tax's.
+     - The card keeps what's typed while a save is on its way, the new
+       deductions taking the ids they were saved with, and, opened from a
+       cached copy, shows what's been saved since while nothing's typed
+       (Codex review on #440).
+   - **9b, for a person:** each of the company's deductions on an
+     employee's page, As the company, Their own rate (or amount), or Not
+     applied, changed with Change salaries and seen with See salaries.
+   - **Later, in a PR of its own:** income tax's brackets and social
+     insurance's insured wage.
+   - **With salary advances (§7.5):** the 25% limit's setting, its check
+     when one's asked for, and the Payroll page's warning, as the debts it
+     counts arrive with them.
+   - **Open:** whether a contract's final settlement takes them too. It
+     doesn't in 9a.
 
 ### 7.13 A salary change's payroll (Decided)
 
@@ -2121,7 +2161,7 @@ without its own.
    Assign roles today gets it too, so nothing changes until it's
    unticked. One PR, after §7.14's; `ROLES_PLAN.md` §6.14 says who
    answers.
-4. **How (planned for PR 439):** `employees.review_access`, Answer access
+4. **How (#439, merged on 27 November):** `employees.review_access`, Answer access
    reviews, code 95, in Employees beside Assign roles, for the whole
    company, with See employees.
    - It's asked where Assign roles was: the company's reviews, answering a
@@ -2761,3 +2801,20 @@ without its own.
   access reviews are next.
 - **2026-11-27:** §7.15: how access reviews get their own permission,
   `employees.review_access`, given to every role holding Assign roles.
+- **2026-11-27:** #439 merged (§7.15): access reviews are answered with
+  Answer access reviews, given by its migration to every role holding
+  Assign roles. Its migration in production is checked after the deploy.
+- **2026-11-27:** §7.12 decided: the percentages are of the month's pay
+  before them; a flat percentage each for now, brackets and the insured
+  wage later; the 25% limit on all debts a company setting, checked when
+  an advance is asked for and warned of on the Payroll page.
+- **2026-11-27:** §7.12, how payroll deductions are built: the company's
+  on a card of their own (9a, planned for PR 440), then each person's
+  (9b); brackets later; the 25% limit with salary advances. Whether a
+  final settlement takes them is open.
+- **2026-11-28:** §7.12, 9a: Codex's two findings on #440 fixed: the
+  deductions card keeps what's typed while a save is on its way, and takes
+  up a copy read again while nothing's typed.
+- **2026-11-28:** #439 in production: its migration is applied, and the 2
+  roles holding Assign roles hold Answer access reviews too. No error in
+  production after #437, #438 or #439.

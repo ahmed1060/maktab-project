@@ -152,7 +152,7 @@ describe("approving is its own act", () => {
         // attendance's last recompute (ATTENDANCE_PLAN.md §12.1): a draft
         // saved before the transaction could be out of date by the time it froze.
         const approve = service.slice(service.indexOf("static async approve"))
-        expect(approve).toContain("this.compute(companyId, year, month, tx, reaches)")
+        expect(approve).toContain("this.compute(companyId, year, month, tx, reaches, deductions)")
         expect(approve).toContain("this.writeDraft(tx, companyId, year, month, final, payrollDay)")
     })
 
@@ -195,7 +195,7 @@ describe("approving is its own act", () => {
         // Somebody on the payroll again since the register was first read is on
         // the one approved: their days are checked there, once it's built.
         const approve = service.slice(service.indexOf("static async approve"))
-        const final = approve.indexOf("const { register: final, payrollDay } = await this.compute(companyId, year, month, tx, reaches)")
+        const final = approve.indexOf("const { register: final, payrollDay } = await this.compute(companyId, year, month, tx, reaches, deductions)")
         const late = approve.indexOf("daysToSettle(tx, companyId, period, unchecked)")
         const written = approve.indexOf("this.writeDraft(tx, companyId, year, month, final, payrollDay)")
         expect(final).toBeGreaterThan(-1)

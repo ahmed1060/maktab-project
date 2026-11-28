@@ -6,6 +6,7 @@ import CompanyGeneralCard from '@/components/CompanyGeneralCard'
 import CompanyLogoCard from '@/components/CompanyLogoCard'
 import BrandColourCard from '@/components/BrandColourCard'
 import CompanyPayrollCard from '@/components/CompanyPayrollCard'
+import CompanyDeductionsCard from '@/components/CompanyDeductionsCard'
 import CompanyAttendanceCard from '@/components/CompanyAttendanceCard'
 import CompanyRolesCard from '@/components/CompanyRolesCard'
 import CompanyModulesCard from '@/components/CompanyModulesCard'
@@ -221,6 +222,7 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
                 )}
 
                 {tab === 'payroll' && (
+                    <>
                     <CompanyPayrollCard
                         companyId={companyId}
                         payrollDay={company.payrollDay}
@@ -235,6 +237,9 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
                         readOnly={readOnly}
                         debtRecoveryEditable={superAdmin}
                     />
+                    {/* Income tax, social insurance and its own (LATER_CHANGES_PLAN.md §7.12, PR 440). */}
+                    <CompanyDeductionsCard companyId={companyId} readOnly={readOnly} />
+                    </>
                 )}
 
                 {/* Schedules, seasonal hours, who works which, and holidays

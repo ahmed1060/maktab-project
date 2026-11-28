@@ -75,6 +75,10 @@ export const GET = withStandardHandler(async (req, session, _json, { params }) =
         lines: payslip.lines.map(l => ({
             kind: l.kind,
             label: l.label,
+            // Where it came from, so the page names Nizmo's own lines in its
+            // language (LATER_CHANGES_PLAN.md §7.12, PR 440).
+            source: l.source,
+            sourceId: l.sourceId,
             amount: Number(l.amount),
         })),
     })
