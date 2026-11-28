@@ -2454,7 +2454,7 @@ can only be archived.
    page's language. A task added at it while it's being deleted waits,
    then is told the location isn't there any more, never left without
    one. Each deletion is in the audit log, with the location as it was.
-5. One PR.
+5. One PR: #450.
 
 ## Not here
 
@@ -3254,3 +3254,12 @@ can only be archived.
   location no task has used, beside Archive or Restore, for whoever may
   archive locations; one a task has used is archived as before.
   `DESIGN.md` first, in its own commit.
+- **2026-11-28:** §7.21 built (#450): Delete in a location's row menu,
+  last, in the danger colour, beside Archive or Restore, for whoever may
+  archive locations, only where no task has used it, open or finished;
+  never a client's HQ. The lists say which locations a task has used. The
+  server holds the location's row while it checks again: a task added
+  meanwhile keeps it, refused in the page's language, and a task added or
+  moved to one being deleted waits and is told it isn't there. In the
+  audit log as "Deleted location", with the location as it was. 24
+  controls, each caught by a test.
