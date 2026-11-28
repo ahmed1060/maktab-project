@@ -2859,3 +2859,5 @@ list is for a Team Leader: My obligations, and their team's.
   has My obligations and My team's obligations, as Tasks has. Production
   is checked after the deploy. Next for the owner to pick: 9b, each
   person's deductions, or another point.
+- **2026-11-28:** #441 in production: the deploy is live on it and CI on
+  main passed. It has no migration. No error in production since.
