@@ -2245,7 +2245,7 @@ isn't, rather than My team's tasks.
 3. **Who:** only the team's scope of See tasks is looked up for. A tab
    asked for in the address is kept. An employee's, an Admin's and the
    Super Admin's lists are as they are.
-4. One PR, after #442.
+4. One PR, after #442: #443, merged on 28 November.
 
 ## Not here
 
@@ -2925,3 +2925,7 @@ isn't, rather than My team's tasks.
   main passed. Its migration is applied (the last one applied),
   `PersonDeduction` has RLS on and holds no rows, and `PayrollRun` has
   its new column. No error in production since.
+- **2026-11-28:** #443 merged (§7.17): a Team Leader's notice about a
+  team member's task opens My team's tasks, with it picked out, as
+  Obligations' do. Production is checked after the deploy. Next in the
+  order (§7.8, step 9): salary advances (§7.5), Custody's new name first.
