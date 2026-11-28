@@ -183,7 +183,7 @@ describe("the words", () => {
             expect((en as Record<string, string>)[key], key).toBeTruthy()
             expect((ar as Record<string, string>)[key], key).toBeTruthy()
         }
-        expect(en.end_contract_advance_stays).toBe("They still hold {amount} of a cash advance. It stays on the Cash advances tab until its return is recorded.")
+        expect(en.end_contract_advance_stays).toBe("They still hold {amount} of custody. It stays on the Custody tab until its return is recorded.")
         expect(ar.end_contract_advance_stays).toContain("{amount}")
         // The tab, by the name it has there.
         expect(en.end_contract_advance_stays).toContain(en.costs_tab_advances)
