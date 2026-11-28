@@ -2649,8 +2649,8 @@ These are built once, in the building-blocks PR, and every page uses them
   changed to whoever may only see them, as the two above it are.
   - Its note says what it's for: the rules a salary advance follows,
     money lent ahead of the salary and paid back from payslips with no
-    interest. Until they can be asked for, it says employees can't ask
-    for one yet.
+    interest. It says employees ask for one on the Requests page, and,
+    until they can be approved, that they can't be approved yet.
   - **Most one may ask for,** in months of their salary: 2 unless
     changed, from 0.5 to 12 with up to two decimals. Beside it, **Months
     worked first,** counted from their contract's start: 3 unless
@@ -2684,6 +2684,81 @@ These are built once, in the building-blocks PR, and every page uses them
   - A change reaches the salary advances asked for after it. Each save is
     in the audit log, on the company, with what each changed setting was
     and is.
+- **Asking for a salary advance** (`LATER_CHANGES_PLAN.md` §7.5, step
+  3a): Salary advance in New request on the Requests page, for whoever
+  has a monthly salary in a company with Payroll and isn't an owner, as
+  an owner has no payslips to pay it back from. The Super Admin asks for
+  none.
+  - **Net pay,** which the limits are measured against, is their monthly
+    salary less the payroll deductions, their own where they have them:
+    known before the month's attendance, and the same each month. Their
+    other debts are what's still owed on their debts, as much of it as a
+    month's payslip takes back by Payroll settings' share taken for
+    debts, with the installments of their other salary advances still
+    open.
+  - **Where one can't be asked for,** the dialog says why in place of the
+    form, with Close alone:
+    - before the months worked first are up: "Salary advances can be
+      asked for 3 months after your contract starts: from 15 February
+      2027.";
+    - with only one at a time, while another is open: "Only one salary
+      advance can be open at a time, and yours is still waiting.";
+    - with no monthly salary: "A salary advance is measured against your
+      monthly salary, which isn't set yet.";
+    - where the payroll deductions leave no net pay: "Nothing is left of
+      your monthly salary after the payroll deductions, so a salary
+      advance can't be asked for.";
+    - with Block, where their other debts already take what all debts
+      together may: "Your other debts already take 25% of your net pay,
+      the most all debts together may take, so a salary advance can't be
+      asked for now."
+  - **Amount (EGP),** with its hint the most they may ask for: "Up to
+    20,000.00 EGP, 2 months' salary." More is said under it, as the hint
+    is, in the error colour. Above 0, with up to two decimals.
+  - **Months to pay it back,** 1 to 24, a number. Its hint, while an
+    installment's limit decides the least: "From 5 to 24, as an
+    installment may be up to 1,800.00 EGP: 10% of your net pay." Where
+    their other debts leave less, it says so: "…up to 1,200.00 EGP: with
+    your other debts, 25% of your net pay."
+    - **With Block,** fewer months are said under it, in those words. An
+      amount that 24 months can't pay back within the limits is said
+      under the amount: "Over 24 months, up to 43,200.00 EGP can be paid
+      back within the limits."
+    - **With Warn,** fewer months may be sent, and the hint says which
+      limit each installment is over: "Each installment is over 10% of
+      your net pay, 1,800.00 EGP. It can still be sent, and whoever
+      approves it sees so."
+  - **First installment,** a choice of two (§5.3): this month's payroll
+    or next month's, by when payroll closes, each by its month: "November
+    2026 payroll", "December 2026 payroll", next month's unless changed.
+    Where this month's payroll is approved, there's no choice, and a line
+    in its place says so: "First installment: December 2026 payroll, as
+    November's is approved."
+  - **Installments:** once the amount and months are right, one line for
+    each, its payroll month and amount: "November 2026 payroll: 1,666.66
+    EGP". Each is the amount over the months, down to the piastre, and
+    the last takes the rounding.
+  - **The consent,** above the buttons, which the law asks for in
+    writing: "By sending this, you agree to having each installment above
+    taken from your payslip for its month, until the 10,000.00 EGP is
+    repaid." The main button says Agree and send. What it said is kept
+    with the request, with the date and time it was sent.
+  - What's typed wrong is said under its field before anything is sent,
+    and the first such field is focused. The server checks it all again,
+    by the same rules, and two sent at once by the same person aren't
+    both kept where only one may be open. Refused as something changed
+    meanwhile (the rules, another advance, or this month's payroll
+    approved), it says why above the buttons, and the dialog reads what
+    may be asked for again, keeping what's typed.
+  - **On the Requests page:** Salary advances in its kinds. A row is
+    titled Salary advance, with under it the amount, the months and the
+    first installment: "10,000.00 EGP over 6 months, from November 2026
+    payroll". Opened, its details: the amount, the months, the first
+    installment, each installment and the last, when it was agreed to,
+    and, sent over a limit, which. Whoever asked may withdraw it while it
+    waits, asked first, as permission hours are.
+  - Until they can be approved, To review has none. Asking and
+    withdrawing are in the audit log, on the request.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
@@ -3944,3 +4019,7 @@ changed:
   after are the policy's in force on that day, as asking reads them, and
   the calendar stops at the first day too late; a mission's days are read
   again under its months' locks (Codex's review of #448).
+- **2026-11-28:** Asking for a salary advance (§5.5): Salary advance in
+  New request on the Requests page, with its limits measured against the
+  net pay, each month's installment, and the consent the law asks for
+  (`LATER_CHANGES_PLAN.md` §7.5, step 3a).
