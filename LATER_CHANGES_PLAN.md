@@ -2310,6 +2310,29 @@ everywhere it's shown, not only there.
    and each change in the audit log.
 4. One PR, before salary advances' step 3: #446.
 
+### 7.19 A company's first policy and schedule from the month's first day (Decided)
+
+On 2026-11-28 the owner showed the Attendance page's days of 1 to 19
+November reading No schedule, and "no policy yet, measured only". The
+company had set up its attendance policy and both schedules on 20
+November, from that day, while its people's schedules were from 1
+November. So until the 20th there were no hours to measure against, and
+the days from the 20th were measured as they should be.
+
+1. **That company:** the owner chose to measure and charge 1 to 19
+   November too. With the owner's go-ahead, the policy, both schedules'
+   hours and the default schedule were moved on production from 20 to 1
+   November, four dates and nothing else. The owner recalculates
+   November's attendance, then its payroll draft. The app couldn't do it:
+   Make default isn't offered for the schedule that's already the
+   default.
+2. **From now on:** a company's first policy and its first schedule
+   suggest the first day of the month payroll hasn't closed yet, not
+   today, so setting up mid-month measures the whole month. It can still
+   be changed in the dialog. Later changes keep suggesting the first of
+   next month, as now.
+3. One PR, after #446.
+
 ## Not here
 
 - The client portal's later ideas stay in `CLIENT_PORTAL_PLAN.md` §13.
@@ -3022,3 +3045,9 @@ everywhere it's shown, not only there.
   salary_advance_policy migration finished: both companies have the six
   columns on their defaults, with the database's range check. #446 (§7.18)
   is open.
+- **2026-11-28:** The owner showed 1 to 19 November reading No schedule on
+  the Attendance page: the company's policy and schedules started on 20
+  November. At the owner's choice (§7.19), the four start dates were moved
+  to 1 November on production, and the owner recalculates November. A
+  company's first policy and first schedule will suggest the month's
+  first day, in a PR after #446.
