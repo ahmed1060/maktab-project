@@ -629,6 +629,9 @@ These are built once, in the building-blocks PR, and every page uses them
   from, is a set of radio buttons under a visible group label, each 36px
   tall (44px on phones). An option that can't be picked says why beside
   the group.
+  - A line under the group may say what the option picked does, such as
+    Salary advances' Over a limit. It's read with the group by screen
+    readers, as a field's hint is read with its field.
   - An option that isn't this company's to pick at all, such as a way of
     connecting a terminal that the Super Admin hasn't turned on for it
     (`ATTENDANCE_PLAN.md` §17.8), isn't listed.
@@ -3855,3 +3858,5 @@ changed:
 - **2026-11-28:** Salary advances (§5.5): a card of its own on Company
   Settings' Payroll tab, under Payroll deductions, for the rules a salary
   advance follows (`LATER_CHANGES_PLAN.md` §7.5, step 2).
+- **2026-11-28:** A choice between a few options (§5.3) may have a line
+  under it saying what the option picked does, read with the group.
