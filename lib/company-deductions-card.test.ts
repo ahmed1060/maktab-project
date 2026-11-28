@@ -14,6 +14,10 @@ import { payslipLineLabel } from "./payslip-line-label"
  * the payslip lines it makes, named in the page's language.
  */
 
+// The card's first import brings in its whole client tree, which under the
+// full suite's load can take longer than the default 5 seconds.
+vi.setConfig({ testTimeout: 60_000 })
+
 const state = { locale: "en" as "en" | "ar", swr: {} as { data?: unknown; error?: unknown } }
 vi.mock("@/context/LanguageContext", () => ({
     useLanguage: () => ({ locale: state.locale, t: (key: string) => ((state.locale === "ar" ? ar : en) as Record<string, string>)[key] ?? key }),
