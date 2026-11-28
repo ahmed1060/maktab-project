@@ -2340,6 +2340,35 @@ the days from the 20th were measured as they should be.
      the default starts on the month's first day too.
 3. One PR, after #446: #447.
 
+### 7.20 Permission hours' calendar offers only what may be asked for (Decided)
+
+The owner, 28 November: "We agreed before that we can make a request
+since the first day of the payroll and now I can select a past date but
+when I continue I get a block so make a full check on it."
+
+- **What was found** (read-only, on the live database and its logs): the
+  live company's attendance policy was saved before 4b's choice existed,
+  so it read as before, or up to 24 hours after. Its calendar offered
+  every day, and asking for a day more than 24 hours back was refused as
+  too late (`PERMISSION_TOO_LATE`, three times in the hour before). Day
+  off, missions and missing punches offer what they accept.
+- **The live policy:** at the owner's choice (28 November), its version
+  from 1 November was set to any day directly in the live database, so
+  permission hours may be asked for within day off's days. It has no line
+  in the audit log or the policy's history, the owner's choice too.
+- **The calendar** (`DESIGN.md` §5.5, Asking for permission hours), so
+  nothing it offers is refused for its day:
+  1. Before, or up to some hours after: the days from the date those
+     hours reach back to (today, with none), or the day before where its
+     shift ends after midnight, with no last day, and from the first day
+     not in a month whose payroll is approved. The hint says how long
+     after; hours ended longer ago are refused under To, in those words.
+  2. Any day: no earlier than the company's first attendance policy, as
+     there are no permission hours before it.
+  3. On Attendance, a day's Ask for permission only on a day the
+     calendar offers.
+- One PR, before salary advances' step 3a: #448. Step 3a becomes #449.
+
 ## Not here
 
 - The client portal's later ideas stay in `CLIENT_PORTAL_PLAN.md` §13.
@@ -3074,3 +3103,7 @@ the days from the 20th were measured as they should be.
   schedule start on the payroll month's first day unless changed.
   Production is checked after the deploy. Salary advances' step 3a is
   next.
+- **2026-11-28:** §7.20 decided: permission hours' calendar offers only
+  what may be asked for. The live company's policy was set to any day,
+  at the owner's choice. Salary advances' step 3a is set aside until
+  #448 is merged, and becomes #449.
