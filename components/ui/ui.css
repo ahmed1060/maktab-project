@@ -4549,6 +4549,21 @@ a.ui-row:focus-visible {
 .ui-deductions-loading {
   min-block-size: calc(var(--leading-sm) + var(--space-2) + 36px);
 }
+/* A person's payroll deductions (DESIGN.md §5.5, PR 442): one block
+   each under a rule, its choice of three, then their own figure's field
+   under it, as wide as a figure needs. */
+.ui-person-deduction {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ui-person-deduction + .ui-person-deduction {
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--rule);
+}
+.ui-person-deduction > .ui-person-deduction-value {
+  max-inline-size: 240px;
+}
 /* A cost's name, its amount and Add on a line, the name taking what's
    left; on a phone the name takes the line, its suggestions needing it.
    Level at their tops: an error under the name pushed the others down. */

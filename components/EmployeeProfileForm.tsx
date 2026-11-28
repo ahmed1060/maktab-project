@@ -23,6 +23,7 @@ import { ProfileForm, type ProfileValues } from '@/components/profile/ProfileFor
 import { RoleFields, type WaitingRole } from '@/components/profile/RoleFields'
 import { RoleRequestDialog, type AskRefusal } from '@/components/profile/RoleRequestDialog'
 import { WhatsAppCard } from '@/components/profile/WhatsAppCard'
+import PersonDeductionsCard from '@/components/profile/PersonDeductionsCard'
 import { EndContractDialog } from './profile/EndContractDialog'
 import { ContractStartDialog } from './profile/ContractStartDialog'
 import { OwnerDialog } from './profile/OwnerDialog'
@@ -750,6 +751,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     // may ask.
                     roleAsk={access.changeRole === 'ask' ? { waiting: waitingRole, blocked: askedElsewhere, onAsk: () => setAsking(true) } : undefined}
                 />
+                {/* What's taken from their pay, wherever their salary is shown
+                    (LATER_CHANGES_PLAN.md §7.12, step 9b, PR 442). */}
+                {access.salary && <PersonDeductionsCard userId={userId} own={own} change={false} />}
                 {asking && (
                     <RoleRequestDialog
                         name={name}
@@ -867,6 +871,9 @@ export default function EmployeeProfileForm({ userId, isViewMode = false }: Empl
                     cancelHref={`/dashboard/employees/${userId}?mode=view`}
                 />
             </Card>
+            {/* What's taken from their pay, changed by whoever may change their
+                salary and saved on its own (§7.12, step 9b, PR 442). */}
+            {access.salary && <PersonDeductionsCard userId={userId} own={own} change={access.changeSalary} />}
             {/* Their WhatsApp number, for their clients, saved on its own
                 (CLIENT_PORTAL_PLAN.md §7, PR 340). */}
             {access.whatsapp && <WhatsAppCard userId={userId} saved={whatsappNumber} clients={accountantFor} />}
