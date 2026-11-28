@@ -23,9 +23,15 @@ type Errors = Partial<Record<HoursField | 'name' | 'from' | 'startDate' | 'endDa
  * On the building blocks (UI_PLAN.md §5 step 5, company settings part 3a):
  * the building blocks' dialog and fields, each error under its field.
  */
-export default function HoursDialog({ editing, today, companyWorkWeeks, weekdayName, busy, onClose, onSubmit }: {
+export default function HoursDialog({ editing, today, firstFrom, companyWorkWeeks, weekdayName, busy, onClose, onSubmit }: {
     editing: Editing
     today: string
+    /**
+     * Where the company's first schedule starts unless changed: the first
+     * day of the payroll month today is in (LATER_CHANGES_PLAN.md §7.19).
+     * Given only while it has no default schedule, as the first becomes it.
+     */
+    firstFrom?: string
     companyWorkWeeks: { effectiveFrom: string; workWeek: number[] }[]
     weekdayName: (d: number) => string
     busy: boolean
@@ -43,7 +49,8 @@ export default function HoursDialog({ editing, today, companyWorkWeeks, weekdayN
     const [name, setName] = useState(editing.kind === 'override' ? editing.override?.name ?? '' : '')
     const [form, setForm] = useState<HoursForm>(formFromVersion(base))
     // "From when?" (§6.1): the next payroll month unless they say otherwise.
-    const [from, setFrom] = useState(editing.kind === 'schedule' ? today : firstOfNextMonth(today))
+    // A company's first schedule, from its payroll month's first day, so the whole month is measured (§7.19).
+    const [from, setFrom] = useState(editing.kind === 'schedule' ? firstFrom ?? today : firstOfNextMonth(today))
     // A change of hours follows the version in force on its date as the date
     // moves; edited, it says the date has another (review on #64).
     const [formBase, setFormBase] = useState<HoursForm>(formFromVersion(base))

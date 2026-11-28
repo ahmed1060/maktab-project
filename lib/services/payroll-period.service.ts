@@ -75,6 +75,23 @@ export class PayrollPeriodService {
         return periodBetween(closes.get(keyOf(before))!, closes.get(monthKeyOf(year, month))!)
     }
 
+    /**
+     * The first day of the payroll month a date is in, by the period, or of
+     * the month after where that month's payroll is approved or paid: where
+     * a company's first policy and first schedule start unless changed
+     * (LATER_CHANGES_PLAN.md §7.19).
+     */
+    static async openMonthStart(db: Db, companyId: string, date: string): Promise<string> {
+        const key = (await this.payrollMonthsOf(db, companyId, [date])).get(date)!
+        let month = monthOfDate(`${key}-01`)
+        const approved = await db.payrollRun.findFirst({
+            where: { companyId, year: month.year, month: month.month, status: { in: ["APPROVED", "PAID"] } },
+            select: { id: true },
+        })
+        if (approved) month = nextMonth(month.year, month.month)
+        return (await this.periodOf(db, companyId, month.year, month.month)).from
+    }
+
     /** The payroll month each date belongs to ('YYYY-MM'). */
     static async payrollMonthsOf(db: Db, companyId: string, dates: readonly string[]): Promise<Map<string, string>> {
         const closes = await this.closes(db, companyId, dates.map(monthOfDate))

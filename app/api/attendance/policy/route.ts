@@ -19,7 +19,9 @@ export const GET = withStandardHandler(async (req, session) => {
         AttendancePolicyService.templates(),
         AttendanceCalendarService.today(companyId!),
     ])
-    return ApiResponse.success({ versions, templates, today, canEdit: can(session.user, "settings.edit", { companyId: companyId! }) })
+    // Where the company's first policy starts unless changed (LATER_CHANGES_PLAN.md §7.19).
+    const monthStart = await AttendanceCalendarService.monthStart(companyId!, today)
+    return ApiResponse.success({ versions, templates, today, monthStart, canEdit: can(session.user, "settings.edit", { companyId: companyId! }) })
 })
 
 const saveSchema = z.object({

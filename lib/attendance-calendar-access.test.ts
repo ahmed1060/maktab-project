@@ -27,6 +27,8 @@ const reached: string[] = []
 vi.mock("@/lib/services/attendance-calendar.service", () => ({
     AttendanceCalendarService: {
         today: async () => "2026-10-01",
+        // Where a company's first policy starts unless changed (LATER_CHANGES_PLAN.md §7.19, PR 447).
+        monthStart: async () => "2026-10-01",
         calendar: async (companyId: string) => { reached.push(`calendar:${companyId}`); return { schedules: [] } },
         createSchedule: async (companyId: string) => { reached.push(`createSchedule:${companyId}`); return { id: "s-new" } },
         scheduleOf: async (id: string) => id === "s1" ? { id: "s1", companyId: "c1" } : id === "s2" ? { id: "s2", companyId: "c2" } : null,

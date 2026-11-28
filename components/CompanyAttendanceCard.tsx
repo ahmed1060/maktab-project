@@ -149,6 +149,7 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false, ter
                 <HoursDialog
                     editing={editing}
                     today={data.today}
+                    firstFrom={data.defaults.length === 0 ? data.monthStart : undefined}
                     companyWorkWeeks={data.companyWorkWeeks}
                     weekdayName={weekdayName}
                     busy={busy}
