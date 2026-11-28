@@ -2307,6 +2307,18 @@ These are built once, in the building-blocks PR, and every page uses them
     - the check-in page's late arrival offers Ask for permission without
       what's left.
   - Each change is in the audit log, on the company.
+- **From when, for the policy and the schedules**
+  (`LATER_CHANGES_PLAN.md` §7.19): the date the attendance policy, or a
+  schedule's hours, starts from, asked as From when? in their dialogs.
+  - A company's first policy and its first schedule start, unless
+    changed, on the first day of the payroll month today is in, by when
+    payroll closes, so a company setting up in the middle of a month has
+    the whole month measured. Where that month's payroll is already
+    approved, they start on the next month's first day.
+  - Later, as now: a change to the policy or to a schedule's hours starts
+    on the first of next month, and another new schedule today.
+  - Each can still be changed in the dialog, and a date in a month whose
+    payroll is approved is still refused, with why.
 - **Payday and when payroll closes** (`LATER_CHANGES_PLAN.md` §7.10): two
   settings at the top of the Payroll settings card, as one decides the
   other, before the time zone.
