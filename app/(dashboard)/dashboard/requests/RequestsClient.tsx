@@ -2,7 +2,7 @@
 import { useEffect, useId, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSWRConfig } from 'swr'
-import { ArrowUUpLeftIcon, CalendarBlankIcon, CalendarIcon, CheckIcon, CircleHalfIcon, ClockIcon, DeviceMobileIcon, EyeIcon, IdentificationCardIcon, MapPinIcon, PlayIcon, PlusIcon, ProhibitIcon, ShapesIcon, ShieldCheckIcon, TrashIcon, TrayIcon, UserFocusIcon, UserIcon, XIcon } from '@phosphor-icons/react/ssr'
+import { ArrowUUpLeftIcon, CalendarBlankIcon, CalendarIcon, CheckIcon, CircleHalfIcon, ClockIcon, CoinsIcon, DeviceMobileIcon, EyeIcon, IdentificationCardIcon, MapPinIcon, PlayIcon, PlusIcon, ProhibitIcon, ShapesIcon, ShieldCheckIcon, TrashIcon, TrayIcon, UserFocusIcon, UserIcon, XIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { useToast } from '@/context/ToastContext'
 import { useCompany } from '@/context/CompanyContext'
@@ -31,6 +31,9 @@ import {
     Row, Rows, RowMenu, SearchInput, Section, Select, StatusBadge, TabLinks, TextArea, TextInput, visibleRow, type Column, type StatusTone,
 } from '@/components/ui'
 import { AskDayOff, DecideDayOff } from './DayOffDialogs'
+import { AskSalaryAdvance } from './SalaryAdvanceDialog'
+import { advanceLine, payrollMonthName } from '@/lib/salary-advance-words'
+import { largestInstallment, moneyText } from '@/lib/salary-advance'
 import type { DayOffDays } from '@/lib/day-off-window'
 import {
     AskMission, AskPermission, CancelMission, MISSION_KIND_LABEL, PERMISSION_TYPE_LABEL, RejectRequest, ReportMissingPunch, RevokePhone, WithdrawAttendance, clockText, decideRequest, permissionDay, punchDay, punchTime,
@@ -79,6 +82,8 @@ const KIND_LABEL: Record<RequestKind, TranslationKey> = {
     flagged: 'requests_kind_flagged',
     nameChange: 'requests_kind_name_change',
     role: 'requests_kind_role',
+    // LATER_CHANGES_PLAN.md §7.5, step 3a, PR 449.
+    salaryAdvance: 'requests_kind_salary_advance',
 }
 
 /** A missing punch's name: which punch, if they said (§2.3, part 3b). */
@@ -123,10 +128,12 @@ interface RequestsClientProps {
     mayAskMission?: boolean
     /** The days a mission may be asked for, by today's policy (LATER_CHANGES_PLAN.md §7.4, 4c); null where none may be. */
     missionDays?: DayOffDays | null
+    /** Whether they may ask for a salary advance: theirs, in a company with Payroll, not an owner (LATER_CHANGES_PLAN.md §7.5, step 3a). */
+    mayAskAdvance?: boolean
 }
 
 export default function RequestsClient({
-    rows, total, page, totalPages, kinds, tabs, tab, show, superAdmin, dayOffAsk = null, credit = null, mayAskAttendance = false, attendanceToday = null, allowance = null, mayAskMission = false, missionDays = null,
+    rows, total, page, totalPages, kinds, tabs, tab, show, superAdmin, dayOffAsk = null, credit = null, mayAskAttendance = false, attendanceToday = null, allowance = null, mayAskMission = false, missionDays = null, mayAskAdvance = false,
 }: RequestsClientProps) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
@@ -259,6 +266,8 @@ export default function RequestsClient({
                         : r.kind === 'flagged' ? why(r)
                             // A role request by the role, a built-in one in their language.
                             : r.role ? roleLabel(r.role.to, t)
+                                // A salary advance by its kind (PR 449).
+                                : r.salaryAdvance ? kindName('salaryAdvance')
                                 // A name change by the name it's for, which is its what.
                                 : r.what
     // A name change's names in both languages, the page's first, one under
@@ -334,6 +343,22 @@ export default function RequestsClient({
         t('requests_role_for').replace('{name}', isolated(named(locale, r.role!.person))!),
         r.role!.actingUntil ? `${t('requests_role_acting_label')} ${day(r.role!.actingUntil)}` : null,
     ].filter(Boolean).join(sep)
+    // A salary advance: the amount, the months, the first installment, each and the last, when it was agreed to, and over which limit (PR 449).
+    const advanceDetails = (a: NonNullable<FeedRow['salaryAdvance']>) => {
+        const last = largestInstallment(a.amountMinor, a.months)
+        const each = a.months > 1 ? Math.floor(a.amountMinor / a.months) : last
+        const egp = (minor: number) => `${moneyText(minor, locale)} ${t('egp')}`
+        const over = [a.overInstallment ? t('salary_advance_over_installment_short') : null, a.overDebts ? t('salary_advance_over_debts_short') : null].filter(Boolean)
+        return [
+            { label: t('salary_advance_detail_amount'), value: egp(a.amountMinor) },
+            { label: t('salary_advance_detail_months'), value: countOf(t, locale, a.months, 'months') },
+            { label: t('salary_advance_first_label'), value: t('salary_advance_month_payroll').replace('{month}', payrollMonthName(locale, a.first)) },
+            { label: t('salary_advance_detail_each'), value: egp(each) },
+            ...(last !== each ? [{ label: t('salary_advance_detail_last'), value: egp(last) }] : []),
+            { label: t('salary_advance_detail_agreed'), value: <SafeDate date={a.consentedAt} locale={locale} /> },
+            ...(over.length ? [{ label: t('salary_advance_detail_over'), value: over.join(locale === 'ar' ? '، ' : ', ') }] : []),
+        ]
+    }
     const direction = (r: FeedRow) => t(r.missingPunch?.direction === 'IN' ? 'punch_in' : r.missingPunch?.direction === 'OUT' ? 'punch_out' : 'punch_direction_unknown')
     // What came of a day off: the days taken and from what, or why it was refused;
     // and why permission hours were.
@@ -351,9 +376,10 @@ export default function RequestsClient({
     const when = (r: FeedRow) => r.dayOff ? leaveWhen(r) : r.permission ? permissionWhen(r) : r.mission ? missionDates(r) : r.missingPunch ? punchWhen(r) : r.overtime ? overtimeWhen(r)
         : r.phone ? phoneWhen(r) || null : r.flagged ? flaggedWhen(r) || null
             : r.nameChange ? t('requests_name_change_from').replace('{name}', r.nameChange.from)
-                : r.role ? roleWhen(r) : null
+                : r.role ? roleWhen(r) : r.salaryAdvance ? advanceLine(t, locale, r.salaryAdvance) : null
+    // A salary advance's name is its kind already.
     const detail = (r: FeedRow) => {
-        const parts = [kinds.length > 1 ? kindLabel(r) : null, when(r)].filter(Boolean)
+        const parts = [kinds.length > 1 && !r.salaryAdvance ? kindLabel(r) : null, when(r)].filter(Boolean)
         return parts.length ? <span>{parts.join(sep)}</span> : undefined
     }
     const badge = (r: FeedRow) => {
@@ -508,7 +534,7 @@ export default function RequestsClient({
                         title={title(r)}
                         status={badge(r)}
                         details={[
-                            ...(kinds.length > 1 ? [{ icon: ShapesIcon, text: kindLabel(r) }] : []),
+                            ...(kinds.length > 1 && !r.salaryAdvance ? [{ icon: ShapesIcon, text: kindLabel(r) }] : []),
                             ...(r.dayOff ? [{ icon: CalendarBlankIcon, text: <span>{leaveWhen(r)}</span> }] : []),
                             ...(r.permission ? [{ icon: ClockIcon, text: <span>{permissionWhen(r)}</span> }] : []),
                             ...(r.mission ? [{ icon: CalendarBlankIcon, text: <span>{missionDates(r)}</span> }] : []),
@@ -518,6 +544,7 @@ export default function RequestsClient({
                             ...(r.flagged && flaggedWhen(r) ? [{ icon: MapPinIcon, text: <span>{flaggedWhen(r)}</span> }] : []),
                             ...(r.nameChange ? [{ icon: IdentificationCardIcon, text: <bdi>{t('requests_name_change_from').replace('{name}', r.nameChange.from)}</bdi> }] : []),
                             ...(r.role ? [{ icon: ShieldCheckIcon, text: <span>{roleWhen(r)}</span> }] : []),
+                            ...(r.salaryAdvance ? [{ icon: CoinsIcon, text: <span>{advanceLine(t, locale, r.salaryAdvance)}</span> }] : []),
                             ...(review ? [{ icon: UserIcon, text: <bdi>{named(locale, r.who)}</bdi> }] : []),
                             { icon: CalendarIcon, text: asked(r) },
                         ]}
@@ -583,6 +610,7 @@ export default function RequestsClient({
                                 ...(viewing.role.actingUntil ? [{ label: t('requests_role_acting_label'), value: day(viewing.role.actingUntil) }] : []),
                                 ...(viewing.role.decidedBy ? [{ label: t('requests_role_decided_by_label'), value: <bdi>{viewing.role.decidedBy}</bdi> }] : []),
                             ] : []),
+                            ...(viewing.salaryAdvance ? advanceDetails(viewing.salaryAdvance) : []),
                             ...(viewing.flagged ? [
                                 { label: t('date_label'), value: punchDay(viewing.flagged.at, locale) },
                                 { label: t('punch_time'), value: punchTime(viewing.flagged.at, locale) },
@@ -636,6 +664,7 @@ export default function RequestsClient({
                         title={t(withdrawing.overtime ? 'requests_overtime_withdraw_title' : 'requests_withdraw_title')}
                         hint={t(withdrawing.missingPunch ? 'requests_missing_withdraw_hint' : withdrawing.overtime ? 'requests_overtime_withdraw_hint'
                             : withdrawing.role ? 'requests_role_withdraw_hint'
+                                : withdrawing.salaryAdvance ? 'salary_advance_withdraw_hint'
                                 : withdrawing.mission ? 'requests_mission_withdraw_hint' : 'req_withdraw_hint')}
                         onClose={() => setWithdrawing(null)} onWithdrawn={() => { setWithdrawing(null); setViewing(null); refreshed() }} />
                 )}
@@ -651,7 +680,7 @@ export default function RequestsClient({
                         onClose={() => setCancelling(null)} onCancelled={() => { setCancelling(null); setViewing(null); refreshed() }} />
                 )}
 
-                <NewRequest open={asking} dayOffAsk={dayOffAsk} today={mayAskAttendance ? attendanceToday : null} mayAskMission={mayAskMission} missionDays={missionDays} onClose={() => setAsking(false)} onAsked={() => {
+                <NewRequest open={asking} dayOffAsk={dayOffAsk} today={mayAskAttendance ? attendanceToday : null} mayAskMission={mayAskMission} missionDays={missionDays} mayAskAdvance={mayAskAdvance} onClose={() => setAsking(false)} onAsked={() => {
                     setAsking(false)
                     // Theirs, waiting: where it now is.
                     if (tab === 'mine' && show === 'waiting') refreshed()
@@ -669,7 +698,7 @@ export default function RequestsClient({
  * own (part 3); or a mission, while their policy has missions on
  * (ATTENDANCE_PLAN.md §6.10, PR 283).
  */
-function NewRequest({ open, dayOffAsk, today, mayAskMission, missionDays, onClose, onAsked }: {
+function NewRequest({ open, dayOffAsk, today, mayAskMission, missionDays, mayAskAdvance, onClose, onAsked }: {
     open: boolean
     /** For whoever may ask for leave: the days it may be asked for, and their balance. */
     dayOffAsk: { days: DayOffDays; balance: number } | null
@@ -678,13 +707,15 @@ function NewRequest({ open, dayOffAsk, today, mayAskMission, missionDays, onClos
     missionDays: DayOffDays | null
     /** The company's day, for whoever has attendance of their own; null for whoever hasn't. */
     today: string | null
+    /** Whether they may ask for a salary advance (LATER_CHANGES_PLAN.md §7.5, step 3a). */
+    mayAskAdvance: boolean
     onClose: () => void
     onAsked: () => void
 }) {
     const { t } = useLanguage()
     const [what, setWhat] = useState<RequestKind>('internal')
     const offered = REQUEST_KINDS.filter(k => k === 'internal' || (k === 'dayOff' && !!dayOffAsk) || ((k === 'permission' || k === 'missingPunch') && today !== null)
-        || (k === 'mission' && mayAskMission && today !== null && missionDays !== null))
+        || (k === 'mission' && mayAskMission && today !== null && missionDays !== null) || (k === 'salaryAdvance' && mayAskAdvance))
     const close = () => {
         setWhat('internal')
         onClose()
@@ -707,6 +738,8 @@ function NewRequest({ open, dayOffAsk, today, mayAskMission, missionDays, onClos
                         ? <AskMission today={today} days={missionDays} onCancel={close} onAsked={asked} />
                     : what === 'missingPunch' && today
                         ? <ReportMissingPunch today={today} onCancel={close} onReported={asked} />
+                    : what === 'salaryAdvance' && mayAskAdvance
+                        ? <AskSalaryAdvance onCancel={close} onAsked={asked} />
                         : <AskInternal onCancel={close} onAsked={onAsked} />}
         </Dialog>
     )

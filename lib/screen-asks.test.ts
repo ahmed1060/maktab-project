@@ -283,6 +283,10 @@ const SCREENS: Record<string, Screen> = {
             "DELETE /api/attendance/missions/[x]": ANYONE,
             "POST /api/attendance/missing-punches": ANYONE,
             "DELETE /api/attendance/missing-punches/[x]": ANYONE,
+            // A salary advance: what may be asked for, asking, and withdrawing one's own (LATER_CHANGES_PLAN.md §7.5, step 3a, PR 449).
+            "GET /api/salary-advances": ANYONE,
+            "POST /api/salary-advances": ANYONE,
+            "DELETE /api/salary-advances/[x]": ANYONE,
             "POST /api/day-off-requests": when("dayoff.request", "const mayAskDayOff = !owner && sessionHasModule({ user: viewer }, 'DAY_OFF') && can(viewer, 'dayoff.request')"),
             // A role asked for, withdrawn by whoever asked, decided by whoever gives roles.
             "PUT /api/role-requests/[x]": { when: ["employees.assign_role", "employees.request_role"], routeChecks: "lib/services/role-request.service.ts",
@@ -520,6 +524,7 @@ const SCREENS: Record<string, Screen> = {
             "DELETE /api/attendance/overtime/[x]": ASKING_DIALOGS,
             "DELETE /api/attendance/phones/[x]": ASKING_DIALOGS,
             "DELETE /api/attendance/flagged/[x]": ASKING_DIALOGS,
+            "DELETE /api/salary-advances/[x]": ASKING_DIALOGS,
             "POST /api/attendance/permissions/[x]/decide": ASKING_DIALOGS,
             "POST /api/attendance/missions/[x]/decide": ASKING_DIALOGS,
             "POST /api/attendance/missions/[x]/cancel": ASKING_DIALOGS,
@@ -588,6 +593,7 @@ const SCREENS: Record<string, Screen> = {
             "DELETE /api/attendance/overtime/[x]": ASKING_DIALOGS,
             "DELETE /api/attendance/phones/[x]": ASKING_DIALOGS,
             "DELETE /api/attendance/flagged/[x]": ASKING_DIALOGS,
+            "DELETE /api/salary-advances/[x]": ASKING_DIALOGS,
             "POST /api/attendance/permissions/[x]/decide": ASKING_DIALOGS,
             "POST /api/attendance/missions/[x]/decide": ASKING_DIALOGS,
             "POST /api/attendance/missions/[x]/cancel": ASKING_DIALOGS,
