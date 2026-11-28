@@ -2851,3 +2851,7 @@ list is for a Team Leader: My obligations, and their team's.
 - **2026-11-28:** §7.16, a Team Leader's obligations: My obligations and
   My team's obligations, two tabs on the Obligations list as Tasks has,
   in a PR after #440.
+- **2026-11-28:** #440 in production: its migration is applied (the last
+  one applied), `PayrollDeduction` has RLS on and holds no rows, as no
+  company has set a deduction yet, and `PayrollRun` has its new column.
+  No error in production since.
