@@ -2176,6 +2176,31 @@ without its own.
    - Not one of the permissions an access review asks about: those stay
      salaries, payroll approval and role assignment.
 
+### 7.16 A Team Leader's obligations (Decided)
+
+On 2026-11-28 the owner asked for the Obligations list to be as the Tasks
+list is for a Team Leader: My obligations, and their team's.
+
+1. **What:** two tabs on the Obligations list for whoever sees the team's
+   obligations, a Team Leader, as Tasks has (`DESIGN.md` §5.5, A Team
+   Leader's obligations). My obligations, the ones assigned to them,
+   first and opened by default; My team's obligations, the ones assigned
+   to someone on their team. The tabs keep the filters picked.
+2. **Who:** only the team's scope of See obligations has the tabs. An
+   employee sees their own, as now; an Admin, the company's; the Super
+   Admin, every company's.
+3. **The rule is the page's,** not the tab's: an address asking for the
+   team's tab from someone without the team's scope still shows their own,
+   as Tasks does.
+4. **A notification** about one of the team's opens the team's tab, with
+   it picked out; one about their own opens My obligations. Tasks has the
+   same gap today (its notifications open My tasks); left for later.
+5. **The same columns on both tabs:** who each is assigned to. My tasks
+   shows who gave each instead, but a repeating obligation's next one has
+   nobody recorded as having given it, so the column would be empty or
+   wrong for those.
+6. One PR, after #440.
+
 ## Not here
 
 - The client portal's later ideas stay in `CLIENT_PORTAL_PLAN.md` §13.
@@ -2823,3 +2848,6 @@ without its own.
   Payroll tab and as payslip lines on months not approved yet. Its
   migration in production is checked after the deploy. 9b, each person's,
   is next for deductions.
+- **2026-11-28:** §7.16, a Team Leader's obligations: My obligations and
+  My team's obligations, two tabs on the Obligations list as Tasks has,
+  in a PR after #440.
