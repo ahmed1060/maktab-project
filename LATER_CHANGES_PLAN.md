@@ -1639,7 +1639,36 @@ Built in steps, each a PR or more, the screens' DESIGN.md entries first:
      permission nothing checks isn't offered in the role editor: approving
      to step 3, managing to step 5.
 3. **Asking and approving,** on the Requests page, with the permission to
-   approve.
+   approve, in two PRs (the owner said Start to this, 28 November):
+   - **3a, asking** (`DESIGN.md` §5.5, Asking for a salary advance): One PR, after #448: #449.
+     - A table of its own, `SalaryAdvance`, with RLS on as every table's
+       is: whose, the company, the amount, the months (1 to 24), the
+       payroll month of the first installment, its status (waiting,
+       approved, rejected, withdrawn), what the limits were measured
+       against (the monthly salary, its net pay, and a month's recovery
+       of their other debts), whether it was sent over a limit and which,
+       and the consent: the words agreed to, in the language they were
+       shown in, and when. Checks in the database hold what it may be.
+     - The limits measured against the net pay, the owner's choice (27
+       November): the monthly salary less the payroll deductions, their
+       own where they have them. Not the last payslip's, which a new
+       joiner hasn't, and which moves with each month's attendance.
+     - What asking offers is worked out by the server, for the page and
+       a route of its own, and asking is checked again by the same rules
+       when it's sent, in one transaction holding the person's row, so
+       two sent at once aren't both kept where only one may be open.
+     - The installments: the amount over the months, down to the
+       piastre, the last taking the rounding. Pure, in its own file, read
+       by the dialog and the server alike, as the consent's words are.
+     - On the Requests page, a kind of its own, on Mine, withdrawn while
+       it waits. To review has none until 3b. Asking and withdrawing are
+       in the audit log.
+     - Until 3b, an advance asked for waits, as nobody can approve it
+       yet; the Salary advances card's note says so.
+   - **3b, approving,** with `salary_advances.approve`, given to the
+     built-in Admin roles as earlier permissions were: on To review, with
+     the same limits, the months and the start changed if need be, and
+     how it's paid, cash or bank transfer.
 4. **Paying back:** the payslip's line, and the balance on the employee's
    page and one's own profile.
 5. **Managing, and a contract's end:** settling early, moving an
@@ -3167,3 +3196,6 @@ when I continue I get a block so make a full check on it."
   on main is green, and the only errors are sign-in refusals, the old
   MFA_REQUIRED and a sign-in paused after wrong tries, not faults.
   November's payroll draft still wants a Recalculate.
+- **2026-11-28:** §7.5, step 3a started: its `DESIGN.md` entry, Asking
+  for a salary advance (§5.5), in its own commit. Step 3 is split into
+  3a, asking (#449), and 3b, approving.
