@@ -2491,7 +2491,9 @@ These are built once, in the building-blocks PR, and every page uses them
   - Saved together, with Save on the card's end side, as Payroll settings
     is. What's typed wrong is said under its field before anything is
     sent: a name is needed, two can't share one, a percentage is 0 to 100
-    and an amount 0 or more.
+    and an amount 0 or more. What's typed while it's being saved stays on
+    the card, still to save. Opened again, the card shows what's been
+    saved since, unless something's typed.
   - Removed, a deduction goes from months not approved yet. Months
     approved keep what they were approved with, on their payslips and on
     the Payroll page, as they keep everything.
@@ -3721,3 +3723,6 @@ changed:
   deductions, each a percentage of the month's pay before them or a fixed
   amount, and each a line of its own on the payslip
   (`LATER_CHANGES_PLAN.md` §7.12).
+- **2026-11-28:** Payroll deductions (§5.5): what's typed while the card
+  is being saved stays, still to save, and the card opened again shows
+  what's been saved since while nothing's typed (Codex review on #440).
