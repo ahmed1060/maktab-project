@@ -399,6 +399,9 @@ const SCREENS: Record<string, Screen> = {
             // Payroll deductions: read when the Payroll tab shows, saved with Edit settings (PR 440).
             "GET /api/company-deductions": { when: ["settings.view"], routeChecks: SETTINGS_ACCESS, gates: PAYROLL_TAB },
             "PUT /api/company-deductions": { when: ["settings.edit"], routeChecks: SETTINGS_ACCESS, gates: [...EDITS, ...PAYROLL_TAB] },
+            // Salary advances' rules, the same way (LATER_CHANGES_PLAN.md §7.5, step 2).
+            "GET /api/company-salary-advances": { when: ["settings.view"], routeChecks: SETTINGS_ACCESS, gates: PAYROLL_TAB },
+            "PUT /api/company-salary-advances": { when: ["settings.edit"], routeChecks: SETTINGS_ACCESS, gates: [...EDITS, ...PAYROLL_TAB] },
             // Attendance: read when the tab shows, changed with Edit settings.
             "GET /api/attendance/calendar": reads,
             "GET /api/attendance/policy": reads,

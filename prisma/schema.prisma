@@ -255,6 +255,22 @@ model Company {
   /// nobody deciding it should, and most jurisdictions limit it for that
   /// reason. 0 switches recovery off without deleting anybody's debt.
   debtRecoveryPercent  Int                       @default(100)
+  /// The rules a salary advance follows (LATER_CHANGES_PLAN.md §7.5, step 2):
+  /// the most one may ask for, in months of their salary; how long someone
+  /// must have worked first, from their contract's start; and whether only
+  /// one may be open at a time.
+  salaryAdvanceMaxMonths Decimal @default(2) @db.Decimal(4, 2)
+  salaryAdvanceMinServiceMonths Int @default(3)
+  salaryAdvanceOneOpen Boolean @default(true)
+  /// The most an installment may take of a month's net pay after the payroll
+  /// deductions, and the most it may take with the recovery of the person's
+  /// other debts: 10% and 25%, what Egypt's labour law allows, unless changed.
+  /// Checked when one is asked for; neither caps payroll, which
+  /// debtRecoveryPercent above still does for a debt.
+  salaryAdvanceInstallmentPercent Decimal @default(10) @db.Decimal(5, 2)
+  debtsLimitPercent Decimal @default(25) @db.Decimal(5, 2)
+  /// Over either: kept from going over, or sent with a warning.
+  salaryAdvanceOverLimit SalaryAdvanceOverLimit @default(BLOCK)
   /// The first month whose attendance reaches payroll (ATTENDANCE_PLAN.md
   /// §20, Phase 1): the 1st of that month. Null: attendance is measured and
   /// priced, and the register shows what it would cost, but nothing is
@@ -1699,6 +1715,13 @@ enum PayrollDeductionBasis {
 enum PaydayMove {
   BEFORE
   AFTER
+}
+
+/// Over a salary advance's limit (LATER_CHANGES_PLAN.md §7.5): the months
+/// kept from going below what the limits allow, or sent with a warning.
+enum SalaryAdvanceOverLimit {
+  BLOCK
+  WARN
 }
 
 enum PayrollRunStatus {
