@@ -2050,7 +2050,7 @@ installments (§7.9).
      of by the same setting as an installment's limit. The Payroll page
      also warns of a month over it. There's still no cap at payroll.
 4. **How it's built (planned), in steps of their own:**
-   - **9a, the company's (planned for PR 440):** a card of its own,
+   - **9a, the company's (#440, merged on 28 November):** a card of its own,
      Payroll deductions, on the Payroll tab (`DESIGN.md` §5.5), under
      Payroll settings rather than inside it, as its deductions are a list.
      - A table of the company's deductions, one row each, with RLS:
@@ -2175,6 +2175,31 @@ without its own.
      once. The built-in Admin has it from then on.
    - Not one of the permissions an access review asks about: those stay
      salaries, payroll approval and role assignment.
+
+### 7.16 A Team Leader's obligations (Decided)
+
+On 2026-11-28 the owner asked for the Obligations list to be as the Tasks
+list is for a Team Leader: My obligations, and their team's.
+
+1. **What:** two tabs on the Obligations list for whoever sees the team's
+   obligations, a Team Leader, as Tasks has (`DESIGN.md` §5.5, A Team
+   Leader's obligations). My obligations, the ones assigned to them,
+   first and opened by default; My team's obligations, the ones assigned
+   to someone on their team. The tabs keep the filters picked.
+2. **Who:** only the team's scope of See obligations has the tabs. An
+   employee sees their own, as now; an Admin, the company's; the Super
+   Admin, every company's.
+3. **The rule is the page's,** not the tab's: an address asking for the
+   team's tab from someone without the team's scope still shows their own,
+   as Tasks does.
+4. **A notification** about one of the team's opens the team's tab, with
+   it picked out; one about their own opens My obligations. Tasks has the
+   same gap today (its notifications open My tasks); left for later.
+5. **The same columns on both tabs:** who each is assigned to. My tasks
+   shows who gave each instead, but a repeating obligation's next one has
+   nobody recorded as having given it, so the column would be empty or
+   wrong for those.
+6. One PR, after #440.
 
 ## Not here
 
@@ -2818,3 +2843,15 @@ without its own.
 - **2026-11-28:** #439 in production: its migration is applied, and the 2
   roles holding Assign roles hold Answer access reviews too. No error in
   production after #437, #438 or #439.
+- **2026-11-28:** #440 merged (§7.12, 9a): payroll deductions, the
+  company's income tax, social insurance and its own, on a card on the
+  Payroll tab and as payslip lines on months not approved yet. Its
+  migration in production is checked after the deploy. 9b, each person's,
+  is next for deductions.
+- **2026-11-28:** §7.16, a Team Leader's obligations: My obligations and
+  My team's obligations, two tabs on the Obligations list as Tasks has,
+  in a PR after #440.
+- **2026-11-28:** #440 in production: its migration is applied (the last
+  one applied), `PayrollDeduction` has RLS on and holds no rows, as no
+  company has set a deduction yet, and `PayrollRun` has its new column.
+  No error in production since.

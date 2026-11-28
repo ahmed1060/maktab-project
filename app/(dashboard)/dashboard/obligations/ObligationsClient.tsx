@@ -1,7 +1,7 @@
 'use client'
 import { useEffect } from 'react'
 import Link from 'next/link'
-import { CircleHalfIcon, ListChecksIcon, PlusIcon, RepeatIcon, SortAscendingIcon, StorefrontIcon, UserCheckIcon, UserIcon } from '@phosphor-icons/react/ssr'
+import { CircleHalfIcon, ListChecksIcon, PlusIcon, RepeatIcon, SortAscendingIcon, StorefrontIcon, UserCheckIcon, UserIcon, UsersThreeIcon } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { personName, type PersonNames } from '@/lib/names'
 import { useModules } from '@/lib/useModules'
@@ -17,11 +17,12 @@ import DateRangePicker from '@/components/DateRangePicker'
 import { useListAddress, useSearchField } from '@/components/filters/useListAddress'
 import { useEmployeeOptions } from '@/components/filters/useEmployeeOptions'
 import { pickExtra } from '@/components/filters/extra-filters'
+import { withChanges } from '@/components/filters/address'
 import ExtraFilterSelects from '@/components/filters/ExtraFilterSelects'
 import { usePlaceFilters } from '@/components/locations/usePlaceFilters'
 import {
     Button, ButtonLink, DataList, DueDate, EmptyState, Field, FilterBar, ItemTitle, ListCard, Page, PageHeader, Pager, Person,
-    SearchInput, Select, StatusBadge, taskStatusTone, visibleRow, type Column,
+    SearchInput, Select, StatusBadge, TabLinks, taskStatusTone, visibleRow, type Column,
 } from '@/components/ui'
 
 /** An obligation as the list shows it (the page selects these). */
@@ -48,6 +49,8 @@ interface ObligationsClientProps {
     page: number
     totalPages: number
     currentUserId: string
+    /** A Team Leader's tab: their own, `my`, or their team's, `active` (LATER_CHANGES_PLAN.md §7.16). */
+    view?: string
     /** The server's clock, which an obligation is overdue by. */
     now: number
 }
@@ -75,12 +78,14 @@ const time = (d: string | Date) => new Date(d).getTime()
  * a table on computers and cards on phones. Its filters, order and page are
  * in the address, which the server reads, so a filtered list can be shared.
  */
-export default function ObligationsClient({ obligations, total, page, totalPages, currentUserId, now }: ObligationsClientProps) {
+export default function ObligationsClient({ obligations, total, page, totalPages, currentUserId, view = 'my', now }: ObligationsClientProps) {
     const { t, locale } = useLanguage()
     const modules = useModules()
     const permissions = useCan()
     // Someone who sees only their own obligations has nobody else's to filter by.
     const ownObligationsOnly = !permissions.can('obligations.view')
+    // A team-wide reach is a Team Leader's two tabs, as Tasks has (§7.16, PR 441).
+    const teamTabs = permissions.scope('obligations.view') === 'TEAM'
 
     const { picked, go } = useListAddress('/dashboard/obligations')
     const filters = {
@@ -173,7 +178,14 @@ export default function ObligationsClient({ obligations, total, page, totalPages
 
     const empty = filtersOn > 0 || filters.search
         ? <EmptyState icon={ListChecksIcon} title={t('obligations_empty_filters')} action={<Button variant="quiet" onClick={resetFilters}>{t('ui_reset_filters')}</Button>} />
-        : <EmptyState icon={ListChecksIcon} title={t('obligations_empty')} />
+        // A Team Leader with nobody on their team sees why, and who can fix
+        // it, as on Tasks: the leader can't assign their own team.
+        : teamTabs && view === 'active'
+            ? <EmptyState icon={UsersThreeIcon} title={t('team_empty_title')} detail={t('team_empty_body')} />
+            : <EmptyState icon={ListChecksIcon} title={t('obligations_empty')} />
+
+    // Their own obligations or their team's, keeping the filters.
+    const tabHref = (to: string) => `/dashboard/obligations?${withChanges(picked.toString(), { view: to })}`
 
     return (
         <Page>
@@ -184,6 +196,16 @@ export default function ObligationsClient({ obligations, total, page, totalPages
                     <ButtonLink href="/dashboard/obligations/new" variant="primary" icon={PlusIcon}>{t('add_obligation')}</ButtonLink>
                 )}
             />
+
+            {/* A Team Leader's, not an employee's or an Admin's: the second
+                tab is their team's. The page holds to this whatever the
+                address asks for; this only stops offering it. */}
+            {teamTabs && (
+                <TabLinks label={t('obligations_tabs_label')} items={[
+                    { href: tabHref('my'), label: t('my_obligations'), current: view !== 'active' },
+                    { href: tabHref('active'), label: t('obligations_tab_team'), current: view === 'active' },
+                ]} />
+            )}
 
             <FilterBar
                 search={<Field label={t('obligations_search')} hideLabel>{p => <SearchInput {...p} autoComplete="off" placeholder={t('obligations_search')} value={query} onChange={e => setQuery(e.target.value)} />}</Field>}

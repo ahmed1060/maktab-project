@@ -4,14 +4,14 @@ import { accountRefusal } from "@/lib/account-refusal"
 import AccessDenied from "@/components/AccessDenied"
 import { prisma } from "@/lib/prisma"
 import ObligationsClient from "./ObligationsClient"
-import { assignedToTeamWhere, and } from "@/lib/team-scope"
+import { assignedToReportsWhere, and } from "@/lib/team-scope"
 import { grantFor } from "@/lib/permissions/can"
 import { dayRangeIn } from "@/lib/services/filter-zone"
 import { redirect } from "next/navigation"
 import { askedPage, pageRedirect } from "@/lib/list-page"
 import { placeFilters } from "@/lib/place-filters"
 
-export default async function ObligationsPage(props: { searchParams: Promise<{ company?: string, page?: string, status?: string, search?: string }> }) {
+export default async function ObligationsPage(props: { searchParams: Promise<{ company?: string, page?: string, status?: string, search?: string, view?: string, highlight?: string }> }) {
     // Next 15 hands a page its dynamic segments and query string as
     // promises rather than plain objects, so they are awaited here and
     // the rest of the function reads them exactly as it did before.
@@ -45,6 +45,19 @@ export default async function ObligationsPage(props: { searchParams: Promise<{ c
     // eslint-disable-next-line react-hooks/purity -- server-rendered once per request
     const now = Date.now()
 
+    // A Team Leader's two tabs, as Tasks has (LATER_CHANGES_PLAN.md §7.16,
+    // PR 441): their own, which it opens on, or their team's. Anyone else's
+    // list has no tabs, so a `view` in the address changes nothing for them.
+    let view: 'my' | 'active' = scope === 'TEAM' && searchParams.view === 'active' ? 'active' : 'my'
+    // A notification opens the list with its obligation picked out: one of the
+    // team's, not their own, is on the team's tab. A tab asked for is kept.
+    if (scope === 'TEAM' && !searchParams.view && searchParams.highlight && userCompanyId) {
+        const teams: any = { id: searchParams.highlight, companyId: userCompanyId }
+        and(teams, assignedToReportsWhere(userId))
+        and(teams, { NOT: { assignees: { some: { id: userId } } } })
+        if (await prisma.obligation.count({ where: teams }) > 0) view = 'active'
+    }
+
     if (scope === null) {
         whereClause.companyId = userCompanyId
         and(whereClause, { assignees: { some: { id: userId } } })
@@ -54,14 +67,16 @@ export default async function ObligationsPage(props: { searchParams: Promise<{ c
         }
     } else {
         if (!userCompanyId) {
-            return <ObligationsClient obligations={[]} total={0} page={1} totalPages={0} currentUserId={userId} now={now} />
+            return <ObligationsClient obligations={[]} total={0} page={1} totalPages={0} currentUserId={userId} view={view} now={now} />
         }
         whereClause.companyId = userCompanyId
         // A Team Leader sees their team's obligations — the rule
         // GET /api/obligations and the obligation page already apply. This
         // list used to be the one place a leader saw the whole company's,
-        // and opening any of those outside the team was refused.
-        if (scope === 'TEAM') and(whereClause, assignedToTeamWhere(userId))
+        // and opening any of those outside the team was refused. Their own on
+        // My obligations, the team's on its own tab (§7.16, PR 441); one
+        // shared with someone on the team is on both.
+        if (scope === 'TEAM') and(whereClause, view === 'active' ? assignedToReportsWhere(userId) : { assignees: { some: { id: userId } } })
     }
 
     // Apply Filters from searchParams
@@ -117,6 +132,7 @@ export default async function ObligationsPage(props: { searchParams: Promise<{ c
             page={page}
             totalPages={totalPages}
             currentUserId={userId}
+            view={view}
             now={now}
         />
     )

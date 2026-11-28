@@ -2425,6 +2425,21 @@ These are built once, in the building-blocks PR, and every page uses them
   - **A client with obligations** is archived rather than deleted, as one
     with tasks or records is, so its obligations keep it. The Clients
     list's words say "tasks, obligations or records".
+- **A Team Leader's obligations** (`LATER_CHANGES_PLAN.md` §7.16): the
+  Obligations list has two tabs for a Team Leader, as Tasks has (§5.5,
+  Tabs), under the page header and above the filter bar.
+  - **My obligations,** first and the one it opens on: the ones assigned
+    to them.
+  - **My team's obligations:** the ones assigned to someone on their team.
+    One shared with the leader is on both.
+  - The tabs keep the filters picked, as Tasks' do. Both list who each is
+    assigned to, as the list does now.
+  - The team's tab, with nobody on the team yet, says why and who can fix
+    it, as Tasks' does.
+  - A notification about one of the team's opens the team's tab, with it
+    picked out; one about their own opens My obligations.
+  - Everyone else's list is as it is: an employee's own obligations, and
+    an Admin's the company's, with no tabs.
 - **A salary change's payroll** (`LATER_CHANGES_PLAN.md` §7.13): on an
   employee's Edit, once the monthly salary is changed, a choice under it,
   Applies to, with two answers in the page's language:
@@ -3726,3 +3741,6 @@ changed:
 - **2026-11-28:** Payroll deductions (§5.5): what's typed while the card
   is being saved stays, still to save, and the card opened again shows
   what's been saved since while nothing's typed (Codex review on #440).
+- **2026-11-28:** A Team Leader's obligations (§5.5): My obligations and
+  My team's obligations, two tabs on the Obligations list as Tasks has
+  (`LATER_CHANGES_PLAN.md` §7.16).

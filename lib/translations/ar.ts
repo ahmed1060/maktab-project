@@ -192,6 +192,10 @@ export const ar = {
         points_required: "يُرجى تحديد نقاطها، من ٠ إلى ١٠",
         obligations_subtitle: "إدارة الالتزامات القانونية والمالية المتكررة للشركة",
         obligations_search: "البحث في الالتزامات",
+        // A Team Leader's two tabs (LATER_CHANGES_PLAN.md §7.16, PR 441).
+        obligations_tabs_label: "التزامات من",
+        obligations_tab_team: "التزامات فريقي",
+        my_obligations: "التزاماتي",
         obligations_col_obligation: "الالتزام",
         obligations_empty_filters: "لا توجد التزامات تطابق هذه الفلاتر",
         obligations_empty: "لا توجد التزامات بعد",
