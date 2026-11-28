@@ -2429,6 +2429,60 @@ when I continue I get a block so make a full check on it."
      month ahead", in both languages.
 - One PR, before salary advances' step 3a: #448. Step 3a becomes #449.
 
+### 7.21 Deleting a location (Decided)
+
+The owner, 28 November, showing two shared locations on the Locations
+page: "I want to add option delete for this location". Today a location
+can only be archived.
+
+1. **What:** Delete in a location's row menu, last, in the danger
+   colour, for a location no task has used: beside Archive, or beside
+   Restore once it's archived (`DESIGN.md` §5.5, Row menu). It asks
+   first, as it can't be undone, and says so once it's done. On the
+   Locations page and each client's page alike.
+2. **Not for one a task has used:** it's archived, as before, so its
+   tasks keep their location, its checks and the Tasks and Costs pages'
+   filter by it. A client's HQ is neither archived nor deleted, as before.
+   On the live database (read-only, 28 November), no task uses any of
+   the locations that aren't archived, so each of the four shared ones
+   may be deleted.
+3. **Who:** whoever may archive locations (locations.archive), as both
+   take one off the list. Its name in the roles says so: Archive, restore
+   and delete locations. No new permission, so no role changes.
+4. **The server checks it again,** holding the location's row: a task
+   added at it meanwhile keeps it, and it's refused with why, in the
+   page's language. A task added at it while it's being deleted waits,
+   then is told the location isn't there any more, never left without
+   one. Each deletion is in the audit log, with the location as it was.
+5. One PR: #450.
+
+### 7.22 A location's check radius, only in its own form (Decided)
+
+The owner, 28 November, on the Super Admin's Location verification (30
+m) beside a location's "100 m": the Locations page said "70 m
+(default)" for a location with none of its own, though its check used
+the system's 30 m. The owner: "yes and also I want to hide that number
+from everywhere and only show it to the user that is creating a location
+or editing the location", showing the Edit location form.
+
+1. **The default is the system's distance**, as the check uses it: in
+   the form's hint ("Left empty, it's 30 m"), its placeholder, and the
+   circle on its map while it's empty. The fixed 70 goes.
+2. **Shown only in the location's own form,** Add location and Edit
+   location, wherever it opens (the Locations page, a client's page, or
+   "+ New location" from a task): `DESIGN.md` §5.3, A place on the map.
+   - Not in the lists of locations, on the Locations page or a client's
+     page: their Check radius goes.
+   - Not in a client's form: its HQ is its name and pin alone, with no
+     circle. A new client's HQ takes the default; editing a client keeps
+     its HQ's radius as it is.
+   - Not in what the server sends to anyone who may not change
+     locations: a location's radius only to whoever may edit locations,
+     and the default only to whoever may add or edit them.
+3. The Super Admin's Location verification stays where it is: it's the
+   setting itself.
+4. With §7.21, in #450.
+
 ## Not here
 
 - The client portal's later ideas stay in `CLIENT_PORTAL_PLAN.md` §13.
@@ -3214,3 +3268,36 @@ when I continue I get a block so make a full check on it."
   RLS, which signals the Requests page as the other kinds do. On Mine
   only until 3b; withdrawn while it waits, asked first. 40 controls,
   each caught by a test.
+- **2026-11-28:** #449 merged (§7.5, step 3a): asking for a salary
+  advance, on the Requests page, with Codex's review finding nothing.
+  Step 3b, approving, is next.
+- **2026-11-28:** #449 in production: the deploy is ready on 6fe9b14, CI
+  on main is green, and the only errors are the old MFA_REQUIRED sign-in
+  refusals, not faults. The salary_advances migration finished: the
+  SalaryAdvance table is there with RLS on and its three live triggers,
+  and holds no advances yet. November's payroll draft still wants a
+  Recalculate.
+- **2026-11-28:** §7.21 added at the owner's request: Delete for a
+  location no task has used, beside Archive or Restore, for whoever may
+  archive locations; one a task has used is archived as before.
+  `DESIGN.md` first, in its own commit.
+- **2026-11-28:** §7.21 built (#450): Delete in a location's row menu,
+  last, in the danger colour, beside Archive or Restore, for whoever may
+  archive locations, only where no task has used it, open or finished;
+  never a client's HQ. The lists say which locations a task has used. The
+  server holds the location's row while it checks again: a task added
+  meanwhile keeps it, refused in the page's language, and a task added or
+  moved to one being deleted waits and is told it isn't there. In the
+  audit log as "Deleted location", with the location as it was. 24
+  controls, each caught by a test.
+- **2026-11-28:** §7.22 added at the owner's request: a location's check
+  radius shown only in its own form, with the system's distance as its
+  default; in #450 with §7.21. `DESIGN.md` first, in its own commit.
+- **2026-11-28:** §7.22 built (#450): a location's check radius only in
+  Add location and Edit location, wherever they open, with the system's
+  distance as its default in the hint, the placeholder and the circle;
+  the fixed 70 is gone. The lists of locations and the client's form have
+  none; editing a client keeps its HQ's radius, and a new client's HQ
+  takes the default. The server sends a location's radius only to
+  whoever may edit locations, and the default only to whoever may add or
+  edit them. 21 more controls, each caught by a test.

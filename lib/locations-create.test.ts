@@ -23,7 +23,8 @@ vi.setConfig({ testTimeout: 120_000 })
 
 const added: Record<string, any> = {}
 const locationModel = {
-    findUnique: async ({ where }: any) => (added[where.id] ? { ...added[where.id], createdAt: new Date(0), client: null, company: { name: "c1" } } : null),
+    // As the database answers the row's select, with how many tasks have used it (§7.21).
+    findUnique: async ({ where }: any) => (added[where.id] ? { ...added[where.id], createdAt: new Date(0), client: null, company: { name: "c1" }, _count: { tasks: 0 } } : null),
     findFirst: async () => null,
     create: async ({ data }: any) => { added.new = { id: "new", ...data }; return { id: "new" } },
 }

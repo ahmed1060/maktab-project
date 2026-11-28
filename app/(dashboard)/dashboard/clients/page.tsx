@@ -45,7 +45,7 @@ interface Client {
     locationName: string
     locationLink: string | null
     /** Its HQ, if it has one yet. */
-    locations: { id: string; name: string; latitude: number | null; longitude: number | null; radiusMeters: number | null }[]
+    locations: { id: string; name: string; latitude: number | null; longitude: number | null }[]
     company?: { name: string; nameAr?: string | null }
     createdBy: { firstName: string, lastName: string, firstNameAr?: string | null, lastNameAr?: string | null } | null
     archivedAt?: string | null
@@ -76,7 +76,8 @@ const LIMIT = 20
  */
 function hqDraft(c: Client): PlaceDraft {
     const hq = c.locations?.[0]
-    if (hq) return draftOf(hq)
+    // Its name and pin: the client's form has no radius (LATER_CHANGES_PLAN.md §7.22).
+    if (hq) return draftOf({ ...hq, radiusMeters: null })
     return { name: c.locationName, point: pinOfLink(c.locationLink ?? '') ?? '', radius: '' }
 }
 const sameDraft = (a: PlaceDraft, b: PlaceDraft) => a.name === b.name && a.point === b.point && a.radius === b.radius
@@ -456,7 +457,8 @@ function ClientForm({ title, client, pickCompany = false, companyId, onClose, on
         try {
             const details = {
                 name: form.name.en, nameAr: form.name.ar, ownerName: form.owner.en, ownerNameAr: form.owner.ar,
-                mobileNumber: form.mobileNumber, ...(place ? { hq: place } : {}),
+                // Its HQ's name and pin, never a radius: one it has is kept (§7.22).
+                mobileNumber: form.mobileNumber, ...(place ? { hq: { name: place.name, latitude: place.latitude, longitude: place.longitude } } : {}),
             }
             const res = await fetch('/api/clients', {
                 method: client ? 'PUT' : 'POST',
@@ -539,6 +541,7 @@ function ClientForm({ title, client, pickCompany = false, companyId, onClose, on
                     nameHint={hqLocked ? t('client_hq_locked') : t('client_hq_hint')}
                     disabled={saving}
                     locked={hqLocked}
+                    withRadius={false}
                 />
             </form>
         </Dialog>

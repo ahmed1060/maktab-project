@@ -94,8 +94,10 @@ describe("the Locations page", () => {
         expect(html).toContain("locations_shared")
         expect(html.match(/locations_needs_pin/g)?.length).toBe(2) // the table's and the phone card's
         expect(html).toContain("https://www.google.com/maps/search/?api=1&amp;query=30.0444,31.2357")
-        expect(html).toContain("locations_radius_default")
-        expect(html).toContain("locations_radius_value")
+        // A location's check radius is in its own form alone (LATER_CHANGES_PLAN.md §7.22).
+        expect(html).not.toContain("locations_radius_default")
+        expect(html).not.toContain("locations_radius_value")
+        expect(html).not.toContain("250")
     })
 
     it("links a location's client to its page only for whoever may open it", async () => {

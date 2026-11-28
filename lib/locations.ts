@@ -3,9 +3,7 @@
  * each client's page and the service share.
  */
 
-/** The check radius when a location has none of its own (§2.5). */
-export const LOCATION_RADIUS_DEFAULT = 70
-/** A radius's bounds, as a check-in place's. */
+/** A radius's bounds, as a check-in place's. One left empty takes the system's distance (LATER_CHANGES_PLAN.md §7.22). */
 export const LOCATION_RADIUS_MIN = 20
 export const LOCATION_RADIUS_MAX = 5000
 export const LOCATION_NAME_MAX = 100
@@ -21,9 +19,6 @@ export function locationLabel(name: string, clientName?: string | null): string 
 
 /** A location whose pin isn't placed yet: no task can use it until it is (§2.8). */
 export const needsPin = (location: { latitude: number | null }) => location.latitude === null
-
-/** The radius a location's check uses: its own, or the default. */
-export const radiusOf = (location: { radiusMeters: number | null }) => location.radiusMeters ?? LOCATION_RADIUS_DEFAULT
 
 /**
  * Locations by name, each name once (§2.7), for the Excel template's list:
@@ -49,7 +44,7 @@ export function numberedLabels<T extends { label: string }>(list: T[]): (T & { l
 }
 
 /** What a location's row menu can offer, each its own part of what changes one (PR 377). */
-export type LocationAction = 'edit' | 'hq' | 'archive' | 'restore'
+export type LocationAction = 'edit' | 'hq' | 'archive' | 'restore' | 'delete'
 
 /**
  * What a location's row menu offers (LATER_CHANGES_PLAN.md §2, PR 377):
@@ -57,15 +52,21 @@ export type LocationAction = 'edit' | 'hq' | 'archive' | 'restore'
  * or restoring it with locations.archive. A client's HQ is replaced, never
  * archived, a shared one is nobody's HQ, and an archived one is restored
  * before anything else.
+ *
+ * Deleting it, last, with locations.archive too, only where the server says
+ * no task has used it (§7.21, PR 450): one a task has used is archived, and
+ * one not known to be unused isn't offered it.
  */
 export function locationActions(
-    location: { archivedAt: unknown; isHq: boolean; client: unknown },
+    location: { archivedAt: unknown; isHq: boolean; client: unknown; inUse?: boolean },
     may: { edit: boolean; archive: boolean },
 ): LocationAction[] {
-    if (location.archivedAt) return may.archive ? ['restore'] : []
+    const deletes = may.archive && !location.isHq && location.inUse === false
+    if (location.archivedAt) return may.archive ? (deletes ? ['restore', 'delete'] : ['restore']) : []
     const actions: LocationAction[] = []
     if (may.edit) actions.push('edit')
     if (may.edit && location.client && !location.isHq) actions.push('hq')
     if (may.archive && !location.isHq) actions.push('archive')
+    if (deletes) actions.push('delete')
     return actions
 }

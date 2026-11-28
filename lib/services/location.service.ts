@@ -4,6 +4,7 @@ import { can } from "@/lib/permissions/can"
 import type { Permission } from "@/lib/permissions/catalogue"
 import { googleMapsLink } from "@/lib/attendance/geo"
 import { locationLabel } from "@/lib/locations"
+import { SystemSettingsService } from "./system-settings.service"
 import type { CreateLocationInput, PlaceInput, UpdateLocationInput } from "@/lib/validations/location.schema"
 
 /**
@@ -14,8 +15,9 @@ import type { CreateLocationInput, PlaceInput, UpdateLocationInput } from "@/lib
  * with locations.view, add one with locations.create (locations.add until
  * PR 378), change one (its details, or making it an HQ) with locations.edit,
  * and archive or restore one with locations.archive (split from
- * locations.manage, LATER_CHANGES_PLAN.md §2, PR 377). Another company's is
- * "not found", never "not allowed".
+ * locations.manage, LATER_CHANGES_PLAN.md §2, PR 377), or delete one no
+ * task has used with it too (§7.21, PR 450). Another company's is "not
+ * found", never "not allowed".
  *
  * Until step 2 moves tasks onto locations, the task form still copies a
  * client's own location fields into a new task: those follow its HQ here
@@ -44,10 +46,37 @@ const likeText = (text: string) => text.replace(/[\\%_]/g, c => `\\${c}`)
 const ROW = {
     id: true, name: true, isHq: true, latitude: true, longitude: true, radiusMeters: true, archivedAt: true, createdAt: true,
     client: { select: { id: true, name: true } },
+    _count: { select: { tasks: true } },
     company: { select: { name: true, nameAr: true } },
 } satisfies Prisma.LocationSelect
 
-export type LocationRow = Prisma.LocationGetPayload<{ select: typeof ROW }>
+type Found = Prisma.LocationGetPayload<{ select: typeof ROW }>
+
+/**
+ * A location as the lists show it, with whether a task has used it: only
+ * one no task has is deleted (§7.21). Its check radius only for whoever may
+ * edit locations, whose form is the one place it's shown (§7.22).
+ */
+export type LocationRow = Omit<Found, "_count" | "radiusMeters"> & { radiusMeters?: number | null; inUse: boolean }
+
+const rowOf = ({ _count, radiusMeters, ...location }: Found, showsRadius: boolean): LocationRow =>
+    ({ ...location, ...(showsRadius ? { radiusMeters } : {}), inUse: _count.tasks > 0 })
+
+/**
+ * Who sees the check radius (LATER_CHANGES_PLAN.md §7.22): a location's own
+ * only whoever may edit locations, in its Edit location form; the default,
+ * the system's distance, whoever may add or edit them, for that form's hint.
+ * The Super Admin, any company's.
+ */
+const editsLocations = (session: Session, companyId: string | null) =>
+    isSuperAdmin(session) || (!!companyId && can(session.user as any, "locations.edit", { companyId }))
+const changesLocations = (session: Session, companyId: string | null) =>
+    editsLocations(session, companyId) || (!!companyId && can(session.user as any, "locations.create", { companyId }))
+/** The default for whoever may add or edit locations, as the form's hint says it; nothing for anyone else. */
+async function defaultRadiusFor(session: Session, companyId: string | null): Promise<{ defaultRadiusMeters?: number }> {
+    if (!changesLocations(session, companyId)) return {}
+    return { defaultRadiusMeters: (await SystemSettingsService.get()).locationVerifyRadiusMeters }
+}
 
 const PICK = { id: true, name: true, isHq: true, latitude: true, clientId: true } satisfies Prisma.LocationSelect
 /** A location as a task's picker offers it; one with no pin is offered greyed (§2.8). */
@@ -116,14 +145,16 @@ export class LocationService {
             }),
             prisma.location.count({ where }),
         ])
-        return { data, total }
+        const showsRadius = editsLocations(session, companyId ?? null)
+        return { data: data.map(l => rowOf(l, showsRadius)), total, ...(await defaultRadiusFor(session, companyId ?? null)) }
     }
 
     static async get(session: Session, id: string) {
         const found = await prisma.location.findUnique({ where: { id }, select: { ...ROW, companyId: true } })
         if (!found) throw new Error("TASK_LOCATION_NOT_FOUND")
-        allow(session, "locations.view", found.companyId)
-        return { id: found.id, name: found.name, isHq: found.isHq, latitude: found.latitude, longitude: found.longitude, radiusMeters: found.radiusMeters, archivedAt: found.archivedAt, createdAt: found.createdAt, client: found.client, company: found.company } satisfies LocationRow
+        const { companyId, ...location } = found
+        allow(session, "locations.view", companyId)
+        return rowOf(location, editsLocations(session, companyId))
     }
 
     /**
@@ -222,6 +253,36 @@ export class LocationService {
     }
 
     /**
+     * Deletes a location no task has used (LATER_CHANGES_PLAN.md §7.21, PR
+     * 450), for whoever may archive locations: one a task has used is
+     * archived instead, so its tasks keep it, and a client's HQ is neither.
+     * Its row is held while it's checked and deleted: a task being added
+     * at it meanwhile is waited for and keeps it, and one added after waits
+     * and finds it gone (forTask). In the audit log, as it was.
+     */
+    static async delete(session: Session, id: string) {
+        const who = actor(session)
+        const found = await prisma.location.findUnique({ where: { id }, select: { companyId: true } })
+        if (!found) throw new Error("TASK_LOCATION_NOT_FOUND")
+        allow(session, "locations.archive", found.companyId)
+        await prisma.$transaction(async tx => {
+            // Made its client's HQ meanwhile, it's waited for and read as one.
+            const held = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Location" WHERE id = ${id} FOR UPDATE`
+            if (!held.length) throw new Error("TASK_LOCATION_NOT_FOUND")
+            const before = await tx.location.findUniqueOrThrow({
+                where: { id },
+                select: { name: true, clientId: true, isHq: true, latitude: true, longitude: true, radiusMeters: true, archivedAt: true },
+            })
+            if (before.isHq) throw new Error("TASK_LOCATION_IS_HQ")
+            if (await tx.task.count({ where: { locationId: id } }) > 0) throw new Error("TASK_LOCATION_IN_USE")
+            await tx.location.delete({ where: { id } })
+            const { AuditLogService } = await import("./audit-log.service")
+            // The code a location sent from a task uses too, "Deleted location": this one's entity is the location.
+            await AuditLogService.log("DELETE_LOCATION", "LOCATION", id, { tx, ...who.audit, details: { companyId: found.companyId, before } })
+        })
+    }
+
+    /**
      * What a task's location picker offers (§2.3): the task client's
      * locations in use, its HQ first, then the shared ones; only the shared
      * ones for a task with no client. A Super Admin names the company.
@@ -240,7 +301,8 @@ export class LocationService {
                 : [],
             prisma.location.findMany({ where: { companyId, clientId: null, archivedAt: null }, select: PICK, orderBy: [{ name: "asc" }, { id: "asc" }], take: PICK_LIMIT }),
         ])
-        return { client: client.map(pickRow), shared: shared.map(pickRow) }
+        // The default for "+ New location"'s form, for whoever may add one (§7.22).
+        return { client: client.map(pickRow), shared: shared.map(pickRow), ...(await defaultRadiusFor(session, companyId)) }
     }
 
     /**
@@ -287,6 +349,9 @@ export class LocationService {
      * now, for the task's own location text.
      */
     static async forTask(db: Tx, locationId: string, task: { companyId: string | null; clientId: string | null }) {
+        // Held while the task is saved: one being deleted is waited for, then
+        // not found, never saved on a task (§7.21, PR 450).
+        await db.$queryRaw`SELECT 1 FROM "Location" WHERE id = ${locationId} FOR KEY SHARE`
         const found = await db.location.findUnique({
             where: { id: locationId },
             select: { id: true, companyId: true, clientId: true, name: true, latitude: true, longitude: true, radiusMeters: true, archivedAt: true, client: { select: { name: true } } },
@@ -316,13 +381,18 @@ export class LocationService {
      */
     static async saveHq(tx: Tx, client: { id: string; companyId: string }, place: PlaceInput, session: Session) {
         const hq = await tx.location.findFirst({ where: { clientId: client.id, isHq: true }, select: { id: true, name: true, latitude: true, longitude: true, radiusMeters: true } })
-        const details = { name: place.name, latitude: place.latitude, longitude: place.longitude, radiusMeters: place.radiusMeters ?? null }
+        // The client's form has no radius (LATER_CHANGES_PLAN.md §7.22): one not
+        // sent keeps the HQ's as it is, and a new HQ takes the default.
+        const details: { name: string; latitude: number; longitude: number; radiusMeters?: number | null } = {
+            name: place.name, latitude: place.latitude, longitude: place.longitude,
+            ...(place.radiusMeters !== undefined ? { radiusMeters: place.radiusMeters } : {}),
+        }
         if (hq) {
             const changed = (Object.keys(details) as (keyof typeof details)[]).some(k => hq[k] !== details[k])
             if (changed && !can(session.user as any, "locations.edit", { companyId: client.companyId })) throw new Error("TASK_LOCATION_FORBIDDEN")
             await tx.location.update({ where: { id: hq.id }, data: details })
         }
-        else await tx.location.create({ data: { ...details, companyId: client.companyId, clientId: client.id, isHq: true, createdById: actor(session).byUser } })
+        else await tx.location.create({ data: { ...details, radiusMeters: details.radiusMeters ?? null, companyId: client.companyId, clientId: client.id, isHq: true, createdById: actor(session).byUser } })
         await syncClientLocation(tx, client.id)
     }
 }

@@ -159,6 +159,8 @@ export const KNOWN_REFUSALS: Record<string, { status: 400 | 403 | 404 | 409; mes
     TASK_LOCATION_IS_HQ: { status: 409, message: "This is its client's HQ. Make another of its locations the HQ first." },
     TASK_LOCATION_SHARED: { status: 400, message: "A shared location belongs to no client, so it can't be an HQ." },
     TASK_LOCATION_ARCHIVED: { status: 400, message: "This location is archived. Restore it first." },
+    // Only one no task has used is deleted (LATER_CHANGES_PLAN.md §7.21): a task took it meanwhile.
+    TASK_LOCATION_IN_USE: { status: 409, message: "A task uses this location now, so it can't be deleted. It can be archived instead." },
     // A task's location (§2.3).
     TASK_LOCATION_REQUIRED: { status: 400, message: "Pick where the task is done." },
     TASK_LOCATION_NEEDS_PIN: { status: 400, message: "This location has no pin yet. Place its pin on the Locations page, then pick it." },

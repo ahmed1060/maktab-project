@@ -8,7 +8,8 @@ import { sessionHasModule } from "@/lib/features/require"
 import { taxFiguresOld } from "@/lib/services/tax-claim.service"
 
 // Each client's HQ (CLIENTS_PLAN.md §2.2), for its details and its form.
-const HQ = { where: { isHq: true }, select: { id: true, name: true, latitude: true, longitude: true, radiusMeters: true } } as const
+// Its name and pin: a client's form has no radius, which is the location's own form's (LATER_CHANGES_PLAN.md §7.22).
+const HQ = { where: { isHq: true }, select: { id: true, name: true, latitude: true, longitude: true } } as const
 
 // Read with clients.view — a Team Leader holds it (they pick a client when
 // creating a task) but none of adding, editing or deleting one; writes are

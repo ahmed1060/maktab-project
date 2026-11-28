@@ -65,7 +65,7 @@ export default function TaskPlacePicker({ value, onChange, companyId, current, c
     const url = seesLocations && !waitsForCompany ? `/api/locations?${params}` : null
     // Another client's locations never linger under this one's name.
     const { data: scoped, error: listError, isValidating, mutate } = useSWR(scopedKey(url, value.clientId), scopedFetcher, { keepPreviousData: true })
-    const list = forScope<{ data: { client: PickRow[]; shared: PickRow[] } }>(scoped, value.clientId)?.data
+    const list = forScope<{ data: { client: PickRow[]; shared: PickRow[]; defaultRadiusMeters?: number } }>(scoped, value.clientId)?.data
     const failed = loadFailed(scoped, listError, url)
 
     // Picking a client picks its HQ, if it has its pin. A shared location
@@ -133,6 +133,8 @@ export default function TaskPlacePicker({ value, onChange, companyId, current, c
                 open={adding}
                 onClose={() => setAdding(false)}
                 forTask={{ clientId: value.clientId || null, clientName, companyId }}
+                // The default for its hint, for whoever may add one (LATER_CHANGES_PLAN.md §7.22).
+                defaultRadius={list?.defaultRadiusMeters}
                 onSaved={saved => {
                     void mutate()
                     if (saved) onChange({ ...value, locationId: saved.id })

@@ -676,10 +676,17 @@ These are built once, in the building-blocks PR, and every page uses them
     ring in the pin's colour, which holds 3:1 on them: they're white,
     as the map is light, in both themes;
   - the check radius in metres, below, with the default it takes when
-    left empty as its hint.
+    left empty as its hint and its placeholder, and as the circle's size
+    while it's empty: the system's distance, as the Super Admin sets it
+    (Location verification), never a number of the form's own.
 
   It's the same map as the check-in places (Company Settings), so a pin
   is placed the same way everywhere.
+
+  A location's check radius is shown only in its own form, Add location
+  and Edit location, wherever that opens: never in a list of locations,
+  on a client's page or in a client's form, whose HQ is its name and pin
+  alone, with no circle (`LATER_CHANGES_PLAN.md` §7.22).
 - **A pick from a list that can grow,** such as a task's location
   (`CLIENTS_PLAN.md` §2.3, §2.4), is a select with what can be added to
   it beside it:
@@ -948,6 +955,11 @@ These are built once, in the building-blocks PR, and every page uses them
     on its list after the others, with a Retired badge, and isn't offered
     anywhere new; Put back, in its menu, offers it again. An item that
     nothing has used is deleted as before.
+  - **A location** (`CLIENTS_PLAN.md` §2.6) that no task has used has
+    Delete last, after Archive, or after Restore once archived, and it
+    asks first, as it can't be undone. One a task has used is archived,
+    never deleted, so its tasks keep it; a client's HQ is neither, as
+    before (`LATER_CHANGES_PLAN.md` §7.21).
   - Where something already has a retired item, such as a terminal whose
     brand was retired, its picker keeps it chosen, with "(retired)" after
     its name, so saving other changes leaves it as it is. It's the only
@@ -4023,3 +4035,10 @@ changed:
   New request on the Requests page, with its limits measured against the
   net pay, each month's installment, and the consent the law asks for
   (`LATER_CHANGES_PLAN.md` §7.5, step 3a).
+- **2026-11-28:** Row menu (§5.5): Delete for a location no task has
+  used, last, after Archive or Restore, asked first; one a task has used
+  is archived as before (`LATER_CHANGES_PLAN.md` §7.21).
+- **2026-11-28:** A place on the map (§5.3): a location's check radius is
+  shown only in its own form, Add location and Edit location, and the
+  default it takes is the system's distance; a client's form has its
+  HQ's name and pin alone (`LATER_CHANGES_PLAN.md` §7.22).

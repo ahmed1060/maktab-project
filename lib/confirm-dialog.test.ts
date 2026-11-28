@@ -26,7 +26,8 @@ const ASKED: { file: string; count: number; danger: number }[] = [
     { file: "components/tax/TaxUpload.tsx", count: 1, danger: 1 },
     { file: "components/records/SectionsCard.tsx", count: 1, danger: 1 },
     { file: "components/records/RecordsList.tsx", count: 1, danger: 1 },
-    { file: "components/locations/LocationsList.tsx", count: 1, danger: 0 },
+    // Archiving a location, and deleting one no task has used (LATER_CHANGES_PLAN.md §7.21).
+    { file: "components/locations/LocationsList.tsx", count: 2, danger: 1 },
     { file: "components/charges/ChargesList.tsx", count: 2, danger: 0 },
     // Saying a cash advance arrived: it was red, the old window's default.
     { file: "components/cash-advances/CashAdvanceHistory.tsx", count: 2, danger: 0 },

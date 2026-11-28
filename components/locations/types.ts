@@ -5,11 +5,14 @@ export type LocationItem = {
     isHq: boolean
     latitude: number | null
     longitude: number | null
-    radiusMeters: number | null
+    /** Its own check radius, for whoever may edit locations alone (LATER_CHANGES_PLAN.md §7.22). */
+    radiusMeters?: number | null
     archivedAt: string | null
     createdAt: string
     client: { id: string; name: string } | null
     company: { name: string; nameAr?: string | null }
+    /** A task has used it, so it's archived, never deleted (LATER_CHANGES_PLAN.md §7.21). */
+    inUse?: boolean
 }
 
 export type ClientOption = { id: string; name: string; company?: string; archived?: boolean }

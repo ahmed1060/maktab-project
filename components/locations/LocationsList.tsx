@@ -5,8 +5,8 @@ import useSWR from 'swr'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import {
-    ArchiveIcon, ArrowCounterClockwiseIcon, BuildingsIcon, CircleDashedIcon, HourglassIcon, MapPinIcon, MapPinAreaIcon, PencilSimpleIcon,
-    StarIcon, StorefrontIcon, TagIcon, WarningCircleIcon,
+    ArchiveIcon, ArrowCounterClockwiseIcon, BuildingsIcon, CircleDashedIcon, HourglassIcon, MapPinIcon, PencilSimpleIcon,
+    StarIcon, StorefrontIcon, TagIcon, TrashIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { companyNameIn } from '@/lib/company-name'
@@ -19,7 +19,7 @@ import {
 import type { TranslationKey } from '@/lib/translations'
 import type { LocationAction } from '@/lib/locations'
 import { googleMapsLink } from '@/lib/attendance/geo'
-import { LOCATION_RADIUS_DEFAULT, locationActions, locationLabel } from '@/lib/locations'
+import { locationActions, locationLabel } from '@/lib/locations'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { useCan } from '@/lib/useCan'
 import { countOf } from '@/lib/plural'
@@ -37,7 +37,9 @@ const SHARED = 'shared'
  * page, that client's. Each client's HQ is marked and listed first. A
  * location whose pin isn't placed yet says so: no task can use it until it
  * is (§2.8). Search, the archived ones, and editing, archiving and making a
- * location the HQ work the same in both.
+ * location the HQ work the same in both, as does deleting one no task has
+ * used (LATER_CHANGES_PLAN.md §7.21, PR 450). A location's check radius
+ * isn't listed: it's its own form's alone (§7.22).
  */
 export default function LocationsList({ clientId, adding = false, onAddingChange, onChanged }: {
     /** One client's locations; none for every client's and the shared ones. */
@@ -66,6 +68,7 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
     const [page, setPage] = useState(1)
     const [editing, setEditing] = useState<LocationItem | null>(null)
     const [toArchive, setToArchive] = useState<LocationItem | null>(null)
+    const [toDelete, setToDelete] = useState<LocationItem | null>(null)
 
     // The search is sent once typing pauses, not on every key.
     useEffect(() => {
@@ -90,6 +93,8 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
     const locations: LocationItem[] = failed ? [] : result?.data?.data || []
     const totalPages: number = result?.data?.totalPages || 0
     const total: number = result?.data?.total || 0
+    // For the form's hint, sent to whoever may add or edit locations (§7.22).
+    const defaultRadius: number | undefined = result?.data?.defaultRadiusMeters
 
     // The filter by client, for whoever may see the clients.
     const clients = useClientOptions(onePage && can('clients.view'), true)
@@ -97,7 +102,7 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
     useAdjustOnChange([selectedCompanyId], () => { setPage(1); setForClient('') })
     // A location open in the form is the last company's once a Super Admin
     // picks another: closed, so it can't be changed unseen.
-    useAdjustOnChange([scope], () => { setEditing(null); setToArchive(null); onAddingChange?.(false) })
+    useAdjustOnChange([scope], () => { setEditing(null); setToArchive(null); setToDelete(null); onAddingChange?.(false) })
     useAdjustOnChange([totalPages], () => setPage(p => pageInRange(p, totalPages)))
 
     const filtersOn = (forClient ? 1 : 0) + (archived ? 1 : 0)
@@ -138,6 +143,34 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
         setToArchive(null)
     }
 
+    /**
+     * Deletes one no task has used, asked first. One a task took meanwhile
+     * is kept, said in the page's language, and the list is read again, so
+     * it's offered Archive in its place.
+     */
+    const remove = async (l: LocationItem) => {
+        try {
+            const res = await fetch(`/api/locations?id=${encodeURIComponent(l.id)}`, { method: 'DELETE' })
+            const answer = await res.json().catch(() => null)
+            if (!res.ok) {
+                showToast(answer?.code === 'TASK_LOCATION_IN_USE' ? t('locations_delete_in_use') : answer?.error || t('error_generic'), 'error')
+                if (answer?.code === 'TASK_LOCATION_IN_USE') changed()
+                return
+            }
+            showToast(t('locations_deleted'), 'success')
+            changed()
+        } catch {
+            showToast(t('error_generic'), 'error')
+        }
+    }
+
+    // Returned, so the dialog shows it working until it's done.
+    const confirmDelete = async () => {
+        if (!toDelete) return
+        await remove(toDelete)
+        setToDelete(null)
+    }
+
     // Each as locationActions offers it: a client's HQ is replaced, never
     // archived, so another is made its HQ first.
     const item = (l: LocationItem, action: LocationAction): MenuItem => ({
@@ -145,6 +178,7 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
         hq: { key: 'hq', label: t('locations_set_hq'), icon: StarIcon, onSelect: () => { void change(l, { hq: true }, 'locations_hq_set') } },
         archive: { key: 'archive', label: t('locations_archive'), icon: ArchiveIcon, onSelect: () => setToArchive(l) },
         restore: { key: 'restore', label: t('locations_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void change(l, { archived: false }, 'locations_restored') } },
+        delete: { key: 'delete', label: t('locations_delete'), icon: TrashIcon, danger: true, onSelect: () => setToDelete(l) },
     } satisfies Record<LocationAction, MenuItem>)[action]
     const menu = (l: LocationItem): MenuItem[] => locationActions(l, { edit: canEdit, archive: canArchive }).map(action => item(l, action))
     const actions = (l: LocationItem) => menu(l).length > 0 && (
@@ -153,7 +187,6 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
         </span>
     )
 
-    const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
     const hq = (l: LocationItem) => l.isHq && <StatusBadge tone="neutral">{t('locations_hq')}</StatusBadge>
     const title = (l: LocationItem) => <><bdi>{l.name}</bdi>{hq(l)}</>
     // Its client's page for whoever may open it (clients/[id]), or "Shared"
@@ -167,9 +200,6 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
     const pin = (l: LocationItem) => l.latitude === null || l.longitude === null
         ? <StatusBadge tone="problem">{t('locations_needs_pin')}</StatusBadge>
         : <a href={googleMapsLink(l.latitude, l.longitude)} target="_blank" rel="noopener noreferrer" className="ui-item-link">{t('locations_view_map')}<span className="ui-visually-hidden"> {t('ui_opens_new_tab')}</span></a>
-    const radius = (l: LocationItem) => l.radiusMeters === null
-        ? <span className="ui-item-detail">{t('locations_radius_default').replace('{n}', num(LOCATION_RADIUS_DEFAULT))}</span>
-        : t('locations_radius_value').replace('{n}', num(l.radiusMeters))
 
     const columns: Column<LocationItem>[] = [
         {
@@ -178,7 +208,6 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
         },
         ...(everyCompany ? [{ key: 'company', header: t('clients_col_company'), cell: (l: LocationItem) => <bdi>{companyNameIn(locale, l.company)}</bdi> }] : []),
         { key: 'pin', header: t('locations_col_pin'), cell: pin },
-        { key: 'radius', header: t('locations_col_radius'), cell: radius },
         ...(changes ? [{ key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end' as const, cell: actions }] : []),
     ]
 
@@ -237,7 +266,6 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
                                     ...(onePage ? [{ icon: l.client ? StorefrontIcon : TagIcon, text: owner(l) }] : []),
                                     ...(everyCompany ? [{ icon: BuildingsIcon, text: <bdi>{companyNameIn(locale, l.company)}</bdi> }] : []),
                                     { icon: MapPinIcon, text: pin(l) },
-                                    { icon: MapPinAreaIcon, text: radius(l) },
                                 ]}
                                 foot={changes ? <>{actions(l)}</> : undefined}
                             />
@@ -248,8 +276,8 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
                 )}
 
             {/* To this client, or on the Locations page to the one chosen in the form. */}
-            <LocationForm open={adding} onClose={() => onAddingChange?.(false)} clientId={clientId} onSaved={changed} />
-            <LocationForm open={!!editing} onClose={() => setEditing(null)} location={editing} onSaved={changed} />
+            <LocationForm open={adding} onClose={() => onAddingChange?.(false)} clientId={clientId} onSaved={changed} defaultRadius={defaultRadius} />
+            <LocationForm open={!!editing} onClose={() => setEditing(null)} location={editing} onSaved={changed} defaultRadius={defaultRadius} />
             <ConfirmDialog
                 open={!!toArchive}
                 title={t('locations_archive')}
@@ -257,6 +285,15 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
                 confirmLabel={t('locations_archive')}
                 onConfirm={confirmArchive}
                 onCancel={() => setToArchive(null)}
+            />
+            <ConfirmDialog
+                open={!!toDelete}
+                title={t('locations_delete')}
+                body={t('locations_delete_question').replace('{name}', toDelete ? locationLabel(toDelete.name, toDelete.client?.name) : '')}
+                confirmLabel={t('locations_delete')}
+                danger
+                onConfirm={confirmDelete}
+                onCancel={() => setToDelete(null)}
             />
         </>
     )

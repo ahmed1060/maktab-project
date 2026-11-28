@@ -34,7 +34,8 @@ const LOCATIONS: Record<string, any> = {
     hq: { id: "hq", companyId: "c1", clientId: "v-1", name: "Head office", isHq: true, latitude: 30.1, longitude: 31.1, radiusMeters: null, archivedAt: null },
     old: { id: "old", companyId: "c1", clientId: "v-1", name: "Old site", isHq: false, latitude: 30.2, longitude: 31.2, radiusMeters: null, archivedAt: new Date(0) },
 }
-const row = (id: string) => LOCATIONS[id] && { ...LOCATIONS[id], createdAt: new Date(0), client: { id: "v-1", name: "Client one" }, company: { name: "c1" } }
+// As the database answers the row's select, with how many tasks have used it (§7.21).
+const row = (id: string) => LOCATIONS[id] && { ...LOCATIONS[id], createdAt: new Date(0), client: { id: "v-1", name: "Client one" }, company: { name: "c1" }, _count: { tasks: 0 } }
 /** What was written to a location: nothing, when refused. */
 let written: Record<string, unknown>[] = []
 const locationModel = {
@@ -254,8 +255,9 @@ describe("the Locations list's row menu", () => {
 describe("the words", () => {
     it("name each part in both languages", () => {
         expect(en.perm_locations_edit).toBe("Edit locations and pick a client's HQ")
-        expect(en.perm_locations_archive).toBe("Archive and restore locations")
+        // And deleting one no task has used, since §7.21.
+        expect(en.perm_locations_archive).toBe("Archive, restore and delete locations")
         expect(ar.perm_locations_edit).toBe("تعديل المواقع واختيار المقر الرئيسي للعميل")
-        expect(ar.perm_locations_archive).toBe("أرشفة المواقع واستعادتها")
+        expect(ar.perm_locations_archive).toBe("أرشفة المواقع واستعادتها وحذفها")
     })
 })

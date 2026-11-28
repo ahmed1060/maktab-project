@@ -32,7 +32,7 @@ export type ForTask = { clientId: string | null; clientName?: string; companyId?
  * client's, or shared. A client's first location is its HQ. A location
  * stays with the client it was added to.
  */
-export default function LocationForm({ open, onClose, clientId, location, forTask, onSaved }: {
+export default function LocationForm({ open, onClose, clientId, location, forTask, onSaved, defaultRadius }: {
     open: boolean
     onClose: () => void
     /** The client it's added to; none to choose here, on the Locations page. */
@@ -43,18 +43,21 @@ export default function LocationForm({ open, onClose, clientId, location, forTas
     forTask?: ForTask
     /** Once it's saved, with what was saved. */
     onSaved: (saved?: LocationItem) => void
+    /** The radius left empty takes, as the server sends it (LATER_CHANGES_PLAN.md §7.22). */
+    defaultRadius?: number
 }) {
     // Mounted afresh each time it opens, so it starts from the location as it is.
     if (!open) return null
-    return <Form onClose={onClose} clientId={clientId} location={location ?? null} forTask={forTask} onSaved={onSaved} />
+    return <Form onClose={onClose} clientId={clientId} location={location ?? null} forTask={forTask} onSaved={onSaved} defaultRadius={defaultRadius} />
 }
 
-function Form({ onClose, clientId, location, forTask, onSaved }: {
+function Form({ onClose, clientId, location, forTask, onSaved, defaultRadius }: {
     onClose: () => void
     clientId?: string
     location: LocationItem | null
     forTask?: ForTask
     onSaved: (saved?: LocationItem) => void
+    defaultRadius?: number
 }) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
@@ -85,7 +88,8 @@ function Form({ onClose, clientId, location, forTask, onSaved }: {
         return Array.isArray(raw) ? raw : []
     })()
 
-    const [draft, setDraft] = useState<PlaceDraft>(location ? draftOf(location) : emptyPlace)
+    // Its radius as whoever may edit it is sent it, the only one who opens it to edit.
+    const [draft, setDraft] = useState<PlaceDraft>(location ? draftOf({ ...location, radiusMeters: location.radiusMeters ?? null }) : emptyPlace)
     const [errors, setErrors] = useState<PlaceErrors>({})
     const [tried, setTried] = useState(false)
     const [saving, setSaving] = useState(false)
@@ -191,7 +195,7 @@ function Form({ onClose, clientId, location, forTask, onSaved }: {
                             options={[{ value: '', label: t('select_company') }, ...companyOptions(companies, locale)]} />
                     )}</Field>
                 )}
-                <PlaceFields draft={draft} onChange={d => { setDraft(d); if (tried) setErrors(readPlace(d).errors) }} errors={errors} disabled={saving} />
+                <PlaceFields draft={draft} onChange={d => { setDraft(d); if (tried) setErrors(readPlace(d).errors) }} errors={errors} disabled={saving} defaultRadius={defaultRadius} />
             </form>
         </Dialog>
     )

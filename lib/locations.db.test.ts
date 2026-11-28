@@ -139,7 +139,10 @@ describe.skipIf(!ADMIN_URL)("locations, in Postgres", () => {
     describe("LocationService", () => {
         it("adds a client's location and a shared one, for whoever may add them", async () => {
             const branch = await Locations.create(leader, { name: "Maadi branch", clientId: "k1", ...PIN, radiusMeters: 150 })
-            expect(branch).toMatchObject({ name: "Maadi branch", isHq: false, radiusMeters: 150, client: { id: "k1", name: "Acme" } })
+            expect(branch).toMatchObject({ name: "Maadi branch", isHq: false, client: { id: "k1", name: "Acme" } })
+            // Its radius is kept, though a Team Leader, who may add one but not edit it, isn't sent it back (LATER_CHANGES_PLAN.md §7.22).
+            expect(branch).not.toHaveProperty("radiusMeters")
+            expect((await db.query(`SELECT "radiusMeters" FROM "Location" WHERE id = $1`, [branch.id])).rows[0].radiusMeters).toBe(150)
             const shared = await Locations.create(admin, { name: "Port warehouse", ...PIN })
             expect(shared).toMatchObject({ name: "Port warehouse", isHq: false, radiusMeters: null, client: null })
             await expect(Locations.create(employee, { name: "Nope", ...PIN })).rejects.toMatchObject({ message: "TASK_LOCATION_FORBIDDEN" })
