@@ -105,6 +105,22 @@ describe.skipIf(!ADMIN_URL)("how far back a mission may be asked for, in Postgre
         expect(await asked("e2")).toEqual(["2026-11-02"])
     })
 
+    it("are read again holding the months' locks, whatever the first look before them said (Codex review on #448)", async () => {
+        const { MissionRequestService, MissionOutOfRange } = Missions
+        const window = MissionRequestService.window.bind(MissionRequestService)
+        // The first look, before any lock, says more days than there are by the time the locks are held:
+        // October's payroll approved meanwhile.
+        const spy = vi.spyOn(MissionRequestService, "window").mockImplementation(async (...args) => args[1] ? window(...args) : { from: "2026-01-01", to: "2027-12-31" })
+        try {
+            const late = MissionRequestService.ask("c2", "e2", byDays("2026-10-30"))
+            await expect(late).rejects.toBeInstanceOf(MissionOutOfRange)
+            await expect(late).rejects.toMatchObject({ from: "2026-11-01", to: "2027-11-27" })
+        } finally {
+            spy.mockRestore()
+        }
+        expect(await asked("e2")).not.toContain("2026-10-30")
+    })
+
     it("are the same without a policy, missions being on there", async () => {
         const { MissionRequestService } = Missions
         await expect(MissionRequestService.ask("c3", "e3", byDays("2026-10-31"))).rejects.toMatchObject({ message: "MISSION_OUT_OF_RANGE" })

@@ -101,9 +101,9 @@ export class MissionRequestService {
      * from the first day any request may be, to a year ahead. Today is the
      * company's.
      */
-    static async window(companyId: string): Promise<DayOffDays> {
+    static async window(companyId: string, db: Prisma.TransactionClient = prisma): Promise<DayOffDays> {
         // From the first day a request may be asked for, as every request's (LATER_CHANGES_PLAN.md §7.20).
-        const { from, today } = await requestDaysBasis(companyId)
+        const { from, today } = await requestDaysBasis(companyId, db)
         return missionDays(from, today)
     }
 
@@ -137,6 +137,10 @@ export class MissionRequestService {
             // Never on a day their final settlement counted: paid, with nothing after it to pay a change (Codex review on PR 430).
             if ((await lockDateMonths(tx, companyId, dates, userId)).includes(SETTLED)) fail("PAYROLL_MONTH_LOCKED")
             await refuseOwnerMonths(tx, userId, span.startDate, span.endDate)
+            // Its days read again holding their months' locks, so a payroll approved meanwhile can't let one through
+            // (Codex review on #448), as a day off's are.
+            const held = await MissionRequestService.window(companyId, tx)
+            if (span.startDate < held.from || span.endDate > held.to) throw new MissionOutOfRange(held.from, held.to)
             const policies = await AttendancePolicyService.versions(companyId, tx)
             if (dates.some(d => policyOn(policies, d)?.body.missions.enabled === false)) fail("MISSIONS_OFF")
             if (await tx.missionRequest.findFirst({ where: missionOver(userId, span.startDate, span.endDate), select: { id: true } })) fail("MISSION_OVERLAPS")

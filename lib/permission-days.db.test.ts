@@ -12,7 +12,11 @@ import { STANDARD_OFFICE } from "@/lib/attendance/policy"
  * - Three, around the day with a night shift, 22:00 to 06:00;
  * - Four, around the day with October approved;
  * - Five, any day, its first policy from 15 November;
- * - Six, around the day with 24 hours after, its first policy from today.
+ * - Six, around the day with 24 hours after, its first policy from today;
+ * - Seven, around the day with 24 hours after, and none from today;
+ * - Eight, around the day with none, and 24 hours after from today;
+ * - Nine, around the day with 48 hours after, none from yesterday, and 24
+ *   from today.
  * The clock is 10:00 on Friday 27 November 2026 in Cairo, unless a test
  * moves it.
  */
@@ -22,14 +26,17 @@ const MIGRATIONS = readdirSync("prisma/migrations").filter(m => m !== "migration
 const sql = (name: string) => readFileSync(`prisma/migrations/${name}/migration.sql`, "utf8")
 
 const PEOPLE = `
-INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now()), ('c3', 'Three', now()), ('c4', 'Four', now()), ('c5', 'Five', now()), ('c6', 'Six', now());
+INSERT INTO "Company"(id, name, "updatedAt") VALUES ('c1', 'One', now()), ('c2', 'Two', now()), ('c3', 'Three', now()), ('c4', 'Four', now()), ('c5', 'Five', now()), ('c6', 'Six', now()), ('c7', 'Seven', now()), ('c8', 'Eight', now()), ('c9', 'Nine', now());
 INSERT INTO "User"(id, email, password, "firstName", "lastName", role, "lastDayOffResetYear", username, "companyId") VALUES
  ('e1', 'e1@x', 'p', 'Ehab', 'One', 'EMPLOYEE', 2026, 'e1', 'c1'),
  ('e2', 'e2@x', 'p', 'Eman', 'Two', 'EMPLOYEE', 2026, 'e2', 'c2'),
  ('e3', 'e3@x', 'p', 'Essam', 'Three', 'EMPLOYEE', 2026, 'e3', 'c3'),
  ('e4', 'e4@x', 'p', 'Enas', 'Four', 'EMPLOYEE', 2026, 'e4', 'c4'),
  ('e5', 'e5@x', 'p', 'Ezz', 'Five', 'EMPLOYEE', 2026, 'e5', 'c5'),
- ('e6', 'e6@x', 'p', 'Eslam', 'Six', 'EMPLOYEE', 2026, 'e6', 'c6');
+ ('e6', 'e6@x', 'p', 'Eslam', 'Six', 'EMPLOYEE', 2026, 'e6', 'c6'),
+ ('e7', 'e7@x', 'p', 'Emad', 'Seven', 'EMPLOYEE', 2026, 'e7', 'c7'),
+ ('e8', 'e8@x', 'p', 'Ehsan', 'Eight', 'EMPLOYEE', 2026, 'e8', 'c8'),
+ ('e9', 'e9@x', 'p', 'Elham', 'Nine', 'EMPLOYEE', 2026, 'e9', 'c9');
 `
 
 const NOW = new Date("2026-11-27T08:00:00Z")
@@ -72,6 +79,13 @@ describe.skipIf(!ADMIN_URL)("the days permission hours' calendar offers, in Post
         await db.query(`INSERT INTO "PayrollRun"(id, "companyId", month, year, status, "payrollDay", "periodStart", "periodEnd", "updatedAt") VALUES
             ('r10', 'c4', 10, 2026, 'APPROVED', 1, '2026-10-01', '2026-10-31', now())`)
         await policy("p6", "c6", "2026-11-27", around(24))
+        await policy("p7", "c7", "2026-10-01", around(24))
+        await policy("p7b", "c7", "2026-11-27", around(0))
+        await policy("p8", "c8", "2026-10-01", around(0))
+        await policy("p8b", "c8", "2026-11-27", around(24))
+        await policy("p9", "c9", "2026-10-01", around(48))
+        await policy("p9b", "c9", "2026-11-26", around(0))
+        await policy("p9c", "c9", "2026-11-27", around(24))
         await policy("p5", "c5", "2026-11-15", { ...STANDARD_OFFICE, permissionHours: { ...STANDARD_OFFICE.permissionHours, when: "ANY_DAY" } })
         const { AttendanceCalendarService } = await import("@/lib/services/attendance-calendar.service")
         await AttendanceCalendarService.createSchedule("c3", { name: "Night", version: { effectiveFrom: "2026-01-01", startMinutes: 1320, endMinutes: 1800, breakMinutes: 0 } }, "e3")
@@ -125,6 +139,21 @@ describe.skipIf(!ADMIN_URL)("the days permission hours' calendar offers, in Post
     it("around the day, never start before the company's first policy", async () => {
         const { AttendanceRequestService } = Requests
         expect(await AttendanceRequestService.permissionEarliest("c6", "e6")).toBe("2026-11-27")
+    })
+
+    it("around the day, read each day by the policy in force on it, as asking does (Codex review on #448)", async () => {
+        const { AttendanceRequestService } = Requests
+        // Seven: none after from today, but yesterday's policy gave 24, so yesterday's hours are still taken.
+        expect(await AttendanceRequestService.permissionEarliest("c7", "e7")).toBe("2026-11-26")
+        await AttendanceRequestService.requestPermission("c7", "e7", ask("2026-11-26", "16:00", "17:00"))
+        // Eight: 24 from today, but yesterday's policy gave none, so yesterday's hours are too late.
+        expect(await AttendanceRequestService.permissionEarliest("c8", "e8")).toBe("2026-11-27")
+        await expect(AttendanceRequestService.requestPermission("c8", "e8", ask("2026-11-26", "16:00", "17:00"))).rejects.toMatchObject({ message: "PERMISSION_TOO_LATE" })
+        // Nine: the 25th's 48 hours still reach today, but the 26th's none don't. A calendar offers from a first
+        // day on, so it stops at the first day too late, offering none it would refuse.
+        await AttendanceRequestService.requestPermission("c9", "e9", ask("2026-11-25", "16:00", "17:00"))
+        await expect(AttendanceRequestService.requestPermission("c9", "e9", ask("2026-11-26", "16:00", "17:00"))).rejects.toMatchObject({ message: "PERMISSION_TOO_LATE" })
+        expect(await AttendanceRequestService.permissionEarliest("c9", "e9")).toBe("2026-11-27")
     })
 
     it("any day, start no earlier than the company's first policy, and are none around the day", async () => {
