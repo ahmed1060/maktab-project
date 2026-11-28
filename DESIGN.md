@@ -2373,15 +2373,25 @@ These are built once, in the building-blocks PR, and every page uses them
     it says so above the buttons and works the settlement out again, the
     main button waiting for the new figures: the figure confirmed is the
     figure recorded.
+- **How far back a request may be asked for** (`LATER_CHANGES_PLAN.md`
+  §7.20, the owner's choice): day off, permission hours, a mission and a
+  missing punch alike, from the first day of the payroll month today is
+  in, by when payroll closes, or of last month's until last month's
+  payroll is approved, whether or not its draft has been saved yet; never
+  a day in a month whose payroll is approved, and never before the
+  company's first attendance policy once it's in force. With payroll
+  closing on the month's last day and a first policy from 1 November, on
+  28 November that's 1 November; on 1 December it's still 1 November,
+  before anyone has opened November's payroll, and stays so until
+  November's payroll is approved. How far ahead stays each one's own.
 - **Asking for a day off** (`LATER_CHANGES_PLAN.md` §7.4), in New request
   on the Requests page:
   - **The dates' calendar** offers only the days that may be asked for;
     the others are in `--muted` and do nothing, as a day that can't be
-    picked is (§5.3). They run from the first day not in a month whose
-    payroll is approved, and never before the 1st of last month, to today
-    plus the months ahead the attendance policy allows: the same date that
-    many months on, or that month's last day where it has fewer. Today is
-    the company's, in its time zone.
+    picked is (§5.3). They run from the first day a request may be asked
+    for (above), to today plus the months ahead the attendance policy
+    allows: the same date that many months on, or that month's last day
+    where it has fewer. Today is the company's, in its time zone.
   - **Under the dates,** as their hint, the balance: "Your balance: 12
     days." Picking more days than it holds says so under the dates, in the
     words the approval dialog's short balance uses, and doesn't stop the
@@ -2399,44 +2409,64 @@ These are built once, in the building-blocks PR, and every page uses them
 - **Asking for permission hours** (`LATER_CHANGES_PLAN.md` §7.4, 4b), as
   the attendance policy in force today says:
   - **Before, or up to some hours after** (as before, and to start): the
-    day's calendar offers any day, and hours asked for too late are
-    refused as before.
-  - **Any day, from last month to a month ahead:** the day's calendar
-    offers only the days that may be asked for, as day off's does: from
-    the first day not in a month whose payroll is approved, and never
-    before the 1st of last month, to today plus one month. A day already
-    passed may be asked for, whatever its hours.
+    day's calendar offers only the days whose hours may still be asked
+    for, as day off's does: from the day those hours after reach back to
+    (yesterday, with 24; today, with none), or the day before it where
+    their shift that day runs past midnight, with no last day, and never
+    before the first day a request may be asked for. Each day's hours
+    after are the policy's in force on that day, as asking reads them;
+    going back from today, the calendar stops at the first day too late,
+    so it offers none it would refuse. Its hint says how long
+    after: "Can be asked for ahead, or up to 24 hours after they end.",
+    or, with none, "Can be asked for only ahead."
+  - **Hours that ended longer ago than that,** sent all the same (a day
+    the calendar offers, earlier in it than the hours allow, or the
+    dialog left open), are refused under To, in the hint's words: "Too
+    late for these hours: they can be asked for up to 24 hours after
+    they end." The focus goes to To.
+  - **Any day, from the payroll month to a month ahead:** the day's
+    calendar offers only the days that may be asked for, as day off's
+    does: from the first day a request may be asked for, and never before
+    the company's first attendance policy, as there are no permission
+    hours before it, to today plus one month. A day already passed may be
+    asked for, whatever its hours.
+  - **On Attendance,** a day's Ask for permission is there only on a day
+    its calendar offers.
   - **A day outside them,** sent all the same (the dialog left open past
     midnight, or a month approved meanwhile), is refused under the date,
     saying which days may be asked for: "Permission hours can be asked
     for from 1 November to 27 December." The focus goes back to the date.
 - **The attendance policy's permission hours:** after the row of its
   limits, a choice between two (§5.3), Can be asked for: Before, or up to
-  some hours after (to start), and Any day, from last month to a month
-  ahead, with under it that it counts from today, and that a day in a
-  month whose payroll is approved never is. With the first, Can ask up to
+  some hours after (to start), and Any day, from the payroll month to a
+  month ahead, with under it that it starts on the payroll month's first
+  day, or last month's until its payroll is approved. With the first, Can ask up to
   this many hours after follows it, as today; with the second, that field
   isn't shown. The policy's card says which under the hours a month:
   "Before, or up to 24 hours after", "Only in advance" (no hours after),
-  or "Any day, from last month to a month ahead".
+  or "Any day, from the payroll month to a month ahead".
 - **Asking for a mission** (`LATER_CHANGES_PLAN.md` §7.4, 4c), as the
   attendance policy in force today says:
   - **The dates' calendar,** by days or by hours, offers only the days
-    that may be asked for, as day off's does: from today less the days
-    back the policy allows (7 to start) to a year ahead, as before. Today
-    is the company's, in its time zone. A month whose payroll is approved
-    is no refusal, as before.
+    that may be asked for, as day off's does: from the first day a request
+    may be asked for to a year ahead. Today is the company's, in its time
+    zone.
   - **A day outside them,** sent all the same (the dialog left open past
-    midnight, or the policy changed meanwhile), is refused under the
-    dates, saying which days may be asked for: "Missions can be asked for
-    from 20 November 2026 to 27 November 2027." The focus goes back to
-    the dates.
-- **The attendance policy's missions:** under Employees can ask for
-  missions, while it's ticked, a number, Can be asked for up to this many
-  days back, 0 to 365, 7 to start. Its hint: that it counts from today,
-  and that 0 means from today on. The policy's card says it under the
-  missions' line: "Can be asked for up to 7 days back", or "Can be asked
-  for from today on" with 0.
+    midnight, or a month approved meanwhile), is refused under the dates,
+    saying which days may be asked for: "Missions can be asked for from 1
+    November 2026 to 28 November 2027." The focus goes back to the dates.
+- **The attendance policy's missions** have no days back of their own:
+  they follow the payroll month, as every request does (§7.20, the
+  owner's choice). The policy's dialog and card don't ask or say it.
+- **Reporting a missing punch** (`LATER_CHANGES_PLAN.md` §7.20):
+  - **The day's calendar** offers only the days a punch may be reported
+    for: from the first day a request may be asked for to today. A time
+    still to come is refused as before.
+  - **A day outside them,** sent all the same, is refused under the date,
+    saying which days: "Missing punches can be reported from 1 November
+    to 28 November." The focus goes back to the date.
+  - **On Attendance,** a day's Report a missing punch is there only on a
+    day its calendar offers, as Ask for permission is.
 - **An obligation's client** (`LATER_CHANGES_PLAN.md` §7.7, 7a), as a
   task's is:
   - **On Add obligation,** for whoever may see clients: Client, a select
@@ -3896,3 +3926,21 @@ changed:
 - **2026-11-28:** Permission hours left (§5.5): the Attendance tab's
   switch for whether each person sees what's left of their own permission
   hours (`LATER_CHANGES_PLAN.md` §7.18).
+- **2026-11-28:** Asking for permission hours (§5.5): before, or up to
+  some hours after, offers only the days whose hours may still be asked
+  for, and says how long after; any day starts no earlier than the
+  company's first attendance policy (`LATER_CHANGES_PLAN.md` §7.20).
+- **2026-11-28:** How far back a request may be asked for (§5.5): every
+  request from the first day of the payroll month today is in, or of
+  last month's while its payroll is a draft (`LATER_CHANGES_PLAN.md`
+  §7.20). Missions lose their days back, and reporting a missing punch
+  offers only those days.
+- **2026-11-28:** How far back a request may be asked for (§5.5): last
+  month stays open until its payroll is approved, whether or not its
+  draft has been saved, so a punch missed on the month's last day can be
+  reported on the 1st; and never before the company's first attendance
+  policy once it's in force (`LATER_CHANGES_PLAN.md` §7.20).
+- **2026-11-28:** Asking for permission hours (§5.5): each day's hours
+  after are the policy's in force on that day, as asking reads them, and
+  the calendar stops at the first day too late; a mission's days are read
+  again under its months' locks (Codex's review of #448).

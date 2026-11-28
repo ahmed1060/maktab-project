@@ -54,6 +54,16 @@ describe.skipIf(!ADMIN_URL)("missions asked for and decided, in Postgres", () =>
     const told = async (id: string) => (await db.query(`SELECT type, "messageKey", "messageParams", "userId" FROM "Notification" WHERE "relatedId" = $1`, [id])).rows
     const clear = () => db.query(`DELETE FROM "MissionRequest"; DELETE FROM "DayOffRequest"`)
     const byDays = (startDate: string, endDate: string, reason = "Client visit") => ({ kind: "DAYS" as const, startDate, endDate, reason })
+    // Asked while its days could be (LATER_CHANGES_PLAN.md §7.20): October's before its payroll was approved, the
+    // 1st being as far back as one may be asked today. What's tested is what deciding and cancelling it do.
+    const askedBack = async (...args: Parameters<typeof Missions.ask>) => {
+        const spy = vi.spyOn(Missions, "window").mockResolvedValue({ from: "2026-01-01", to: "2027-12-31" })
+        try {
+            return await Missions.ask(...args)
+        } finally {
+            spy.mockRestore()
+        }
+    }
 
     beforeAll(async () => {
         vi.useFakeTimers({ toFake: ["Date"], now: NOW })
@@ -78,8 +88,7 @@ describe.skipIf(!ADMIN_URL)("missions asked for and decided, in Postgres", () =>
         // 9,300.00 a month.
         await db.query(`INSERT INTO "SalaryChange"(id, "userId", "monthlyAmount", "effectiveFrom") VALUES ('s1', 'e1', 9300, '2026-01-01T00:00:00Z'), ('s2', 'e2', 9300, '2026-01-01T00:00:00Z')`)
         await Calendar.createSchedule("c1", { name: "Office", version: { effectiveFrom: "2026-10-01", startMinutes: 540, endMinutes: 1020, breakMinutes: 60 } }, "a1")
-        // A year back, as before the policy's days back (LATER_CHANGES_PLAN.md §7.4, 4c): October's days are asked for here.
-        await Policy.saveVersion("c1", { effectiveFrom: "2026-10-01", body: { ...STANDARD_OFFICE, missions: { ...STANDARD_OFFICE.missions, daysBack: 365 } } }, "a1")
+        await Policy.saveVersion("c1", { effectiveFrom: "2026-10-01", body: STANDARD_OFFICE }, "a1")
         await Policy.saveVersion("c1", { effectiveFrom: "2026-12-01", body: { ...STANDARD_OFFICE, missions: { enabled: false } } }, "a1")
         // October worked out, then paid with attendance: Ehab absent on Thursday the 29th.
         // Attendance starts with the company's first scan: Eman's on 1 October.
@@ -166,8 +175,15 @@ describe.skipIf(!ADMIN_URL)("missions asked for and decided, in Postgres", () =>
             await clear()
         })
 
-        it("accepts one across a month whose payroll is approved (decision 16)", async () => {
-            const m = await Missions.ask("c1", "e1", byDays("2026-10-29", "2026-11-02"))
+        it("refuses one with a day in a month whose payroll is approved, saying which days may be (§7.20)", async () => {
+            const { MissionOutOfRange } = await import("@/lib/services/mission-request.service")
+            const across = Missions.ask("c1", "e1", byDays("2026-10-29", "2026-11-02"))
+            await expect(across).rejects.toBeInstanceOf(MissionOutOfRange)
+            await expect(across).rejects.toMatchObject({ from: "2026-11-01", to: "2027-11-14" })
+        })
+
+        it("keeps one asked across a month while it was open, once its payroll is approved (decision 16)", async () => {
+            const m = await askedBack("c1", "e1", byDays("2026-10-29", "2026-11-02"))
             expect((await mission(m.id)).status).toBe("PENDING")
             await clear()
         })
@@ -239,7 +255,7 @@ describe.skipIf(!ADMIN_URL)("missions asked for and decided, in Postgres", () =>
             expect(await day("e1", "2026-10-29")).toMatchObject({ status: "ABSENT" })
             const paid = (await day("e1", "2026-10-29")).deductionMinor
             expect(paid).toBeGreaterThan(0)
-            const m = await Missions.ask("c1", "e1", byDays("2026-10-29", "2026-11-02"))
+            const m = await askedBack("c1", "e1", byDays("2026-10-29", "2026-11-02"))
             await Missions.decide(m.id, { approve: true }, "a1")
             const { rows } = await db.query(`SELECT * FROM "AttendanceDiscrepancy" WHERE "userId" = 'e1' AND date = '2026-10-29'`)
             expect(rows).toHaveLength(1)
@@ -254,7 +270,7 @@ describe.skipIf(!ADMIN_URL)("missions asked for and decided, in Postgres", () =>
         it("approving one whose days have since passed the year the engine reworks by itself still works them out again (found by Codex on PR 283)", { timeout: 120_000 }, async () => {
             const paid = (await day("e1", "2026-10-28")).deductionMinor
             expect(paid).toBeGreaterThan(0)
-            const m = await Missions.ask("c1", "e1", byDays("2026-10-28", "2026-10-28"))
+            const m = await askedBack("c1", "e1", byDays("2026-10-28", "2026-10-28"))
             // Decided a year on, when the engine's own reworking starts at November 2026.
             vi.setSystemTime(new Date("2027-11-02T08:00:00Z"))
             try {
@@ -321,7 +337,7 @@ describe.skipIf(!ADMIN_URL)("missions asked for and decided, in Postgres", () =>
             const paid = (await day("e1", "2026-10-27")).deductionMinor
             expect(paid).toBeGreaterThan(0)
             const open = async () => (await db.query(`SELECT * FROM "AttendanceDiscrepancy" WHERE "userId" = 'e1' AND date = '2026-10-27' AND "resolvedAt" IS NULL`)).rows
-            const m = await Missions.ask("c1", "e1", byDays("2026-10-27", "2026-10-27"))
+            const m = await askedBack("c1", "e1", byDays("2026-10-27", "2026-10-27"))
             await Missions.decide(m.id, { approve: true }, "a1")
             expect(await open()).toMatchObject([{ paidDeductionMinor: paid, nowDeductionMinor: 0, nowStatus: "MISSION" }])
             await Missions.cancel(m.id, "Didn't go", "a1")
@@ -334,7 +350,7 @@ describe.skipIf(!ADMIN_URL)("missions asked for and decided, in Postgres", () =>
         it("and once that one was settled, opens a new one the other way round: the deduction charged", async () => {
             const paid = (await day("e1", "2026-10-26")).deductionMinor
             expect(paid).toBeGreaterThan(0)
-            const m = await Missions.ask("c1", "e1", byDays("2026-10-26", "2026-10-26"))
+            const m = await askedBack("c1", "e1", byDays("2026-10-26", "2026-10-26"))
             await Missions.decide(m.id, { approve: true }, "a1")
             // HR settles it on the next payslip: the deduction refunded.
             await db.query(`UPDATE "AttendanceDiscrepancy" SET "resolvedAt" = now(), "resolvedById" = 'a1', resolution = 'Refunded' WHERE "userId" = 'e1' AND date = '2026-10-26'`)
@@ -396,7 +412,7 @@ describe.skipIf(!ADMIN_URL)("missions asked for and decided, in Postgres", () =>
         it("give every scan on each mission shown, read for the page shown alone (found by Codex on PR 283)", { timeout: 60_000 }, async () => {
             const { requestFeed } = await import("@/lib/requests/feed")
             // Eman's 90 days, with a scan an hour for 2,100 hours of them: more than one read for the page once stopped at.
-            const long = await Missions.ask("c1", "e2", byDays("2026-08-20", "2026-11-17"))
+            const long = await askedBack("c1", "e2", byDays("2026-08-20", "2026-11-17"))
             await db.query(`
                 INSERT INTO "AttendancePunch"(id, "companyId", "userId", source, "sourceKey", "punchAtLocal", "punchAt", "resolvedWithTimeZone")
                 SELECT 'bulk-' || g, 'c1', 'e2', 'MANUAL', 'bulk-' || g, timestamp '2026-08-20 08:00' + g * interval '1 hour',
@@ -424,7 +440,7 @@ describe.skipIf(!ADMIN_URL)("missions asked for and decided, in Postgres", () =>
         it("counts the missions waiting with a day in the month, for people on the register", async () => {
             const { daysToSettle } = await import("@/lib/services/attendance-payroll")
             const { prisma } = await import("@/lib/prisma")
-            await Missions.ask("c1", "e1", byDays("2026-10-30", "2026-11-03"))
+            await askedBack("c1", "e1", byDays("2026-10-30", "2026-11-03"))
             await Missions.ask("c1", "e2", byDays("2026-11-20", "2026-11-20"))
             const decided = await Missions.ask("c1", "e2", byDays("2026-11-24", "2026-11-24"))
             await Missions.decide(decided.id, { approve: false }, "a1")

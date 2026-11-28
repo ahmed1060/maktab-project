@@ -1,6 +1,6 @@
 import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
-import { AttendanceRequestService } from "@/lib/services/attendance-request.service"
+import { AttendanceRequestService, MissingPunchOutOfRange } from "@/lib/services/attendance-request.service"
 import { punchCompany, decidesFor, asksForSelf } from "@/lib/attendance/punch-access"
 import { missingPunchSchema } from "@/lib/validations/attendance-request.schema"
 
@@ -29,6 +29,12 @@ export const POST = withStandardHandler(async (_req, session, json) => {
     if (!validation.success) return ApiResponse.badRequest("Validation Error", validation.error.format())
     const self = asksForSelf(session)
     if (!self) return ApiResponse.forbidden()
-    const created = await AttendanceRequestService.reportMissingPunch(self.companyId, self.userId, validation.data)
-    return ApiResponse.success(created, 201)
+    try {
+        const created = await AttendanceRequestService.reportMissingPunch(self.companyId, self.userId, validation.data)
+        return ApiResponse.success(created, 201)
+    } catch (error) {
+        // Before the days it may be reported for (LATER_CHANGES_PLAN.md §7.20): which days, for the form to say.
+        if (error instanceof MissingPunchOutOfRange) return ApiResponse.refused(400, `Missing punches can be reported from ${error.from} to ${error.to}.`, error.message, { from: error.from, to: error.to })
+        throw error
+    }
 })

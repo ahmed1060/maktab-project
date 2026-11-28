@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { toDateString } from "@/lib/attendance/calendar"
-import { MISSION_DAYS_BACK, policyOn } from "@/lib/attendance/policy"
+import { policyOn } from "@/lib/attendance/policy"
+import { requestDaysBasis } from "./request-days"
 import { datesOf, missionDays, missionSpan, type MissionKind, type MissionPart } from "@/lib/attendance/missions"
 import type { DayOffDays } from "@/lib/day-off-window"
 import { optional, type NoticeParam, type NoticeText } from "@/lib/notice"
@@ -96,13 +97,14 @@ export class MissionRequestService {
     }
 
     /**
-     * The days a mission may be asked for (LATER_CHANGES_PLAN.md §7.4, 4c):
-     * back as far as the policy in force today allows, 7 where it says
-     * nothing or there's none, to a year ahead. Today is the company's.
+     * The days a mission may be asked for (LATER_CHANGES_PLAN.md §7.20):
+     * from the first day any request may be, to a year ahead. Today is the
+     * company's.
      */
-    static async window(companyId: string): Promise<DayOffDays> {
-        const [today, policies] = await Promise.all([AttendanceCalendarService.today(companyId), AttendancePolicyService.versions(companyId)])
-        return missionDays(today, policyOn(policies, today)?.body.missions.daysBack ?? MISSION_DAYS_BACK)
+    static async window(companyId: string, db: Prisma.TransactionClient = prisma): Promise<DayOffDays> {
+        // From the first day a request may be asked for, as every request's (LATER_CHANGES_PLAN.md §7.20).
+        const { from, today } = await requestDaysBasis(companyId, db)
+        return missionDays(from, today)
     }
 
     /** One's open tasks, which a mission may name (decision 18): theirs, Pending or In progress, in their company. */
@@ -135,6 +137,10 @@ export class MissionRequestService {
             // Never on a day their final settlement counted: paid, with nothing after it to pay a change (Codex review on PR 430).
             if ((await lockDateMonths(tx, companyId, dates, userId)).includes(SETTLED)) fail("PAYROLL_MONTH_LOCKED")
             await refuseOwnerMonths(tx, userId, span.startDate, span.endDate)
+            // Its days read again holding their months' locks, so a payroll approved meanwhile can't let one through
+            // (Codex review on #448), as a day off's are.
+            const held = await MissionRequestService.window(companyId, tx)
+            if (span.startDate < held.from || span.endDate > held.to) throw new MissionOutOfRange(held.from, held.to)
             const policies = await AttendancePolicyService.versions(companyId, tx)
             if (dates.some(d => policyOn(policies, d)?.body.missions.enabled === false)) fail("MISSIONS_OFF")
             if (await tx.missionRequest.findFirst({ where: missionOver(userId, span.startDate, span.endDate), select: { id: true } })) fail("MISSION_OVERLAPS")

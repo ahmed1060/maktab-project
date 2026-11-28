@@ -2310,7 +2310,7 @@ everywhere it's shown, not only there.
    and each change in the audit log.
 4. One PR, before salary advances' step 3: #446.
 
-### 7.19 A company's first policy and schedule from the month's first day (Decided)
+### 7.19 A company's first policy and schedule from the month's first day (Done, #447, merged on 28 November)
 
 On 2026-11-28 the owner showed the Attendance page's days of 1 to 19
 November reading No schedule, and "no policy yet, measured only". The
@@ -2339,6 +2339,66 @@ the days from the 20th were measured as they should be.
    - The first schedule becomes the default from its date, as now, so
      the default starts on the month's first day too.
 3. One PR, after #446: #447.
+
+### 7.20 Permission hours' calendar offers only what may be asked for (Decided)
+
+The owner, 28 November: "We agreed before that we can make a request
+since the first day of the payroll and now I can select a past date but
+when I continue I get a block so make a full check on it."
+
+- **What was found** (read-only, on the live database and its logs): the
+  live company's attendance policy was saved before 4b's choice existed,
+  so it read as before, or up to 24 hours after. Its calendar offered
+  every day, and asking for a day more than 24 hours back was refused as
+  too late (`PERMISSION_TOO_LATE`, three times in the hour before). Day
+  off, missions and missing punches offer what they accept.
+- **The live policy:** at the owner's choice (28 November), its version
+  from 1 November was set to any day directly in the live database, so
+  permission hours may be asked for within day off's days. It has no line
+  in the audit log or the policy's history, the owner's choice too.
+- **The calendar** (`DESIGN.md` §5.5, Asking for permission hours), so
+  nothing it offers is refused for its day:
+  1. Before, or up to some hours after: the days from the date those
+     hours reach back to (today, with none), or the day before where its
+     shift ends after midnight, with no last day, and from the first day
+     not in a month whose payroll is approved. Each day's hours after
+     are the policy's in force on it, as asking reads them; going back
+     from today, it stops at the first day too late (Codex's review of
+     #448). The hint says how long
+     after; hours ended longer ago are refused under To, in those words.
+  2. Any day: no earlier than the company's first attendance policy, as
+     there are no permission hours before it.
+  3. On Attendance, a day's Ask for permission only on a day the
+     calendar offers.
+- **Every request from the payroll month's first day** (the owner, 28
+  November: "I want all these requests ... from the first day of the
+  current payroll, which is currently from 1 Nov to the end of
+  November"). Chosen with it: last month's days stay open until last
+  month's payroll is approved ("Last month until approved"), and missions
+  lose their days back ("Replace it"). `DESIGN.md` §5.5, How far back a
+  request may be asked for.
+  4. One rule (`requestDaysBasis`): the first day of the payroll month
+     today is in, by when payroll closes, or of last month's until last
+     month's payroll is approved or paid, its draft saved or not (on the
+     1st, before anyone opens last month's payroll, a punch missed on its
+     last day can still be reported); never in an approved or paid
+     month's period, and never before the company's first attendance
+     policy once it's in force (§7.19), so the live company's is 1
+     November today. Day off, permission hours any day, missions and
+     missing punches all start on it; around the day starts no earlier.
+     How far ahead is each one's own, as before.
+  5. Missions: the policy's days back goes, from the schema, the dialog,
+     the card and the words. A version saved with it still reads, as the
+     field is dropped when read.
+  6. A missing punch before that day is refused with
+     `MISSING_PUNCH_OUT_OF_RANGE` and the days, said under the date; its
+     form's calendar offers only them, from the day's balance
+     (`requestsFrom`, which Attendance already reads); on Attendance,
+     Report a missing punch shows only where the day its form opens on is
+     one of them (the next day, for a night shift's punch out).
+  7. The policy's choice reads "Any day, from the payroll month to a
+     month ahead", in both languages.
+- One PR, before salary advances' step 3a: #448. Step 3a becomes #449.
 
 ## Not here
 
@@ -3070,3 +3130,32 @@ the days from the 20th were measured as they should be.
   left. The owner recalculated November's attendance: 1 to 19 November
   are measured now, none left without a schedule. November's payroll
   draft is still to be recalculated. #447 (§7.19) is open.
+- **2026-11-28:** #447 merged (§7.19): a company's first policy and first
+  schedule start on the payroll month's first day unless changed.
+  Production is checked after the deploy. Salary advances' step 3a is
+  next.
+- **2026-11-28:** §7.20 decided: permission hours' calendar offers only
+  what may be asked for. The live company's policy was set to any day,
+  at the owner's choice. Salary advances' step 3a is set aside until
+  #448 is merged, and becomes #449.
+- **2026-11-28:** #447 in production: the deploy is ready on b5aa9c4, CI
+  on main is green, and there are no runtime errors. November's payroll
+  draft was last worked out on 27 November, before this morning's
+  attendance fix, so the owner was reminded to recalculate it.
+- **2026-11-28:** §7.20 built: 20 controls, each caught by a test.
+- **2026-11-28:** §7.20 widened, at the owner's word: every request from
+  the payroll month's first day, last month's while its payroll is a
+  draft; missions lose their days back. In #448 with the calendar fix.
+- **2026-11-28:** §7.20, as built: last month stays open until its
+  payroll is approved, whether or not its draft was saved, so the 1st of
+  a month isn't closed to a punch missed the day before; and no request
+  goes before the company's first attendance policy once it's in force,
+  which keeps the live company at 1 November, and makes permission
+  hours' own floor at it needless, so it goes. Tests that ask for
+  missions in an approved October ask as they could while it was open.
+  39 controls, each caught by a test.
+- **2026-11-28:** #448, after Codex's review: permission hours' first
+  day reads each day by the policy in force on it, as asking does, and
+  stops at the first day too late; a mission's days are read again
+  holding its months' locks, as a day off's are, so a payroll approved
+  meanwhile can't let one through. 42 controls, each caught by a test.

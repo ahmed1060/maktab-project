@@ -46,7 +46,9 @@ describe("asked for anyway", () => {
         expect(dayOff).toContain("await lockPersonDates(tx, userId)\n            await refuseOwnerMonths(tx, userId, requestDateStr, finalEndDateStr)")
         const attendance = source("lib/services/attendance-request.service.ts")
         expect(attendance).toContain("await lockMonths(tx, companyId, [monthOf(input.date), monthOf(next)])\n            await refuseOwnerMonths(tx, userId, input.date)")
-        expect(attendance).toContain("await openMonths(tx, companyId, await lockPunchMonths(tx, companyId, userId, local))\n            await refuseOwnerMonths(tx, userId, date)")
+        // A missing punch's months locked, then, after the first day it may be reported for (§7.20), checked as open.
+        expect(attendance).toContain("const months = await lockPunchMonths(tx, companyId, userId, local)")
+        expect(attendance).toContain("await openMonths(tx, companyId, months)\n            await refuseOwnerMonths(tx, userId, date)")
         const missions = source("lib/services/mission-request.service.ts")
         // The payroll months its dates fall in since PR 430.
         expect(missions).toContain("if ((await lockDateMonths(tx, companyId, dates, userId)).includes(SETTLED)) fail(\"PAYROLL_MONTH_LOCKED\")\n            await refuseOwnerMonths(tx, userId, span.startDate, span.endDate)")

@@ -204,8 +204,13 @@ describe.skipIf(!ADMIN_URL)("attendance requests, in Postgres", () => {
 
         it("are refused in a month whose payroll is approved", async () => {
             await db.query(`INSERT INTO "PayrollRun"(id, "companyId", month, year, status, "payrollDay", "updatedAt") VALUES ('run4', 'c1', 4, 2027, 'APPROVED', 25, now())`)
-            await expect(Requests.requestPermission("c1", "e1", { date: "2027-04-05", type: "MIDDAY", start: "12:00", end: "13:00", reason: "x" }))
-                .rejects.toEqual(refusal("PAYROLL_MONTH_LOCKED"))
+            try {
+                await expect(Requests.requestPermission("c1", "e1", { date: "2027-04-05", type: "MIDDAY", start: "12:00", end: "13:00", reason: "x" }))
+                    .rejects.toEqual(refusal("PAYROLL_MONTH_LOCKED"))
+            } finally {
+                // Put back: an approved month ahead of the clock would close every day before it to the requests after (§7.20).
+                await db.query(`DELETE FROM "PayrollRun" WHERE id = 'run4'`)
+            }
         })
 
         it("carry nothing a later version of the next month's policy has spent (review on #14)", async () => {

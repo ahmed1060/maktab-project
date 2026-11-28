@@ -42,20 +42,23 @@ export class DayOffService {
 
     /**
      * The days a day off may be asked for in this company (LATER_CHANGES_PLAN.md
-     * §7.4, 4a): from the first day not in an approved payroll's period, never
-     * before the 1st of last month, to today plus the months ahead of the
-     * policy in force today; 1 without Attendance, or without a policy. Today
-     * is the company's, in its time zone.
+     * §7.4, 4a; §7.20): from the first day a request may be asked for, to
+     * today plus the months ahead of the policy in force today; 1 without
+     * Attendance, or without a policy. Today is the company's, in its time
+     * zone. With no company, this month's.
      */
     static async window(companyId: string | null, db: Prisma.TransactionClient = prisma): Promise<DayOffDays> {
-        if (!companyId) return dayOffWindow(calendarDateStr(new Date()), 1, null)
-        const { today, firstOpen } = await requestDaysBasis(companyId, db)
+        if (!companyId) {
+            const today = calendarDateStr(new Date())
+            return dayOffWindow(today, 1, `${today.slice(0, 7)}-01`)
+        }
+        const { today, from } = await requestDaysBasis(companyId, db)
         const { companyHasModule } = await import("./company-package")
         const { AttendancePolicyService } = await import("./attendance-policy.service")
         const months = await companyHasModule(companyId, "ATTENDANCE", db)
             ? policyOn(await AttendancePolicyService.versions(companyId, db), today)?.body.dayOffMonthsAhead ?? 1
             : 1
-        return dayOffWindow(today, months, firstOpen)
+        return dayOffWindow(today, months, from)
     }
 
     static async create(input: CreateDayOffInput, session: any) {

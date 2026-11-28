@@ -9,7 +9,8 @@ import { balanceAsShown } from "@/lib/attendance/permission-left"
  * With `date`, under the policy in force that day — the rules a request for
  * it is held to. And the days they may be asked for, where the policy in
  * force today says any day (LATER_CHANGES_PLAN.md §7.4, 4b), for the form's
- * calendar to offer only them; none around the day.
+ * calendar to offer only them; around the day, the first day that may be
+ * (§7.20).
  */
 export const GET = withStandardHandler(async (req, session) => {
     const self = asksForSelf(session)
@@ -21,5 +22,9 @@ export const GET = withStandardHandler(async (req, session) => {
     return ApiResponse.success({
         ...balanceAsShown(await AttendanceRequestService.permissionBalance(self.companyId, self.userId, month, date)),
         days: await AttendanceRequestService.permissionDays(self.companyId),
+        // Around the day, the first day that may be asked for, for the calendar to start on (LATER_CHANGES_PLAN.md §7.20).
+        earliest: await AttendanceRequestService.permissionEarliest(self.companyId, self.userId),
+        // The first day any request may be asked for (§7.20): the missing punch form's, and Attendance's buttons'.
+        requestsFrom: (await AttendanceRequestService.requestDays(self.companyId)).from,
     })
 })
