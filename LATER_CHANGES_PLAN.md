@@ -2921,3 +2921,7 @@ isn't, rather than My team's tasks.
 - **2026-11-28:** §7.17, a Team Leader's task notifications: one about a
   task of the team's, not their own, opens My team's tasks, as #441 did
   for obligations. One PR after #442.
+- **2026-11-28:** #442 in production: the deploy is live on it and CI on
+  main passed. Its migration is applied (the last one applied),
+  `PersonDeduction` has RLS on and holds no rows, and `PayrollRun` has
+  its new column. No error in production since.
