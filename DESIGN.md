@@ -948,6 +948,11 @@ These are built once, in the building-blocks PR, and every page uses them
     on its list after the others, with a Retired badge, and isn't offered
     anywhere new; Put back, in its menu, offers it again. An item that
     nothing has used is deleted as before.
+  - **A location** (`CLIENTS_PLAN.md` §2.6) that no task has used has
+    Delete last, after Archive, or after Restore once archived, and it
+    asks first, as it can't be undone. One a task has used is archived,
+    never deleted, so its tasks keep it; a client's HQ is neither, as
+    before (`LATER_CHANGES_PLAN.md` §7.21).
   - Where something already has a retired item, such as a terminal whose
     brand was retired, its picker keeps it chosen, with "(retired)" after
     its name, so saving other changes leaves it as it is. It's the only
@@ -4023,3 +4028,6 @@ changed:
   New request on the Requests page, with its limits measured against the
   net pay, each month's installment, and the consent the law asks for
   (`LATER_CHANGES_PLAN.md` §7.5, step 3a).
+- **2026-11-28:** Row menu (§5.5): Delete for a location no task has
+  used, last, after Archive or Restore, asked first; one a task has used
+  is archived as before (`LATER_CHANGES_PLAN.md` §7.21).
