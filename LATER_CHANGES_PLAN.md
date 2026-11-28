@@ -2815,3 +2815,6 @@ without its own.
 - **2026-11-28:** §7.12, 9a: Codex's two findings on #440 fixed: the
   deductions card keeps what's typed while a save is on its way, and takes
   up a copy read again while nothing's typed.
+- **2026-11-28:** #439 in production: its migration is applied, and the 2
+  roles holding Assign roles hold Answer access reviews too. No error in
+  production after #437, #438 or #439.
