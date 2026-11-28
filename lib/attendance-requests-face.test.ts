@@ -23,6 +23,8 @@ const state = {
     phone: {} as Shown,
     reviews: {} as Shown,
     facePeople: {} as Shown,
+    // What the balance says, where a test needs it hidden (LATER_CHANGES_PLAN.md §7.18).
+    balance: null as unknown,
 }
 vi.mock("next-auth/react", () => ({ useSession: () => ({ data: { user: { id: "u1", role: state.role, name: "Hana Saad" } }, status: "authenticated" }) }))
 vi.mock("@/context/LanguageContext", () => ({
@@ -41,7 +43,7 @@ vi.mock("swr", () => ({
         if (key?.startsWith("/api/attendance/face/reviews")) return { ...idle, ...state.reviews }
         if (key?.startsWith("/api/attendance/face/people")) return { ...idle, ...state.facePeople }
         if (key?.startsWith("/api/attendance/permissions/balance")) {
-            return { ...idle, data: { data: { enabled: true, types: ["LATE_ARRIVAL", "EARLY_LEAVE"], remainingMinutes: 120, minPerRequestMinutes: 15, maxPerRequestMinutes: 120 } } }
+            return { ...idle, data: { data: state.balance ?? { enabled: true, types: ["LATE_ARRIVAL", "EARLY_LEAVE"], remainingMinutes: 120, minPerRequestMinutes: 15, maxPerRequestMinutes: 120 } } }
         }
         return idle
     },
@@ -217,6 +219,23 @@ describe("asking from a day", () => {
         expect(ask).toMatch(/name="end"[^>]*value="17:00"/)
         const report = renderToStaticMarkup(h(ReportMissingPunch, { today: "2026-10-31", initial: { date: "2026-10-20", direction: "OUT" }, onCancel: () => {}, onReported: () => {} }))
         expect(report).toContain('<option value="OUT" selected="">Out</option>')
+    })
+
+    it("says the day's limits, and what's left only while the company shows it (LATER_CHANGES_PLAN.md §7.18)", async () => {
+        state.locale = "en"
+        const { AskPermission } = await import("@/app/(dashboard)/dashboard/requests/AttendanceDialogs")
+        const ask = () => renderToStaticMarkup(h(AskPermission, { today: "2026-10-31", initial: { date: "2026-10-20", type: "EARLY_LEAVE", start: "16:00", end: "17:00" }, onCancel: () => {}, onAsked: () => {} }))
+        const shown = ask()
+        expect(shown).toContain(en.req_limits.replace("{min}", "15").replace("{max}", "120").replace("{left}", "120"))
+        state.balance = { enabled: true, types: ["LATE_ARRIVAL", "EARLY_LEAVE"], minPerRequestMinutes: 15, maxPerRequestMinutes: 120, leftShown: false }
+        try {
+            const hidden = ask()
+            expect(hidden).toContain(en.req_limits_no_left.replace("{min}", "15").replace("{max}", "120"))
+            expect(hidden).not.toContain("left this month")
+            expect(hidden).not.toContain("undefined")
+        } finally {
+            state.balance = null
+        }
     })
 
     it("opens them in the building blocks' dialog, from the Days tab and the check-in page", () => {

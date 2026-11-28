@@ -175,14 +175,22 @@ export class AttendanceRequestService {
      * asked about (the day a request would be for, review on #14), else
      * today when it is this month, else the month's first day.
      */
-    static async permissionBalance(companyId: string, userId: string, month: string, date?: string | null) {
+    static async permissionBalance(companyId: string, userId: string, month: string, date?: string | null): Promise<PermissionBalance & { leftShown: boolean }> {
+        let on: string
         if (date) {
             if (!isDateString(date)) fail("INVALID_DATE")
-            return prisma.$transaction(tx => balanceIn(tx, companyId, userId, date))
+            on = date
+        } else {
+            if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) fail("INVALID_MONTH")
+            const today = await this.todayIn(companyId)
+            on = monthOf(today) === month ? today : `${month}-01`
         }
-        if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) fail("INVALID_MONTH")
-        const today = await this.todayIn(companyId)
-        return prisma.$transaction(tx => balanceIn(tx, companyId, userId, monthOf(today) === month ? today : `${month}-01`))
+        const balance = await prisma.$transaction(tx => balanceIn(tx, companyId, userId, on))
+        // Whether the company shows each person what's left (LATER_CHANGES_PLAN.md
+        // §7.18): worked out in full either way, as a request is held to it; the
+        // pages are sent it only while shown (lib/attendance/permission-left.ts).
+        const company = await prisma.company.findUnique({ where: { id: companyId }, select: { permissionLeftShown: true } })
+        return { ...balance, leftShown: company?.permissionLeftShown ?? true }
     }
 
     /**

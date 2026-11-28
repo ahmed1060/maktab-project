@@ -225,6 +225,13 @@ describe("the month so far", () => {
         expect(arTiles).toContain("<dd>٦٢٥٫٠٠</dd>")
     })
 
+    it("has no Permission left while the company hides it (LATER_CHANGES_PLAN.md §7.18)", async () => {
+        const top = tiles(panel(await page({ balance: { data: { enabled: true, types: ["LATE_ARRIVAL"], leftShown: false } } })))
+        expect(top).toContain("<dt>Deductions so far</dt>")
+        expect(top).not.toContain("Permission left")
+        expect(top).not.toContain("undefined")
+    })
+
     it("is everyone's deductions in one tile when the list is everyone's", async () => {
         const top = tiles(panel(await page(TEAM)))
         expect(top).toContain("<dt>Total deductions</dt><dd>625.00</dd>")

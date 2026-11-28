@@ -150,6 +150,17 @@ describe.skipIf(!ADMIN_URL)("attendance requests, in Postgres", () => {
             expect(await Requests.permissionBalance("c1", "e2", "2026-12")).toMatchObject({ pendingMinutes: 0, remainingMinutes: 240 })
         })
 
+        it("says whether the company shows what's left: on for every company, unless turned off (LATER_CHANGES_PLAN.md §7.18)", async () => {
+            expect(await Requests.permissionBalance("c1", "e2", "2026-12")).toMatchObject({ leftShown: true })
+            await db.query(`UPDATE "Company" SET "permissionLeftShown" = false WHERE id = 'c1'`)
+            try {
+                // Still worked out in full: hiding it is the pages' to do, and asking for more is still refused.
+                expect(await Requests.permissionBalance("c1", "e2", "2026-12")).toMatchObject({ leftShown: false, remainingMinutes: 240 })
+            } finally {
+                await db.query(`UPDATE "Company" SET "permissionLeftShown" = true WHERE id = 'c1'`)
+            }
+        })
+
         it("are checked against the allowance again when approved", async () => {
             const first = await Requests.requestPermission("c1", "e2", { date: "2027-01-04", type: "MIDDAY", start: "09:00", end: "11:00", reason: "x" })
             // The policy halves the allowance before anybody decides.

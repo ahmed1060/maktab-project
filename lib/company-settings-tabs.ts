@@ -60,11 +60,14 @@ export const COMPANY_SETTINGS_TABS = [
     // §7). Its own API under /api/attendance, which asks the same questions.
     {
         key: "attendance", labelKey: "settings_tab_attendance", adminEligible: true, module: "ATTENDANCE",
-        fields: ["terminalsSetupByCompany", "terminalsDirectAllowed"],
+        fields: ["terminalsSetupByCompany", "terminalsDirectAllowed", "permissionLeftShown"],
         // Whether the company sets its own fingerprint terminals up, or the
         // Super Admin does (ATTENDANCE_PLAN.md §17.10), and whether its
         // terminals may send their scans straight to Nizmo (§17.8, PR 295).
         superAdminOnly: ["terminalsSetupByCompany", "terminalsDirectAllowed"],
+        // Whether each person sees what's left of their own permission hours
+        // (LATER_CHANGES_PLAN.md §7.18): the company's to switch, as its other
+        // attendance settings are.
     },
     { key: "roles", labelKey: "settings_tab_roles", adminEligible: false, fields: [] },
     // The company's copy of the client messages on WhatsApp

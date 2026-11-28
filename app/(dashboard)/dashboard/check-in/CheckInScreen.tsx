@@ -39,7 +39,7 @@ import { AskPermissionDialog } from '../attendance/RequestsTab'
 
 type Phone = { model: string | null; platform: string; keyFingerprint: string }
 type LateArrival = NonNullable<Extract<CheckInAnswer, { outcome: 'ACCEPTED' | 'FLAGGED' | 'HELD' }>['late']>
-type Balance = { enabled: boolean; remainingMinutes: number; types: string[] }
+type Balance = { enabled: boolean; remainingMinutes: number; types: string[]; leftShown?: boolean }
 
 /** What the phone said when it couldn't do something, as words for the person. */
 const DEVICE_ERRORS: Record<string, TranslationKey> = {
@@ -316,7 +316,8 @@ export function Late({ late, balance, onAsk }: { late: LateArrival; balance: Bal
     return (
         <Card tone="waiting">
             <p>{t('ci_late').replace('{n}', digits.number(late.minutes)).replace('{start}', digits.text(late.startsAt))}</p>
-            {balance?.enabled && <p className="ui-card-note">{t('ci_late_balance').replace('{left}', digits.number(balance.remainingMinutes))}</p>}
+            {/* Not while the company hides what's left (LATER_CHANGES_PLAN.md §7.18). */}
+            {balance?.enabled && balance.leftShown !== false && <p className="ui-card-note">{t('ci_late_balance').replace('{left}', digits.number(balance.remainingMinutes))}</p>}
             {balance?.enabled && balance.types.includes('LATE_ARRIVAL') && (
                 <div className="ui-card-actions"><Button onClick={onAsk}>{t('ci_ask_permission')}</Button></div>
             )}

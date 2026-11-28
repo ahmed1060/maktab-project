@@ -406,7 +406,7 @@ export function CancelMission({ request, question, onClose, onCancelled }: {
  * be asked for where the policy says any day (GET /api/attendance/permissions/balance;
  * LATER_CHANGES_PLAN.md §7.4, 4b).
  */
-type Balance = { enabled: boolean; types: string[]; remainingMinutes: number; minPerRequestMinutes: number; maxPerRequestMinutes: number; days: DayOffDays | null }
+type Balance = { enabled: boolean; types: string[]; remainingMinutes: number; minPerRequestMinutes: number; maxPerRequestMinutes: number; days: DayOffDays | null; leftShown?: boolean }
 
 type Errors = { date?: string; start?: string; end?: string; reason?: string }
 
@@ -439,8 +439,11 @@ export function AskPermission({ today, initial, onCancel, onAsked }: {
     // The one picked while the day allows it, else the day's first.
     const type = types.includes(picked) ? picked : types[0] ?? ''
 
+    // What's left only while the company shows it (LATER_CHANGES_PLAN.md §7.18).
     const limits = !balance ? null : balance.enabled
-        ? t('req_limits').replace('{min}', num(balance.minPerRequestMinutes)).replace('{max}', num(balance.maxPerRequestMinutes)).replace('{left}', num(balance.remainingMinutes))
+        ? (balance.leftShown === false
+            ? t('req_limits_no_left')
+            : t('req_limits').replace('{left}', num(balance.remainingMinutes))).replace('{min}', num(balance.minPerRequestMinutes)).replace('{max}', num(balance.maxPerRequestMinutes))
         : t('req_permissions_off_on_day')
 
     const submit = (e: React.FormEvent<HTMLFormElement>) => {

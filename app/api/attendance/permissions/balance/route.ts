@@ -2,6 +2,7 @@ import { withStandardHandler } from "@/lib/api-utils"
 import { ApiResponse } from "@/lib/api-response"
 import { AttendanceRequestService } from "@/lib/services/attendance-request.service"
 import { asksForSelf } from "@/lib/attendance/punch-access"
+import { balanceAsShown } from "@/lib/attendance/permission-left"
 
 /**
  * One's own permission hours for a month: allowed, spent, waiting and left.
@@ -16,8 +17,9 @@ export const GET = withStandardHandler(async (req, session) => {
     const params = new URL(req.url).searchParams
     const date = params.get("date")
     const month = date?.slice(0, 7) ?? params.get("month") ?? (await AttendanceRequestService.todayIn(self.companyId)).slice(0, 7)
+    // Without what's left while the company hides it (LATER_CHANGES_PLAN.md §7.18).
     return ApiResponse.success({
-        ...await AttendanceRequestService.permissionBalance(self.companyId, self.userId, month, date),
+        ...balanceAsShown(await AttendanceRequestService.permissionBalance(self.companyId, self.userId, month, date)),
         days: await AttendanceRequestService.permissionDays(self.companyId),
     })
 })

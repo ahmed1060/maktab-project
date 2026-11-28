@@ -15,6 +15,7 @@ import { DayOffService } from "@/lib/services/day-off.service"
 import AccessDenied from "@/components/AccessDenied"
 import { REQUEST_KINDS, requestFeed, tabsFor, type RequestKind, type RequestsShow, type RequestsTab, type Viewer } from "@/lib/requests/feed"
 import RequestsClient from "./RequestsClient"
+import { permissionAllowance } from "@/lib/attendance/permission-left"
 
 /**
  * The one Requests page (UI_PLAN.md §2.3): what this person asked for, and
@@ -106,13 +107,8 @@ export default async function RequestsPage(props: { searchParams: Promise<Record
     const attendanceToday = mayAskAttendance ? await AttendanceRequestService.todayIn(viewer.companyId!) : null
     let allowance: { left: number; total: number; pending: number; carried: number } | null = null
     if (attendanceToday && tab === "mine") {
-        const balance = await AttendanceRequestService.permissionBalance(viewer.companyId!, viewer.id, attendanceToday.slice(0, 7), attendanceToday)
-        if (balance.enabled) allowance = {
-            left: balance.remainingMinutes,
-            total: balance.allowanceMinutes + balance.carriedMinutes,
-            pending: balance.pendingMinutes,
-            carried: balance.carriedMinutes,
-        }
+        // None while the company hides what's left (LATER_CHANGES_PLAN.md §7.18).
+        allowance = permissionAllowance(await AttendanceRequestService.permissionBalance(viewer.companyId!, viewer.id, attendanceToday.slice(0, 7), attendanceToday))
     }
 
     // Asking for a mission, while today's policy has missions on (ATTENDANCE_PLAN.md §6.10, decision 11).

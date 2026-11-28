@@ -101,7 +101,8 @@ describe("the attendance policy's when", () => {
 describe("asking for permission hours", () => {
     it("offers only the days the day's balance sends, wherever the form opens", () => {
         const dialogs = readFileSync("app/(dashboard)/dashboard/requests/AttendanceDialogs.tsx", "utf8")
-        expect(dialogs).toContain("type Balance = { enabled: boolean; types: string[]; remainingMinutes: number; minPerRequestMinutes: number; maxPerRequestMinutes: number; days: DayOffDays | null }")
+        // With whether the company shows what's left (PR 446, lib/permission-left.test.ts).
+        expect(dialogs).toContain("type Balance = { enabled: boolean; types: string[]; remainingMinutes: number; minPerRequestMinutes: number; maxPerRequestMinutes: number; days: DayOffDays | null; leftShown?: boolean }")
         expect(dialogs).toContain("<DatePickerSingle label={t('date_label')} value={date} minDate={balance?.days?.from} maxDate={balance?.days?.to} error={errors.date}")
     })
 

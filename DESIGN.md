@@ -2286,6 +2286,27 @@ These are built once, in the building-blocks PR, and every page uses them
     the date keep their boxes.
   - On phones the badge and the button go under the line, as the
     company's other switches' do.
+- **Permission hours left** (`LATER_CHANGES_PLAN.md` §7.18): a company's
+  one switch for whether each person sees what's left of their own
+  permission hours, a card of its own on the Attendance tab, titled so,
+  under Attendance policy, where permission hours are set.
+  - One row, as a card's Rows are. Its title is Show each person what's
+    left. Its line says where: their Attendance page, their Requests
+    page, asking for permission, and the check-in page's late arrival.
+    While off, it says that asking for more than is left is still
+    refused, with why.
+  - On the end side, the On or Off badge and Turn off or Turn on, as the
+    company's other switches are. Neither asks first: nothing is lost,
+    and it's turned back here. Whoever may only look at the tab sees the
+    badge and no button. On unless changed.
+  - **Off,** what's left isn't shown, and isn't sent to the page:
+    - the Attendance page's Permission left tile isn't there;
+    - the Requests page's Permission hours, above the list, isn't there;
+    - asking for permission says each one's least and most, without
+      what's left;
+    - the check-in page's late arrival offers Ask for permission without
+      what's left.
+  - Each change is in the audit log, on the company.
 - **Payday and when payroll closes** (`LATER_CHANGES_PLAN.md` §7.10): two
   settings at the top of the Payroll settings card, as one decides the
   other, before the time zone.
@@ -3860,3 +3881,6 @@ changed:
   advance follows (`LATER_CHANGES_PLAN.md` §7.5, step 2).
 - **2026-11-28:** A choice between a few options (§5.3) may have a line
   under it saying what the option picked does, read with the group.
+- **2026-11-28:** Permission hours left (§5.5): the Attendance tab's
+  switch for whether each person sees what's left of their own permission
+  hours (`LATER_CHANGES_PLAN.md` §7.18).

@@ -149,6 +149,8 @@ export const updateCompanySchema = z.object({
     // Whether its terminals may send their scans straight to Nizmo: the
     // Super Admin's switch too (ATTENDANCE_PLAN.md §17.8, PR 295).
     terminalsDirectAllowed: z.boolean().optional(),
+    // Whether each person sees what's left of their own permission hours (LATER_CHANGES_PLAN.md §7.18).
+    permissionLeftShown: z.boolean().optional(),
 
     // Trial extension, in days, added on top of whichever preset was chosen.
     // A delta rather than a new total: "give them another week" is how the

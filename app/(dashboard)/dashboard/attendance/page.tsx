@@ -377,7 +377,7 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
 }
 
 type Rules = { lateness: { enabled: boolean; freePerMonth: number }; earlyLeave: { enabled: boolean; freePerMonth: number } }
-type Balance = { enabled: boolean; remainingMinutes: number; allowanceMinutes: number; carriedMinutes: number }
+type Balance = { enabled: boolean; remainingMinutes: number; allowanceMinutes: number; carriedMinutes: number; leftShown?: boolean }
 const COUNTED = new Set(['FREE_OCCURRENCE', 'CHARGED', 'ESCALATED', 'CAPPED'])
 
 /**
@@ -406,7 +406,8 @@ function MonthSummary({ days, rules, balance }: { days: Day[]; rules: Rules | nu
         { label: t('sum_absences'), value: num(absences) },
         ...(!hidesMoney && overtimeMinor > 0 ? [{ label: t('sum_overtime'), value: amount(overtimeMinor) }] : []),
         ...(!hidesMoney && allowanceMinor > 0 ? [{ label: t('day_mission_allowance'), value: amount(allowanceMinor) }] : []),
-        ...(balance?.enabled ? [{ label: t('sum_permission_left'), value: minutes(balance.remainingMinutes), note: t('sum_of_total').replace('{n}', num(balance.allowanceMinutes + balance.carriedMinutes)) }] : []),
+        // Not while the company hides what's left (LATER_CHANGES_PLAN.md §7.18).
+        ...(balance?.enabled && balance.leftShown !== false ? [{ label: t('sum_permission_left'), value: minutes(balance.remainingMinutes), note: t('sum_of_total').replace('{n}', num(balance.allowanceMinutes + balance.carriedMinutes)) }] : []),
     ]
     return <TotalTiles items={items} />
 }

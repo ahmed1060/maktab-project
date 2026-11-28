@@ -271,6 +271,10 @@ model Company {
   debtsLimitPercent Decimal @default(25) @db.Decimal(5, 2)
   /// Over either: kept from going over, or sent with a warning.
   salaryAdvanceOverLimit SalaryAdvanceOverLimit @default(BLOCK)
+  /// Whether each person sees what's left of their own permission hours
+  /// (LATER_CHANGES_PLAN.md §7.18): on unless the company turns it off. Off,
+  /// the pages aren't sent it; a request is still held to the policy.
+  permissionLeftShown Boolean @default(true)
   /// The first month whose attendance reaches payroll (ATTENDANCE_PLAN.md
   /// §20, Phase 1): the 1st of that month. Null: attendance is measured and
   /// priced, and the register shows what it would cost, but nothing is

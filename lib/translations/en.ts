@@ -480,6 +480,7 @@ export const en = {
         audit_field_incomeTax: "Income tax (%)",
         audit_field_socialInsurance: "Social insurance (%)",
         audit_field_payrollDeductionsMore: "More deductions",
+        audit_field_permissionLeftShown: "Show each person what's left of their permission hours",
         // The salary advance rules (LATER_CHANGES_PLAN.md §7.5, step 2).
         audit_field_salaryAdvanceMaxMonths: "Most one may ask for (months' salary)",
         audit_field_salaryAdvanceMinServiceMonths: "Months worked first",
@@ -2694,6 +2695,13 @@ export const en = {
         att_term_setup_off_hint: "Off: only you see and change this company's agents and terminals. Nobody in the company sees Fingerprint terminals, its Admin included.",
         att_term_setup_on_hint: "On: those in the company allowed to set up fingerprint terminals see them on this tab, where it's shown to them. Its Admin role is allowed.",
         att_term_setup_on_badge: "On",
+        // Permission hours left, the Attendance tab's switch (LATER_CHANGES_PLAN.md §7.18).
+        perm_left_title: "Permission hours left",
+        perm_left_label: "Show each person what's left",
+        perm_left_on_hint: "On their Attendance page, their Requests page, when asking for permission, and on the check-in page when they're late.",
+        perm_left_off_hint: "Not shown on the Attendance page, the Requests page, when asking for permission or on the check-in page. Asking for more than is left is still refused, with why.",
+        perm_left_on_badge: "On",
+        perm_left_off_badge: "Off",
         att_term_setup_off_badge: "Off",
         att_term_setup_turn_on: "Let the company set them up",
         att_term_setup_confirm_title: "Let the company set up its own terminals?",
@@ -3374,6 +3382,8 @@ export const en = {
         req_rejected: "Rejected",
         req_reject_hint: "Reject this request? You can say why; they'll see it.",
         req_limits: "Each permission is {min}–{max} minutes. {left} minutes are left this month.",
+        // While the company hides what's left (LATER_CHANGES_PLAN.md §7.18).
+        req_limits_no_left: "Each permission is {min}–{max} minutes.",
         req_missing_hint: "The time you punched in or out but the terminal didn't record. Once approved, it's added as a punch and the day is worked out again.",
         req_missing_example: "e.g. The terminal was down when I left",
         req_overtime_ahead: "Approve overtime ahead",
