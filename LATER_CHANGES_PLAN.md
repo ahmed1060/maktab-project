@@ -2072,6 +2072,10 @@ installments (§7.9).
        the ones its payslips took.
      - The payslip names attendance's lines in its language too, as the
        Payroll page already did, by the same rule as income tax's.
+     - The card keeps what's typed while a save is on its way, the new
+       deductions taking the ids they were saved with, and, opened from a
+       cached copy, shows what's been saved since while nothing's typed
+       (Codex review on #440).
    - **9b, for a person:** each of the company's deductions on an
      employee's page, As the company, Their own rate (or amount), or Not
      applied, changed with Change salaries and seen with See salaries.
@@ -2808,3 +2812,6 @@ without its own.
   on a card of their own (9a, planned for PR 440), then each person's
   (9b); brackets later; the 25% limit with salary advances. Whether a
   final settlement takes them is open.
+- **2026-11-28:** §7.12, 9a: Codex's two findings on #440 fixed: the
+  deductions card keeps what's typed while a save is on its way, and takes
+  up a copy read again while nothing's typed.
