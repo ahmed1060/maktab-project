@@ -1606,7 +1606,7 @@ In three PRs, each whole on its own:
 
 Built in steps, each a PR or more, the screens' DESIGN.md entries first:
 
-1. **Custody's new name** (in progress): in English, Cash advances become
+1. **Custody's new name** (Done, #444, merged on 28 November): in English, Cash advances become
    Custody, as they're العُهد in Arabic (`DESIGN.md` §3.4, Custody, not an
    advance). Every English word for them changes: the Costs page's tab,
    My custody, Company Settings, the permissions, the audit log, the
@@ -2950,3 +2950,12 @@ isn't, rather than My team's tasks.
 - **2026-11-28:** §7.5 in steps: Custody's new name first, then the
   policy and its permissions, asking and approving, paying back, and
   managing and a contract's end.
+- **2026-11-28:** #443 in production: its first production build failed
+  on Vercel, which couldn't download the Noto Sans Arabic font from Google
+  while building (the same code had built as a preview), and the live site
+  stayed on #442's. Redeployed, at the owner's choice, it built and is
+  live. It has no migration. No error in production since.
+- **2026-11-28:** #444 merged (§7.5, step 1): in English, Cash advances
+  are Custody, as they're العُهد in Arabic, so "advance" is left for the
+  Salary advance. Only words change. Production is checked after the
+  deploy. Next: step 2, the policy and its permissions.
