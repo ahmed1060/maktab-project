@@ -1604,6 +1604,24 @@ In three PRs, each whole on its own:
   leaves, what's left stays on their record as money they owe, marked
   paid when it's received.
 
+Built in steps, each a PR or more, the screens' DESIGN.md entries first:
+
+1. **Custody's new name** (in progress): in English, Cash advances become
+   Custody, as they're العُهد in Arabic (`DESIGN.md` §3.4, Custody, not an
+   advance). Every English word for them changes: the Costs page's tab,
+   My custody, Company Settings, the permissions, the audit log, the
+   debts and a contract's end, Transfer task, and the refusals the server
+   gives. "Advance" is then left for the Salary advance. Only words: the
+   translation keys, addresses, permissions' codes, the database and the
+   Arabic stay as they are.
+2. **The policy and its permissions:** the settings in Company Settings,
+   the law's 25% limit (§7.12), and permissions to approve and to manage.
+3. **Asking and approving,** on the Requests page.
+4. **Paying back:** the payslip's line, and the balance on the employee's
+   page and one's own profile.
+5. **Managing, and a contract's end:** settling early, moving an
+   installment, and the final settlement's question.
+
 ### 7.6 Rating finished work (Decided)
 
 - **Points come from the rating.** A task's or an obligation's points are
@@ -2929,3 +2947,6 @@ isn't, rather than My team's tasks.
   team member's task opens My team's tasks, with it picked out, as
   Obligations' do. Production is checked after the deploy. Next in the
   order (§7.8, step 9): salary advances (§7.5), Custody's new name first.
+- **2026-11-28:** §7.5 in steps: Custody's new name first, then the
+  policy and its permissions, asking and approving, paying back, and
+  managing and a contract's end.
