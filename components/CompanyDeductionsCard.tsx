@@ -25,9 +25,9 @@ import type { TranslationKey } from '@/lib/translations'
  * field before anything is sent, by the same rules the server refuses by.
  */
 
-type Saved = { incomeTax: number; socialInsurance: number; more: { id: string; name: string; basis: PayrollDeductionBasis; value: number }[] }
+export type Saved = { incomeTax: number; socialInsurance: number; more: { id: string; name: string; basis: PayrollDeductionBasis; value: number }[] }
 /** One of the company's own as the card holds it: `key` keeps React's place while it has no id yet. */
-type Own = { key: string; id?: string; name: string; basis: PayrollDeductionBasis; value: string }
+export type Own = { key: string; id?: string; name: string; basis: PayrollDeductionBasis; value: string }
 
 let next = 0
 const newKey = () => `new-${++next}`
@@ -40,6 +40,31 @@ const draftOf = (saved: Saved) => ({
 
 /** A figure typed as the one saved: "10.0" is 10. */
 const sameFigure = (text: string, saved: number) => figure(text) !== '' && Number(figure(text)) === saved
+
+/**
+ * After a save, what's on the card: as it is, with what was typed since the
+ * save was sent kept (Codex review on PR 440). The deductions that were new
+ * when it was sent take the ids they were saved with, by their place in what
+ * was sent, the order the server keeps, so saving again changes them rather
+ * than adding them again.
+ */
+export function withSavedIds(current: Own[], sentKeys: string[], saved: Saved): Own[] {
+    const ids = new Map(sentKeys.map((k, i) => [k, saved.more[i]?.id]))
+    return current.map(d => {
+        const id = d.id ?? ids.get(d.key)
+        return id === d.id ? d : { ...d, id }
+    })
+}
+
+/**
+ * Whether a copy read again replaces what's on the card (Codex review on PR
+ * 440): only while nothing's been typed and nothing's being saved, so a card
+ * opened from a cached copy shows what another person has saved since, and
+ * typing is never lost to it.
+ */
+export function takesRefreshed(refreshed: Saved, saved: Saved, unchanged: boolean, saving: boolean): boolean {
+    return refreshed !== saved && unchanged && !saving
+}
 
 /** Whether what's on the card is what was saved. */
 export function deductionsUnchanged(draft: { incomeTax: string; socialInsurance: string; more: Own[] }, saved: Saved): boolean {
@@ -90,6 +115,19 @@ function DeductionsForm({ companyId, readOnly, initial, onSaved }: { companyId: 
     const dirty = !deductionsUnchanged(draft, saved)
     useReportUnsaved('deductions', dirty)
 
+    // Read again, a cached copy refreshed or another tab's save: taken up
+    // while nothing's typed, during this render, as React advises for state
+    // that follows a prop (Codex review on PR 440).
+    const [seen, setSeen] = useState(initial)
+    if (initial !== seen) {
+        setSeen(initial)
+        if (takesRefreshed(initial, saved, !dirty, saving)) {
+            const d = draftOf(initial)
+            setSaved(initial); setIncomeTax(d.incomeTax); setSocialInsurance(d.socialInsurance); setMore(d.more)
+            setErrors({})
+        }
+    }
+
     const digits = locale === 'ar' ? 'ar-EG' : 'en-GB'
     const n = (value: number) => value.toLocaleString(digits)
     const said = (k: TranslationKey | undefined) => k && t(k).replace('{max}', n(DEDUCTION_NAME_MAX)).replace('{n}', n(MAX_MORE_DEDUCTIONS))
@@ -115,6 +153,7 @@ function DeductionsForm({ companyId, readOnly, initial, onSaved }: { companyId: 
     const save = async (e: FormEvent) => {
         e.preventDefault()
         const sent: DeductionsDraft = { incomeTax, socialInsurance, more: more.map(({ id, name, basis, value }) => ({ id, name, basis, value })) }
+        const sentKeys = more.map(d => d.key)
         const wrong = deductionErrors(sent)
         if (Object.keys(wrong).length > 0) {
             setErrors(wrong)
@@ -138,9 +177,12 @@ function DeductionsForm({ companyId, readOnly, initial, onSaved }: { companyId: 
                 } else showToast(body?.error || t('error_generic'), 'error')
                 return
             }
+            // What's on the card stays as it is: anything typed while this was
+            // being saved is kept, and still to save (Codex review on PR 440).
             const now: Saved = body.data
-            const d = draftOf(now)
-            setSaved(now); setIncomeTax(d.incomeTax); setSocialInsurance(d.socialInsurance); setMore(d.more)
+            setSaved(now)
+            setSeen(now)
+            setMore(list => withSavedIds(list, sentKeys, now))
             onSaved(body)
             showToast(t('settings_saved_success'), 'success')
         } catch {

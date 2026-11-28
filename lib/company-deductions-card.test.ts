@@ -110,6 +110,69 @@ describe("the card", () => {
     })
 })
 
+describe("saving, while more is typed (Codex review on PR 440)", () => {
+    const saved = (more: { id: string; name: string; basis: "PERCENT" | "AMOUNT"; value: number }[]) => ({ incomeTax: 10, socialInsurance: 0, more })
+
+    it("keeps what was typed since it was sent, and gives the new ones the ids they were saved with", async () => {
+        const { withSavedIds, deductionsUnchanged } = await import("@/components/CompanyDeductionsCard")
+        const kept = { key: "d1", id: "d1", name: "Union fee", basis: "AMOUNT" as const, value: "150" }
+        const now = saved([{ id: "d1", name: "Union fee", basis: "AMOUNT", value: 150 }, { id: "x9", name: "Club", basis: "PERCENT", value: 2.5 }])
+        const after = withSavedIds([
+            kept,
+            // Sent as "Club", then typed on.
+            { key: "new-1", name: "Club fee", basis: "PERCENT", value: "2.5" },
+            // Added once it was sent.
+            { key: "new-2", name: "Gym", basis: "AMOUNT", value: "" },
+        ], ["d1", "new-1"], now)
+        expect(after[0]).toBe(kept)
+        expect(after[1]).toEqual({ key: "new-1", id: "x9", name: "Club fee", basis: "PERCENT", value: "2.5" })
+        expect(after[2]).toEqual({ key: "new-2", name: "Gym", basis: "AMOUNT", value: "" })
+        // Still to save.
+        expect(deductionsUnchanged({ incomeTax: "10", socialInsurance: "0", more: after }, now)).toBe(false)
+    })
+
+    it("with nothing typed since, leaves the card as saved", async () => {
+        const { withSavedIds, deductionsUnchanged } = await import("@/components/CompanyDeductionsCard")
+        const now = saved([{ id: "x1", name: "Union fee", basis: "AMOUNT", value: 150 }])
+        const after = withSavedIds([{ key: "new-1", name: " Union fee ", basis: "AMOUNT", value: "150.0" }], ["new-1"], now)
+        expect(after[0].id).toBe("x1")
+        expect(deductionsUnchanged({ incomeTax: "10.0", socialInsurance: "0", more: after }, now)).toBe(true)
+    })
+
+    it("one removed while it was being saved stays removed, and is still to save", async () => {
+        const { withSavedIds, deductionsUnchanged } = await import("@/components/CompanyDeductionsCard")
+        const now = saved([{ id: "x1", name: "Union fee", basis: "AMOUNT", value: 150 }])
+        const after = withSavedIds([], ["new-1"], now)
+        expect(after).toEqual([])
+        expect(deductionsUnchanged({ incomeTax: "10", socialInsurance: "0", more: after }, now)).toBe(false)
+    })
+})
+
+describe("a copy read again (Codex review on PR 440)", () => {
+    it("replaces what's on the card only while nothing's typed or being saved", async () => {
+        const { takesRefreshed } = await import("@/components/CompanyDeductionsCard")
+        const cached = { incomeTax: 10, socialInsurance: 0, more: [] }
+        const fresh = { incomeTax: 12, socialInsurance: 0, more: [{ id: "d9", name: "Club", basis: "PERCENT" as const, value: 1 }] }
+        expect(takesRefreshed(fresh, cached, true, false)).toBe(true)
+        expect(takesRefreshed(fresh, cached, false, false)).toBe(false)
+        expect(takesRefreshed(fresh, cached, true, true)).toBe(false)
+        // The card's own save, put in the cache, is what it already shows.
+        expect(takesRefreshed(cached, cached, true, false)).toBe(false)
+    })
+
+    it("the card's own save keeps what's on it, giving the new ones their ids", () => {
+        const card = stripComments(readFileSync("components/CompanyDeductionsCard.tsx", "utf8"))
+        const saved = card.slice(card.indexOf("const now: Saved = body.data"), card.indexOf("onSaved(body)"))
+        expect(saved).toContain("setMore(list => withSavedIds(list, sentKeys, now))")
+        expect(saved).not.toMatch(/setIncomeTax|setSocialInsurance|draftOf/)
+    })
+
+    it("is taken up as the card renders, not left to the card's first copy", () => {
+        const card = stripComments(readFileSync("components/CompanyDeductionsCard.tsx", "utf8"))
+        expect(card).toMatch(/if \(initial !== seen\) \{\s*setSeen\(initial\)\s*if \(takesRefreshed\(initial, saved, !dirty, saving\)\)/)
+    })
+})
+
 describe("a payslip's lines, in the page's language", () => {
     const t = (words: Record<string, string>) => (key: string) => words[key] ?? ""
     it("names income tax and social insurance as Nizmo does, and the company's own as it named them", () => {
