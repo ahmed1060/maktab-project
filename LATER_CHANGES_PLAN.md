@@ -3163,3 +3163,7 @@ when I continue I get a block so make a full check on it."
   month's first day, last month's until its payroll is approved, and
   calendars that offer only what may be asked for, after Codex's two
   findings were fixed. Salary advances' step 3a is next, as #449.
+- **2026-11-28:** #448 in production: the deploy is ready on 699b01e, CI
+  on main is green, and the only errors are sign-in refusals, the old
+  MFA_REQUIRED and a sign-in paused after wrong tries, not faults.
+  November's payroll draft still wants a Recalculate.
