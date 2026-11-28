@@ -2604,10 +2604,11 @@ These are built once, in the building-blocks PR, and every page uses them
       debts.
   - Side by side on computers, and one under the other on phones, as
     Payroll deductions' Income tax and Social insurance are.
-  - **Over a limit,** a choice of two (§5.3), Block unless changed, each
-    with a line under it: Block keeps the months from going below what
-    the limits allow, for the person asking and for whoever approves;
-    Warn lets it be sent, saying which limit it's over.
+  - **Over a limit,** a choice of two (§5.3), Block unless changed, with
+    a line under it saying what the one picked does: Block keeps the
+    months from going below what the limits allow, for the person asking
+    and for whoever approves; Warn lets it be sent, saying which limit
+    it's over.
   - Saved together, with Save on the card's end side, greyed until
     something changes, as Payroll deductions is. What's typed wrong is
     said under its field before anything is sent, and the first such
