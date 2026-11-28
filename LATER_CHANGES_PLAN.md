@@ -2367,6 +2367,29 @@ when I continue I get a block so make a full check on it."
      there are no permission hours before it.
   3. On Attendance, a day's Ask for permission only on a day the
      calendar offers.
+- **Every request from the payroll month's first day** (the owner, 28
+  November: "I want all these requests ... from the first day of the
+  current payroll, which is currently from 1 Nov to the end of
+  November"). Chosen with it: last month's days stay open while last
+  month's payroll is a draft ("Last month until approved"), and missions
+  lose their days back ("Replace it"). `DESIGN.md` §5.5, How far back a
+  request may be asked for.
+  4. One rule (`requestDaysBasis`): the first day of the payroll month
+     today is in, by when payroll closes, or of last month's where last
+     month has a payroll and it's a draft; never in an approved or paid
+     month's period. Day off, permission hours any day, missions and
+     missing punches all start on it; around the day starts no earlier.
+     How far ahead is each one's own, as before.
+  5. Missions: the policy's days back goes, from the schema, the dialog,
+     the card and the words. A version saved with it still reads, as the
+     field is dropped when read.
+  6. A missing punch before that day is refused with
+     `MISSING_PUNCH_OUT_OF_RANGE` and the days, said under the date; its
+     form's calendar offers only them, from a route the forms read
+     (`/api/attendance/request-days`); on Attendance, Report a missing
+     punch shows only on those days.
+  7. The policy's choice reads "Any day, from the payroll month to a
+     month ahead", in both languages.
 - One PR, before salary advances' step 3a: #448. Step 3a becomes #449.
 
 ## Not here
@@ -3112,3 +3135,6 @@ when I continue I get a block so make a full check on it."
   draft was last worked out on 27 November, before this morning's
   attendance fix, so the owner was reminded to recalculate it.
 - **2026-11-28:** §7.20 built: 20 controls, each caught by a test.
+- **2026-11-28:** §7.20 widened, at the owner's word: every request from
+  the payroll month's first day, last month's while its payroll is a
+  draft; missions lose their days back. In #448 with the calendar fix.
