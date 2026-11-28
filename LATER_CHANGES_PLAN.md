@@ -2456,6 +2456,33 @@ can only be archived.
    one. Each deletion is in the audit log, with the location as it was.
 5. One PR: #450.
 
+### 7.22 A location's check radius, only in its own form (Decided)
+
+The owner, 28 November, on the Super Admin's Location verification (30
+m) beside a location's "100 m": the Locations page said "70 m
+(default)" for a location with none of its own, though its check used
+the system's 30 m. The owner: "yes and also I want to hide that number
+from everywhere and only show it to the user that is creating a location
+or editing the location", showing the Edit location form.
+
+1. **The default is the system's distance**, as the check uses it: in
+   the form's hint ("Left empty, it's 30 m"), its placeholder, and the
+   circle on its map while it's empty. The fixed 70 goes.
+2. **Shown only in the location's own form,** Add location and Edit
+   location, wherever it opens (the Locations page, a client's page, or
+   "+ New location" from a task): `DESIGN.md` §5.3, A place on the map.
+   - Not in the lists of locations, on the Locations page or a client's
+     page: their Check radius goes.
+   - Not in a client's form: its HQ is its name and pin alone, with no
+     circle. A new client's HQ takes the default; editing a client keeps
+     its HQ's radius as it is.
+   - Not in what the server sends to anyone who may not change
+     locations: a location's radius only to whoever may edit locations,
+     and the default only to whoever may add or edit them.
+3. The Super Admin's Location verification stays where it is: it's the
+   setting itself.
+4. With §7.21, in #450.
+
 ## Not here
 
 - The client portal's later ideas stay in `CLIENT_PORTAL_PLAN.md` §13.
@@ -3263,3 +3290,6 @@ can only be archived.
   moved to one being deleted waits and is told it isn't there. In the
   audit log as "Deleted location", with the location as it was. 24
   controls, each caught by a test.
+- **2026-11-28:** §7.22 added at the owner's request: a location's check
+  radius shown only in its own form, with the system's distance as its
+  default; in #450 with §7.21. `DESIGN.md` first, in its own commit.
