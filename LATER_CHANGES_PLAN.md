@@ -3064,3 +3064,9 @@ the days from the 20th were measured as they should be.
 - **2026-11-28:** §7.19's suggestion settled: the first day of the
   payroll month today is in, by when payroll closes, or the next month's
   where it's approved. DESIGN.md has its entry. #447.
+- **2026-11-28:** #446 in production: the deploy is ready on 0e59875, CI
+  on main is green, and there are no runtime errors. The
+  permission_left_shown migration finished, and both companies show what's
+  left. The owner recalculated November's attendance: 1 to 19 November
+  are measured now, none left without a schedule. November's payroll
+  draft is still to be recalculated. #447 (§7.19) is open.
