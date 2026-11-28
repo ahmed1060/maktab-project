@@ -5,7 +5,7 @@ import useSWR from 'swr'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import {
-    ArchiveIcon, ArrowCounterClockwiseIcon, BuildingsIcon, CircleDashedIcon, HourglassIcon, MapPinIcon, MapPinAreaIcon, PencilSimpleIcon,
+    ArchiveIcon, ArrowCounterClockwiseIcon, BuildingsIcon, CircleDashedIcon, HourglassIcon, MapPinIcon, PencilSimpleIcon,
     StarIcon, StorefrontIcon, TagIcon, TrashIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
@@ -19,7 +19,7 @@ import {
 import type { TranslationKey } from '@/lib/translations'
 import type { LocationAction } from '@/lib/locations'
 import { googleMapsLink } from '@/lib/attendance/geo'
-import { LOCATION_RADIUS_DEFAULT, locationActions, locationLabel } from '@/lib/locations'
+import { locationActions, locationLabel } from '@/lib/locations'
 import { forScope, loadFailed, scopedFetcher, scopedKey } from '@/lib/swr-scoped'
 import { useCan } from '@/lib/useCan'
 import { countOf } from '@/lib/plural'
@@ -38,7 +38,8 @@ const SHARED = 'shared'
  * location whose pin isn't placed yet says so: no task can use it until it
  * is (§2.8). Search, the archived ones, and editing, archiving and making a
  * location the HQ work the same in both, as does deleting one no task has
- * used (LATER_CHANGES_PLAN.md §7.21, PR 450).
+ * used (LATER_CHANGES_PLAN.md §7.21, PR 450). A location's check radius
+ * isn't listed: it's its own form's alone (§7.22).
  */
 export default function LocationsList({ clientId, adding = false, onAddingChange, onChanged }: {
     /** One client's locations; none for every client's and the shared ones. */
@@ -92,6 +93,8 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
     const locations: LocationItem[] = failed ? [] : result?.data?.data || []
     const totalPages: number = result?.data?.totalPages || 0
     const total: number = result?.data?.total || 0
+    // For the form's hint, sent to whoever may add or edit locations (§7.22).
+    const defaultRadius: number | undefined = result?.data?.defaultRadiusMeters
 
     // The filter by client, for whoever may see the clients.
     const clients = useClientOptions(onePage && can('clients.view'), true)
@@ -184,7 +187,6 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
         </span>
     )
 
-    const num = (n: number) => n.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-GB')
     const hq = (l: LocationItem) => l.isHq && <StatusBadge tone="neutral">{t('locations_hq')}</StatusBadge>
     const title = (l: LocationItem) => <><bdi>{l.name}</bdi>{hq(l)}</>
     // Its client's page for whoever may open it (clients/[id]), or "Shared"
@@ -198,9 +200,6 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
     const pin = (l: LocationItem) => l.latitude === null || l.longitude === null
         ? <StatusBadge tone="problem">{t('locations_needs_pin')}</StatusBadge>
         : <a href={googleMapsLink(l.latitude, l.longitude)} target="_blank" rel="noopener noreferrer" className="ui-item-link">{t('locations_view_map')}<span className="ui-visually-hidden"> {t('ui_opens_new_tab')}</span></a>
-    const radius = (l: LocationItem) => l.radiusMeters === null
-        ? <span className="ui-item-detail">{t('locations_radius_default').replace('{n}', num(LOCATION_RADIUS_DEFAULT))}</span>
-        : t('locations_radius_value').replace('{n}', num(l.radiusMeters))
 
     const columns: Column<LocationItem>[] = [
         {
@@ -209,7 +208,6 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
         },
         ...(everyCompany ? [{ key: 'company', header: t('clients_col_company'), cell: (l: LocationItem) => <bdi>{companyNameIn(locale, l.company)}</bdi> }] : []),
         { key: 'pin', header: t('locations_col_pin'), cell: pin },
-        { key: 'radius', header: t('locations_col_radius'), cell: radius },
         ...(changes ? [{ key: 'actions', header: t('actions_label'), hideHeader: true, align: 'end' as const, cell: actions }] : []),
     ]
 
@@ -268,7 +266,6 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
                                     ...(onePage ? [{ icon: l.client ? StorefrontIcon : TagIcon, text: owner(l) }] : []),
                                     ...(everyCompany ? [{ icon: BuildingsIcon, text: <bdi>{companyNameIn(locale, l.company)}</bdi> }] : []),
                                     { icon: MapPinIcon, text: pin(l) },
-                                    { icon: MapPinAreaIcon, text: radius(l) },
                                 ]}
                                 foot={changes ? <>{actions(l)}</> : undefined}
                             />
@@ -279,8 +276,8 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
                 )}
 
             {/* To this client, or on the Locations page to the one chosen in the form. */}
-            <LocationForm open={adding} onClose={() => onAddingChange?.(false)} clientId={clientId} onSaved={changed} />
-            <LocationForm open={!!editing} onClose={() => setEditing(null)} location={editing} onSaved={changed} />
+            <LocationForm open={adding} onClose={() => onAddingChange?.(false)} clientId={clientId} onSaved={changed} defaultRadius={defaultRadius} />
+            <LocationForm open={!!editing} onClose={() => setEditing(null)} location={editing} onSaved={changed} defaultRadius={defaultRadius} />
             <ConfirmDialog
                 open={!!toArchive}
                 title={t('locations_archive')}

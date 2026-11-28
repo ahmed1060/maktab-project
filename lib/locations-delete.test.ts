@@ -36,7 +36,7 @@ describe("the row menu", () => {
 
     it("never offers it for one a task has used, one not known to be unused, or a client's HQ", () => {
         expect(locationActions({ ...branch, inUse: true }, both)).toEqual(["edit", "hq", "archive"])
-        const { inUse: _unknown, ...unknown } = branch
+        const unknown = { archivedAt: null, isHq: false, client: { id: "v-1" } }
         expect(locationActions(unknown, both)).toEqual(["edit", "hq", "archive"])
         expect(locationActions({ ...branch, isHq: true }, both)).toEqual(["edit"])
     })

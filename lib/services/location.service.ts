@@ -4,6 +4,7 @@ import { can } from "@/lib/permissions/can"
 import type { Permission } from "@/lib/permissions/catalogue"
 import { googleMapsLink } from "@/lib/attendance/geo"
 import { locationLabel } from "@/lib/locations"
+import { SystemSettingsService } from "./system-settings.service"
 import type { CreateLocationInput, PlaceInput, UpdateLocationInput } from "@/lib/validations/location.schema"
 
 /**
@@ -51,10 +52,31 @@ const ROW = {
 
 type Found = Prisma.LocationGetPayload<{ select: typeof ROW }>
 
-/** A location as the lists show it, with whether a task has used it: only one no task has is deleted (§7.21). */
-export type LocationRow = Omit<Found, "_count"> & { inUse: boolean }
+/**
+ * A location as the lists show it, with whether a task has used it: only
+ * one no task has is deleted (§7.21). Its check radius only for whoever may
+ * edit locations, whose form is the one place it's shown (§7.22).
+ */
+export type LocationRow = Omit<Found, "_count" | "radiusMeters"> & { radiusMeters?: number | null; inUse: boolean }
 
-const rowOf = ({ _count, ...location }: Found): LocationRow => ({ ...location, inUse: _count.tasks > 0 })
+const rowOf = ({ _count, radiusMeters, ...location }: Found, showsRadius: boolean): LocationRow =>
+    ({ ...location, ...(showsRadius ? { radiusMeters } : {}), inUse: _count.tasks > 0 })
+
+/**
+ * Who sees the check radius (LATER_CHANGES_PLAN.md §7.22): a location's own
+ * only whoever may edit locations, in its Edit location form; the default,
+ * the system's distance, whoever may add or edit them, for that form's hint.
+ * The Super Admin, any company's.
+ */
+const editsLocations = (session: Session, companyId: string | null) =>
+    isSuperAdmin(session) || (!!companyId && can(session.user as any, "locations.edit", { companyId }))
+const changesLocations = (session: Session, companyId: string | null) =>
+    editsLocations(session, companyId) || (!!companyId && can(session.user as any, "locations.create", { companyId }))
+/** The default for whoever may add or edit locations, as the form's hint says it; nothing for anyone else. */
+async function defaultRadiusFor(session: Session, companyId: string | null): Promise<{ defaultRadiusMeters?: number }> {
+    if (!changesLocations(session, companyId)) return {}
+    return { defaultRadiusMeters: (await SystemSettingsService.get()).locationVerifyRadiusMeters }
+}
 
 const PICK = { id: true, name: true, isHq: true, latitude: true, clientId: true } satisfies Prisma.LocationSelect
 /** A location as a task's picker offers it; one with no pin is offered greyed (§2.8). */
@@ -123,7 +145,8 @@ export class LocationService {
             }),
             prisma.location.count({ where }),
         ])
-        return { data: data.map(rowOf), total }
+        const showsRadius = editsLocations(session, companyId ?? null)
+        return { data: data.map(l => rowOf(l, showsRadius)), total, ...(await defaultRadiusFor(session, companyId ?? null)) }
     }
 
     static async get(session: Session, id: string) {
@@ -131,7 +154,7 @@ export class LocationService {
         if (!found) throw new Error("TASK_LOCATION_NOT_FOUND")
         const { companyId, ...location } = found
         allow(session, "locations.view", companyId)
-        return rowOf(location)
+        return rowOf(location, editsLocations(session, companyId))
     }
 
     /**
@@ -278,7 +301,8 @@ export class LocationService {
                 : [],
             prisma.location.findMany({ where: { companyId, clientId: null, archivedAt: null }, select: PICK, orderBy: [{ name: "asc" }, { id: "asc" }], take: PICK_LIMIT }),
         ])
-        return { client: client.map(pickRow), shared: shared.map(pickRow) }
+        // The default for "+ New location"'s form, for whoever may add one (§7.22).
+        return { client: client.map(pickRow), shared: shared.map(pickRow), ...(await defaultRadiusFor(session, companyId)) }
     }
 
     /**
@@ -357,13 +381,18 @@ export class LocationService {
      */
     static async saveHq(tx: Tx, client: { id: string; companyId: string }, place: PlaceInput, session: Session) {
         const hq = await tx.location.findFirst({ where: { clientId: client.id, isHq: true }, select: { id: true, name: true, latitude: true, longitude: true, radiusMeters: true } })
-        const details = { name: place.name, latitude: place.latitude, longitude: place.longitude, radiusMeters: place.radiusMeters ?? null }
+        // The client's form has no radius (LATER_CHANGES_PLAN.md §7.22): one not
+        // sent keeps the HQ's as it is, and a new HQ takes the default.
+        const details: { name: string; latitude: number; longitude: number; radiusMeters?: number | null } = {
+            name: place.name, latitude: place.latitude, longitude: place.longitude,
+            ...(place.radiusMeters !== undefined ? { radiusMeters: place.radiusMeters } : {}),
+        }
         if (hq) {
             const changed = (Object.keys(details) as (keyof typeof details)[]).some(k => hq[k] !== details[k])
             if (changed && !can(session.user as any, "locations.edit", { companyId: client.companyId })) throw new Error("TASK_LOCATION_FORBIDDEN")
             await tx.location.update({ where: { id: hq.id }, data: details })
         }
-        else await tx.location.create({ data: { ...details, companyId: client.companyId, clientId: client.id, isHq: true, createdById: actor(session).byUser } })
+        else await tx.location.create({ data: { ...details, radiusMeters: details.radiusMeters ?? null, companyId: client.companyId, clientId: client.id, isHq: true, createdById: actor(session).byUser } })
         await syncClientLocation(tx, client.id)
     }
 }

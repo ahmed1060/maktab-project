@@ -5,7 +5,8 @@ export type LocationItem = {
     isHq: boolean
     latitude: number | null
     longitude: number | null
-    radiusMeters: number | null
+    /** Its own check radius, for whoever may edit locations alone (LATER_CHANGES_PLAN.md §7.22). */
+    radiusMeters?: number | null
     archivedAt: string | null
     createdAt: string
     client: { id: string; name: string } | null

@@ -39,7 +39,8 @@ export const GET = withStandardHandler(async (req, session) => {
         page,
         limit,
     })
-    return ApiResponse.success({ data: result.data, total: result.total, page, totalPages: Math.ceil(result.total / limit) })
+    // The default check radius, for whoever may add or edit locations (LATER_CHANGES_PLAN.md §7.22).
+    return ApiResponse.success({ data: result.data, total: result.total, page, totalPages: Math.ceil(result.total / limit), ...(result.defaultRadiusMeters !== undefined ? { defaultRadiusMeters: result.defaultRadiusMeters } : {}) })
 }, { permission: "locations.view" })
 
 export const POST = withStandardHandler(async (_req, session, json) => {
