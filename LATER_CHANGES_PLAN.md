@@ -2310,7 +2310,7 @@ everywhere it's shown, not only there.
    and each change in the audit log.
 4. One PR, before salary advances' step 3: #446.
 
-### 7.19 A company's first policy and schedule from the month's first day (Decided)
+### 7.19 A company's first policy and schedule from the month's first day (Done, #447, merged on 28 November)
 
 On 2026-11-28 the owner showed the Attendance page's days of 1 to 19
 November reading No schedule, and "no policy yet, measured only". The
@@ -3070,3 +3070,7 @@ the days from the 20th were measured as they should be.
   left. The owner recalculated November's attendance: 1 to 19 November
   are measured now, none left without a schedule. November's payroll
   draft is still to be recalculated. #447 (§7.19) is open.
+- **2026-11-28:** #447 merged (§7.19): a company's first policy and first
+  schedule start on the payroll month's first day unless changed.
+  Production is checked after the deploy. Salary advances' step 3a is
+  next.
