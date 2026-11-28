@@ -15,10 +15,11 @@ const en = english as Record<string, unknown>
 const ar = arabic as Record<string, string>
 
 /**
- * What a string says once "in advance" (ahead of time) is set aside, and
- * its placeholders, such as {advance}, which the reader sees as an amount.
+ * What a string says once "in advance" (ahead of time) and the Salary
+ * advance, the word's own now (§7.5, step 2, PR 445), are set aside, and its
+ * placeholders, such as {advance}, which the reader sees as an amount.
  */
-const saidOf = (text: string) => text.replace(/\{[^}]*\}/g, "").replace(/\bin advance\b/gi, "")
+const saidOf = (text: string) => text.replace(/\{[^}]*\}/g, "").replace(/\bin advance\b/gi, "").replace(/\bsalary advances?\b/gi, "")
 const sayAdvance = (text: string) => /\badvances?\b/i.test(saidOf(text))
 
 describe("Custody in English", () => {

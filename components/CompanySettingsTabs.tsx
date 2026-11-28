@@ -7,6 +7,7 @@ import CompanyLogoCard from '@/components/CompanyLogoCard'
 import BrandColourCard from '@/components/BrandColourCard'
 import CompanyPayrollCard from '@/components/CompanyPayrollCard'
 import CompanyDeductionsCard from '@/components/CompanyDeductionsCard'
+import CompanySalaryAdvancesCard from '@/components/CompanySalaryAdvancesCard'
 import CompanyAttendanceCard from '@/components/CompanyAttendanceCard'
 import CompanyRolesCard from '@/components/CompanyRolesCard'
 import CompanyModulesCard from '@/components/CompanyModulesCard'
@@ -239,6 +240,8 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
                     />
                     {/* Income tax, social insurance and its own (LATER_CHANGES_PLAN.md §7.12, PR 440). */}
                     <CompanyDeductionsCard companyId={companyId} readOnly={readOnly} />
+                    {/* The rules a salary advance follows (LATER_CHANGES_PLAN.md §7.5, step 2). */}
+                    <CompanySalaryAdvancesCard companyId={companyId} readOnly={readOnly} />
                     </>
                 )}
 

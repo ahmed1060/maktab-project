@@ -629,6 +629,9 @@ These are built once, in the building-blocks PR, and every page uses them
   from, is a set of radio buttons under a visible group label, each 36px
   tall (44px on phones). An option that can't be picked says why beside
   the group.
+  - A line under the group may say what the option picked does, such as
+    Salary advances' Over a limit. It's read with the group by screen
+    readers, as a field's hint is read with its field.
   - An option that isn't this company's to pick at all, such as a way of
     connecting a terminal that the Super Admin hasn't turned on for it
     (`ATTENDANCE_PLAN.md` §17.8), isn't listed.
@@ -2577,6 +2580,47 @@ These are built once, in the building-blocks PR, and every page uses them
   - **On their payslips,** their own figure takes the company's, in the
     same place, and one not applied isn't there. Months approved keep
     each person's as they were approved with.
+- **Salary advances** (`LATER_CHANGES_PLAN.md` §7.5): a card of its own
+  on Company Settings' Payroll tab, Salary advances, under Payroll
+  deductions, for whoever may change settings, and shown without being
+  changed to whoever may only see them, as the two above it are.
+  - Its note says what it's for: the rules a salary advance follows,
+    money lent ahead of the salary and paid back from payslips with no
+    interest. Until they can be asked for, it says employees can't ask
+    for one yet.
+  - **Most one may ask for,** in months of their salary: 2 unless
+    changed, from 0.5 to 12 with up to two decimals. Beside it, **Months
+    worked first,** counted from their contract's start: 3 unless
+    changed, a whole number from 0 to 120, and at 0 from their first day.
+  - **Only one at a time,** a checkbox, on unless changed: while one is
+    being paid back, another can't be asked for.
+  - **Most per installment,** a percentage of a month's net pay after the
+    payroll deductions: 10% unless changed. Beside it, **Most for all
+    debts together,** an installment with the recovery of their other
+    debts, of the same net pay: 25% unless changed. Their hints say these
+    are what Egypt's labour law allows, as a company outside Egypt may
+    set them higher. Each is from 1 to 100 with up to two decimals, and
+    all debts together never below an installment's.
+    - All debts together is checked when one is asked for, and payroll
+      isn't capped by it, which its hint says too. What a payslip takes
+      for a debt is still capped by Payroll settings' share taken for
+      debts.
+  - Side by side on computers, and one under the other on phones, as
+    Payroll deductions' Income tax and Social insurance are.
+  - **Over a limit,** a choice of two (§5.3), Block unless changed, with
+    a line under it saying what the one picked does: Block keeps the
+    months from going below what the limits allow, for the person asking
+    and for whoever approves; Warn lets it be sent, saying which limit
+    it's over.
+  - Saved together, with Save on the card's end side, greyed until
+    something changes, as Payroll deductions is. What's typed wrong is
+    said under its field before anything is sent, and the first such
+    field is focused. What's typed while it's being saved stays on the
+    card, still to save. Opened again, the card shows what's been saved
+    since, unless something's typed.
+  - A change reaches the salary advances asked for after it. Each save is
+    in the audit log, on the company, with what each changed setting was
+    and is.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
@@ -3811,3 +3855,8 @@ changed:
   pay task costs from is Custody in English, as it's العُهدة in Arabic,
   so "advance" is left for the Salary advance (`LATER_CHANGES_PLAN.md`
   §7.5).
+- **2026-11-28:** Salary advances (§5.5): a card of its own on Company
+  Settings' Payroll tab, under Payroll deductions, for the rules a salary
+  advance follows (`LATER_CHANGES_PLAN.md` §7.5, step 2).
+- **2026-11-28:** A choice between a few options (§5.3) may have a line
+  under it saying what the option picked does, read with the group.

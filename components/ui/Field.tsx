@@ -71,19 +71,22 @@ export function TextArea({ className, ...rest }: ComponentPropsWithoutRef<'texta
 /**
  * A choice between a few options, as radio buttons under a visible group
  * label. `warning` says why an option can't be picked, or what picking one
- * means, beside the group.
+ * means, beside the group. `hint`, a line under it, says what the option
+ * picked does, read with the group as a field's hint is (DESIGN.md §5.3).
  */
-export function Choice<V extends string>({ legend, name, value, onChange, options, warning }: {
+export function Choice<V extends string>({ legend, name, value, onChange, options, warning, hint }: {
     legend: ReactNode
     name: string
     value: V
     onChange: (value: V) => void
     options: { value: V; label: ReactNode; disabled?: boolean }[]
     warning?: ReactNode
+    hint?: ReactNode
 }) {
     const id = useId()
+    const describedBy = [hint ? `${id}-hint` : null, warning ? `${id}-warning` : null].filter(Boolean).join(' ') || undefined
     return (
-        <fieldset className="ui-choices" aria-describedby={warning ? `${id}-warning` : undefined}>
+        <fieldset className="ui-choices" aria-describedby={describedBy}>
             <legend className="ui-label">{legend}</legend>
             {options.map(o => (
                 <label key={o.value} className="ui-choice" data-disabled={o.disabled || undefined}>
@@ -91,6 +94,7 @@ export function Choice<V extends string>({ legend, name, value, onChange, option
                     {o.label}
                 </label>
             ))}
+            {hint && <span id={`${id}-hint`} className="ui-hint">{hint}</span>}
             {warning && <span id={`${id}-warning`} className="ui-error">{warning}</span>}
         </fieldset>
     )
