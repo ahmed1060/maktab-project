@@ -1614,13 +1614,34 @@ Built in steps, each a PR or more, the screens' DESIGN.md entries first:
    gives. "Advance" is then left for the Salary advance. Only words: the
    translation keys, addresses, permissions' codes, the database and the
    Arabic stay as they are.
-2. **The policy and its permissions:** the settings in Company Settings,
-   the law's 25% limit (§7.12), and permissions to approve and to manage.
-3. **Asking and approving,** on the Requests page.
+2. **The policy** (in progress, #445): a card of its own on Company
+   Settings' Payroll tab, Salary advances, under Payroll deductions
+   (`DESIGN.md` §5.5, Salary advances), for whoever may change settings
+   and shown to whoever may only see them, as the two above it are.
+   - What it holds, each a column on the company, with these defaults:
+     the most one may ask for, 2 months' salary (0.5 to 12); the months
+     worked first, 3 (0 to 120, a whole number); only one at a time, on;
+     the most per installment, 10% (1 to 100); the most for all debts
+     together, the law's 25% (§7.12), never below an installment's; and
+     over a limit, Block or Warn, Block.
+   - Saved through a route of its own, as Payroll deductions is, with
+     what's wrong said under each field by the same rules the server
+     refuses by, and in the audit log on the company.
+   - All debts together isn't Payroll settings' share taken for debts:
+     that one caps what a payslip takes for a debt, and stays as it is;
+     this one is checked when an advance is asked for, in step 3.
+   - Nothing reads it yet, and the note says employees can't ask for one
+     yet.
+   - **The permissions move** to the steps that first use them, as a
+     permission nothing checks isn't offered in the role editor: approving
+     to step 3, managing to step 5.
+3. **Asking and approving,** on the Requests page, with the permission to
+   approve.
 4. **Paying back:** the payslip's line, and the balance on the employee's
    page and one's own profile.
 5. **Managing, and a contract's end:** settling early, moving an
-   installment, and the final settlement's question.
+   installment, and the final settlement's question, with the permission
+   to manage.
 
 ### 7.6 Rating finished work (Decided)
 
@@ -2959,3 +2980,7 @@ isn't, rather than My team's tasks.
   are Custody, as they're العُهد in Arabic, so "advance" is left for the
   Salary advance. Only words change. Production is checked after the
   deploy. Next: step 2, the policy and its permissions.
+- **2026-11-28:** §7.5, step 2 is the policy alone: the Salary advances
+  card on Company Settings' Payroll tab, with the law's 25% limit on all
+  debts together. The permissions to approve and to manage move to steps
+  3 and 5, where they're first checked. DESIGN.md has the card's entry.
