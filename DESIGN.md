@@ -2413,7 +2413,10 @@ These are built once, in the building-blocks PR, and every page uses them
     for, as day off's does: from the day those hours after reach back to
     (yesterday, with 24; today, with none), or the day before it where
     their shift that day runs past midnight, with no last day, and never
-    before the first day a request may be asked for. Its hint says how long
+    before the first day a request may be asked for. Each day's hours
+    after are the policy's in force on that day, as asking reads them;
+    going back from today, the calendar stops at the first day too late,
+    so it offers none it would refuse. Its hint says how long
     after: "Can be asked for ahead, or up to 24 hours after they end.",
     or, with none, "Can be asked for only ahead."
   - **Hours that ended longer ago than that,** sent all the same (a day
@@ -3937,3 +3940,7 @@ changed:
   draft has been saved, so a punch missed on the month's last day can be
   reported on the 1st; and never before the company's first attendance
   policy once it's in force (`LATER_CHANGES_PLAN.md` §7.20).
+- **2026-11-28:** Asking for permission hours (§5.5): each day's hours
+  after are the policy's in force on that day, as asking reads them, and
+  the calendar stops at the first day too late; a mission's days are read
+  again under its months' locks (Codex's review of #448).
