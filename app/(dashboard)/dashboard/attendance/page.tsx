@@ -265,6 +265,7 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
         ? { date: d.date, type: 'EARLY_LEAVE' as const, start: d.lastOut.slice(11, 16), end: hhmm(d.expectedEndMinutes) } : null)
     // Asked for only on a day the form's calendar offers (LATER_CHANGES_PLAN.md §7.20).
     const offered = (date: string) => offeredDay(date, balanceBody?.data)
+    const reportable = (date: string) => !balanceBody?.data?.requestsFrom || date >= balanceBody.data.requestsFrom
     const askFor = (d: Day) => d.expectedStartMinutes !== null && d.expectedEndMinutes !== null && (
         d.status === 'TO_CONFIRM' ? askEarly(d)
             : d.status !== 'PRESENT' ? null
@@ -290,12 +291,14 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
         if (d.userId !== me) return null
         const ask = offered(d.date) ? askFor(d) : null
         // The departure scan that may be the one forgotten (PR 274), as for a punch missing.
-        const missing = d.status === 'INCOMPLETE' || d.status === 'TO_CONFIRM'
+        // Only where the day the form opens on is one its calendar offers, from the first day a request may be asked for (§7.20).
+        const reportOn = checkoutDate(d.date, d.expectedEndMinutes)
+        const missing = (d.status === 'INCOMPLETE' || d.status === 'TO_CONFIRM') && reportable(reportOn)
         if (!ask && !missing) return null
         return (
             <>
                 {ask && <Button size="sm" onClick={() => setAsking(ask)}>{t('req_ask_permission')}</Button>}
-                {missing && <Button size="sm" onClick={() => setReporting(checkoutDate(d.date, d.expectedEndMinutes))}>{t('req_report_missing')}</Button>}
+                {missing && <Button size="sm" onClick={() => setReporting(reportOn)}>{t('req_report_missing')}</Button>}
             </>
         )
     }

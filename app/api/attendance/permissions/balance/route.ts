@@ -24,5 +24,7 @@ export const GET = withStandardHandler(async (req, session) => {
         days: await AttendanceRequestService.permissionDays(self.companyId),
         // Around the day, the first day that may be asked for, for the calendar to start on (LATER_CHANGES_PLAN.md §7.20).
         earliest: await AttendanceRequestService.permissionEarliest(self.companyId, self.userId),
+        // The first day any request may be asked for (§7.20): the missing punch form's, and Attendance's buttons'.
+        requestsFrom: (await AttendanceRequestService.requestDays(self.companyId)).from,
     })
 })

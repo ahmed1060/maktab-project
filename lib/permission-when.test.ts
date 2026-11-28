@@ -6,8 +6,8 @@ import { en } from "./translations/en"
 /**
  * When permission hours may be asked for (LATER_CHANGES_PLAN.md §7.4, 4b;
  * DESIGN.md §5.5, Asking for permission hours): before, or within the
- * policy's hours after, as before; or any day from the first day not paid,
- * never before the 1st of last month, to a month ahead.
+ * policy's hours after, as before; or any day from the payroll month's first
+ * day, or last month's until its payroll is approved, to a month ahead (§7.20).
  */
 
 const state = { locale: "en" as "en" | "ar" }
@@ -72,10 +72,10 @@ describe("the attendance policy's when", () => {
         expect(permissionWhenLine(enT as never, "en", rules("AROUND_THE_DAY", 24))).toBe("Before, or up to 24 hours after")
         expect(permissionWhenLine(enT as never, "en", rules("AROUND_THE_DAY", 1))).toBe("Before, or up to 1 hour after")
         expect(permissionWhenLine(enT as never, "en", rules("AROUND_THE_DAY", 0))).toBe("Only in advance")
-        expect(permissionWhenLine(enT as never, "en", rules("ANY_DAY", 24))).toBe("Any day, from last month to a month ahead")
+        expect(permissionWhenLine(enT as never, "en", rules("ANY_DAY", 24))).toBe("Any day, from the payroll month to a month ahead")
         expect(permissionWhenLine(arT as never, "ar", rules("AROUND_THE_DAY", 24))).toBe("قبله، أو حتى ٢٤ ساعة بعده")
         expect(permissionWhenLine(arT as never, "ar", rules("AROUND_THE_DAY", 0))).toBe("مسبقًا فقط")
-        expect(permissionWhenLine(arT as never, "ar", rules("ANY_DAY", 0))).toBe("أي يوم، من الشهر الماضي حتى شهر مقدمًا")
+        expect(permissionWhenLine(arT as never, "ar", rules("ANY_DAY", 0))).toBe("أي يوم، من شهر الرواتب حتى شهر مقدمًا")
         const panel = readFileSync("components/AttendancePolicyPanel.tsx", "utf8")
         expect(panel).toContain("? lines([t('attendance_permission_line').replace('{hours}', countOf(t, locale, shown.body.permissionHours.monthlyAllowanceMinutes / 60, 'hours')), permissionWhenLine(t, locale, shown.body.permissionHours)])")
     })
@@ -83,15 +83,15 @@ describe("the attendance policy's when", () => {
     it("says so in both languages", () => {
         expect(en.attendance_permission_when).toBe("Can be asked for")
         expect(en.attendance_permission_when_AROUND_THE_DAY).toBe("Before, or up to some hours after")
-        expect(en.attendance_permission_when_ANY_DAY).toBe("Any day, from last month to a month ahead")
-        expect(en.attendance_permission_when_any_hint).toBe("Counted from today, and never a day in a month whose payroll is approved.")
+        expect(en.attendance_permission_when_ANY_DAY).toBe("Any day, from the payroll month to a month ahead")
+        expect(en.attendance_permission_when_any_hint).toBe("From the payroll month's first day, or last month's until its payroll is approved.")
         expect(en.attendance_permission_when_around_line).toBe("Before, or up to {hours} after")
         expect(en.attendance_permission_when_ahead_line).toBe("Only in advance")
         expect(en.requests_permission_range).toBe("Permission hours can be asked for from {from} to {to}.")
         expect(ar.attendance_permission_when).toBe("يمكن طلب الإذن")
         expect(ar.attendance_permission_when_AROUND_THE_DAY).toBe("قبله، أو حتى عدد من الساعات بعده")
-        expect(ar.attendance_permission_when_ANY_DAY).toBe("أي يوم، من الشهر الماضي حتى شهر مقدمًا")
-        expect(ar.attendance_permission_when_any_hint).toBe("تُحسب من اليوم، ولا تشمل أبدًا يومًا في شهر اعتُمدت رواتبه.")
+        expect(ar.attendance_permission_when_ANY_DAY).toBe("أي يوم، من شهر الرواتب حتى شهر مقدمًا")
+        expect(ar.attendance_permission_when_any_hint).toBe("من أول يوم في شهر الرواتب، أو في الشهر الماضي حتى اعتماد رواتبه.")
         expect(ar.attendance_permission_when_around_line).toBe("قبله، أو حتى {hours} بعده")
         expect(ar.attendance_permission_when_ahead_line).toBe("مسبقًا فقط")
         expect(ar.requests_permission_range).toBe("يمكن طلب ساعات الإذن من {from} إلى {to}.")

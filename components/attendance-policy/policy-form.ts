@@ -1,6 +1,6 @@
 import type { TranslationKey } from '@/lib/translations'
 import { countOf } from '@/lib/plural'
-import { MISSION_AMOUNT_MAX_MINOR, MISSION_DAYS_BACK_MAX, PERMISSION_TYPES, type DeductionRule, type MissionAllowance, type PolicyBody } from '@/lib/attendance/policy'
+import { MISSION_AMOUNT_MAX_MINOR, PERMISSION_TYPES, type DeductionRule, type MissionAllowance, type PolicyBody } from '@/lib/attendance/policy'
 import { toMajor, toMinor } from '@/lib/payroll'
 
 /**
@@ -81,7 +81,7 @@ export type PolicyForm = {
      * each kind pays. How far back they may be asked for, as typed
      * (LATER_CHANGES_PLAN.md §7.4, 4c).
      */
-    missions: { enabled: boolean; dayWorth: MissionAllowance['dayWorth']; amount: string; days: MissionAllowance['days']; hours: MissionAllowance['hours']; daysBack: string }
+    missions: { enabled: boolean; dayWorth: MissionAllowance['dayWorth']; amount: string; days: MissionAllowance['days']; hours: MissionAllowance['hours'] }
 }
 
 /** The least and the most one day of the mission allowance can be worth, typed in. */
@@ -149,7 +149,6 @@ export function formFromBody(body: PolicyBody): PolicyForm {
             amount: body.missions.allowance.amountMinor === 0 ? '' : text(toMajor(body.missions.allowance.amountMinor)),
             days: body.missions.allowance.days,
             hours: body.missions.allowance.hours,
-            daysBack: text(body.missions.daysBack),
         },
     }
 }
@@ -324,8 +323,6 @@ export function bodyFromForm(form: PolicyForm, base: PolicyBody): { ok: true; bo
         days: m.days,
         hours: m.hours,
     }
-    // How far back they may be asked for (LATER_CHANGES_PLAN.md §7.4, 4c): shown, so read, only while they may be.
-    const daysBack = wholeIn(m.enabled, 'missions.daysBack', m.daysBack, 0, MISSION_DAYS_BACK_MAX, base.missions.daysBack)
 
     if (Object.keys(errors).length > 0) return { ok: false, errors }
     return {
@@ -342,7 +339,7 @@ export function bodyFromForm(form: PolicyForm, base: PolicyBody): { ok: true; bo
             departureThresholdMinutes,
             faceVerificationAvailable: form.faceVerificationAvailable,
             faceReverifyMonths,
-            missions: { enabled: form.missions.enabled, allowance, daysBack },
+            missions: { enabled: form.missions.enabled, allowance },
             dayOffMonthsAhead: form.dayOffMonthsAhead,
         },
     }

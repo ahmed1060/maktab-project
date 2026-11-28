@@ -23,25 +23,21 @@ beforeEach(() => { vi.stubGlobal("document", { body: {} }) })
 afterEach(() => { vi.unstubAllGlobals(); state.locale = "en" })
 
 describe("the days a day off may be asked for", () => {
-    it("run from the 1st of last month, or the day after an approved payroll's period, to today plus the months ahead", async () => {
+    it("run from the first day a request may be asked for to today plus the months ahead (§7.20)", async () => {
         const { dayOffWindow } = await import("./day-off-window")
-        expect(dayOffWindow("2026-11-26", 1, null)).toEqual({ from: "2026-10-01", to: "2026-12-26" })
-        // An approved month's period ending later than the 1st of last month: the day after it.
-        expect(dayOffWindow("2026-11-26", 1, "2026-11-25")).toEqual({ from: "2026-11-25", to: "2026-12-26" })
-        // One ending before it: never before the 1st of last month.
-        expect(dayOffWindow("2026-11-26", 1, "2026-09-26")).toEqual({ from: "2026-10-01", to: "2026-12-26" })
-        // Last month across the year.
-        expect(dayOffWindow("2027-01-10", 1, null).from).toBe("2026-12-01")
-        expect(dayOffWindow("2026-11-26", 12, null).to).toBe("2027-11-26")
+        // The first day is the payroll month's, worked out by requestDaysBasis (lib/request-days.db.test.ts).
+        expect(dayOffWindow("2026-11-26", 1, "2026-11-01")).toEqual({ from: "2026-11-01", to: "2026-12-26" })
+        expect(dayOffWindow("2026-11-26", 1, "2026-10-25")).toEqual({ from: "2026-10-25", to: "2026-12-26" })
+        expect(dayOffWindow("2026-11-26", 12, "2026-11-01").to).toBe("2027-11-26")
     })
 
     it("end on that month's last day where it has fewer days (decided on 26 November)", async () => {
         const { dayOffWindow } = await import("./day-off-window")
-        expect(dayOffWindow("2027-01-31", 1, null).to).toBe("2027-02-28")
-        expect(dayOffWindow("2028-01-31", 1, null).to).toBe("2028-02-29")
-        expect(dayOffWindow("2026-03-31", 1, null).to).toBe("2026-04-30")
-        expect(dayOffWindow("2026-12-31", 2, null).to).toBe("2027-02-28")
-        expect(dayOffWindow("2026-11-30", 3, null).to).toBe("2027-02-28")
+        expect(dayOffWindow("2027-01-31", 1, "2027-01-01").to).toBe("2027-02-28")
+        expect(dayOffWindow("2028-01-31", 1, "2028-01-01").to).toBe("2028-02-29")
+        expect(dayOffWindow("2026-03-31", 1, "2026-03-01").to).toBe("2026-04-30")
+        expect(dayOffWindow("2026-12-31", 2, "2026-12-01").to).toBe("2027-02-28")
+        expect(dayOffWindow("2026-11-30", 3, "2026-11-01").to).toBe("2027-02-28")
     })
 
     it("count the days asked for as approving counts them", async () => {

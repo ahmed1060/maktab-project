@@ -104,7 +104,8 @@ describe("the policy's Missions switch (decision 11)", () => {
         expect(dialog).toContain("t('attendance_missions')")
         expect(dialog).toContain("t('attendance_missions_on')")
         expect(dialog).toContain("setMissions({ enabled: e.target.checked })")
-        expect(form).toContain("missions: { enabled: form.missions.enabled, allowance, daysBack }")
+        // No days back since §7.20: a mission is asked for from the payroll month's first day, as every request is.
+        expect(form).toContain("missions: { enabled: form.missions.enabled, allowance },")
         expect(panel).toContain("shown.body.missions.enabled")
         expect(en.attendance_missions_on).toBe("Employees can ask for missions")
         expect(ar.attendance_missions_on).toBe("يمكن للموظفين طلب المأموريات")
@@ -120,8 +121,8 @@ describe("the policy's Missions switch (decision 11)", () => {
 
 describe("a mission's dates", () => {
     const today = "2026-11-14"
-    // A year back, as before the policy's days back (LATER_CHANGES_PLAN.md §7.4, 4c): these rules aren't about them.
-    const days = missionDays(today, 365)
+    // From a year back: these rules aren't about how far back (LATER_CHANGES_PLAN.md §7.20).
+    const days = missionDays("2025-11-14", today)
 
     it("by days, run from its first date to its last, both kept", () => {
         expect(missionSpan({ kind: "DAYS", startDate: "2026-11-16", endDate: "2026-11-18" }, days)).toEqual({ startDate: "2026-11-16", endDate: "2026-11-18", hoursPart: null })
@@ -149,14 +150,14 @@ describe("a mission's dates", () => {
         expect(missionSpan({ kind: "DAYS", startDate: "2026-11-01", endDate: "2027-01-30" }, days)).toEqual({ refused: "MISSION_TOO_LONG" })
     })
 
-    it("are within the days that may be asked for: back as far as the policy allows, and a year ahead", () => {
-        const week = missionDays(today, 7)
+    it("are within the days that may be asked for: from the first day a request may be, and a year ahead", () => {
+        const week = missionDays("2026-11-07", today)
         expect(missionSpan({ kind: "HOURS", startDate: "2026-11-07", hoursPart: "TO_END" }, week)).toMatchObject({ startDate: "2026-11-07" })
         expect(missionSpan({ kind: "HOURS", startDate: "2026-11-06", hoursPart: "TO_END" }, week)).toEqual({ refused: "MISSION_OUT_OF_RANGE" })
         expect(missionSpan({ kind: "DAYS", startDate: "2026-11-06", endDate: "2026-11-08" }, week)).toEqual({ refused: "MISSION_OUT_OF_RANGE" })
         expect(missionSpan({ kind: "DAYS", startDate: "2027-11-10", endDate: "2027-11-14" }, week)).toMatchObject({ endDate: "2027-11-14" })
         expect(missionSpan({ kind: "DAYS", startDate: "2027-11-10", endDate: "2027-11-15" }, week)).toEqual({ refused: "MISSION_OUT_OF_RANGE" })
-        // A year back, at most.
+        // From the first day given, whatever it is.
         expect(missionSpan({ kind: "HOURS", startDate: "2025-11-14", hoursPart: "TO_END" }, days)).toMatchObject({ startDate: "2025-11-14" })
         expect(missionSpan({ kind: "HOURS", startDate: "2025-11-13", hoursPart: "TO_END" }, days)).toEqual({ refused: "MISSION_OUT_OF_RANGE" })
     })

@@ -93,10 +93,6 @@ export const DAY_OFF_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const
  */
 export const PERMISSION_WHEN = ["AROUND_THE_DAY", "ANY_DAY"] as const
 
-/** How far back a mission may be asked for, in days (LATER_CHANGES_PLAN.md §7.4, 4c): 7 unless changed. */
-export const MISSION_DAYS_BACK = 7
-/** A year at most, as far as recomputing reaches (ATTENDANCE_PLAN.md §11). */
-export const MISSION_DAYS_BACK_MAX = 365
 
 export const permissionHoursSchema = z.object({
     enabled: z.boolean(),
@@ -187,14 +183,10 @@ export const policyBodySchema = z.object({
      */
     missions: z.object({
         enabled: z.boolean(),
+        // How far back one may be asked for is the payroll month's, as every request's is
+        // (LATER_CHANGES_PLAN.md §7.20): the days back a version was saved with is dropped as it's read.
         allowance: missionAllowanceSchema.default(NO_MISSION_ALLOWANCE),
-        /**
-         * How far back one may be asked for, in days (LATER_CHANGES_PLAN.md
-         * §7.4, 4c): 0 to 365, 7 to start. A version saved before it reads
-         * as 7, so nothing is migrated.
-         */
-        daysBack: z.number().int().min(0).max(MISSION_DAYS_BACK_MAX).default(MISSION_DAYS_BACK),
-    }).default({ enabled: true, allowance: NO_MISSION_ALLOWANCE, daysBack: MISSION_DAYS_BACK }),
+    }).default({ enabled: true, allowance: NO_MISSION_ALLOWANCE }),
     /**
      * How many months ahead of today a day off may be asked for, 1 to 12
      * (LATER_CHANGES_PLAN.md §7.4, 4a). A version saved before it reads as
@@ -308,7 +300,7 @@ export const STANDARD_OFFICE: PolicyBody = {
     departureThresholdMinutes: DEFAULT_DEPARTURE_THRESHOLD_MINUTES,
     faceVerificationAvailable: false,
     faceReverifyMonths: null,
-    missions: { enabled: true, allowance: NO_MISSION_ALLOWANCE, daysBack: MISSION_DAYS_BACK },
+    missions: { enabled: true, allowance: NO_MISSION_ALLOWANCE },
     dayOffMonthsAhead: DAY_OFF_MONTHS_AHEAD,
 }
 
@@ -339,7 +331,7 @@ export const MEASURE_ONLY: PolicyBody = {
     departureThresholdMinutes: DEFAULT_DEPARTURE_THRESHOLD_MINUTES,
     faceVerificationAvailable: false,
     faceReverifyMonths: null,
-    missions: { enabled: true, allowance: NO_MISSION_ALLOWANCE, daysBack: MISSION_DAYS_BACK },
+    missions: { enabled: true, allowance: NO_MISSION_ALLOWANCE },
     dayOffMonthsAhead: DAY_OFF_MONTHS_AHEAD,
 }
 

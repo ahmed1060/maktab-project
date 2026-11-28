@@ -41,6 +41,11 @@ export class PermissionOutOfRange extends Error {
     }
 }
 
+/** A missing punch before the days it may be reported for (LATER_CHANGES_PLAN.md §7.20): which days. */
+export class MissingPunchOutOfRange extends Error {
+    constructor(readonly from: string, readonly to: string) { super("MISSING_PUNCH_OUT_OF_RANGE") }
+}
+
 function fail(code: string): never {
     throw new Error(code)
 }
@@ -50,10 +55,6 @@ const wallClockText = (d: Date) => d.toISOString().slice(0, 19)
 const monthOf = (date: string) => date.slice(0, 7)
 const hhmm = (minutes: number) => `${String(Math.floor(minutes / 60) % 24).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`
 /** A time of day, in minutes from that day's midnight, as a wall-clock text. */
-/** The first day the company has an attendance policy, if it has one. */
-const firstPolicyDay = (versions: readonly { effectiveFrom: string }[]): string | null =>
-    versions.reduce<string | null>((first, v) => (first === null || v.effectiveFrom < first ? v.effectiveFrom : first), null)
-
 const localAt = (date: string, minutes: number) => `${addDays(date, Math.floor(minutes / 1440))}T${hhmm(minutes % 1440)}:00`
 const monthRange = (month: string) => ({ gte: wallClock(`${month}-01T00:00:00`), lt: wallClock(`${addDays(`${month}-28`, 4).slice(0, 7)}-01T00:00:00`) })
 
@@ -204,15 +205,13 @@ export class AttendanceRequestService {
      * month ahead. None around the day: before, or within its hours after.
      */
     static async permissionDays(companyId: string, db: Prisma.TransactionClient = prisma): Promise<DayOffDays | null> {
-        const { today, firstOpen } = await requestDaysBasis(companyId, db)
+        const { today, from } = await requestDaysBasis(companyId, db)
         const versions = await AttendancePolicyService.versions(companyId, db)
         const when = policyOn(versions, today)?.body.permissionHours.when
         if (when !== "ANY_DAY") return null
-        // Never before the company's first policy, as there are no permission hours before it
-        // (LATER_CHANGES_PLAN.md §7.20): the policy in force today is in force, so it's no later than today.
-        const days = dayOffWindow(today, 1, firstOpen)
-        const first = firstPolicyDay(versions)
-        return first && first > days.from ? { from: first, to: days.to } : days
+        // From the first day a request may be asked for (LATER_CHANGES_PLAN.md §7.20), never before the company's
+        // first policy, so never a day without permission hours.
+        return dayOffWindow(today, 1, from)
     }
 
     /**
@@ -220,12 +219,12 @@ export class AttendanceRequestService {
      * the form's calendar to start on (LATER_CHANGES_PLAN.md §7.20): the day
      * the policy's hours after reach back to from now, in the company's
      * time; or the day before it, where that day's shift runs past midnight
-     * to end late enough; never in a month whose payroll is approved, nor
-     * before the company's first policy. None any day, whose days are
-     * permissionDays', and none without a policy today.
+     * to end late enough; never before the first day a request may be asked
+     * for (§7.20), so never before the company's first policy. None any day,
+     * whose days are permissionDays', and none without a policy today.
      */
     static async permissionEarliest(companyId: string, userId: string, db: Prisma.TransactionClient = prisma): Promise<string | null> {
-        const { firstOpen } = await requestDaysBasis(companyId, db)
+        const { from } = await requestDaysBasis(companyId, db)
         const company = await companyOf(db, companyId)
         const versions = await AttendancePolicyService.versions(companyId, db)
         const now = Date.now()
@@ -240,8 +239,18 @@ export class AttendanceRequestService {
         const shift = plans.get(userId)?.get(before)
         if (shift?.kind === "WORK" && shift.hours.endMinutes > 1440
             && localToInstant(localAt(before, shift.hours.endMinutes), company.timezone).getTime() + after >= now) earliest = before
-        for (const floor of [firstOpen, firstPolicyDay(versions)]) if (floor && floor > earliest) earliest = floor
+        if (from > earliest) earliest = from
         return earliest
+    }
+
+    /**
+     * The days a missing punch may be reported for (LATER_CHANGES_PLAN.md
+     * §7.20): from the first day a request may be asked for to today, the
+     * company's, for the form's calendar.
+     */
+    static async requestDays(companyId: string, db: Prisma.TransactionClient = prisma): Promise<{ from: string; today: string }> {
+        const { today, from } = await requestDaysBasis(companyId, db)
+        return { from, today }
     }
 
     /** Asks for permission hours, for oneself. */
@@ -409,7 +418,13 @@ export class AttendanceRequestService {
             const company = await companyOf(tx, companyId)
             if (localToInstant(local, company.timezone).getTime() > Date.now()) fail("PUNCH_IN_FUTURE")
             // Its own month, and the month before when it is a night's check-out (review on #14).
-            await openMonths(tx, companyId, await lockPunchMonths(tx, companyId, userId, local))
+            const months = await lockPunchMonths(tx, companyId, userId, local)
+            // From the first day a request may be asked for (LATER_CHANGES_PLAN.md §7.20), read holding the
+            // months' locks, so a month approved meanwhile can't let a day through; before they're checked as
+            // open, so a day in an approved month is answered with the days too.
+            const days = await AttendanceRequestService.requestDays(companyId, tx)
+            if (date < days.from) throw new MissingPunchOutOfRange(days.from, days.today)
+            await openMonths(tx, companyId, months)
             await refuseOwnerMonths(tx, userId, date)
             const same = await tx.missingPunchRequest.findFirst({ where: { userId, claimedAt: wallClock(local), status: { in: ["PENDING", "APPROVED"] } }, select: { id: true } })
             if (same) fail("MISSING_PUNCH_ALREADY_REPORTED")

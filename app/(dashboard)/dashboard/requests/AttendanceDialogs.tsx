@@ -550,6 +550,9 @@ export function ReportMissingPunch({ today, initial, onCancel, onReported }: {
     const [direction, setDirection] = useState<'' | 'IN' | 'OUT'>(initial?.direction ?? '')
     const [reason, setReason] = useState('')
     const [errors, setErrors] = useState<ReportErrors>({})
+    // The first day it may be reported for (LATER_CHANGES_PLAN.md §7.20), as the server reads it.
+    const { data: days } = useSWR('/api/attendance/permissions/balance', fetcher)
+    const from: string | undefined = days?.data?.requestsFrom ?? undefined
 
     const submit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -572,7 +575,14 @@ export function ReportMissingPunch({ today, initial, onCancel, onReported }: {
                     body: JSON.stringify({ at: `${date}T${time}`, direction: direction || null, reason: reason.trim() }),
                 })
                 if (!res.ok) {
-                    showToast(t(await refusal(res, 'failed_submit_request')), 'error')
+                    const body = await res.json().catch(() => ({}))
+                    // A day before the ones it may be reported for: said under the date, with them (§7.20).
+                    if (body.code === 'MISSING_PUNCH_OUT_OF_RANGE' && body.from && body.to) {
+                        setErrors(x => ({ ...x, date: daysText(t, locale, { from: body.from, to: body.to }, 'requests_missing_range') }))
+                        requestAnimationFrame(() => form.querySelector<HTMLElement>('.ui-date-trigger')?.focus())
+                        return
+                    }
+                    showToast(t(REFUSED[body?.code] ?? 'failed_submit_request'), 'error')
                     return
                 }
                 showToast(t('req_reported'), 'success')
@@ -586,7 +596,7 @@ export function ReportMissingPunch({ today, initial, onCancel, onReported }: {
     return (
         <form className="ui-form" noValidate onSubmit={submit}>
             <p className="ui-hint">{t('req_missing_hint')}</p>
-            <DatePickerSingle label={t('date_label')} value={date} maxDate={today} error={errors.date}
+            <DatePickerSingle label={t('date_label')} value={date} minDate={from} maxDate={today} error={errors.date}
                 onChange={day => { setDate(day); setErrors(x => ({ ...x, date: undefined })) }} />
             <Field label={t('punch_time')} error={errors.time}>{p => (
                 <TextInput {...p} name="time" type="time" autoComplete="off" value={time} onChange={e => { setTime(e.target.value); setErrors(x => ({ ...x, time: undefined })) }} />
@@ -617,7 +627,7 @@ type MissionErrors = { dates?: string; reason?: string }
 export function AskMission({ today, days, onCancel, onAsked }: {
     /** Today, as the company's calendar has it: where the pickers start. */
     today: string
-    /** The days it may be asked for, by today's policy (LATER_CHANGES_PLAN.md §7.4, 4c): the calendars offer only them. */
+    /** The days it may be asked for (LATER_CHANGES_PLAN.md §7.20): the calendars offer only them. */
     days: DayOffDays
     onCancel: () => void
     onAsked: () => void

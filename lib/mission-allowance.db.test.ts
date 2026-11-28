@@ -62,8 +62,11 @@ describe.skipIf(!ADMIN_URL)("each mission day priced, in Postgres", () => {
         const d = await day(userId, date)
         return [d.status, d.deductionMinor, d.missionAllowanceMinor]
     }
+    // Asked while its days could be (LATER_CHANGES_PLAN.md §7.20), before a month's payroll was approved: what's
+    // tested is what approving it does, whenever that is.
     const approved = async (userId: string, input: { kind: "DAYS" | "HOURS"; startDate: string; endDate?: string; hoursPart?: "TO_END" | "FROM_START" }) => {
-        const m = await Missions.ask("c1", userId, { ...input, reason: "Client visit" })
+        const spy = vi.spyOn(Missions, "window").mockResolvedValue({ from: "2026-01-01", to: "2027-12-31" })
+        const m = await Missions.ask("c1", userId, { ...input, reason: "Client visit" }).finally(() => spy.mockRestore())
         await Missions.decide(m.id, { approve: true }, "a1")
         return m.id
     }

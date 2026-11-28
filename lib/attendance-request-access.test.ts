@@ -37,6 +37,7 @@ vi.mock("@/lib/services/attendance-request.service", () => ({
         // Around the day: no days to send (LATER_CHANGES_PLAN.md §7.4, 4b).
         permissionDays: async () => null,
         permissionEarliest: async () => null,
+        requestDays: async () => ({ from: "2026-11-01", today: "2026-11-28" }),
         permissionOf: async (id: string) => REQUESTS[id] ?? null,
         cancelPermission: async (id: string, userId: string) => { reached.push(`cancel:${id}:${userId}`) },
         decidePermission: async (id: string, d: any) => { reached.push(`decide:${id}:${d.approve}`) },

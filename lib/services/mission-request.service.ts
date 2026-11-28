@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { toDateString } from "@/lib/attendance/calendar"
-import { MISSION_DAYS_BACK, policyOn } from "@/lib/attendance/policy"
+import { policyOn } from "@/lib/attendance/policy"
+import { requestDaysBasis } from "./request-days"
 import { datesOf, missionDays, missionSpan, type MissionKind, type MissionPart } from "@/lib/attendance/missions"
 import type { DayOffDays } from "@/lib/day-off-window"
 import { optional, type NoticeParam, type NoticeText } from "@/lib/notice"
@@ -96,13 +97,14 @@ export class MissionRequestService {
     }
 
     /**
-     * The days a mission may be asked for (LATER_CHANGES_PLAN.md §7.4, 4c):
-     * back as far as the policy in force today allows, 7 where it says
-     * nothing or there's none, to a year ahead. Today is the company's.
+     * The days a mission may be asked for (LATER_CHANGES_PLAN.md §7.20):
+     * from the first day any request may be, to a year ahead. Today is the
+     * company's.
      */
     static async window(companyId: string): Promise<DayOffDays> {
-        const [today, policies] = await Promise.all([AttendanceCalendarService.today(companyId), AttendancePolicyService.versions(companyId)])
-        return missionDays(today, policyOn(policies, today)?.body.missions.daysBack ?? MISSION_DAYS_BACK)
+        // From the first day a request may be asked for, as every request's (LATER_CHANGES_PLAN.md §7.20).
+        const { from, today } = await requestDaysBasis(companyId)
+        return missionDays(from, today)
     }
 
     /** One's open tasks, which a mission may name (decision 18): theirs, Pending or In progress, in their company. */

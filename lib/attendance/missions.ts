@@ -1,7 +1,5 @@
 import { addDays, isDateString } from "./calendar"
 import type { DayOffDays } from "../day-off-window"
-import type { TranslationKey } from "../translations"
-import { countOf } from "../plural"
 
 /**
  * A mission's dates, as asking for one takes them (ATTENDANCE_PLAN.md §6.10,
@@ -24,19 +22,12 @@ export const MISSION_MAX_DAYS = 90
 const AHEAD_DAYS = 365
 
 /**
- * The days a mission may be asked for (LATER_CHANGES_PLAN.md §7.4, 4c): from
- * today less the policy's days back to a year ahead. `today` is the
- * company's. A month whose payroll is approved is no refusal (§6.10,
- * decision 16), so they don't read the payroll.
+ * The days a mission may be asked for (LATER_CHANGES_PLAN.md §7.20): from the
+ * first day a request may be asked for (`requestDaysBasis`'s `from`) to a
+ * year ahead of today, the company's.
  */
-export function missionDays(today: string, daysBack: number): DayOffDays {
-    return { from: addDays(today, -daysBack), to: addDays(today, AHEAD_DAYS) }
-}
-
-/** What the policy's card says of how far back missions may be asked for (DESIGN.md §5.5). */
-export function missionDaysBackLine(t: (key: TranslationKey) => string, locale: string, daysBack: number): string {
-    if (daysBack === 0) return t("attendance_mission_from_today_line")
-    return t("attendance_mission_days_back_line").replace("{days}", countOf(t, locale, daysBack, "days"))
+export function missionDays(from: string, today: string): DayOffDays {
+    return { from, to: addDays(today, AHEAD_DAYS) }
 }
 
 export type MissionAsk = { kind: MissionKind; startDate: string; endDate?: string | null; hoursPart?: MissionPart | null }
