@@ -2399,13 +2399,27 @@ These are built once, in the building-blocks PR, and every page uses them
 - **Asking for permission hours** (`LATER_CHANGES_PLAN.md` §7.4, 4b), as
   the attendance policy in force today says:
   - **Before, or up to some hours after** (as before, and to start): the
-    day's calendar offers any day, and hours asked for too late are
-    refused as before.
+    day's calendar offers only the days whose hours may still be asked
+    for, as day off's does: from the day those hours after reach back to
+    (yesterday, with 24; today, with none), or the day before it where
+    their shift that day runs past midnight, with no last day, and never
+    a day in a month whose payroll is approved. Its hint says how long
+    after: "Can be asked for ahead, or up to 24 hours after they end.",
+    or, with none, "Can be asked for only ahead."
+  - **Hours that ended longer ago than that,** sent all the same (a day
+    the calendar offers, earlier in it than the hours allow, or the
+    dialog left open), are refused under To, in the hint's words: "Too
+    late for these hours: they can be asked for up to 24 hours after
+    they end." The focus goes to To.
   - **Any day, from last month to a month ahead:** the day's calendar
     offers only the days that may be asked for, as day off's does: from
     the first day not in a month whose payroll is approved, and never
-    before the 1st of last month, to today plus one month. A day already
-    passed may be asked for, whatever its hours.
+    before the 1st of last month, nor before the company's first
+    attendance policy, as there are no permission hours before it, to
+    today plus one month. A day already passed may be asked for, whatever
+    its hours.
+  - **On Attendance,** a day's Ask for permission is there only on a day
+    its calendar offers.
   - **A day outside them,** sent all the same (the dialog left open past
     midnight, or a month approved meanwhile), is refused under the date,
     saying which days may be asked for: "Permission hours can be asked
@@ -3896,3 +3910,7 @@ changed:
 - **2026-11-28:** Permission hours left (§5.5): the Attendance tab's
   switch for whether each person sees what's left of their own permission
   hours (`LATER_CHANGES_PLAN.md` §7.18).
+- **2026-11-28:** Asking for permission hours (§5.5): before, or up to
+  some hours after, offers only the days whose hours may still be asked
+  for, and says how long after; any day starts no earlier than the
+  company's first attendance policy (`LATER_CHANGES_PLAN.md` §7.20).
