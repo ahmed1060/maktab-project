@@ -2984,3 +2984,5 @@ isn't, rather than My team's tasks.
   card on Company Settings' Payroll tab, with the law's 25% limit on all
   debts together. The permissions to approve and to manage move to steps
   3 and 5, where they're first checked. DESIGN.md has the card's entry.
+- **2026-11-28:** #444 in production: the deploy is ready on 0e60cc4, CI
+  on main is green, and there are no runtime errors.
