@@ -3293,3 +3293,11 @@ or editing the location", showing the Edit location form.
 - **2026-11-28:** §7.22 added at the owner's request: a location's check
   radius shown only in its own form, with the system's distance as its
   default; in #450 with §7.21. `DESIGN.md` first, in its own commit.
+- **2026-11-28:** §7.22 built (#450): a location's check radius only in
+  Add location and Edit location, wherever they open, with the system's
+  distance as its default in the hint, the placeholder and the circle;
+  the fixed 70 is gone. The lists of locations and the client's form have
+  none; editing a client keeps its HQ's radius, and a new client's HQ
+  takes the default. The server sends a location's radius only to
+  whoever may edit locations, and the default only to whoever may add or
+  edit them. 21 more controls, each caught by a test.
