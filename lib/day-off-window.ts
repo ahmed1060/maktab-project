@@ -48,3 +48,16 @@ export function daysText(t: (key: TranslationKey) => string, locale: string, day
     const text = (iso: string) => format.format(new Date(`${iso}T00:00:00Z`))
     return t(key).replace("{from}", text(days.from)).replace("{to}", text(days.to))
 }
+
+/**
+ * Whether permission hours' calendar offers a day, as the day's balance
+ * sends what it offers (LATER_CHANGES_PLAN.md §7.20): any day, within its
+ * days; around the day, from its first, with no last. Before the balance
+ * has come, nothing is held back.
+ */
+export function offeredDay(date: string, balance: { days: DayOffDays | null; earliest?: string | null } | null | undefined): boolean {
+    if (!balance) return true
+    const from = balance.days?.from ?? balance.earliest ?? null
+    const to = balance.days?.to ?? null
+    return (!from || date >= from) && (!to || date <= to)
+}

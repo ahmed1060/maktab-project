@@ -36,6 +36,7 @@ vi.mock("@/lib/services/attendance-request.service", () => ({
         permissionBalance: async (companyId: string, userId: string, month: string, date?: string | null) => { reached.push(`balance:${companyId}:${userId}:${month}${date ? `:${date}` : ""}`); return {} },
         // Around the day: no days to send (LATER_CHANGES_PLAN.md §7.4, 4b).
         permissionDays: async () => null,
+        permissionEarliest: async () => null,
         permissionOf: async (id: string) => REQUESTS[id] ?? null,
         cancelPermission: async (id: string, userId: string) => { reached.push(`cancel:${id}:${userId}`) },
         decidePermission: async (id: string, d: any) => { reached.push(`decide:${id}:${d.approve}`) },

@@ -11,6 +11,7 @@ import DatePickerSingle from '@/components/DatePickerSingle'
 import DateRangePicker from '@/components/DateRangePicker'
 import { MISSION_MAX_DAYS, type MissionKey } from '@/lib/attendance/missions'
 import { daysText, type DayOffDays } from '@/lib/day-off-window'
+import { countOf } from '@/lib/plural'
 import { Button, Choice, Dialog, DialogActions, Field, Select, TextArea, TextInput } from '@/components/ui'
 
 /**
@@ -406,7 +407,7 @@ export function CancelMission({ request, question, onClose, onCancelled }: {
  * be asked for where the policy says any day (GET /api/attendance/permissions/balance;
  * LATER_CHANGES_PLAN.md §7.4, 4b).
  */
-type Balance = { enabled: boolean; types: string[]; remainingMinutes: number; minPerRequestMinutes: number; maxPerRequestMinutes: number; days: DayOffDays | null; leftShown?: boolean }
+type Balance = { enabled: boolean; types: string[]; remainingMinutes: number; minPerRequestMinutes: number; maxPerRequestMinutes: number; afterTheFactHours: number; days: DayOffDays | null; earliest: string | null; leftShown?: boolean }
 
 type Errors = { date?: string; start?: string; end?: string; reason?: string }
 
@@ -445,6 +446,11 @@ export function AskPermission({ today, initial, onCancel, onAsked }: {
             ? t('req_limits_no_left')
             : t('req_limits').replace('{left}', num(balance.remainingMinutes))).replace('{min}', num(balance.minPerRequestMinutes)).replace('{max}', num(balance.maxPerRequestMinutes))
         : t('req_permissions_off_on_day')
+    // Around the day, how long after they may be asked for, in hours as the language counts them (LATER_CHANGES_PLAN.md §7.20).
+    const afterWords = (hours: number, within: TranslationKey, ahead: TranslationKey) => hours > 0
+        ? t(within).replace('{hours}', countOf(t, locale, hours, 'hours'))
+        : t(ahead)
+    const when = balance?.enabled && !balance.days ? afterWords(balance.afterTheFactHours, 'requests_permission_when_around', 'requests_permission_when_ahead') : undefined
 
     const submit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -476,6 +482,12 @@ export function AskPermission({ today, initial, onCancel, onAsked }: {
                         requestAnimationFrame(() => form.querySelector<HTMLElement>('.ui-date-trigger')?.focus())
                         return
                     }
+                    // Hours ended longer ago than the policy allows: said under To, in the hint's words (§7.20).
+                    if (body.code === 'PERMISSION_TOO_LATE' && balance) {
+                        setErrors(x => ({ ...x, end: afterWords(balance.afterTheFactHours, 'requests_permission_too_late_hours', 'requests_permission_too_late_ahead') }))
+                        requestAnimationFrame(() => form.querySelector<HTMLElement>('input[name="end"]')?.focus())
+                        return
+                    }
                     showToast(t(REFUSED[body?.code] ?? 'failed_submit_request'), 'error')
                     return
                 }
@@ -489,7 +501,7 @@ export function AskPermission({ today, initial, onCancel, onAsked }: {
 
     return (
         <form className="ui-form" noValidate onSubmit={submit}>
-            <DatePickerSingle label={t('date_label')} value={date} minDate={balance?.days?.from} maxDate={balance?.days?.to} error={errors.date}
+            <DatePickerSingle label={t('date_label')} value={date} minDate={balance?.days?.from ?? balance?.earliest ?? undefined} maxDate={balance?.days?.to} error={errors.date} hint={when}
                 onChange={day => { setDate(day); setErrors(x => ({ ...x, date: undefined })) }} />
             {limits && <p className="ui-hint" aria-live="polite">{limits}</p>}
             <Field label={t('requests_permission_type')}>{p => (

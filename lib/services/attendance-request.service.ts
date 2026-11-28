@@ -14,6 +14,7 @@ import { NotificationService } from "./notification.service"
 import { optional, type NoticeParam } from "@/lib/notice"
 import { dayOffWindow, type DayOffDays } from "@/lib/day-off-window"
 import { requestDaysBasis } from "./request-days"
+import { calendarDateStr } from "@/lib/time"
 
 /**
  * Attendance requests (ATTENDANCE_PLAN.md §6.4, §6.6, §8.4): permission hours
@@ -49,6 +50,10 @@ const wallClockText = (d: Date) => d.toISOString().slice(0, 19)
 const monthOf = (date: string) => date.slice(0, 7)
 const hhmm = (minutes: number) => `${String(Math.floor(minutes / 60) % 24).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`
 /** A time of day, in minutes from that day's midnight, as a wall-clock text. */
+/** The first day the company has an attendance policy, if it has one. */
+const firstPolicyDay = (versions: readonly { effectiveFrom: string }[]): string | null =>
+    versions.reduce<string | null>((first, v) => (first === null || v.effectiveFrom < first ? v.effectiveFrom : first), null)
+
 const localAt = (date: string, minutes: number) => `${addDays(date, Math.floor(minutes / 1440))}T${hhmm(minutes % 1440)}:00`
 const monthRange = (month: string) => ({ gte: wallClock(`${month}-01T00:00:00`), lt: wallClock(`${addDays(`${month}-28`, 4).slice(0, 7)}-01T00:00:00`) })
 
@@ -200,8 +205,43 @@ export class AttendanceRequestService {
      */
     static async permissionDays(companyId: string, db: Prisma.TransactionClient = prisma): Promise<DayOffDays | null> {
         const { today, firstOpen } = await requestDaysBasis(companyId, db)
-        const when = policyOn(await AttendancePolicyService.versions(companyId, db), today)?.body.permissionHours.when
-        return when === "ANY_DAY" ? dayOffWindow(today, 1, firstOpen) : null
+        const versions = await AttendancePolicyService.versions(companyId, db)
+        const when = policyOn(versions, today)?.body.permissionHours.when
+        if (when !== "ANY_DAY") return null
+        // Never before the company's first policy, as there are no permission hours before it
+        // (LATER_CHANGES_PLAN.md §7.20): the policy in force today is in force, so it's no later than today.
+        const days = dayOffWindow(today, 1, firstOpen)
+        const first = firstPolicyDay(versions)
+        return first && first > days.from ? { from: first, to: days.to } : days
+    }
+
+    /**
+     * Around the day, the first day whose hours may still be asked for, for
+     * the form's calendar to start on (LATER_CHANGES_PLAN.md §7.20): the day
+     * the policy's hours after reach back to from now, in the company's
+     * time; or the day before it, where that day's shift runs past midnight
+     * to end late enough; never in a month whose payroll is approved, nor
+     * before the company's first policy. None any day, whose days are
+     * permissionDays', and none without a policy today.
+     */
+    static async permissionEarliest(companyId: string, userId: string, db: Prisma.TransactionClient = prisma): Promise<string | null> {
+        const { firstOpen } = await requestDaysBasis(companyId, db)
+        const company = await companyOf(db, companyId)
+        const versions = await AttendancePolicyService.versions(companyId, db)
+        const now = Date.now()
+        const rules = policyOn(versions, calendarDateStr(new Date(now), company.timezone))?.body.permissionHours
+        if (!rules || rules.when === "ANY_DAY") return null
+        const after = rules.afterTheFactHours * 3_600_000
+        let earliest = calendarDateStr(new Date(now - after), company.timezone)
+        // A night shift's morning is its date's, the day before (review on #14), and is asked for
+        // until its end and the hours after are over, as asking checks it.
+        const before = addDays(earliest, -1)
+        const { plans } = await (await import("./attendance-engine.service")).AttendanceEngineService.plansFor(companyId, [userId], [before], db)
+        const shift = plans.get(userId)?.get(before)
+        if (shift?.kind === "WORK" && shift.hours.endMinutes > 1440
+            && localToInstant(localAt(before, shift.hours.endMinutes), company.timezone).getTime() + after >= now) earliest = before
+        for (const floor of [firstOpen, firstPolicyDay(versions)]) if (floor && floor > earliest) earliest = floor
+        return earliest
     }
 
     /** Asks for permission hours, for oneself. */

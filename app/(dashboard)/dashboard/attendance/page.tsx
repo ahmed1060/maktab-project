@@ -18,6 +18,7 @@ import RequestsTab, { AskPermissionDialog, ReportMissingDialog } from './Request
 import AddPunchDialog from './AddPunchDialog'
 import { personChoices, type Person } from './people'
 import { checkoutDate } from '@/lib/attendance/checkout-date'
+import { offeredDay } from '@/lib/day-off-window'
 import { nameIn } from '@/lib/names'
 import { lastDayOf, pad, useDayInAddress, useFigures, useMonthInAddress } from './period'
 import ExceptionsTab from './ExceptionsTab'
@@ -262,6 +263,8 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
     // A day waiting on its departure asks for the early leave, which is what makes it wait (PR 274).
     const askEarly = (d: Day) => (d.earlyLeaveMinutes > 0 && d.lastOut && d.expectedEndMinutes !== null
         ? { date: d.date, type: 'EARLY_LEAVE' as const, start: d.lastOut.slice(11, 16), end: hhmm(d.expectedEndMinutes) } : null)
+    // Asked for only on a day the form's calendar offers (LATER_CHANGES_PLAN.md §7.20).
+    const offered = (date: string) => offeredDay(date, balanceBody?.data)
     const askFor = (d: Day) => d.expectedStartMinutes !== null && d.expectedEndMinutes !== null && (
         d.status === 'TO_CONFIRM' ? askEarly(d)
             : d.status !== 'PRESENT' ? null
@@ -285,7 +288,7 @@ function DaysTab({ q, companyId, today, topics }: { q: string; companyId: string
     // What one can ask about one's own day: permission for the minutes, or the punch that's missing.
     const asks = (d: Day) => {
         if (d.userId !== me) return null
-        const ask = askFor(d)
+        const ask = offered(d.date) ? askFor(d) : null
         // The departure scan that may be the one forgotten (PR 274), as for a punch missing.
         const missing = d.status === 'INCOMPLETE' || d.status === 'TO_CONFIRM'
         if (!ask && !missing) return null

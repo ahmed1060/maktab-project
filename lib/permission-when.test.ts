@@ -102,8 +102,9 @@ describe("asking for permission hours", () => {
     it("offers only the days the day's balance sends, wherever the form opens", () => {
         const dialogs = readFileSync("app/(dashboard)/dashboard/requests/AttendanceDialogs.tsx", "utf8")
         // With whether the company shows what's left (PR 446, lib/permission-left.test.ts).
-        expect(dialogs).toContain("type Balance = { enabled: boolean; types: string[]; remainingMinutes: number; minPerRequestMinutes: number; maxPerRequestMinutes: number; days: DayOffDays | null; leftShown?: boolean }")
-        expect(dialogs).toContain("<DatePickerSingle label={t('date_label')} value={date} minDate={balance?.days?.from} maxDate={balance?.days?.to} error={errors.date}")
+        // With the hours after and, around the day, the first day that may be asked for (§7.20, lib/permission-days.test.ts).
+        expect(dialogs).toContain("type Balance = { enabled: boolean; types: string[]; remainingMinutes: number; minPerRequestMinutes: number; maxPerRequestMinutes: number; afterTheFactHours: number; days: DayOffDays | null; earliest: string | null; leftShown?: boolean }")
+        expect(dialogs).toContain("<DatePickerSingle label={t('date_label')} value={date} minDate={balance?.days?.from ?? balance?.earliest ?? undefined} maxDate={balance?.days?.to} error={errors.date} hint={when}")
     })
 
     it("says under the date which days may be asked for, when a day outside them is refused", async () => {
