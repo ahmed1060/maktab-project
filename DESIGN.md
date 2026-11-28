@@ -2376,10 +2376,13 @@ These are built once, in the building-blocks PR, and every page uses them
 - **How far back a request may be asked for** (`LATER_CHANGES_PLAN.md`
   §7.20, the owner's choice): day off, permission hours, a mission and a
   missing punch alike, from the first day of the payroll month today is
-  in, by when payroll closes, or of last month's while last month's
-  payroll is still a draft, and never a day in a month whose payroll is
-  approved. With payroll closing on the month's last day, on 28 November
-  that's 1 November; on 2 December it's still 1 November, until
+  in, by when payroll closes, or of last month's until last month's
+  payroll is approved, whether or not its draft has been saved yet; never
+  a day in a month whose payroll is approved, and never before the
+  company's first attendance policy once it's in force. With payroll
+  closing on the month's last day and a first policy from 1 November, on
+  28 November that's 1 November; on 1 December it's still 1 November,
+  before anyone has opened November's payroll, and stays so until
   November's payroll is approved. How far ahead stays each one's own.
 - **Asking for a day off** (`LATER_CHANGES_PLAN.md` §7.4), in New request
   on the Requests page:
@@ -2433,8 +2436,8 @@ These are built once, in the building-blocks PR, and every page uses them
 - **The attendance policy's permission hours:** after the row of its
   limits, a choice between two (§5.3), Can be asked for: Before, or up to
   some hours after (to start), and Any day, from the payroll month to a
-  month ahead, with under it that it counts from today, and that a day in a
-  month whose payroll is approved never is. With the first, Can ask up to
+  month ahead, with under it that it starts on the payroll month's first
+  day, or last month's until its payroll is approved. With the first, Can ask up to
   this many hours after follows it, as today; with the second, that field
   isn't shown. The policy's card says which under the hours a month:
   "Before, or up to 24 hours after", "Only in advance" (no hours after),
@@ -3929,3 +3932,8 @@ changed:
   last month's while its payroll is a draft (`LATER_CHANGES_PLAN.md`
   §7.20). Missions lose their days back, and reporting a missing punch
   offers only those days.
+- **2026-11-28:** How far back a request may be asked for (§5.5): last
+  month stays open until its payroll is approved, whether or not its
+  draft has been saved, so a punch missed on the month's last day can be
+  reported on the 1st; and never before the company's first attendance
+  policy once it's in force (`LATER_CHANGES_PLAN.md` §7.20).
