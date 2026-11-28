@@ -2076,7 +2076,7 @@ installments (§7.9).
        deductions taking the ids they were saved with, and, opened from a
        cached copy, shows what's been saved since while nothing's typed
        (Codex review on #440).
-   - **9b, for a person (planned, one PR after #441):** each of the
+   - **9b, for a person (#442, merged on 28 November):** each of the
      company's deductions on an employee's page, As the company, Their own
      rate (or amount), or Not applied, changed with Change salaries and
      seen with See salaries (`DESIGN.md` §5.5, A person's payroll
@@ -2219,13 +2219,33 @@ list is for a Team Leader: My obligations, and their team's.
    team's tab from someone without the team's scope still shows their own,
    as Tasks does.
 4. **A notification** about one of the team's opens the team's tab, with
-   it picked out; one about their own opens My obligations. Tasks has the
-   same gap today (its notifications open My tasks); left for later.
+   it picked out; one about their own opens My obligations. Tasks had the
+   same gap (its notifications opened My tasks), fixed by §7.17.
 5. **The same columns on both tabs:** who each is assigned to. My tasks
    shows who gave each instead, but a repeating obligation's next one has
    nobody recorded as having given it, so the column would be empty or
    wrong for those.
 6. One PR, after #440: #441, merged on 28 November.
+
+### 7.17 A Team Leader's task notifications (Decided)
+
+On 2026-11-28 the owner asked for the gap §7.16 left to be fixed: a
+notification about a team member's task opened My tasks, where the task
+isn't, rather than My team's tasks.
+
+1. **What:** a notification's link already carries the task
+   (`/dashboard/tasks?highlight=…`). The Tasks page, for a Team Leader
+   with no tab asked for, looks it up: one of the team's, not their own,
+   opens My team's tasks, with it picked out (`DESIGN.md` §5.5, A Team
+   Leader's task notifications). Their own, or one shared with someone on
+   the team, opens My tasks, as now.
+2. **The lookup** is the one Obligations has (#441): the task by its id,
+   in their company, assigned to someone on their team, and not to them.
+   Nothing about the task is shown that the team's tab doesn't show.
+3. **Who:** only the team's scope of See tasks is looked up for. A tab
+   asked for in the address is kept. An employee's, an Admin's and the
+   Super Admin's lists are as they are.
+4. One PR, after #442.
 
 ## Not here
 
@@ -2891,3 +2911,17 @@ list is for a Team Leader: My obligations, and their team's.
   profile, as the company, their own figure, or not applied, stored with
   an approved month; the company's card puts anyone back on its figure
   when it changes how one is taken. One PR after #441.
+- **2026-11-28:** #442 merged (§7.12, 9b): each person's deductions on
+  their profile, as the company, their own figure, or not applied, taken
+  on payslips not approved yet and kept with an approved month. Its
+  migration in production is checked after the deploy. Left for later:
+  income tax's brackets and the insured wage, the 25% limit with salary
+  advances, and whether a final settlement takes deductions (the owner's
+  to decide).
+- **2026-11-28:** §7.17, a Team Leader's task notifications: one about a
+  task of the team's, not their own, opens My team's tasks, as #441 did
+  for obligations. One PR after #442.
+- **2026-11-28:** #442 in production: the deploy is live on it and CI on
+  main passed. Its migration is applied (the last one applied),
+  `PersonDeduction` has RLS on and holds no rows, and `PayrollRun` has
+  its new column. No error in production since.

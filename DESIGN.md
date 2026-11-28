@@ -2440,6 +2440,13 @@ These are built once, in the building-blocks PR, and every page uses them
     picked out; one about their own opens My obligations.
   - Everyone else's list is as it is: an employee's own obligations, and
     an Admin's the company's, with no tabs.
+- **A Team Leader's task notifications** (`LATER_CHANGES_PLAN.md` §7.17):
+  the Tasks list opens on the tab the task is on, as Obligations does.
+  - **One of the team's,** not their own, opens My team's tasks, with it
+    picked out.
+  - **Their own,** or one shared with someone on the team, opens My tasks.
+  - **A tab asked for** in the address is the tab shown.
+  - Everyone else's list is as it is, with no tabs.
 - **A salary change's payroll** (`LATER_CHANGES_PLAN.md` §7.13): on an
   employee's Edit, once the monthly salary is changed, a choice under it,
   Applies to, with two answers in the page's language:
@@ -3789,3 +3796,6 @@ changed:
   figure, or not applied, seen by whoever sees salaries and changed by
   whoever changes them; and the company's card puts anyone back on its
   figure when it changes how one is taken (`LATER_CHANGES_PLAN.md` §7.12).
+- **2026-11-28:** A Team Leader's task notifications (§5.5): one about a
+  task of the team's, not their own, opens My team's tasks, as
+  Obligations' do (`LATER_CHANGES_PLAN.md` §7.17).
