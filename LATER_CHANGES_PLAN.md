@@ -3217,3 +3217,9 @@ when I continue I get a block so make a full check on it."
 - **2026-11-28:** #449 merged (§7.5, step 3a): asking for a salary
   advance, on the Requests page, with Codex's review finding nothing.
   Step 3b, approving, is next.
+- **2026-11-28:** #449 in production: the deploy is ready on 6fe9b14, CI
+  on main is green, and the only errors are the old MFA_REQUIRED sign-in
+  refusals, not faults. The salary_advances migration finished: the
+  SalaryAdvance table is there with RLS on and its three live triggers,
+  and holds no advances yet. November's payroll draft still wants a
+  Recalculate.
