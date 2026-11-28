@@ -2361,7 +2361,10 @@ when I continue I get a block so make a full check on it."
   1. Before, or up to some hours after: the days from the date those
      hours reach back to (today, with none), or the day before where its
      shift ends after midnight, with no last day, and from the first day
-     not in a month whose payroll is approved. The hint says how long
+     not in a month whose payroll is approved. Each day's hours after
+     are the policy's in force on it, as asking reads them; going back
+     from today, it stops at the first day too late (Codex's review of
+     #448). The hint says how long
      after; hours ended longer ago are refused under To, in those words.
   2. Any day: no earlier than the company's first attendance policy, as
      there are no permission hours before it.
@@ -3151,3 +3154,8 @@ when I continue I get a block so make a full check on it."
   hours' own floor at it needless, so it goes. Tests that ask for
   missions in an approved October ask as they could while it was open.
   39 controls, each caught by a test.
+- **2026-11-28:** #448, after Codex's review: permission hours' first
+  day reads each day by the policy in force on it, as asking does, and
+  stops at the first day too late; a mission's days are read again
+  holding its months' locks, as a day off's are, so a payroll approved
+  meanwhile can't let one through. 42 controls, each caught by a test.
