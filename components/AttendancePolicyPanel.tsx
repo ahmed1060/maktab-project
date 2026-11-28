@@ -32,7 +32,11 @@ import { dayCost } from '@/components/attendance-policy/policy-form'
  */
 
 type Template = { id: string; name: string; nameAr: string | null; description: string | null; body: PolicyBody }
-type PolicyData = { versions: (PolicyVersion & { appliedTemplateId: string | null })[]; templates: Template[]; today: string; canEdit: boolean }
+type PolicyData = {
+    versions: (PolicyVersion & { appliedTemplateId: string | null })[]; templates: Template[]; today: string; canEdit: boolean
+    /** Where the company's first policy starts unless changed: its payroll month's first day (LATER_CHANGES_PLAN.md §7.19). */
+    monthStart: string
+}
 
 export default function AttendancePolicyPanel({ companyId, readOnly, onChanged }: { companyId: string; readOnly: boolean; onChanged: () => void }) {
     const { t, locale } = useLanguage()
@@ -263,7 +267,7 @@ export default function AttendancePolicyPanel({ companyId, readOnly, onChanged }
                     companyId={companyId}
                     start={editing.start}
                     startOn={editing.templateId ? undefined : date => policyOn(data.versions, date)?.body ?? null}
-                    defaultFrom={shown ? firstOfNextMonth(data.today) : data.today}
+                    defaultFrom={shown ? firstOfNextMonth(data.today) : data.monthStart}
                     today={data.today}
                     weekdayName={weekdayName}
                     onClose={() => setEditing(null)}

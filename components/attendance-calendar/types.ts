@@ -12,6 +12,8 @@ export type Schedule = {
 
 export type Calendar = {
     today: string
+    /** Where the company's first schedule starts unless changed (LATER_CHANGES_PLAN.md §7.19). */
+    monthStart: string
     companyWorkWeek: number[]
     /** The company's work week by date, from its policy (review on #11). */
     companyWorkWeeks: { effectiveFrom: string; workWeek: number[] }[]

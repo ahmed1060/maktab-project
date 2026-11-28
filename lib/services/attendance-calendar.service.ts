@@ -118,6 +118,17 @@ export class AttendanceCalendarService {
     }
 
     /**
+     * Where a company's first policy and first schedule start unless changed
+     * (LATER_CHANGES_PLAN.md §7.19): the first day of the payroll month the
+     * date, today unless given, is in, or the next month's where that one is
+     * approved. So a company setting up mid-month has the whole month measured.
+     */
+    static async monthStart(companyId: string, date?: string): Promise<string> {
+        const { PayrollPeriodService } = await import("./payroll-period.service")
+        return PayrollPeriodService.openMonthStart(prisma, companyId, date ?? await this.today(companyId))
+    }
+
+    /**
      * Refuses when any of these dates falls in a payroll month that is
      * approved or paid (§6.1). Dates are the company's own calendar dates,
      * in their payroll month by the period: one after an approved month's
@@ -192,6 +203,8 @@ export class AttendanceCalendarService {
         const excluded = new Set(exclusions.map(e => e.publicHolidayId))
         return {
             today,
+            /** Where the company's first schedule starts unless changed (LATER_CHANGES_PLAN.md §7.19). */
+            monthStart: await this.monthStart(companyId, today),
             companyWorkWeek: workWeekOn(policies, today),
             /** Every change of the work week, so a future schedule version shows the week it will inherit. */
             companyWorkWeeks: policies.map(p => ({ effectiveFrom: p.effectiveFrom, workWeek: p.body.workWeek })),
