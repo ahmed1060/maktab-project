@@ -17,6 +17,7 @@ import CostNamesCard from '@/components/lists/CostNamesCard'
 import HighRiskCard from '@/components/HighRiskCard'
 import TerminalsSetupCard from '@/components/TerminalsSetupCard'
 import TerminalsDirectCard from '@/components/TerminalsDirectCard'
+import PermissionLeftCard from '@/components/PermissionLeftCard'
 import CompanyMessagesCard from '@/components/client-messages/CompanyMessagesCard'
 import TaxEmailsCard from '@/components/client-messages/TaxEmailsCard'
 import { Button, Dialog, Tabs } from '@/components/ui'
@@ -74,6 +75,8 @@ export type CompanySettings = {
     terminalsOffered?: boolean
     /** Whether its terminals may send their scans straight to Nizmo (ATTENDANCE_PLAN.md §17.8, PR 295). */
     terminalsDirectAllowed?: boolean
+    /** Whether each person sees what's left of their own permission hours (LATER_CHANGES_PLAN.md §7.18). */
+    permissionLeftShown?: boolean
     moduleLabels: unknown
     moduleIcons: unknown
     logoUrl: string | null
@@ -260,6 +263,7 @@ export default function CompanySettingsTabs({ company, onSaved, tabs: shown, rea
                                 <TerminalsDirectCard companyId={companyId} on={!!company.terminalsDirectAllowed} onSaved={onSaved} />
                             </>
                         )}
+                        permissionLeft={<PermissionLeftCard companyId={companyId} on={company.permissionLeftShown !== false} readOnly={readOnly} onSaved={onSaved} />}
                     />
                 )}
 

@@ -161,6 +161,15 @@ describe("what became of a check-in", () => {
         expect(html).toContain(ar.ci_late_balance.replace("{left}", "١٢٠"))
         expect(html).toContain(`>${ar.ci_ask_permission}</button>`)
     })
+
+    it("offers asking without what's left while the company hides it (LATER_CHANGES_PLAN.md §7.18)", async () => {
+        state.locale = "en"
+        const { Late } = await import("@/app/(dashboard)/dashboard/check-in/CheckInScreen")
+        const html = renderToStaticMarkup(h(Late, { late: { minutes: 17, startsAt: "08:30", date: "2026-11-01", ask: { start: "08:30", end: "08:47" } }, balance: { enabled: true, types: ["LATE_ARRIVAL"], leftShown: false } as any, onAsk: () => {} }))
+        expect(html).not.toContain(en.ci_late_balance.replace("{left}", "").trim())
+        expect(html).not.toContain("undefined")
+        expect(html).toContain(`>${en.ci_ask_permission}</button>`)
+    })
 })
 
 describe("in Arabic (the audit, PR 156)", () => {

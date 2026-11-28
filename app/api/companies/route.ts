@@ -24,6 +24,8 @@ export const GET = withStandardHandler(async (req, session) => {
                 id: true, name: true, nameAr: true, isBanned: true, autoVerifyLocation: true, cashAdvancesAllowed: true, cashAdvancesOn: true, costNamesFromListOnly: true, confirmHighRisk: true,
                 // The Attendance tab's two switches, the Super Admin's (ATTENDANCE_PLAN.md §17.10, §17.8).
                 terminalsSetupByCompany: true, terminalsDirectAllowed: true,
+                // Whether each person sees what's left of their permission hours (LATER_CHANGES_PLAN.md §7.18).
+                permissionLeftShown: true,
                 moduleLabels: true, moduleIcons: true, logoUrl: true, brandColour: true,
                 payrollDay: true, payslipsVisible: true, timezone: true, debtRecoveryPercent: true,
             // Payday's choices and when payroll closes (LATER_CHANGES_PLAN.md §7.10, PR 430).

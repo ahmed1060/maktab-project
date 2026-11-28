@@ -37,11 +37,13 @@ import type { Calendar, Confirming, Ctx, Editing, Schedule } from '@/components/
  * for the holidays; every change in the building blocks' dialog, and every
  * change that can't be taken back asked about first.
  */
-export default function CompanyAttendanceCard({ companyId, readOnly = false, terminalsSetup }: {
+export default function CompanyAttendanceCard({ companyId, readOnly = false, terminalsSetup, permissionLeft }: {
     companyId: string
     readOnly?: boolean
     /** The Super Admin's switch for who sets the terminals up, shown above them (§17.10). */
     terminalsSetup?: ReactNode
+    /** Whether each person sees what's left of their permission hours, under the policy that sets them (LATER_CHANGES_PLAN.md §7.18). */
+    permissionLeft?: ReactNode
 }) {
     const { t, locale } = useLanguage()
     const { showToast } = useToast()
@@ -135,6 +137,7 @@ export default function CompanyAttendanceCard({ companyId, readOnly = false, ter
             {data.sections.mobileApp && <AttendanceLocationsPanel companyId={companyId} readOnly={!editable} />}
             {/* The policy first: its work week is what the schedules inherit. */}
             <AttendancePolicyPanel companyId={companyId} readOnly={!editable} onChanged={load} />
+            {permissionLeft}
             <FaceLegalPanel companyId={companyId} readOnly={!editable} />
             <SchedulesCard ctx={ctx} />
             {active.map(schedule => <ScheduleCard key={schedule.id} ctx={ctx} schedule={schedule} />)}

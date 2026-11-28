@@ -169,6 +169,8 @@ const REVIEW_ACCESS_GRANTED = "20270127000000_access_review_permission"
 // The salary advance rules, columns on the company with their defaults
 // (LATER_CHANGES_PLAN.md §7.5, step 2, PR 445).
 const SALARY_ADVANCE_POLICY = "20270130000000_salary_advance_policy"
+// Whether each person sees what's left of their permission hours (LATER_CHANGES_PLAN.md §7.18, PR 446).
+const PERMISSION_LEFT = "20270131000000_permission_left_shown"
 // Given to a new company's built-in roles only: no migration gives it to the
 // companies there before it, as none was when it came (CLIENT_PORTAL_PLAN.md
 // §9, §12 step 10d, skipped on 2026-11-20; PR 348).
@@ -258,6 +260,7 @@ describe.skipIf(!ADMIN_URL)("roles as data, in Postgres", () => {
         await db.query(sql(SETTLED_DAYS))
         await db.query(sql(REVIEW_ACCESS_GRANTED))
         await db.query(sql(SALARY_ADVANCE_POLICY))
+        await db.query(sql(PERMISSION_LEFT))
         prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url.toString() }) })
         // The services that manage roles use the application's client; point it
         // here before its first use (it is built lazily).

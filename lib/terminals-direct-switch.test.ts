@@ -38,7 +38,8 @@ const text = (words: string) => words.replace(/'/g, "&#x27;")
 describe("the switch", () => {
     it("is a field of the Attendance tab only the Super Admin sets, beside who sets terminals up", () => {
         const tab = settingsTab("attendance")!
-        expect(tab.fields).toEqual(["terminalsSetupByCompany", "terminalsDirectAllowed"])
+        // With the company's own switch for what's left of permission hours, which an Admin sets (PR 446).
+        expect(tab.fields).toEqual(["terminalsSetupByCompany", "terminalsDirectAllowed", "permissionLeftShown"])
         expect(tab.superAdminOnly).toEqual(["terminalsSetupByCompany", "terminalsDirectAllowed"])
         expect(maySetField({ role: "ADMIN", companyId: "c1" }, "attendance", "terminalsDirectAllowed")).toBe(false)
         expect(maySetField({ role: "SUPER_ADMIN" }, "attendance", "terminalsDirectAllowed")).toBe(true)

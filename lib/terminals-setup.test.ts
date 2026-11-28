@@ -76,8 +76,9 @@ describe("for the companies already there (PR 278)", () => {
 describe("the company's switch", () => {
     it("is a field of the Attendance tab only the Super Admin sets", () => {
         const tab = settingsTab("attendance")!
-        // With the straight-to-Nizmo switch beside it (PR 295, lib/terminals-direct-switch.test.ts).
-        expect(tab.fields).toEqual(["terminalsSetupByCompany", "terminalsDirectAllowed"])
+        // With the straight-to-Nizmo switch beside it (PR 295, lib/terminals-direct-switch.test.ts),
+        // and the company's own switch for what's left of permission hours (PR 446, lib/permission-left.test.ts).
+        expect(tab.fields).toEqual(["terminalsSetupByCompany", "terminalsDirectAllowed", "permissionLeftShown"])
         expect(tab.superAdminOnly).toEqual(["terminalsSetupByCompany", "terminalsDirectAllowed"])
         expect(maySetField({ role: "ADMIN", companyId: "c1" }, "attendance", "terminalsSetupByCompany")).toBe(false)
         expect(maySetField({ role: "SUPER_ADMIN" }, "attendance", "terminalsSetupByCompany")).toBe(true)

@@ -38,6 +38,8 @@ export const GET = withStandardHandler(async (req, session) => {
             paydayLastDay: true, paydayNextMonth: true, paydayMove: true, payrollCloseDay: true,
             terminalsSetupByCompany: true,
             terminalsDirectAllowed: true,
+            // Whether each person sees what's left of their permission hours (LATER_CHANGES_PLAN.md §7.18).
+            permissionLeftShown: true,
         },
     })
     if (!company) return ApiResponse.notFound("Company not found")

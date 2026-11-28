@@ -271,7 +271,7 @@ export class CompanyService {
     }
 
     static async update(input: UpdateCompanyInput, session: any) {
-        const { id, name, nameAr, usernameCode, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, paydayLastDay, paydayNextMonth, paydayMove, payrollCloseDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs, brandColour, cashAdvancesAllowed, cashAdvancesOn, costNamesFromListOnly, confirmHighRisk, terminalsSetupByCompany, terminalsDirectAllowed } = input
+        const { id, name, nameAr, usernameCode, isBanned, autoVerifyLocation, moduleLabels, moduleIcons, payrollDay, paydayLastDay, paydayNextMonth, paydayMove, payrollCloseDay, payslipsVisible, timezone, debtRecoveryPercent, adminSettingsEnabled, adminSettingsTabs, brandColour, cashAdvancesAllowed, cashAdvancesOn, costNamesFromListOnly, confirmHighRisk, terminalsSetupByCompany, terminalsDirectAllowed, permissionLeftShown } = input
         const existing = await prisma.company.findUnique({ where: { id } })
         if (!existing) throw new Error("COMPANY_NOT_FOUND")
 
@@ -363,6 +363,7 @@ export class CompanyService {
             ...(terminalsSetupByCompany !== undefined && { terminalsSetupByCompany }),
             // Whether its terminals may send their scans straight to Nizmo (§17.8, PR 295).
             ...(terminalsDirectAllowed !== undefined && { terminalsDirectAllowed }),
+            ...(permissionLeftShown !== undefined && { permissionLeftShown }),
         }
         // Switching cash advances off waits for any advance being recorded,
         // and is refused while anyone holds advance money (§7.6).
@@ -463,6 +464,9 @@ export class CompanyService {
         }
         if (terminalsDirectAllowed !== undefined && terminalsDirectAllowed !== existing.terminalsDirectAllowed) {
             changes.terminalsDirectAllowed = { old: existing.terminalsDirectAllowed, new: terminalsDirectAllowed }
+        }
+        if (permissionLeftShown !== undefined && permissionLeftShown !== existing.permissionLeftShown) {
+            changes.permissionLeftShown = { old: existing.permissionLeftShown, new: permissionLeftShown }
         }
 
         if (Object.keys(changes).length > 0) {
