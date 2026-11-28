@@ -80,9 +80,16 @@ export class PayrollDeductionService {
             await tx.payrollDeduction.deleteMany({ where: { companyId, kind: "OTHER", id: { notIn: onCard } } })
             // Out of the way first, so two swapping names don't meet on the way.
             for (const id of onCard) await tx.payrollDeduction.update({ where: { id }, data: { name: `#${id}` } })
+            const basisBefore = new Map(before.more.map(m => [m.id, m.basis]))
             for (const [index, d] of draft.more.entries()) {
                 const data = { name: d.name.trim(), basis: d.basis, value: new Prisma.Decimal(figure(d.value)), sortOrder: index }
-                if (d.id && kept.has(d.id)) await tx.payrollDeduction.update({ where: { id: d.id }, data })
+                if (d.id && kept.has(d.id)) {
+                    await tx.payrollDeduction.update({ where: { id: d.id }, data })
+                    // Taken another way, anyone's own figure for it was the other
+                    // kind: they're back on the company's. Not applied stays
+                    // (§7.12, step 9b, PR 442).
+                    if (basisBefore.get(d.id) !== d.basis) await tx.personDeduction.deleteMany({ where: { deductionId: d.id, mode: "OWN" } })
+                }
                 else await tx.payrollDeduction.create({ data: { companyId, kind: "OTHER", ...data } })
             }
 

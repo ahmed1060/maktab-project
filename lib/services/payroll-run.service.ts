@@ -11,7 +11,8 @@ import { toMajor, toMinor } from "@/lib/payroll"
 import { closeDateOf, lastDayOf, monthKeyOf, nextMonth } from "@/lib/payroll-period"
 import { PayrollPeriodService } from "./payroll-period.service"
 import { PayrollDeductionService } from "./payroll-deduction.service"
-import { deductionsKept, type PayrollDeductionRule } from "@/lib/payroll-deductions"
+import { PersonDeductionService } from "./person-deduction.service"
+import { deductionsKept, peopleKept, peopleStored, rulesFor, type PayrollDeductionRule, type PersonDeductionSetting } from "@/lib/payroll-deductions"
 import { calendarDateStr, startOfDayIn, startOfMonthIn } from "@/lib/time"
 import { notOwnerIn } from "@/lib/owners"
 import { resolveTimeZone } from "@/lib/timezone"
@@ -104,6 +105,8 @@ export class PayrollRunService {
         // The payroll deductions, when the caller already knows them: what an
         // approved run was approved with (LATER_CHANGES_PLAN.md §7.12, PR 440).
         deductions?: PayrollDeductionRule[],
+        // And each person's own, by person, the same way (§7.12, step 9b, PR 442).
+        personSettings?: Map<string, PersonDeductionSetting[]>,
     ) {
         const { timeZone, payrollDay, debtRecoveryPercent, attendancePayrollFrom } = await this.policy(companyId, db)
         const people = await this.peopleFor(companyId, `${year}-${String(month).padStart(2, "0")}`)
@@ -118,6 +121,8 @@ export class PayrollRunService {
         // §7.12, PR 440), read through the caller's transaction: approval's
         // takes what its own recompute took.
         const payrollDeductions = deductions ?? await PayrollDeductionService.rules(companyId, db)
+        // Each person's own in the company's place, or one not applied to them (PR 442).
+        const personDeductions = personSettings ?? await PersonDeductionService.settings(companyId, db)
 
         // Everything still owed, and the moment after which a debt has not come
         // due yet — computed in the company's calendar, because a UTC month end
@@ -198,7 +203,7 @@ export class PayrollRunService {
                         sourceId: a.sourceId,
                     })),
                     ...(attendanceReachesPayroll && attendance.has(user.id) ? { attendance: attendance.get(user.id) } : {}),
-                    payrollDeductions,
+                    payrollDeductions: rulesFor(payrollDeductions, personDeductions.get(user.id)),
                     debts: debtsByUser.get(user.id) ?? [],
                     recoveryCapPercent: debtRecoveryPercent,
                     debtsDueOnOrBefore: monthEnd,
@@ -258,8 +263,10 @@ export class PayrollRunService {
         const recorded = run && run.status !== "DRAFT" ? run.attendanceIncluded : undefined
         // And the deductions it was approved with, whatever they are now (PR 440).
         const deductionsApproved = run && run.status !== "DRAFT" ? deductionsKept(run.payrollDeductions) : undefined
+        // And each person's as it was approved with them (PR 442): none for a month approved before.
+        const peopleApproved = run && run.status !== "DRAFT" ? peopleKept(run.personDeductions) : undefined
         const [{ register, refused, payrollDay, attendance, timeZone, period }, discrepanciesOpen, previous, debts] = await Promise.all([
-            this.compute(companyId, year, month, prisma, recorded, deductionsApproved),
+            this.compute(companyId, year, month, prisma, recorded, deductionsApproved, peopleApproved),
             // Owed whether or not attendance reaches payroll now: a run approved
             // with it keeps producing these after the switch is stopped.
             prisma.attendanceDiscrepancy.count({ where: { companyId, resolvedAt: null } }),
@@ -666,7 +673,9 @@ export class PayrollRunService {
                 }
                 // The deductions it's approved with, kept with it (PR 440).
                 const deductions = await PayrollDeductionService.rules(companyId, tx)
-                const { register: final, payrollDay } = await this.compute(companyId, year, month, tx, reaches, deductions)
+                // And each person's own, read in the same transaction (PR 442).
+                const personSettings = await PersonDeductionService.settings(companyId, tx)
+                const { register: final, payrollDay } = await this.compute(companyId, year, month, tx, reaches, deductions, personSettings)
                 // The register being approved, read again here, can hold somebody the
                 // one read before didn't, such as someone put back on the payroll
                 // meanwhile: their days are checked too (review on PR 276). Found
@@ -694,6 +703,7 @@ export class PayrollRunService {
                         status: "APPROVED",
                         attendanceIncluded: reaches,
                         payrollDeductions: deductions as unknown as Prisma.InputJsonValue,
+                        personDeductions: peopleStored(personSettings) as unknown as Prisma.InputJsonValue,
                         periodStart: new Date(`${period.from}T00:00:00Z`),
                         periodEnd: new Date(`${period.to}T00:00:00Z`),
                         payday: new Date(`${payday.date}T00:00:00Z`),

@@ -216,3 +216,110 @@ export function deductionsKept(stored: unknown): PayrollDeductionRule[] {
         && ["PERCENT", "AMOUNT"].includes((r as PayrollDeductionRule).basis)
         && typeof (r as PayrollDeductionRule).value === "number")
 }
+
+/**
+ * A person's own (LATER_CHANGES_PLAN.md §7.12, step 9b, PR 442): for one of
+ * the company's deductions, their own figure in its place, in its kind, or
+ * that it's not applied to them. As the company is nothing set.
+ */
+export type PersonDeductionMode = "COMPANY" | "OWN" | "NONE"
+
+export interface PersonDeductionSetting {
+    deductionId: string
+    mode: "OWN" | "NONE"
+    /** Their own, for OWN; none for NONE. */
+    value: number | null
+}
+
+/**
+ * The company's deductions as they reach one person: their own figure in
+ * the company's place, and one not applied left out, in the company's
+ * order. What's set for a deduction the company no longer has is nothing.
+ */
+export function rulesFor(rules: PayrollDeductionRule[], settings: PersonDeductionSetting[] = []): PayrollDeductionRule[] {
+    if (settings.length === 0) return rules
+    const set = new Map(settings.map(s => [s.deductionId, s]))
+    return rules.flatMap(rule => {
+        const s = set.get(rule.id)
+        if (!s) return [rule]
+        if (s.mode === "NONE") return []
+        return [{ ...rule, value: s.value ?? 0 }]
+    })
+}
+
+/**
+ * One of the company's deductions, as a person's card holds it. `ref` is
+ * income tax's or social insurance's kind, which every company has whether
+ * or not it's saved one, or the company's own's id.
+ */
+export interface PersonDeductionDraft {
+    ref: string
+    /** How the company takes it, as the card was shown it. */
+    basis: PayrollDeductionBasis
+    mode: PersonDeductionMode
+    /** Their own, as typed; only read for OWN. */
+    value: string
+}
+
+/** One of the company's deductions on a person's card, with what's set for them. */
+export interface PersonDeductionRow {
+    /** Income tax's or social insurance's kind, or the company's own's id. */
+    ref: string
+    kind: PayrollDeductionKind
+    name: string | null
+    basis: PayrollDeductionBasis
+    /** The company's figure. */
+    company: number
+    mode: PersonDeductionMode
+    /** Their own, for OWN. */
+    value: number | null
+}
+
+export interface PersonDeductionsView {
+    deductions: PersonDeductionRow[]
+}
+
+/** What's wrong with a person's card, by each deduction's ref. Nothing wrong is `{}`. */
+export type PersonDeductionErrors = Record<string, DeductionErrorKey>
+
+/**
+ * Their own figure, by the company card's rules: a percentage 0 to 100 with
+ * up to two decimals, or an amount 0 or more with up to two. As the company
+ * and not applied ask for nothing.
+ */
+export function personDeductionErrors(drafts: PersonDeductionDraft[]): PersonDeductionErrors {
+    const errors: PersonDeductionErrors = {}
+    for (const d of drafts) {
+        if (d.mode !== "OWN") continue
+        if (d.basis === "PERCENT" ? !validPercent(d.value) : !validAmount(d.value)) {
+            errors[d.ref] = d.basis === "PERCENT" ? "deduction_percent_invalid" : "deduction_amount_invalid"
+        }
+    }
+    return errors
+}
+
+/** Each person's, as an approved month stores them (PR 442): by person. */
+export function peopleStored(people: Map<string, PersonDeductionSetting[]>): Record<string, PersonDeductionSetting[]> {
+    return Object.fromEntries(people)
+}
+
+const isSetting = (s: unknown): s is PersonDeductionSetting =>
+    !!s && typeof s === "object"
+    && typeof (s as PersonDeductionSetting).deductionId === "string"
+    && ((s as PersonDeductionSetting).mode === "NONE"
+        || ((s as PersonDeductionSetting).mode === "OWN" && Number.isFinite((s as PersonDeductionSetting).value)))
+
+/**
+ * Each person's an approved month kept (PR 442), as stored with it. A month
+ * approved before there were any kept none: everyone took the company's.
+ */
+export function peopleKept(stored: unknown): Map<string, PersonDeductionSetting[]> {
+    const people = new Map<string, PersonDeductionSetting[]>()
+    if (!stored || typeof stored !== "object" || Array.isArray(stored)) return people
+    for (const [userId, settings] of Object.entries(stored as Record<string, unknown>)) {
+        if (!Array.isArray(settings)) continue
+        const kept = settings.filter(isSetting).map(s => ({ deductionId: s.deductionId, mode: s.mode, value: s.mode === "OWN" ? s.value : null }))
+        if (kept.length > 0) people.set(userId, kept)
+    }
+    return people
+}

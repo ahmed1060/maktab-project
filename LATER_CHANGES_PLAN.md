@@ -2076,9 +2076,35 @@ installments (§7.9).
        deductions taking the ids they were saved with, and, opened from a
        cached copy, shows what's been saved since while nothing's typed
        (Codex review on #440).
-   - **9b, for a person:** each of the company's deductions on an
-     employee's page, As the company, Their own rate (or amount), or Not
-     applied, changed with Change salaries and seen with See salaries.
+   - **9b, for a person (planned, one PR after #441):** each of the
+     company's deductions on an employee's page, As the company, Their own
+     rate (or amount), or Not applied, changed with Change salaries and
+     seen with See salaries (`DESIGN.md` §5.5, A person's payroll
+     deductions).
+     - A table of what's set for a person, one row for each deduction
+       that isn't as the company: their own figure, or not applied. As the
+       company is no row. With RLS, and gone with the person or the
+       deduction.
+     - Shown wherever their salary is (`lib/profile-access.ts`): to
+       whoever sees salaries over them, their team's or the company's, and
+       on one's own, where the company's package has Payroll; never an
+       Admin's. Changed by whoever may change their salary, never their
+       own, asking for the code as a salary change does.
+     - Saved through a route of its own, the card as a whole. Its own
+       figure is the deduction's kind, a percentage 0 to 100 or an amount
+       0 or more, by the 9a card's rules. A save made while the company's
+       deductions changed (one added, removed or taken another way) is
+       refused, and the card shows them as they are now.
+     - One save at a time for a company, with the company's card and an
+       approval, by the same lock on the company's row, so an approval
+       keeps the people's figures its payslips took.
+     - Payroll takes each person's in the company's place, and leaves out
+       one not applied. An approved month keeps each person's as they
+       were approved with, stored with it, as it keeps the company's.
+     - The company's card, changing how one of its own is taken, puts
+       anyone with their own figure for it back on the company's; anyone
+       it's not applied to stays so.
+     - Each save is in the audit log, on the person.
    - **Later, in a PR of its own:** income tax's brackets and social
      insurance's insured wage.
    - **With salary advances (§7.5):** the 25% limit's setting, its check
@@ -2199,7 +2225,7 @@ list is for a Team Leader: My obligations, and their team's.
    shows who gave each instead, but a repeating obligation's next one has
    nobody recorded as having given it, so the column would be empty or
    wrong for those.
-6. One PR, after #440.
+6. One PR, after #440: #441, merged on 28 November.
 
 ## Not here
 
@@ -2855,3 +2881,13 @@ list is for a Team Leader: My obligations, and their team's.
   one applied), `PayrollDeduction` has RLS on and holds no rows, as no
   company has set a deduction yet, and `PayrollRun` has its new column.
   No error in production since.
+- **2026-11-28:** #441 merged (§7.16): a Team Leader's Obligations list
+  has My obligations and My team's obligations, as Tasks has. Production
+  is checked after the deploy. Next for the owner to pick: 9b, each
+  person's deductions, or another point.
+- **2026-11-28:** #441 in production: the deploy is live on it and CI on
+  main passed. It has no migration. No error in production since.
+- **2026-11-28:** §7.12, 9b planned: each person's deductions on their
+  profile, as the company, their own figure, or not applied, stored with
+  an approved month; the company's card puts anyone back on its figure
+  when it changes how one is taken. One PR after #441.

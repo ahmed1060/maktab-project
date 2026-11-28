@@ -342,6 +342,10 @@ const SCREENS: Record<string, Screen> = {
             "GET /api/role-requests": when("employees.request_role", "useSWR(access.changeRole === 'ask' ? `/api/role-requests?userId=", ASKS_ROLE),
             "POST /api/role-requests": when("employees.request_role", ASKS_ROLE),
             "GET /api/companies": superAdmin("if (userRole === 'SUPER_ADMIN') {", "fetchCompanies()"),
+            // What's taken from their pay (LATER_CHANGES_PLAN.md §7.12, step 9b, PR 442): read wherever their salary is
+            // shown, one's own too, as the route checks; saved by whoever may change their salary.
+            "GET /api/users/[x]/payroll-deductions": ANYONE,
+            "PUT /api/users/[x]/payroll-deductions": when("salary.edit", profile("changeSalary: can('salary.edit') && !own && paid && payroll,"), "change={access.changeSalary}"),
         },
     },
     "cash-advances/[userId]": {
