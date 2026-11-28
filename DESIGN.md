@@ -2512,6 +2512,10 @@ These are built once, in the building-blocks PR, and every page uses them
   - Removed, a deduction goes from months not approved yet. Months
     approved keep what they were approved with, on their payslips and on
     the Payroll page, as they keep everything.
+  - Changing how one of its own is taken, a percentage to a fixed amount
+    or back, puts anyone with their own figure for it back on the
+    company's, as their figure was the other kind; anyone it's not
+    applied to stays so. The card's note says so.
   - **On a payslip,** each one over 0 is a line of its own under
     Deductions, after Nizmo's own and before a debt's recovery: Income
     tax and Social insurance, in the payslip's language, then the others
@@ -2522,6 +2526,42 @@ These are built once, in the building-blocks PR, and every page uses them
     - Someone left out of the month has none, as nothing is paid.
   - **On the Payroll page,** a person's lines show them the same way, and
     the month's totals count them.
+- **A person's payroll deductions** (`LATER_CHANGES_PLAN.md` §7.12): on
+  their profile, under its card, wherever their salary is shown: to
+  whoever may see salaries, and on one's own. Never an Admin's, whose pay
+  isn't on the profile.
+  - **Seen,** it's a titled card, Payroll deductions, of details: each of
+    the company's deductions by its name, Income tax and Social insurance
+    first, then the company's own in their order, and beside each what's
+    taken from them:
+    - "As the company, 10%", the company's figure;
+    - "Their own, 12.5%" ("Your own, 12.5%" on one's own), or an amount,
+      as money is written, in the page's digits;
+    - "Not applied".
+    - While nothing is taken from them and nothing's set for them, the
+      card isn't there.
+  - **Changed,** on their profile's form, by whoever may change salaries,
+    never on their own: the same card with its own Save, as Contacting
+    clients has, before it.
+    - Its note says what it's for: As the company follows Company
+      settings' Payroll deductions, Not applied is for someone it doesn't
+      reach, such as someone not insured yet, and a change reaches the
+      months not approved yet.
+    - Each deduction is a choice of three (§5.3), its legend the
+      deduction's name: As the company, with the company's figure; Their
+      own rate (Their own amount, for a fixed amount); and Not applied.
+      Their own shows its field under the choice: a percentage 0 to 100
+      with up to two decimals, or an amount 0 or more.
+    - Saved together, with Save on the card's end side, greyed until
+      something changes. What's typed wrong is said under its field before
+      anything is sent, and the first such field is focused. As it moves
+      their pay, saving asks for the code a salary change asks for.
+    - Where the company's deductions have changed since the card opened,
+      saving says so, and the card shows them as they are now, still to
+      save.
+  - **On their payslips,** their own figure takes the company's, in the
+    same place, and one not applied isn't there. Months approved keep
+    each person's as they were approved with.
 - **Check-in:** the Nizmo app's first screen, for one task: recording
   arrival and departure.
   - The page header names it, with a line on what it's for. Its cards are
@@ -3744,3 +3784,8 @@ changed:
 - **2026-11-28:** A Team Leader's obligations (§5.5): My obligations and
   My team's obligations, two tabs on the Obligations list as Tasks has
   (`LATER_CHANGES_PLAN.md` §7.16).
+- **2026-11-28:** A person's payroll deductions (§5.5): on their profile,
+  each of the company's deductions as the company takes it, their own
+  figure, or not applied, seen by whoever sees salaries and changed by
+  whoever changes them; and the company's card puts anyone back on its
+  figure when it changes how one is taken (`LATER_CHANGES_PLAN.md` §7.12).
