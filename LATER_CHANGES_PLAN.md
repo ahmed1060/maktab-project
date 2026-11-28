@@ -2076,7 +2076,7 @@ installments (§7.9).
        deductions taking the ids they were saved with, and, opened from a
        cached copy, shows what's been saved since while nothing's typed
        (Codex review on #440).
-   - **9b, for a person (planned, one PR after #441):** each of the
+   - **9b, for a person (#442, merged on 28 November):** each of the
      company's deductions on an employee's page, As the company, Their own
      rate (or amount), or Not applied, changed with Change salaries and
      seen with See salaries (`DESIGN.md` §5.5, A person's payroll
@@ -2891,3 +2891,10 @@ list is for a Team Leader: My obligations, and their team's.
   profile, as the company, their own figure, or not applied, stored with
   an approved month; the company's card puts anyone back on its figure
   when it changes how one is taken. One PR after #441.
+- **2026-11-28:** #442 merged (§7.12, 9b): each person's deductions on
+  their profile, as the company, their own figure, or not applied, taken
+  on payslips not approved yet and kept with an approved month. Its
+  migration in production is checked after the deploy. Left for later:
+  income tax's brackets and the insured wage, the 25% limit with salary
+  advances, and whether a final settlement takes deductions (the owner's
+  to decide).
