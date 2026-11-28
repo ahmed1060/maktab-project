@@ -160,9 +160,15 @@ describe("the dashboard's approval queues follow the approval permissions", () =
 })
 
 describe("the obligations page shows a Team Leader their team's", () => {
-    it("narrows a Team Leader to obligations with someone on their team", async () => {
-        const where = await obligationsWhereFor({ id: "tl", role: "TEAM_LEADER", companyId: "c1" })
-        expect(where).toContain('{"assignees":{"some":{"OR":[{"teamLeaderId":"tl"},{"id":"tl"}]}}}')
+    // Their own on My obligations, which it opens on, and their team's on its
+    // own tab (LATER_CHANGES_PLAN.md §7.16, PR 441), as Tasks has. It showed
+    // both together before.
+    it("narrows a Team Leader to their own, and on the team's tab to obligations with someone on their team", async () => {
+        const own = await obligationsWhereFor({ id: "tl", role: "TEAM_LEADER", companyId: "c1" })
+        expect(own).toContain('{"assignees":{"some":{"id":"tl"}}}')
+        expect(own).not.toContain("teamLeaderId")
+        const team = await obligationsWhereFor({ id: "tl", role: "TEAM_LEADER", companyId: "c1" }, { view: "active" })
+        expect(team).toContain('{"assignees":{"some":{"teamLeaderId":"tl"}}}')
     })
 
     it("leaves an Admin the whole company", async () => {
@@ -182,8 +188,12 @@ describe("the obligations page shows a Team Leader their team's", () => {
     })
 
     it("keeps the team scope when filtered to one employee", async () => {
-        const where = await obligationsWhereFor({ id: "tl", role: "TEAM_LEADER", companyId: "c1" }, { employeeId: "someone" })
+        const where = await obligationsWhereFor({ id: "tl", role: "TEAM_LEADER", companyId: "c1" }, { view: "active", employeeId: "someone" })
         expect(where).toContain('"teamLeaderId":"tl"')
         expect(where).toContain('{"assignees":{"some":{"id":"someone"}}}')
+        // And on My obligations, their own scope.
+        const own = await obligationsWhereFor({ id: "tl", role: "TEAM_LEADER", companyId: "c1" }, { employeeId: "someone" })
+        expect(own).toContain('{"assignees":{"some":{"id":"tl"}}}')
+        expect(own).toContain('{"assignees":{"some":{"id":"someone"}}}')
     })
 })

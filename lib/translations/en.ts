@@ -197,6 +197,10 @@ export const en = {
         points_required: "Give it points, from 0 to 10",
         obligations_subtitle: "Manage recurring legal and financial company obligations",
         obligations_search: "Search obligations",
+        // A Team Leader's two tabs (LATER_CHANGES_PLAN.md §7.16, PR 441).
+        obligations_tabs_label: "Whose obligations",
+        obligations_tab_team: "My team's obligations",
+        my_obligations: "My obligations",
         obligations_col_obligation: "Obligation",
         obligations_empty_filters: "No obligations match these filters",
         obligations_empty: "No obligations yet",

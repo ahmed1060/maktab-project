@@ -12,7 +12,7 @@ import { en } from "./translations/en"
  */
 
 const address = { query: "" }
-const viewer = { sees: true, manages: true, seesPeople: true }
+const viewer = { sees: true, manages: true, seesPeople: true, reach: "COMPANY" as "TEAM" | "COMPANY" | null }
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ push: () => {}, refresh: () => {} }),
     useSearchParams: () => new URLSearchParams(address.query),
@@ -20,7 +20,11 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/context/LanguageContext", () => ({ useLanguage: () => ({ locale: "en", t: (key: string) => key }) }))
 vi.mock("@/lib/useModules", () => ({ useModules: () => ({ label: () => "Obligations" }) }))
 vi.mock("@/lib/useCan", () => ({
-    useCan: () => ({ can: (p: string) => p === "employees.view" ? viewer.seesPeople : p === "obligations.view" ? viewer.sees : /* each part of obligations.manage (PR 367) */ ["obligations.create", "obligations.edit", "obligations.approve", "obligations.delete"].includes(p) ? viewer.manages : false }),
+    useCan: () => ({
+        can: (p: string) => p === "employees.view" ? viewer.seesPeople : p === "obligations.view" ? viewer.sees : /* each part of obligations.manage (PR 367) */ ["obligations.create", "obligations.edit", "obligations.approve", "obligations.delete"].includes(p) ? viewer.manages : false,
+        // How far See obligations reaches: a Team Leader's is their team (§7.16).
+        scope: (p: string) => p === "obligations.view" ? (viewer.sees ? viewer.reach : null) : null,
+    }),
 }))
 vi.mock("@/context/CompanyContext", () => ({ useCompany: () => ({ selectedCompanyId: null }) }))
 vi.mock("next-auth/react", () => ({ useSession: () => ({ data: null }) }))
@@ -36,13 +40,14 @@ const obligation = (fields: object = {}) => ({
     ...fields,
 })
 
-async function obligationsList(rows: ReturnType<typeof obligation>[], { query = "", sees = true, manages = true, seesPeople = true } = {}) {
+async function obligationsList(rows: ReturnType<typeof obligation>[], { query = "", sees = true, manages = true, seesPeople = true, reach = "COMPANY" as "TEAM" | "COMPANY" | null, view = "my" } = {}) {
     address.query = query
     viewer.sees = sees
     viewer.manages = manages
     viewer.seesPeople = seesPeople
+    viewer.reach = reach
     const { default: ObligationsClient } = await import("@/app/(dashboard)/dashboard/obligations/ObligationsClient")
-    return renderToStaticMarkup(h(ObligationsClient, { obligations: rows, total: rows.length, page: 1, totalPages: 1, currentUserId: me.id, now: NOW }))
+    return renderToStaticMarkup(h(ObligationsClient, { obligations: rows, total: rows.length, page: 1, totalPages: 1, currentUserId: me.id, view, now: NOW }))
 }
 const cards = (html: string) => html.slice(html.indexOf('<ul class="ui-cards"'))
 
@@ -110,6 +115,44 @@ describe("the Obligations list", () => {
         expect(filtered).toContain("obligations_empty_filters")
         expect(filtered).toContain("ui_reset_filters")
         expect(await obligationsList([])).toContain("obligations_empty")
+    })
+})
+
+describe("a Team Leader's two tabs (LATER_CHANGES_PLAN.md §7.16)", () => {
+    const tabs = (html: string) => {
+        const at = html.indexOf('class="ui-tablinks"')
+        return at < 0 ? "" : html.slice(html.lastIndexOf("<nav", at), html.indexOf("</nav>", at))
+    }
+
+    it("are My obligations and My team's obligations, between the header and the filters, the one shown marked", async () => {
+        const html = await obligationsList([obligation()], { reach: "TEAM", view: "my" })
+        const row = tabs(html)
+        expect(row).toContain('aria-label="obligations_tabs_label"')
+        expect(row).toContain('<a class="ui-tab" aria-current="page" href="/dashboard/obligations?view=my&amp;page=1">my_obligations</a>')
+        expect(row).toContain('<a class="ui-tab" href="/dashboard/obligations?view=active&amp;page=1">obligations_tab_team</a>')
+        expect(html.indexOf("ui-tablinks")).toBeGreaterThan(html.indexOf("</header>"))
+        expect(html.indexOf("ui-tablinks")).toBeLessThan(html.indexOf("ui-filterbar"))
+        const team = tabs(await obligationsList([obligation()], { reach: "TEAM", view: "active" }))
+        expect(team).toContain('<a class="ui-tab" aria-current="page" href="/dashboard/obligations?view=active&amp;page=1">')
+        expect(team).toContain('<a class="ui-tab" href="/dashboard/obligations?view=my&amp;page=1">')
+    })
+
+    it("keep the filters picked, and start the other tab on its first page", async () => {
+        const row = tabs(await obligationsList([obligation()], { reach: "TEAM", view: "my", query: "status=PENDING&page=2" }))
+        expect(row).toContain('href="/dashboard/obligations?status=PENDING&amp;page=1&amp;view=active"')
+        expect(row).not.toContain("page=2")
+    })
+
+    it("the team's, with nobody on the team yet, says why and who can fix it", async () => {
+        const html = await obligationsList([], { reach: "TEAM", view: "active" })
+        expect(html).toContain("team_empty_title")
+        expect(html).toContain("team_empty_body")
+        expect(await obligationsList([], { reach: "TEAM", view: "my" })).not.toContain("team_empty_title")
+    })
+
+    it("aren't there for an Admin or an employee", async () => {
+        expect(tabs(await obligationsList([obligation()], { reach: "COMPANY" }))).toBe("")
+        expect(tabs(await obligationsList([obligation()], { sees: false, reach: null }))).toBe("")
     })
 })
 
