@@ -1614,7 +1614,7 @@ Built in steps, each a PR or more, the screens' DESIGN.md entries first:
    gives. "Advance" is then left for the Salary advance. Only words: the
    translation keys, addresses, permissions' codes, the database and the
    Arabic stay as they are.
-2. **The policy** (in progress, #445): a card of its own on Company
+2. **The policy** (Done, #445, merged on 28 November): a card of its own on Company
    Settings' Payroll tab, Salary advances, under Payroll deductions
    (`DESIGN.md` §5.5, Salary advances), for whoever may change settings
    and shown to whoever may only see them, as the two above it are.
@@ -2288,6 +2288,27 @@ isn't, rather than My team's tasks.
    asked for in the address is kept. An employee's, an Admin's and the
    Super Admin's lists are as they are.
 4. One PR, after #442: #443, merged on 28 November.
+
+### 7.18 Hiding what's left of permission hours (Decided)
+
+On 2026-11-28 the owner asked for a switch in Company Settings to hide the
+Attendance page's Permission left tile, and chose to hide what's left
+everywhere it's shown, not only there.
+
+1. **What:** a company's one switch, Show each person what's left, on
+   the Attendance tab under Attendance policy (`DESIGN.md` §5.5,
+   Permission hours left). On unless changed, so nothing changes until a
+   company turns it off.
+2. **Off,** what's left of one's own permission hours isn't shown, and
+   the server doesn't send it: the Attendance page's tile, the Requests
+   page's Permission hours, the sentence when asking for permission, and
+   the check-in page's late arrival. Asking for more than is left is
+   still refused, with why. The limits themselves, the policy's, stay as
+   they are.
+3. **Who:** whoever may change the Attendance tab's settings, as its
+   other switches. A column on the company, saved with the tab's fields,
+   and each change in the audit log.
+4. One PR, before salary advances' step 3: #446.
 
 ## Not here
 
@@ -2989,3 +3010,10 @@ isn't, rather than My team's tasks.
   3 and 5, where they're first checked. DESIGN.md has the card's entry.
 - **2026-11-28:** #444 in production: the deploy is ready on 0e60cc4, CI
   on main is green, and there are no runtime errors.
+- **2026-11-28:** #445 merged (§7.5, step 2): the Salary advances card on
+  Company Settings' Payroll tab. Production is checked after the deploy.
+  Before step 3, the owner asked for a switch to hide what's left of
+  permission hours, everywhere it's shown (§7.18), as #446. For step 3,
+  the owner said Start to its outline: asking (3a), then approving with
+  its permission (3b), the limits measured against the monthly salary
+  less the payroll deductions.
