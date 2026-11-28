@@ -3017,3 +3017,8 @@ everywhere it's shown, not only there.
   the owner said Start to its outline: asking (3a), then approving with
   its permission (3b), the limits measured against the monthly salary
   less the payroll deductions.
+- **2026-11-28:** #445 in production: the deploy is ready on 4fc7351, CI
+  on main is green, and there are no runtime errors. The
+  salary_advance_policy migration finished: both companies have the six
+  columns on their defaults, with the database's range check. #446 (§7.18)
+  is open.
