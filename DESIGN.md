@@ -272,6 +272,15 @@ One scale. Every size in the app is one of these.
   agreement ("من يحق له"، "لم يغادر أحد"), and so do a role's name and a
   thing ("يوافق المسؤول"، "العميل لديه مهام"). The screens move over in
   parts, listed in `UI_PLAN.md` §5.
+- **Custody, not an advance** (`LATER_CHANGES_PLAN.md` §7.5): money given
+  to an employee up front, to pay task costs from and spend or return, is
+  Custody in English, as it's العُهدة in Arabic. It's My custody, the
+  Costs page's Custody tab, Give custody and Custody given, Holding
+  custody, custody money, and See custody and Give and settle custody
+  among the permissions. "Advance" is kept for the Salary advance (سلفة),
+  a loan paid back from payslips, so the two never share a word. Only the
+  words change: the screens, their addresses and what's recorded stay as
+  they are.
 
 ---
 
@@ -1089,8 +1098,8 @@ These are built once, in the building-blocks PR, and every page uses them
       doesn't include, it isn't there (Page layout, above), whoever opens
       the dialog: the record follows the company's package. Ending a
       contract without Payroll records no settlement, so the dialog shows
-      none. What they still hold of a cash advance stays on their advance,
-      to be returned, and a note waiting on someone says so, with the
+      none. What they still hold of their custody stays on it, to be
+      returned, and a note waiting on someone says so, with the
       amount, where the statement would be. The main button still waits
       until it's worked out for what's picked.
   - One that asks who takes over, such as a leader's team when they stop
@@ -1098,13 +1107,12 @@ These are built once, in the building-blocks PR, and every page uses them
     them, with no one among the choices. Answered, it stays open until the
     change is sent, as a confirmation does, and why the one picked can't
     take them is said under the choice.
-  - Transfer task, where anyone on the task holds cash advance money for
-    it, says what happens to it for the people picked, under a heading of
+  - Transfer task, where anyone on the task holds custody money for it, says what happens to it for the people picked, under a heading of
     its own, below them: a line for each person holding any, naming them,
     then that they keep it, now for the task's copy; that it passes to
     whoever takes it, who confirms receiving it; or that it joins their
     running balance. The amount is in the line only for whoever may see
-    that person's cash advance, or it's their own.
+    that person's custody, or it's their own.
     - Where it passes on and the copy has more than one person, who takes
       it is picked from them, below the lines, and the main button waits
       for the pick.
@@ -2809,7 +2817,7 @@ These are built once, in the building-blocks PR, and every page uses them
     `CheckSquare`, Obligations `PushPin`, Clients `Handshake`, Locations
     `MapTrifold`, Records `Folders`, Employees `Users`, Owners `Crown`,
     Attendance and My attendance `Clock`, Requests `Tray`, Costs `Coins`,
-    Payroll `Receipt`, My payslips `FileText`, My cash advance `Wallet`,
+    Payroll `Receipt`, My payslips `FileText`, My custody `Wallet`,
     Roles and access `IdentificationBadge`, Saved lists `ListChecks`,
     Company settings `GearSix`;
   - the Super Admin's: Companies `Buildings`, Packages `Package`, All users
@@ -3799,3 +3807,7 @@ changed:
 - **2026-11-28:** A Team Leader's task notifications (§5.5): one about a
   task of the team's, not their own, opens My team's tasks, as
   Obligations' do (`LATER_CHANGES_PLAN.md` §7.17).
+- **2026-11-28:** Custody, not an advance (§3.4): money given up front to
+  pay task costs from is Custody in English, as it's العُهدة in Arabic,
+  so "advance" is left for the Salary advance (`LATER_CHANGES_PLAN.md`
+  §7.5).
