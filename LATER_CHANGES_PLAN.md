@@ -2326,12 +2326,19 @@ the days from the 20th were measured as they should be.
    November's attendance, then its payroll draft. The app couldn't do it:
    Make default isn't offered for the schedule that's already the
    default.
-2. **From now on:** a company's first policy and its first schedule
-   suggest the first day of the month payroll hasn't closed yet, not
-   today, so setting up mid-month measures the whole month. It can still
-   be changed in the dialog. Later changes keep suggesting the first of
-   next month, as now.
-3. One PR, after #446.
+2. **From now on** (`DESIGN.md` §5.5, From when, for the policy and the
+   schedules): a company's first policy and its first schedule suggest
+   the first day of the payroll month today is in, by when payroll
+   closes, not today, so setting up mid-month measures the whole month.
+   Where that month's payroll is already approved, the next month's
+   first day. It can still be changed in the dialog. Later changes keep
+   suggesting the first of next month, and another new schedule today,
+   as now.
+   - The suggestion is worked out on the server, as the month's close
+     is, and sent with the policy and with the calendar's schedules.
+   - The first schedule becomes the default from its date, as now, so
+     the default starts on the month's first day too.
+3. One PR, after #446: #447.
 
 ## Not here
 
@@ -3054,3 +3061,6 @@ the days from the 20th were measured as they should be.
 - **2026-11-28:** #446 merged (§7.18): the Attendance tab's switch to
   hide what's left of permission hours. Production is checked after the
   deploy. §7.19 is next, then salary advances' step 3a.
+- **2026-11-28:** §7.19's suggestion settled: the first day of the
+  payroll month today is in, by when payroll closes, or the next month's
+  where it's approved. DESIGN.md has its entry. #447.
