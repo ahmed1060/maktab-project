@@ -3214,3 +3214,6 @@ when I continue I get a block so make a full check on it."
   RLS, which signals the Requests page as the other kinds do. On Mine
   only until 3b; withdrawn while it waits, asked first. 40 controls,
   each caught by a test.
+- **2026-11-28:** #449 merged (§7.5, step 3a): asking for a salary
+  advance, on the Requests page, with Codex's review finding nothing.
+  Step 3b, approving, is next.
