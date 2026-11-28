@@ -3159,3 +3159,7 @@ when I continue I get a block so make a full check on it."
   stops at the first day too late; a mission's days are read again
   holding its months' locks, as a day off's are, so a payroll approved
   meanwhile can't let one through. 42 controls, each caught by a test.
+- **2026-11-28:** #448 merged (§7.20): every request from the payroll
+  month's first day, last month's until its payroll is approved, and
+  calendars that offer only what may be asked for, after Codex's two
+  findings were fixed. Salary advances' step 3a is next, as #449.
