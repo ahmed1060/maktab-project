@@ -2289,7 +2289,7 @@ isn't, rather than My team's tasks.
    Super Admin's lists are as they are.
 4. One PR, after #442: #443, merged on 28 November.
 
-### 7.18 Hiding what's left of permission hours (Decided)
+### 7.18 Hiding what's left of permission hours (Done, #446, merged on 28 November)
 
 On 2026-11-28 the owner asked for a switch in Company Settings to hide the
 Attendance page's Permission left tile, and chose to hide what's left
@@ -3051,3 +3051,6 @@ the days from the 20th were measured as they should be.
   to 1 November on production, and the owner recalculates November. A
   company's first policy and first schedule will suggest the month's
   first day, in a PR after #446.
+- **2026-11-28:** #446 merged (§7.18): the Attendance tab's switch to
+  hide what's left of permission hours. Production is checked after the
+  deploy. §7.19 is next, then salary advances' step 3a.
