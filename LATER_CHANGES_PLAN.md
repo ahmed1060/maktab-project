@@ -2199,7 +2199,7 @@ list is for a Team Leader: My obligations, and their team's.
    shows who gave each instead, but a repeating obligation's next one has
    nobody recorded as having given it, so the column would be empty or
    wrong for those.
-6. One PR, after #440.
+6. One PR, after #440: #441, merged on 28 November.
 
 ## Not here
 
@@ -2855,3 +2855,7 @@ list is for a Team Leader: My obligations, and their team's.
   one applied), `PayrollDeduction` has RLS on and holds no rows, as no
   company has set a deduction yet, and `PayrollRun` has its new column.
   No error in production since.
+- **2026-11-28:** #441 merged (§7.16): a Team Leader's Obligations list
+  has My obligations and My team's obligations, as Tasks has. Production
+  is checked after the deploy. Next for the owner to pick: 9b, each
+  person's deductions, or another point.
