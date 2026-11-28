@@ -2370,14 +2370,18 @@ when I continue I get a block so make a full check on it."
 - **Every request from the payroll month's first day** (the owner, 28
   November: "I want all these requests ... from the first day of the
   current payroll, which is currently from 1 Nov to the end of
-  November"). Chosen with it: last month's days stay open while last
-  month's payroll is a draft ("Last month until approved"), and missions
+  November"). Chosen with it: last month's days stay open until last
+  month's payroll is approved ("Last month until approved"), and missions
   lose their days back ("Replace it"). `DESIGN.md` §5.5, How far back a
   request may be asked for.
   4. One rule (`requestDaysBasis`): the first day of the payroll month
-     today is in, by when payroll closes, or of last month's where last
-     month has a payroll and it's a draft; never in an approved or paid
-     month's period. Day off, permission hours any day, missions and
+     today is in, by when payroll closes, or of last month's until last
+     month's payroll is approved or paid, its draft saved or not (on the
+     1st, before anyone opens last month's payroll, a punch missed on its
+     last day can still be reported); never in an approved or paid
+     month's period, and never before the company's first attendance
+     policy once it's in force (§7.19), so the live company's is 1
+     November today. Day off, permission hours any day, missions and
      missing punches all start on it; around the day starts no earlier.
      How far ahead is each one's own, as before.
   5. Missions: the policy's days back goes, from the schema, the dialog,
@@ -2385,9 +2389,10 @@ when I continue I get a block so make a full check on it."
      field is dropped when read.
   6. A missing punch before that day is refused with
      `MISSING_PUNCH_OUT_OF_RANGE` and the days, said under the date; its
-     form's calendar offers only them, from a route the forms read
-     (`/api/attendance/request-days`); on Attendance, Report a missing
-     punch shows only on those days.
+     form's calendar offers only them, from the day's balance
+     (`requestsFrom`, which Attendance already reads); on Attendance,
+     Report a missing punch shows only where the day its form opens on is
+     one of them (the next day, for a night shift's punch out).
   7. The policy's choice reads "Any day, from the payroll month to a
      month ahead", in both languages.
 - One PR, before salary advances' step 3a: #448. Step 3a becomes #449.
@@ -3138,3 +3143,11 @@ when I continue I get a block so make a full check on it."
 - **2026-11-28:** §7.20 widened, at the owner's word: every request from
   the payroll month's first day, last month's while its payroll is a
   draft; missions lose their days back. In #448 with the calendar fix.
+- **2026-11-28:** §7.20, as built: last month stays open until its
+  payroll is approved, whether or not its draft was saved, so the 1st of
+  a month isn't closed to a punch missed the day before; and no request
+  goes before the company's first attendance policy once it's in force,
+  which keeps the live company at 1 November, and makes permission
+  hours' own floor at it needless, so it goes. Tests that ask for
+  missions in an approved October ask as they could while it was open.
+  39 controls, each caught by a test.
