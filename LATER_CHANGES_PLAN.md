@@ -2050,7 +2050,7 @@ installments (§7.9).
      of by the same setting as an installment's limit. The Payroll page
      also warns of a month over it. There's still no cap at payroll.
 4. **How it's built (planned), in steps of their own:**
-   - **9a, the company's (planned for PR 440):** a card of its own,
+   - **9a, the company's (#440, merged on 28 November):** a card of its own,
      Payroll deductions, on the Payroll tab (`DESIGN.md` §5.5), under
      Payroll settings rather than inside it, as its deductions are a list.
      - A table of the company's deductions, one row each, with RLS:
@@ -2818,3 +2818,8 @@ without its own.
 - **2026-11-28:** #439 in production: its migration is applied, and the 2
   roles holding Assign roles hold Answer access reviews too. No error in
   production after #437, #438 or #439.
+- **2026-11-28:** #440 merged (§7.12, 9a): payroll deductions, the
+  company's income tax, social insurance and its own, on a card on the
+  Payroll tab and as payslip lines on months not approved yet. Its
+  migration in production is checked after the deploy. 9b, each person's,
+  is next for deductions.
