@@ -3107,3 +3107,8 @@ when I continue I get a block so make a full check on it."
   what may be asked for. The live company's policy was set to any day,
   at the owner's choice. Salary advances' step 3a is set aside until
   #448 is merged, and becomes #449.
+- **2026-11-28:** #447 in production: the deploy is ready on b5aa9c4, CI
+  on main is green, and there are no runtime errors. November's payroll
+  draft was last worked out on 27 November, before this morning's
+  attendance fix, so the owner was reminded to recalculate it.
+- **2026-11-28:** §7.20 built: 20 controls, each caught by a test.
