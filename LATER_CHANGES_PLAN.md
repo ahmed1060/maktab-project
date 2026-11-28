@@ -2429,6 +2429,33 @@ when I continue I get a block so make a full check on it."
      month ahead", in both languages.
 - One PR, before salary advances' step 3a: #448. Step 3a becomes #449.
 
+### 7.21 Deleting a location (Decided)
+
+The owner, 28 November, showing two shared locations on the Locations
+page: "I want to add option delete for this location". Today a location
+can only be archived.
+
+1. **What:** Delete in a location's row menu, last, in the danger
+   colour, for a location no task has used: beside Archive, or beside
+   Restore once it's archived (`DESIGN.md` §5.5, Row menu). It asks
+   first, as it can't be undone, and says so once it's done. On the
+   Locations page and each client's page alike.
+2. **Not for one a task has used:** it's archived, as before, so its
+   tasks keep their location, its checks and the Tasks and Costs pages'
+   filter by it. A client's HQ is neither archived nor deleted, as before.
+   On the live database (read-only, 28 November), no task uses any of
+   the locations that aren't archived, so each of the four shared ones
+   may be deleted.
+3. **Who:** whoever may archive locations (locations.archive), as both
+   take one off the list. Its name in the roles says so: Archive, restore
+   and delete locations. No new permission, so no role changes.
+4. **The server checks it again,** holding the location's row: a task
+   added at it meanwhile keeps it, and it's refused with why, in the
+   page's language. A task added at it while it's being deleted waits,
+   then is told the location isn't there any more, never left without
+   one. Each deletion is in the audit log, with the location as it was.
+5. One PR.
+
 ## Not here
 
 - The client portal's later ideas stay in `CLIENT_PORTAL_PLAN.md` §13.
@@ -3223,3 +3250,7 @@ when I continue I get a block so make a full check on it."
   SalaryAdvance table is there with RLS on and its three live triggers,
   and holds no advances yet. November's payroll draft still wants a
   Recalculate.
+- **2026-11-28:** §7.21 added at the owner's request: Delete for a
+  location no task has used, beside Archive or Restore, for whoever may
+  archive locations; one a task has used is archived as before.
+  `DESIGN.md` first, in its own commit.
