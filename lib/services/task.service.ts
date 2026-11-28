@@ -311,6 +311,13 @@ export class TaskService {
                 if ((await holdAssignees(tx, assigneeIds.filter((uid: string) => !has.includes(uid)))).size > 0) throw new Error("ASSIGNEE_IS_OWNER")
             }
             if (clientChanges && newClientId) await holdClientInUse(tx, newClientId)
+            // Its location is still there, held until it's saved: one deleted
+            // since it was checked above isn't left on the task
+            // (LATER_CHANGES_PLAN.md §7.21, PR 450).
+            if (place) {
+                const kept = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM "Location" WHERE id = ${place.id} FOR KEY SHARE`
+                if (!kept.length) throw new Error("TASK_LOCATION_NOT_FOUND")
+            }
             // Its charges go to its client, and move with it, but not once
             // one is collected: that one was the first client's (CLIENTS_PLAN.md
             // §6.5). Held, so none is collected meanwhile.

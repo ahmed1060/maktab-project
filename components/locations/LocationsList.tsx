@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import {
     ArchiveIcon, ArrowCounterClockwiseIcon, BuildingsIcon, CircleDashedIcon, HourglassIcon, MapPinIcon, MapPinAreaIcon, PencilSimpleIcon,
-    StarIcon, StorefrontIcon, TagIcon, WarningCircleIcon,
+    StarIcon, StorefrontIcon, TagIcon, TrashIcon, WarningCircleIcon,
 } from '@phosphor-icons/react/ssr'
 import { useLanguage } from '@/context/LanguageContext'
 import { companyNameIn } from '@/lib/company-name'
@@ -37,7 +37,8 @@ const SHARED = 'shared'
  * page, that client's. Each client's HQ is marked and listed first. A
  * location whose pin isn't placed yet says so: no task can use it until it
  * is (§2.8). Search, the archived ones, and editing, archiving and making a
- * location the HQ work the same in both.
+ * location the HQ work the same in both, as does deleting one no task has
+ * used (LATER_CHANGES_PLAN.md §7.21, PR 450).
  */
 export default function LocationsList({ clientId, adding = false, onAddingChange, onChanged }: {
     /** One client's locations; none for every client's and the shared ones. */
@@ -66,6 +67,7 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
     const [page, setPage] = useState(1)
     const [editing, setEditing] = useState<LocationItem | null>(null)
     const [toArchive, setToArchive] = useState<LocationItem | null>(null)
+    const [toDelete, setToDelete] = useState<LocationItem | null>(null)
 
     // The search is sent once typing pauses, not on every key.
     useEffect(() => {
@@ -97,7 +99,7 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
     useAdjustOnChange([selectedCompanyId], () => { setPage(1); setForClient('') })
     // A location open in the form is the last company's once a Super Admin
     // picks another: closed, so it can't be changed unseen.
-    useAdjustOnChange([scope], () => { setEditing(null); setToArchive(null); onAddingChange?.(false) })
+    useAdjustOnChange([scope], () => { setEditing(null); setToArchive(null); setToDelete(null); onAddingChange?.(false) })
     useAdjustOnChange([totalPages], () => setPage(p => pageInRange(p, totalPages)))
 
     const filtersOn = (forClient ? 1 : 0) + (archived ? 1 : 0)
@@ -138,6 +140,34 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
         setToArchive(null)
     }
 
+    /**
+     * Deletes one no task has used, asked first. One a task took meanwhile
+     * is kept, said in the page's language, and the list is read again, so
+     * it's offered Archive in its place.
+     */
+    const remove = async (l: LocationItem) => {
+        try {
+            const res = await fetch(`/api/locations?id=${encodeURIComponent(l.id)}`, { method: 'DELETE' })
+            const answer = await res.json().catch(() => null)
+            if (!res.ok) {
+                showToast(answer?.code === 'TASK_LOCATION_IN_USE' ? t('locations_delete_in_use') : answer?.error || t('error_generic'), 'error')
+                if (answer?.code === 'TASK_LOCATION_IN_USE') changed()
+                return
+            }
+            showToast(t('locations_deleted'), 'success')
+            changed()
+        } catch {
+            showToast(t('error_generic'), 'error')
+        }
+    }
+
+    // Returned, so the dialog shows it working until it's done.
+    const confirmDelete = async () => {
+        if (!toDelete) return
+        await remove(toDelete)
+        setToDelete(null)
+    }
+
     // Each as locationActions offers it: a client's HQ is replaced, never
     // archived, so another is made its HQ first.
     const item = (l: LocationItem, action: LocationAction): MenuItem => ({
@@ -145,6 +175,7 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
         hq: { key: 'hq', label: t('locations_set_hq'), icon: StarIcon, onSelect: () => { void change(l, { hq: true }, 'locations_hq_set') } },
         archive: { key: 'archive', label: t('locations_archive'), icon: ArchiveIcon, onSelect: () => setToArchive(l) },
         restore: { key: 'restore', label: t('locations_restore'), icon: ArrowCounterClockwiseIcon, onSelect: () => { void change(l, { archived: false }, 'locations_restored') } },
+        delete: { key: 'delete', label: t('locations_delete'), icon: TrashIcon, danger: true, onSelect: () => setToDelete(l) },
     } satisfies Record<LocationAction, MenuItem>)[action]
     const menu = (l: LocationItem): MenuItem[] => locationActions(l, { edit: canEdit, archive: canArchive }).map(action => item(l, action))
     const actions = (l: LocationItem) => menu(l).length > 0 && (
@@ -257,6 +288,15 @@ export default function LocationsList({ clientId, adding = false, onAddingChange
                 confirmLabel={t('locations_archive')}
                 onConfirm={confirmArchive}
                 onCancel={() => setToArchive(null)}
+            />
+            <ConfirmDialog
+                open={!!toDelete}
+                title={t('locations_delete')}
+                body={t('locations_delete_question').replace('{name}', toDelete ? locationLabel(toDelete.name, toDelete.client?.name) : '')}
+                confirmLabel={t('locations_delete')}
+                danger
+                onConfirm={confirmDelete}
+                onCancel={() => setToDelete(null)}
             />
         </>
     )

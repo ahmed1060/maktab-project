@@ -60,3 +60,15 @@ export const PUT = withStandardHandler(async (_req, session, json) => {
     if (!validation.success) return ApiResponse.badRequest("Validation Error", validation.error.format())
     return ApiResponse.success(await LocationService.update(session, validation.data))
 })
+
+/**
+ * Deleting a location no task has used (LATER_CHANGES_PLAN.md §7.21, PR
+ * 450): locations.archive's, as archiving is. LocationService checks it
+ * against the location's company, and keeps one a task has used.
+ */
+export const DELETE = withStandardHandler(async (req, session) => {
+    const id = new URL(req.url).searchParams.get("id")
+    if (!id) return ApiResponse.badRequest("ID required")
+    await LocationService.delete(session, id)
+    return ApiResponse.success({ deleted: true })
+}, { permission: "locations.archive" })

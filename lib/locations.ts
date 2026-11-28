@@ -49,7 +49,7 @@ export function numberedLabels<T extends { label: string }>(list: T[]): (T & { l
 }
 
 /** What a location's row menu can offer, each its own part of what changes one (PR 377). */
-export type LocationAction = 'edit' | 'hq' | 'archive' | 'restore'
+export type LocationAction = 'edit' | 'hq' | 'archive' | 'restore' | 'delete'
 
 /**
  * What a location's row menu offers (LATER_CHANGES_PLAN.md §2, PR 377):
@@ -57,15 +57,21 @@ export type LocationAction = 'edit' | 'hq' | 'archive' | 'restore'
  * or restoring it with locations.archive. A client's HQ is replaced, never
  * archived, a shared one is nobody's HQ, and an archived one is restored
  * before anything else.
+ *
+ * Deleting it, last, with locations.archive too, only where the server says
+ * no task has used it (§7.21, PR 450): one a task has used is archived, and
+ * one not known to be unused isn't offered it.
  */
 export function locationActions(
-    location: { archivedAt: unknown; isHq: boolean; client: unknown },
+    location: { archivedAt: unknown; isHq: boolean; client: unknown; inUse?: boolean },
     may: { edit: boolean; archive: boolean },
 ): LocationAction[] {
-    if (location.archivedAt) return may.archive ? ['restore'] : []
+    const deletes = may.archive && !location.isHq && location.inUse === false
+    if (location.archivedAt) return may.archive ? (deletes ? ['restore', 'delete'] : ['restore']) : []
     const actions: LocationAction[] = []
     if (may.edit) actions.push('edit')
     if (may.edit && location.client && !location.isHq) actions.push('hq')
     if (may.archive && !location.isHq) actions.push('archive')
+    if (deletes) actions.push('delete')
     return actions
 }
