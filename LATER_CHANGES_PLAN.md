@@ -1632,6 +1632,9 @@ Built in steps, each a PR or more, the screens' DESIGN.md entries first:
      this one is checked when an advance is asked for, in step 3.
    - Nothing reads it yet, and the note says employees can't ask for one
      yet.
+   - Over a limit's line, for the option picked, is read with its group:
+     the choice block (`DESIGN.md` §5.3) takes a line under it, as a
+     field takes a hint.
    - **The permissions move** to the steps that first use them, as a
      permission nothing checks isn't offered in the role editor: approving
      to step 3, managing to step 5.
