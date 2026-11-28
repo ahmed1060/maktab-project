@@ -1640,7 +1640,7 @@ Built in steps, each a PR or more, the screens' DESIGN.md entries first:
      to step 3, managing to step 5.
 3. **Asking and approving,** on the Requests page, with the permission to
    approve, in two PRs (the owner said Start to this, 28 November):
-   - **3a, asking** (`DESIGN.md` §5.5, Asking for a salary advance): One PR, after #448: #449.
+   - **3a, asking** (`DESIGN.md` §5.5, Asking for a salary advance; built, #449): One PR, after #448: #449.
      - A table of its own, `SalaryAdvance`, with RLS on as every table's
        is: whose, the company, the amount, the months (1 to 24), the
        payroll month of the first installment, its status (waiting,
@@ -3199,3 +3199,18 @@ when I continue I get a block so make a full check on it."
 - **2026-11-28:** §7.5, step 3a started: its `DESIGN.md` entry, Asking
   for a salary advance (§5.5), in its own commit. Step 3 is split into
   3a, asking (#449), and 3b, approving.
+- **2026-11-28:** §7.5, step 3a built (#449): Salary advance in New
+  request on the Requests page, for whoever is in a company with Payroll
+  and isn't an owner. What may be asked for is worked out by the server
+  and read by the dialog from a route of its own: the net pay is the
+  salary in force today less the payroll deductions, their own where
+  they have them; other debts are what's owed on outstanding debts, as
+  a payslip takes it back, with the largest installment of each other
+  open advance. The months worked count from the first hiring; someone
+  with none recorded isn't offered one. Asking is checked again by the
+  dialog's own rules holding the person's row, and keeps the figures,
+  which limit it was sent over, and the consent, its words written by
+  the server in the language shown. A table of its own with checks and
+  RLS, which signals the Requests page as the other kinds do. On Mine
+  only until 3b; withdrawn while it waits, asked first. 40 controls,
+  each caught by a test.
