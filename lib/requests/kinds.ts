@@ -22,7 +22,7 @@ export function named(locale: Locale, person: { name: string; nameAr?: string | 
 }
 
 /** The kinds the page lists, in the order its filter offers them. */
-export const REQUEST_KINDS = ["internal", "dayOff", "permission", "mission", "missingPunch", "overtime", "phone", "flagged", "nameChange", "role"] as const
+export const REQUEST_KINDS = ["internal", "dayOff", "permission", "mission", "missingPunch", "overtime", "phone", "flagged", "nameChange", "role", "salaryAdvance"] as const
 export type RequestKind = typeof REQUEST_KINDS[number]
 
 export type RequestsTab = "mine" | "review"
@@ -69,6 +69,8 @@ export type FeedRow = {
     nameChange?: NameChangeFacts
     /** A role request's own facts (§2.3, part 5b). Its `what` is the role's name, as stored; `who` is who asked, as every row's is. */
     role?: RoleFacts
+    /** A salary advance's own facts (LATER_CHANGES_PLAN.md §7.5, step 3a, PR 449). */
+    salaryAdvance?: SalaryAdvanceFacts
 }
 
 export type DayOffFacts = {
@@ -190,4 +192,17 @@ export type RoleFacts = {
     decidedBy: string | null
     /** The note it was decided with, if any. */
     note: string | null
+}
+
+export type SalaryAdvanceFacts = {
+    /** In piastres, as lib/salary-advance.ts counts. */
+    amountMinor: number
+    months: number
+    /** The payroll month of the first installment. */
+    first: { year: number; month: number }
+    /** When the consent was given: when it was sent. */
+    consentedAt: string
+    /** Sent over a limit, as Warn lets it: an installment's own, all debts together's. */
+    overInstallment: boolean
+    overDebts: boolean
 }

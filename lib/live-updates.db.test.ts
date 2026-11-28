@@ -250,6 +250,8 @@ describe.skipIf(!ADMIN_URL)("live updates, in Postgres", () => {
             ["role requests", `INSERT INTO "RoleRequest"(id, "companyId", "userId", "roleId", "requestedById", "updatedAt") VALUES ('rr1', 'c1', 'u2', 'r-live', 'u1', now())`, `"RoleRequest"`, `"decisionNote" = 'Yes'`],
             // Missions (ATTENDANCE_PLAN.md §6.10, PR 283).
             ["missions", `INSERT INTO "MissionRequest"(id, "companyId", "userId", kind, "startDate", "endDate", reason) VALUES ('mi1', 'c1', 'u2', 'DAYS', '2026-11-10', '2026-11-11', 'Client visit')`, `"MissionRequest"`, `status = 'APPROVED'`],
+            // Salary advances (LATER_CHANGES_PLAN.md §7.5, step 3a, PR 449).
+            ["salary advances", `INSERT INTO "SalaryAdvance"(id, "companyId", "userId", amount, months, "firstYear", "firstMonth", salary, "netPay", "otherDebts", "consentText", "consentLocale", "consentedAt", "updatedAt") VALUES ('sa1', 'c1', 'u2', 5000, 6, 2026, 12, 10000, 9000, 0, 'Agreed', 'en', now(), now())`, `"SalaryAdvance"`, `status = 'WITHDRAWN', "withdrawnAt" = now()`],
         ]
         for (const [name, insert, table, change] of KINDS) {
             it(`${name}: asked for, changed and withdrawn, to the company and each Super Admin`, async () => {

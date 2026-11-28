@@ -36,11 +36,11 @@ const has = (html: string, text: string) => html.includes(text.replace(/&/g, "&a
 const input = (html: string, name: string) => html.match(new RegExp(`<input[^>]*name="${name}"[^>]*>`, "g")) ?? []
 
 describe("the card", () => {
-    it("is titled, and says what it's for and that employees can't ask yet", async () => {
+    it("is titled, and says what it's for, and that nobody can approve one yet (PR 449)", async () => {
         const html = await card(SALARY_ADVANCE_POLICY_DEFAULTS)
         expect(has(html, en.salary_advances_title)).toBe(true)
         expect(has(html, en.salary_advances_note)).toBe(true)
-        expect(en.salary_advances_note).toMatch(/can't ask for one yet/)
+        expect(en.salary_advances_note).toMatch(/can ask for one on the Requests page, but nobody can approve one yet/)
     })
 
     it("shows the rules unless changed: 2 months, after 3, one at a time, 10%, 25% and Block", async () => {

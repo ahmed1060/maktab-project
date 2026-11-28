@@ -1281,7 +1281,94 @@ const role: Source = {
     },
 }
 
-const SOURCES: Source[] = [internal, dayOff, permission, mission, missingPunch, overtime, phone, flagged, nameChange, role]
+// --- Salary advances: asked for, withdrawn while they wait (LATER_CHANGES_PLAN.md §7.5, step 3a, PR 449)
+
+/** Approved, rejected or withdrawn. */
+const ADVANCE_ENDED = ["APPROVED", "REJECTED", "WITHDRAWN"]
+
+/**
+ * Which salary advances this person has on a tab, in a company that has
+ * Payroll: Mine is their own in their company. Nobody can approve one until
+ * step 3b, so To review has none. Null when they have none there.
+ */
+export function salaryAdvanceWhere(v: Viewer, q: Pick<FeedQuery, "tab" | "show" | "search" | "personId" | "companyId">): Record<string, any> | null {
+    if (!sessionHasModule({ user: v }, "PAYROLL")) return null
+    if (q.tab !== "mine" || v.role === "SUPER_ADMIN" || !v.companyId) return null
+    const where: Record<string, any> = { companyId: v.companyId, userId: v.id }
+    where.status = q.show === "done" ? { in: ADVANCE_ENDED } : "PENDING"
+    // An advance has no words to search.
+    if (q.search) where.id = { in: [] }
+    return where
+}
+
+type SalaryAdvanceRequest = {
+    id: string
+    userId: string
+    amount: { toString(): string }
+    months: number
+    firstYear: number
+    firstMonth: number
+    status: string
+    overInstallment: boolean
+    overDebts: boolean
+    consentedAt: Date
+    withdrawnAt: Date | null
+    createdAt: Date
+    updatedAt: Date
+    user: PersonNames
+}
+
+/** A salary advance as a row: whoever asked may withdraw it while it waits (SalaryAdvanceService.withdraw). */
+export function salaryAdvanceRow(v: Viewer, r: SalaryAdvanceRequest): FeedRow {
+    const waits = r.status === "PENDING"
+    const asked = r.createdAt.toISOString()
+    const ended = (r.withdrawnAt ?? r.updatedAt).toISOString()
+    return {
+        kind: "salaryAdvance",
+        id: r.id,
+        who: personOf(r.userId, r.user),
+        what: "",
+        detail: null,
+        asked,
+        started: null,
+        finished: waits ? null : ended,
+        status: r.status,
+        sortAt: waits ? asked : ended,
+        mayDecide: false,
+        mayDelete: false,
+        mayWithdraw: waits && r.userId === v.id,
+        salaryAdvance: {
+            amountMinor: Math.round(Number(r.amount.toString()) * 100),
+            months: r.months,
+            first: { year: r.firstYear, month: r.firstMonth },
+            consentedAt: r.consentedAt.toISOString(),
+            overInstallment: r.overInstallment,
+            overDebts: r.overDebts,
+        },
+    }
+}
+
+const salaryAdvance: Source = {
+    kind: "salaryAdvance",
+    where: salaryAdvanceWhere,
+    list: (v, q, where, take) => {
+        return Promise.all([
+            prisma.salaryAdvance.findMany({
+                where,
+                orderBy: feedOrder(q.show),
+                take,
+                select: {
+                    id: true, userId: true, amount: true, months: true, firstYear: true, firstMonth: true, status: true,
+                    overInstallment: true, overDebts: true, consentedAt: true, withdrawnAt: true, createdAt: true, updatedAt: true,
+                    user: NAMES,
+                },
+            }),
+            prisma.salaryAdvance.count({ where }),
+        ]).then(([rows, total]) => ({ rows: rows.map(r => salaryAdvanceRow(v, r)), total }))
+    },
+}
+
+const SOURCES: Source[] = [internal, dayOff, permission, mission, missingPunch, overtime, phone, flagged, nameChange, role, salaryAdvance]
 
 // --- The page --------------------------------------------------------
 

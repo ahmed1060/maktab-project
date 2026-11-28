@@ -116,11 +116,16 @@ export default async function RequestsPage(props: { searchParams: Promise<Record
     // The days it may be asked for, by today's policy (LATER_CHANGES_PLAN.md §7.4, 4c).
     const missionDays = mayAskMission ? await MissionRequestService.window(viewer.companyId!) : null
 
+    // Asking for a salary advance, for whoever is in a company with Payroll and
+    // isn't an owner, who has no payslips to pay it back from (LATER_CHANGES_PLAN.md
+    // §7.5, step 3a, PR 449). What may be asked for, the dialog reads.
+    const mayAskAdvance = !owner && !superAdmin && !!viewer.companyId && sessionHasModule({ user: viewer }, 'PAYROLL')
+
     return (
         <RequestsClient
             rows={feed.rows} total={feed.total} page={page} totalPages={feed.totalPages} kinds={feed.kinds}
             tabs={tabs} tab={tab} show={show} superAdmin={superAdmin} dayOffAsk={dayOffAsk} credit={credit}
-            mayAskAttendance={mayAskAttendance} attendanceToday={attendanceToday} allowance={allowance} mayAskMission={mayAskMission} missionDays={missionDays}
+            mayAskAttendance={mayAskAttendance} attendanceToday={attendanceToday} allowance={allowance} mayAskMission={mayAskMission} missionDays={missionDays} mayAskAdvance={mayAskAdvance}
         />
     )
 }

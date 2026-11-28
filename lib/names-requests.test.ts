@@ -81,7 +81,8 @@ describe("the feed", () => {
         expect(selects.length).toBeGreaterThanOrEqual(11)
         for (const select of selects) expect(select).toContain("firstNameAr: true, lastNameAr: true")
         expect(source).not.toMatch(/who: \{ id: [^,]+, name: /)
-        expect(source.match(/who: personOf\(/g)?.length).toBe(11)
+        // Salary advances are the twelfth (LATER_CHANGES_PLAN.md §7.5, step 3a, PR 449).
+        expect(source.match(/who: personOf\(/g)?.length).toBe(12)
     })
 })
 

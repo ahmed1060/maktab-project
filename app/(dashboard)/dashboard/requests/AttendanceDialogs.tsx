@@ -256,7 +256,10 @@ export function WithdrawAttendance({ request, title, hint, onClose, onWithdrawn 
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'CANCEL' }),
                 })
-                : await fetch(`${ATTENDANCE_API[request.kind as AttendanceKind]}/${request.id}`, { method: 'DELETE' })
+                // A salary advance's own route (LATER_CHANGES_PLAN.md §7.5, step 3a, PR 449).
+                : request.kind === 'salaryAdvance'
+                    ? await fetch(`/api/salary-advances/${request.id}`, { method: 'DELETE' })
+                    : await fetch(`${ATTENDANCE_API[request.kind as AttendanceKind]}/${request.id}`, { method: 'DELETE' })
             if (!res.ok) {
                 showToast(t(await refusal(res, 'error_generic')), 'error')
                 return
