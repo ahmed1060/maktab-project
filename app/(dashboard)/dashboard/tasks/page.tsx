@@ -15,7 +15,7 @@ import { ListService } from '@/lib/services/list.service'
 import { redirect } from 'next/navigation'
 import { askedPage, pageRedirect } from '@/lib/list-page'
 
-export default async function TasksPage(props: { searchParams: Promise<{ company?: string, page?: string, status?: string, search?: string, employeeId?: string, teamLeaderId?: string, view?: string, dateFrom?: string, dateTo?: string, clientId?: string, locationId?: string, titleNameId?: string }> }) {
+export default async function TasksPage(props: { searchParams: Promise<{ company?: string, page?: string, status?: string, search?: string, employeeId?: string, teamLeaderId?: string, view?: string, dateFrom?: string, dateTo?: string, clientId?: string, locationId?: string, titleNameId?: string, highlight?: string }> }) {
     // Next 15 hands a page its dynamic segments and query string as
     // promises rather than plain objects, so they are awaited here and
     // the rest of the function reads them exactly as it did before.
@@ -48,10 +48,19 @@ export default async function TasksPage(props: { searchParams: Promise<{ company
     // all (their own only), their team's, their company's, or — for a Super
     // Admin — every company's.
     const scope = grantFor((session?.user ?? { role: null }) as any, 'tasks.view')
-    const requestedView = searchParams.view || (scope === null || scope === 'TEAM' ? 'my' : 'active')
+    const userCompanyId = (session?.user as any)?.companyId
+    let requestedView = searchParams.view || (scope === null || scope === 'TEAM' ? 'my' : 'active')
+    // A notification opens the list with its task picked out: one of the
+    // team's, not their own, is on My team's tasks, as Obligations' are
+    // (LATER_CHANGES_PLAN.md §7.17, PR 443). A tab asked for is kept.
+    if (scope === 'TEAM' && !searchParams.view && searchParams.highlight && userCompanyId) {
+        const teams: any = { id: searchParams.highlight, companyId: userCompanyId }
+        and(teams, assignedToReportsWhere(userId))
+        and(teams, { NOT: { assignees: { some: { id: userId } } } })
+        if (await (prisma.task as any).count({ where: teams }) > 0) requestedView = 'active'
+    }
     const view = scope === null ? 'my' : requestedView
     const whereClause: any = {}
-    const userCompanyId = (session?.user as any)?.companyId
 
     if (scope === null) {
         // An employee sees their own tasks and nothing else. The second view —
